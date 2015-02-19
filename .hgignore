@@ -1,0 +1,10 @@
+syntax: glob
+
+src/voodoo
+*.o
+*.swp
+*.swo
+*~
+
+syntax: regexp
+run/.+
