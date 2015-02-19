@@ -17,7 +17,7 @@ test_socket: test_socket.cc datum.hh ../src/factory/*.hh
 	$(CC) $(CXXFLAGS) $(INCLUDE) test_socket.cc $(LDFLAGS) -o test_socket
 
 test_discovery: test_discovery.cc datum.hh ../src/factory/*.hh
-	$(CC) $(CXXFLAGS) $(INCLUDE) test_discovery.cc $(LDFLAGS) -o test_discovery
+	$(CC) $(CXXFLAGS) $(INCLUDE) test_discovery.cc $(LDFLAGS) -llxc -o test_discovery
 
 run: test_buffer test_marshaling test_socket
 	./test_buffer

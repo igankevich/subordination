@@ -1,0 +1,51 @@
+#!/bin/sh
+
+set -e
+
+cmd=$1
+cluster=$2
+nodes=$3
+
+usage() {
+	echo "USAGE: $(basename $0) new CLUSTER NODES"
+	echo "USAGE: $(basename $0) del CLUSTER"
+}
+
+if [ -z "$nodes" ] && [ "$cmd" = "new" ] || [ -z "$cluster" ] || [ -z "$cmd" ]; then
+	usage
+	exit 1
+fi
+
+
+case "$cmd" in
+	new)
+		for n in $(seq 1 $nodes); do
+			name=$cluster$n
+			ip netns add $name
+			ip netns exec $name ip link set dev lo up
+			ip link add v$cluster$n type veth peer name veth0
+			ip link set veth0 netns $name
+			ip netns exec $name ifconfig veth0 10.1.1.$n/24 up
+			ifconfig v$cluster$n 10.1.2.$n/24 up
+		done
+		
+		brctl addbr $cluster
+		
+		for n in $(seq 1 $nodes); do
+			brctl addif $cluster v$cluster$n
+		done
+	;;
+	del)
+		nodes=$(ip netns list | grep $cluster | wc -l)
+		for n in $(seq 1 $nodes); do
+			ip netns delete $cluster$n
+		done
+		ip link set dev $cluster down
+		brctl delbr $cluster
+	;;
+	*)
+		echo "Wrong command. Please use 'new' or 'del'." >&2
+		usage
+		exit 1
+	;;
+esac
