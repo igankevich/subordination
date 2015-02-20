@@ -1,5 +1,6 @@
 namespace factory {
 
+	// TODO: replace gethostbyname by getnameinfo
 	void inet_address(const char* hostname, struct sockaddr_in* addr) {
 		// gethostbyname needs locking beacuse it returns pointer
 		// to the static data structure
@@ -14,6 +15,11 @@ namespace factory {
 		std::memcpy((char*)&addr->sin_addr.s_addr, (char*)host->h_addr, host->h_length);
 	}
 
+	enum Socket_type {
+		DEFAULT_SOCKET = SOCK_STREAM,
+		BROADCAST_SOCKET = SOCK_DGRAM
+	};
+
 	struct Socket {
 
 		typedef int Flag;
@@ -23,29 +29,23 @@ namespace factory {
 		Socket(int socket): _socket(socket) { flags(O_NONBLOCK); }
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
-		void listen(Endpoint e) { listen(e.host(), e.port()); }
-
-		void listen(const std::string& host, Port port) {
+		void listen(Endpoint e, int type = SOCK_STREAM) {
 			struct sockaddr_in addr;
-			init_socket_address(&addr, host.c_str(), port);
-			check("socket()", _socket = ::socket(AF_INET, SOCK_STREAM, 0));
-			flags(O_NONBLOCK);
+			init_socket_address(&addr, e.host().c_str(), e.port());
+			check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)&addr, sizeof(addr)));
 			check("listen()", ::listen(_socket, SOMAXCONN));
-			std::clog << "Listening on " << host << ':' << port << std::endl;
+			std::clog << "Listening on " << e << std::endl;
 		}
 
-		void connect(Endpoint e) { connect(e.host(), e.port()); }
-
-		void connect(const std::string& host, Port port) {
+		void connect(Endpoint e, Socket_type type = DEFAULT_SOCKET) {
 			try {
 				struct sockaddr_in addr;
-				init_socket_address(&addr, host.c_str(), port);
-				check("socket()", _socket = ::socket(AF_INET, SOCK_STREAM, 0));
+				init_socket_address(&addr, e.host().c_str(), e.port());
+				check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
 				check("connect()", ::connect(_socket, (struct sockaddr*)&addr, sizeof(addr)));
-				flags(O_NONBLOCK);
-				std::clog << "Connected to " << host << ':' << port << std::endl;
+				std::clog << "Connected to " << e << std::endl;
 			} catch (std::system_error& err) {
 				std::clog << "Rethrowing connection error." << std::endl;
 				throw Connection_error(err.what(), __FILE__, __LINE__, __func__);
