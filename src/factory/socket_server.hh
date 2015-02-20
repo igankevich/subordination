@@ -65,15 +65,6 @@ namespace factory {
 					}
 				});
 			}
-	
-			void add(Endpoint endpoint) {
-				Socket socket;
-				socket.connect(endpoint);
-				Handler* handler = new Handler(socket, endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, handler));
-				_upstream[endpoint] = handler;
-				std::clog << "Upstream size = " << _upstream.size() << std::endl;
-			}
 
 			void send(Kernel* kernel) {
 				std::clog << "Socket_server::send()" << std::endl;
@@ -123,6 +114,15 @@ namespace factory {
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
+			}
+	
+			void add(Endpoint endpoint) {
+				Socket socket;
+				socket.connect(endpoint);
+				Handler* handler = new Handler(socket, endpoint);
+				_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+				_upstream[endpoint] = handler;
+				std::clog << "Upstream size = " << _upstream.size() << std::endl;
 			}
 
 			void socket(Endpoint endpoint) {

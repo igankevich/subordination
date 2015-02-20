@@ -16,8 +16,8 @@ namespace factory {
 	}
 
 	enum Socket_type {
-		DEFAULT_SOCKET = SOCK_STREAM,
-		BROADCAST_SOCKET = SOCK_DGRAM
+		RELIABLE_SOCKET = SOCK_STREAM,
+		UNRELIABLE_SOCKET = SOCK_DGRAM
 	};
 
 	struct Socket {
@@ -29,23 +29,26 @@ namespace factory {
 		Socket(int socket): _socket(socket) { flags(O_NONBLOCK); }
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
-		void listen(Endpoint e, int type = SOCK_STREAM) {
+		void listen(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
 			struct sockaddr_in addr;
 			init_socket_address(&addr, e.host().c_str(), e.port());
 			check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)&addr, sizeof(addr)));
-			check("listen()", ::listen(_socket, SOMAXCONN));
-			std::clog << "Listening on " << e << std::endl;
+			std::clog << "Binding to " << e << std::endl;
+			if (type == RELIABLE_SOCKET) {
+				check("listen()", ::listen(_socket, SOMAXCONN));
+				std::clog << "Listening on " << e << std::endl;
+			}
 		}
 
-		void connect(Endpoint e, Socket_type type = DEFAULT_SOCKET) {
+		void connect(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
 			try {
 				struct sockaddr_in addr;
 				init_socket_address(&addr, e.host().c_str(), e.port());
 				check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
-				check("connect()", ::connect(_socket, (struct sockaddr*)&addr, sizeof(addr)));
-				std::clog << "Connected to " << e << std::endl;
+				check_connect("connect123()", ::connect(_socket, (struct sockaddr*)&addr, sizeof(addr)));
+				std::clog << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
 				std::clog << "Rethrowing connection error." << std::endl;
 				throw Connection_error(err.what(), __FILE__, __LINE__, __func__);
@@ -83,12 +86,30 @@ namespace factory {
 			check("setsockopt()", ::setsockopt(_socket, SOL_SOCKET, option, &one, sizeof(one)));
 		}
 
+		Socket_type type() const {
+			int tp = SOCK_STREAM;
+			socklen_t tp_size = sizeof(tp);
+			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_TYPE, &tp, &tp_size));
+			return Socket_type(tp);
+		}
+
 		ssize_t read(char* buf, size_t size) {
 			return ::read(_socket, buf, size);
 		}
 
 		ssize_t write(const char* buf, size_t size) {
 			return ::write(_socket, buf, size);
+		}
+
+		Endpoint from() const {
+			char dummy;
+			struct ::sockaddr_in addr;
+			std::memset(&addr, 0, sizeof(addr));
+			socklen_t addr_len = sizeof(addr);
+			check("recvfrom()", ::recvfrom(_socket, &dummy, 1, MSG_PEEK, (struct ::sockaddr*)&addr, &addr_len));
+			char str_address[40];
+			::inet_ntop(AF_INET, &addr.sin_addr.s_addr, str_address, 40);
+			return Endpoint(str_address, ntohs(addr.sin_port));
 		}
 
 //		void send(Foreign_stream& packet) {
@@ -109,6 +130,11 @@ namespace factory {
 		bool is_valid() const { return _socket > 0; }
 
 	private:
+
+		// TODO: connection status (success or failure) should be checked asynchronously in Socket_server
+		static int check_connect(const char* func, int ret) {
+			return (errno == EINPROGRESS) ? ret : check(func, ret);
+		}
 
 		static void init_socket_address(struct sockaddr_in* addr, const char* hostname, Port port) {
 			std::memset(addr, 0, sizeof(sockaddr_in));
