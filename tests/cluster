@@ -1,51 +1,89 @@
 #!/bin/sh
 
-set -e
+#set -x
 
-cmd=$1
-cluster=$2
-nodes=$3
+while [ -n "$1" ]; do
+	case "$1" in
+		--cluster|-c)
+			shift
+			cluster=$1
+			shift
+			;;
+		--nodes|-n)
+			shift
+			nodes=$1
+			shift
+			;;
+		--user|-u)
+			shift
+			user=$1
+			shift
+			;;
+		--)
+			shift
+			app=$*
+			while [ -n "$1" ]; do shift; done
+			;;
+		*)
+			echo "Unknown option: $1" >&2
+			exit 2
+			;;
+	esac
+done
 
 usage() {
-	echo "USAGE: $(basename $0) new CLUSTER NODES"
-	echo "USAGE: $(basename $0) del CLUSTER"
+	echo "USAGE: $(basename $0) -c CLUSTER -n NODES -- APP"
 }
 
-if [ -z "$nodes" ] && [ "$cmd" = "new" ] || [ -z "$cluster" ] || [ -z "$cmd" ]; then
+del_cluster() {
+	local nodes=$(ip netns list | grep $cluster | wc -l)
+	for n in $(seq 1 $nodes); do
+		ip netns delete $cluster$n
+	done
+	if ip link list | grep $cluster >/dev/null; then
+		ip link set dev $cluster down
+		brctl delbr $cluster
+	fi
+}
+
+if [ -z "$nodes" ] || [ -z "$cluster" ]; then
 	usage
 	exit 1
 fi
 
+if [ -z "$user" ]; then
+	user=$USER
+fi
 
-case "$cmd" in
-	new)
-		for n in $(seq 1 $nodes); do
-			name=$cluster$n
-			ip netns add $name
-			ip netns exec $name ip link set dev lo up
-			ip link add v$cluster$n type veth peer name veth0
-			ip link set veth0 netns $name
-			ip netns exec $name ifconfig veth0 10.1.1.$n/24 up
-			ifconfig v$cluster$n 10.1.2.$n/24 up
-		done
-		
-		brctl addbr $cluster
-		
-		for n in $(seq 1 $nodes); do
-			brctl addif $cluster v$cluster$n
-		done
-	;;
-	del)
-		nodes=$(ip netns list | grep $cluster | wc -l)
-		for n in $(seq 1 $nodes); do
-			ip netns delete $cluster$n
-		done
-		ip link set dev $cluster down
-		brctl delbr $cluster
-	;;
-	*)
-		echo "Wrong command. Please use 'new' or 'del'." >&2
-		usage
-		exit 1
-	;;
-esac
+del_cluster
+for n in $(seq 1 $nodes); do
+	name=$cluster$n
+	ip netns add $name
+	ip netns exec $name ip link set dev lo up
+	ip link add v$cluster$n type veth peer name veth0
+	ip link set veth0 netns $name
+	ip netns exec $name ifconfig veth0 10.1.1.$n/24 up
+	ifconfig v$cluster$n 10.1.2.$n/24 up
+done
+
+brctl addbr $cluster
+
+for n in $(seq 1 $nodes); do
+	brctl addif $cluster v$cluster$n
+done
+
+script=$(mktemp)
+cat >$script << EOF
+sudo -u $user $app >/tmp/$cluster\$1.out 2>&1
+EOF
+chmod +x $script
+for n in $(seq 1 $nodes); do
+	nohup ip netns exec $cluster$n $script $n >/dev/null 2>&1 &
+done
+wait
+
+cat /tmp/$cluster*.out
+rm /tmp/$cluster*.out
+rm $script
+
+del_cluster
