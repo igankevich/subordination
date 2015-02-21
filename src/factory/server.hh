@@ -5,7 +5,7 @@
 #include <unistd.h>
 namespace {
 	int total_cpus() { return ::sysconf(_SC_NPROCESSORS_ONLN); }
-	int thread_affinity() { return ::sched_getcpu(); }
+//	int thread_affinity() { return ::sched_getcpu(); }
 	void thread_affinity(int cpu) {
 		if (cpu != -1) {
 			int num_cpus = total_cpus();
@@ -39,34 +39,34 @@ namespace {
 
 namespace {
 
-	int total_threads() {
-		const char* threads = ::getenv("NUM_THREADS");
-		int t = total_cpus();
-		if (threads != NULL) {
-			std::stringstream tmp;
-			tmp << threads;
-			if (!(tmp >> t) || t < 0 || t > total_cpus()) {
-				t = total_cpus();
-				std::clog << "Bad NUM_THREADS value: " << threads << std::endl;
-			}
-		}
-//		std::clog << "threads = " <<  t << std::endl;
-		return t;
-	}
-
-	int total_vthreads() {
-		const char* threads = ::getenv("NUM_VTHREADS");
-		int t = 1;
-		if (threads != NULL) {
-			std::stringstream tmp;
-			tmp << threads;
-			if (!(tmp >> t) || t < 0) {
-				t = 1;
-				std::clog << "Bad NUM_VTHREADS value: " << threads << std::endl;
-			}
-		}
-		return t;
-	}
+//	int total_threads() {
+//		const char* threads = ::getenv("NUM_THREADS");
+//		int t = total_cpus();
+//		if (threads != NULL) {
+//			std::stringstream tmp;
+//			tmp << threads;
+//			if (!(tmp >> t) || t < 0 || t > total_cpus()) {
+//				t = total_cpus();
+//				std::clog << "Bad NUM_THREADS value: " << threads << std::endl;
+//			}
+//		}
+////		std::clog << "threads = " <<  t << std::endl;
+//		return t;
+//	}
+//
+//	int total_vthreads() {
+//		const char* threads = ::getenv("NUM_VTHREADS");
+//		int t = 1;
+//		if (threads != NULL) {
+//			std::stringstream tmp;
+//			tmp << threads;
+//			if (!(tmp >> t) || t < 0) {
+//				t = 1;
+//				std::clog << "Bad NUM_VTHREADS value: " << threads << std::endl;
+//			}
+//		}
+//		return t;
+//	}
 
 }
 

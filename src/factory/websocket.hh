@@ -626,7 +626,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     return 1;
 }
 
-int parse_hixie76_key(char * key) {
+int parse_hixie76_key(const char * key) {
     unsigned long i, spaces = 0, num = 0;
     for (i=0; i < strlen(key); i++) {
         if (key[i] == ' ') {
@@ -639,22 +639,38 @@ int parse_hixie76_key(char * key) {
     return num / spaces;
 }
 
-int gen_md5(headers_t *headers, char *target) {
-    unsigned long key1 = parse_hixie76_key(headers->key1);
-    unsigned long key2 = parse_hixie76_key(headers->key2);
-    char *key3 = headers->key3;
+int gen_md5(const headers_t *headers, char *target) {
+
+    unsigned long key1_long = parse_hixie76_key(headers->key1);
+    unsigned long key2_long = parse_hixie76_key(headers->key2);
+
+	union Bytes {
+		Bytes(unsigned long ll): l(ll) {}
+		char operator[](int i) const { return bytes[i]; }
+	private:
+		unsigned long l;
+		char bytes[4];
+	};
+
+	Bytes key1(key1_long);
+	Bytes key2(key2_long);
+
+    const char *key3 = headers->key3;
 
     MD5_CTX c;
     char in[HIXIE_MD5_DIGEST_LENGTH] = {
-        key1 >> 24, key1 >> 16, key1 >> 8, key1,
-        key2 >> 24, key2 >> 16, key2 >> 8, key2,
+// TODO: check this refactoring
+//        key1 >> 24, key1 >> 16, key1 >> 8, key1,
+//        key2 >> 24, key2 >> 16, key2 >> 8, key2,
+        key1[0], key1[1], key1[2], key1[3],
+        key2[0], key2[1], key2[2], key2[3],
         key3[0], key3[1], key3[2], key3[3],
         key3[4], key3[5], key3[6], key3[7]
     };
 
-    MD5_Init(&c);
-    MD5_Update(&c, (void *)in, sizeof in);
-    MD5_Final((unsigned char *)target, &c);
+    ::MD5_Init(&c);
+    ::MD5_Update(&c, (void *)in, sizeof in);
+    ::MD5_Final((unsigned char *)target, &c);
 
     target[HIXIE_MD5_DIGEST_LENGTH] = '\0';
 
@@ -677,7 +693,7 @@ static void gen_sha1(headers_t *headers, char *target) {
 
 ws_ctx_t *do_handshake(int sock) {
     char handshake[4096], response[4096], sha1[29], trailer[17];
-    char *scheme, *pre;
+    std::string scheme, pre;
     headers_t *headers;
     int len, i, offset;
     ws_ctx_t * ws_ctx;
@@ -758,8 +774,8 @@ ws_ctx_t *do_handshake(int sock) {
             trailer[0] = '\0';
             pre = "";
         }
-        sprintf(response, SERVER_HANDSHAKE_HIXIE, pre, headers->origin, pre, scheme,
-                headers->host, headers->path, pre, SUBPROTOCOL_NAMES[ws_ctx->subproto], trailer);
+        sprintf(response, SERVER_HANDSHAKE_HIXIE, pre.c_str(), headers->origin, pre.c_str(), scheme.c_str(),
+                headers->host, headers->path, pre.c_str(), SUBPROTOCOL_NAMES[ws_ctx->subproto], trailer);
     }
     
     //handler_msg("response: %s\n", response);
