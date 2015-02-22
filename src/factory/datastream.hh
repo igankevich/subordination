@@ -54,12 +54,12 @@ namespace factory {
 		Size read(char* bytes, Size size) { return _buffer.read(bytes, size); }
 
 		template<class S>
-		void fill(S source) { _buffer.fill(source); }
+		void fill(S& source) { _buffer.fill(source); }
 
 		void write_size() { _buffer.declared_size(network_format(_buffer.write_pos())); }
 
 		template<class S>
-		void flush(S sink) { _buffer.flush(sink); }
+		void flush(S& sink) { _buffer.flush(sink); }
 
 		void reset() { _buffer.reset(); }
 

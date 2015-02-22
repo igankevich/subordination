@@ -22,7 +22,7 @@ namespace factory {
 	};
 
 	struct Broadcast_socket: public Client_socket {
-		Broadcast_socket(Endpoint endp): Client_socket(endp, UNRELIABLE_SOCKET) {
+		explicit Broadcast_socket(Endpoint endp): Client_socket(endp, UNRELIABLE_SOCKET) {
 			this->options(SO_BROADCAST);
 		}
 	};

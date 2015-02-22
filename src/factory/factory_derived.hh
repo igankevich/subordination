@@ -2,8 +2,9 @@ namespace factory {
 
 	Factory __factory;
 
-	Server_stack* the_server() { return __factory.local_server(); }
-	Server_stack_remote* remote_server() { return __factory.remote_server(); }
+	Local_server* the_server() { return __factory.local_server(); }
+	Remote_server* remote_server() { return __factory.remote_server(); }
+	Discovery_server* discovery_server() { return __factory.discovery_server(); }
 	Repository_stack* repository() { return __factory.repository(); }
 
 	namespace components {

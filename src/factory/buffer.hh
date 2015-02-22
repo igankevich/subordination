@@ -6,6 +6,8 @@ namespace factory {
 		typedef uint32_t Size;
 		typedef T Value;
 
+		static const Size RESERVED_SPACE = sizeof(Size);
+
 		explicit Buffer(Size base_size):
 			_chunk_size(std::max(base_size, RESERVED_SPACE)),
 			_contents(),
@@ -69,7 +71,7 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t fill(S source) {
+		ssize_t fill(S& source) {
 			if (_contents.empty()) {
 				_contents.push_back(new T[_chunk_size]);
 				declared_size(0);
@@ -92,7 +94,7 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t flush(S sink) {
+		ssize_t flush(S& sink) {
 			ssize_t bytes_written = 0;
 			T* chunk = _contents.front();
 			Size decl_sz = host_format(declared_size());
@@ -163,8 +165,6 @@ namespace factory {
 		Size _write_pos;
 		Size _read_pos_flush;
 		Size _write_pos_fill;
-
-		static const Size RESERVED_SPACE = sizeof(Size);
 	};
 
 }

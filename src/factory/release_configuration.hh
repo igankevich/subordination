@@ -52,7 +52,14 @@ namespace factory {
 			using Kernel_handler = factory::components::Kernel_handler<K, Pool, Type>;
 
 		template<class K>
+			using Broadcast_handler = factory::components::Broadcast_handler<K, Pool, Type>;
+
+		template<class K>
 			using Socket_server = factory::components::Socket_server<Server<K>, Kernel_handler<Kernel>, Kernel, Kernel_pair, Type>;
+
+		template<class K>
+			using Broadcast_server = factory::components::Broadcast_server<Server<K>,
+				Broadcast_handler<Kernel>, Kernel, Kernel_pair, Type>;
 
 		template<class K>
 			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
@@ -89,9 +96,10 @@ namespace factory {
 //			Profiled_Iserver<Server<Kernel_pair>, Profiled_Dserver<Server<Kernel_pair>, Simple_hashing>, Simple_hashing>,
 //			Profiled_Rserver<Server<Reader>, No_strategy>,
 			Server_server<Service>
-			> Server_stack;
+			> Local_server;
 
-		typedef Socket_server<Kernel> Server_stack_remote;
+		typedef Socket_server<Kernel> Remote_server;
+		typedef Broadcast_server<Kernel> Discovery_server;
 
 		template<class K, class V>
 			using Repository = factory::components::Repository<K, V>;
@@ -106,6 +114,9 @@ namespace factory {
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
 				factory::components::Kernel_link<T, Identifiable<Kernel>>>;
+
+		template<class T>
+			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 	}
 
 	using namespace configuration;

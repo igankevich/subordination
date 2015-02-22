@@ -11,6 +11,7 @@ namespace factory {
 		Basic_factory():
 			_local_server(),
 			_remote_server(),
+			_discovery_server(),
 			_repository()
 		{
 			std::clog << "Basic_factory::Basic_factory()" << std::endl;
@@ -22,20 +23,24 @@ namespace factory {
 		void start() {
 			_local_server.start();
 			_remote_server.start();
+			_discovery_server.start();
 		}
 
 		void stop() {
 			_local_server.stop();
 			_remote_server.stop();
+			_discovery_server.stop();
 		}
 
 		void wait() {
 			_local_server.wait();
 			_remote_server.wait();
+			_discovery_server.wait();
 		}
 
-		Server_stack* local_server() { return &_local_server; }
-		Server_stack_remote* remote_server() { return &_remote_server; }
+		Local_server* local_server() { return &_local_server; }
+		Remote_server* remote_server() { return &_remote_server; }
+		Discovery_server* discovery_server() { return &_discovery_server; }
 		Repository_stack* repository() { return &_repository; }
 
 	private:
@@ -50,9 +55,36 @@ namespace factory {
 			::sigaction(SIGFPE, &action, NULL);
 		}
 
-		Server_stack _local_server;
-		Server_stack_remote _remote_server;
+		Local_server _local_server;
+		Remote_server _remote_server;
+		Discovery_server _discovery_server;
 		Repository_stack _repository;
+	};
+
+	struct Discovery_kernel: public Unidentifiable<Discovery_kernel> {
+
+		typedef uint32_t Rating;
+
+		Discovery_kernel(): _endpoint(), _rating(0) {}
+
+		void act() {
+			std::cout << "Discovered " << _endpoint << ", rating = " << _rating << std::endl;
+		}
+
+		void write(Foreign_stream& out) { _rating = 123; out << _rating; }
+
+		void read(Foreign_stream& in) { in >> _rating; }
+
+		Endpoint from() const { return _endpoint; }
+		void from(Endpoint e) { _endpoint = e; }
+
+		static void init_type(Type* t) {
+			t->id(123);
+		}
+	
+	private:
+		Endpoint _endpoint;
+		Rating _rating;
 	};
 
 }
