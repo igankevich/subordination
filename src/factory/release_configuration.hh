@@ -59,7 +59,7 @@ namespace factory {
 
 		template<class K>
 			using Broadcast_server = factory::components::Broadcast_server<Server<K>,
-				Broadcast_handler<Kernel>, Kernel, Kernel_pair, Type>;
+				Broadcast_handler<K>, K, Kernel_pair, Type>;
 
 		template<class K>
 			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
@@ -99,7 +99,8 @@ namespace factory {
 			> Local_server;
 
 		typedef Socket_server<Kernel> Remote_server;
-		typedef Broadcast_server<Kernel> Discovery_server;
+		typedef factory::components::Discovery_kernel<Kernel> Discovery_kernel;
+		typedef Broadcast_server<Discovery_kernel> Discovery_server;
 
 		template<class K, class V>
 			using Repository = factory::components::Repository<K, V>;

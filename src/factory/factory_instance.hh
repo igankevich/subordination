@@ -61,31 +61,6 @@ namespace factory {
 		Repository_stack _repository;
 	};
 
-	struct Discovery_kernel: public Unidentifiable<Discovery_kernel> {
-
-		typedef uint32_t Rating;
-
-		Discovery_kernel(): _endpoint(), _rating(0) {}
-
-		void act() {
-			std::cout << "Discovered " << _endpoint << ", rating = " << _rating << std::endl;
-		}
-
-		void write(Foreign_stream& out) { _rating = 123; out << _rating; }
-
-		void read(Foreign_stream& in) { in >> _rating; }
-
-		Endpoint from() const { return _endpoint; }
-		void from(Endpoint e) { _endpoint = e; }
-
-		static void init_type(Type* t) {
-			t->id(123);
-		}
-	
-	private:
-		Endpoint _endpoint;
-		Rating _rating;
-	};
 
 }
 

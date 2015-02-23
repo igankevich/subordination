@@ -197,4 +197,31 @@ namespace factory {
 		Endpoint _from;
 	};
 
+	namespace components {
+
+		template<class Kernel>
+		struct Discovery_kernel: public Kernel {
+
+			typedef uint32_t Rating;
+
+			Discovery_kernel(): _endpoint(), _rating(0) {}
+
+			void act() {
+				std::cout << "Discovered " << _endpoint << ", rating = " << _rating << std::endl;
+			}
+
+			void write(Foreign_stream& out) { _rating = 123; out << _rating; }
+
+			void read(Foreign_stream& in) { in >> _rating; }
+
+			Endpoint from() const { return _endpoint; }
+			void from(Endpoint e) { _endpoint = e; }
+
+		private:
+			Endpoint _endpoint;
+			Rating _rating;
+		};
+
+	}
+
 }

@@ -99,7 +99,7 @@ namespace factory {
 
 			typedef Broadcast_handler<Kernel, Pool, Type> This;
 
-			/// Serialised kernel size cannot exxceed this value
+			/// Serialised kernel size cannot exceed this value,
 			/// otherwise discovery messages would be fragmented.
 			static const size_t MAX_MESSAGE_SIZE = 128;
 
@@ -124,7 +124,11 @@ namespace factory {
 						_stream.fill(src);
 						if (_stream.is_full()) {
 							std::clog << "Recv " << _ostream << std::endl;
-							Type::types().read_and_send_object(_stream, src.from());
+							Kernel kernel;
+							kernel.read(_stream);
+							kernel.from(src.from());
+							kernel.act();
+//							Type::types().read_and_send_object(_stream, src.from());
 							_stream.reset();
 						}
 					} catch (Error& err) {
@@ -143,13 +147,13 @@ namespace factory {
 							if (_ostream.is_flushed()) {
 								Kernel* kernel = _pool.front();
 								_pool.pop();
-								const Type* type = kernel->type();
-								if (type == nullptr) {
-									std::stringstream msg;
-									msg << "Can not find type for kernel " << kernel->id();
-									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-								}
-								_ostream << type->id();
+//								const Type* type = kernel->type();
+//								if (type == nullptr) {
+//									std::stringstream msg;
+//									msg << "Can not find type for kernel " << kernel->id();
+//									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+//								}
+//								_ostream << type->id();
 								kernel->write(_ostream);
 								_ostream.write_size();
 								std::clog << "Send " << _ostream << std::endl;
