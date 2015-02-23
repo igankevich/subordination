@@ -3,25 +3,11 @@ namespace factory {
 	typedef std::string Host;
 	typedef uint16_t Port;
 
-	// TODO: replace gethostbyname by getnameinfo
-	void inet_address(const char* hostname, struct sockaddr_in* addr) {
-		// gethostbyname needs locking beacuse it returns pointer
-		// to the static data structure
-		static std::mutex _mutex;
-		std::unique_lock<std::mutex> lock(_mutex);
-		struct hostent *host = ::gethostbyname(hostname);
-		if (host == NULL) {
-			std::stringstream msg;
-			msg << "Can not find IP address of '" << hostname << "'. " << ::hstrerror(h_errno);
-			throw Network_error(msg.str(), __FILE__, __LINE__, __func__);
-		}
-		std::memcpy((char*)&addr->sin_addr.s_addr, (char*)host->h_addr, host->h_length);
-	}
 
 	struct Endpoint {
 
 		Endpoint(): _host(), _port(0) {}
-		Endpoint(const Host& host, Port port): _host(host), _port(port) {}
+		Endpoint(const Host& host, Port port): _host(inet_address(host.c_str())), _port(port) {}
 		Endpoint(const Endpoint& rhs): _host(rhs._host), _port(rhs._port) {}
 		Endpoint(struct ::sockaddr_in* addr) {
 			char str_address[40];
@@ -78,12 +64,21 @@ namespace factory {
 			std::memset(addr, 0, sizeof(sockaddr_in));
 			addr->sin_family = AF_INET;
 			addr->sin_port = htons(_port);
-			if (check("inet_pton()", ::inet_pton(AF_INET, _host.c_str(), &addr->sin_addr.s_addr)) == 0) {
-				inet_address(_host.c_str(), addr);
-			}
+			check("inet_pton()", ::inet_pton(AF_INET, _host.c_str(), &addr->sin_addr.s_addr));
 		}
 
 	private:
+
+		Host inet_address(const char* host) {
+			struct ::addrinfo* info;
+			check("getaddrinfo", ::getaddrinfo(host, NULL, NULL, &info));
+			char str_address[40];
+			::inet_ntop(AF_INET, &((struct ::sockaddr_in*)info->ai_addr)->sin_addr.s_addr, str_address, 40);
+			Host numeric_host = str_address;
+			::freeaddrinfo(info);
+			return numeric_host;
+		}
+
 		Host _host;
 		Port _port;
 	};

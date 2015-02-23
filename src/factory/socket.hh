@@ -45,14 +45,9 @@ namespace factory {
 		// Does not store client's address.
 		std::pair<Socket, Endpoint> accept() {
 			struct sockaddr_in addr;
-			std::memset(&addr, 0, sizeof(addr));
 			socklen_t acc_len = sizeof(addr);
 			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
-			char str_address[40];
-			::inet_ntop(AF_INET, &addr.sin_addr.s_addr, str_address, 40);
-//			std::clog << "Accepted connection from " << str_address
-//				<< ':' << ntohs(addr.sin_port) << std::endl;
-			Endpoint endpoint(str_address, ntohs(addr.sin_port));
+			Endpoint endpoint(&addr);
 			std::clog << "Accepted connection from " << endpoint << std::endl;
 			return std::make_pair(socket, endpoint);
 		}
@@ -91,12 +86,9 @@ namespace factory {
 		Endpoint from() const {
 			char dummy;
 			struct ::sockaddr_in addr;
-			std::memset(&addr, 0, sizeof(addr));
 			socklen_t addr_len = sizeof(addr);
 			check("recvfrom()", ::recvfrom(_socket, &dummy, 0, MSG_PEEK, (struct ::sockaddr*)&addr, &addr_len));
-			char str_address[40];
-			::inet_ntop(AF_INET, &addr.sin_addr.s_addr, str_address, 40);
-			return Endpoint(str_address, ntohs(addr.sin_port));
+			return Endpoint(&addr);
 		}
 
 //		void send(Foreign_stream& packet) {
@@ -123,14 +115,14 @@ namespace factory {
 			return (errno == EINPROGRESS) ? ret : check(func, ret);
 		}
 
-		static void init_socket_address(struct sockaddr_in* addr, const char* hostname, Port port) {
-			std::memset(addr, 0, sizeof(sockaddr_in));
-			addr->sin_family = AF_INET;
-			addr->sin_port = htons(port);
-			if (check("inet_pton()", ::inet_pton(AF_INET, hostname, &addr->sin_addr.s_addr)) == 0) {
-				inet_address(hostname, addr);
-			}
-		}
+//		static void init_socket_address(struct sockaddr_in* addr, const char* hostname, Port port) {
+//			std::memset(addr, 0, sizeof(sockaddr_in));
+//			addr->sin_family = AF_INET;
+//			addr->sin_port = htons(port);
+//			if (check("inet_pton()", ::inet_pton(AF_INET, hostname, &addr->sin_addr.s_addr)) == 0) {
+//				inet_address(hostname, addr);
+//			}
+//		}
 
 		int _socket;
 	};

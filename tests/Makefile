@@ -5,7 +5,9 @@ LDFLAGS   = -lssl -lcrypto -lresolv
 INCLUDE   = -I../src
 
 
-#all: test_buffer test_marshaling test_socket test_discovery
+all: test_buffer
+all: test_marshaling
+all: test_socket
 all: test_discovery
 
 test_buffer: test_buffer.cc test_buffer.hh ../src/factory/*.hh
@@ -22,10 +24,10 @@ test_discovery: test_discovery.cc test_discovery.hh ../src/factory/*.hh
 
 #run: test_buffer test_marshaling test_socket
 run: test_discovery
-#	./test_buffer
-#	./test_marshaling
+	./test_buffer
+	./test_marshaling
 #	./test_socket
-	sudo ./cluster --cluster cat --nodes 4 --user $(USER) -- $(PWD)/test_discovery
+#	sudo ./cluster --cluster cat --nodes 4 --user $(USER) -- $(PWD)/test_discovery
 
 clean:
 	rm -f test_buffer
