@@ -33,6 +33,7 @@ namespace factory {
 		}
 	
 		bool empty() const { return _start >= _end; }
+		I count() const { return _end - _start; }
 	
 	private:
 		I _start, _end;
@@ -59,10 +60,9 @@ namespace factory {
 	
 	std::vector<Address_range> discover_neighbours() {
 	
-		struct ::ifaddrs *ifaddr;
+		struct ::ifaddrs* ifaddr;
 		check("getifaddrs()", ::getifaddrs(&ifaddr));
 	
-	//	std::map<uint32_t, Address_range> ranges;
 		std::set<Address_range> ranges;
 	
 		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
@@ -86,30 +86,8 @@ namespace factory {
 			uint32_t start = (addr_long & mask_long) + 1;
 			uint32_t end = (addr_long & mask_long) + (~mask_long);
 	
-	//		printf("\t\taddress: <%s>\n", host);
-	//		printf("\t\tnetmask: <%s>\n", netmask);
-	//		printf("\t\taddr_long: <%x>\n", addr_long);
-	//		printf("\t\tmask_long: <%x>\n", mask_long);
-	//		printf("\t\tshrt_addr: <%x>\n", addr_long & ~mask_long);
-	//		printf("\t\tstrt_addr: <%x>\n", start);
-	//		printf("\t\tend__addr: <%x>\n", end);
-	
 			ranges.insert(Address_range(start, addr_long));
 			ranges.insert(Address_range(addr_long+1, end));
-	
-	//		char host[NI_MAXHOST];
-	//		for (uint32_t i=start; i<end; ++i) {
-	//			struct ::sockaddr_in addr;
-	//			addr.sin_family = AF_INET;
-	//			addr.sin_addr.s_addr = ntohl(i);
-	//			addr.sin_port = 0;
-	//			check("getnameinfo", ::getnameinfo((struct ::sockaddr*)&addr,
-	//				sizeof(struct ::sockaddr_in),
-	//				host, NI_MAXHOST,
-	//				NULL, 0, NI_NUMERICHOST));
-	//			std::cout << host << '\n';
-	//		}
-			
 		}
 	
 		// combine overlaping ranges
@@ -137,7 +115,7 @@ namespace factory {
 		std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
 			[] (const Address_range& range)
 		{
-			std::cout << Address(range.start()) << '-' << Address(range.end()) << '\n';
+			std::clog << Address(range.start()) << '-' << Address(range.end()) << '\n';
 		});
 	
 		::freeifaddrs(ifaddr);
