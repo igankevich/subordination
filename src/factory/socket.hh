@@ -15,12 +15,12 @@ namespace factory {
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
 		void listen(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
-			struct sockaddr_in addr;
-			e.to_sockaddr(&addr);
+//			struct sockaddr_in addr;
+//			e.to_sockaddr(&addr);
 //			init_socket_address(&addr, e.host().c_str(), e.port());
 			check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
 			options(SO_REUSEADDR);
-			check("bind()", ::bind(_socket, (struct sockaddr*)&addr, sizeof(addr)));
+			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
 			std::clog << "Binding to " << e << std::endl;
 			if (type == RELIABLE_SOCKET) {
 				check("listen()", ::listen(_socket, SOMAXCONN));
@@ -30,11 +30,11 @@ namespace factory {
 
 		void connect(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
 			try {
-				struct sockaddr_in addr;
+//				struct sockaddr_in addr;
 //				init_socket_address(&addr, e.host().c_str(), e.port());
-				e.to_sockaddr(&addr);
+//				e.to_sockaddr(&addr);
 				check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
-				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)&addr, sizeof(addr)));
+				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
 				std::clog << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
 				std::clog << "Rethrowing connection error." << std::endl;

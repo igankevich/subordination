@@ -7,6 +7,13 @@ namespace factory {
 		return ret;
 	}
 
+	const char* check_inet(const char* func, const char* ret) {
+		if (ret == 0) {
+			throw std::system_error(std::error_code(errno, std::system_category()), func);
+		}
+		return ret;
+	}
+
 	struct Error: public std::runtime_error {
 
 		Error(const std::string& msg, const char* file, const int line, const char* function):
