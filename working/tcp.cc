@@ -51,7 +51,7 @@ unsigned short csum (unsigned short *buf, int nwords) {
 using namespace factory;
 
 #define BUFFER_MAX_SIZE 1024
-void receive_reply(Socket socket) {
+int receive_reply(Socket socket) {
 	/* Other code here */
 	/* .... */
 	/* Handle receving ICMP Errors */
@@ -73,9 +73,12 @@ void receive_reply(Socket socket) {
 	msg.msg_flags = 0;
 	msg.msg_control = buffer;
 	msg.msg_controllen = sizeof(buffer);
-	/* Receiving errors flog is set */
 	
-	while(recvmsg(socket, &msg, MSG_ERRQUEUE) < 0);
+//	while(recvmsg(socket, &msg, 0) < 0);
+	int ret = recvmsg(socket, &msg, 0);
+//	int ret = check("recvmsg()", recvmsg(socket, &msg, 0));
+	return ret;
+	std::clog << msg.msg_controllen << std::endl;
 //	check("recvmsg()", recvmsg(socket, &msg, MSG_ERRQUEUE));
 	/* Control messages are always accessed via some macros
 	 * http://www.kernel.org/doc/man-pages/online/pages/man3/cmsg.3.html
@@ -122,40 +125,49 @@ void receive_reply(Socket socket) {
 
 int main (int argc, char *argv[]) {
 
-	if (argc != 2) {
-		std::cerr << "USAGE: ./udp <addr>" << std::endl;
-		return 1;
-	}
-
 	Endpoint src("0.0.0.0", 40000);
-	Endpoint dest;
+	Endpoint dest("0.0.0.0", 50000);
 
-	std::stringstream cmdline;
-	cmdline << argv[1];
-	if (!(cmdline >> dest)) {
-		std::cerr << "Bad destination: " << cmdline.str() << std::endl;
-		return 2;
-	}
-	std::clog << "Destination " << dest << std::endl;
+	Socket socket2;
+	socket2.listen(dest);
 
 	Socket socket;
-	socket.listen(src, UNRELIABLE_SOCKET);
-//
-//	Socket socket2;
-//	socket2.listen(dest, UNRELIABLE_SOCKET);
-	int on = 1;
-	/* Set the option, so we can receive errors */
-//	check("setsockopt()", ::setsockopt(socket, SOL_IP, IP_RECVERR, &on, sizeof(on)));
+	socket.connect(dest);
+//	socket.connect(Endpoint("213.180.204.3", 80));
+//	socket.connect(Endpoint("lab1.apmath.spbu.ru", 80), UNRELIABLE_SOCKET);
+	auto pair = socket2.accept();
+	int recv_socket = pair.first;
 
-	for (int ttl = 1; ttl < 9; ++ttl) {
+	sleep(1);
+
+	socklen_t len = sizeof(errno);
+	check("getsockopt()", ::getsockopt(socket, SOL_SOCKET, SO_ERROR, &errno, &len));
+	std::cout << "errno = " << errno << std::endl;
+	if (errno) {
+		perror("Connection refused");
+	}
+
+	for (int ttl = 1; ttl < 64; ttl += 1) {
 
 		check("setsockopt()", ::setsockopt((int)socket, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)));
 
 		char msg[12] = "Hello world";
-		std::clog << "Sending" << std::endl;
-		check("sendto()", ::sendto((int)socket, msg, sizeof(msg), 0, (struct ::sockaddr*) dest.addr(), sizeof(sockaddr_in)));
+//		std::clog << "Sending" << std::endl;
+		check("send()", ::send(socket, msg, sizeof(msg), 0));
 
-		receive_reply(socket);
+//		char msg2[12];
+//		check("recv()", ::recv(recv_socket, msg2, sizeof(msg2), 0));
+//		std::cout << "Message: " << msg2 << std::endl;
+
+//
+		sleep(1);
+		int ret = receive_reply(socket);
+		std::cout
+			<< "ret = " << ret << ", "
+			<< "TTL = " << ttl << std::endl;
+		if (ret != -1) {
+			break;
+		}
 	}
 
 	return 0;

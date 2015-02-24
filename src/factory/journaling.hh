@@ -1,5 +1,8 @@
 namespace factory {
 
+	// TODO; implement hierarchical logging of events (i.e. current level of a hierarchy is determined by
+	// frame pointer in function call stack. There are several logging levels: OS, Servers, Kernels, Applications.
+
 	namespace journaling {
 
 		struct Logging {
