@@ -178,34 +178,106 @@ namespace factory {
 	namespace components {
 
 		/// Rough description of a protocol.
-		/// >> { rating_1, 0 }
-		/// << { rating_2, 0 }
-		/// >> { rating_1/ttl_1, 1 }
-		/// << { rating_2/ttl_2, 1 }
-		/// Node 1 has discovered a node with rating rating_2/ttl_2.
-		/// Node 2 has discovered a node with rating rating_1/ttl_1.
+		/// >> { 1, time_1 }
+		/// << { 2, time_1, time_2 }
+		/// >> { 3, time_2, r1=rating_1/(cur_time_1-time_1) }
+		/// << { 4, r2=rating_2/(cur_time_2-time_2) }
+		/// Node 1 has discovered a node with rating r2. If r1>r2, node 1 becomes a leader,
+		/// Node 2 has discovered a node with rating r1. If r2>r1, node 2 becomes a leader,
 
-		template<class Kernel>
-		struct Discovery_kernel: public Kernel {
 
-			typedef uint32_t Rating;
+		template<class K>
+		struct Remote_kernel: public K {
 
-			Discovery_kernel(): _endpoint(), _rating(0) {}
-
-			void act() {
-				std::cout << "Discovered " << _endpoint << ", rating = " << _rating << std::endl;
-			}
-
-			void write(Foreign_stream& out) { _rating = 123; out << _rating; }
-
-			void read(Foreign_stream& in) { in >> _rating; }
-
+			Remote_kernel(): _endpoint() {}
 			Endpoint from() const { return _endpoint; }
 			void from(Endpoint e) { _endpoint = e; }
 
 		private:
 			Endpoint _endpoint;
-			Rating _rating;
+		};
+
+		template<template<class X> class Mobile, class Type>
+		struct Discovery_kernel: public Remote_kernel<Mobile<Discovery_kernel<Mobile, Type>>> {
+
+			typedef uint32_t Rating;
+			typedef uint64_t Time;
+
+			enum State { 
+				TIME_1 = 1,
+				TIME_2 = 2,
+				TIME_AND_RATING_1 = 3,
+				TIME_AND_RATING_2 = 4
+			};
+
+			Discovery_kernel():
+				_time_1(0),
+				_time_2(0),
+				_rating_1(0),
+				_rating_2(0)
+			{}
+
+			void act() {
+
+				std::clog
+					<< "Discovery {"
+					<< _state << ", "
+					<< _time_1 << ", "
+					<< _time_2 << ", "
+					<< _rating_1 << ", "
+					<< _rating_2 << '}' << std::endl;
+
+				switch (_state) {
+					case TIME_1: _state = TIME_2; break;
+					case TIME_2: _state = TIME_AND_RATING_1; break;
+					case TIME_AND_RATING_1: _state = TIME_AND_RATING_2; break;
+					case TIME_AND_RATING_2: break;
+				}
+
+				if (_state != TIME_AND_RATING_2) {
+					discovery_server()->send(this);
+				}
+			}
+
+			void write(Foreign_stream& out) {
+				switch (_state) {
+					case TIME_1: set_time_1(); out << char(_state) << _time_1; break;
+					case TIME_2: set_time_2(); out << char(_state) << _time_1 << _time_2; break;
+					case TIME_AND_RATING_1: out << char(_state) << _time_2 << _rating_1; break;
+					case TIME_AND_RATING_2: out << char(_state) << _rating_2; break;
+				}
+			}
+
+			void read(Foreign_stream& in) {
+				unsigned char st = 0;
+				switch (_state) {
+					case TIME_1: in >> st >> _time_1; break;
+					case TIME_2: in >> st >> _time_1 >> _time_2; set_rating_1(); break;
+					case TIME_AND_RATING_1: in >> st >> _time_2 >> _rating_1; set_rating_2(); break;
+					case TIME_AND_RATING_2: in >> st >> _rating_2; break;
+				}
+				_state = State(st);
+			}
+
+			static void init_type(Type* t) { t->id(1); }
+
+		private:
+
+			void set_time_1() { _time_1 = current_time(); }
+			void set_time_2() { _time_2 = current_time(); }
+
+			void set_rating_1() { _rating_1 = 123; }
+			void set_rating_2() { _rating_2 = 456; }
+
+			static Time current_time() {
+				return std::chrono::steady_clock::now().time_since_epoch().count();
+			}
+
+			State _state = TIME_1;
+			Time _time_1;
+			Time _time_2;
+			Rating _rating_1;
+			Rating _rating_2;
 		};
 
 	}

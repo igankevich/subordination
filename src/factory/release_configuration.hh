@@ -4,7 +4,7 @@ namespace factory {
 
 		typedef factory::components::Tetris Tetris;
 	
-		typedef factory::components::Stochastic_round_robin Stochastic_round_robin;
+//		typedef factory::components::Stochastic_round_robin Stochastic_round_robin;
 	
 		template<class K, class P>
 			using Round_robin = factory::components::Round_robin<K, P>;
@@ -99,8 +99,6 @@ namespace factory {
 			> Local_server;
 
 		typedef Socket_server<Kernel> Remote_server;
-		typedef factory::components::Discovery_kernel<Kernel> Discovery_kernel;
-		typedef Broadcast_server<Discovery_kernel> Discovery_server;
 
 		template<class K, class V>
 			using Repository = factory::components::Repository<K, V>;
@@ -118,6 +116,9 @@ namespace factory {
 
 		template<class T>
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
+
+		typedef factory::components::Discovery_kernel<Unidentifiable, Type> Discovery_kernel;
+		typedef Broadcast_server<Discovery_kernel> Discovery_server;
 	}
 
 	using namespace configuration;
