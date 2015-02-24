@@ -23,13 +23,14 @@ namespace factory {
 		private:
 
 			struct Entry {
+
 				Entry(const std::pair<const K, V>& k): _key(k.first), _val(k.second) {}
 
 				friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
 					return out
 						<< "/repo/"
 						<< rhs._key
-						<< " = "
+						<< '='
 						<< rhs._val;
 				}
 

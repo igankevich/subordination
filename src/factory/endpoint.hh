@@ -8,7 +8,7 @@ namespace factory {
 
 		Endpoint() { std::memset((void*)&_addr, 0, sizeof(_addr)); }
 		Endpoint(const Host& host, Port port) { addr(host.c_str(), port); }
-		Endpoint(uint32_t host, Port port) { addr(host.c_str(), port); }
+		Endpoint(uint32_t host, Port port) { addr(host, port); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
 		Endpoint(struct ::sockaddr_in* rhs) { addr(rhs); }
 
@@ -80,18 +80,18 @@ namespace factory {
 		void addr(const char* host, Port port) {
 			struct ::addrinfo* info;
 			check("getaddrinfo", ::getaddrinfo(host, NULL, NULL, &info));
-			struct ::sockaddr_in* tmp = (struct ::sockaddr_in*) info->ai_addr;
-			tmp->sin_port = htons(port);
-			addr(tmp);
+			struct ::sockaddr_in* a = (struct ::sockaddr_in*) info->ai_addr;
+			a->sin_port = htons(port);
+			addr(a);
 			::freeaddrinfo(info);
 		}
 
 		void addr(const uint32_t host, Port port) {
-			struct ::sockaddr_in tmp;
-			tmp->sin_port = htons(port);
-			tmp->sin_family = AF_INET;
-			tmp->sin_addr.s_addr = host;
-			addr(tmp);
+			struct ::sockaddr_in a;
+			a.sin_port = htons(port);
+			a.sin_family = AF_INET;
+			a.sin_addr.s_addr = htonl(host);
+			addr(&a);
 		}
 
 		struct ::sockaddr_in _addr;

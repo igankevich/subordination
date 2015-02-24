@@ -5,6 +5,8 @@ namespace factory {
 
 	template<class I>
 	struct Interval {
+
+		typedef I Int;
 	
 		Interval(): _start(0), _end(0) {}
 		Interval(I a, I b): _start(a), _end(b) {}
@@ -123,16 +125,29 @@ namespace factory {
 		return sorted_ranges;
 	}
 
-	Endpoint random_endpoint(const std::vector<Address_range>& addrs) {
+	Endpoint random_endpoint(const std::vector<Address_range>& addrs, Port port) {
+
+		typedef typename Address_range::Int I;
+
 		int n = addrs.size();
+		I total_count = 0;
 		for (int i=0; i<n; ++i) {
-			uint32_t start = addrs[i].start();
-			uint32_t end = addrs[i].end();
-			std::default_random_engine generator;
-			std::uniform_int_distribution<uint32_t> distribution(start, end);
-			uint32_t addr = distribution(generator);
-			// TODO: finish it
+			total_count += addrs[i].end() - addrs[i].start();
 		}
+
+		static std::default_random_engine generator(std::chrono::steady_clock::now().time_since_epoch().count());
+		std::uniform_int_distribution<I> distribution(0, total_count-1);
+		I m = distribution(generator);
+
+		int i = 0;
+		I cnt;
+		while (m > (cnt = addrs[i].end() - addrs[i].start()) && i < n) {
+			m -= cnt;
+			i++;
+		}
+
+		I addr = addrs[i].start() + m;
+		return Endpoint(addr, port);
 	}
 
 	struct Broadcast_sink {
@@ -209,6 +224,8 @@ namespace factory {
 			Endpoint _endpoint;
 		};
 
+		// TODO: auto-deletion of kernels
+		// TODO: auto-deletion of sockets from server 
 		template<template<class X> class Mobile, class Type>
 		struct Discovery_kernel: public Remote_kernel<Mobile<Discovery_kernel<Mobile, Type>>> {
 
@@ -231,13 +248,8 @@ namespace factory {
 
 			void act() {
 
-				std::clog
-					<< "Discovery {"
-					<< _state << ", "
-					<< _time_1 << ", "
-					<< _time_2 << ", "
-					<< _rating_1 << ", "
-					<< _rating_2 << '}' << std::endl;
+				debug_recv();
+				State old_state = _state;
 
 				switch (_state) {
 					case TIME_1: _state = TIME_2; break;
@@ -246,10 +258,12 @@ namespace factory {
 					case TIME_AND_RATING_2: break;
 				}
 
-				if (_state != TIME_AND_RATING_2) {
+				if (old_state == TIME_AND_RATING_2) {
+					// delete when final state is reached
+					delete this;
+				} else {
 					discovery_send(this, this->from());
 				}
-				// TODO: delete on write
 			}
 
 			void write(Foreign_stream& out) {
@@ -259,27 +273,57 @@ namespace factory {
 					case TIME_AND_RATING_1: out << char(_state) << _time_2 << _rating_1; break;
 					case TIME_AND_RATING_2: out << char(_state) << _rating_2; break;
 				}
+				// delete after write is done since there are no downstream objects
+				delete this;
 			}
 
 			void read(Foreign_stream& in) {
-				unsigned char st = 0;
-				switch (_state) {
-					case TIME_1: in >> st >> _time_1; break;
-					case TIME_2: in >> st >> _time_1 >> _time_2; set_rating_1(); break;
-					case TIME_AND_RATING_1: in >> st >> _time_2 >> _rating_1; set_rating_2(); break;
-					case TIME_AND_RATING_2: in >> st >> _rating_2; break;
-				}
+				uint8_t st = 0;
+				in >> st;
 				_state = State(st);
+				switch (_state) {
+					case TIME_1: in >> _time_1; break;
+					case TIME_2: in >> _time_1 >> _time_2; set_rating_1(); break;
+					case TIME_AND_RATING_1: in >> _time_2 >> _rating_1; set_rating_2(); break;
+					case TIME_AND_RATING_2: in >> _rating_2; break;
+				}
 			}
 
 			static void init_type(Type* t) { t->id(1); }
 
 		private:
 
+			void debug_recv() const {
+				std::cerr
+					<< "Discovery {"
+					<< _state << ", "
+					<< _time_1 << ", "
+					<< _time_2 << ", "
+					<< _rating_1 << ", "
+					<< _rating_2 << "} from "
+					<< this->from()
+					<< std::endl;
+			}
+
+			void debug_send() const {
+				std::cerr
+					<< "Discovery {"
+					<< _state << ", "
+					<< _time_1 << ", "
+					<< _time_2 << ", "
+					<< _rating_1 << ", "
+					<< _rating_2 << "} to "
+					<< this->from()
+					<< std::endl;
+			}
+
 			void set_time_1() { _time_1 = current_time(); }
 			void set_time_2() { _time_2 = current_time(); }
+			Time dt(Time t0) const { return std::max(current_time()-t0, Time(1)); }
 
-			void set_rating_1() { _rating_1 = 123; }
+			void set_rating_1() {
+				_rating_1 = 123000000/dt(_time_1);
+			}
 			void set_rating_2() { _rating_2 = 456; }
 
 			static Time current_time() {

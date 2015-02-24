@@ -98,12 +98,13 @@ namespace factory {
 			ssize_t bytes_written = 0;
 			T* chunk = _contents.front();
 			Size decl_sz = host_format(declared_size());
-			while (!_contents.empty()
-				&& (bytes_written = sink.write(chunk + _read_pos_flush, (last_chunk() ? _write_pos : _chunk_size) - _read_pos_flush)) > 0)
+			Size num_bytes; 
+			while (num_bytes = (last_chunk() ? _write_pos : _chunk_size), !_contents.empty()
+				&& (bytes_written = sink.write(chunk + _read_pos_flush, num_bytes - _read_pos_flush)) > 0)
 			{
 				std::clog << "Bytes written = " << bytes_written << std::endl;
 				_read_pos_flush += bytes_written;
-				if (_read_pos_flush == _chunk_size) {
+				if (_read_pos_flush == num_bytes) {
 					delete[] chunk;
 					_contents.pop_front();
 					chunk = _contents.front();
@@ -113,6 +114,7 @@ namespace factory {
 			_read_pos = _read_pos_flush;
 			std::clog << "Bytes written = " << bytes_written << std::endl;
 			std::clog << "Declared size = " << decl_sz << std::endl;
+			std::clog << "Chunks = " << _contents.size() << std::endl;
 			return bytes_written;
 		}
 

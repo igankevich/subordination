@@ -68,6 +68,13 @@ namespace factory {
 			check("setsockopt()", ::setsockopt(_socket, SOL_SOCKET, option, &one, sizeof(one)));
 		}
 
+		int error() const {
+			int ret = 0;
+			socklen_t sz = sizeof(ret);
+			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
+			return ret;
+		}
+
 		Socket_type type() const {
 			int tp = SOCK_STREAM;
 			socklen_t tp_size = sizeof(tp);

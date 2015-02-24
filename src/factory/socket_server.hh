@@ -41,17 +41,23 @@ namespace factory {
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 						_upstream[endpoint] = handler;
 					} else {
-						if (event.is_closing()) {
-							// TODO: read event is ignored here
-							_upstream.erase(event.user_data()->endpoint());
+						if (!event.user_data()->valid() && !event.is_closing()) {
+							remove(event.user_data()->endpoint());
 						} else {
-							event.user_data()->handle_event(event, [this, &event] (bool overflow) {
-								if (overflow) {
-									_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
-								} else {
-									_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
-								}
-							});
+							if (event.is_closing()) {
+								// TODO: read event is ignored here
+								std::unique_lock<std::mutex> lock(_mutex);
+								_upstream.erase(event.user_data()->endpoint());
+							} else {
+								event.user_data()->handle_event(event, [this, &event] (bool overflow) {
+									std::unique_lock<std::mutex> lock(_mutex);
+									if (overflow) {
+										_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
+									} else {
+										_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
+									}
+								});
+							}
 						}
 					}
 				});
@@ -62,17 +68,18 @@ namespace factory {
 				std::clog << "Socket_server::send(" << endpoint << ")" << std::endl;
 				auto result = _upstream.find(endpoint);
 				if (result == _upstream.end()) {
-					Handler* handler = add_endpoint(endpoint);
+					Handler* handler = add_endpoint(endpoint, DEFAULT_EVENTS | EPOLLOUT);
 					handler->send(kernel);
 				} else {
 					result->second->send(kernel);
+					_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 				}
 			}
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				std::clog << "Socket_server::send()" << std::endl;
-				std::clog << "Upstream size = " << _upstream.size() << std::endl;
+//				std::clog << "Upstream size = " << _upstream.size() << std::endl;
 				if (_upstream.size() > 0) {
 					auto result = _upstream.begin();
 					std::clog << "Socket = " << result->second->socket() << std::endl;
@@ -106,6 +113,7 @@ namespace factory {
 					msg << "Can not find endpoint to remove: " << endpoint;
 					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 				}
+				std::clog << "Removing " << endpoint << std::endl;
 				_poller.erase(Event(DEFAULT_EVENTS, result->second));
 				_upstream.erase(endpoint);
 			}
@@ -150,13 +158,13 @@ namespace factory {
 		
 		private:
 
-			Handler* add_endpoint(Endpoint endpoint) {
+			Handler* add_endpoint(Endpoint endpoint, int events = DEFAULT_EVENTS) {
 				Socket socket;
 				socket.connect(endpoint);
 				Handler* handler = new Handler(socket, endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+				_poller.register_socket(Event(events, handler));
 				_upstream[endpoint] = handler;
-				std::clog << "Upstream size = " << _upstream.size() << std::endl;
+//				std::clog << "Upstream size = " << _upstream.size() << std::endl;
 				return handler;
 			}
 			
@@ -289,12 +297,20 @@ namespace factory {
 				_endpoint(endpoint),
 				_stream(),
 				_ostream(),
-				_mutex()
+				_mutex(),
+				_pool(),
+				_validated(false)
 			{}
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_pool.push(kernel);
+			}
+
+			bool valid() const {
+//				return _validated ? true : (_socket.error() == 0);
+//				TODO: It is probably slow to check error on every event.
+				return _socket.error() == 0;
 			}
 
 			template<class F>
@@ -370,6 +386,7 @@ namespace factory {
 			Foreign_stream _ostream;
 			std::mutex _mutex;
 			Pool<Kernel*> _pool;
+			bool _validated;
 		};
 
 	}

@@ -84,18 +84,18 @@ namespace factory {
 	
 		void register_socket(E ev) {
 			std::clog << "Event_poller::register_socket(" << ev.fd() << ", " << ev << ")" << std::endl;
-			check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_ADD, ev.fd(), &ev));
+			check("register_socket()", ::epoll_ctl(_epollfd, EPOLL_CTL_ADD, ev.fd(), &ev));
 			_all_events[ev.fd()] = ev;
 		}
 
 		void erase(E ev) {
-			check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, ev.fd(), &ev));
+			check("erase()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, ev.fd(), &ev));
 			_all_events.erase(ev.fd());
 			ev.delete_user_data();
 		}
 
 		void modify_socket(E ev) {
-			check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_MOD, ev.fd(), &ev));
+			check("modify_socket()", ::epoll_ctl(_epollfd, EPOLL_CTL_MOD, ev.fd(), &ev));
 			_all_events[ev.fd()] = ev;
 		}
 

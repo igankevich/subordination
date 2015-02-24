@@ -24,10 +24,10 @@ test_discovery: test_discovery.cc test_discovery.hh ../src/factory/*.hh
 
 #run: test_buffer test_marshaling test_socket
 run: test_discovery
-	./test_buffer
-	./test_marshaling
+#	./test_buffer
+#	./test_marshaling
 #	./test_socket
-#	sudo ./cluster --cluster cat --nodes 4 --user $(USER) -- $(PWD)/test_discovery
+	sudo ./cluster --cluster cat --nodes 4 --user $(USER) -- $(PWD)/test_discovery
 
 clean:
 	rm -f test_buffer

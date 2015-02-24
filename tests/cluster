@@ -82,7 +82,7 @@ for n in $(seq 1 $nodes); do
 done
 wait
 
-cat /tmp/$cluster*.out
+cat /tmp/$cluster*1.out
 rm /tmp/$cluster*.out
 rm $script
 

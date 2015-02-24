@@ -82,6 +82,7 @@ namespace factory {
 				Id principal_id;
 				in >> principal_id;
 				std::clog << "READING PRINCIPAL " << principal_id << std::endl;
+				// TODO: move this code to server and create instance repository in each server.
 				if (principal_id != ROOT_ID) {
 					_principal = Type<A>::instances().lookup(principal_id);
 					if (_principal == nullptr) {
