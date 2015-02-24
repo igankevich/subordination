@@ -177,6 +177,14 @@ namespace factory {
 
 	namespace components {
 
+		/// Rough description of a protocol.
+		/// >> { rating_1, 0 }
+		/// << { rating_2, 0 }
+		/// >> { rating_1/ttl_1, 1 }
+		/// << { rating_2/ttl_2, 1 }
+		/// Node 1 has discovered a node with rating rating_2/ttl_2.
+		/// Node 2 has discovered a node with rating rating_1/ttl_1.
+
 		template<class Kernel>
 		struct Discovery_kernel: public Kernel {
 
