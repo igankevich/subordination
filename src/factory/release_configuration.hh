@@ -98,7 +98,6 @@ namespace factory {
 			Server_server<Service>
 			> Local_server;
 
-		typedef Socket_server<Kernel> Remote_server;
 
 		template<class K, class V>
 			using Repository = factory::components::Repository<K, V>;
@@ -118,7 +117,10 @@ namespace factory {
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 
 		typedef factory::components::Discovery_kernel<Unidentifiable, Type> Discovery_kernel;
-		typedef Broadcast_server<Discovery_kernel> Discovery_server;
+
+		typedef Socket_server<Kernel> Remote_server;
+		typedef Socket_server<Discovery_kernel> Discovery_server;
+//		typedef Broadcast_server<Discovery_kernel> Discovery_server;
 	}
 
 	using namespace configuration;

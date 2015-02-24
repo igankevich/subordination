@@ -14,6 +14,9 @@ namespace factory {
 		template<class K>
 		void factory_send(K* kernel) { the_server()->send(kernel); }
 
+		template<class K>
+		void discovery_send(K* kernel, Endpoint endp) { discovery_server()->send(kernel, endp); }
+
 	}
 
 	void emergency_shutdown(int signal) {

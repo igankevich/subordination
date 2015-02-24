@@ -1,5 +1,3 @@
-#include <sys/stat.h>
-
 namespace factory {
 
 	namespace components {
@@ -20,18 +18,9 @@ namespace factory {
 				_listener_socket(),
 				_upstream(),
 				_cpu(0),
-				_thread()
+				_thread(),
+				_mutex()
 			{}
-
-//			explicit Socket_server(Endpoint endpoint):
-//				_poller(),
-//				_listener_socket(endpoint),
-//				_upstream(),
-//				_cpu(0),
-//				_thread([this] { this->serve(); })
-//			{
-//				_poller.register_socket(Event(DEFAULT_EVENTS, new Handler(_listener_socket, endpoint)));
-//			}
 
 			~Socket_server() {
 //				std::for_each(_upstream.begin(), _upstream.end(),
@@ -52,21 +41,36 @@ namespace factory {
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 						_upstream[endpoint] = handler;
 					} else {
-						event.user_data()->handle_event(event, [this, &event] (bool overflow) {
-							if (overflow) {
-								_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
-							} else {
-								_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
-							}
-						});
 						if (event.is_closing()) {
+							// TODO: read event is ignored here
 							_upstream.erase(event.user_data()->endpoint());
+						} else {
+							event.user_data()->handle_event(event, [this, &event] (bool overflow) {
+								if (overflow) {
+									_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
+								} else {
+									_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
+								}
+							});
 						}
 					}
 				});
 			}
 
+			void send(Kernel* kernel, Endpoint endpoint) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				std::clog << "Socket_server::send(" << endpoint << ")" << std::endl;
+				auto result = _upstream.find(endpoint);
+				if (result == _upstream.end()) {
+					Handler* handler = add_endpoint(endpoint);
+					handler->send(kernel);
+				} else {
+					result->second->send(kernel);
+				}
+			}
+
 			void send(Kernel* kernel) {
+				std::unique_lock<std::mutex> lock(_mutex);
 				std::clog << "Socket_server::send()" << std::endl;
 				std::clog << "Upstream size = " << _upstream.size() << std::endl;
 				if (_upstream.size() > 0) {
@@ -78,6 +82,7 @@ namespace factory {
 			}
 
 			void send(Kernel_pair* kernel) {
+				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _upstream.find(kernel->subordinate()->from());
 				if (result == _upstream.end()) {
 					std::stringstream msg;
@@ -86,8 +91,28 @@ namespace factory {
 				}
 				result->second->send(kernel);
 				_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
-//				Server::send(kernel);
-//				Socket socket = _upstream2[kernel->from()]->socket();
+			}
+
+			void add(Endpoint endpoint) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				add_endpoint(endpoint);
+			}
+	
+			void remove(Endpoint endpoint) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				auto result = _upstream.find(endpoint);
+				if (result == _upstream.end()) {
+					std::stringstream msg;
+					msg << "Can not find endpoint to remove: " << endpoint;
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				_poller.erase(Event(DEFAULT_EVENTS, result->second));
+				_upstream.erase(endpoint);
+			}
+
+			void socket(Endpoint endpoint) {
+				_listener_socket.listen(endpoint);
+				_poller.register_socket(Event(DEFAULT_EVENTS, new Handler(_listener_socket, endpoint)));
 			}
 
 			void start() {
@@ -115,20 +140,6 @@ namespace factory {
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}
-	
-			void add(Endpoint endpoint) {
-				Socket socket;
-				socket.connect(endpoint);
-				Handler* handler = new Handler(socket, endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, handler));
-				_upstream[endpoint] = handler;
-				std::clog << "Upstream size = " << _upstream.size() << std::endl;
-			}
-
-			void socket(Endpoint endpoint) {
-				_listener_socket.listen(endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, new Handler(_listener_socket, endpoint)));
-			}
 
 	//	private:
 	//		bool is_socket(Socket sock) const {
@@ -138,11 +149,23 @@ namespace factory {
 	//		}
 		
 		private:
+
+			Handler* add_endpoint(Endpoint endpoint) {
+				Socket socket;
+				socket.connect(endpoint);
+				Handler* handler = new Handler(socket, endpoint);
+				_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+				_upstream[endpoint] = handler;
+				std::clog << "Upstream size = " << _upstream.size() << std::endl;
+				return handler;
+			}
+			
 			Event_poller<Handler> _poller;
 			Server_socket _listener_socket;
 			std::map<Endpoint, Handler*> _upstream;
 			int _cpu;
 			std::thread _thread;
+			std::mutex _mutex;
 
 			static const int DEFAULT_EVENTS = EPOLLET | EPOLLRDHUP | EPOLLIN;
 		};

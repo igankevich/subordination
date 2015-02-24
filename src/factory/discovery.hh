@@ -123,6 +123,18 @@ namespace factory {
 		return sorted_ranges;
 	}
 
+	Endpoint random_endpoint(const std::vector<Address_range>& addrs) {
+		int n = addrs.size();
+		for (int i=0; i<n; ++i) {
+			uint32_t start = addrs[i].start();
+			uint32_t end = addrs[i].end();
+			std::default_random_engine generator;
+			std::uniform_int_distribution<uint32_t> distribution(start, end);
+			uint32_t addr = distribution(generator);
+			// TODO: finish it
+		}
+	}
+
 	struct Broadcast_sink {
 
 		Broadcast_sink(Socket s, Port p):
@@ -235,8 +247,9 @@ namespace factory {
 				}
 
 				if (_state != TIME_AND_RATING_2) {
-					discovery_server()->send(this);
+					discovery_send(this, this->from());
 				}
+				// TODO: delete on write
 			}
 
 			void write(Foreign_stream& out) {

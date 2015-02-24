@@ -115,11 +115,9 @@ namespace factory {
 						check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, _events[n].raw_fd(), &_events[n]));
 					}
 				} else {
-					// TODO: Note that if read event occurs simultaneously with close event it is ignored here.
+					callback(_events[n]);
 					if (_events[n].is_closing()) {
 						erase(_events[n]);
-					} else {
-						callback(_events[n]);
 					}
 				}
 			}

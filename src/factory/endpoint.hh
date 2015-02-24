@@ -8,6 +8,7 @@ namespace factory {
 
 		Endpoint() { std::memset((void*)&_addr, 0, sizeof(_addr)); }
 		Endpoint(const Host& host, Port port) { addr(host.c_str(), port); }
+		Endpoint(uint32_t host, Port port) { addr(host.c_str(), port); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
 		Endpoint(struct ::sockaddr_in* rhs) { addr(rhs); }
 
@@ -83,6 +84,14 @@ namespace factory {
 			tmp->sin_port = htons(port);
 			addr(tmp);
 			::freeaddrinfo(info);
+		}
+
+		void addr(const uint32_t host, Port port) {
+			struct ::sockaddr_in tmp;
+			tmp->sin_port = htons(port);
+			tmp->sin_family = AF_INET;
+			tmp->sin_addr.s_addr = host;
+			addr(tmp);
 		}
 
 		struct ::sockaddr_in _addr;

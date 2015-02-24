@@ -9,6 +9,7 @@ struct App {
 			discovery_server()->socket(Endpoint("0.0.0.0", 40000));
 			discovery_server()->start();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			// TODO: add endpoint
 			discovery_server()->send(new Discovery_kernel);
 			std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 			__factory.stop();
