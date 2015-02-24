@@ -126,17 +126,22 @@ int receive_reply(Socket socket) {
 int main (int argc, char *argv[]) {
 
 	Endpoint src("0.0.0.0", 40000);
-	Endpoint dest("0.0.0.0", 50000);
+	Endpoint dest("172.27.221.184", 50000);
 
 	Socket socket2;
 	socket2.listen(dest);
 
 	Socket socket;
-	socket.connect(dest);
+//	socket.connect(dest);
 //	socket.connect(Endpoint("213.180.204.3", 80));
 //	socket.connect(Endpoint("lab1.apmath.spbu.ru", 80), UNRELIABLE_SOCKET);
-	auto pair = socket2.accept();
-	int recv_socket = pair.first;
+	socket.connect(Endpoint("ant.apmath.spbu.ru", 22));
+//	socket.connect(Endpoint("csa.ru", 80));
+
+
+
+//	auto pair = socket2.accept();
+//	int recv_socket = pair.first;
 
 	sleep(1);
 
@@ -149,19 +154,24 @@ int main (int argc, char *argv[]) {
 
 	for (int ttl = 1; ttl < 64; ttl += 1) {
 
-		check("setsockopt()", ::setsockopt((int)socket, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)));
+		check("setsockopt()", ::setsockopt(socket, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)));
 
 		char msg[12] = "Hello world";
 //		std::clog << "Sending" << std::endl;
 		check("send()", ::send(socket, msg, sizeof(msg), 0));
 
+
+//
+//		sleep(1);
 //		char msg2[12];
 //		check("recv()", ::recv(recv_socket, msg2, sizeof(msg2), 0));
 //		std::cout << "Message: " << msg2 << std::endl;
 
-//
 		sleep(1);
 		int ret = receive_reply(socket);
+		if (ret == -1) {
+			perror("reply");
+		}
 		std::cout
 			<< "ret = " << ret << ", "
 			<< "TTL = " << ttl << std::endl;
