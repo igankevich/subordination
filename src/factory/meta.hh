@@ -1,1 +1,1 @@
-const char* COMMIT_REVISION = ""
+const char* COMMIT_REVISION = 
