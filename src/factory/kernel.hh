@@ -201,17 +201,17 @@ namespace factory {
 		template<class K>
 		struct Mobile: public K {
 
-			virtual void read(Foreign_stream& in) { 
-				Id i;
-				in >> i;
-				id(i);
+			virtual void read(Foreign_stream& ) { 
+//				Id i;
+//				in >> i;
+//				id(i);
 //				Endpoint fr;
 //				in >> fr;
 //				from(fr);
 			}
 
-			virtual void write(Foreign_stream& out) {
-				out << id();
+			virtual void write(Foreign_stream& ) {
+//				out << id();
 //				out << from();
 			}
 

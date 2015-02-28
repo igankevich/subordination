@@ -46,30 +46,9 @@ namespace factory {
 			return in;
 		}
 
-//		friend Foreign_stream& operator<<(Foreign_stream& out, const Endpoint& rhs) {
-//			return out << rhs._host << rhs._port;
-//		}
-//
-//		friend Foreign_stream& operator>>(Foreign_stream& in, Endpoint& rhs) {
-//			return in >> rhs._host >> rhs._port;
-//		}
-
 //		const Host& host() const { return _host; }
 		Port port() const { return ntohs(_addr.sin_port); }
 		struct ::sockaddr_in* addr() { return &_addr; }
-
-//		std::string address() const {
-//			std::stringstream addr;
-//			addr << *this;
-//			return addr.str();
-//		}
-
-//		void to_sockaddr(struct ::sockaddr_in* addr) const {
-//			std::memset(addr, 0, sizeof(sockaddr_in));
-//			addr->sin_family = AF_INET;
-//			addr->sin_port = htons(_port);
-//			check("inet_pton()", ::inet_pton(AF_INET, _host.c_str(), &addr->sin_addr.s_addr));
-//		}
 
 	private:
 	
@@ -88,9 +67,9 @@ namespace factory {
 
 		void addr(const uint32_t host, Port port) {
 			struct ::sockaddr_in a;
-			a.sin_port = htons(port);
 			a.sin_family = AF_INET;
 			a.sin_addr.s_addr = htonl(host);
+			a.sin_port = htons(port);
 			addr(&a);
 		}
 

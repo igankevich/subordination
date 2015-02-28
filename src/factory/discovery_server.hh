@@ -122,7 +122,7 @@ namespace factory {
 					try {
 						Broadcast_source src(_socket);
 						_stream.fill(src);
-						if (_stream.is_full()) {
+						if (_stream.full()) {
 							std::clog << "Recv " << _ostream << std::endl;
 							Kernel kernel;
 							kernel.read(_stream);
@@ -144,7 +144,7 @@ namespace factory {
 						std::unique_lock<std::mutex> lock(_mutex);
 						bool overflow = false;
 						while (!overflow and !_pool.empty()) {
-							if (_ostream.is_flushed()) {
+							if (_ostream.empty()) {
 								Kernel* kernel = _pool.front();
 								_pool.pop();
 //								const Type* type = kernel->type();
@@ -160,7 +160,7 @@ namespace factory {
 							}
 							Broadcast_sink sink(_socket, _endpoint.port());
 							_ostream.flush(sink);
-							if (_ostream.is_flushed()) {
+							if (_ostream.empty()) {
 								std::clog << "Flushed." << std::endl;
 								_ostream.reset();
 							} else {

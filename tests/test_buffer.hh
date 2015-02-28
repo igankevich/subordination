@@ -30,9 +30,27 @@ void test_buffer() {
 		for (int32_t j=0; j<size; ++j)
 			input[j] = dice();
 		Buffer<T> buf(CHUNK_SIZE);
+		if (!buf.empty()) {
+			std::stringstream msg;
+			msg << std::string(__func__) + ". Buffer is not empty before write. ";
+			msg << buf.size();
+			throw std::runtime_error(msg.str());
+		}
 		buf.write(&input[0], input.size());
+		if (buf.size() != input.size()) {
+			std::stringstream msg;
+			msg << std::string(__func__) + ". Buffer size is not equal to input size. ";
+			msg << buf.size() << " != " << input.size();
+			throw std::runtime_error(msg.str());
+		}
 		std::vector<T> output(size);
 		buf.read(&output[0], output.size());
+		if (!buf.empty()) {
+			std::stringstream msg;
+			msg << std::string(__func__) + ". Buffer is not empty after read. ";
+			msg << buf.size();
+			throw std::runtime_error(msg.str());
+		}
 		for (int32_t j=0; j<size; ++j)
 			if (input[j] != output[j])
 				throw std::runtime_error(std::string(__func__) + ". Input and output does not match.");

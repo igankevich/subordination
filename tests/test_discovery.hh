@@ -11,13 +11,13 @@ struct App {
 //		std::cout << ep << std::endl;
 //		return 0;
 		try {
-			auto neighbours = discover_neighbours();
 			the_server()->add(0);
 			the_server()->start();
 			discovery_server()->socket(Endpoint("0.0.0.0", port));
 			discovery_server()->start();
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+			auto neighbours = discover_neighbours();
 			std::for_each(neighbours.cbegin(), neighbours.cend(),
 				[] (const Address_range& range)
 			{

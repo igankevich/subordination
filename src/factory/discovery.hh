@@ -214,9 +214,9 @@ namespace factory {
 
 
 		template<class K>
-		struct Remote_kernel: public K {
+		struct Remote: public K {
 
-			Remote_kernel(): _endpoint() {}
+			Remote(): _endpoint() {}
 			Endpoint from() const { return _endpoint; }
 			void from(Endpoint e) { _endpoint = e; }
 
@@ -227,7 +227,7 @@ namespace factory {
 		// TODO: auto-deletion of kernels
 		// TODO: auto-deletion of sockets from server 
 		template<template<class X> class Mobile, class Type>
-		struct Discovery_kernel: public Remote_kernel<Mobile<Discovery_kernel<Mobile, Type>>> {
+		struct Discovery_kernel: public Remote<Mobile<Discovery_kernel<Mobile, Type>>> {
 
 			typedef uint32_t Rating;
 			typedef uint64_t Time;

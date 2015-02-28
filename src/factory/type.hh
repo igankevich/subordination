@@ -260,8 +260,11 @@ namespace factory {
 			Id id() const { return _id; }
 			void id(Id i) { _id = i; }
 
-			Endpoint from() const { return _from; }
-			void from(Endpoint endp) { _from = endp; }
+			void read_impl(Foreign_stream& in) { in >> _id; }
+			void write_impl(Foreign_stream& out) { out << _id; }
+
+//			Endpoint from() const { return _from; }
+//			void from(Endpoint endp) { _from = endp; }
 
 		private:
 
@@ -286,7 +289,7 @@ namespace factory {
 			}
 
 			Id _id;
-			Endpoint _from;
+//			Endpoint _from;
 		};
 	
 	}

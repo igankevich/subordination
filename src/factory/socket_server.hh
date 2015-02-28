@@ -318,7 +318,7 @@ namespace factory {
 				if (event.is_reading()) {
 					try {
 						_stream.fill<Socket>(_socket);
-						if (_stream.is_full()) {
+						if (_stream.full()) {
 							std::clog << "Recv " << _ostream << std::endl;
 							Type::types().read_and_send_object(_stream, _endpoint);
 							_stream.reset();
@@ -336,7 +336,7 @@ namespace factory {
 						std::unique_lock<std::mutex> lock(_mutex);
 						bool overflow = false;
 						while (!overflow and !_pool.empty()) {
-							if (_ostream.is_flushed()) {
+							if (_ostream.empty()) {
 								Kernel* kernel = _pool.front();
 								_pool.pop();
 								const Type* type = kernel->type();
@@ -351,7 +351,7 @@ namespace factory {
 								std::clog << "Send " << _ostream << std::endl;
 							}
 							_ostream.flush<Socket>(_socket);
-							if (_ostream.is_flushed()) {
+							if (_ostream.empty()) {
 								std::clog << "Flushed." << std::endl;
 								_ostream.reset();
 							} else {
