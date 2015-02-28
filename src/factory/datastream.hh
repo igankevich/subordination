@@ -1,7 +1,5 @@
 namespace factory {
 
-	// TODO Add static assertions for non-portable types.
-	
 	struct Foreign_stream {
 
 		typedef char Byte;
@@ -11,46 +9,51 @@ namespace factory {
 			_buffer(buffer_size)
 		{}
 
-		~Foreign_stream() {}
-
 		Foreign_stream& operator<<(char rhs) { return write(rhs); }
-
+#ifdef INT8_MAX
 		Foreign_stream& operator<<(int8_t rhs)  { return write(rhs); }
+#endif
+#ifdef INT16_MAX
 		Foreign_stream& operator<<(int16_t rhs) { return write(rhs); }
+#endif
+#ifdef INT32_MAX
 		Foreign_stream& operator<<(int32_t rhs) { return write(rhs); }
+#endif
+#ifdef INT64_MAX
 		Foreign_stream& operator<<(int64_t rhs) { return write(rhs); }
-
+#endif
+#ifdef UINT8_MAX
 		Foreign_stream& operator<<(uint8_t rhs) { return write(rhs); }
+#endif
+#ifdef UINT16_MAX
 		Foreign_stream& operator<<(uint16_t rhs) { return write(rhs); }
+#endif
+#ifdef UINT32_MAX
 		Foreign_stream& operator<<(uint32_t rhs) { return write(rhs); }
+#endif
+#ifdef UINT64_MAX
 		Foreign_stream& operator<<(uint64_t rhs) { return write(rhs); }
-
+#endif
 		Foreign_stream& operator<<(float rhs) { return write(rhs); }
 		Foreign_stream& operator<<(double rhs) { return write(rhs); }
 		Foreign_stream& operator<<(long double rhs) { return write(rhs); }
-
 		Foreign_stream& operator<<(const std::string& rhs) { return write(rhs); }
 
 		Foreign_stream& operator>>(char& rhs) { return read(rhs); }
-
 		Foreign_stream& operator>>(int8_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int16_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int32_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int64_t& rhs) { return read(rhs); }
-
 		Foreign_stream& operator>>(uint8_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(uint16_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(uint32_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(uint64_t& rhs) { return read(rhs); }
-
 		Foreign_stream& operator>>(float& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(double& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(long double& rhs) { return read(rhs); }
-
 		Foreign_stream& operator>>(std::string& rhs) { return read(rhs); }
 
 		void write(const char* bytes, Size size) { _buffer.write(bytes, size); }
-
 		Size read(char* bytes, Size size) { return _buffer.read(bytes, size); }
 
 		template<class S>
