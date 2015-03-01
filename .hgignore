@@ -18,6 +18,10 @@ install-sh
 missing
 stamp-h1
 test-driver
+src/test_buffer
+src/test_marshaling
+src/test_socket
+src/test_discovery
 
 syntax: regexp
 (^|/)Makefile.in$

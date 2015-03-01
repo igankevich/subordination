@@ -1,13 +1,27 @@
 namespace factory {
 
+	enum struct Result: uint32_t {
+		SUCCESS = 0,
+		ENDPOINT_NOT_CONNECTED = 1,
+		NO_UPSTREAM_SERVERS_LEFT = 2
+	};
+
 	namespace components {
 
 		struct Kernel_base {
-			Kernel_base() {}
+
+			Kernel_base(): _result(Result::SUCCESS) {}
 			virtual ~Kernel_base() {}
+
 			virtual bool is_profiled() const { return true; }
 			virtual bool is_transient() const { return false; }
 			virtual void act() {}
+
+			Result result() const { return _result; }
+			void result(Result rhs) { _result = rhs; }
+
+		private:
+			Result _result;
 		};
 
 		// No one lives forever.
@@ -56,7 +70,11 @@ namespace factory {
 					}
 				} else {
 					bool del = *_principal == *_subordinate->parent();
-					_principal->react(_subordinate);
+					if (_subordinate->result() == Result::SUCCESS) {
+						_principal->react(_subordinate);
+					} else {
+						_principal->error(_subordinate);
+					}
 					if (del) {
 						delete _subordinate;
 					}
@@ -125,6 +143,9 @@ namespace factory {
 			}
 			virtual void react(Reflecting_kernel<A>*) {
 //				std::clog << "Empty react in " << demangle_type_name(*this) << std::endl;
+			}
+			virtual void error(Reflecting_kernel<A>* rhs) {
+				react(rhs);
 			}
 
 //			template<class S>

@@ -1,5 +1,16 @@
 namespace factory {
 
+	enum struct Level {
+		KERNEL = 0,
+		SERVER = 1,
+		HANDLER = 2,
+		COMPONENT = 3
+	};
+
+	std::ostream& factory_log(Level l) {
+		return std::clog << std::setw(int(l)) << ' ';
+	}
+
 	int check(const char* func, int ret) {
 		if (ret < 0) {
 			throw std::system_error(std::error_code(errno, std::system_category()), func);
