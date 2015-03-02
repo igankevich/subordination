@@ -26,9 +26,10 @@ namespace factory {
 			}
 		}
 
-		bool is_closing() const { return (events() & EPOLLRDHUP) != 0; }
 		bool is_reading() const { return (events() & EPOLLIN) != 0; }
 		bool is_writing() const { return (events() & EPOLLOUT) != 0; }
+		bool is_closing() const { return (events() & EPOLLRDHUP) != 0; }
+		bool is_error() const { return (events() & EPOLLERR) != 0; }
 
 		Data* user_data() { return static_cast<Data*>(Basic_event::data.ptr); }
 		const Data* user_data() const { return static_cast<Data*>(Basic_event::data.ptr); }
@@ -38,6 +39,7 @@ namespace factory {
 				<< (rhs.is_reading() ? 'r' : ' ')
 				<< (rhs.is_writing() ? 'w' : ' ')
 				<< (rhs.is_closing() ? 'c' : ' ')
+				<< (rhs.is_error() ? 'e' : ' ')
 				<< ' ' << rhs.user_data();
 
 		}

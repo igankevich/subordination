@@ -43,7 +43,8 @@ namespace factory {
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 						_upstream[endpoint] = handler;
 					} else {
-						if (!event.user_data()->valid()) {
+						if (event.is_error()) {
+							event.user_data()->valid();
 							factory_log(Level::SERVER) << "Invalid socket" << std::endl;
 							remove(event.user_data());
 							event.user_data()->recover_kernels();
@@ -71,8 +72,9 @@ namespace factory {
 				factory_log(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
 				auto result = _upstream.find(endpoint);
 				if (result == _upstream.end()) {
-					Handler* handler = add_endpoint(endpoint, DEFAULT_EVENTS | EPOLLOUT);
+					Handler* handler = add_endpoint(endpoint, DEFAULT_EVENTS);
 					handler->send(kernel);
+					_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, handler));
 				} else {
 					result->second->send(kernel);
 					_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
@@ -333,6 +335,7 @@ namespace factory {
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
+				factory_log(Level::HANDLER) << "Kernel_handler::send()" << std::endl;
 				_pool.push(kernel);
 			}
 
@@ -364,11 +367,9 @@ namespace factory {
 						std::unique_lock<std::mutex> lock(_mutex);
 						bool overflow = false;
 						while (!overflow and !_pool.empty()) {
-							factory_log(Level::HANDLER) << "tick" << std::endl;
 							if (_ostream.empty()) {
 								Kernel* kernel = _pool.front();
 								_pool.pop();
-								factory_log(Level::HANDLER) << "tick 2" << std::endl;
 								const Type* type = kernel->type();
 								if (type == nullptr) {
 									std::stringstream msg;
@@ -376,9 +377,7 @@ namespace factory {
 									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 								}
 								_ostream << type->id();
-								factory_log(Level::HANDLER) << "tick 3" << std::endl;
 								kernel->write(_ostream);
-								factory_log(Level::HANDLER) << "tick 4" << std::endl;
 								_ostream.write_size();
 								factory_log(Level::HANDLER) << "Send " << _ostream << std::endl;
 							}

@@ -55,8 +55,8 @@ namespace factory {
 		void write(const Byte* bytes, Size size) { _buffer.write(bytes, size); }
 		Size read(Byte* bytes, Size size) { return _buffer.read(bytes, size); }
 
-		template<class S> void fill(S& source) { _buffer.fill(source); }
-		template<class S> void flush(S& sink) { _buffer.flush(sink); }
+		template<class S> void fill(S source) { _buffer.fill(source); }
+		template<class S> void flush(S sink) { _buffer.flush(sink); }
 
 		void reset() { _buffer.reset(); }
 		void write_size() { _buffer.declared_size(network_format(_buffer.size())); }

@@ -83,7 +83,7 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t fill(S& source) {
+		ssize_t fill(S source) {
 			if (_chunks.empty()) {
 				_chunks.push_back(new T[_chunk_size]);
 				declared_size(0);
@@ -92,6 +92,7 @@ namespace factory {
 			T* chunk = _chunks.back();
 			while ((bytes_read = source.read(chunk + _write_pos_fill, _chunk_size - _write_pos_fill)) > 0) {
 				factory_log(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
+				factory_log(Level::COMPONENT) << "qqq read = " << bytes_read << std::endl;
 				_write_pos_fill += bytes_read;
 				if (_write_pos_fill == _chunk_size) {
 					chunk = new T[_chunk_size];
@@ -106,7 +107,7 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t flush(S& sink) {
+		ssize_t flush(S sink) {
 			ssize_t bytes_written = 0;
 			T* chunk = _chunks.front();
 			Size decl_sz = host_format(declared_size());

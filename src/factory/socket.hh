@@ -13,7 +13,7 @@ namespace factory {
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
 		Socket(): _socket(0) {}
-		Socket(int socket): _socket(socket) { flags(O_NONBLOCK); }
+		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
 		void listen(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
@@ -49,6 +49,7 @@ namespace factory {
 			struct sockaddr_in addr;
 			socklen_t acc_len = sizeof(addr);
 			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
+			socket.flags(O_NONBLOCK);
 			Endpoint endpoint(&addr);
 			factory_log(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
 			return std::make_pair(socket, endpoint);
@@ -79,6 +80,7 @@ namespace factory {
 				socklen_t sz = sizeof(ret);
 				factory_log(Level::COMPONENT) << "Socket = " << _socket << std::endl;
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
+				factory_log(Level::COMPONENT) << "getsockopt(): " << ::strerror(ret) << std::endl;
 			}
 			return ret;
 		}

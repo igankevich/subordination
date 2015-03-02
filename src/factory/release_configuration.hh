@@ -111,7 +111,7 @@ namespace factory {
 
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
-				factory::components::Remote<Kernel>>;
+				factory::components::Kernel_link<T, factory::components::Remote<Kernel>>>;
 
 		template<class T>
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;

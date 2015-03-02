@@ -47,10 +47,10 @@ namespace {
 //			tmp << threads;
 //			if (!(tmp >> t) || t < 0 || t > total_cpus()) {
 //				t = total_cpus();
-//				std::clog << "Bad NUM_THREADS value: " << threads << std::endl;
+//				factory_log(Level::SERVER) << "Bad NUM_THREADS value: " << threads << std::endl;
 //			}
 //		}
-////		std::clog << "threads = " <<  t << std::endl;
+////		factory_log(Level::SERVER) << "threads = " <<  t << std::endl;
 //		return t;
 //	}
 //
@@ -62,7 +62,7 @@ namespace {
 //			tmp << threads;
 //			if (!(tmp >> t) || t < 0) {
 //				t = 1;
-//				std::clog << "Bad NUM_VTHREADS value: " << threads << std::endl;
+//				factory_log(Level::SERVER) << "Bad NUM_VTHREADS value: " << threads << std::endl;
 //			}
 //		}
 //		return t;
@@ -143,7 +143,7 @@ namespace factory {
 			}
 		
 			void wait_impl() {
-				std::clog << "Iserver::wait()" << std::endl;
+				factory_log(Level::SERVER) << "Iserver::wait()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -151,7 +151,7 @@ namespace factory {
 			}
 		
 			void stop_impl() {
-				std::clog << "Iserver::stop()" << std::endl;
+				factory_log(Level::SERVER) << "Iserver::stop()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -172,7 +172,7 @@ namespace factory {
 			}
 			
 			void start() {
-				std::clog << "Iserver::start()" << std::endl;
+				factory_log(Level::SERVER) << "Iserver::start()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -214,19 +214,19 @@ namespace factory {
 			}
 
 			void wait_impl() {
-				std::clog << "Rserver::wait()" << std::endl;
+				factory_log(Level::SERVER) << "Rserver::wait()" << std::endl;
 				if (_thread.joinable()) {
 					_thread.join();
 				}
 			}
 
 			void stop_impl() {
-				std::clog << "Rserver::stop_impl()" << std::endl;
+				factory_log(Level::SERVER) << "Rserver::stop_impl()" << std::endl;
 				_semaphor.notify_all();
 			}
 
 			void start() {
-				std::clog << "Rserver::start()" << std::endl;
+				factory_log(Level::SERVER) << "Rserver::start()" << std::endl;
 				_thread = std::thread([this] { this->serve(); });
 			}
 
@@ -305,7 +305,7 @@ namespace factory {
 			void add() {}
 
 			void send(Kernel* kernel) {
-				std::clog << "Server_server::send()" << std::endl;
+				factory_log(Level::SERVER) << "Server_server::send()" << std::endl;
 				std::unique_lock<std::mutex> lock(_queue_mutex);
 				const size_t n = _services.size();
 				_services.push_back(std::make_pair(kernel, new std::thread([this, kernel, n] {
@@ -317,7 +317,7 @@ namespace factory {
 			}
 
 			void wait_impl() {
-				std::clog << "Server_server::wait()" << std::endl;
+				factory_log(Level::SERVER) << "Server_server::wait()" << std::endl;
 				std::unique_lock<std::mutex> lock(_control_mutex);
 				_semaphore.wait(lock, [this] { return this->stopped(); });
 				std::for_each(_services.begin(), _services.end(), [] (Svc svc) {
@@ -329,7 +329,7 @@ namespace factory {
 			}
 
 			void stop_impl() {
-				std::clog << "Server_server::stop()" << std::endl;
+				factory_log(Level::SERVER) << "Server_server::stop()" << std::endl;
 				std::unique_lock<std::mutex> lock(_control_mutex);
 				std::for_each(_services.begin(), _services.end(), [] (Svc svc) {
 					svc.first->stop();

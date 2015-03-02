@@ -4,7 +4,8 @@ namespace factory {
 		KERNEL = 0,
 		SERVER = 1,
 		HANDLER = 2,
-		COMPONENT = 3
+		COMPONENT = 3,
+		STRATEGY = 3
 	};
 
 	std::string log_filename() {
@@ -14,9 +15,9 @@ namespace factory {
 	}
 
 	std::ostream& factory_log(Level l) {
-		static std::ofstream logfile(log_filename());
-		return logfile << std::setw(int(l)) << ' ';
-//		return std::clog << std::setw(int(l)) << ' ';
+//		static std::ofstream logfile(log_filename());
+//		return logfile << std::setw(int(l)) << ' ';
+		return std::clog << std::setw(int(l)) << ' ';
 	}
 
 	int check(const char* func, int ret) {

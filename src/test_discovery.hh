@@ -9,8 +9,8 @@ const int PORT_INCREMENT = 1;
 const int NUM_SERVERS = 2;
 
 const std::chrono::milliseconds STARTUP_DELAY(2000);
-const std::chrono::milliseconds SHUTDOWN_DELAY(4000);
-const std::chrono::milliseconds INTERSPERSE_DELAY(500);
+const std::chrono::milliseconds SHUTDOWN_DELAY(2000);
+//const std::chrono::milliseconds INTERSPERSE_DELAY(500);
 
 struct Discovery: public Mobile<Discovery> {
 
@@ -19,6 +19,16 @@ struct Discovery: public Mobile<Discovery> {
 	void act() {
 		std::cout << "Discovery!" << std::endl;
 		commit(discovery_server());
+	}
+
+	void write_impl(Foreign_stream& out) {
+//		char dummy[1024];
+//		out.write(dummy, sizeof(dummy));
+	}
+
+	void read_impl(Foreign_stream& in) {
+//		char dummy[1024];
+//		in.read(dummy, sizeof(dummy));
 	}
 	
 	static void init_type(Type* t) {
@@ -148,7 +158,7 @@ struct App {
 						check("execve()", ::execve(argv[0], args, env));
 						return 0;
 					});
-					std::this_thread::sleep_for(SHUTDOWN_DELAY);
+//					std::this_thread::sleep_for(INTERSPERSE_DELAY);
 				}
 				retval = processes.wait();
 			} catch (std::exception& e) {
