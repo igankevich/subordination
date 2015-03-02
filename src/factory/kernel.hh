@@ -101,13 +101,15 @@ namespace factory {
 				in >> principal_id;
 				factory_log(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
 				// TODO: move this code to server and create instance repository in each server.
-				if (principal_id != ROOT_ID) {
-					_principal = Type<A>::instances().lookup(principal_id);
-					if (_principal == nullptr) {
-						std::stringstream str;
-						str << "Can not find principal kernel on this server, kernel id = " << principal_id;
-						throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
-					}
+				if (principal_id == ROOT_ID) {
+					throw Error("Principal of a mobile kernel can not be null.",
+						__FILE__, __LINE__, __func__);
+				}
+				_principal = Type<A>::instances().lookup(principal_id);
+				if (_principal == nullptr) {
+					std::stringstream str;
+					str << "Can not find principal kernel on this server, kernel id = " << principal_id;
+					throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
 				}
 				_subordinate = Type<A>::types().read_object(in);
 			}
