@@ -37,7 +37,8 @@ namespace factory {
 			return out
 				<< (rhs.is_reading() ? 'r' : ' ')
 				<< (rhs.is_writing() ? 'w' : ' ')
-				<< (rhs.is_closing() ? 'c' : ' ');
+				<< (rhs.is_closing() ? 'c' : ' ')
+				<< ' ' << rhs.user_data();
 
 		}
 
@@ -65,9 +66,9 @@ namespace factory {
 	
 		~Event_poller() {
 			::close(_epollfd);
-			std::for_each(_all_events.begin(), _all_events.end(), [] (std::pair<int,E> pair) {
-				pair.second.delete_user_data();
-			});
+//			std::for_each(_all_events.begin(), _all_events.end(), [] (std::pair<int,E> pair) {
+//				pair.second.delete_user_data();
+//			});
 		}
 	
 		template<class Callback>
@@ -78,25 +79,26 @@ namespace factory {
 		bool stopped() const { return _stopped; }
 
 		void stop() {
+			factory_log(Level::COMPONENT) << "Event_poller::stop()" << std::endl;
 			char s = 's';
-			::write(_mgmt_pipe.write_end(), &s, 1);
+			check("Event_poller::stop()", ::write(_mgmt_pipe.write_end(), &s, 1));
 		}
 	
 		void register_socket(E ev) {
-			std::clog << "Event_poller::register_socket(" << ev.fd() << ", " << ev << ")" << std::endl;
+			factory_log(Level::COMPONENT) << "Event_poller::register_socket(" << ev.fd() << ", " << ev << ")" << std::endl;
 			check("register_socket()", ::epoll_ctl(_epollfd, EPOLL_CTL_ADD, ev.fd(), &ev));
-			_all_events[ev.fd()] = ev;
+//			_all_events[ev.fd()] = ev;
 		}
 
 		void erase(E ev) {
 			check("erase()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, ev.fd(), &ev));
-			_all_events.erase(ev.fd());
-			ev.delete_user_data();
+//			_all_events.erase(ev.fd());
+//			ev.delete_user_data();
 		}
 
 		void modify_socket(E ev) {
 			check("modify_socket()", ::epoll_ctl(_epollfd, EPOLL_CTL_MOD, ev.fd(), &ev));
-			_all_events[ev.fd()] = ev;
+//			_all_events[ev.fd()] = ev;
 		}
 
 	private:
@@ -106,19 +108,26 @@ namespace factory {
 			int nfds;
 			do {
 //				nfds = check("epoll_wait()", ::epoll_wait(_epollfd, _events, MAX_EVENTS, -1));
+				factory_log(Level::COMPONENT) << "epoll_wait()" << std::endl;
 				nfds = ::epoll_wait(_epollfd, _events, MAX_EVENTS, -1);
 			} while (nfds < 0 && errno == EINTR);
 			for (int n=0; n<nfds; ++n) {
 				if (_events[n].raw_fd() == _mgmt_pipe.read_end()) {
+					factory_log(Level::COMPONENT) << "Stopping event poller" << std::endl;
 					_stopped = true;
 					if (_events[n].is_closing()) {
 						check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, _events[n].raw_fd(), &_events[n]));
 					}
 				} else {
+//					E ev = _events[n];
+//					if (_events[n].is_closing()) {
+//						check("erase()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, ev.fd(), &ev));
+//					}
 					callback(_events[n]);
-					if (_events[n].is_closing()) {
-						erase(_events[n]);
-					}
+//					if (_events[n].is_closing()) {
+//						_all_events.erase(ev.fd());
+//						ev.delete_user_data();
+//					}
 				}
 			}
 		}

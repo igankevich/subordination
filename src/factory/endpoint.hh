@@ -46,7 +46,12 @@ namespace factory {
 			return in;
 		}
 
-//		const Host& host() const { return _host; }
+		Host host() const {
+			char host[64];
+			check_inet("inet_ntop()", ::inet_ntop(AF_INET, &_addr.sin_addr.s_addr, host, sizeof(host)));
+			return Host(host);
+		}
+
 		Port port() const { return ntohs(_addr.sin_port); }
 		struct ::sockaddr_in* addr() { return &_addr; }
 

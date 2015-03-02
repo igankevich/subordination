@@ -34,6 +34,10 @@ namespace factory {
 			return out << rhs._start << ' ' << rhs._end;
 		}
 	
+		friend std::istream& operator>>(std::istream& in, Interval<I>& rhs) {
+			return in >> rhs._start >> rhs._end;
+		}
+	
 		bool empty() const { return _start >= _end; }
 		I count() const { return _end - _start; }
 	

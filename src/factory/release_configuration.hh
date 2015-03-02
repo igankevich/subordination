@@ -90,12 +90,12 @@ namespace factory {
 //			using Profiled_Dserver = typename S::template Rprofiler<Dserver<typename S::template Rprofiler_top<Base>>>;
 
 		typedef factory::components::Server_stack<
-			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, My_strategy>>, My_strategy>,
+			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, My_strategy>>, My_strategy>
 //			Profiled_Iserver2<Iserver<Server<Kernel>, Profiled_Rserver2<Server<Kernel>, Round_robin, Simple_hashing<Kernel_pair>>>, Round_robin, Simple_hashing<Kernel_pair>>,
 //			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>,
 //			Profiled_Iserver<Server<Kernel_pair>, Profiled_Dserver<Server<Kernel_pair>, Simple_hashing>, Simple_hashing>,
 //			Profiled_Rserver<Server<Reader>, No_strategy>,
-			Server_server<Service>
+//			Server_server<Service>
 			> Local_server;
 
 
@@ -111,8 +111,7 @@ namespace factory {
 
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
-				factory::components::Kernel_link<T,
-					factory::components::Remote<Kernel>>>;
+				factory::components::Remote<Kernel>>;
 
 		template<class T>
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;

@@ -82,7 +82,7 @@ namespace factory {
 				if (_principal == nullptr) {
 					delete this;
 					factory_stop();
-					std::clog << "SHUTDOWN" << std::endl;
+					factory_log(Level::KERNEL) << "SHUTDOWN" << std::endl;
 				} else {
 					delete this;
 				}
@@ -99,7 +99,7 @@ namespace factory {
 				}
 				Id principal_id;
 				in >> principal_id;
-				std::clog << "READING PRINCIPAL " << principal_id << std::endl;
+				factory_log(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
 				// TODO: move this code to server and create instance repository in each server.
 				if (principal_id != ROOT_ID) {
 					_principal = Type<A>::instances().lookup(principal_id);
@@ -113,11 +113,15 @@ namespace factory {
 			}
 
 			void write(Foreign_stream& out) {
-				std::clog << "WRITING PRINCIPAL = " << principal()->id() << std::endl;
+				factory_log(Level::KERNEL) << "WRITING PRINCIPALq = " << _principal << std::endl;
+				factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << principal()->id() << std::endl;
 				out << _principal->id();
 				out << _subordinate->type()->id();
 				_subordinate->write(out);
 			}
+
+			void from(Endpoint rhs) { _subordinate->from(rhs); }
+			Endpoint from() const { return _subordinate->from(); }
 
 			static void init_type(Type<A>* type) {
 				type->id(0);
@@ -142,7 +146,7 @@ namespace factory {
 				}
 			}
 			virtual void react(Reflecting_kernel<A>*) {
-//				std::clog << "Empty react in " << demangle_type_name(*this) << std::endl;
+//				factory_log(Level::KERNEL) << "Empty react in " << demangle_type_name(*this) << std::endl;
 			}
 			virtual void error(Reflecting_kernel<A>* rhs) {
 				react(rhs);
@@ -165,12 +169,14 @@ namespace factory {
 
 			void read_impl(Foreign_stream& in) {
 				if (_parent != nullptr) {
-					throw Error("Parent is not null while reading from the data stream.",
-						__FILE__, __LINE__, __func__);
+					std::stringstream s;
+					s << "Parent is not null while reading from the data stream. Parent=";
+					s << _parent;
+					throw Error(s.str(), __FILE__, __LINE__, __func__);
 				}
 				Id parent_id;
 				in >> parent_id;
-				std::clog << "READING PARENT " << parent_id << std::endl;
+				factory_log(Level::KERNEL) << "READING PARENT " << parent_id << std::endl;
 				if (parent_id != ROOT_ID) {
 					_parent = new Transient(parent_id);
 					_delete_parent = true;
@@ -178,7 +184,7 @@ namespace factory {
 			}
 
 			void write_impl(Foreign_stream& out) {
-				std::clog << "WRITING PARENT " << parent()->id() << std::endl;
+				factory_log(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
 				out << (parent() == nullptr ? ROOT_ID : parent()->id());
 			}
 

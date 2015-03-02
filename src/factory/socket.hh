@@ -10,6 +10,8 @@ namespace factory {
 		typedef int Flag;
 		typedef int Option;
 
+		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
+
 		Socket(): _socket(0) {}
 		Socket(int socket): _socket(socket) { flags(O_NONBLOCK); }
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
@@ -18,13 +20,13 @@ namespace factory {
 //			struct sockaddr_in addr;
 //			e.to_sockaddr(&addr);
 //			init_socket_address(&addr, e.host().c_str(), e.port());
-			check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
+			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
-			std::clog << "Binding to " << e << std::endl;
+			factory_log(Level::COMPONENT) << "Binding to " << e << std::endl;
 			if (type == RELIABLE_SOCKET) {
 				check("listen()", ::listen(_socket, SOMAXCONN));
-				std::clog << "Listening on " << e << std::endl;
+				factory_log(Level::COMPONENT) << "Listening on " << e << std::endl;
 			}
 		}
 
@@ -33,11 +35,11 @@ namespace factory {
 //				struct sockaddr_in addr;
 //				init_socket_address(&addr, e.host().c_str(), e.port());
 //				e.to_sockaddr(&addr);
-				check("socket()", _socket = ::socket(AF_INET, type | SOCK_NONBLOCK, 0));
+				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
-				std::clog << "Connecting to " << e << std::endl;
+				factory_log(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
-				std::clog << "Rethrowing connection error." << std::endl;
+				factory_log(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
 				throw Connection_error(err.what(), __FILE__, __LINE__, __func__);
 			}
 		}
@@ -48,16 +50,17 @@ namespace factory {
 			socklen_t acc_len = sizeof(addr);
 			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
 			Endpoint endpoint(&addr);
-			std::clog << "Accepted connection from " << endpoint << std::endl;
+			factory_log(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
 			return std::make_pair(socket, endpoint);
 		}
 
 		void close() {
 			if (_socket > 0) {
-				std::clog << "Closing socket " << _socket << std::endl;
+				factory_log(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
 			}
+			_socket = 0;
 		}
 
 		void flags(Flag f) { ::fcntl(_socket, F_SETFL, flags() | f); }
@@ -70,17 +73,22 @@ namespace factory {
 
 		int error() const {
 			int ret = 0;
-			socklen_t sz = sizeof(ret);
-			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
+			if (_socket <= 0) {
+				ret = -1;
+			} else {
+				socklen_t sz = sizeof(ret);
+				factory_log(Level::COMPONENT) << "Socket = " << _socket << std::endl;
+				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
+			}
 			return ret;
 		}
 
-		Socket_type type() const {
-			int tp = SOCK_STREAM;
-			socklen_t tp_size = sizeof(tp);
-			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_TYPE, &tp, &tp_size));
-			return Socket_type(tp);
-		}
+//		Socket_type type() const {
+//			int tp = SOCK_STREAM;
+//			socklen_t tp_size = sizeof(tp);
+//			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_TYPE, &tp, &tp_size));
+//			return Socket_type(tp);
+//		}
 
 		ssize_t read(char* buf, size_t size) {
 			return ::read(_socket, buf, size);

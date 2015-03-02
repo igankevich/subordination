@@ -26,7 +26,7 @@ namespace factory {
 			_write_pos_fill = 0;
 		}
 
-		Buffer() {
+		~Buffer() {
 			while (!_chunks.empty()) {
 				T* chunk = _chunks.front();
 				delete[] chunk;
@@ -36,7 +36,7 @@ namespace factory {
 
 		Size read(T* buffer, Size size) {
 			Size offset = 0;
-//			std::clog << "Chunks = " << _chunks.size() << std::endl;
+//			factory_log(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
 			while (offset != size && !_chunks.empty()) {
 				Size n = std::min(_chunk_size - _read_pos, size - offset);
 				T* chunk = _chunks.front();
@@ -91,7 +91,7 @@ namespace factory {
 			ssize_t bytes_read;
 			T* chunk = _chunks.back();
 			while ((bytes_read = source.read(chunk + _write_pos_fill, _chunk_size - _write_pos_fill)) > 0) {
-				std::clog << "Bytes read = " << bytes_read << std::endl;
+				factory_log(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
 				_write_pos_fill += bytes_read;
 				if (_write_pos_fill == _chunk_size) {
 					chunk = new T[_chunk_size];
@@ -100,8 +100,8 @@ namespace factory {
 				}
 			}
 			_write_pos = _write_pos_fill;
-			std::clog << "Bytes read = " << bytes_read << std::endl;
-			std::clog << "Declared size = " << host_format(declared_size()) << std::endl;
+			factory_log(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
+			factory_log(Level::COMPONENT) << "Declared size = " << host_format(declared_size()) << std::endl;
 			return bytes_read;
 		}
 
@@ -111,10 +111,10 @@ namespace factory {
 			T* chunk = _chunks.front();
 			Size decl_sz = host_format(declared_size());
 			Size num_bytes; 
-			while (num_bytes = (last_chunk() ? _write_pos : _chunk_size), !_chunks.empty()
+			while (bytes_written = 0, num_bytes = (last_chunk() ? _write_pos : _chunk_size), !_chunks.empty()
 				&& (bytes_written = sink.write(chunk + _read_pos_flush, num_bytes - _read_pos_flush)) > 0)
 			{
-				std::clog << "Bytes written = " << bytes_written << std::endl;
+				factory_log(Level::COMPONENT) << "Bytes written = " << bytes_written << std::endl;
 				_read_pos_flush += bytes_written;
 				if (_read_pos_flush == num_bytes) {
 					delete[] chunk;
@@ -132,9 +132,9 @@ namespace factory {
 			if (_chunks.size() == 0) {
 				reset();
 			}
-			std::clog << "Bytes written = " << bytes_written << std::endl;
-			std::clog << "Declared size = " << decl_sz << std::endl;
-			std::clog << "Chunks = " << _chunks.size() << std::endl;
+			factory_log(Level::COMPONENT) << "Bytes written = " << bytes_written << std::endl;
+			factory_log(Level::COMPONENT) << "Declared size = " << decl_sz << std::endl;
+			factory_log(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
 			return bytes_written;
 		}
 
