@@ -69,6 +69,8 @@ namespace factory {
 			});
 		}
 
+		Process operator[](size_t i) { return _processes[i]; }
+
 	private:
 		std::vector<Process> _processes;
 	};

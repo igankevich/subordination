@@ -115,7 +115,6 @@ namespace factory {
 			}
 
 			void write(Foreign_stream& out) {
-				factory_log(Level::KERNEL) << "WRITING PRINCIPALq = " << _principal << std::endl;
 				factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << principal()->id() << std::endl;
 				out << _principal->id();
 				out << _subordinate->type()->id();

@@ -23,15 +23,21 @@ using namespace factory;
 
 #include "datum.hh"
 
+std::atomic<uint32_t> shutdown_counter(0);
+
 struct Test_socket: public Mobile<Test_socket> {
 
 	Test_socket(): _data() {}
 	explicit Test_socket(std::vector<Datum> data): _data(data) {}
 
 	void act() {
+		shutdown_counter++;
 		std::clog << "Test_socket::act()" << std::endl;
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
+		if (shutdown_counter == 1) {
+			__factory.stop();
+		}
 	}
 
 	void write_impl(Foreign_stream& out) {
@@ -100,13 +106,13 @@ struct App {
 				throw std::runtime_error("Wrong number of arguments.");
 			the_server()->add(0);
 			if (argv[1][0] == 'x') {
-				remote_server()->socket(Endpoint("localhost", 20000));
+				remote_server()->socket(Endpoint("127.0.0.1", 60000));
 				__factory.start();
 				__factory.wait();
 			}
 			if (argv[1][0] == 'y') {
-				remote_server()->socket(Endpoint("localhost", 20001));
-				remote_server()->add(Endpoint("localhost", 20000));
+				remote_server()->socket(Endpoint("127.0.0.1", 60001));
+				remote_server()->add(Endpoint("127.0.0.1", 60000));
 				__factory.start();
 				the_server()->send(new Main);
 				__factory.wait();

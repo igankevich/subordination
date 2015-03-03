@@ -66,7 +66,7 @@ struct Discoverer: public Identifiable<Kernel> {
 
 	void act() {
 
-		std::cout << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
+		factory_log(Level::KERNEL) << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
 //		commit(the_server());
 
 		std::vector<Port_range> neighbours = {
@@ -82,6 +82,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		});
 
 		// send discovery messages
+		factory_log(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _endpoint << std::endl;
 		std::for_each(neighbours.cbegin(), neighbours.cend(),
 			[this] (const Port_range& range)
 		{
@@ -161,6 +162,18 @@ struct App {
 //					std::this_thread::sleep_for(INTERSPERSE_DELAY);
 				}
 				retval = processes.wait();
+
+				Process_id p1 = processes[0].id();
+				Process_id p2 = processes[1].id();
+				std::stringstream s;
+				s << "paste -d';'";
+				s << ' ';
+				s << "/tmp/" << p1 << ".log";
+				s << ' ';
+				s << "/tmp/" << p2 << ".log";
+				s << ' ';
+				s << "| column -t -s';'";
+				::system(s.str().c_str());
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
 				retval = 1;
@@ -173,6 +186,7 @@ struct App {
 			cmdline >> endpoint >> port_range;
 			try {
 				the_server()->add(0);
+				the_server()->add(1);
 				the_server()->start();
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();

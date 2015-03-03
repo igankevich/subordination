@@ -50,7 +50,7 @@ namespace factory {
 							event.user_data()->recover_kernels();
 						} else {
 							event.user_data()->handle_event(event, [this, &event] (bool overflow) {
-								std::unique_lock<std::mutex> lock(_mutex);
+//								std::unique_lock<std::mutex> lock(_mutex);
 								if (overflow) {
 									_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
 								} else {

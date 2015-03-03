@@ -15,9 +15,9 @@ namespace factory {
 	}
 
 	std::ostream& factory_log(Level l) {
-//		static std::ofstream logfile(log_filename());
-//		return logfile << std::setw(int(l)) << ' ';
-		return std::clog << std::setw(int(l)) << ' ';
+		static std::ofstream logfile(log_filename());
+		return logfile << std::setw(int(l)) << ' ';
+//		return std::clog << std::setw(int(l)) << ' ';
 	}
 
 	int check(const char* func, int ret) {

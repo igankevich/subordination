@@ -1,0 +1,5 @@
+#!/bin/sh
+
+p1=$1
+p2=$2
+paste -d';' /tmp/$1.log /tmp/$2.log | column -t -s';'
