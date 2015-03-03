@@ -1,3 +1,14 @@
+#ifdef FACTORY_FOREIGN_STREAM
+namespace factory {
+	Foreign_stream& operator<<(Foreign_stream& out, const Endpoint& rhs) {
+		return out << rhs.addr()->sin_addr.s_addr << rhs.addr()->sin_port;
+	}
+	Foreign_stream& operator>>(Foreign_stream& in, Endpoint& rhs) {
+		rhs.addr()->sin_family = AF_INET;
+		return in >> rhs.addr()->sin_addr.s_addr >> rhs.addr()->sin_port;
+	}
+}
+#else
 namespace factory {
 
 	typedef std::string Host;
@@ -18,7 +29,9 @@ namespace factory {
 		}
 
 		bool operator<(const Endpoint& rhs) const {
-			return _addr.sin_addr.s_addr < rhs._addr.sin_addr.s_addr;
+			return _addr.sin_addr.s_addr < rhs._addr.sin_addr.s_addr
+				|| (_addr.sin_addr.s_addr == rhs._addr.sin_addr.s_addr
+				&& _addr.sin_port < rhs._addr.sin_port);
 		}
 
 		bool operator==(const Endpoint& rhs) const {
@@ -52,8 +65,11 @@ namespace factory {
 			return Host(host);
 		}
 
+		uint32_t address() const { return ntohl(_addr.sin_addr.s_addr); }
 		Port port() const { return ntohs(_addr.sin_port); }
+
 		struct ::sockaddr_in* addr() { return &_addr; }
+		const struct ::sockaddr_in* addr() const { return &_addr; }
 
 	private:
 	
@@ -82,3 +98,4 @@ namespace factory {
 	};
 
 }
+#endif

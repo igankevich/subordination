@@ -1,3 +1,4 @@
+#define FACTORY_FOREIGN_STREAM
 namespace factory {
 
 	struct Foreign_stream {

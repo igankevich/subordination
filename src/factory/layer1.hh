@@ -43,6 +43,8 @@
 #include "socket.hh"
 #include "buffer.hh"
 #include "datastream.hh"
+// for marshaling
+#include "endpoint.hh"
 #include "sockets.hh"
 #include "event_poller.hh"
 #include "base.hh"

@@ -6,32 +6,98 @@ typedef Interval<Port> Port_range;
 
 const Port DEFAULT_PORT = 60000;
 const int PORT_INCREMENT = 1;
-const int NUM_SERVERS = 2;
+const int NUM_SERVERS = 3;
 
-const std::chrono::milliseconds SHUTDOWN_DELAY(1000);
-//const std::chrono::milliseconds INTERSPERSE_DELAY(500);
+const std::chrono::milliseconds SHUTDOWN_DELAY(3000);
 
 struct Discovery: public Mobile<Discovery> {
+
+	typedef uint64_t Time;
+	typedef uint8_t State;
 
 	Discovery() {}
 
 	void act() {
-		std::cout << "Discovery!" << std::endl;
+//		std::cout << "Discovery!" << std::endl;
 		commit(discovery_server());
 	}
 
 	void write_impl(Foreign_stream& out) {
-//		char dummy[1024];
-//		out.write(dummy, sizeof(dummy));
+		if (_state == 0) {
+			_time = current_time();
+		}
+		_state++;
+		out << _endpoint << _state << _time;
 	}
 
 	void read_impl(Foreign_stream& in) {
-//		char dummy[1024];
-//		in.read(dummy, sizeof(dummy));
+		in >> _endpoint >> _state >> _time;
+		_state++;
+		if (_state == 3) {
+			_time = current_time() - _time;
+		}
+	}
+
+	Time time() const { return _time; }
+	void endpoint(Endpoint rhs) { _endpoint = rhs; }
+	Endpoint endpoint() const { return _endpoint; }
+
+	static Time current_time() {
+		return std::chrono::steady_clock::now().time_since_epoch().count();
 	}
 	
 	static void init_type(Type* t) {
 		t->id(2);
+	}
+
+private:
+	Time _time = 0;
+	State _state = 0;
+	Endpoint _endpoint;
+};
+
+struct Neighbour {
+
+	typedef Discovery::Time Time;
+	typedef uint32_t Metric;
+
+	Neighbour(Endpoint a, Time t): _addr(a) { sample(t); }
+
+	Metric metric() const { return _t/1000/1000/1000; }
+
+	void sample(Time rhs) {
+		if (++_n == MAX_SAMPLES) {
+			_n = 1;
+			_t = 0;
+		}
+		_t = ((_n-1)*_t + rhs) / _n;
+	}
+
+	bool operator<(const Neighbour& rhs) const {
+		return metric() < rhs.metric()
+			|| (metric() == rhs.metric() && _addr < rhs._addr);
+	}
+
+//	bool operator==(const Neighbour& rhs) const { return _t == rhs._t && _n == rhs._n; }
+
+	friend std::ostream& operator<<(std::ostream& out, const Neighbour* rhs) {
+		return out
+			<< rhs->metric()
+			<< ' ' << rhs->_n
+			<< ' ' << rhs->_addr;
+	}
+
+private:
+	Time _t = 0;
+	uint32_t _n = 0;
+	Endpoint _addr;
+
+	static const uint32_t MAX_SAMPLES = 30;
+};
+
+struct Higher_metric {
+	bool operator()(Neighbour* x, Neighbour* y) const {
+		return *x < *y;
 	}
 };
 
@@ -64,9 +130,11 @@ struct Discoverer: public Identifiable<Kernel> {
 		_endpoint(endpoint), _port_range(port_range) {}
 
 	void act() {
+		_attempts++;
+		_num_succeeded = 0;
+		_num_failed = 0;
 
-		factory_log(Level::KERNEL) << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
-//		commit(the_server());
+		std::cout << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
 
 		std::vector<Port_range> neighbours = {
 			Port_range(_port_range.start(), _endpoint.port()),
@@ -90,9 +158,9 @@ struct Discoverer: public Identifiable<Kernel> {
 			I en = range.end();
 			for (I a=st; a<en/* && a<st+10*/; ++a) {
 				Endpoint ep(_endpoint.host(), a);
-				std::cout << ep << std::endl;
 				Discovery* k = new Discovery;
 				k->parent(this);
+				k->endpoint(ep);
 				discovery_server()->send(k, ep);
 			}
 		});
@@ -100,72 +168,72 @@ struct Discoverer: public Identifiable<Kernel> {
 	}
 
 	void react(Kernel* k) {
+		Discovery* d = dynamic_cast<Discovery*>(k);
 		if (k->result() == Result::SUCCESS) {
-			_returned_neighbours++;
+			_num_succeeded++;
 		} else {
-			_error_neighbours++;
+			_num_failed++;
 		}
-		std::cout << "Returned: "
-			<< _returned_neighbours + _error_neighbours << '/' 
-			<< _num_neighbours
-			<< " from " << k->from() 
-			<< std::endl;
-		if (_returned_neighbours + _error_neighbours == _num_neighbours) {
-			std::this_thread::sleep_for(SHUTDOWN_DELAY);
-			commit(the_server());
+//		std::cout << "Returned: "
+//			<< _num_succeeded + _num_failed << '/' 
+//			<< _num_neighbours
+//			<< " from " << d->endpoint() 
+//			<< std::endl;
+		
+		if (_neighbours_map.find(d->endpoint()) == _neighbours_map.end()) {
+			Neighbour* n = new Neighbour(d->endpoint(), d->time());
+			_neighbours_map[d->endpoint()] = n;
+			_neighbours_set.insert(n);
+		} else {
+			_neighbours_map[d->endpoint()]->sample(d->time());
+		}
+
+		if (_num_succeeded + _num_failed == _num_neighbours) {
+
+			std::cout
+				<< "Result = "
+				<< num_succeeded()
+				<< '+'
+				<< num_failed()
+				<< '/'
+				<< num_neighbours()
+				<< std::endl;
+
+//			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
+			if (_attempts == MAX_ATTEMPTS) {
+				std::cout << "Neighbours:" << std::endl;
+				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
+				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
+				std::this_thread::sleep_for(SHUTDOWN_DELAY);
+				commit(the_server());
+			} else {
+				act();
+			}
 		}
 	}
 
-	uint32_t num_failed() const { return _error_neighbours; }
-	uint32_t num_succeeded() const { return _returned_neighbours; }
+	uint32_t num_failed() const { return _num_failed; }
+	uint32_t num_succeeded() const { return _num_succeeded; }
 	uint32_t num_neighbours() const { return _num_neighbours; }
 
 //	void error(Kernel* k) {
-//		std::clog << "Returned ERR: " << _error_neighbours << std::endl;
+//		std::clog << "Returned ERR: " << _num_failed << std::endl;
 //	}
 
 private:
 	Endpoint _endpoint;
 	Port_range _port_range;
 
+	std::map<Endpoint, Neighbour*> _neighbours_map;
+	std::set<Neighbour*, Higher_metric> _neighbours_set;
+
 	uint32_t _num_neighbours = 0;
-	uint32_t _returned_neighbours = 0;
-	uint32_t _error_neighbours = 0;
-};
+	uint32_t _num_succeeded = 0;
+	uint32_t _num_failed = 0;
 
-struct Discovery_supervisor: public Kernel {
-
-	Discovery_supervisor(Endpoint endpoint, Port_range port_range):
-		_endpoint(endpoint), _port_range(port_range) {}
-
-	void act() {
-		_attempts++;
-		upstream(the_server(), new Discoverer(_endpoint, _port_range));
-	}
-
-	void react(Kernel* k) {
-		Discoverer* d = dynamic_cast<Discoverer*>(k);
-		std::cout
-			<< "Result = "
-			<< d->num_succeeded()
-			<< '+'
-			<< d->num_failed()
-			<< '/'
-			<< d->num_neighbours()
-			<< std::endl;
-		if (d->num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
-			commit(the_server());
-		} else {
-			act();
-		}
-	}
-
-private:
-	Endpoint _endpoint;
-	Port_range _port_range;
 	uint32_t _attempts = 0;
 
-	static const uint32_t MAX_ATTEMPTS = 3;
+	static const uint32_t MAX_ATTEMPTS = 17;
 };
 
 template<class T>
@@ -197,7 +265,6 @@ struct App {
 						check("execve()", ::execve(argv[0], args, env));
 						return 0;
 					});
-//					std::this_thread::sleep_for(INTERSPERSE_DELAY);
 				}
 				retval = processes.wait();
 
@@ -229,8 +296,7 @@ struct App {
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();
 				factory_log(Level::SERVER) << "Sleeping." << std::endl;
-//				std::this_thread::sleep_for(STARTUP_DELAY);
-				the_server()->send(new Discovery_supervisor(endpoint, port_range));
+				the_server()->send(new Discoverer(endpoint, port_range));
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;

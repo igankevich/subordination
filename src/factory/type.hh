@@ -220,7 +220,7 @@ namespace factory {
 						Sub* kernel = new Sub;
 						kernel->read(in);
 						kernel->from(from);
-						std::clog << "From = " << kernel->from() << std::endl;
+//						std::clog << "From = " << kernel->from() << std::endl;
 						factory_send(kernel);
 					};
 
