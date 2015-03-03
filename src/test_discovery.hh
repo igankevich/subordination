@@ -171,8 +171,22 @@ struct Discoverer: public Identifiable<Kernel> {
 		Discovery* d = dynamic_cast<Discovery*>(k);
 		if (k->result() == Result::SUCCESS) {
 			_num_succeeded++;
+			if (_neighbours_map.find(d->endpoint()) == _neighbours_map.end()) {
+				Neighbour* n = new Neighbour(d->endpoint(), d->time());
+				_neighbours_map[d->endpoint()] = n;
+				_neighbours_set.insert(n);
+			} else {
+				_neighbours_map[d->endpoint()]->sample(d->time());
+			}
 		} else {
 			_num_failed++;
+			auto result = _neighbours_map.find(d->endpoint());
+			if (result != _neighbours_map.end()) {
+				Neighbour* n = result->second;
+				_neighbours_map.erase(result->first);
+				_neighbours_set.erase(n);
+				delete n;
+			}
 		}
 //		std::cout << "Returned: "
 //			<< _num_succeeded + _num_failed << '/' 
@@ -180,13 +194,6 @@ struct Discoverer: public Identifiable<Kernel> {
 //			<< " from " << d->endpoint() 
 //			<< std::endl;
 		
-		if (_neighbours_map.find(d->endpoint()) == _neighbours_map.end()) {
-			Neighbour* n = new Neighbour(d->endpoint(), d->time());
-			_neighbours_map[d->endpoint()] = n;
-			_neighbours_set.insert(n);
-		} else {
-			_neighbours_map[d->endpoint()]->sample(d->time());
-		}
 
 		if (_num_succeeded + _num_failed == _num_neighbours) {
 
@@ -199,8 +206,8 @@ struct Discoverer: public Identifiable<Kernel> {
 				<< num_neighbours()
 				<< std::endl;
 
-//			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
-			if (_attempts == MAX_ATTEMPTS) {
+			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
+//			if (_attempts == MAX_ATTEMPTS) {
 				std::cout << "Neighbours:" << std::endl;
 				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
