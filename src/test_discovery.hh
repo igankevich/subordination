@@ -8,8 +8,7 @@ const Port DEFAULT_PORT = 60000;
 const int PORT_INCREMENT = 1;
 const int NUM_SERVERS = 2;
 
-const std::chrono::milliseconds STARTUP_DELAY(2000);
-const std::chrono::milliseconds SHUTDOWN_DELAY(2000);
+const std::chrono::milliseconds SHUTDOWN_DELAY(1000);
 //const std::chrono::milliseconds INTERSPERSE_DELAY(500);
 
 struct Discovery: public Mobile<Discovery> {
@@ -117,6 +116,10 @@ struct Discoverer: public Identifiable<Kernel> {
 		}
 	}
 
+	uint32_t num_failed() const { return _error_neighbours; }
+	uint32_t num_succeeded() const { return _returned_neighbours; }
+	uint32_t num_neighbours() const { return _num_neighbours; }
+
 //	void error(Kernel* k) {
 //		std::clog << "Returned ERR: " << _error_neighbours << std::endl;
 //	}
@@ -128,6 +131,41 @@ private:
 	uint32_t _num_neighbours = 0;
 	uint32_t _returned_neighbours = 0;
 	uint32_t _error_neighbours = 0;
+};
+
+struct Discovery_supervisor: public Kernel {
+
+	Discovery_supervisor(Endpoint endpoint, Port_range port_range):
+		_endpoint(endpoint), _port_range(port_range) {}
+
+	void act() {
+		_attempts++;
+		upstream(the_server(), new Discoverer(_endpoint, _port_range));
+	}
+
+	void react(Kernel* k) {
+		Discoverer* d = dynamic_cast<Discoverer*>(k);
+		std::cout
+			<< "Result = "
+			<< d->num_succeeded()
+			<< '+'
+			<< d->num_failed()
+			<< '/'
+			<< d->num_neighbours()
+			<< std::endl;
+		if (d->num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
+			commit(the_server());
+		} else {
+			act();
+		}
+	}
+
+private:
+	Endpoint _endpoint;
+	Port_range _port_range;
+	uint32_t _attempts = 0;
+
+	static const uint32_t MAX_ATTEMPTS = 3;
 };
 
 template<class T>
@@ -191,8 +229,8 @@ struct App {
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();
 				factory_log(Level::SERVER) << "Sleeping." << std::endl;
-				std::this_thread::sleep_for(STARTUP_DELAY);
-				the_server()->send(new Discoverer(endpoint, port_range));
+//				std::this_thread::sleep_for(STARTUP_DELAY);
+				the_server()->send(new Discovery_supervisor(endpoint, port_range));
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
