@@ -8,7 +8,7 @@ const Port DEFAULT_PORT = 60000;
 const int PORT_INCREMENT = 1;
 const int NUM_SERVERS = 3;
 
-const std::chrono::milliseconds SHUTDOWN_DELAY(3000);
+const std::chrono::milliseconds SHUTDOWN_DELAY(10000);
 
 struct Discovery: public Mobile<Discovery> {
 
@@ -73,6 +73,8 @@ struct Neighbour {
 		_t = ((_n-1)*_t + rhs) / _n;
 	}
 
+	uint32_t num_samples() const { return _n; }
+
 	bool operator<(const Neighbour& rhs) const {
 		return metric() < rhs.metric()
 			|| (metric() == rhs.metric() && _addr < rhs._addr);
@@ -134,7 +136,8 @@ struct Discoverer: public Identifiable<Kernel> {
 		_num_succeeded = 0;
 		_num_failed = 0;
 
-		std::cout << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
+//		std::cout << "Hello world from " << ::getpid() << ", " << _endpoint << std::endl;
+		std::cout << _endpoint << ": attempt #" << _attempts << std::endl;
 
 		std::vector<Port_range> neighbours = {
 			Port_range(_port_range.start(), _endpoint.port()),
@@ -158,10 +161,13 @@ struct Discoverer: public Identifiable<Kernel> {
 			I en = range.end();
 			for (I a=st; a<en/* && a<st+10*/; ++a) {
 				Endpoint ep(_endpoint.host(), a);
-				Discovery* k = new Discovery;
-				k->parent(this);
-				k->endpoint(ep);
-				discovery_server()->send(k, ep);
+				Neighbour* n = find_neighbour(ep);
+				if (n == nullptr || n->num_samples() < MAX_SAMPLES) {
+					Discovery* k = new Discovery;
+					k->parent(this);
+					k->endpoint(ep);
+					discovery_server()->send(k, ep);
+				}
 			}
 		});
 //		commit(the_server());
@@ -194,6 +200,14 @@ struct Discoverer: public Identifiable<Kernel> {
 //			<< " from " << d->endpoint() 
 //			<< std::endl;
 		
+		std::cout << _endpoint << ": result #" << _attempts
+			<< ' '
+			<< num_succeeded()
+			<< '+'
+			<< num_failed()
+			<< '/'
+			<< num_neighbours()
+			<< std::endl;
 
 		if (_num_succeeded + _num_failed == _num_neighbours) {
 
@@ -206,12 +220,14 @@ struct Discoverer: public Identifiable<Kernel> {
 				<< num_neighbours()
 				<< std::endl;
 
-			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
+//			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
+			if (num_succeeded() == NUM_SERVERS-1 && min_samples() == MIN_SAMPLES) {
 //			if (_attempts == MAX_ATTEMPTS) {
 				std::cout << "Neighbours:" << std::endl;
 				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
 				std::this_thread::sleep_for(SHUTDOWN_DELAY);
+				std::cout << "Terminating " << _endpoint << std::endl;
 				commit(the_server());
 			} else {
 				act();
@@ -228,6 +244,21 @@ struct Discoverer: public Identifiable<Kernel> {
 //	}
 
 private:
+
+	uint32_t min_samples() const {
+		return std::accumulate(_neighbours_set.cbegin(), _neighbours_set.cend(),
+			std::numeric_limits<uint32_t>::max(),
+			[] (uint32_t m, const Neighbour* rhs)
+		{
+			return std::min(m, rhs->num_samples());
+		});
+	}
+
+	Neighbour* find_neighbour(Endpoint addr) {
+		auto result = _neighbours_map.find(addr);
+		return result == _neighbours_map.end() ? nullptr : result->second;
+	}
+
 	Endpoint _endpoint;
 	Port_range _port_range;
 
@@ -241,14 +272,10 @@ private:
 	uint32_t _attempts = 0;
 
 	static const uint32_t MAX_ATTEMPTS = 17;
+	static const uint32_t MIN_SAMPLES = 5;
+	static const uint32_t MAX_SAMPLES = 5;
 };
 
-template<class T>
-std::string to_string(T rhs) {
-	std::stringstream s;
-	s << rhs;
-	return s.str();
-}
 
 
 struct App {
@@ -265,12 +292,13 @@ struct App {
 				for (int i=0; i<NUM_SERVERS; ++i) {
 					Endpoint endpoint = servers[i];
 					processes.add([endpoint, port_range, &argv] () {
-						std::string arg1 = to_string(endpoint);
-						std::string arg2 = to_string(port_range);
-						char* const args[] = {argv[0], (char*)arg1.c_str(), (char*)arg2.c_str(), 0};
-						char* const env[] = { 0 };
-						check("execve()", ::execve(argv[0], args, env));
-						return 0;
+//						std::string arg1 = to_string(endpoint);
+//						std::string arg2 = to_string(port_range);
+//						char* const args[] = {argv[0], (char*)arg1.c_str(), (char*)arg2.c_str(), 0};
+//						char* const env[] = { 0 };
+//						check("execve()", ::execve(argv[0], args, env));
+//						return 0;
+						return execute(argv[0], endpoint, port_range);
 					});
 				}
 				retval = processes.wait();
@@ -285,7 +313,8 @@ struct App {
 				s << "/tmp/" << p2 << ".log";
 				s << ' ';
 				s << "| column -t -s';'";
-				::system(s.str().c_str());
+				std::cout << "Command to view logs:\n" << s.str() << std::endl;
+//				::system(s.str().c_str());
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
 				retval = 1;

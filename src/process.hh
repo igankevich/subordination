@@ -75,4 +75,43 @@ namespace factory {
 		std::vector<Process> _processes;
 	};
 
+
+	struct To_string {
+
+		template<class T>
+		To_string(T rhs): _s(to_string(rhs)) {}
+
+		char* c_str() { return (char*)_s.c_str(); }
+
+	private:
+
+		template<class T>
+		std::string to_string(T rhs) {
+			std::stringstream s;
+			s << rhs;
+			return s.str();
+		}
+		std::string _s;
+	};
+
+	template<class ... Args>
+	int execute(const Args& ... args) {
+		To_string tmp[] = { args... };
+		const int argc = sizeof...(Args);
+		char* argv[argc + 1];
+		for (int i=0; i<argc; ++i) {
+			argv[i] = tmp[i].c_str();
+		}
+		argv[argc] = 0;
+		char* const env[] = { 0 };
+		std::cout << "Executing ";
+		std::ostream_iterator<char*> it(std::cout, " ");
+		std::copy(argv, argv + argc, it);
+		return check("execve()", ::execve(argv[0], argv, env));
+	}
+//	void safe_printf(const char *format, const Args&... args) {
+//	  Arg arg_array[] = {args...};
+//	    do_safe_printf(format, arg_array, sizeof...(Args));
+//		}
+
 }
