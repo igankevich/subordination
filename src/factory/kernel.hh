@@ -27,7 +27,7 @@ namespace factory {
 		// No one lives forever.
 		template<class K>
 		struct Transient_kernel: public Identifiable<K, Type<K>> {
-			explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i) {}
+			explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i, false) {}
 			bool is_transient() const { return true; }
 		};
 
@@ -52,6 +52,7 @@ namespace factory {
 
 		};
 
+		// TODO: make this class an aspect of a Kernel rather than a separate entity
 		template<class A>
 		struct Kernel_pair: public Type_init<Kernel_pair<A>, Type<A>, A> {
 
@@ -81,8 +82,8 @@ namespace factory {
 				}
 				if (_principal == nullptr) {
 					delete this;
-					factory_stop();
 					factory_log(Level::KERNEL) << "SHUTDOWN" << std::endl;
+					factory_stop();
 				} else {
 					delete this;
 				}

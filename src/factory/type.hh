@@ -251,7 +251,11 @@ namespace factory {
 
 		public:
 
-			explicit Identifiable(Id i): _id(i) {}
+			explicit Identifiable(Id i, bool b=true): _id(i) {
+				if (b) {
+					Type::instances().register_instance(this);
+				}
+			}
 
 			Identifiable(): _id(generate_id()) {
 				Type::instances().register_instance(this);
@@ -275,12 +279,12 @@ namespace factory {
 
 			static Id start_id() {
 				const char* id = ::getenv("START_ID");
-				Id i = 1;
+				Id i = 1000;
 				if (id != NULL) {
 					std::stringstream tmp;
 					tmp << id;
 					if (!(tmp >> i) || i == ROOT_ID) {
-						i = 1;
+						i = 1000;
 						std::clog << "Bad START_ID value: " << id << std::endl;
 					}
 				}

@@ -1,5 +1,6 @@
 #ifdef FACTORY_FOREIGN_STREAM
 namespace factory {
+	// TODO: this is not portable
 	Foreign_stream& operator<<(Foreign_stream& out, const Endpoint& rhs) {
 		return out << rhs.addr()->sin_addr.s_addr << rhs.addr()->sin_port;
 	}
