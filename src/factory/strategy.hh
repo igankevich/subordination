@@ -17,7 +17,7 @@ namespace factory {
 
 	namespace components {
 
-		template<class Kernel, class Kernel_pair>
+		template<class Kernel>
 		struct Round_robin {
 
 			template<class Server>
@@ -31,25 +31,24 @@ namespace factory {
 
 				void send(Kernel* kernel) {
 					factory_log(Level::STRATEGY) << "Round_robin::send()" << std::endl;
-					int n = Server::_upstream.size();
-					if (n > 0) {
-						int i = _cursor = (_cursor + 1) % n;
-						Server::_upstream[i]->send(kernel);
+					if (kernel->moves_upstream()) {
+						int n = Server::_upstream.size();
+						if (n > 0) {
+							int i = _cursor = (_cursor + 1) % n;
+							Server::_upstream[i]->send(kernel);
+						} else {
+							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
+							delete kernel;
+						}
 					} else {
-						std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
-						delete kernel;
-					}
-				}
-
-				void send(Kernel_pair* pair) {
-					factory_log(Level::STRATEGY) << "Simple_hashing::send()" << std::endl;
-					size_t n = Server::_upstream.size();
-					if (n > 0) {
-						size_t i = std::size_t(pair->principal()) / ALIGNMENT * PRIME % n;
-						Server::_upstream[i]->send(pair);
-					} else {
-						std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
-						delete pair;
+						size_t n = Server::_upstream.size();
+						if (n > 0) {
+							size_t i = std::size_t(kernel->principal()) / ALIGNMENT * PRIME % n;
+							Server::_upstream[i]->send(kernel);
+						} else {
+							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
+							delete kernel;
+						}
 					}
 				}
 
@@ -67,7 +66,7 @@ namespace factory {
 			struct Rprofiler: public Server {
 				void process_kernel(Kernel* kernel) {
 					factory_log(Level::STRATEGY) << "Round_robin::process_kernel()" << std::endl;
-                    kernel->act();
+                    kernel->run_act();
 				}
 			};
 		};
@@ -582,7 +581,7 @@ namespace factory {
 			struct Rprofiler: public Server {
 				void process_kernel(Kernel* kernel) {
 					factory_log(Level::STRATEGY) << "Simple_hashing::process_kernel()" << std::endl;
-                    kernel->act();
+                    kernel->run_act();
 				}
 			};
 
@@ -627,13 +626,13 @@ namespace factory {
 				return -1;
 			}
 
-			template<class K, class I>
-			int operator()(Kernel_pair<K>* pair, I&) {
-//				Endpoint endp = pair->subordinate()->from();
-//				Remote_server<Kernel_pair<K>, This> srv(endp);
-//				srv.send(pair);
-				return -1;
-			}
+//			template<class K, class I>
+//			int operator()(Kernel_pair<K>* pair, I&) {
+////				Endpoint endp = pair->subordinate()->from();
+////				Remote_server<Kernel_pair<K>, This> srv(endp);
+////				srv.send(pair);
+//				return -1;
+//			}
 
 			struct Profiler: public virtual Top::Profiler {
 				Index index() const { return _index; }
@@ -713,7 +712,7 @@ namespace factory {
 //			template<class Server>
 //			struct Rprofiler: public Server {
 //				void process_kernel(Kernel* kernel) {
-//					kernel->act();
+//					kernel->run_act();
 //				}
 //			};
 //

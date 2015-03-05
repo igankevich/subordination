@@ -57,6 +57,5 @@
 #include "socket_server.hh"
 #include "servers/web_socket_server.hh"
 #include "discovery.hh"
-#include "discovery_server.hh"
 #include "strategy.hh"
 #include "tetris.hh"

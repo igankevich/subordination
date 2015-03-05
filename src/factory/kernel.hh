@@ -3,15 +3,16 @@ namespace factory {
 	enum struct Result: uint32_t {
 		SUCCESS = 0,
 		ENDPOINT_NOT_CONNECTED = 1,
-		NO_UPSTREAM_SERVERS_LEFT = 2
+		NO_UPSTREAM_SERVERS_LEFT = 2,
+		UNDEFINED = 3
 	};
 
 	namespace components {
 
-		struct Kernel_base {
+		struct Basic_kernel {
 
-			Kernel_base(): _result(Result::SUCCESS) {}
-			virtual ~Kernel_base() {}
+			Basic_kernel(): _result(Result::UNDEFINED) {}
+			virtual ~Basic_kernel() {}
 
 			virtual bool is_profiled() const { return true; }
 			virtual bool is_transient() const { return false; }
@@ -19,6 +20,9 @@ namespace factory {
 
 			Result result() const { return _result; }
 			void result(Result rhs) { _result = rhs; }
+
+			bool moves_upstream() const { return _result == Result::UNDEFINED; }
+			bool moves_downstream() const { return _result != Result::UNDEFINED; }
 
 		private:
 			Result _result;
@@ -54,48 +58,45 @@ namespace factory {
 
 		// TODO: make this class an aspect of a Kernel rather than a separate entity
 		template<class A>
-		struct Kernel_pair: public Type_init<Kernel_pair<A>, Type<A>, A> {
+		struct Principal: public A {
 
-			Kernel_pair(): _subordinate(nullptr), _principal(nullptr) {}
+			typedef Principal<A> This;
 
-			Kernel_pair(A* subordinate, A* principal):
-				_subordinate(subordinate), _principal(principal) {}
+			Principal(): _principal(nullptr) {}
 
 			const A* principal() const { return _principal; }
-			const A* subordinate() const { return _subordinate; }
+			void principal(A* rhs) { _principal = rhs; }
 
-			void act() {
-				if (_principal == nullptr) {
-					if (_subordinate->parent() == _principal) {
-						delete _subordinate;
-					}
-				} else {
-					bool del = *_principal == *_subordinate->parent();
-					if (_subordinate->result() == Result::SUCCESS) {
-						_principal->react(_subordinate);
-					} else {
-						_principal->error(_subordinate);
-					}
-					if (del) {
-						delete _subordinate;
-					}
-				}
-				if (_principal == nullptr) {
-					delete this;
-					factory_log(Level::KERNEL) << "SHUTDOWN" << std::endl;
-					factory_stop();
-				} else {
-					delete this;
+			void run_act() {
+				switch (this->result()) {
+					case Result::UNDEFINED:
+						this->act();
+						this->result(Result::SUCCESS);
+						break;
+					default:
+						if (principal() == nullptr) {
+							if (this->parent() == principal()) {
+								delete this;
+								factory_log(Level::KERNEL) << "SHUTDOWN" << std::endl;
+								factory_stop();
+							}
+						} else {
+							bool del = *principal() == *this->parent();
+							if (this->result() == Result::SUCCESS) {
+								_principal->react(this);
+							} else {
+								_principal->error(this);
+							}
+							if (del) {
+								delete this;
+							}
+						}
 				}
 			}
 
 			void read(Foreign_stream& in) {
 				if (_principal != nullptr) {
 					throw Error("Principal kernel is not null while reading from the data stream.",
-						__FILE__, __LINE__, __func__);
-				}
-				if (_subordinate != nullptr) {
-					throw Error("Subordinate kernel is not null while reading from the data stream.",
 						__FILE__, __LINE__, __func__);
 				}
 				Id principal_id;
@@ -112,26 +113,41 @@ namespace factory {
 					str << "Can not find principal kernel on this server, kernel id = " << principal_id;
 					throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
 				}
-				_subordinate = Type<A>::types().read_object(in);
 			}
 
 			void write(Foreign_stream& out) {
 				factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << principal()->id() << std::endl;
 				out << _principal->id();
-				out << _subordinate->type()->id();
-				_subordinate->write(out);
+			}
+		
+			virtual const Type<Principal<A>>* type() const { return nullptr; }
+
+		public:
+			template<class S>
+			inline void upstream(S* this_server, This* a) {
+				a->parent(this);
+				this_server->send(a);
 			}
 
-			void from(Endpoint rhs) { _subordinate->from(rhs); }
-			Endpoint from() const { return _subordinate->from(); }
+			template<class S>
+			inline void downstream(S* this_server, This* a) {
+				a->parent(this);
+				a->principal(this);
+				this_server->send(a);
+			}
 
-			static void init_type(Type<A>* type) {
-				type->id(0);
-				type->name("_Kernel_pair");
+			template<class S>
+			inline void downstream(S* this_server, This* a, A* b) {
+				a->principal(b);
+				this_server->send(a);
+			}
+
+			template<class S>
+			inline void commit(S* this_server) {
+				downstream(this_server, this, this->parent());
 			}
 
 		private:
-			A* _subordinate;
 			A* _principal;
 		};
 
@@ -190,30 +206,6 @@ namespace factory {
 				out << (parent() == nullptr ? ROOT_ID : parent()->id());
 			}
 
-			virtual const Type<Reflecting_kernel<A>>* type() const { return nullptr; }
-		
-		public:
-			template<class S>
-			inline void upstream(S* this_server, Reflecting_kernel<A>* a) {
-				a->_parent = this; this_server->send(a);
-			}
-
-			template<class S>
-			inline void downstream(S* this_server, Reflecting_kernel<A>* a) {
-				a->_parent = this;
-				this_server->send(new Kernel_pair<Reflecting_kernel<A>>(a, this));
-			}
-
-			template<class S>
-			inline void downstream(S* this_server, Reflecting_kernel<A>* a, Reflecting_kernel<A>* b) {
-//				this_server->send(make_pair(a, b));
-				this_server->send(new Kernel_pair<Reflecting_kernel<A>>(a, b));
-			}
-
-			template<class S>
-			inline void commit(S* this_server) {
-				downstream(this_server, this, this->_parent);
-			}
 		
 		private:
 			Reflecting_kernel<A>* _parent;

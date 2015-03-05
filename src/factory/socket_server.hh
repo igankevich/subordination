@@ -7,10 +7,10 @@ namespace factory {
 			void process_kernel(Kernel*) {}
 		};
 
-		template<class Server, class Handler, class Kernel, class Kernel_pair, class Type>
-		struct Socket_server: public Server_link<Socket_server<Server, Handler, Kernel, Kernel_pair, Type>, Server> {
+		template<class Server, class Handler, class Kernel, class Type>
+		struct Socket_server: public Server_link<Socket_server<Server, Handler, Kernel, Type>, Server> {
 			
-			typedef Socket_server<Server, Handler, Kernel, Kernel_pair, Type> This;
+			typedef Socket_server<Server, Handler, Kernel, Type> This;
 			typedef typename Event_poller<Handler>::E Event;
 
 			Socket_server():
@@ -83,26 +83,25 @@ namespace factory {
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
-				factory_log(Level::SERVER) << "Socket_server::send()" << std::endl;
-//				factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
-				if (_upstream.size() > 0) {
-					auto result = _upstream.begin();
-					factory_log(Level::SERVER) << "Socket = " << result->second->socket() << std::endl;
+				if (kernel->moves_upstream()) {
+					factory_log(Level::SERVER) << "Socket_server::send()" << std::endl;
+//					factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
+					if (_upstream.size() > 0) {
+						auto result = _upstream.begin();
+						factory_log(Level::SERVER) << "Socket = " << result->second->socket() << std::endl;
+						result->second->send(kernel);
+						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
+					}
+				} else {
+					auto result = _upstream.find(kernel->from());
+					if (result == _upstream.end()) {
+						std::stringstream msg;
+						msg << "Can not find upstream server " << kernel->from();
+						throw Error(msg.str(), __FILE__, __LINE__, __func__);
+					}
 					result->second->send(kernel);
 					_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 				}
-			}
-
-			void send(Kernel_pair* kernel) {
-				std::unique_lock<std::mutex> lock(_mutex);
-				auto result = _upstream.find(kernel->subordinate()->from());
-				if (result == _upstream.end()) {
-					std::stringstream msg;
-					msg << "Can not find upstream server " << kernel->from();
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-				result->second->send(kernel);
-				_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 			}
 
 			void add(Endpoint endpoint) {
@@ -322,13 +321,9 @@ namespace factory {
 				// return kernels to their parents with an error
 				while (!_pool.empty()) {
 					Kernel* k = _pool.front();
-					if (k->parent() == nullptr) {
-						delete k;
-					} else {
-						k->result(Result::ENDPOINT_NOT_CONNECTED);
-						Kernel_pair<Kernel>* pair = new Kernel_pair<Kernel>(k, k->parent());
-						factory_send(pair);
-					}
+					k->result(Result::ENDPOINT_NOT_CONNECTED);
+					k->principal(k->parent());
+					factory_send(k);
 					_pool.pop();
 				}
 			}

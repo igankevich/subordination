@@ -6,8 +6,8 @@ namespace factory {
 	
 //		typedef factory::components::Stochastic_round_robin Stochastic_round_robin;
 	
-		template<class K, class P>
-			using Round_robin = factory::components::Round_robin<K, P>;
+		template<class K>
+			using Round_robin = factory::components::Round_robin<K>;
 
 //		typedef factory::components::No_strategy No_strategy;
 
@@ -17,14 +17,13 @@ namespace factory {
 		template<class K>
 			using Simple_hashing = factory::components::Simple_hashing<K>;
 
-		typedef factory::components::Reflecting_kernel<
-			factory::components::Mobile<
-				factory::components::Kernel_base>>
-					Kernel;
+		typedef factory::components::Principal<
+			factory::components::Reflecting_kernel<
+				factory::components::Mobile<
+					factory::components::Basic_kernel>>>
+						Kernel;
 
 		typedef factory::components::Type<Kernel> Type;
-
-		typedef factory::components::Kernel_pair<Kernel> Kernel_pair;
 
 		typedef factory::components::Service<Kernel> Service;
 
@@ -52,14 +51,7 @@ namespace factory {
 			using Kernel_handler = factory::components::Kernel_handler<K, Pool, Type>;
 
 		template<class K>
-			using Broadcast_handler = factory::components::Broadcast_handler<K, Pool, Type>;
-
-		template<class K>
-			using Socket_server = factory::components::Socket_server<Server<K>, Kernel_handler<Kernel>, Kernel, Kernel_pair, Type>;
-
-		template<class K>
-			using Broadcast_server = factory::components::Broadcast_server<Server<K>,
-				Broadcast_handler<K>, K, Kernel_pair, Type>;
+			using Socket_server = factory::components::Socket_server<Server<K>, Kernel_handler<Kernel>, Kernel, Type>;
 
 		template<class K>
 			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
@@ -83,8 +75,7 @@ namespace factory {
 				Rserver<typename S::template Rprofiler<
 						typename S2::template Rprofiler<Base>>>;
 
-//		typedef Double_strategy<Round_robin<Kernel>, Simple_hashing<Kernel_pair>> My_strategy;
-		typedef Round_robin<Kernel, Kernel_pair> My_strategy;
+		typedef Round_robin<Kernel> My_strategy;
 
 //		template<class Base, class S>
 //			using Profiled_Dserver = typename S::template Rprofiler<Dserver<typename S::template Rprofiler_top<Base>>>;
@@ -120,7 +111,6 @@ namespace factory {
 
 		typedef Socket_server<Kernel> Remote_server;
 		typedef Socket_server<Discovery_kernel> Discovery_server;
-//		typedef Broadcast_server<Discovery_kernel> Discovery_server;
 	}
 
 	using namespace configuration;
