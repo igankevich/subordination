@@ -4,6 +4,7 @@ syntax: glob
 *.swp
 *.swo
 *~
+*.log
 aclocal.m4
 autom4te.cache
 autoscan.log
