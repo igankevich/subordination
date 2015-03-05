@@ -2,9 +2,19 @@ namespace factory {
 
 	enum struct Result: uint16_t {
 		SUCCESS = 0,
-		ENDPOINT_NOT_CONNECTED = 1,
-		NO_UPSTREAM_SERVERS_LEFT = 2,
-		UNDEFINED = 3
+		UNDEFINED = 1,
+		UNDEFINED_DOWNSTREAM = 2,
+		ENDPOINT_NOT_CONNECTED = 3,
+		NO_UPSTREAM_SERVERS_LEFT = 4,
+		NO_PRINCIPAL_FOUND = 5
+	};
+
+	template<class K>
+	struct No_principal_found {
+		explicit No_principal_found(K* k): _kernel(k) {}
+		K* kernel() { return _kernel; }
+	private:
+		K* _kernel;
 	};
 
 	namespace components {
@@ -68,14 +78,22 @@ namespace factory {
 
 			const This* principal() const { return _principal; }
 			This* principal() { return _principal; }
-			void principal(This* rhs) { _principal = rhs; }
+			void principal(This* rhs) {
+				_principal = rhs;
+				if (this->result() == Result::UNDEFINED) {
+					this->result(Result::UNDEFINED_DOWNSTREAM);
+				}
+			}
 
 			const This* parent() const { return _parent; }
 			This* parent() { return _parent; }
 			void parent(This* p) { _parent = p; }
 
 			bool moves_upstream() const { return this->result() == Result::UNDEFINED && principal() == nullptr; }
-			bool moves_downstream() const { return this->result() != Result::UNDEFINED || principal() != nullptr; }
+			bool moves_downstream() const {
+				return this->result() != Result::UNDEFINED
+					|| this->result() == Result::UNDEFINED_DOWNSTREAM
+					|| principal() != nullptr; }
 
 			void read_impl(Foreign_stream& in) {
 				if (_parent != nullptr) {
@@ -105,11 +123,13 @@ namespace factory {
 					}
 					_principal = Type<This>::instances().lookup(principal_id);
 					if (_principal == nullptr) {
-						std::stringstream str;
-						str << "Can not find principal kernel on this server, kernel id = "
-							<< principal_id
-							<< ", result = " << uint16_t(this->result());
-						throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
+						this->result(Result::NO_PRINCIPAL_FOUND);
+						throw No_principal_found<This>(this);
+//						std::stringstream str;
+//						str << "Can not find principal kernel on this server, kernel id = "
+//							<< principal_id
+//							<< ", result = " << uint16_t(this->result());
+//						throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
 					}
 				}
 			}

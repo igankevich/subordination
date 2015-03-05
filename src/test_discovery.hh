@@ -17,7 +17,9 @@ struct Discovery: public Mobile<Discovery> {
 
 	Discovery() {}
 
-	void act();
+	void act() {
+		commit(discovery_server());
+	}
 
 	void write_impl(Foreign_stream& out) {
 		if (_state == 0) {
@@ -63,6 +65,8 @@ struct Neighbour {
 	typedef uint32_t Metric;
 
 	Neighbour(Endpoint a, Time t): _addr(a) { sample(t); }
+	Neighbour(const Neighbour& rhs):
+		_t(rhs._t), _n(rhs._n), _addr(rhs._addr) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
 
@@ -80,6 +84,13 @@ struct Neighbour {
 	bool operator<(const Neighbour& rhs) const {
 		return metric() < rhs.metric()
 			|| (metric() == rhs.metric() && _addr < rhs._addr);
+	}
+
+	Neighbour& operator=(const Neighbour& rhs) {
+		_t = rhs._t;
+		_n = rhs._n;
+		_addr = rhs._addr;
+		return *this;
 	}
 
 //	bool operator==(const Neighbour& rhs) const { return _t == rhs._t && _n == rhs._n; }
@@ -103,6 +114,97 @@ struct Higher_metric {
 	bool operator()(Neighbour* x, Neighbour* y) const {
 		return *x < *y;
 	}
+};
+
+struct Ballot: public Mobile<Ballot> {
+
+	Ballot() {}
+
+	void source(Endpoint rhs) { _src = rhs; }
+	Endpoint source() const { return _src; }
+
+	void vote(bool rhs) { _vote = rhs ? 0 : 1; }
+	bool vote() const { return _vote == 0; }
+	
+	static void init_type(Type* t) {
+		t->id(3);
+	}
+
+	void write_impl(Foreign_stream& out) { out << _vote << _src; }
+	void read_impl(Foreign_stream& in) { in >> _vote >> _src; }
+
+private:
+	Endpoint _src;
+	uint8_t _vote = 0;
+};
+
+struct Candidate: public Identifiable<Kernel> {
+	
+	Candidate(Endpoint src, const std::set<Neighbour>& nb):
+		factory::Identifiable<Kernel>(2),
+		_source(src),
+		_neighbours(nb) {}
+	
+	void act() {
+		std::cout << "Starting poll " << _source << std::endl;
+		std::for_each(_neighbours.cbegin(), _neighbours.cend(),
+			[this] (const Neighbour& rhs)
+		{
+			Ballot* k = new Ballot;
+			k->parent(this);
+			k->principal(this); // the same id
+			k->source(_source);
+			discovery_server()->send(k, rhs.addr());
+		});
+	}
+
+	void react(factory::Kernel* k) {
+		Ballot* b = dynamic_cast<Ballot*>(k);
+		// ballot from another host
+		if (b->source() != _source) {
+			// the address of the neighbour with the highest rank is the same
+			// as the address of the candidate
+			Ballot* bb = new Ballot;
+			bb->parent(this);
+			bb->principal(this);
+			bb->from(b->from());
+			bb->source(b->source());
+			bb->vote(b->source() == _neighbours.cbegin()->addr());
+			bb->result(Result::SUCCESS);
+			discovery_server()->send(bb, b->from());
+		} else {
+			// returning ballot
+			if (b->result() == Result::SUCCESS) {
+				if (b->vote()) _num_for++; else _num_against++;
+			} else {
+				_num_neutral++;
+			}
+			// all ballots have been returned
+			if (_num_for + _num_against + _num_neutral == _neighbours.size()) {
+				std::cout << _source << " exit poll: "
+					<< _num_for << '+'
+					<< _num_against << '+'
+					<< _num_neutral << '/'
+					<< _neighbours.size()
+					<< std::endl;
+//				commit(the_server());
+			}
+		}
+		std::cout << _source << " preliminary: "
+			<< _num_for << '+'
+			<< _num_against << '+'
+			<< _num_neutral << '/'
+			<< _neighbours.size()
+			<< std::endl;
+	}
+
+private:
+	Endpoint _source;
+	std::set<Neighbour> _neighbours;
+	
+	uint32_t _num_for = 0;
+	uint32_t _num_against = 0;
+	uint32_t _num_neutral = 0;
 };
 
 struct Discoverer: public Identifiable<Kernel> {
@@ -190,13 +292,13 @@ struct Discoverer: public Identifiable<Kernel> {
 			}
 		} else {
 			_num_failed++;
-			auto result = _neighbours_map.find(d->dest());
-			if (result != _neighbours_map.end()) {
-				Neighbour* n = result->second;
-				_neighbours_map.erase(result->first);
-				_neighbours_set.erase(n);
-				delete n;
-			}
+//			auto result = _neighbours_map.find(d->dest());
+//			if (result != _neighbours_map.end()) {
+//				Neighbour* n = result->second;
+//				_neighbours_map.erase(result->first);
+//				_neighbours_set.erase(n);
+//				delete n;
+//			}
 		}
 //		std::cout << "Returned: "
 //			<< _num_succeeded + _num_failed << '/' 
@@ -211,18 +313,22 @@ struct Discoverer: public Identifiable<Kernel> {
 			<< num_failed()
 			<< '/'
 			<< num_neighbours()
+			<< ' '
+			<< min_samples()
 			<< std::endl;
 
 		if (_num_succeeded + _num_failed == _num_neighbours) {
+			
+			std::cout << _source << ": end of attempt #" << _attempts << std::endl;
 
-			std::cout
-				<< "Result = "
-				<< num_succeeded()
-				<< '+'
-				<< num_failed()
-				<< '/'
-				<< num_neighbours()
-				<< std::endl;
+//			std::cout
+//				<< "Result = "
+//				<< num_succeeded()
+//				<< '+'
+//				<< num_failed()
+//				<< '/'
+//				<< num_neighbours()
+//				<< std::endl;
 
 //			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
 			if (num_succeeded() == NUM_SERVERS-1 && min_samples() == MIN_SAMPLES) {
@@ -230,9 +336,15 @@ struct Discoverer: public Identifiable<Kernel> {
 				std::cout << "Neighbours:" << std::endl;
 				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
-				std::this_thread::sleep_for(SHUTDOWN_DELAY);
-				std::cout << "Terminating " << _source << std::endl;
-				commit(the_server());
+//				std::this_thread::sleep_for(SHUTDOWN_DELAY);
+				std::set<Neighbour> neighbours;
+				std::for_each(_neighbours_set.cbegin(), _neighbours_set.cend(),
+					[&neighbours] (const Neighbour* rhs)
+				{
+					neighbours.insert(*rhs);
+				});
+				this->upstream(the_server(), new Candidate(_source, neighbours));
+//				commit(the_server());
 			} else {
 				act();
 			}
@@ -284,18 +396,6 @@ private:
 	static const uint32_t MIN_SAMPLES = 5;
 	static const uint32_t MAX_SAMPLES = 5;
 };
-
-void Discovery::act() {
-	Kernel* k = Type::instances().lookup(1);
-	if (k != nullptr) {
-		Discoverer* discoverer = dynamic_cast<Discoverer*>(k);
-		const Neighbour* candidate = discoverer->leader_candidate();
-	}
-//	std::cout << "Discovery! " << k << std::endl;
-	commit(discovery_server());
-}
-
-
 
 
 struct App {
@@ -355,7 +455,8 @@ struct App {
 				the_server()->start();
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();
-				factory_log(Level::SERVER) << "Sleeping." << std::endl;
+//				factory_log(Level::SERVER) << "Sleeping." << std::endl;
+				std::this_thread::sleep_for(SHUTDOWN_DELAY);
 				the_server()->send(new Discoverer(endpoint, port_range));
 				__factory.wait();
 			} catch (std::exception& e) {

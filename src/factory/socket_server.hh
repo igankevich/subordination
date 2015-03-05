@@ -43,11 +43,12 @@ namespace factory {
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 						_upstream[endpoint] = handler;
 					} else {
-						if (event.is_error()) {
-							event.user_data()->valid();
+						if (event.is_error() || !event.user_data()->valid()) {
+//							event.user_data()->valid();
 							factory_log(Level::SERVER) << "Invalid socket" << std::endl;
 							remove(event.user_data());
 							event.user_data()->recover_kernels();
+							event.delete_user_data();
 						} else {
 							event.user_data()->handle_event(event, [this, &event] (bool overflow) {
 //								std::unique_lock<std::mutex> lock(_mutex);
@@ -61,6 +62,7 @@ namespace factory {
 							if (event.is_closing()) {
 								remove(event.user_data());
 								event.user_data()->recover_kernels();
+								event.delete_user_data();
 							}
 						}
 					}
@@ -315,6 +317,10 @@ namespace factory {
 			{
 			}
 
+			~Kernel_handler() {
+				recover_kernels();
+			}
+
 			void recover_kernels() {
 				factory_log(Level::HANDLER) << "Kernels left: " << _pool.size() << std::endl;
 				
@@ -346,7 +352,11 @@ namespace factory {
 						_stream.fill<Socket>(_socket);
 						if (_stream.full()) {
 							factory_log(Level::HANDLER) << "Recv " << _ostream << std::endl;
-							Type::types().read_and_send_object(_stream, _endpoint);
+							try {
+								Type::types().read_and_send_object(_stream, _endpoint);
+							} catch (No_principal_found<Kernel>& err) {
+								this->send(err.kernel());
+							}
 							_stream.reset();
 						}
 					} catch (Error& err) {
