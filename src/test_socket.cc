@@ -36,6 +36,7 @@ struct Test_socket: public Mobile<Test_socket> {
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
 		if (shutdown_counter == 1) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			__factory.stop();
 		}
 	}

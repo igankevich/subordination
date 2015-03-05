@@ -2,26 +2,16 @@ namespace factory {
 
 	inline namespace configuration {
 
+		typedef
+			factory::components::Principal<
+			factory::components::Mobile<
+			factory::components::Basic_kernel>>
+				Kernel;
+
 		typedef factory::components::Tetris Tetris;
-	
-//		typedef factory::components::Stochastic_round_robin Stochastic_round_robin;
-	
-		template<class K>
-			using Round_robin = factory::components::Round_robin<K>;
+		typedef factory::components::Round_robin<Kernel> Round_robin;
+		typedef factory::components::Simple_hashing<Kernel> Simple_hashing;
 
-//		typedef factory::components::No_strategy No_strategy;
-
-//		template<class S1, class S2>
-//			using Double_strategy = factory::components::Combined_strategy<S1, S2>;
-	
-		template<class K>
-			using Simple_hashing = factory::components::Simple_hashing<K>;
-
-		typedef factory::components::Principal<
-			factory::components::Reflecting_kernel<
-				factory::components::Mobile<
-					factory::components::Basic_kernel>>>
-						Kernel;
 
 		typedef factory::components::Type<Kernel> Type;
 
@@ -75,13 +65,12 @@ namespace factory {
 				Rserver<typename S::template Rprofiler<
 						typename S2::template Rprofiler<Base>>>;
 
-		typedef Round_robin<Kernel> My_strategy;
 
 //		template<class Base, class S>
 //			using Profiled_Dserver = typename S::template Rprofiler<Dserver<typename S::template Rprofiler_top<Base>>>;
 
 		typedef factory::components::Server_stack<
-			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, My_strategy>>, My_strategy>
+			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
 //			Profiled_Iserver2<Iserver<Server<Kernel>, Profiled_Rserver2<Server<Kernel>, Round_robin, Simple_hashing<Kernel_pair>>>, Round_robin, Simple_hashing<Kernel_pair>>,
 //			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>,
 //			Profiled_Iserver<Server<Kernel_pair>, Profiled_Dserver<Server<Kernel_pair>, Simple_hashing>, Simple_hashing>,

@@ -1,6 +1,6 @@
 namespace factory {
 
-	enum struct Result: uint32_t {
+	enum struct Result: uint16_t {
 		SUCCESS = 0,
 		ENDPOINT_NOT_CONNECTED = 1,
 		NO_UPSTREAM_SERVERS_LEFT = 2,
@@ -20,9 +20,6 @@ namespace factory {
 
 			Result result() const { return _result; }
 			void result(Result rhs) { _result = rhs; }
-
-			bool moves_upstream() const { return _result == Result::UNDEFINED; }
-			bool moves_downstream() const { return _result != Result::UNDEFINED; }
 
 		private:
 			Result _result;
@@ -56,16 +53,88 @@ namespace factory {
 
 		};
 
-		// TODO: make this class an aspect of a Kernel rather than a separate entity
 		template<class A>
-		struct Principal: public A {
+		struct Principal: public Kernel_link<Principal<A>, A> {
 
 			typedef Principal<A> This;
+			typedef Transient_kernel<This> Transient;
 
-			Principal(): _principal(nullptr) {}
+			Principal(): _parent(nullptr), _principal(nullptr) {}
 
-			const A* principal() const { return _principal; }
-			void principal(A* rhs) { _principal = rhs; }
+			~Principal() {
+				del(_parent);
+				del(_principal);
+			}
+
+			const This* principal() const { return _principal; }
+			This* principal() { return _principal; }
+			void principal(This* rhs) { _principal = rhs; }
+
+			const This* parent() const { return _parent; }
+			This* parent() { return _parent; }
+			void parent(This* p) { _parent = p; }
+
+			bool moves_upstream() const { return this->result() == Result::UNDEFINED && principal() == nullptr; }
+			bool moves_downstream() const { return this->result() != Result::UNDEFINED || principal() != nullptr; }
+
+			void read_impl(Foreign_stream& in) {
+				if (_parent != nullptr) {
+					std::stringstream s;
+					s << "Parent is not null while reading from the data stream. Parent=";
+					s << _parent;
+					throw Error(s.str(), __FILE__, __LINE__, __func__);
+				}
+				Id parent_id;
+				in >> parent_id;
+				factory_log(Level::KERNEL) << "READING PARENT " << parent_id << std::endl;
+				if (parent_id != ROOT_ID) {
+					_parent = new Transient(parent_id);
+				}
+				if (this->moves_downstream()) {
+					if (_principal != nullptr) {
+						throw Error("Principal kernel is not null while reading from the data stream.",
+							__FILE__, __LINE__, __func__);
+					}
+					Id principal_id;
+					in >> principal_id;
+					factory_log(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
+					// TODO: move this code to server and create instance repository in each server.
+					if (principal_id == ROOT_ID) {
+						throw Error("Principal of a mobile kernel can not be null.",
+							__FILE__, __LINE__, __func__);
+					}
+					_principal = Type<This>::instances().lookup(principal_id);
+					if (_principal == nullptr) {
+						std::stringstream str;
+						str << "Can not find principal kernel on this server, kernel id = "
+							<< principal_id
+							<< ", result = " << uint16_t(this->result());
+						throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
+					}
+				}
+			}
+
+			void write_impl(Foreign_stream& out) {
+				factory_log(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
+				out << (parent() == nullptr ? ROOT_ID : parent()->id());
+				if (this->moves_downstream()) {
+					if (principal() == nullptr) {
+						throw Durability_error("Principal is null while writing a kernel to a stream.",
+							__FILE__, __LINE__, __func__);
+					}
+					Id id = principal()->id();
+					factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << id << std::endl;
+					out << id;
+				}
+			}
+
+			virtual void react(This*) {
+				factory_log(Level::KERNEL) << "Empty react in " << std::endl;
+			}
+
+			virtual void error(This* rhs) { react(rhs); }
+
+			virtual const Type<This>* type() const { return nullptr; }
 
 			void run_act() {
 				switch (this->result()) {
@@ -74,18 +143,22 @@ namespace factory {
 						this->result(Result::SUCCESS);
 						break;
 					default:
-						if (principal() == nullptr) {
-							if (this->parent() == principal()) {
+						factory_log(Level::KERNEL) << "Result is defined" << std::endl;
+						if (this->principal() == nullptr) {
+							factory_log(Level::KERNEL) << "Principal is null" << std::endl;
+							if (this->parent() == this->principal()) {
 								delete this;
 								factory_log(Level::KERNEL) << "SHUTDOWN" << std::endl;
 								factory_stop();
 							}
 						} else {
-							bool del = *principal() == *this->parent();
+							factory_log(Level::KERNEL) << "Principal is not null" << std::endl;
+							bool del = *this->principal() == *this->parent();
 							if (this->result() == Result::SUCCESS) {
-								_principal->react(this);
+								factory_log(Level::KERNEL) << "Principal react" << std::endl;
+								this->principal()->react(this);
 							} else {
-								_principal->error(this);
+								this->principal()->error(this);
 							}
 							if (del) {
 								delete this;
@@ -93,35 +166,7 @@ namespace factory {
 						}
 				}
 			}
-
-			void read(Foreign_stream& in) {
-				if (_principal != nullptr) {
-					throw Error("Principal kernel is not null while reading from the data stream.",
-						__FILE__, __LINE__, __func__);
-				}
-				Id principal_id;
-				in >> principal_id;
-				factory_log(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
-				// TODO: move this code to server and create instance repository in each server.
-				if (principal_id == ROOT_ID) {
-					throw Error("Principal of a mobile kernel can not be null.",
-						__FILE__, __LINE__, __func__);
-				}
-				_principal = Type<A>::instances().lookup(principal_id);
-				if (_principal == nullptr) {
-					std::stringstream str;
-					str << "Can not find principal kernel on this server, kernel id = " << principal_id;
-					throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
-				}
-			}
-
-			void write(Foreign_stream& out) {
-				factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << principal()->id() << std::endl;
-				out << _principal->id();
-			}
 		
-			virtual const Type<Principal<A>>* type() const { return nullptr; }
-
 		public:
 			template<class S>
 			inline void upstream(S* this_server, This* a) {
@@ -137,8 +182,9 @@ namespace factory {
 			}
 
 			template<class S>
-			inline void downstream(S* this_server, This* a, A* b) {
+			inline void downstream(S* this_server, This* a, This* b) {
 				a->principal(b);
+				this->result(Result::SUCCESS);
 				this_server->send(a);
 			}
 
@@ -148,68 +194,15 @@ namespace factory {
 			}
 
 		private:
-			A* _principal;
-		};
 
-		template<class A>
-		class Reflecting_kernel: public Kernel_link<Reflecting_kernel<A>, A> {
-		public:
-			typedef Transient_kernel<Reflecting_kernel<A>> Transient;
-
-			Reflecting_kernel(): _parent(nullptr), _delete_parent(false) {}
-
-			~Reflecting_kernel() {
-				if (_parent != nullptr && _delete_parent) {
-					delete _parent;
-				}
-			}
-			virtual void react(Reflecting_kernel<A>*) {
-//				factory_log(Level::KERNEL) << "Empty react in " << demangle_type_name(*this) << std::endl;
-			}
-			virtual void error(Reflecting_kernel<A>* rhs) {
-				react(rhs);
-			}
-
-//			template<class S>
-//			inline void react_to(Reflecting_kernel<A>* par, S* this_server) {
-//				if (par == nullptr) {
-//					this_server->stop();
-//				} else {
-//					par->react(this);
-//				}
-//				if (_parent == par) {
-//					delete this;
-//				}
-//			}
-			const Reflecting_kernel<A>* parent() const { return _parent; }
-			Reflecting_kernel<A>* parent() { return _parent; }
-			void parent(Reflecting_kernel<A>* p) { _parent = p; }
-
-			void read_impl(Foreign_stream& in) {
-				if (_parent != nullptr) {
-					std::stringstream s;
-					s << "Parent is not null while reading from the data stream. Parent=";
-					s << _parent;
-					throw Error(s.str(), __FILE__, __LINE__, __func__);
-				}
-				Id parent_id;
-				in >> parent_id;
-				factory_log(Level::KERNEL) << "READING PARENT " << parent_id << std::endl;
-				if (parent_id != ROOT_ID) {
-					_parent = new Transient(parent_id);
-					_delete_parent = true;
+			void del(This* ref) {
+				if (ref != nullptr && ref->is_transient()) {
+					delete ref;
 				}
 			}
 
-			void write_impl(Foreign_stream& out) {
-				factory_log(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
-				out << (parent() == nullptr ? ROOT_ID : parent()->id());
-			}
-
-		
-		private:
-			Reflecting_kernel<A>* _parent;
-			bool _delete_parent;
+			This* _parent;
+			This* _principal;
 		};
 
 		template<class A>
@@ -222,7 +215,12 @@ namespace factory {
 		template<class K>
 		struct Mobile: public K {
 
-			virtual void read(Foreign_stream& ) { 
+			virtual void read(Foreign_stream& in) { 
+				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
+				uint16_t r;
+				in >> r;
+				this->result(Result(r));
+				factory_log(Level::KERNEL) << "Reading result = " << r << std::endl;
 //				Id i;
 //				in >> i;
 //				id(i);
@@ -231,7 +229,11 @@ namespace factory {
 //				from(fr);
 			}
 
-			virtual void write(Foreign_stream& ) {
+			virtual void write(Foreign_stream& out) {
+				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
+				uint16_t r = static_cast<uint16_t>(this->result());
+				factory_log(Level::KERNEL) << "Writing result = " << r << std::endl;
+				out << r;
 //				out << id();
 //				out << from();
 			}
@@ -242,7 +244,6 @@ namespace factory {
 			virtual Id id() const { return ROOT_ID; }
 			virtual void id(Id) {}
 
-			virtual Resource resource() const { return ""; }
 			virtual Endpoint from() const { return Endpoint(); }
 			virtual void from(Endpoint) {}
 

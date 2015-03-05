@@ -321,6 +321,10 @@ struct App {
 						return execute(argv[0], endpoint, port_range);
 					});
 				}
+
+				for (int i=0; i<NUM_SERVERS; ++i) {
+					std::cout << "Forked " << processes[i].id() << std::endl;
+				}
 				retval = processes.wait();
 
 				Process_id p1 = processes[0].id();
