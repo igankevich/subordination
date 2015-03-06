@@ -4,11 +4,15 @@ using namespace factory;
 
 typedef Interval<Port> Port_range;
 
-const Port DEFAULT_PORT = 60000;
+const Port DEFAULT_PORT = 10000;
 const int PORT_INCREMENT = 1;
 const int NUM_SERVERS = 3;
 
-const std::chrono::milliseconds SHUTDOWN_DELAY(1000);
+std::vector<Endpoint> NEIGHBOURS = {
+	Endpoint("127.0.0.1", DEFAULT_PORT),
+	Endpoint("127.0.0.2", DEFAULT_PORT),
+	Endpoint("127.0.0.3", DEFAULT_PORT)
+};
 
 struct Discovery: public Mobile<Discovery> {
 
@@ -245,40 +249,57 @@ struct Discoverer: public Identifiable<Kernel> {
 //		std::cout << "Hello world from " << ::getpid() << ", " << _source << std::endl;
 		std::cout << _source << ": attempt #" << _attempts << std::endl;
 
-		std::vector<Port_range> neighbours = {
-			Port_range(_port_range.start(), _source.port()),
-			Port_range(_source.port() + 1, _port_range.end())
-		};
-
-		// count neighbours
-//		_num_neighbours = std::accumulate(neighbours.cbegin(), neighbours.cend(), uint32_t(0),
-//			[] (uint32_t sum, const Port_range& rhs)
-//		{
-//			return sum + rhs.end() - rhs.start();
-//		});
+//		std::vector<Port_range> neighbours = {
+//			Port_range(_port_range.start(), _source.port()),
+//			Port_range(_source.port() + 1, _port_range.end())
+//		};
 
 		std::vector<Discovery*> kernels;
 
-		// determine hosts to poll
-		std::for_each(neighbours.cbegin(), neighbours.cend(),
-			[this, &kernels] (const Port_range& range)
+
+		std::for_each(NEIGHBOURS.cbegin(), NEIGHBOURS.cend(),
+			[this, &kernels] (const Endpoint& ep)
 		{
-			typedef Port I;
-			I st = range.start();
-			I en = range.end();
-			for (I a=st; a<en/* && a<st+10*/; ++a) {
-				Endpoint ep(_source.host(), a);
-				Neighbour* n = find_neighbour(ep);
-				if (n == nullptr || n->num_samples() < MAX_SAMPLES) {
-					factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
-					Discovery* k = new Discovery;
-					k->parent(this);
-					k->dest(ep);
-					k->source(_source);
-					kernels.push_back(k);
-				}
+			Neighbour* n = find_neighbour(ep);
+			std::cout 
+				<< _source
+				<< ": sending to " << ep << ' '
+				<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
+			if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
+				factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
+				Discovery* k = new Discovery;
+				k->parent(this);
+				k->dest(ep);
+				k->source(_source);
+				kernels.push_back(k);
 			}
 		});
+
+
+		// determine hosts to poll
+//		std::for_each(neighbours.cbegin(), neighbours.cend(),
+//			[this, &kernels] (const Port_range& range)
+//		{
+//			typedef Port I;
+//			I st = range.start();
+//			I en = range.end();
+//			for (I a=st; a<en/* && a<st+10*/; ++a) {
+//				Endpoint ep(_source.host(), a);
+//				Neighbour* n = find_neighbour(ep);
+//				std::cout 
+//					<< _source
+//					<< ": sending to " << ep << ' '
+//					<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
+//				if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
+//					factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
+//					Discovery* k = new Discovery;
+//					k->parent(this);
+//					k->dest(ep);
+//					k->source(_source);
+//					kernels.push_back(k);
+//				}
+//			}
+//		});
 
 		// send discovery messages
 		factory_log(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
@@ -286,7 +307,12 @@ struct Discoverer: public Identifiable<Kernel> {
 		for (Discovery* d : kernels) {
 			discovery_server()->send(d, d->dest());
 		}
-//		commit(the_server());
+
+		// repeat when nothing is discovered
+		if (_num_neighbours == 0) {
+			throw "No neighbours to update";
+//			the_server()->send(this);
+		}
 	}
 
 	void react(Kernel* k) {
@@ -332,29 +358,18 @@ struct Discoverer: public Identifiable<Kernel> {
 			
 			std::cout << _source << ": end of attempt #" << _attempts << std::endl;
 
-//			std::cout
-//				<< "Result = "
-//				<< num_succeeded()
-//				<< '+'
-//				<< num_failed()
-//				<< '/'
-//				<< num_neighbours()
-//				<< std::endl;
-
-//			if (num_succeeded() == NUM_SERVERS-1 || _attempts == MAX_ATTEMPTS) {
-			if (num_succeeded() == NUM_SERVERS-1 && min_samples() == MIN_SAMPLES) {
-//			if (_attempts == MAX_ATTEMPTS) {
+//			if (num_succeeded() == NUM_SERVERS-1 && min_samples() == MIN_SAMPLES) {
+			if (min_samples() == MIN_SAMPLES) {
 				std::cout << "Neighbours:" << std::endl;
 				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
-//				std::this_thread::sleep_for(SHUTDOWN_DELAY);
 				std::set<Neighbour> neighbours;
 				std::for_each(_neighbours_set.cbegin(), _neighbours_set.cend(),
 					[&neighbours] (const Neighbour* rhs)
 				{
 					neighbours.insert(*rhs);
 				});
-				this->upstream(the_server(), new Candidate(_source, neighbours));
+//				this->upstream(the_server(), new Candidate(_source, neighbours));
 //				commit(the_server());
 			} else {
 				act();
@@ -414,10 +429,11 @@ struct App {
 		int retval = 0;
 		if (argc < 2) {
 			try {
-				std::vector<Endpoint> servers(NUM_SERVERS);
-				for (int i=0; i<NUM_SERVERS; ++i) {
-					servers[i] = Endpoint("127.0.0.1", DEFAULT_PORT + i*PORT_INCREMENT);
-				}
+				std::vector<Endpoint> servers = NEIGHBOURS;
+//				std::vector<Endpoint> servers(NUM_SERVERS);
+//				for (int i=0; i<NUM_SERVERS; ++i) {
+//					servers[i] = Endpoint("127.0.0.1", DEFAULT_PORT + i*PORT_INCREMENT);
+//				}
 				Port_range port_range(DEFAULT_PORT, DEFAULT_PORT + (NUM_SERVERS-1)*PORT_INCREMENT + 1);
 				Process_group processes;
 				for (int i=0; i<NUM_SERVERS; ++i) {
@@ -466,8 +482,6 @@ struct App {
 				the_server()->start();
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();
-//				factory_log(Level::SERVER) << "Sleeping." << std::endl;
-				std::this_thread::sleep_for(SHUTDOWN_DELAY);
 				the_server()->send(new Discoverer(endpoint, port_range));
 				__factory.wait();
 			} catch (std::exception& e) {

@@ -4,7 +4,8 @@ namespace factory {
 		Server_socket() {}
 		explicit Server_socket(const Socket& rhs): Socket(rhs) {}
 		explicit Server_socket(const Endpoint& endp, Socket_type type = RELIABLE_SOCKET) {
-			this->listen(endp, type);
+			this->bind(endp, type);
+			this->listen();
 		}
 //		Server_socket(const std::string& host, Port port) { this->listen(host, port); }
 		~Server_socket() { this->close(); }

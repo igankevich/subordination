@@ -220,6 +220,12 @@ namespace factory {
 						Sub* kernel = new Sub;
 						kernel->read(in);
 						kernel->from(from);
+						std::cout
+							<< ::getpid() << ": "
+							<< "from " << kernel->from()
+							<< ", "
+							<< (kernel->moves_downstream() ? "downstream" : "upstream")
+							<< std::endl;
 //						std::clog << "From = " << kernel->from() << std::endl;
 						factory_send(kernel);
 					};

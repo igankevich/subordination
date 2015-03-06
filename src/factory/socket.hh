@@ -12,30 +12,29 @@ namespace factory {
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
-		Socket(): _socket(-1) {}
+		Socket(): _socket(create_socket()) {}
 		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
-		void listen(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
-//			struct sockaddr_in addr;
-//			e.to_sockaddr(&addr);
-//			init_socket_address(&addr, e.host().c_str(), e.port());
-			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
+		int create_socket() {
+			return check("socket()", ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
+		}
+
+		void bind(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
+//			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
 			factory_log(Level::COMPONENT) << "Binding to " << e << std::endl;
-			if (type == RELIABLE_SOCKET) {
-				check("listen()", ::listen(_socket, SOMAXCONN));
-				factory_log(Level::COMPONENT) << "Listening on " << e << std::endl;
-			}
+		}
+		
+		void listen() {
+			check("listen()", ::listen(_socket, SOMAXCONN));
+			factory_log(Level::COMPONENT) << "Listening on " << name() << std::endl;
 		}
 
 		void connect(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
 			try {
-//				struct sockaddr_in addr;
-//				init_socket_address(&addr, e.host().c_str(), e.port());
-//				e.to_sockaddr(&addr);
-				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
+//				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
 				factory_log(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
@@ -86,7 +85,11 @@ namespace factory {
 			// then socket's local port can be chosed to be the same as the port of the service.
 			// If this happens the socket connects to itself and sends and replies to
 			// its own messages. This conditional solves the issue.
-			if (ret == 0 && name() == peer_name()) {
+			try {
+				if (ret == 0 && name() == peer_name()) {
+					ret = -1;
+				}
+			} catch (std::system_error& err) {
 				ret = -1;
 			}
 			return ret;

@@ -135,15 +135,19 @@ namespace factory {
 			}
 
 			void write_impl(Foreign_stream& out) {
-				factory_log(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
+//				factory_log(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
 				out << (parent() == nullptr ? ROOT_ID : parent()->id());
+				factory_log(Level::KERNEL)
+					<< "Writing "
+					<< (this->moves_downstream() ? "downstream" : "upstream")
+					<< std::endl;
 				if (this->moves_downstream()) {
 					if (principal() == nullptr) {
 						throw Durability_error("Principal is null while writing a kernel to a stream.",
 							__FILE__, __LINE__, __func__);
 					}
 					Id id = principal()->id();
-					factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << id << std::endl;
+//					factory_log(Level::KERNEL) << "WRITING PRINCIPAL = " << id << std::endl;
 					out << id;
 				}
 			}
@@ -160,7 +164,7 @@ namespace factory {
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						this->act();
-						this->result(Result::SUCCESS);
+//						this->result(Result::SUCCESS);
 						break;
 					default:
 						factory_log(Level::KERNEL) << "Result is defined" << std::endl;

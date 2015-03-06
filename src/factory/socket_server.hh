@@ -39,9 +39,11 @@ namespace factory {
 						std::pair<Socket,Endpoint> pair = _listener_socket.accept();
 						Socket socket = pair.first;
 						Endpoint endpoint = pair.second;
+						std::unique_lock<std::mutex> lock(_mutex);
 						Handler* handler = new Handler(socket, endpoint);
-						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 						_upstream[endpoint] = handler;
+						lock.unlock();
+						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 					} else {
 						if (event.is_error() || !event.user_data()->valid()) {
 //							event.user_data()->valid();
@@ -132,8 +134,9 @@ namespace factory {
 //			}
 
 			void socket(Endpoint endpoint) {
-				_listener_socket.listen(endpoint);
+				_listener_socket.bind(endpoint);
 				_poller.register_socket(Event(DEFAULT_EVENTS, new Handler(_listener_socket, endpoint)));
+				_listener_socket.listen();
 			}
 
 			void start() {
@@ -175,10 +178,10 @@ namespace factory {
 
 			Handler* add_endpoint(Endpoint endpoint, int events = DEFAULT_EVENTS) {
 				Socket socket;
-				socket.connect(endpoint);
 				Handler* handler = new Handler(socket, endpoint);
-				_poller.register_socket(Event(events, handler));
 				_upstream[endpoint] = handler;
+				_poller.register_socket(Event(events, handler));
+				socket.connect(endpoint);
 //				factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
 				return handler;
 			}
@@ -190,7 +193,7 @@ namespace factory {
 			std::thread _thread;
 			std::mutex _mutex;
 
-			static const int DEFAULT_EVENTS = EPOLLET | EPOLLRDHUP | EPOLLIN;
+			static const int DEFAULT_EVENTS = EPOLLRDHUP | EPOLLIN;
 		};
 
 //	template<unsigned int N = 128>
