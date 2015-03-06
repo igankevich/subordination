@@ -12,7 +12,7 @@ namespace factory {
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
-		Socket(): _socket(0) {}
+		Socket(): _socket(-1) {}
 		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
@@ -56,12 +56,12 @@ namespace factory {
 		}
 
 		void close() {
-			if (_socket > 0) {
+			if (_socket >= 0) {
 				factory_log(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
 			}
-			_socket = 0;
+			_socket = -1;
 		}
 
 		void flags(Flag f) { ::fcntl(_socket, F_SETFL, flags() | f); }
@@ -74,7 +74,7 @@ namespace factory {
 
 		int error() const {
 			int ret = 0;
-			if (_socket <= 0) {
+			if (_socket < 0) {
 				ret = -1;
 			} else {
 				socklen_t sz = sizeof(ret);
@@ -82,7 +82,28 @@ namespace factory {
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
 				factory_log(Level::COMPONENT) << "getsockopt(): " << ::strerror(ret) << std::endl;
 			}
+			// If one connects to localhost to a different port and the service is offline
+			// then socket's local port can be chosed to be the same as the port of the service.
+			// If this happens the socket connects to itself and sends and replies to
+			// its own messages. This conditional solves the issue.
+			if (ret == 0 && name() == peer_name()) {
+				ret = -1;
+			}
 			return ret;
+		}
+
+		Endpoint name() const {
+			struct ::sockaddr_in addr;
+			socklen_t len = sizeof(addr);
+			check("getsockname()", ::getsockname(_socket, (struct ::sockaddr*)&addr, &len));
+			return Endpoint(&addr);
+		}
+
+		Endpoint peer_name() const {
+			struct ::sockaddr_in addr;
+			socklen_t len = sizeof(addr);
+			check("getsockname()", ::getpeername(_socket, (struct ::sockaddr*)&addr, &len));
+			return Endpoint(&addr);
 		}
 
 //		Socket_type type() const {
@@ -100,13 +121,13 @@ namespace factory {
 			return ::write(_socket, buf, size);
 		}
 
-		Endpoint from() const {
-			char dummy;
-			struct ::sockaddr_in addr;
-			socklen_t addr_len = sizeof(addr);
-			check("recvfrom()", ::recvfrom(_socket, &dummy, 0, MSG_PEEK, (struct ::sockaddr*)&addr, &addr_len));
-			return Endpoint(&addr);
-		}
+//		Endpoint from() const {
+//			char dummy;
+//			struct ::sockaddr_in addr;
+//			socklen_t addr_len = sizeof(addr);
+//			check("recvfrom()", ::recvfrom(_socket, &dummy, 0, MSG_PEEK, (struct ::sockaddr*)&addr, &addr_len));
+//			return Endpoint(&addr);
+//		}
 
 //		void send(Foreign_stream& packet) {
 //			packet.insert_size();
@@ -123,7 +144,7 @@ namespace factory {
 			return out << rhs._socket;
 		}
 
-		bool is_valid() const { return _socket > 0; }
+//		bool is_valid() const { return _socket >= 0; }
 
 	private:
 

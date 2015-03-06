@@ -240,6 +240,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		_attempts++;
 		_num_succeeded = 0;
 		_num_failed = 0;
+		_num_neighbours = 0;
 
 //		std::cout << "Hello world from " << ::getpid() << ", " << _source << std::endl;
 		std::cout << _source << ": attempt #" << _attempts << std::endl;
@@ -250,16 +251,17 @@ struct Discoverer: public Identifiable<Kernel> {
 		};
 
 		// count neighbours
-		_num_neighbours = std::accumulate(neighbours.cbegin(), neighbours.cend(), uint32_t(0),
-			[] (uint32_t sum, const Port_range& rhs)
-		{
-			return sum + rhs.end() - rhs.start();
-		});
+//		_num_neighbours = std::accumulate(neighbours.cbegin(), neighbours.cend(), uint32_t(0),
+//			[] (uint32_t sum, const Port_range& rhs)
+//		{
+//			return sum + rhs.end() - rhs.start();
+//		});
 
-		// send discovery messages
-		factory_log(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
+		std::vector<Discovery*> kernels;
+
+		// determine hosts to poll
 		std::for_each(neighbours.cbegin(), neighbours.cend(),
-			[this] (const Port_range& range)
+			[this, &kernels] (const Port_range& range)
 		{
 			typedef Port I;
 			I st = range.start();
@@ -268,20 +270,29 @@ struct Discoverer: public Identifiable<Kernel> {
 				Endpoint ep(_source.host(), a);
 				Neighbour* n = find_neighbour(ep);
 				if (n == nullptr || n->num_samples() < MAX_SAMPLES) {
+					factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
 					Discovery* k = new Discovery;
 					k->parent(this);
 					k->dest(ep);
 					k->source(_source);
-					discovery_server()->send(k, ep);
+					kernels.push_back(k);
 				}
 			}
 		});
+
+		// send discovery messages
+		factory_log(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
+		_num_neighbours = kernels.size();
+		for (Discovery* d : kernels) {
+			discovery_server()->send(d, d->dest());
+		}
 //		commit(the_server());
 	}
 
 	void react(Kernel* k) {
 		Discovery* d = dynamic_cast<Discovery*>(k);
-		if (k->result() == Result::SUCCESS) {
+		if (d->result() == Result::SUCCESS) {
+			std::cout << _source << ": success for " << d->dest() << std::endl;
 			_num_succeeded++;
 			if (_neighbours_map.find(d->dest()) == _neighbours_map.end()) {
 				Neighbour* n = new Neighbour(d->dest(), d->time());

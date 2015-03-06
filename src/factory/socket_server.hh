@@ -70,8 +70,8 @@ namespace factory {
 			}
 
 			void send(Kernel* kernel, Endpoint endpoint) {
-				std::unique_lock<std::mutex> lock(_mutex);
 				factory_log(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
+				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _upstream.find(endpoint);
 				if (result == _upstream.end()) {
 					Handler* handler = add_endpoint(endpoint, DEFAULT_EVENTS);
@@ -384,6 +384,7 @@ namespace factory {
 								_ostream << type->id();
 								kernel->write(_ostream);
 								_ostream.write_size();
+								delete kernel;
 								factory_log(Level::HANDLER) << "Send " << _ostream << std::endl;
 							}
 							factory_log(Level::HANDLER) << "Flushing" << std::endl;

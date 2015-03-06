@@ -73,7 +73,7 @@ namespace factory {
 
 			~Principal() {
 				del(_parent);
-				del(_principal);
+//				del(_principal);
 			}
 
 			const This* principal() const { return _principal; }
@@ -178,9 +178,11 @@ namespace factory {
 								factory_log(Level::KERNEL) << "Principal react" << std::endl;
 								this->principal()->react(this);
 							} else {
+								factory_log(Level::KERNEL) << "Principal error" << std::endl;
 								this->principal()->error(this);
 							}
 							if (del) {
+								factory_log(Level::KERNEL) << "Deleting kernel" << std::endl;
 								delete this;
 							}
 						}

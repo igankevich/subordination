@@ -5,6 +5,7 @@ syntax: glob
 *.swo
 *~
 *.log
+*.trs
 aclocal.m4
 autom4te.cache
 autoscan.log
