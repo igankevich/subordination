@@ -7,11 +7,11 @@ namespace factory {
 			void process_kernel(Kernel*) {}
 		};
 
-		template<class Server, class Handler, class Kernel, class Type>
-		struct Socket_server: public Server_link<Socket_server<Server, Handler, Kernel, Type>, Server> {
+		template<class Server, class Remote_server, class Kernel, class Type>
+		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Type>, Server> {
 			
-			typedef Socket_server<Server, Handler, Kernel, Type> This;
-			typedef typename Event_poller<Handler>::E Event;
+			typedef Socket_server<Server, Remote_server, Kernel, Type> This;
+			typedef typename Event_poller<Remote_server>::E Event;
 
 			Socket_server():
 				_poller(),
@@ -24,7 +24,7 @@ namespace factory {
 
 			~Socket_server() {
 //				std::for_each(_upstream.begin(), _upstream.end(),
-//					[] (std::pair<Endpoint,Handler*> pair)
+//					[] (std::pair<Endpoint,Remote_server*> pair)
 //				{
 //					delete pair.second;
 //				});
@@ -40,7 +40,7 @@ namespace factory {
 						Socket socket = pair.first;
 						Endpoint endpoint = pair.second;
 						std::unique_lock<std::mutex> lock(_mutex);
-						Handler* handler = new Handler(socket, endpoint);
+						Remote_server* handler = new Remote_server(socket, endpoint);
 						_upstream[endpoint] = handler;
 						lock.unlock();
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
@@ -76,7 +76,7 @@ namespace factory {
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _upstream.find(endpoint);
 				if (result == _upstream.end()) {
-					Handler* handler = add_endpoint(endpoint, DEFAULT_EVENTS);
+					Remote_server* handler = add_endpoint(endpoint, DEFAULT_EVENTS);
 					handler->send(kernel);
 					_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, handler));
 				} else {
@@ -113,7 +113,7 @@ namespace factory {
 				add_endpoint(endpoint);
 			}
 
-			void remove(Handler* handler) {
+			void remove(Remote_server* handler) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_upstream.erase(handler->endpoint());
 				factory_log(Level::SERVER) << "Removing " << handler->endpoint() << std::endl;
@@ -135,7 +135,7 @@ namespace factory {
 
 			void socket(Endpoint endpoint) {
 				_listener_socket.bind(endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, new Handler(_listener_socket, endpoint)));
+				_poller.register_socket(Event(DEFAULT_EVENTS, new Remote_server(_listener_socket, endpoint)));
 				_listener_socket.listen();
 			}
 
@@ -166,29 +166,29 @@ namespace factory {
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}
-
-	//	private:
-	//		bool is_socket(Socket sock) const {
-	//			struct stat stat;
-	//			check("fstat()", ::fstat(sock, &stat));
-	//			return S_ISSOCK(stat.st_mode);
-	//		}
 		
 		private:
 
-			Handler* add_endpoint(Endpoint endpoint, int events = DEFAULT_EVENTS) {
+			Remote_server* add_endpoint(Endpoint endpoint, int events = DEFAULT_EVENTS) {
 				Socket socket;
-				Handler* handler = new Handler(socket, endpoint);
+				Remote_server* handler = new Remote_server(socket, endpoint);
 				_upstream[endpoint] = handler;
 				_poller.register_socket(Event(events, handler));
 				socket.connect(endpoint);
 //				factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
 				return handler;
 			}
+
+			void add_server(Remote_server* srv) {
+				_upstream[srv->endpoint()] = srv;
+				_poller.register_socket(Event(DEFAULT_EVENTS, srv));
+			}
 			
-			Event_poller<Handler> _poller;
+			Event_poller<Remote_server> _poller;
 			Server_socket _listener_socket;
-			std::map<Endpoint, Handler*> _upstream;
+			std::map<Endpoint, Remote_server*> _upstream;
+
+			// multi-threading
 			int _cpu;
 			std::thread _thread;
 			std::mutex _mutex;
@@ -306,11 +306,11 @@ namespace factory {
 //	};
 
 		template<class Kernel, template<class X> class Pool, class Type>
-		struct Kernel_handler {
+		struct Remote_Rserver {
 
-			typedef Kernel_handler<Kernel, Pool, Type> This;
+			typedef Remote_Rserver<Kernel, Pool, Type> This;
 
-			Kernel_handler(Socket socket, Endpoint endpoint):
+			Remote_Rserver(Socket socket, Endpoint endpoint):
 				_socket(socket),
 				_endpoint(endpoint),
 				_stream(),
@@ -320,7 +320,7 @@ namespace factory {
 			{
 			}
 
-			~Kernel_handler() {
+			~Remote_Rserver() {
 				recover_kernels();
 			}
 
@@ -339,7 +339,7 @@ namespace factory {
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
-				factory_log(Level::HANDLER) << "Kernel_handler::send()" << std::endl;
+				factory_log(Level::HANDLER) << "Remote_Rserver::send()" << std::endl;
 				_pool.push(kernel);
 			}
 
@@ -354,20 +354,25 @@ namespace factory {
 					try {
 						_stream.fill<Socket>(_socket);
 						if (_stream.full()) {
-							factory_log(Level::HANDLER) << "Recv " << _ostream << std::endl;
-							try {
-								Type::types().read_and_send_object(_stream, _endpoint);
-							} catch (No_principal_found<Kernel>& err) {
-								this->send(err.kernel());
+							while (!_stream.empty()) {
+								factory_log(Level::HANDLER) << "Recv " << _ostream << std::endl;
+								try {
+									Type::types().read_and_send_object(_stream, _endpoint);
+								} catch (No_principal_found<Kernel>& err) {
+									this->send(err.kernel());
+								}
 							}
+//							if (!_stream.empty()) {
+//								throw "Stream not empty";
+//							}
 							_stream.reset();
 						}
 					} catch (Error& err) {
 						factory_log(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
 					} catch (std::exception& err) {
 						factory_log(Level::HANDLER) << String_message(err.what(), __FILE__, __LINE__, __func__);
-					} catch (...) {
-						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+//					} catch (...) {
+//						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
 					}
 				}
 				if (event.is_writing()) {

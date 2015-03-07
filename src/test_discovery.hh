@@ -4,14 +4,12 @@ using namespace factory;
 
 typedef Interval<Port> Port_range;
 
-const Port DEFAULT_PORT = 10000;
-const int PORT_INCREMENT = 1;
-const int NUM_SERVERS = 3;
+const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> NEIGHBOURS = {
-	Endpoint("127.0.0.1", DEFAULT_PORT),
-	Endpoint("127.0.0.2", DEFAULT_PORT),
-	Endpoint("127.0.0.3", DEFAULT_PORT)
+	Endpoint("127.0.0.1", DISCOVERY_PORT),
+	Endpoint("127.0.0.2", DISCOVERY_PORT),
+	Endpoint("127.0.0.3", DISCOVERY_PORT)
 };
 
 struct Discovery: public Mobile<Discovery> {
@@ -150,6 +148,9 @@ struct Candidate: public Identifiable<Kernel> {
 		_neighbours(nb) {}
 	
 	void act() {
+		_num_for = 0;
+		_num_against = 0;
+		_num_neutral = 0;
 		std::cout << "Starting poll " << _source << std::endl;
 		std::for_each(_neighbours.cbegin(), _neighbours.cend(),
 			[this] (const Neighbour& rhs)
@@ -236,9 +237,9 @@ struct Discoverer: public Identifiable<Kernel> {
 //		});
 //	}
 
-	Discoverer(Endpoint endpoint, Port_range port_range):
+	Discoverer(Endpoint endpoint):
 		factory::Identifiable<Kernel>(1),
-		_source(endpoint), _port_range(port_range) {}
+		_source(endpoint) {}
 
 	void act() {
 		_attempts++;
@@ -246,13 +247,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		_num_failed = 0;
 		_num_neighbours = 0;
 
-//		std::cout << "Hello world from " << ::getpid() << ", " << _source << std::endl;
 		std::cout << _source << ": attempt #" << _attempts << std::endl;
-
-//		std::vector<Port_range> neighbours = {
-//			Port_range(_port_range.start(), _source.port()),
-//			Port_range(_source.port() + 1, _port_range.end())
-//		};
 
 		std::vector<Discovery*> kernels;
 
@@ -358,7 +353,6 @@ struct Discoverer: public Identifiable<Kernel> {
 			
 			std::cout << _source << ": end of attempt #" << _attempts << std::endl;
 
-//			if (num_succeeded() == NUM_SERVERS-1 && min_samples() == MIN_SAMPLES) {
 			if (min_samples() == MIN_SAMPLES) {
 				std::cout << "Neighbours:" << std::endl;
 				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
@@ -369,7 +363,7 @@ struct Discoverer: public Identifiable<Kernel> {
 				{
 					neighbours.insert(*rhs);
 				});
-//				this->upstream(the_server(), new Candidate(_source, neighbours));
+				this->upstream(the_server(), new Candidate(_source, neighbours));
 //				commit(the_server());
 			} else {
 				act();
@@ -407,7 +401,6 @@ private:
 	}
 
 	Endpoint _source;
-	Port_range _port_range;
 
 	std::map<Endpoint, Neighbour*> _neighbours_map;
 	std::set<Neighbour*, Higher_metric> _neighbours_set;
@@ -430,28 +423,15 @@ struct App {
 		if (argc < 2) {
 			try {
 				std::vector<Endpoint> servers = NEIGHBOURS;
-//				std::vector<Endpoint> servers(NUM_SERVERS);
-//				for (int i=0; i<NUM_SERVERS; ++i) {
-//					servers[i] = Endpoint("127.0.0.1", DEFAULT_PORT + i*PORT_INCREMENT);
-//				}
-				Port_range port_range(DEFAULT_PORT, DEFAULT_PORT + (NUM_SERVERS-1)*PORT_INCREMENT + 1);
 				Process_group processes;
-				for (int i=0; i<NUM_SERVERS; ++i) {
-					Endpoint endpoint = servers[i];
-					processes.add([endpoint, port_range, &argv] () {
-//						std::string arg1 = to_string(endpoint);
-//						std::string arg2 = to_string(port_range);
-//						char* const args[] = {argv[0], (char*)arg1.c_str(), (char*)arg2.c_str(), 0};
-//						char* const env[] = { 0 };
-//						check("execve()", ::execve(argv[0], args, env));
-//						return 0;
-						return execute(argv[0], endpoint, port_range);
+				for (Endpoint endpoint : servers) {
+					processes.add([endpoint, &argv] () {
+						return execute(argv[0], endpoint);
 					});
 				}
 
-				for (int i=0; i<NUM_SERVERS; ++i) {
-					std::cout << "Forked " << processes[i].id() << std::endl;
-				}
+				std::cout << "Forked " << processes << std::endl;
+				
 				retval = processes.wait();
 
 				Process_id p1 = processes[0].id();
@@ -474,15 +454,13 @@ struct App {
 			std::stringstream cmdline;
 			for (int i=1; i<argc; ++i) cmdline << argv[i] << ' ';
 			Endpoint endpoint;
-			Port_range port_range;
-			cmdline >> endpoint >> port_range;
+			cmdline >> endpoint;
 			try {
 				the_server()->add(0);
-				the_server()->add(1);
 				the_server()->start();
 				discovery_server()->socket(endpoint);
 				discovery_server()->start();
-				the_server()->send(new Discoverer(endpoint, port_range));
+				the_server()->send(new Discoverer(endpoint));
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;

@@ -1,10 +1,5 @@
 namespace factory {
 
-	enum Socket_type {
-		RELIABLE_SOCKET = SOCK_STREAM,
-		UNRELIABLE_SOCKET = SOCK_DGRAM
-	};
-
 	struct Socket {
 
 		typedef int Flag;
@@ -20,7 +15,7 @@ namespace factory {
 			return check("socket()", ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
 		}
 
-		void bind(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
+		void bind(Endpoint e) {
 //			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
@@ -32,7 +27,7 @@ namespace factory {
 			factory_log(Level::COMPONENT) << "Listening on " << name() << std::endl;
 		}
 
-		void connect(Endpoint e, Socket_type type = RELIABLE_SOCKET) {
+		void connect(Endpoint e) {
 			try {
 //				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
@@ -109,13 +104,6 @@ namespace factory {
 			return Endpoint(&addr);
 		}
 
-//		Socket_type type() const {
-//			int tp = SOCK_STREAM;
-//			socklen_t tp_size = sizeof(tp);
-//			check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_TYPE, &tp, &tp_size));
-//			return Socket_type(tp);
-//		}
-
 		ssize_t read(char* buf, size_t size) {
 			return ::read(_socket, buf, size);
 		}
@@ -124,46 +112,24 @@ namespace factory {
 			return ::write(_socket, buf, size);
 		}
 
-//		Endpoint from() const {
-//			char dummy;
-//			struct ::sockaddr_in addr;
-//			socklen_t addr_len = sizeof(addr);
-//			check("recvfrom()", ::recvfrom(_socket, &dummy, 0, MSG_PEEK, (struct ::sockaddr*)&addr, &addr_len));
-//			return Endpoint(&addr);
-//		}
-
-//		void send(Foreign_stream& packet) {
-//			packet.insert_size();
-//			std::stringstream msg;
-//			msg << "write(" << _socket<< ')';
-//			check(msg.str().c_str(), ::write(_socket, packet.buffer(), packet.size()));
-//		}
-
 		operator int() const { return _socket; }
 		bool operator==(const Socket& rhs) const { return _socket == rhs._socket; }
-		Socket& operator=(const Socket& rhs) { _socket = rhs._socket; return *this; }
+
+		Socket& operator=(const Socket& rhs) {
+			this->close();
+			_socket = rhs._socket;
+			return *this;
+		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
 			return out << rhs._socket;
 		}
 
-//		bool is_valid() const { return _socket >= 0; }
-
 	private:
 
-		// TODO: connection status (success or failure) should be checked asynchronously in Socket_server
 		static int check_connect(const char* func, int ret) {
 			return (errno == EINPROGRESS) ? ret : check(func, ret);
 		}
-
-//		static void init_socket_address(struct sockaddr_in* addr, const char* hostname, Port port) {
-//			std::memset(addr, 0, sizeof(sockaddr_in));
-//			addr->sin_family = AF_INET;
-//			addr->sin_port = htons(port);
-//			if (check("inet_pton()", ::inet_pton(AF_INET, hostname, &addr->sin_addr.s_addr)) == 0) {
-//				inet_address(hostname, addr);
-//			}
-//		}
 
 		int _socket;
 	};

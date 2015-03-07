@@ -26,6 +26,15 @@ namespace factory {
 			_write_pos_fill = 0;
 		}
 
+		void reset_after_read() {
+			std::cout << "Reset after read: " << _read_pos << std::endl;
+			if (!_chunks.empty() && _read_pos > 0) {
+				T* chunk = _chunks.front();
+				std::copy(chunk + _read_pos, chunk + _chunk_size, chunk);
+			}
+			reset();
+		}
+
 		~Buffer() {
 			while (!_chunks.empty()) {
 				T* chunk = _chunks.front();
@@ -92,7 +101,6 @@ namespace factory {
 			T* chunk = _chunks.back();
 			while ((bytes_read = source.read(chunk + _write_pos_fill, _chunk_size - _write_pos_fill)) > 0) {
 				factory_log(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
-				factory_log(Level::COMPONENT) << "qqq read = " << bytes_read << std::endl;
 				_write_pos_fill += bytes_read;
 				if (_write_pos_fill == _chunk_size) {
 					chunk = new T[_chunk_size];

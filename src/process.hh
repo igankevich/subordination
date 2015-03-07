@@ -71,6 +71,13 @@ namespace factory {
 
 		Process operator[](size_t i) { return _processes[i]; }
 
+		friend std::ostream& operator<<(std::ostream& out, const Process_group& rhs) {
+			for (const Process& p : rhs._processes) {
+				out << p.id() << ' ';
+			}
+			return out;
+		}
+
 	private:
 		std::vector<Process> _processes;
 	};
@@ -109,9 +116,5 @@ namespace factory {
 		std::copy(argv, argv + argc, it);
 		return check("execve()", ::execve(argv[0], argv, env));
 	}
-//	void safe_printf(const char *format, const Args&... args) {
-//	  Arg arg_array[] = {args...};
-//	    do_safe_printf(format, arg_array, sizeof...(Args));
-//		}
 
 }

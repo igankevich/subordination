@@ -60,8 +60,10 @@ namespace factory {
 		template<class S> void flush(S sink) { _buffer.flush(sink); }
 
 		void reset() { _buffer.reset(); }
+		void reset_after_read() { _buffer.reset_after_read(); }
+
 		void write_size() { _buffer.declared_size(network_format(_buffer.size())); }
-		bool full() const { return _buffer.size() == host_format(_buffer.declared_size()); }
+		bool full() const { return _buffer.size() >= host_format(_buffer.declared_size()); }
 		bool empty() const { return _buffer.size() == 0; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Foreign_stream& rhs) {

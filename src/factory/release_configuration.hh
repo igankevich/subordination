@@ -31,17 +31,14 @@ namespace factory {
 		template<class S>
 			using Rserver = factory::components::Rserver<Pool, S>;
 
-//		template<class S>
-//			using Dserver = factory::components::Downstream_server<Pool, S>;
-	
 		template<class Base, class Sub>
 			using Iserver = factory::components::Iserver<Base, Sub>;
 
 		template<class K>
-			using Kernel_handler = factory::components::Kernel_handler<K, Pool, Type>;
+			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type>;
 
 		template<class K>
-			using Socket_server = factory::components::Socket_server<Server<K>, Kernel_handler<Kernel>, Kernel, Type>;
+			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type>;
 
 		template<class K>
 			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
