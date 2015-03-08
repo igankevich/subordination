@@ -1,13 +1,16 @@
 #define FACTORY_FOREIGN_STREAM
 namespace factory {
 
-	struct Foreign_stream {
+	typedef char Byte;
 
-		typedef char Byte;
-		typedef typename Buffer<Byte>::Size Size;
+	struct Foreign_stream: public Buffer<Byte> {
+
+		using Buffer<Byte>::read;
+		using Buffer<Byte>::write;
+		using Buffer<Byte>::Size;
 
 		explicit Foreign_stream(Size buffer_size = DEFAULT_BUFFER_SIZE):
-			_buffer(buffer_size) {}
+			Buffer<Byte>(buffer_size) {}
 
 		Foreign_stream& operator<<(char rhs) { return write(rhs); }
 #ifdef INT8_MAX
@@ -53,22 +56,22 @@ namespace factory {
 		Foreign_stream& operator>>(long double& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(std::string& rhs) { return read(rhs); }
 
-		void write(const Byte* bytes, Size size) { _buffer.write(bytes, size); }
-		Size read(Byte* bytes, Size size) { return _buffer.read(bytes, size); }
+//		void write(const Byte* bytes, Size size) { _buffer.write(bytes, size); }
+//		Size read(Byte* bytes, Size size) { return _buffer.read(bytes, size); }
+//
+//		template<class S> void fill(S source) { _buffer.fill(source); }
+//		template<class S> void flush(S sink) { _buffer.flush(sink); }
+//
+//		void reset() { _buffer.reset(); }
+//		void reset_after_read() { _buffer.reset_after_read(); }
 
-		template<class S> void fill(S source) { _buffer.fill(source); }
-		template<class S> void flush(S sink) { _buffer.flush(sink); }
+		void write_size() { declared_size(network_format(size())); }
+		bool full() const { return size() >= host_format(declared_size()); }
+//		bool empty() const { return _buffer.size() == 0; }
 
-		void reset() { _buffer.reset(); }
-		void reset_after_read() { _buffer.reset_after_read(); }
-
-		void write_size() { _buffer.declared_size(network_format(_buffer.size())); }
-		bool full() const { return _buffer.size() >= host_format(_buffer.declared_size()); }
-		bool empty() const { return _buffer.size() == 0; }
-
-		friend std::ostream& operator<<(std::ostream& out, const Foreign_stream& rhs) {
-			return out << rhs._buffer;
-		}
+//		friend std::ostream& operator<<(std::ostream& out, const Foreign_stream& rhs) {
+//			return out << rhs._buffer;
+//		}
 
 	private:
 
@@ -103,7 +106,7 @@ namespace factory {
 //			std::clog << " to ";
 //			debug(std::clog, val.val);
 //			std::clog << std::dec << std::endl;
-			write(val.bytes, sizeof(rhs));
+			Buffer<Byte>::write(val.bytes, sizeof(rhs));
 			return *this;
 		}
 
@@ -141,7 +144,7 @@ namespace factory {
 			return *this;
 		}
 
-		Buffer<Byte> _buffer;
+//		Buffer<Byte> _buffer;
 
 		static const Size DEFAULT_BUFFER_SIZE = 128;
 	};

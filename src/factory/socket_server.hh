@@ -2,9 +2,64 @@ namespace factory {
 
 	namespace components {
 
-		template<class Kernel, class Server>
-		struct Handle_kernel_stub: public Server {
-			void process_kernel(Kernel*) {}
+		template<class Kernel, class Stream, class Type>
+		struct Kernel_packet {
+
+			enum State {
+				READING_SIZE,
+				READING_PACKET,
+				COMPLETE
+			};
+
+//			typedef decltype(out.size()) Size;
+			typedef typename Stream::Size Size;
+
+			void write(Stream& out, Kernel* kernel) {
+
+				const Type* type = kernel->type();
+				if (type == nullptr) {
+					std::stringstream msg;
+					msg << "Can not find type for kernel " << kernel->id();
+					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+
+				auto old_pos = out.write_pos();
+				Size old_size = out.size();
+				out << Size(0);
+				out << type->id();
+				kernel->write(out);
+				auto new_pos = out.write_pos();
+				auto new_size = out.size();
+				auto packet_size = new_size - old_size;
+				std::cout << "Packet size = " << packet_size << std::endl;
+				out.write_pos(old_pos);
+				out << packet_size;
+				out.write_pos(new_pos);
+			}
+
+			bool read(Stream& in, Endpoint from) {
+				if (_state == READING_SIZE && sizeof(packet_size) <= in.size()) {
+					in >> packet_size;
+					std::cout << "Packet size = " << packet_size << std::endl;
+					_state = READING_PACKET;
+				}
+				if (_state == READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
+					Type::types().read_and_send_object(in, from);
+					_state = COMPLETE;
+				}
+				return finished();
+			}
+
+			bool finished() const { return _state == COMPLETE; }
+
+			void reset_reading_state() {
+				_state = READING_SIZE;
+				packet_size = 0;
+			}
+
+		private:
+			State _state = READING_SIZE;
+			Size packet_size = 0;
 		};
 
 		template<class Server, class Remote_server, class Kernel, class Type>
@@ -309,12 +364,14 @@ namespace factory {
 		struct Remote_Rserver {
 
 			typedef Remote_Rserver<Kernel, Pool, Type> This;
+			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
 
 			Remote_Rserver(Socket socket, Endpoint endpoint):
 				_socket(socket),
 				_endpoint(endpoint),
-				_stream(),
+				_istream(),
 				_ostream(),
+				_ipacket(),
 				_mutex(),
 				_pool()
 			{
@@ -352,27 +409,24 @@ namespace factory {
 			void handle_event(Event<This> event, F on_overflow) {
 				if (event.is_reading()) {
 					try {
-						_stream.fill<Socket>(_socket);
-						if (_stream.full()) {
-							while (!_stream.empty()) {
-								factory_log(Level::HANDLER) << "Recv " << _ostream << std::endl;
-								try {
-									Type::types().read_and_send_object(_stream, _endpoint);
-								} catch (No_principal_found<Kernel>& err) {
-									this->send(err.kernel());
-								}
+						_istream.fill<Socket>(_socket);
+						bool state_is_ok = true;
+						while (state_is_ok && !_istream.empty()) {
+							factory_log(Level::HANDLER) << "Recv " << _istream << std::endl;
+							try {
+								state_is_ok = _ipacket.read(_istream, _endpoint);
+							} catch (No_principal_found<Kernel>& err) {
+								this->send(err.kernel());
 							}
-//							if (!_stream.empty()) {
-//								throw "Stream not empty";
-//							}
-							_stream.reset();
 						}
+						_istream.reset();
+						_ipacket.reset_reading_state();
 					} catch (Error& err) {
 						factory_log(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
 					} catch (std::exception& err) {
 						factory_log(Level::HANDLER) << String_message(err.what(), __FILE__, __LINE__, __func__);
-//					} catch (...) {
-//						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+					} catch (...) {
+						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
 					}
 				}
 				if (event.is_writing()) {
@@ -383,15 +437,17 @@ namespace factory {
 							if (_ostream.empty()) {
 								Kernel* kernel = _pool.front();
 								_pool.pop();
-								const Type* type = kernel->type();
-								if (type == nullptr) {
-									std::stringstream msg;
-									msg << "Can not find type for kernel " << kernel->id();
-									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-								}
-								_ostream << type->id();
-								kernel->write(_ostream);
-								_ostream.write_size();
+								Packet packet;
+								packet.write(_ostream, kernel);
+//								const Type* type = kernel->type();
+//								if (type == nullptr) {
+//									std::stringstream msg;
+//									msg << "Can not find type for kernel " << kernel->id();
+//									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+//								}
+//								_ostream << type->id();
+//								kernel->write(_ostream);
+//								_ostream.write_size();
 								delete kernel;
 								factory_log(Level::HANDLER) << "Send " << _ostream << std::endl;
 							}
@@ -429,8 +485,9 @@ namespace factory {
 		private:
 			Server_socket _socket;
 			Endpoint _endpoint;
-			Foreign_stream _stream;
+			Foreign_stream _istream;
 			Foreign_stream _ostream;
+			Packet _ipacket;
 			std::mutex _mutex;
 			Pool<Kernel*> _pool;
 		};

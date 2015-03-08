@@ -6,7 +6,7 @@ namespace factory {
 		typedef uint32_t Size;
 		typedef T Value;
 
-		static const Size RESERVED_SPACE = sizeof(Size);
+		static const Size RESERVED_SPACE = 0;
 
 		explicit Buffer(Size base_size):
 			_chunk_size(std::max(base_size, RESERVED_SPACE)),
@@ -14,7 +14,8 @@ namespace factory {
 			_read_pos(RESERVED_SPACE),
 			_write_pos(RESERVED_SPACE),
 			_read_pos_flush(0),
-			_write_pos_fill(0)
+			_write_pos_fill(0),
+			_chunk_write_pos(0)
 		{
 //			declared_size(0);
 		}
@@ -24,6 +25,7 @@ namespace factory {
 			_write_pos = RESERVED_SPACE;
 			_read_pos_flush = 0;
 			_write_pos_fill = 0;
+			_chunk_write_pos = 0;
 		}
 
 		void reset_after_read() {
@@ -72,6 +74,18 @@ namespace factory {
 			return offset;
 		}
 
+		void add_chunk() {
+			if (++_chunk_write_pos == _chunks.size()) {
+				_chunks.push_back(new T[_chunk_size]);
+			}
+		}
+
+		void remove_chunk() {
+			delete[] _chunks.front();
+			_chunks.pop_front();
+			_chunk_write_pos--;
+		}
+
 		void write(const T* buffer, Size size) {
 			if (_chunks.empty()) {
 				_chunks.push_back(new T[_chunk_size]);
@@ -80,12 +94,12 @@ namespace factory {
 			Size offset = 0;
 			while (offset != size) {
 				Size n = std::min(_chunk_size - _write_pos, size - offset);
-				T* chunk = _chunks.back();
+				T* chunk = _chunks[_chunk_write_pos];
 				std::copy(buffer + offset, buffer + offset + n, chunk + _write_pos);
 				_write_pos += n;
 				offset += n;
 				if (_write_pos == _chunk_size) {
-					_chunks.push_back(new T[_chunk_size]);
+					add_chunk();
 					_write_pos = 0;
 				}
 			}
@@ -142,7 +156,7 @@ namespace factory {
 				reset();
 			}
 			factory_log(Level::COMPONENT) << "Bytes written = " << bytes_written << std::endl;
-			factory_log(Level::COMPONENT) << "Declared size = " << decl_sz << std::endl;
+//			factory_log(Level::COMPONENT) << "Declared size = " << decl_sz << std::endl;
 			factory_log(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
 			return bytes_written;
 		}
@@ -152,10 +166,20 @@ namespace factory {
 		Size size() const {
 			return _write_pos
 				+ (_chunks.size() - std::min(size_t(1), _chunks.size())) * _chunk_size
-				- RESERVED_SPACE;
+				- RESERVED_SPACE
+				- _read_pos;
 		}
 //		Size write_pos() const { return _write_pos; }
 //		Size read_pos() const { return _read_pos; }
+
+		std::pair<Size,Size> write_pos() const {
+			return std::make_pair(_chunk_write_pos, _write_pos);
+		}
+
+		void write_pos(std::pair<Size,Size> rhs) {
+			_chunk_write_pos = rhs.first;
+			_write_pos = rhs.second;
+		}
 
 		void declared_size(Size size) {
 			T* chunk = _chunks.front();
@@ -203,6 +227,7 @@ namespace factory {
 		Size _write_pos;
 		Size _read_pos_flush;
 		Size _write_pos_fill;
+		Size _chunk_write_pos;
 	};
 
 }
