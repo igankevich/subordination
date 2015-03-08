@@ -1,5 +1,5 @@
 unsigned long time_seed() {
-	return  std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
 template<class T>

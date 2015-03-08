@@ -31,7 +31,7 @@ namespace factory {
 				auto new_pos = out.write_pos();
 				auto new_size = out.size();
 				auto packet_size = new_size - old_size;
-				std::cout << "Packet size = " << packet_size << std::endl;
+				Logger(Level::COMPONENT) << "Packet size = " << packet_size - sizeof(packet_size) << std::endl;
 				out.write_pos(old_pos);
 				out << packet_size;
 				out.write_pos(new_pos);
@@ -40,9 +40,13 @@ namespace factory {
 			bool read(Stream& in, Endpoint from) {
 				if (_state == READING_SIZE && sizeof(packet_size) <= in.size()) {
 					in >> packet_size;
-					std::cout << "Packet size = " << packet_size << std::endl;
 					_state = READING_PACKET;
 				}
+				Logger(Level::COMPONENT)<< "Bytes received = "
+					<< in.size()
+					<< '/'
+					<< packet_size - sizeof(packet_size)
+					<< std::endl;
 				if (_state == READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
 					Type::types().read_and_send_object(in, from);
 					_state = COMPLETE;
@@ -87,7 +91,7 @@ namespace factory {
 	
 			void serve() {
 				_poller.run([this] (Event event) {
-					factory_log(Level::SERVER)
+					Logger(Level::SERVER)
 						<< "Event " << event.user_data()->endpoint()
 						<< ' ' << event << std::endl;
 					if (event.fd() == (int)_listener_socket) {
@@ -102,7 +106,7 @@ namespace factory {
 					} else {
 						if (event.is_error() || !event.user_data()->valid()) {
 //							event.user_data()->valid();
-							factory_log(Level::SERVER) << "Invalid socket" << std::endl;
+							Logger(Level::SERVER) << "Invalid socket" << std::endl;
 							remove(event.user_data());
 							event.user_data()->recover_kernels();
 							event.delete_user_data();
@@ -115,7 +119,7 @@ namespace factory {
 									_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
 								}
 							});
-							factory_log(Level::SERVER) << "Processed event" << std::endl;
+							Logger(Level::SERVER) << "Processed event" << std::endl;
 							if (event.is_closing()) {
 								remove(event.user_data());
 								event.user_data()->recover_kernels();
@@ -123,11 +127,12 @@ namespace factory {
 							}
 						}
 					}
+					debug();
 				});
 			}
 
 			void send(Kernel* kernel, Endpoint endpoint) {
-				factory_log(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
+				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _upstream.find(endpoint);
 				if (result == _upstream.end()) {
@@ -143,11 +148,11 @@ namespace factory {
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				if (kernel->moves_upstream()) {
-					factory_log(Level::SERVER) << "Socket_server::send()" << std::endl;
-//					factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
+					Logger(Level::SERVER) << "Socket_server::send()" << std::endl;
+//					Logger(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
 					if (_upstream.size() > 0) {
 						auto result = _upstream.begin();
-						factory_log(Level::SERVER) << "Socket = " << result->second->socket() << std::endl;
+						Logger(Level::SERVER) << "Socket = " << result->second->socket() << std::endl;
 						result->second->send(kernel);
 						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 					}
@@ -171,7 +176,7 @@ namespace factory {
 			void remove(Remote_server* handler) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_upstream.erase(handler->endpoint());
-				factory_log(Level::SERVER) << "Removing " << handler->endpoint() << std::endl;
+				Logger(Level::SERVER) << "Removing " << handler->endpoint() << std::endl;
 //				_poller.erase(Event(DEFAULT_EVENTS, handler));
 			}
 	
@@ -183,7 +188,7 @@ namespace factory {
 //					msg << "Can not find endpoint to remove: " << endpoint;
 //					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 //				}
-//				factory_log(Level::SERVER) << "Removing " << endpoint << std::endl;
+//				Logger(Level::SERVER) << "Removing " << endpoint << std::endl;
 //				_poller.erase(Event(DEFAULT_EVENTS, result->second));
 //				_upstream.erase(endpoint);
 //			}
@@ -195,21 +200,21 @@ namespace factory {
 			}
 
 			void start() {
-				factory_log(Level::SERVER) << "Socket_server::start()" << std::endl;
+				Logger(Level::SERVER) << "Socket_server::start()" << std::endl;
 				_thread = std::thread([this] { this->serve(); });
 			}
 	
 			void stop_impl() {
-				factory_log(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
+				Logger(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
 				_poller.stop();
 			}
 
 			void wait_impl() {
-				factory_log(Level::SERVER) << "Socket_server::wait_impl()" << std::endl;
+				Logger(Level::SERVER) << "Socket_server::wait_impl()" << std::endl;
 				if (_thread.joinable()) {
 					_thread.join();
 				}
-				factory_log(Level::SERVER) << "Socket_server::wait_impl() end" << std::endl;
+				Logger(Level::SERVER) << "Socket_server::wait_impl() end" << std::endl;
 			}
 
 			void affinity(int cpu) { _cpu = cpu; }
@@ -221,6 +226,17 @@ namespace factory {
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}
+
+			void debug() {
+				std::unique_lock<std::mutex> lock(_mutex);
+				Logger log(Level::SERVER);
+				log << _listener_socket.name();
+				log << ": Upstream: ";
+				for (auto p : _upstream) {
+					log << *p.second << ',';
+				}
+				log << std::endl;
+			}
 		
 		private:
 
@@ -230,7 +246,7 @@ namespace factory {
 				_upstream[endpoint] = handler;
 				_poller.register_socket(Event(events, handler));
 				socket.connect(endpoint);
-//				factory_log(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
+//				Logger(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
 				return handler;
 			}
 
@@ -365,6 +381,7 @@ namespace factory {
 
 			typedef Remote_Rserver<Kernel, Pool, Type> This;
 			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
+			typedef typename Foreign_stream::Pos Pos;
 
 			Remote_Rserver(Socket socket, Endpoint endpoint):
 				_socket(socket),
@@ -373,30 +390,48 @@ namespace factory {
 				_ostream(),
 				_ipacket(),
 				_mutex(),
-				_pool()
+				_pool(),
+				_buffer()
 			{
 			}
 
 			~Remote_Rserver() {
-				recover_kernels();
+//				recover_kernels();
 			}
 
 			void recover_kernels() {
-				factory_log(Level::HANDLER) << "Kernels left: " << _pool.size() << std::endl;
+
+				clear_kernel_buffer(_ostream.global_read_pos());
+
+				Logger(Level::HANDLER)
+					<< "Kernels left: "
+					<< _pool.size()
+					<< '+'
+					<< _buffer.size()
+					<< std::endl;
 				
 				// return kernels to their parents with an error
 				while (!_pool.empty()) {
-					Kernel* k = _pool.front();
-					k->result(Result::ENDPOINT_NOT_CONNECTED);
-					k->principal(k->parent());
-					factory_send(k);
+					recover_kernel(_pool.front());
 					_pool.pop();
 				}
+				
+				// recover kernels written to output buffer
+				while (!_buffer.empty()) {
+					recover_kernel(_buffer.front().second);
+					_buffer.pop();
+				}
+			}
+
+			static void recover_kernel(Kernel* k) {
+				k->result(Result::ENDPOINT_NOT_CONNECTED);
+				k->principal(k->parent());
+				factory_send(k);
 			}
 
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
-				factory_log(Level::HANDLER) << "Remote_Rserver::send()" << std::endl;
+				Logger(Level::HANDLER) << "Remote_Rserver::send()" << std::endl;
 				_pool.push(kernel);
 			}
 
@@ -407,82 +442,95 @@ namespace factory {
 
 			template<class F>
 			void handle_event(Event<This> event, F on_overflow) {
+				bool overflow = false;
 				if (event.is_reading()) {
-					try {
-						_istream.fill<Socket>(_socket);
-						bool state_is_ok = true;
-						while (state_is_ok && !_istream.empty()) {
-							factory_log(Level::HANDLER) << "Recv " << _istream << std::endl;
-							try {
-								state_is_ok = _ipacket.read(_istream, _endpoint);
-							} catch (No_principal_found<Kernel>& err) {
-								this->send(err.kernel());
-							}
+					_istream.fill<Socket>(_socket);
+					bool state_is_ok = true;
+					while (state_is_ok && !_istream.empty()) {
+						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
+						try {
+							state_is_ok = _ipacket.read(_istream, _endpoint);
+						} catch (No_principal_found<Kernel>& err) {
+							Logger(Level::HANDLER) << "No principal found for "
+								<< int(err.kernel()->result()) << std::endl;
+							Kernel* k = err.kernel();
+							k->principal(k->parent());
+							_pool.push(k);
+							overflow = true;
 						}
-						_istream.reset();
-						_ipacket.reset_reading_state();
-					} catch (Error& err) {
-						factory_log(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
-					} catch (std::exception& err) {
-						factory_log(Level::HANDLER) << String_message(err.what(), __FILE__, __LINE__, __func__);
-					} catch (...) {
-						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+						if (state_is_ok) {
+							_ipacket.reset_reading_state();
+						}
 					}
 				}
 				if (event.is_writing()) {
-					try {
+//					try {
 						std::unique_lock<std::mutex> lock(_mutex);
-						bool overflow = false;
-						while (!overflow and !_pool.empty()) {
-							if (_ostream.empty()) {
-								Kernel* kernel = _pool.front();
-								_pool.pop();
-								Packet packet;
-								packet.write(_ostream, kernel);
-//								const Type* type = kernel->type();
-//								if (type == nullptr) {
-//									std::stringstream msg;
-//									msg << "Can not find type for kernel " << kernel->id();
-//									throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-//								}
-//								_ostream << type->id();
-//								kernel->write(_ostream);
-//								_ostream.write_size();
-								delete kernel;
-								factory_log(Level::HANDLER) << "Send " << _ostream << std::endl;
+						while (!_pool.empty()) {
+							Kernel* kernel = _pool.front();
+							_pool.pop();
+							Packet packet;
+							packet.write(_ostream, kernel);
+							if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
+								Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
 							}
-							factory_log(Level::HANDLER) << "Flushing" << std::endl;
-							_ostream.flush<Socket>(_socket);
-							if (_ostream.empty()) {
-								factory_log(Level::HANDLER) << "Flushed." << std::endl;
-								_ostream.reset();
-							} else {
-								overflow = true;
-							}
+							_buffer.push(std::make_pair(_ostream.global_write_pos(), kernel));
 						}
-						factory_log(Level::HANDLER) << "Overflowing" << std::endl;
-						on_overflow(overflow);
-	//					factory_log(Level::HANDLER) << "Buffer size: " << _ostream.size() << std::endl;
-	//					_socket.send(_ostream);
-					} catch (Connection_error& err) {
-						factory_log(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
-	//					the_server()->send(kernel);
-	//					this->root()->send(kernel);
-					} catch (Error& err) {
-						factory_log(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
-					} catch (std::exception& err) {
-						factory_log(Level::HANDLER) << String_message(err, __FILE__, __LINE__, __func__);
-					} catch (...) {
-						factory_log(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
-					}
+						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
+						Logger(Level::HANDLER) << "Flushing" << std::endl;
+						_ostream.flush<Socket>(_socket);
+						if (_ostream.empty()) {
+							Logger(Level::HANDLER) << "Flushed." << std::endl;
+							clear_kernel_buffer();
+							_ostream.reset();
+						} else {
+							clear_kernel_buffer(_ostream.global_read_pos());
+							overflow = true;
+						}
+						Logger(Level::HANDLER) << "Overflowing" << std::endl;
+//					} catch (Connection_error& err) {
+//						Logger(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
+//					} catch (Error& err) {
+//						Logger(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
+//					} catch (std::exception& err) {
+//						Logger(Level::HANDLER) << String_message(err, __FILE__, __LINE__, __func__);
+//					} catch (...) {
+//						Logger(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+//					}
 				}
+				on_overflow(overflow);
 			}
 
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
 			Endpoint endpoint() const { return _endpoint; }
 
+			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+//				std::unique_lock<std::mutex> lock(rhs._mutex);
+				return out << rhs.endpoint() << '('
+					<< (rhs.valid() ? ' ' : '!')
+					<< rhs._pool.size() << ','
+					<< rhs._buffer.size() << ','
+					<< rhs._istream.size() << ','
+					<< rhs._ostream.size() << ')';
+			}
+
 		private:
+
+			void clear_kernel_buffer() {
+				while (!_buffer.empty()) {
+					delete _buffer.front().second;
+					_buffer.pop();
+				}
+			}
+
+			void clear_kernel_buffer(Pos global_read_pos) {
+				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
+					delete _buffer.front().second;
+					_buffer.pop();
+				}
+			}
+
 			Server_socket _socket;
 			Endpoint _endpoint;
 			Foreign_stream _istream;
@@ -490,6 +538,7 @@ namespace factory {
 			Packet _ipacket;
 			std::mutex _mutex;
 			Pool<Kernel*> _pool;
+			std::queue<std::pair<Pos,Kernel*>> _buffer;
 		};
 
 	}

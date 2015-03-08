@@ -19,21 +19,21 @@ namespace factory {
 //			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
-			factory_log(Level::COMPONENT) << "Binding to " << e << std::endl;
+			Logger(Level::COMPONENT) << "Binding to " << e << std::endl;
 		}
 		
 		void listen() {
 			check("listen()", ::listen(_socket, SOMAXCONN));
-			factory_log(Level::COMPONENT) << "Listening on " << name() << std::endl;
+			Logger(Level::COMPONENT) << "Listening on " << name() << std::endl;
 		}
 
 		void connect(Endpoint e) {
 			try {
 //				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
 				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
-				factory_log(Level::COMPONENT) << "Connecting to " << e << std::endl;
+				Logger(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
-				factory_log(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
+				Logger(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
 				throw Connection_error(err.what(), __FILE__, __LINE__, __func__);
 			}
 		}
@@ -45,13 +45,13 @@ namespace factory {
 			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
 			socket.flags(O_NONBLOCK);
 			Endpoint endpoint(&addr);
-			factory_log(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
+			Logger(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
 			return std::make_pair(socket, endpoint);
 		}
 
 		void close() {
 			if (_socket >= 0) {
-				factory_log(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
+				Logger(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
 			}
@@ -72,9 +72,9 @@ namespace factory {
 				ret = -1;
 			} else {
 				socklen_t sz = sizeof(ret);
-				factory_log(Level::COMPONENT) << "Socket = " << _socket << std::endl;
+				Logger(Level::COMPONENT) << "Socket = " << _socket << std::endl;
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
-				factory_log(Level::COMPONENT) << "getsockopt(): " << ::strerror(ret) << std::endl;
+				Logger(Level::COMPONENT) << "getsockopt(): " << ::strerror(ret) << std::endl;
 			}
 			// If one connects to localhost to a different port and the service is offline
 			// then socket's local port can be chosed to be the same as the port of the service.

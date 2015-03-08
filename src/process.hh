@@ -18,8 +18,8 @@ namespace factory {
 			_child_pid = ::fork();
 			if (_child_pid == 0) {
 				int ret = f();
-//				std::clog << "exit " << ::getpid() << std::endl;
-				std::clog << ::getpid() << ": exit(" << ret << ')' << std::endl;
+				Logger(Level::COMPONENT)
+					<< ::getpid() << ": exit(" << ret << ')' << std::endl;
 				::exit(ret);
 			} else {
 //				std::clog << "fork " << id() << std::endl;
@@ -111,8 +111,9 @@ namespace factory {
 		}
 		argv[argc] = 0;
 		char* const env[] = { 0 };
-		std::cout << "Executing ";
-		std::ostream_iterator<char*> it(std::cout, " ");
+		Logger log(Level::COMPONENT);
+		log << "Executing ";
+		std::ostream_iterator<char*> it(log.ostream(), " ");
 		std::copy(argv, argv + argc, it);
 		return check("execve()", ::execve(argv[0], argv, env));
 	}

@@ -56,23 +56,6 @@ namespace factory {
 		Foreign_stream& operator>>(long double& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(std::string& rhs) { return read(rhs); }
 
-//		void write(const Byte* bytes, Size size) { _buffer.write(bytes, size); }
-//		Size read(Byte* bytes, Size size) { return _buffer.read(bytes, size); }
-//
-//		template<class S> void fill(S source) { _buffer.fill(source); }
-//		template<class S> void flush(S sink) { _buffer.flush(sink); }
-//
-//		void reset() { _buffer.reset(); }
-//		void reset_after_read() { _buffer.reset_after_read(); }
-
-		void write_size() { declared_size(network_format(size())); }
-		bool full() const { return size() >= host_format(declared_size()); }
-//		bool empty() const { return _buffer.size() == 0; }
-
-//		friend std::ostream& operator<<(std::ostream& out, const Foreign_stream& rhs) {
-//			return out << rhs._buffer;
-//		}
-
 	private:
 
 		template<class T>

@@ -146,12 +146,14 @@ namespace factory {
 
 				Instances(): _instances() {}
 
-				K* lookup(Id id) const {
+				K* lookup(Id id) {
+					std::unique_lock<std::mutex> lock(_mutex);
 					auto result = _instances.find(id);
 					return result == _instances.end() ? nullptr : result->second; 
 				}
 
 				void register_instance(K* inst) {
+					std::unique_lock<std::mutex> lock(_mutex);
 					_instances[inst->id()] = inst;
 				}
 		
@@ -187,6 +189,7 @@ namespace factory {
 				};
 
 				std::unordered_map<Id, K*> _instances;
+				std::mutex _mutex;
 			};
 
 			static Types& types() {
@@ -217,17 +220,25 @@ namespace factory {
 					this->read_object = [] (Foreign_stream& in, K* rhs) { rhs->read(in); };
 					this->write_object = [] (Foreign_stream& out, K* rhs) { rhs->write(out); };
 					this->read_and_send = [] (Foreign_stream& in, Endpoint from) {
-						Sub* kernel = new Sub;
-						kernel->read(in);
-						kernel->from(from);
-						std::cout
+						Sub* k = new Sub;
+						k->read(in);
+						k->from(from);
+						if (k->moves_downstream()) {
+							K* p = Type::instances().lookup(k->principal_id());
+							if (p == nullptr) {
+								k->result(Result::NO_PRINCIPAL_FOUND);
+								throw No_principal_found<K>(k);
+							}
+							k->principal(p);
+						}
+						Logger(Level::COMPONENT)
 							<< ::getpid() << ": "
-							<< "from " << kernel->from()
+							<< "from " << k->from()
 							<< ", "
-							<< (kernel->moves_downstream() ? "downstream" : "upstream")
+							<< (k->moves_downstream() ? "downstream" : "upstream")
 							<< std::endl;
-//						std::clog << "From = " << kernel->from() << std::endl;
-						factory_send(kernel);
+//						std::clog << "From = " << k->from() << std::endl;
+						factory_send(k);
 					};
 
 //					this->type_id(typeid(Sub));

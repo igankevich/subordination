@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <iterator>
 #include <chrono>
+#include <tuple>
 
 // Metadata.
 #include <string>

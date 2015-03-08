@@ -1,27 +1,14 @@
-#include "factory/layer1.hh"
-#include "factory/release_configuration.hh"
-#include "factory/layer2.hh"
-#include "factory/default_factory.hh"
-#include "factory/layer3.hh"
-
-
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <valarray>
-#include <limits>
-#include <cmath>
-#include <complex>
-#include <ostream>
-#include <functional>
-#include <algorithm>
-#include <numeric>
-#include <stdexcept>
+#include "factory/factory.hh"
 #include <random>
 
 using namespace factory;
 
 #include "datum.hh"
+#include "process.hh"
+
+const uint32_t NUM_SIZES = 13;
+const uint32_t NUM_KERNELS = 7;
+const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_KERNELS;
 
 std::atomic<uint32_t> shutdown_counter(0);
 
@@ -35,7 +22,7 @@ struct Test_socket: public Mobile<Test_socket> {
 		std::clog << "Test_socket::act()" << std::endl;
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
-		if (shutdown_counter == 1) {
+		if (shutdown_counter == TOTAL_NUM_KERNELS) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			__factory.stop();
 		}
@@ -68,10 +55,14 @@ private:
 
 struct Main: public Identifiable<Kernel> {
 
-	Main(): _input(VECTOR_SIZE) {}
+	Main(uint32_t n):
+		_vector_size(n),
+		_input(_vector_size) {}
 
 	void act() {
-		upstream(remote_server(), new Test_socket(_input));
+		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
+			upstream(remote_server(), new Test_socket(_input));
+		}
 	}
 
 	void react(Kernel* child) {
@@ -93,34 +84,47 @@ struct Main: public Identifiable<Kernel> {
 			}
 		}
 
-		commit(the_server());
+		if (++_num_returned == NUM_KERNELS) {
+			commit(the_server());
+		}
 	}
 
-	static const int32_t VECTOR_SIZE = 20;
+	uint32_t _num_returned = 0;
+	uint32_t _vector_size;
+
 	std::vector<Datum> _input;
 };
 
 struct App {
-	int run(int argc, char** argv) {
-		try {
-			if (argc != 2)
-				throw std::runtime_error("Wrong number of arguments.");
-			the_server()->add(0);
-			if (argv[1][0] == 'x') {
-				remote_server()->socket(Endpoint("127.0.0.1", 60000));
-				__factory.start();
-				__factory.wait();
+	int run(int argc, char* argv[]) {
+		if (argc <= 1) {
+			Process_group procs;
+			procs.add([&argv] () { return execute(argv[0], 'x'); });
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			procs.add([&argv] () { return execute(argv[0], 'y'); });
+		} else {
+			try {
+				if (argc != 2)
+					throw std::runtime_error("Wrong number of arguments.");
+				the_server()->add(0);
+				if (argv[1][0] == 'x') {
+					the_server()->add(1);
+					remote_server()->socket(Endpoint("127.0.0.1", 60000));
+					__factory.start();
+					__factory.wait();
+				}
+				if (argv[1][0] == 'y') {
+					remote_server()->socket(Endpoint("127.0.0.1", 60001));
+					remote_server()->add(Endpoint("127.0.0.1", 60000));
+					__factory.start();
+					for (uint32_t i=1; i<=NUM_SIZES; ++i)
+						the_server()->send(new Main(i));
+					__factory.wait();
+				}
+			} catch (std::exception& e) {
+				std::cerr << e.what() << std::endl;
+				return 1;
 			}
-			if (argv[1][0] == 'y') {
-				remote_server()->socket(Endpoint("127.0.0.1", 60001));
-				remote_server()->add(Endpoint("127.0.0.1", 60000));
-				__factory.start();
-				the_server()->send(new Main);
-				__factory.wait();
-			}
-		} catch (std::exception& e) {
-			std::cerr << e.what() << std::endl;
-			return 1;
 		}
 		return 0;
 	}

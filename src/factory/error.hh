@@ -8,16 +8,37 @@ namespace factory {
 		STRATEGY = 3
 	};
 
+	struct Logger {
+
+		Logger(Level l = Level::KERNEL) {
+			_buf << std::setw(int(l)) << ' ';
+		}
+	
+		template<class T>
+		Logger& operator<<(const T& rhs) {
+			_buf << rhs;
+			return *this;
+		}
+	
+		Logger& operator<<(std::ostream& ( *pf )(std::ostream&)) {
+			_buf << pf;
+			if (pf == (std::ostream& (*)(std::ostream&))&std::endl) {
+				std::clog << _buf.str() << std::flush;
+				_buf.clear();
+			}
+			return *this;
+		}
+
+		std::ostream& ostream() { return _buf; }
+	
+	private:
+		std::stringstream _buf;
+	};
+
 	std::string log_filename() {
 		std::stringstream s;
 		s << "/tmp/" << ::getpid() << ".log";
 		return s.str();
-	}
-
-	std::ostream& factory_log(Level l) {
-//		static std::ofstream logfile(log_filename());
-//		return logfile << std::setw(int(l)) << ' ';
-		return std::clog << std::setw(int(l)) << ' ';
 	}
 
 	int check(const char* func, int ret) {
@@ -135,5 +156,22 @@ namespace factory {
 	};
 
 	const char* UNKNOWN_ERROR = "Unknown error.";
+
+	template<class K>
+	struct No_principal_found {
+		explicit No_principal_found(K* k): _kernel(k) {}
+		K* kernel() { return _kernel; }
+	private:
+		K* _kernel;
+	};
+
+	enum struct Result: uint16_t {
+		SUCCESS = 0,
+		UNDEFINED = 1,
+		UNDEFINED_DOWNSTREAM = 2,
+		ENDPOINT_NOT_CONNECTED = 3,
+		NO_UPSTREAM_SERVERS_LEFT = 4,
+		NO_PRINCIPAL_FOUND = 5
+	};
 
 }

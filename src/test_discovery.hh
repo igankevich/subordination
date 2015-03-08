@@ -151,7 +151,7 @@ struct Candidate: public Identifiable<Kernel> {
 		_num_for = 0;
 		_num_against = 0;
 		_num_neutral = 0;
-		std::cout << "Starting poll " << _source << std::endl;
+		Logger(Level::KERNEL) << "Starting poll " << _source << std::endl;
 		std::for_each(_neighbours.cbegin(), _neighbours.cend(),
 			[this] (const Neighbour& rhs)
 		{
@@ -159,14 +159,29 @@ struct Candidate: public Identifiable<Kernel> {
 			k->parent(this);
 			k->principal(this); // the same id
 			k->source(_source);
+			Logger(Level::KERNEL)
+				<< _source
+				<< ": polling "
+				<< rhs.addr()
+				<< ", kernel id = "
+				<< k->id()
+				<< std::endl;
 			discovery_server()->send(k, rhs.addr());
 		});
 	}
 
 	void react(factory::Kernel* k) {
 		Ballot* b = dynamic_cast<Ballot*>(k);
+		if (b->result() == Result::NO_PRINCIPAL_FOUND) {
+			Logger(Level::KERNEL)
+				<< _source
+				<< ": poll error "
+				<< " from = " << b->source()
+				<< std::endl;
+		}
 		// ballot from another host
 		if (b->source() != _source) {
+			Logger(Level::KERNEL) << _source << ": poll vote " << std::endl;
 			// the address of the neighbour with the highest rank is the same
 			// as the address of the candidate
 			Ballot* bb = new Ballot;
@@ -184,9 +199,16 @@ struct Candidate: public Identifiable<Kernel> {
 			} else {
 				_num_neutral++;
 			}
+			// preliminary results
+			Logger(Level::KERNEL) << _source << " preliminary: "
+				<< _num_for << '+'
+				<< _num_against << '+'
+				<< _num_neutral << '/'
+				<< _neighbours.size()
+				<< std::endl;
 			// all ballots have been returned
 			if (_num_for + _num_against + _num_neutral == _neighbours.size()) {
-				std::cout << _source << " exit poll: "
+				Logger(Level::KERNEL) << _source << " exit poll: "
 					<< _num_for << '+'
 					<< _num_against << '+'
 					<< _num_neutral << '/'
@@ -195,12 +217,6 @@ struct Candidate: public Identifiable<Kernel> {
 //				commit(the_server());
 			}
 		}
-		std::cout << _source << " preliminary: "
-			<< _num_for << '+'
-			<< _num_against << '+'
-			<< _num_neutral << '/'
-			<< _neighbours.size()
-			<< std::endl;
 	}
 
 private:
@@ -229,7 +245,7 @@ struct Discoverer: public Identifiable<Kernel> {
 //			I en = range.end();
 //			for (I a=st; a<en/* && a<st+10*/; ++a) {
 //				Endpoint ep(a, port);
-//				std::cout << ep << std::endl;
+//				Logger(Level::KERNEL) << ep << std::endl;
 //				Discovery_kernel* k = new Discovery_kernel;
 //				k->parent(this);
 //				discovery_server()->send(k, ep);
@@ -239,7 +255,17 @@ struct Discoverer: public Identifiable<Kernel> {
 
 	Discoverer(Endpoint endpoint):
 		factory::Identifiable<Kernel>(1),
-		_source(endpoint) {}
+		_source(endpoint),
+		_servers(create_servers(NEIGHBOURS)) {}
+	
+	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
+		std::vector<Endpoint> tmp;
+		std::copy_if(servers.cbegin(), servers.cend(),
+			std::back_inserter(tmp), [this] (Endpoint addr) {
+				return addr != this->_source;
+			});
+		return tmp;
+	}
 
 	void act() {
 		_attempts++;
@@ -247,21 +273,21 @@ struct Discoverer: public Identifiable<Kernel> {
 		_num_failed = 0;
 		_num_neighbours = 0;
 
-		std::cout << _source << ": attempt #" << _attempts << std::endl;
+		Logger(Level::KERNEL) << _source << ": attempt #" << _attempts << std::endl;
 
 		std::vector<Discovery*> kernels;
 
 
-		std::for_each(NEIGHBOURS.cbegin(), NEIGHBOURS.cend(),
+		std::for_each(_servers.cbegin(), _servers.cend(),
 			[this, &kernels] (const Endpoint& ep)
 		{
 			Neighbour* n = find_neighbour(ep);
-			std::cout 
+			Logger(Level::KERNEL) 
 				<< _source
 				<< ": sending to " << ep << ' '
 				<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
 			if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
-				factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
+				Logger(Level::KERNEL) << "Sending to " << ep << std::endl;
 				Discovery* k = new Discovery;
 				k->parent(this);
 				k->dest(ep);
@@ -281,12 +307,12 @@ struct Discoverer: public Identifiable<Kernel> {
 //			for (I a=st; a<en/* && a<st+10*/; ++a) {
 //				Endpoint ep(_source.host(), a);
 //				Neighbour* n = find_neighbour(ep);
-//				std::cout 
+//				Logger(Level::KERNEL) 
 //					<< _source
 //					<< ": sending to " << ep << ' '
 //					<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
 //				if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
-//					factory_log(Level::KERNEL) << "Sending to " << ep << std::endl;
+//					Logger(Level::KERNEL) << "Sending to " << ep << std::endl;
 //					Discovery* k = new Discovery;
 //					k->parent(this);
 //					k->dest(ep);
@@ -297,7 +323,7 @@ struct Discoverer: public Identifiable<Kernel> {
 //		});
 
 		// send discovery messages
-		factory_log(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
+		Logger(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
 		_num_neighbours = kernels.size();
 		for (Discovery* d : kernels) {
 			discovery_server()->send(d, d->dest());
@@ -313,7 +339,7 @@ struct Discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		Discovery* d = dynamic_cast<Discovery*>(k);
 		if (d->result() == Result::SUCCESS) {
-			std::cout << _source << ": success for " << d->dest() << std::endl;
+			Logger(Level::KERNEL) << _source << ": success for " << d->dest() << std::endl;
 			_num_succeeded++;
 			if (_neighbours_map.find(d->dest()) == _neighbours_map.end()) {
 				Neighbour* n = new Neighbour(d->dest(), d->time());
@@ -332,13 +358,13 @@ struct Discoverer: public Identifiable<Kernel> {
 //				delete n;
 //			}
 		}
-//		std::cout << "Returned: "
+//		Logger(Level::KERNEL) << "Returned: "
 //			<< _num_succeeded + _num_failed << '/' 
 //			<< _num_neighbours
 //			<< " from " << d->dest() 
 //			<< std::endl;
 		
-		std::cout << _source << ": result #" << _attempts
+		Logger(Level::KERNEL) << _source << ": result #" << _attempts
 			<< ' '
 			<< num_succeeded()
 			<< '+'
@@ -351,11 +377,12 @@ struct Discoverer: public Identifiable<Kernel> {
 
 		if (_num_succeeded + _num_failed == _num_neighbours) {
 			
-			std::cout << _source << ": end of attempt #" << _attempts << std::endl;
+			Logger(Level::KERNEL) << _source << ": end of attempt #" << _attempts << std::endl;
 
 			if (min_samples() == MIN_SAMPLES) {
-				std::cout << "Neighbours:" << std::endl;
-				std::ostream_iterator<Neighbour*> it(std::cout, "\n");
+				Logger log(Level::KERNEL);
+				log << "Neighbours:" << std::endl;
+				std::ostream_iterator<Neighbour*> it(log.ostream(), "\n");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
 				std::set<Neighbour> neighbours;
 				std::for_each(_neighbours_set.cbegin(), _neighbours_set.cend(),
@@ -404,6 +431,7 @@ private:
 
 	std::map<Endpoint, Neighbour*> _neighbours_map;
 	std::set<Neighbour*, Higher_metric> _neighbours_set;
+	std::vector<Endpoint> _servers;
 
 	uint32_t _num_neighbours = 0;
 	uint32_t _num_succeeded = 0;
@@ -422,15 +450,14 @@ struct App {
 		int retval = 0;
 		if (argc < 2) {
 			try {
-				std::vector<Endpoint> servers = NEIGHBOURS;
 				Process_group processes;
-				for (Endpoint endpoint : servers) {
+				for (Endpoint endpoint : NEIGHBOURS) {
 					processes.add([endpoint, &argv] () {
 						return execute(argv[0], endpoint);
 					});
 				}
 
-				std::cout << "Forked " << processes << std::endl;
+				Logger(Level::KERNEL) << "Forked " << processes << std::endl;
 				
 				retval = processes.wait();
 
@@ -444,7 +471,7 @@ struct App {
 				s << "/tmp/" << p2 << ".log";
 				s << ' ';
 				s << "| column -t -s';'";
-				std::cout << "Command to view logs:\n" << s.str() << std::endl;
+				Logger(Level::KERNEL) << "Command to view logs:\n" << s.str() << std::endl;
 //				::system(s.str().c_str());
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
