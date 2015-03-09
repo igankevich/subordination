@@ -182,6 +182,7 @@ namespace factory {
 			}
 	
 			void stop_impl() {
+				// TODO: graceful shutdown
 				Logger(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
 				_poller.stop();
 			}
@@ -237,6 +238,7 @@ namespace factory {
 						if (k->moves_upstream()) {
 							Logger(Level::SERVER) << "Socket_server::send()" << std::endl;
 							if (_upstream.size() > 0) {
+								// TODO: round robin
 								auto result = _upstream.begin();
 								result->second->send(k);
 								_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
