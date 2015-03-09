@@ -38,7 +38,7 @@ namespace factory {
 			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type>;
 
 		template<class K>
-			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type>;
+			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type, Pool>;
 
 		template<class K>
 			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;

@@ -293,6 +293,9 @@ namespace factory {
 			virtual Endpoint from() const { return Endpoint(); }
 			virtual void from(Endpoint) {}
 
+			virtual Endpoint to() const { return Endpoint(); }
+			virtual void to(Endpoint) {}
+
 			bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}

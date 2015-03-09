@@ -224,8 +224,12 @@ namespace factory {
 			Endpoint from() const { return _endpoint; }
 			void from(Endpoint e) { _endpoint = e; }
 
+			Endpoint to() const { return _dest; }
+			void to(Endpoint e) { _dest = e; }
+
 		private:
 			Endpoint _endpoint;
+			Endpoint _dest;
 		};
 
 		// TODO: auto-deletion of kernels

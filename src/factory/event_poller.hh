@@ -42,9 +42,7 @@ namespace factory {
 				<< (rhs.is_reading() ? 'r' : ' ')
 				<< (rhs.is_writing() ? 'w' : ' ')
 				<< (rhs.is_closing() ? 'c' : ' ')
-				<< (rhs.is_error() ? 'e' : ' ')
-				<< ' ' << rhs.user_data();
-
+				<< (rhs.is_error() ? 'e' : ' ');
 		}
 
 	private:
@@ -75,6 +73,13 @@ namespace factory {
 //				pair.second.delete_user_data();
 //			});
 		}
+
+		int notification_pipe() const { return _mgmt_pipe.read_end(); }
+
+		void notify() {
+			char c = '!';
+			check("Event_poller::stop()", ::write(_mgmt_pipe.write_end(), &c, 1));
+		}
 	
 		template<class Callback>
 		void run(Callback callback) {
@@ -85,8 +90,9 @@ namespace factory {
 
 		void stop() {
 			Logger(Level::COMPONENT) << "Event_poller::stop()" << std::endl;
-			char s = 's';
-			check("Event_poller::stop()", ::write(_mgmt_pipe.write_end(), &s, 1));
+//			char s = 's';
+//			check("Event_poller::stop()", ::write(_mgmt_pipe.write_end(), &s, 1));
+			::close(_mgmt_pipe.write_end());
 		}
 	
 		void register_socket(E ev) {
@@ -118,10 +124,12 @@ namespace factory {
 			} while (nfds < 0 && errno == EINTR);
 			for (int n=0; n<nfds; ++n) {
 				if (_events[n].raw_fd() == _mgmt_pipe.read_end()) {
-					Logger(Level::COMPONENT) << "Stopping event poller" << std::endl;
-					_stopped = true;
 					if (_events[n].is_closing()) {
-						check("epoll_ctl()", ::epoll_ctl(_epollfd, EPOLL_CTL_DEL, _events[n].raw_fd(), &_events[n]));
+						Logger(Level::COMPONENT) << "Stopping event poller" << std::endl;
+						_stopped = true;
+					}
+					if (_events[n].is_reading()) {
+						callback(_events[n]);
 					}
 				} else {
 //					E ev = _events[n];
