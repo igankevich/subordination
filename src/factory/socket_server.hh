@@ -88,8 +88,16 @@ namespace factory {
 //					delete pair.second;
 //				});
 			}
+
+			void process_event() {
+				std::unique_lock<std::mutex> lock(_mutex);
+				for (auto pair : _upstream) {
+					process_event(pair.second, Event(EPOLLOUT, nullptr));
+				}
+			}
 	
 			void serve() {
+//				process_event();
 				_poller.run([this] (Event event) {
 					Logger(Level::SERVER)
 						<< "Event " << event.user_data()->endpoint()
@@ -111,14 +119,7 @@ namespace factory {
 							event.user_data()->recover_kernels();
 							event.delete_user_data();
 						} else {
-							event.user_data()->handle_event(event, [this, &event] (bool overflow) {
-//								std::unique_lock<std::mutex> lock(_mutex);
-								if (overflow) {
-									_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
-								} else {
-									_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
-								}
-							});
+							process_event(event.user_data(), event);
 							Logger(Level::SERVER) << "Processed event" << std::endl;
 							if (event.is_closing()) {
 								remove(event.user_data());
@@ -128,6 +129,17 @@ namespace factory {
 						}
 					}
 					debug();
+				});
+			}
+
+			void process_event(Remote_server* server, Event event) {
+				server->handle_event(event, [this, &event] (bool overflow) {
+//					std::unique_lock<std::mutex> lock(_mutex);
+					if (overflow) {
+						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
+					} else {
+						_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
+					}
 				});
 			}
 
