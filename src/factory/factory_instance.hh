@@ -14,7 +14,6 @@ namespace factory {
 			_discovery_server(),
 			_repository()
 		{
-			std::clog << "Basic_factory::Basic_factory()" << std::endl;
 			init_signal_handlers();
 		}
 

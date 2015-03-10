@@ -6,6 +6,9 @@ using namespace factory;
 #include "datum.hh"
 #include "process.hh"
 
+Endpoint server_endpoint("127.0.0.1", 10000);
+Endpoint client_endpoint("127.0.0.2", 10000);
+
 const uint32_t NUM_SIZES = 13;
 const uint32_t NUM_KERNELS = 7;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_KERNELS;
@@ -102,7 +105,8 @@ struct App {
 		if (argc <= 1) {
 			Process_group procs;
 			procs.add([&argv] () { return execute(argv[0], 'x'); });
-//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			// wait for master to start
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () { return execute(argv[0], 'y'); });
 			retval = procs.wait();
 		} else {
@@ -112,13 +116,13 @@ struct App {
 				the_server()->add(0);
 				if (argv[1][0] == 'x') {
 					the_server()->add(1);
-					remote_server()->socket(Endpoint("127.0.0.1", 60000));
+					remote_server()->socket(server_endpoint);
 					__factory.start();
 					__factory.wait();
 				}
 				if (argv[1][0] == 'y') {
-					remote_server()->socket(Endpoint("127.0.0.1", 60001));
-					remote_server()->add(Endpoint("127.0.0.1", 60000));
+					remote_server()->socket(client_endpoint);
+					remote_server()->add(server_endpoint);
 					__factory.start();
 					for (uint32_t i=1; i<=NUM_SIZES; ++i)
 						the_server()->send(new Main(i));

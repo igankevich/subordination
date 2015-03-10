@@ -107,24 +107,13 @@ namespace factory {
 						Endpoint virtual_endpoint = endpoint;
 						virtual_endpoint.port(server_addr().port());
 						std::unique_lock<std::mutex> lock(_upstream_mutex);
-						auto result = _upstream.find(virtual_endpoint);
-						Port port_1 = endpoint.port();
-						Port port_2 = result->second->socket().name().port();
+						Remote_server* handler = new Remote_server(socket, endpoint);
+						_upstream[endpoint] = handler;
+						handler->virtual_endpoint(virtual_endpoint);
 						Logger(Level::SERVER)
-							<< server_addr() << ": ports "
-							<< port_1 << ' ' << port_2
-							<< std::endl;
-						if (result != _upstream.end() && port_1 > port_2) {
-							socket.close();
-						} else {
-							Remote_server* handler = new Remote_server(socket, virtual_endpoint);
-							_upstream[virtual_endpoint] = handler;
-							handler->virtual_endpoint(virtual_endpoint);
-							Logger(Level::SERVER)
-								<< server_addr() << ": "
-								<< "New endpoint " << handler->virtual_endpoint() << std::endl;
-							_poller.register_socket(Event(DEFAULT_EVENTS, handler));
-						}
+							<< server_addr() << ": "
+							<< "New endpoint " << handler->virtual_endpoint() << std::endl;
+						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 					} else {
 						Logger(Level::SERVER)
 							<< "Event " << event.user_data()->endpoint()
@@ -155,11 +144,11 @@ namespace factory {
 
 			void send(Kernel* kernel, Endpoint endpoint) {
 				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
-				if (server_addr().addr() == endpoint.addr()) {
-					std::stringstream msg;
-					msg << "The same addr for kernel and server: " << kernel->type()->id();
-					throw std::runtime_error(msg.str());
-				}
+//				if (server_addr().addr() == endpoint.addr()) {
+//					std::stringstream msg;
+//					msg << "The same addr for kernel and server: " << kernel->type()->id();
+//					throw std::runtime_error(msg.str());
+//				}
 				kernel->to(endpoint);
 				send(kernel);
 			}
@@ -253,40 +242,40 @@ namespace factory {
 			}
 
 			void process_kernels() {
-				std::unique_lock<std::mutex> lock(_pool_mutex);
-				while (!_pool.empty()) {
+				Logger(Level::SERVER) << "Socket_server::process_kernels()" << std::endl;
+				bool empty = false;
+				{
+					std::unique_lock<std::mutex> lock(_pool_mutex);
+					empty = _pool.empty();
+				}
+				while (!empty) {
+
+					std::unique_lock<std::mutex> lock(_pool_mutex);
 					Kernel* k = _pool.front();
 					_pool.pop();
-					// create endpoint if necessary, and send kernel
-					if (k->to() != Endpoint()) {
+					empty = _pool.empty();
+					lock.unlock();
+
+					if (k->moves_upstream() && k->to() == Endpoint()) {
+						std::unique_lock<std::mutex> lock2(_upstream_mutex);
+						if (_upstream.empty()) {
+							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
+						}
+						// TODO: round robin
+						auto result = _upstream.begin();
+						result->second->send(k);
+						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
+					} else {
+						// create endpoint if necessary, and send kernel
+						if (k->to() == Endpoint()) {
+							k->to(k->from());
+						}
 						std::unique_lock<std::mutex> lock2(_upstream_mutex);
 						auto result = _upstream.find(k->to());
 						if (result == _upstream.end()) {
-							Remote_server* handler = add_endpoint(k->to(), DEFAULT_EVENTS);
+							Remote_server* handler = add_endpoint(k->to(), DEFAULT_EVENTS | EPOLLOUT);
 							handler->send(k);
-							_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, handler));
 						} else {
-							result->second->send(k);
-							_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
-						}
-					} else {
-						std::unique_lock<std::mutex> lock2(_upstream_mutex);
-						if (k->moves_upstream()) {
-							Logger(Level::SERVER) << "Socket_server::send()" << std::endl;
-							if (_upstream.size() > 0) {
-								// TODO: round robin
-								auto result = _upstream.begin();
-								result->second->send(k);
-								_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
-							}
-						} else {
-							auto result = _upstream.find(k->from());
-							if (result == _upstream.end()) {
-								std::stringstream msg;
-								msg << server_addr() << ": ";
-								msg << "can not find upstream server " << k->from();
-								throw Error(msg.str(), __FILE__, __LINE__, __func__);
-							}
 							result->second->send(k);
 							_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 						}
