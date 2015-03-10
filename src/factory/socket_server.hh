@@ -104,15 +104,27 @@ namespace factory {
 						std::pair<Socket,Endpoint> pair = _listener_socket.accept();
 						Socket socket = pair.first;
 						Endpoint endpoint = pair.second;
+						Endpoint virtual_endpoint = endpoint;
+						virtual_endpoint.port(server_addr().port());
 						std::unique_lock<std::mutex> lock(_upstream_mutex);
-						Remote_server* handler = new Remote_server(socket, endpoint);
-						endpoint.port(server_addr().port());
-						handler->virtual_endpoint(endpoint);
-						_upstream[endpoint] = handler;
+						auto result = _upstream.find(virtual_endpoint);
+						Port port_1 = endpoint.port();
+						Port port_2 = result->second->socket().name().port();
 						Logger(Level::SERVER)
-							<< server_addr() << ": "
-							<< "New endpoint " << handler->endpoint() << std::endl;
-						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+							<< server_addr() << ": ports "
+							<< port_1 << ' ' << port_2
+							<< std::endl;
+						if (result != _upstream.end() && port_1 > port_2) {
+							socket.close();
+						} else {
+							Remote_server* handler = new Remote_server(socket, virtual_endpoint);
+							_upstream[virtual_endpoint] = handler;
+							handler->virtual_endpoint(virtual_endpoint);
+							Logger(Level::SERVER)
+								<< server_addr() << ": "
+								<< "New endpoint " << handler->virtual_endpoint() << std::endl;
+							_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+						}
 					} else {
 						Logger(Level::SERVER)
 							<< "Event " << event.user_data()->endpoint()
@@ -271,7 +283,8 @@ namespace factory {
 							auto result = _upstream.find(k->from());
 							if (result == _upstream.end()) {
 								std::stringstream msg;
-								msg << "Can not find upstream server " << k->from();
+								msg << server_addr() << ": ";
+								msg << "can not find upstream server " << k->from();
 								throw Error(msg.str(), __FILE__, __LINE__, __func__);
 							}
 							result->second->send(k);
@@ -507,7 +520,6 @@ namespace factory {
 				if (event.is_writing()) {
 //					try {
 						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
-						Logger(Level::HANDLER) << "Flushing" << std::endl;
 						_ostream.flush<Socket>(_socket);
 						if (_ostream.empty()) {
 							Logger(Level::HANDLER) << "Flushed." << std::endl;
@@ -517,7 +529,6 @@ namespace factory {
 							clear_kernel_buffer(_ostream.global_read_pos());
 							overflow = true;
 						}
-						Logger(Level::HANDLER) << "Overflowing" << std::endl;
 //					} catch (Connection_error& err) {
 //						Logger(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
 //					} catch (Error& err) {
