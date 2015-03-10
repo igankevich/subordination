@@ -23,7 +23,7 @@ struct Test_socket: public Mobile<Test_socket> {
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
 		if (shutdown_counter == TOTAL_NUM_KERNELS) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			__factory.stop();
 		}
 	}
@@ -102,7 +102,7 @@ struct App {
 		if (argc <= 1) {
 			Process_group procs;
 			procs.add([&argv] () { return execute(argv[0], 'x'); });
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () { return execute(argv[0], 'y'); });
 			retval = procs.wait();
 		} else {

@@ -135,6 +135,10 @@ namespace factory {
 					}
 					debug();
 				});
+				if (_poller.stopped()) {
+					process_kernels();
+					flush_kernels();
+				}
 			}
 
 			void send(Kernel* kernel, Endpoint endpoint) {
@@ -228,6 +232,13 @@ namespace factory {
 				});
 			}
 
+			void flush_kernels() {
+				std::unique_lock<std::mutex> lock(_upstream_mutex);
+				for (auto pair : _upstream) {
+					Remote_server* server = pair.second;
+					process_event(server, Event(EPOLLOUT, server));
+				}
+			}
 
 			void process_kernels() {
 				std::unique_lock<std::mutex> lock(_pool_mutex);
@@ -236,6 +247,7 @@ namespace factory {
 					_pool.pop();
 					// create endpoint if necessary, and send kernel
 					if (k->to() != Endpoint()) {
+						std::unique_lock<std::mutex> lock2(_upstream_mutex);
 						auto result = _upstream.find(k->to());
 						if (result == _upstream.end()) {
 							Remote_server* handler = add_endpoint(k->to(), DEFAULT_EVENTS);
@@ -246,6 +258,7 @@ namespace factory {
 							_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
 						}
 					} else {
+						std::unique_lock<std::mutex> lock2(_upstream_mutex);
 						if (k->moves_upstream()) {
 							Logger(Level::SERVER) << "Socket_server::send()" << std::endl;
 							if (_upstream.size() > 0) {
