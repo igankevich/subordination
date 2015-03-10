@@ -106,8 +106,12 @@ namespace factory {
 						Endpoint endpoint = pair.second;
 						std::unique_lock<std::mutex> lock(_upstream_mutex);
 						Remote_server* handler = new Remote_server(socket, endpoint);
+						endpoint.port(server_addr().port());
+						handler->virtual_endpoint(endpoint);
 						_upstream[endpoint] = handler;
-						lock.unlock();
+						Logger(Level::SERVER)
+							<< server_addr() << ": "
+							<< "New endpoint " << handler->endpoint() << std::endl;
 						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
 					} else {
 						Logger(Level::SERVER)
@@ -135,6 +139,11 @@ namespace factory {
 
 			void send(Kernel* kernel, Endpoint endpoint) {
 				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
+				if (server_addr().addr() == endpoint.addr()) {
+					std::stringstream msg;
+					msg << "The same addr for kernel and server: " << kernel->type()->id();
+					throw std::runtime_error(msg.str());
+				}
 				kernel->to(endpoint);
 				send(kernel);
 			}
@@ -207,6 +216,8 @@ namespace factory {
 		
 		private:
 
+			Endpoint server_addr() const { return _listener_socket.name(); }
+
 			void process_event(Remote_server* server, Event event) {
 				server->handle_event(event, [this, &event] (bool overflow) {
 					if (overflow) {
@@ -273,6 +284,10 @@ namespace factory {
 				Remote_server* handler = new Remote_server(socket, endpoint);
 				_upstream[endpoint] = handler;
 				_poller.register_socket(Event(events, handler));
+				// bind to server address with ephemeral port
+				Endpoint srv_addr = server_addr();
+				srv_addr.port(0);
+				socket.bind(srv_addr);
 				socket.connect(endpoint);
 //				Logger(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
 				return handler;
@@ -416,6 +431,7 @@ namespace factory {
 			Remote_Rserver(Socket socket, Endpoint endpoint):
 				_socket(socket),
 				_endpoint(endpoint),
+				_virtual_endpoint(_endpoint),
 				_istream(),
 				_ostream(),
 				_ipacket(),
@@ -461,7 +477,7 @@ namespace factory {
 					while (state_is_ok && !_istream.empty()) {
 						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
 						try {
-							state_is_ok = _ipacket.read(_istream, _endpoint);
+							state_is_ok = _ipacket.read(_istream, _virtual_endpoint);
 						} catch (No_principal_found<Kernel>& err) {
 							Logger(Level::HANDLER) << "No principal found for "
 								<< int(err.kernel()->result()) << std::endl;
@@ -505,9 +521,11 @@ namespace factory {
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
 			Endpoint endpoint() const { return _endpoint; }
+			void virtual_endpoint(Endpoint rhs) { _virtual_endpoint = rhs; }
+			Endpoint virtual_endpoint() const { return _virtual_endpoint; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << rhs.endpoint() << '('
+				return out << rhs.virtual_endpoint() << '('
 					<< (rhs.valid() ? ' ' : '!')
 					<< rhs._buffer.size() << ','
 					<< rhs._istream.size() << ','
@@ -538,6 +556,7 @@ namespace factory {
 
 			Server_socket _socket;
 			Endpoint _endpoint;
+			Endpoint _virtual_endpoint;
 			Foreign_stream _istream;
 			Foreign_stream _ostream;
 			Packet _ipacket;

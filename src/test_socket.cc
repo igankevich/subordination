@@ -84,6 +84,7 @@ struct Main: public Identifiable<Kernel> {
 			}
 		}
 
+		std::cout << "NUM_KERNELS = " << _num_returned << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -97,11 +98,13 @@ struct Main: public Identifiable<Kernel> {
 
 struct App {
 	int run(int argc, char* argv[]) {
+		int retval = 0;
 		if (argc <= 1) {
 			Process_group procs;
 			procs.add([&argv] () { return execute(argv[0], 'x'); });
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () { return execute(argv[0], 'y'); });
+			retval = procs.wait();
 		} else {
 			try {
 				if (argc != 2)
@@ -123,10 +126,10 @@ struct App {
 				}
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
-				return 1;
+				retval = 1;
 			}
 		}
-		return 0;
+		return retval;
 	}
 };
 

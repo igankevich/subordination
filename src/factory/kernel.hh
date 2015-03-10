@@ -267,12 +267,7 @@ namespace factory {
 				in >> r;
 				this->result(Result(r));
 				Logger(Level::KERNEL) << "Reading result = " << r << std::endl;
-//				Id i;
-//				in >> i;
-//				id(i);
-//				Endpoint fr;
-//				in >> fr;
-//				from(fr);
+				in >> _id;
 			}
 
 			virtual void write(Foreign_stream& out) {
@@ -280,26 +275,29 @@ namespace factory {
 				uint16_t r = static_cast<uint16_t>(this->result());
 				Logger(Level::KERNEL) << "Writing result = " << r << std::endl;
 				out << r;
-//				out << id();
-//				out << from();
+				out << _id;
 			}
 
 			virtual void read_impl(Foreign_stream&) {}
 			virtual void write_impl(Foreign_stream&) {}
 
-			virtual Id id() const { return ROOT_ID; }
-			virtual void id(Id) {}
+			Id id() const { return _id; }
+			void id(Id rhs) { _id = rhs; }
 
-			virtual Endpoint from() const { return Endpoint(); }
-			virtual void from(Endpoint) {}
+			virtual Endpoint from() const { return _src; }
+			virtual void from(Endpoint rhs) { _src = rhs; }
 
-			virtual Endpoint to() const { return Endpoint(); }
-			virtual void to(Endpoint) {}
+			virtual Endpoint to() const { return _dst; }
+			virtual void to(Endpoint rhs) { _dst = rhs; }
 
 			bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 
+		private:
+			Id _id = ROOT_ID;
+			Endpoint _src;
+			Endpoint _dst;
 		};
 
 	}

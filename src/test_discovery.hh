@@ -28,11 +28,11 @@ struct Discovery: public Mobile<Discovery> {
 			_time = current_time();
 		}
 		_state++;
-		out << _src << _dest << _state << _time;
+		out << _state << _time;
 	}
 
 	void read_impl(Foreign_stream& in) {
-		in >> _src >> _dest >> _state >> _time;
+		in >> _state >> _time;
 		_state++;
 		if (_state == 3) {
 			_time = current_time() - _time;
@@ -40,11 +40,6 @@ struct Discovery: public Mobile<Discovery> {
 	}
 
 	Time time() const { return _time; }
-
-	void dest(Endpoint rhs) { _dest = rhs; }
-	Endpoint dest() const { return _dest; }
-	void source(Endpoint rhs) { _src = rhs; }
-	Endpoint source() const { return _src; }
 
 	static Time current_time() {
 		return std::chrono::steady_clock::now().time_since_epoch().count();
@@ -57,8 +52,6 @@ struct Discovery: public Mobile<Discovery> {
 private:
 	Time _time = 0;
 	State _state = 0;
-	Endpoint _src;
-	Endpoint _dest;
 };
 
 struct Neighbour {
@@ -127,6 +120,7 @@ struct Ballot: public Mobile<Ballot> {
 
 	void vote(bool rhs) { _vote = rhs ? 0 : 1; }
 	bool vote() const { return _vote == 0; }
+	bool no_vote() const { return _vote == 2; }
 	
 	static void init_type(Type* t) {
 		t->id(3);
@@ -137,7 +131,7 @@ struct Ballot: public Mobile<Ballot> {
 
 private:
 	Endpoint _src;
-	uint8_t _vote = 0;
+	uint8_t _vote = 2;
 };
 
 struct Candidate: public Identifiable<Kernel> {
@@ -290,8 +284,7 @@ struct Discoverer: public Identifiable<Kernel> {
 				Logger(Level::KERNEL) << "Sending to " << ep << std::endl;
 				Discovery* k = new Discovery;
 				k->parent(this);
-				k->dest(ep);
-				k->source(_source);
+				k->to(ep);
 				kernels.push_back(k);
 			}
 		});
@@ -326,7 +319,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		Logger(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
 		_num_neighbours = kernels.size();
 		for (Discovery* d : kernels) {
-			discovery_server()->send(d, d->dest());
+			discovery_server()->send(d, d->to());
 		}
 
 		// repeat when nothing is discovered
@@ -339,18 +332,18 @@ struct Discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		Discovery* d = dynamic_cast<Discovery*>(k);
 		if (d->result() == Result::SUCCESS) {
-			Logger(Level::KERNEL) << _source << ": success for " << d->dest() << std::endl;
+			Logger(Level::KERNEL) << _source << ": success for " << d->from() << std::endl;
 			_num_succeeded++;
-			if (_neighbours_map.find(d->dest()) == _neighbours_map.end()) {
-				Neighbour* n = new Neighbour(d->dest(), d->time());
-				_neighbours_map[d->dest()] = n;
+			if (_neighbours_map.find(d->from()) == _neighbours_map.end()) {
+				Neighbour* n = new Neighbour(d->from(), d->time());
+				_neighbours_map[d->from()] = n;
 				_neighbours_set.insert(n);
 			} else {
-				_neighbours_map[d->dest()]->sample(d->time());
+				_neighbours_map[d->from()]->sample(d->time());
 			}
 		} else {
 			_num_failed++;
-//			auto result = _neighbours_map.find(d->dest());
+//			auto result = _neighbours_map.find(d->from());
 //			if (result != _neighbours_map.end()) {
 //				Neighbour* n = result->second;
 //				_neighbours_map.erase(result->first);
@@ -361,7 +354,7 @@ struct Discoverer: public Identifiable<Kernel> {
 //		Logger(Level::KERNEL) << "Returned: "
 //			<< _num_succeeded + _num_failed << '/' 
 //			<< _num_neighbours
-//			<< " from " << d->dest() 
+//			<< " from " << d->from() 
 //			<< std::endl;
 		
 		Logger(Level::KERNEL) << _source << ": result #" << _attempts
@@ -381,8 +374,8 @@ struct Discoverer: public Identifiable<Kernel> {
 
 			if (min_samples() == MIN_SAMPLES) {
 				Logger log(Level::KERNEL);
-				log << "Neighbours:" << std::endl;
-				std::ostream_iterator<Neighbour*> it(log.ostream(), "\n");
+				log << "Neighbours: ";
+				std::ostream_iterator<Neighbour*> it(log.ostream(), ", ");
 				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
 				std::set<Neighbour> neighbours;
 				std::for_each(_neighbours_set.cbegin(), _neighbours_set.cend(),
@@ -390,6 +383,7 @@ struct Discoverer: public Identifiable<Kernel> {
 				{
 					neighbours.insert(*rhs);
 				});
+				log << std::endl;
 				this->upstream(the_server(), new Candidate(_source, neighbours));
 //				commit(the_server());
 			} else {

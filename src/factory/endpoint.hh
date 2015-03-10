@@ -68,6 +68,7 @@ namespace factory {
 
 		uint32_t address() const { return ntohl(_addr.sin_addr.s_addr); }
 		Port port() const { return ntohs(_addr.sin_port); }
+		void port(Port rhs) { _addr.sin_port = htons(rhs); }
 
 		struct ::sockaddr_in* addr() { return &_addr; }
 		const struct ::sockaddr_in* addr() const { return &_addr; }

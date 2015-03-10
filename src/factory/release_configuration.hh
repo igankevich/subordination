@@ -88,15 +88,13 @@ namespace factory {
 
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
-				factory::components::Kernel_link<T, factory::components::Remote<Kernel>>>;
+				factory::components::Kernel_link<T, Kernel>>;
 
 		template<class T>
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 
-		typedef factory::components::Discovery_kernel<Unidentifiable, Type> Discovery_kernel;
-
 		typedef Socket_server<Kernel> Remote_server;
-		typedef Socket_server<Discovery_kernel> Discovery_server;
+		typedef Socket_server<Kernel> Discovery_server;
 	}
 
 	using namespace configuration;

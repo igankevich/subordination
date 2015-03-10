@@ -156,6 +156,11 @@ namespace factory {
 					std::unique_lock<std::mutex> lock(_mutex);
 					_instances[inst->id()] = inst;
 				}
+
+				void free_instance(K* inst) {
+					std::unique_lock<std::mutex> lock(_mutex);
+					_instances.erase(inst->id());
+				}
 		
 				friend std::ostream& operator<<(std::ostream& out, const Instances& rhs) {
 					// TODO: this function is not thread-safe
@@ -268,24 +273,17 @@ namespace factory {
 
 		public:
 
-			explicit Identifiable(Id i, bool b=true): _id(i) {
+			explicit Identifiable(Id i, bool b=true) {
+				this->id(i);
 				if (b) {
 					Type::instances().register_instance(this);
 				}
 			}
 
-			Identifiable(): _id(generate_id()) {
+			Identifiable() {
+				this->id(generate_id());
 				Type::instances().register_instance(this);
 			}
-
-			Id id() const { return _id; }
-			void id(Id i) { _id = i; }
-
-			void read_impl(Foreign_stream& in) { in >> _id; }
-			void write_impl(Foreign_stream& out) { out << _id; }
-
-//			Endpoint from() const { return _from; }
-//			void from(Endpoint endp) { _from = endp; }
 
 		private:
 
@@ -309,8 +307,6 @@ namespace factory {
 				return i;
 			}
 
-			Id _id;
-//			Endpoint _from;
 		};
 	
 	}
