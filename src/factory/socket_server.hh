@@ -98,11 +98,17 @@ namespace factory {
 							auto pair = _socket.accept();
 							Socket socket = pair.first;
 							Endpoint addr = pair.second;
-							Remote_server* s = peer(socket, addr, DEFAULT_EVENTS);
-							s->vaddr(virtual_addr(addr));
-							Logger(Level::SERVER)
-								<< server_addr() << ": "
-								<< "connected peer " << s->vaddr() << std::endl;
+							Endpoint vaddr = virtual_addr(addr);
+//							auto res = _upstream.find(vaddr);
+//							if (res == _upstream.end()) {
+								Remote_server* s = peer(socket, addr, vaddr, DEFAULT_EVENTS);
+								Logger(Level::SERVER)
+									<< server_addr() << ": "
+									<< "connected peer " << s->vaddr() << std::endl;
+//							} else {
+//								if (addr.port() < res->second->socket().name().port()) {
+//								}
+//							}
 						}
 					} else {
 						auto res = _servers.find(event.fd());
@@ -320,11 +326,13 @@ namespace factory {
 				Socket socket;
 				socket.bind(srv_addr);
 				socket.connect(addr);
-				return peer(socket, addr, events);
+				Endpoint vaddr = socket.name();
+				return peer(socket, addr, vaddr, events);
 			}
 
-			Remote_server* peer(Socket socket, Endpoint addr, int events) {
+			Remote_server* peer(Socket socket, Endpoint addr, Endpoint vaddr, int events) {
 				Remote_server* s = new Remote_server(socket, addr);
+				s->vaddr(vaddr);
 				_upstream[addr] = s;
 				_servers[socket] = s;
 				_poller.add(Event(events, socket));
