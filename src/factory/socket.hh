@@ -7,16 +7,18 @@ namespace factory {
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
-		Socket(): _socket(create_socket()) {}
+		Socket(): _socket(0) {}
 		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 
-		int create_socket() {
-			return check("socket()", ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
+		void create_socket_if_necessary() {
+			if (_socket <= 0) {
+				check("socket()", _socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
+			}
 		}
 
 		void bind(Endpoint e) {
-//			check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
+			create_socket_if_necessary();
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
 			Logger(Level::COMPONENT) << "Binding to " << e << std::endl;
@@ -29,7 +31,7 @@ namespace factory {
 
 		void connect(Endpoint e) {
 			try {
-//				check("socket()", _socket = ::socket(AF_INET, type | DEFAULT_FLAGS, 0));
+				create_socket_if_necessary();
 				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
 				Logger(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
@@ -38,7 +40,6 @@ namespace factory {
 			}
 		}
 
-		// Does not store client's address.
 		std::pair<Socket, Endpoint> accept() {
 			struct sockaddr_in addr;
 			socklen_t acc_len = sizeof(addr);
@@ -50,7 +51,7 @@ namespace factory {
 		}
 
 		void close() {
-			if (_socket >= 0) {
+			if (_socket > 0) {
 				Logger(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
@@ -72,9 +73,7 @@ namespace factory {
 				ret = -1;
 			} else {
 				socklen_t sz = sizeof(ret);
-				Logger(Level::COMPONENT) << "Socket = " << _socket << std::endl;
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
-				Logger(Level::COMPONENT) << "getsockopt(): " << ::strerror(ret) << std::endl;
 			}
 			// If one connects to localhost to a different port and the service is offline
 			// then socket's local port can be chosed to be the same as the port of the service.

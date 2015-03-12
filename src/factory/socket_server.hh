@@ -70,68 +70,55 @@ namespace factory {
 		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Type, Pool>, Server> {
 			
 			typedef Socket_server<Server, Remote_server, Kernel, Type, Pool> This;
-			typedef typename Event_poller<Remote_server>::E Event;
 
 			Socket_server():
 				_poller(),
-				_listener_socket(),
+				_socket(),
 				_upstream(),
+				_servers(),
 				_pool(),
 				_cpu(0),
 				_thread(),
-				_pool_mutex(),
-				_upstream_mutex()
+				_mutex()
 			{}
 
-			~Socket_server() {
-//				std::for_each(_upstream.begin(), _upstream.end(),
-//					[] (std::pair<Endpoint,Remote_server*> pair)
-//				{
-//					delete pair.second;
-//				});
-			}
-	
 			void serve() {
 				process_kernels();
 				_poller.run([this] (Event event) {
-					if (event.raw_fd() == _poller.notification_pipe()) {
-						Logger(Level::SERVER) << "Event notification " << event << std::endl;
+					Logger(Level::SERVER)
+						<< "Event " << event.fd() << ' ' << event << std::endl;
+					if (event.fd() == _poller.notification_pipe()) {
+						Logger(Level::SERVER) << "Notification " << event << std::endl;
 						process_kernels();
-					} else if (event.fd() == (int)_listener_socket) {
-						Logger(Level::SERVER)
-							<< "Event " << event.user_data()->endpoint()
-							<< ' ' << event << std::endl;
-						std::pair<Socket,Endpoint> pair = _listener_socket.accept();
-						Socket socket = pair.first;
-						Endpoint endpoint = pair.second;
-						Endpoint virtual_endpoint = endpoint;
-						virtual_endpoint.port(server_addr().port());
-						std::unique_lock<std::mutex> lock(_upstream_mutex);
-						Remote_server* handler = new Remote_server(socket, endpoint);
-						_upstream[endpoint] = handler;
-						handler->virtual_endpoint(virtual_endpoint);
-						Logger(Level::SERVER)
-							<< server_addr() << ": "
-							<< "New endpoint " << handler->virtual_endpoint() << std::endl;
-						_poller.register_socket(Event(DEFAULT_EVENTS, handler));
+					} else if (event.fd() == (int)_socket) {
+						if (event.is_reading()) {
+							auto pair = _socket.accept();
+							Socket socket = pair.first;
+							Endpoint addr = pair.second;
+							Remote_server* s = peer(socket, addr, DEFAULT_EVENTS);
+							s->vaddr(virtual_addr(addr));
+							Logger(Level::SERVER)
+								<< server_addr() << ": "
+								<< "connected peer " << s->vaddr() << std::endl;
+						}
 					} else {
-						Logger(Level::SERVER)
-							<< "Event " << event.user_data()->endpoint()
-							<< ' ' << event << std::endl;
-						if (event.is_error() || !event.user_data()->valid()) {
-//							event.user_data()->valid();
+						auto res = _servers.find(event.fd());
+						if (res == _servers.end()) {
+							std::stringstream msg;
+							msg << "Can not find server to process event: fd=" << event.fd();
+							throw Error(msg.str(), __FILE__, __LINE__, __func__);
+						}
+						Remote_server* s = res->second;
+						bool erasing;
+						if (event.is_error() || !s->valid()) {
 							Logger(Level::SERVER) << "Invalid socket" << std::endl;
-							remove(event.user_data());
-							event.user_data()->recover_kernels();
-							event.delete_user_data();
+							erasing = true;
 						} else {
-							process_event(event.user_data(), event);
-							Logger(Level::SERVER) << "Processed event" << std::endl;
-							if (event.is_closing()) {
-								remove(event.user_data());
-								event.user_data()->recover_kernels();
-								event.delete_user_data();
-							}
+							process_event(s, event);
+							erasing = event.is_closing();
+						}
+						if (erasing) {
+							erase(event.fd());
 						}
 					}
 					debug();
@@ -142,52 +129,46 @@ namespace factory {
 				}
 			}
 
+			// TODO: delete
 			void send(Kernel* kernel, Endpoint endpoint) {
 				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
-//				if (server_addr().addr() == endpoint.addr()) {
-//					std::stringstream msg;
-//					msg << "The same addr for kernel and server: " << kernel->type()->id();
-//					throw std::runtime_error(msg.str());
-//				}
 				kernel->to(endpoint);
 				send(kernel);
 			}
 
 			void send(Kernel* kernel) {
-				std::unique_lock<std::mutex> lock(_pool_mutex);
+				std::unique_lock<std::mutex> lock(_mutex);
 				_pool.push(kernel);
+				lock.unlock();
 				_poller.notify();
 			}
 
-			void add(Endpoint endpoint) {
-				std::unique_lock<std::mutex> lock(_pool_mutex);
-				add_endpoint(endpoint);
-			}
-
-			void remove(Remote_server* handler) {
-				std::unique_lock<std::mutex> lock(_upstream_mutex);
-				_upstream.erase(handler->endpoint());
-				Logger(Level::SERVER) << "Removing " << handler->endpoint() << std::endl;
-//				_poller.erase(Event(DEFAULT_EVENTS, handler));
-			}
-	
-//			void remove(Endpoint endpoint) {
-//				std::unique_lock<std::mutex> lock(_pool_mutex);
-//				auto result = _upstream.find(endpoint);
-//				if (result == _upstream.end()) {
-//					std::stringstream msg;
-//					msg << "Can not find endpoint to remove: " << endpoint;
-//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			void peer(Endpoint addr) {
+//				if (!this->stopped()) {
+//					throw Error("Can not add upstream server when socket server is running.",
+//						__FILE__, __LINE__, __func__);
 //				}
-//				Logger(Level::SERVER) << "Removing " << endpoint << std::endl;
-//				_poller.erase(Event(DEFAULT_EVENTS, result->second));
-//				_upstream.erase(endpoint);
-//			}
+				peer(addr, DEFAULT_EVENTS);
+			}
 
-			void socket(Endpoint endpoint) {
-				_listener_socket.bind(endpoint);
-				_poller.register_socket(Event(DEFAULT_EVENTS, new Remote_server(_listener_socket, endpoint)));
-				_listener_socket.listen();
+			void erase(Endpoint addr) {
+				Logger(Level::SERVER) << "Removing " << addr << std::endl;
+				auto res = _upstream.find(addr);
+				if (res == _upstream.end()) {
+					std::stringstream msg;
+					msg << "Can not find server to erase: " << addr;
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				Remote_server* s = res->second;
+				_upstream.erase(res);
+				_servers.erase(s->socket());
+				delete s;
+			}
+
+			void socket(Endpoint addr) {
+				_socket.bind(addr);
+				_socket.listen();
+				_poller.add(Event(DEFAULT_EVENTS, _socket));
 			}
 
 			void start() {
@@ -196,7 +177,6 @@ namespace factory {
 			}
 	
 			void stop_impl() {
-				// TODO: graceful shutdown
 				Logger(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
 				_poller.stop();
 			}
@@ -221,23 +201,44 @@ namespace factory {
 		
 		private:
 
-			Endpoint server_addr() const { return _listener_socket.name(); }
+			Endpoint virtual_addr(Endpoint addr) const {
+				Endpoint vaddr = addr;
+				vaddr.port(server_addr().port());
+				return vaddr;
+			}
+
+			void erase(int fd) {
+				Logger(Level::SERVER) << "Removing server: fd=" << fd << std::endl;
+				auto r = _servers.find(fd);
+				if (r == _servers.end()) {
+					std::stringstream msg;
+					msg << "Can not find server to erase: fd=" << fd;
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				Remote_server* s = r->second;
+				s->recover_kernels();
+				_upstream.erase(s->addr());
+				_servers.erase(fd);
+				delete s;
+			}
+	
+
+			Endpoint server_addr() const { return _socket.name(); }
 
 			void process_event(Remote_server* server, Event event) {
 				server->handle_event(event, [this, &event] (bool overflow) {
 					if (overflow) {
-						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, event.user_data()));
+						_poller[event.fd()]->events(DEFAULT_EVENTS | POLLOUT);
 					} else {
-						_poller.modify_socket(Event(DEFAULT_EVENTS, event.user_data()));
+						_poller[event.fd()]->events(DEFAULT_EVENTS);
 					}
 				});
 			}
 
 			void flush_kernels() {
-				std::unique_lock<std::mutex> lock(_upstream_mutex);
 				for (auto pair : _upstream) {
 					Remote_server* server = pair.second;
-					process_event(server, Event(EPOLLOUT, server));
+					process_event(server, Event(POLLOUT, server->fd()));
 				}
 			}
 
@@ -245,48 +246,46 @@ namespace factory {
 				Logger(Level::SERVER) << "Socket_server::process_kernels()" << std::endl;
 				bool empty = false;
 				{
-					std::unique_lock<std::mutex> lock(_pool_mutex);
+					std::unique_lock<std::mutex> lock(_mutex);
 					empty = _pool.empty();
 				}
 				while (!empty) {
 
-					std::unique_lock<std::mutex> lock(_pool_mutex);
+					std::unique_lock<std::mutex> lock(_mutex);
 					Kernel* k = _pool.front();
 					_pool.pop();
 					empty = _pool.empty();
 					lock.unlock();
 
 					if (k->moves_upstream() && k->to() == Endpoint()) {
-						std::unique_lock<std::mutex> lock2(_upstream_mutex);
 						if (_upstream.empty()) {
 							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
 						}
 						// TODO: round robin
 						auto result = _upstream.begin();
 						result->second->send(k);
-						_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
+						_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
 					} else {
 						// create endpoint if necessary, and send kernel
 						if (k->to() == Endpoint()) {
 							k->to(k->from());
 						}
-						std::unique_lock<std::mutex> lock2(_upstream_mutex);
 						auto result = _upstream.find(k->to());
 						if (result == _upstream.end()) {
-							Remote_server* handler = add_endpoint(k->to(), DEFAULT_EVENTS | EPOLLOUT);
+							Remote_server* handler = peer(k->to(), DEFAULT_EVENTS | POLLOUT);
 							handler->send(k);
 						} else {
 							result->second->send(k);
-							_poller.modify_socket(Event(DEFAULT_EVENTS | EPOLLOUT, result->second));
+							_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
 						}
 					}
 				}
 			}
 
 			void debug() {
-				std::unique_lock<std::mutex> lock(_pool_mutex);
+				std::unique_lock<std::mutex> lock(_mutex);
 				Logger log(Level::SERVER);
-				log << _listener_socket.name();
+				log << _socket.name();
 				log << ": Upstream: ";
 				for (auto p : _upstream) {
 					log << *p.second << ',';
@@ -294,37 +293,36 @@ namespace factory {
 				log << std::endl;
 			}
 
-			Remote_server* add_endpoint(Endpoint endpoint, int events = DEFAULT_EVENTS) {
-				Socket socket;
-				Remote_server* handler = new Remote_server(socket, endpoint);
-				_upstream[endpoint] = handler;
-				_poller.register_socket(Event(events, handler));
+			Remote_server* peer(Endpoint addr, int events) {
 				// bind to server address with ephemeral port
 				Endpoint srv_addr = server_addr();
 				srv_addr.port(0);
+				Socket socket;
 				socket.bind(srv_addr);
-				socket.connect(endpoint);
-//				Logger(Level::SERVER) << "Upstream size = " << _upstream.size() << std::endl;
-				return handler;
+				socket.connect(addr);
+				return peer(socket, addr, events);
 			}
 
-			void add_server(Remote_server* srv) {
-				_upstream[srv->endpoint()] = srv;
-				_poller.register_socket(Event(DEFAULT_EVENTS, srv));
+			Remote_server* peer(Socket socket, Endpoint addr, int events) {
+				Remote_server* s = new Remote_server(socket, addr);
+				_upstream[addr] = s;
+				_servers[socket] = s;
+				_poller.add(Event(events, socket));
+				return s;
 			}
-			
-			Event_poller<Remote_server> _poller;
-			Server_socket _listener_socket;
+
+			Poller _poller;
+			Server_socket _socket;
 			std::map<Endpoint, Remote_server*> _upstream;
+			std::unordered_map<int, Remote_server*> _servers;
 			Pool<Kernel*> _pool;
 
 			// multi-threading
 			int _cpu;
 			std::thread _thread;
-			std::mutex _pool_mutex;
-			std::mutex _upstream_mutex;
+			std::mutex _mutex;
 
-			static const int DEFAULT_EVENTS = EPOLLRDHUP | EPOLLIN;
+			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
 		};
 
 //	template<unsigned int N = 128>
@@ -445,8 +443,8 @@ namespace factory {
 
 			Remote_Rserver(Socket socket, Endpoint endpoint):
 				_socket(socket),
-				_endpoint(endpoint),
-				_virtual_endpoint(_endpoint),
+				_addr(endpoint),
+				_vaddr(_addr),
 				_istream(),
 				_ostream(),
 				_ipacket(),
@@ -484,7 +482,7 @@ namespace factory {
 			}
 
 			template<class F>
-			void handle_event(Event<This> event, F on_overflow) {
+			void handle_event(Event event, F on_overflow) {
 				bool overflow = false;
 				if (event.is_reading()) {
 					_istream.fill<Socket>(_socket);
@@ -492,7 +490,7 @@ namespace factory {
 					while (state_is_ok && !_istream.empty()) {
 						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
 						try {
-							state_is_ok = _ipacket.read(_istream, _virtual_endpoint);
+							state_is_ok = _ipacket.read(_istream, _vaddr);
 						} catch (No_principal_found<Kernel>& err) {
 							Logger(Level::HANDLER) << "No principal found for "
 								<< int(err.kernel()->result()) << std::endl;
@@ -533,12 +531,12 @@ namespace factory {
 
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
-			Endpoint endpoint() const { return _endpoint; }
-			void virtual_endpoint(Endpoint rhs) { _virtual_endpoint = rhs; }
-			Endpoint virtual_endpoint() const { return _virtual_endpoint; }
+			Endpoint addr() const { return _addr; }
+			void vaddr(Endpoint rhs) { _vaddr = rhs; }
+			Endpoint vaddr() const { return _vaddr; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << rhs.virtual_endpoint() << '('
+				return out << rhs.vaddr() << '('
 					<< (rhs.valid() ? ' ' : '!')
 					<< rhs._buffer.size() << ','
 					<< rhs._istream.size() << ','
@@ -568,8 +566,8 @@ namespace factory {
 			}
 
 			Server_socket _socket;
-			Endpoint _endpoint;
-			Endpoint _virtual_endpoint;
+			Endpoint _addr;
+			Endpoint _vaddr;
 			Foreign_stream _istream;
 			Foreign_stream _ostream;
 			Packet _ipacket;

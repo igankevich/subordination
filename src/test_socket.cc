@@ -26,7 +26,7 @@ struct Test_socket: public Mobile<Test_socket> {
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
 		if (shutdown_counter == TOTAL_NUM_KERNELS) {
-//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			__factory.stop();
 		}
 	}
@@ -122,7 +122,7 @@ struct App {
 				}
 				if (argv[1][0] == 'y') {
 					remote_server()->socket(client_endpoint);
-					remote_server()->add(server_endpoint);
+					remote_server()->peer(server_endpoint);
 					__factory.start();
 					for (uint32_t i=1; i<=NUM_SIZES; ++i)
 						the_server()->send(new Main(i));

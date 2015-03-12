@@ -35,7 +35,7 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
+#include <poll.h>
 
 // Base system
 #include "error.hh"
@@ -47,7 +47,7 @@
 // for marshaling
 #include "endpoint.hh"
 #include "sockets.hh"
-#include "event_poller.hh"
+#include "poller.hh"
 #include "base.hh"
 #include "type.hh"
 #include "resource.hh"
