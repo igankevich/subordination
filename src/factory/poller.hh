@@ -42,7 +42,7 @@ namespace factory {
 	};
 
 	static_assert(sizeof(Event) == sizeof(Basic_event),
-		"The size of Event does not match the size of 'struct pollfd'.");
+		"The size of Event does not match the size of Basic_event.");
 	
 	struct Poller {
 
@@ -63,7 +63,7 @@ namespace factory {
 		int notification_pipe() const { return _mgmt_pipe.read_end(); }
 
 		void notify() {
-			char c = '!';
+			char c = NOTIFY_SYMBOL;
 			check("Poller::notify()", ::write(_mgmt_pipe.write_end(), &c, 1));
 		}
 
@@ -74,10 +74,7 @@ namespace factory {
 
 	
 		template<class Callback>
-		void run(Callback callback) {
-			while (!stopped()) this->wait(callback);
-			Logger(Level::COMPONENT) << "poller is done" << std::endl;
-		}
+		void run(Callback callback) { while (!stopped()) this->wait(callback); }
 
 		bool stopped() const { return _state == State::STOPPED; }
 		bool stopping() const { return _state == State::STOPPING; }
@@ -185,7 +182,8 @@ namespace factory {
 	
 		std::vector<Event> _events;
 
-		static const char STOP_SYMBOL = 's';
+		static const char STOP_SYMBOL   = 's';
+		static const char NOTIFY_SYMBOL = '!';
 	};
 
 }
