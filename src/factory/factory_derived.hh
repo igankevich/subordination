@@ -28,6 +28,9 @@ namespace factory {
 		if (signal == SIGFPE) {
 			std::clog << "Arithmetic exception caught." << std::endl;
 		}
+		if (signal == SIGSEGV) {
+			std::clog << "Segfault caught." << std::endl;
+		}
 		if (num_calls >= MAX_CALLS) {
 			std::clog << "MAX_CALLS reached. Aborting." << std::endl;
 			std::abort();

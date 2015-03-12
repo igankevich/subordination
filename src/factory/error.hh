@@ -10,8 +10,8 @@ namespace factory {
 
 	struct Logger {
 
-		Logger(Level l = Level::KERNEL) {
-			_buf << ::getpid() << ": " << std::setw(int(l)) << ' ';
+		Logger(Level l = Level::KERNEL): _level(l) {
+			next_record();
 		}
 	
 		template<class T>
@@ -24,7 +24,9 @@ namespace factory {
 			_buf << pf;
 			if (pf == (std::ostream& (*)(std::ostream&))&std::endl) {
 				std::cout << _buf.str() << std::flush;
+				_buf.str("");
 				_buf.clear();
+				next_record();
 			}
 			return *this;
 		}
@@ -32,7 +34,13 @@ namespace factory {
 		std::ostream& ostream() { return _buf; }
 	
 	private:
+
+		void next_record() {
+			_buf << ::getpid() << ": " << std::setw(int(_level)) << ' ';
+		}
+
 		std::stringstream _buf;
+		Level _level;
 	};
 
 	std::string log_filename() {

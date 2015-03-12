@@ -60,6 +60,10 @@ namespace factory {
 			_socket = -1;
 		}
 
+		void no_reading() {
+			::shutdown(_socket, SHUT_RD);
+		}
+
 		void flags(Flag f) { ::fcntl(_socket, F_SETFL, flags() | f); }
 		Flag flags() const { return ::fcntl(_socket, F_GETFL); }
 
@@ -88,6 +92,13 @@ namespace factory {
 				ret = -1;
 			}
 			return ret;
+		}
+
+		Endpoint bind_addr() const {
+			struct ::sockaddr_in addr;
+			socklen_t len = sizeof(addr);
+			int ret = ::getsockname(_socket, (struct ::sockaddr*)&addr, &len);
+			return ret == -1 ? Endpoint() : Endpoint(&addr);
 		}
 
 		Endpoint name() const {

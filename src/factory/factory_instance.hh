@@ -50,6 +50,7 @@ namespace factory {
 			action.sa_handler = emergency_shutdown;
 			::sigaction(SIGTERM, &action, NULL);
 			::sigaction(SIGINT, &action, NULL);
+			::sigaction(SIGSEGV, &action, NULL);
 			::feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_UNDERFLOW | FE_OVERFLOW);
 			::sigaction(SIGFPE, &action, NULL);
 		}
