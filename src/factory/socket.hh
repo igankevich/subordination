@@ -10,6 +10,7 @@ namespace factory {
 		Socket(): _socket(0) {}
 		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
+		Socket(Socket&& rhs): _socket(rhs._socket) { rhs._socket = -1; }
 
 		void create_socket_if_necessary() {
 			if (_socket <= 0) {

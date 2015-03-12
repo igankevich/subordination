@@ -12,6 +12,7 @@ namespace factory {
 
 		void fd(int rhs) { Basic_event::fd = rhs; }
 		int fd() const { return Basic_event::fd; }
+		bool bad_fd() const { return fd() <= 0; } 
 
 		bool is_reading() const { return (events() & POLLIN) != 0; }
 		bool is_writing() const { return (events() & POLLOUT) != 0; }
@@ -25,6 +26,7 @@ namespace factory {
 		}
 
 		void no_reading() { Basic_event::revents &= ~POLLIN; }
+
 
 		bool operator==(const Event& rhs) const { return fd() == rhs.fd(); }
 		bool operator!=(const Event& rhs) const { return fd() != rhs.fd(); }
@@ -94,6 +96,13 @@ namespace factory {
 			return pos == _events.end() ? nullptr : &*pos;
 		}
 
+		void ignore(int fd) {
+			auto pos = std::find(_events.begin(), _events.end(), Event(fd));
+			if (pos != _events.end()) {
+				pos->fd(-1);
+			}
+		}
+
 	private:
 
 		void consume_notify() {
@@ -132,6 +141,12 @@ namespace factory {
 			int nfds = _events.size();
 			for (int n=0; n<nfds; ++n) {
 				Event e = _events[n];
+				if (e.bad_fd()) {
+					erase(e);
+					--n;
+					--nfds;
+					continue;
+				}
 				if (e.events() == 0) continue;
 				if (e.fd() == _mgmt_pipe.read_end()) {
 					if (e.is_closing()) {

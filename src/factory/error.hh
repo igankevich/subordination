@@ -23,7 +23,7 @@ namespace factory {
 		Logger& operator<<(std::ostream& ( *pf )(std::ostream&)) {
 			_buf << pf;
 			if (pf == (std::ostream& (*)(std::ostream&))&std::endl) {
-				std::clog << _buf.str() << std::flush;
+				std::cout << _buf.str() << std::flush;
 				_buf.clear();
 			}
 			return *this;

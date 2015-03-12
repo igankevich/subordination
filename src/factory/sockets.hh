@@ -7,7 +7,12 @@ namespace factory {
 			this->bind(endp);
 			this->listen();
 		}
+		Server_socket(Server_socket&& rhs): Socket(rhs) {}
 		~Server_socket() { this->close(); }
+
+		Server_socket& operator=(const Socket& rhs) {
+			return this->operator=(rhs);
+		}
 	};
 
 	struct Client_socket: public Socket {

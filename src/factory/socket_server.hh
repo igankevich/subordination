@@ -99,16 +99,34 @@ namespace factory {
 							Socket socket = pair.first;
 							Endpoint addr = pair.second;
 							Endpoint vaddr = virtual_addr(addr);
-//							auto res = _upstream.find(vaddr);
-//							if (res == _upstream.end()) {
+							auto res = _upstream.find(vaddr);
+							if (res == _upstream.end()) {
 								Remote_server* s = peer(socket, addr, vaddr, DEFAULT_EVENTS);
 								Logger(Level::SERVER)
 									<< server_addr() << ": "
 									<< "connected peer " << s->vaddr() << std::endl;
-//							} else {
-//								if (addr.port() < res->second->socket().name().port()) {
-//								}
-//							}
+							} else {
+								Remote_server* s = res->second;
+								if (addr.port() < s->addr().port()) {
+									socket.close();
+								} else {
+									Logger log(Level::SERVER);
+									log << server_addr() << ": "
+										<< "replacing peer " << *s << std::endl;
+									_poller.ignore(s->fd());
+									Remote_server* new_s = new Remote_server(std::move(*s));
+									new_s->socket(socket);
+									new_s->addr(addr);
+									_servers.erase(s->fd());
+									_servers[socket] = new_s;
+									_upstream[addr] = new_s;
+									_poller.add(Event(DEFAULT_EVENTS | POLLOUT, socket));
+//									erase(s->addr());
+//									peer(socket, addr, vaddr, DEFAULT_EVENTS);
+									log << "replacing with " << *new_s << std::endl;
+									delete s;
+								}
+							}
 						}
 					} else {
 						auto res = _servers.find(event.fd());
@@ -326,8 +344,7 @@ namespace factory {
 				Socket socket;
 				socket.bind(srv_addr);
 				socket.connect(addr);
-				Endpoint vaddr = socket.name();
-				return peer(socket, addr, vaddr, events);
+				return peer(socket, addr, addr, events);
 			}
 
 			Remote_server* peer(Socket socket, Endpoint addr, Endpoint vaddr, int events) {
@@ -478,6 +495,18 @@ namespace factory {
 				_ipacket(),
 				_buffer() {}
 
+			Remote_Rserver(Remote_Rserver&& rhs):
+				_socket(std::move(rhs._socket)),
+				_addr(rhs._addr),
+				_vaddr(rhs._vaddr),
+				_istream(std::move(rhs._istream)),
+				_ostream(std::move(rhs._ostream)),
+				_ipacket(rhs._ipacket),
+				_buffer(std::move(rhs._buffer))
+			{
+				Logger(Level::COMPONENT) << " moving Remote_Rserver = " << *this << std::endl;
+			}
+
 			void recover_kernels() {
 
 				clear_kernel_buffer(_ostream.global_read_pos());
@@ -559,9 +588,11 @@ namespace factory {
 
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
+			void socket(Socket rhs) { _socket = rhs; }
 			Endpoint addr() const { return _addr; }
-			void vaddr(Endpoint rhs) { _vaddr = rhs; }
+			void addr(Endpoint rhs) { _addr = rhs; }
 			Endpoint vaddr() const { return _vaddr; }
+			void vaddr(Endpoint rhs) { _vaddr = rhs; }
 
 			bool empty() const { return _buffer.empty(); }
 

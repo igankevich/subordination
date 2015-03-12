@@ -19,6 +19,15 @@ namespace factory {
 			_chunks.push_back(new T[_chunk_size]);
 		}
 
+		Buffer(Buffer&& rhs):
+			_chunk_size(rhs._chunk_size),
+			_chunks(std::move(rhs._chunks)),
+			_read_pos(rhs._read_pos),
+			_write_pos(rhs._write_pos),
+			_chunk_write_pos(rhs._chunk_write_pos),
+			_global_read_pos(rhs._global_read_pos),
+			_global_write_pos(rhs._global_write_pos) {}
+
 		void reset() {
 			_read_pos = 0;
 			_write_pos = 0;
