@@ -11,7 +11,7 @@ Endpoint client_endpoint("127.0.0.2", 10000);
 
 const uint32_t NUM_SIZES = 13;
 const uint32_t NUM_KERNELS = 7;
-const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_KERNELS;
+const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<uint32_t> shutdown_counter(0);
 
@@ -25,8 +25,8 @@ struct Test_socket: public Mobile<Test_socket> {
 		std::clog << "Test_socket::act()" << std::endl;
 		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
 		commit(remote_server());
+		Logger(Level::COMPONENT) << " kernel count = " << shutdown_counter << std::endl;
 		if (shutdown_counter == TOTAL_NUM_KERNELS) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			__factory.stop();
 		}
 	}
@@ -56,21 +56,23 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Main: public Identifiable<Kernel> {
+struct Sender: public Identifiable<Kernel> {
 
-	Main(uint32_t n):
+	Sender(uint32_t n):
 		_vector_size(n),
 		_input(_vector_size) {}
 
 	void act() {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			upstream(remote_server(), new Test_socket(_input));
+			++shutdown_counter;
+			Logger(Level::COMPONENT) << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 
 	void react(Kernel* child) {
 
-		std::clog << "Main::react()" << std::endl;
+		std::clog << "Sender::react()" << std::endl;
 
 		Test_socket* test_kernel = reinterpret_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
@@ -87,7 +89,7 @@ struct Main: public Identifiable<Kernel> {
 			}
 		}
 
-		std::cout << "NUM_KERNELS = " << _num_returned << std::endl;
+		Logger(Level::COMPONENT) << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -97,6 +99,24 @@ struct Main: public Identifiable<Kernel> {
 	uint32_t _vector_size;
 
 	std::vector<Datum> _input;
+};
+
+struct Main: public Kernel {
+
+	void act() {
+		for (uint32_t i=1; i<=NUM_SIZES; ++i)
+			upstream(the_server(), new Sender(i));
+	}
+
+	void react(Kernel*) {
+		Logger(Level::COMPONENT) << "Main::kernel count = " << _num_returned+1 << std::endl;
+		if (++_num_returned == NUM_SIZES) {
+			commit(the_server());
+		}
+	}
+
+private:
+	uint32_t _num_returned = 0;
 };
 
 struct App {
@@ -124,8 +144,7 @@ struct App {
 					remote_server()->socket(client_endpoint);
 					remote_server()->peer(server_endpoint);
 					__factory.start();
-					for (uint32_t i=1; i<=NUM_SIZES; ++i)
-						the_server()->send(new Main(i));
+					the_server()->send(new Main);
 					__factory.wait();
 				}
 			} catch (std::exception& e) {

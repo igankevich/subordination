@@ -24,6 +24,8 @@ namespace factory {
 				|| (events() & POLLNVAL) != 0;
 		}
 
+		void no_reading() { Basic_event::revents &= ~POLLIN; }
+
 		bool operator==(const Event& rhs) const { return fd() == rhs.fd(); }
 		bool operator!=(const Event& rhs) const { return fd() != rhs.fd(); }
 		bool operator< (const Event& rhs) const { return fd() <  rhs.fd(); }
@@ -44,8 +46,14 @@ namespace factory {
 	
 	struct Poller {
 
+		enum struct State: char {
+			DEFAULT,
+			STOPPING,
+			STOPPED
+		};
+
 		Poller():
-			_stopped(false),
+			_state(State::DEFAULT),
 			_mgmt_pipe(),
 			_events()
 		{
@@ -58,13 +66,21 @@ namespace factory {
 			char c = '!';
 			check("Poller::notify()", ::write(_mgmt_pipe.write_end(), &c, 1));
 		}
+
+		void notify_stopping() {
+			char c = STOP_SYMBOL;
+			::write(_mgmt_pipe.write_end(), &c, 1);
+		}
+
 	
 		template<class Callback>
 		void run(Callback callback) {
 			while (!stopped()) this->wait(callback);
+			Logger(Level::COMPONENT) << "poller is done" << std::endl;
 		}
 
-		bool stopped() const { return _stopped; }
+		bool stopped() const { return _state == State::STOPPED; }
+		bool stopping() const { return _state == State::STOPPING; }
 
 		void stop() {
 			Logger(Level::COMPONENT) << "Poller::stop()" << std::endl;
@@ -86,7 +102,12 @@ namespace factory {
 		void consume_notify() {
 			const size_t n = 20;
 			char tmp[n];
-			::read(_mgmt_pipe.read_end(), tmp, n);
+			int c;
+			while ((c = ::read(_mgmt_pipe.read_end(), tmp, n)) != -1) {
+				if (std::any_of(tmp, tmp + c, [this] (char rhs) { return rhs == STOP_SYMBOL; })) {
+					_state = State::STOPPING;
+				}
+			}
 		}
 
 		void erase(Event rhs) {
@@ -118,7 +139,7 @@ namespace factory {
 				if (e.fd() == _mgmt_pipe.read_end()) {
 					if (e.is_closing()) {
 						Logger(Level::COMPONENT) << "Stopping poller" << std::endl;
-						_stopped = true;
+						_state = State::STOPPED;
 					}
 					if (e.is_reading()) {
 						consume_notify();
@@ -135,7 +156,7 @@ namespace factory {
 			}
 		}
 	
-		bool _stopped;
+		State _state;
 
 		union Pipe {
 
@@ -163,6 +184,8 @@ namespace factory {
 		} _mgmt_pipe;
 	
 		std::vector<Event> _events;
+
+		static const char STOP_SYMBOL = 's';
 	};
 
 }

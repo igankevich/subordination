@@ -85,6 +85,9 @@ namespace factory {
 			void serve() {
 				process_kernels();
 				_poller.run([this] (Event event) {
+					if (_poller.stopping()) {
+						event.no_reading();
+					}
 					Logger(Level::SERVER)
 						<< "Event " << event.fd() << ' ' << event << std::endl;
 					if (event.fd() == _poller.notification_pipe()) {
@@ -121,12 +124,26 @@ namespace factory {
 							erase(event.fd());
 						}
 					}
-					debug();
+					if (_poller.stopping() && !this->empty()) {
+						debug("not stopping");
+					}
+					if (_poller.stopping() && this->empty()) {
+						debug("stopping");
+						_poller.stop();
+					}
 				});
-				if (_poller.stopped()) {
-					process_kernels();
-					flush_kernels();
-				}
+//				if (_poller.stopped()) {
+//					process_kernels();
+//					flush_kernels();
+//				}
+			}
+
+			bool empty() const {
+				return std::all_of(_upstream.cbegin(), _upstream.cend(),
+					[] (const std::pair<Endpoint,Remote_server*>& rhs)
+				{
+					return rhs.second->empty();
+				});
 			}
 
 			// TODO: delete
@@ -137,6 +154,10 @@ namespace factory {
 			}
 
 			void send(Kernel* kernel) {
+				if (this->stopped()) {
+					throw Error("Can not send kernel when the server is stopped.",
+						__FILE__, __LINE__, __func__);
+				}
 				std::unique_lock<std::mutex> lock(_mutex);
 				_pool.push(kernel);
 				lock.unlock();
@@ -178,7 +199,7 @@ namespace factory {
 	
 			void stop_impl() {
 				Logger(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
-				_poller.stop();
+				_poller.notify_stopping();
 			}
 
 			void wait_impl() {
@@ -282,11 +303,10 @@ namespace factory {
 				}
 			}
 
-			void debug() {
-				std::unique_lock<std::mutex> lock(_mutex);
+			void debug(const char* msg = "Upstream") {
 				Logger log(Level::SERVER);
-				log << _socket.name();
-				log << ": Upstream: ";
+//				log << _socket.name();
+				log << msg << ' ';
 				for (auto p : _upstream) {
 					log << *p.second << ',';
 				}
@@ -534,6 +554,8 @@ namespace factory {
 			Endpoint addr() const { return _addr; }
 			void vaddr(Endpoint rhs) { _vaddr = rhs; }
 			Endpoint vaddr() const { return _vaddr; }
+
+			bool empty() const { return _buffer.empty(); }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << rhs.vaddr() << '('

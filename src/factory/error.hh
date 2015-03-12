@@ -11,7 +11,7 @@ namespace factory {
 	struct Logger {
 
 		Logger(Level l = Level::KERNEL) {
-			_buf << std::setw(int(l)) << ' ';
+			_buf << ::getpid() << ": " << std::setw(int(l)) << ' ';
 		}
 	
 		template<class T>
