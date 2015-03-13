@@ -68,7 +68,7 @@ namespace factory {
 		void ignore_sigpipe() {
 			struct ::sigaction action;
 			std::memset(&action, 0, sizeof(struct ::sigaction));
-			action.sa_handler = sigpipe_handler;
+			action.sa_handler = SIG_IGN;
 			::sigaction(SIGPIPE, &action, 0);
 		}
 
@@ -76,10 +76,6 @@ namespace factory {
 		Remote_server _remote_server;
 		Repository_stack _repository;
 	};
-
-	void sigpipe_handler(int) {
-		Logger(Level::COMPONENT) << "SIGPIPE caught" << std::endl;
-	}
 
 }
 

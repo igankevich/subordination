@@ -15,6 +15,7 @@ namespace factory {
 		void create_socket_if_necessary() {
 			if (_socket <= 0) {
 				check("socket()", _socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
+				linger();
 			}
 		}
 
@@ -45,25 +46,39 @@ namespace factory {
 			struct sockaddr_in addr;
 			socklen_t acc_len = sizeof(addr);
 			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
+			socket.linger();
 			socket.flags(O_NONBLOCK);
+			socket.flags2(FD_CLOEXEC);
 			Endpoint endpoint(&addr);
 			Logger(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
 			return std::make_pair(socket, endpoint);
+		}
+
+		void linger() {
+//			struct ::linger x;
+//			x.l_onoff = 1;
+//			x.l_linger = 5;
+//			check("linger()", ::setsockopt(_socket, SOL_SOCKET, SO_LINGER, &x, sizeof(x)));
+//			options(SO_KEEPALIVE);
 		}
 
 		void close() {
 			if (_socket > 0) {
 				Logger(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
-				::close(_socket);
+				check("close()", ::close(_socket));
 			}
 			_socket = -1;
 		}
 
 		void no_reading() {
-			::shutdown(_socket, SHUT_RD);
+			if (_socket > 0) {
+				check("no_reading()", ::shutdown(_socket, SHUT_RD));
+			}
 		}
 
+		void flags2(Flag f) { ::fcntl(_socket, F_SETFD, flags2() | f); }
+		Flag flags2() const { return ::fcntl(_socket, F_GETFD); }
 		void flags(Flag f) { ::fcntl(_socket, F_SETFL, flags() | f); }
 		Flag flags() const { return ::fcntl(_socket, F_GETFL); }
 
@@ -79,6 +94,8 @@ namespace factory {
 			} else {
 				socklen_t sz = sizeof(ret);
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
+				// ignore EAGAIN since it is common 'error' in asynchronous programming
+				if (ret == EAGAIN) ret = 0;
 			}
 			// If one connects to localhost to a different port and the service is offline
 			// then socket's local port can be chosed to be the same as the port of the service.
@@ -120,7 +137,8 @@ namespace factory {
 		}
 
 		ssize_t write(const char* buf, size_t size) {
-			return ::write(_socket, buf, size);
+//			return ::write(_socket, buf, size);
+			return ::send(_socket, buf, size, MSG_NOSIGNAL);
 		}
 
 		operator int() const { return _socket; }
@@ -133,7 +151,9 @@ namespace factory {
 		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
-			return out << rhs._socket;
+			return out << '[' << rhs._socket << ','
+				<< (rhs.error() == 0 ? " " : strerror(errno))
+				<< ']';
 		}
 
 	private:

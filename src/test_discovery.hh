@@ -12,7 +12,7 @@ std::vector<Endpoint> NEIGHBOURS = {
 	Endpoint("127.0.0.3", DISCOVERY_PORT)
 };
 
-struct Discovery: public Mobile<Discovery> {
+struct Discovery: public Identifiable<Mobile<Discovery>> {
 
 	typedef uint64_t Time;
 	typedef uint8_t State;
@@ -445,10 +445,12 @@ struct App {
 		if (argc < 2) {
 			try {
 				Process_group processes;
+				int start_id = 1000;
 				for (Endpoint endpoint : NEIGHBOURS) {
-					processes.add([endpoint, &argv] () {
-						return execute(argv[0], endpoint);
+					processes.add([endpoint, &argv, start_id] () {
+						return execute(start_id, argv[0], endpoint);
 					});
+					start_id += 1000;
 				}
 
 				Logger(Level::KERNEL) << "Forked " << processes << std::endl;

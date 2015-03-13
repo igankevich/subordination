@@ -174,6 +174,7 @@ namespace factory {
 
 			virtual void react(This*) {
 				Logger(Level::KERNEL) << "Empty react in " << std::endl;
+				throw Error("Empty react", __FILE__, __LINE__, __func__);
 			}
 
 			virtual void error(This* rhs) { react(rhs); }
@@ -294,6 +295,15 @@ namespace factory {
 
 			bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const Mobile<K>& rhs) {
+				return out << '('
+					<< rhs.id() << ','
+					<< rhs.from() << ','
+					<< rhs.to() << ','
+					<< rhs.result()
+					<< ')';
 			}
 
 		private:

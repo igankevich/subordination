@@ -118,10 +118,10 @@ struct App {
 		int retval = 0;
 		if (argc <= 1) {
 			Process_group procs;
-			procs.add([&argv] () { return execute(argv[0], 'x'); });
+			procs.add([&argv] () { return execute(1000, argv[0], 'x'); });
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv] () { return execute(argv[0], 'y'); });
+			procs.add([&argv] () { return execute(2000, argv[0], 'y'); });
 			retval = procs.wait();
 		} else {
 			try {

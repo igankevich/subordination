@@ -182,4 +182,16 @@ namespace factory {
 		NO_PRINCIPAL_FOUND = 5
 	};
 
+	std::ostream& operator<<(std::ostream& out, Result rhs) {
+		switch (rhs) {
+			case Result::SUCCESS: out << "SUCCESS"; break;
+			case Result::UNDEFINED: out << "UNDEFINED"; break;
+			case Result::UNDEFINED_DOWNSTREAM: out << "UNDEFINED_DOWNSTREAM"; break;
+			case Result::ENDPOINT_NOT_CONNECTED: out << "ENDPOINT_NOT_CONNECTED"; break;
+			case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
+			case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
+		}
+		return out;
+	}
+
 }

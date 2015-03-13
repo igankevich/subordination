@@ -237,10 +237,7 @@ namespace factory {
 							k->principal(p);
 						}
 						Logger(Level::COMPONENT)
-							<< ::getpid() << ": "
-							<< "from " << k->from()
-							<< ", "
-							<< (k->moves_downstream() ? "downstream" : "upstream")
+							<< "received kernel " << *k
 							<< std::endl;
 //						std::clog << "From = " << k->from() << std::endl;
 						factory_send(k);

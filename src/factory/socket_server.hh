@@ -117,7 +117,7 @@ namespace factory {
 									log << server_addr() << ": "
 										<< "not replacing peer " << *s
 										<< std::endl;
-//									socket.no_reading();
+									socket.no_reading();
 									s->fill_from(socket);
 									socket.close();
 									debug("not replacing upstream");
@@ -182,7 +182,7 @@ namespace factory {
 						debug("stopping");
 						_poller.stop();
 					}
-//					debug();
+					debug("periodic");
 				});
 //				if (_poller.stopped()) {
 //					process_kernels();
@@ -554,6 +554,7 @@ namespace factory {
 
 			void recover_kernels() {
 
+				read_kernels();
 				clear_kernel_buffer(_ostream.global_read_pos());
 
 				Logger(Level::HANDLER)
@@ -652,7 +653,7 @@ namespace factory {
 //					<< rhs.bind_addr() << " <--> "
 					<< rhs.vaddr() << ','
 					<< rhs.fd() << ','
-					<< (rhs.valid() ? ' ' : '!')
+					<< rhs.socket() << ' '
 					<< rhs._buffer.size() << ','
 					<< rhs._istream.size() << ','
 					<< rhs._ostream.size() << ')';
@@ -668,6 +669,7 @@ namespace factory {
 
 			void clear_kernel_buffer() {
 				while (!_buffer.empty()) {
+					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
 					delete _buffer.front().second;
 					_buffer.pop();
 				}
@@ -675,9 +677,14 @@ namespace factory {
 
 			void clear_kernel_buffer(Pos global_read_pos) {
 				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
+					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
 					delete _buffer.front().second;
 					_buffer.pop();
 				}
+			}
+			
+			void read_kernels() {
+				handle_event(Event(POLLIN, _socket), [](bool) {});
 			}
 
 			Server_socket _socket;

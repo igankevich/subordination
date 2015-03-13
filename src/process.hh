@@ -118,7 +118,7 @@ namespace factory {
 	};
 
 	template<class ... Args>
-	int execute(const Args& ... args) {
+	int execute(int start_id, const Args& ... args) {
 		To_string tmp[] = { args... };
 		const int argc = sizeof...(Args);
 		char* argv[argc + 1];
@@ -126,7 +126,7 @@ namespace factory {
 			argv[i] = tmp[i].c_str();
 		}
 		argv[argc] = 0;
-		char* const env[] = { 0 };
+		char* env[] = { (char*)(std::string("START_ID=") + To_string(start_id).c_str()).c_str(), 0 };
 		Logger log(Level::COMPONENT);
 		log << "Executing ";
 		std::ostream_iterator<char*> it(log.ostream(), " ");
