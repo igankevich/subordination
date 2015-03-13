@@ -289,7 +289,7 @@ namespace factory {
 			void process_event(Remote_server* server, Event event) {
 				server->handle_event(event, [this, &event] (bool overflow) {
 					if (overflow) {
-						_poller[event.fd()]->events(DEFAULT_EVENTS | POLLOUT);
+						_poller[event.fd()]->writing();
 					} else {
 						_poller[event.fd()]->events(DEFAULT_EVENTS);
 					}
@@ -319,9 +319,6 @@ namespace factory {
 					lock.unlock();
 
 					if (k->moves_upstream() && k->to() == Endpoint()) {
-						if (_upstream.empty()) {
-							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
-						}
 						if (k->broadcast()) {
 							Logger(Level::SERVER)
 								<< server_addr() << ' '
@@ -329,13 +326,16 @@ namespace factory {
 							for (auto pair : _upstream) {
 								Remote_server* s = pair.second;
 								s->send(k);
-								_poller[s->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+								_poller[s->fd()]->writing();
 							}
 						} else {
+							if (_upstream.empty()) {
+								throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
+							}
 							// TODO: round robin
 							auto result = _upstream.begin();
 							result->second->send(k);
-							_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+							_poller[result->second->fd()]->writing();
 						}
 					} else {
 						// create endpoint if necessary, and send kernel
@@ -348,7 +348,7 @@ namespace factory {
 							handler->send(k);
 						} else {
 							result->second->send(k);
-							_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+							_poller[result->second->fd()]->writing();
 						}
 					}
 				}

@@ -26,7 +26,10 @@ namespace factory {
 		}
 
 		void no_reading() { Basic_event::revents &= ~POLLIN; }
-
+		void writing() {
+			Basic_event::events |= POLLOUT;
+			Basic_event::revents |= POLLOUT;
+		}
 
 		bool operator==(const Event& rhs) const { return fd() == rhs.fd(); }
 		bool operator!=(const Event& rhs) const { return fd() != rhs.fd(); }
