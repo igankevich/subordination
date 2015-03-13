@@ -20,7 +20,7 @@ struct Discovery: public Mobile<Discovery> {
 	Discovery() {}
 
 	void act() {
-		commit(discovery_server());
+		commit(remote_server());
 	}
 
 	void write_impl(Foreign_stream& out) {
@@ -160,7 +160,7 @@ struct Candidate: public Identifiable<Kernel> {
 				<< ", kernel id = "
 				<< k->id()
 				<< std::endl;
-			discovery_server()->send(k, rhs.addr());
+			remote_server()->send(k, rhs.addr());
 		});
 	}
 
@@ -185,7 +185,7 @@ struct Candidate: public Identifiable<Kernel> {
 			bb->source(b->source());
 			bb->vote(b->source() == _neighbours.cbegin()->addr());
 			bb->result(Result::SUCCESS);
-			discovery_server()->send(bb, b->from());
+			remote_server()->send(bb, b->from());
 		} else {
 			// returning ballot
 			if (b->result() == Result::SUCCESS) {
@@ -242,7 +242,7 @@ struct Discoverer: public Identifiable<Kernel> {
 //				Logger(Level::KERNEL) << ep << std::endl;
 //				Discovery_kernel* k = new Discovery_kernel;
 //				k->parent(this);
-//				discovery_server()->send(k, ep);
+//				remote_server()->send(k, ep);
 //			}
 //		});
 //	}
@@ -319,7 +319,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		Logger(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
 		_num_neighbours = kernels.size();
 		for (Discovery* d : kernels) {
-			discovery_server()->send(d, d->to());
+			remote_server()->send(d, d->to());
 		}
 
 		// repeat when nothing is discovered
@@ -479,8 +479,8 @@ struct App {
 			try {
 				the_server()->add(0);
 				the_server()->start();
-				discovery_server()->socket(endpoint);
-				discovery_server()->start();
+				remote_server()->socket(endpoint);
+				remote_server()->start();
 				the_server()->send(new Discoverer(endpoint));
 				__factory.wait();
 			} catch (std::exception& e) {

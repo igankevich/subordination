@@ -159,6 +159,10 @@ namespace factory {
 							erase(event.fd());
 						}
 					}
+//					if (_poller.stopping()) {
+//						process_kernels();
+//						flush_kernels();
+//					}
 					if (_poller.stopping() && !this->empty()) {
 						debug("not stopping");
 					}
@@ -190,10 +194,10 @@ namespace factory {
 			}
 
 			void send(Kernel* kernel) {
-				if (this->stopped()) {
-					throw Error("Can not send kernel when the server is stopped.",
-						__FILE__, __LINE__, __func__);
-				}
+//				if (this->stopped()) {
+//					throw Error("Can not send kernel when the server is stopped.",
+//						__FILE__, __LINE__, __func__);
+//				}
 				std::unique_lock<std::mutex> lock(_mutex);
 				_pool.push(kernel);
 				lock.unlock();
@@ -318,10 +322,21 @@ namespace factory {
 						if (_upstream.empty()) {
 							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
 						}
-						// TODO: round robin
-						auto result = _upstream.begin();
-						result->second->send(k);
-						_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+						if (k->broadcast()) {
+							Logger(Level::SERVER)
+								<< server_addr() << ' '
+								<< "broadcast kernel" << std::endl;
+							for (auto pair : _upstream) {
+								Remote_server* s = pair.second;
+								s->send(k);
+								_poller[s->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+							}
+						} else {
+							// TODO: round robin
+							auto result = _upstream.begin();
+							result->second->send(k);
+							_poller[result->second->fd()]->events(DEFAULT_EVENTS | POLLOUT);
+						}
 					} else {
 						// create endpoint if necessary, and send kernel
 						if (k->to() == Endpoint()) {

@@ -290,6 +290,8 @@ namespace factory {
 			virtual Endpoint to() const { return _dst; }
 			virtual void to(Endpoint rhs) { _dst = rhs; }
 
+			virtual bool broadcast() const { return false; }
+
 			bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}

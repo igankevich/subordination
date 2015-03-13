@@ -9,9 +9,6 @@ namespace factory {
 
 		template<class K>
 		void factory_send(K*);
-
-		template<class K>
-		void discovery_send(K*, Endpoint);
 	}
 
 	typedef std::int64_t Time;

@@ -21,18 +21,12 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> data): _data(data) {}
 
 	void act() {
-		shutdown_counter++;
-		std::clog << "Test_socket::act()" << std::endl;
-		std::clog << "Kernel size = " << Datum::real_size()*_data.size() << std::endl;
+		Logger log(Level::COMPONENT);
+		log << "kernel count = " << shutdown_counter << std::endl;
 		commit(remote_server());
-		Logger(Level::COMPONENT) << " kernel count = " << shutdown_counter << std::endl;
-		if (shutdown_counter == TOTAL_NUM_KERNELS) {
-			__factory.stop();
-		}
 	}
 
 	void write_impl(Foreign_stream& out) {
-		std::clog << "Test_socket::write_impl()" << std::endl;
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];

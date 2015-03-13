@@ -4,7 +4,6 @@ namespace factory {
 
 	Local_server* the_server() { return __factory.local_server(); }
 	Remote_server* remote_server() { return __factory.remote_server(); }
-	Discovery_server* discovery_server() { return __factory.discovery_server(); }
 	Repository_stack* repository() { return __factory.repository(); }
 
 	namespace components {
@@ -13,9 +12,6 @@ namespace factory {
 
 		template<class K>
 		void factory_send(K* kernel) { the_server()->send(kernel); }
-
-		template<class K>
-		void discovery_send(K* kernel, Endpoint endp) { discovery_server()->send(kernel, endp); }
 
 	}
 
