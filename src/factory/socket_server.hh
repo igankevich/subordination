@@ -117,20 +117,24 @@ namespace factory {
 									log << server_addr() << ": "
 										<< "not replacing peer " << *s
 										<< std::endl;
-									socket.no_reading();
+//									socket.no_reading();
 									s->fill_from(socket);
 									socket.close();
+									debug("not replacing upstream");
 								} else {
 									Logger log(Level::SERVER);
 									log << server_addr() << ": "
 										<< "replacing peer " << *s;
 									_poller.ignore(s->fd());
+									_servers.erase(s->fd());
 									Remote_server* new_s = new Remote_server(std::move(*s));
 									new_s->socket(socket);
-									_servers.erase(s->fd());
 									_servers[socket] = new_s;
 									_upstream[vaddr] = new_s;
-									_poller.add(Event(DEFAULT_EVENTS | POLLOUT, socket));
+									Event ev(DEFAULT_EVENTS | POLLOUT, socket);
+									ev.reading();
+									ev.writing();
+									_poller.add(ev);
 //									erase(s->bind_addr());
 //									peer(socket, addr, vaddr, DEFAULT_EVENTS);
 									log << " with " << *new_s << std::endl;
@@ -140,20 +144,28 @@ namespace factory {
 							}
 						}
 					} else {
-						auto res = _servers.find(event.fd());
-						if (res == _servers.end()) {
-							std::stringstream msg;
-							msg << "Can not find server to process event: fd=" << event.fd();
-							throw Error(msg.str(), __FILE__, __LINE__, __func__);
-						}
-						Remote_server* s = res->second;
-						bool erasing;
-						if (event.is_error() || !s->valid()) {
+						bool erasing = false;
+						if (event.is_error()) {
 							Logger(Level::SERVER) << "Invalid socket" << std::endl;
 							erasing = true;
 						} else {
-							process_event(s, event);
-							erasing = event.is_closing();
+							auto res = _servers.find(event.fd());
+							if (res == _servers.end()) {
+								debug("qqq");
+								std::stringstream msg;
+								msg << ::getpid() << ' ' << server_addr() << ' ';
+								msg << " can not find server to process event: fd=" << event.fd();
+								Logger(Level::SERVER) << msg.str() << std::endl;
+								throw Error(msg.str(), __FILE__, __LINE__, __func__);
+							}
+							Remote_server* s = res->second;
+							if (!s->valid()) {
+								Logger(Level::SERVER) << "Invalid socket" << std::endl;
+								erasing = true;
+							} else {
+								process_event(s, event);
+								erasing = event.is_closing() || event.is_error();
+							}
 						}
 						if (erasing) {
 							erase(event.fd());
@@ -354,13 +366,24 @@ namespace factory {
 				}
 			}
 
-			void debug(const char* msg = "Upstream") {
+			void debug(const char* msg = "") {
 				Logger log(Level::SERVER);
 				log << _socket.bind_addr() << ' ';
-				log << msg << ' ';
+				log << msg << " upstream ";
 				for (auto p : _upstream) {
 					log << *p.second << ',';
 				}
+				log << std::endl;
+				log << _socket.bind_addr() << ' ';
+				log << msg << " servers ";
+				for (auto p : _servers) {
+					log << p.first << " => ";
+					log << *p.second << ',';
+				}
+				log << std::endl;
+				log << _socket.bind_addr() << ' ';
+				log << msg << " events ";
+				log << _poller;
 				log << std::endl;
 			}
 
@@ -583,7 +606,7 @@ namespace factory {
 						}
 					}
 				}
-				if (event.is_writing()) {
+				if (event.is_writing() && !event.is_closing()) {
 //					try {
 						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
 						_ostream.flush<Socket>(_socket);

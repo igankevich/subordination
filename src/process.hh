@@ -33,11 +33,16 @@ namespace factory {
 		}
 
 		int wait() {
-			int ret = 0;
+			int ret = 0, sig = 0;
 			if (_child_pid > 0) {
 				check("waitpid()", ::waitpid(_child_pid, &ret, 0));
 				ret = WEXITSTATUS(ret);
-				std::clog << _child_pid << ": waitpid() = " << ret << std::endl;
+				if (WIFSIGNALED(ret)) {
+					sig = WTERMSIG(ret);
+				}
+				Logger(Level::COMPONENT)
+					<< _child_pid << ": waitpid(), ret=" << ret
+					<< ", sig=" << sig << std::endl;
 			}
 			return ret;
 		}
@@ -56,10 +61,21 @@ namespace factory {
 		}
 
 		int wait() {
+			std::vector<std::thread> threads(_processes.size());
+			for (size_t i=0; i<threads.size(); ++i) {
+				threads[i] = std::thread([this,i]() {
+					_processes[i].wait();
+				});
+			}
+			for (size_t i=0; i<threads.size(); ++i) {
+				if (threads[i].joinable()) {
+					threads[i].join();
+				}
+			}
 			int ret = 0;
-			std::for_each(_processes.begin(), _processes.end(), [&ret] (Process& p) {
-				ret |= p.wait();
-			});
+//			std::for_each(_processes.begin(), _processes.end(), [&ret] (Process& p) {
+//				ret |= p.wait();
+//			});
 			return ret;
 		}
 

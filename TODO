@@ -1,3 +1,4 @@
 DONE Graceful Socket_server shutdown
+DONE Graceful Factory shutdown
 Kernels' recovery when upstream server goes offline after receiving the kernels.
 Coalesce multiple incoming and outgoing connections made between the same hosts using different ports.

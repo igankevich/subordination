@@ -119,6 +119,11 @@ namespace factory {
 					_read_pos = 0;
 				}
 			}
+			if (n == -1) {
+				if (errno == EPIPE) {
+					Logger(Level::COMPONENT) << "EPIPE fd=" << (int)sink << std::endl;
+				}
+			}
 			Logger(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
 			return n;
 		}

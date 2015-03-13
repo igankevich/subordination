@@ -4,6 +4,7 @@ namespace factory {
 
 	struct Event: public Basic_event {
 
+		Event()  { fd(-1); events(0); Basic_event::revents = 0; }
 		explicit Event(int f)  { fd(f); }
 		Event(int e, int f)  { fd(f); events(e); }
 
@@ -30,6 +31,10 @@ namespace factory {
 			Basic_event::events |= POLLOUT;
 			Basic_event::revents |= POLLOUT;
 		}
+		void reading() {
+			Basic_event::events |= POLLIN;
+			Basic_event::revents |= POLLIN;
+		}
 
 		bool operator==(const Event& rhs) const { return fd() == rhs.fd(); }
 		bool operator!=(const Event& rhs) const { return fd() != rhs.fd(); }
@@ -37,11 +42,11 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Event& rhs) {
 			return out
+				<< rhs.fd() << ' '
 				<< (rhs.is_reading() ? 'r' : ' ')
 				<< (rhs.is_writing() ? 'w' : ' ')
 				<< (rhs.is_closing() ? 'c' : ' ')
-				<< (rhs.is_error() ? 'e' : ' ')
-				<< ' ' << rhs.events();
+				<< (rhs.is_error() ? 'e' : ' ');
 		}
 
 	};
@@ -102,6 +107,7 @@ namespace factory {
 		void ignore(int fd) {
 			auto pos = std::find(_events.begin(), _events.end(), Event(fd));
 			if (pos != _events.end()) {
+				Logger(Level::COMPONENT) << "ignoring fd=" << pos->fd() << std::endl;
 				pos->fd(-1);
 			}
 		}
@@ -162,13 +168,19 @@ namespace factory {
 					}
 				} else {
 					callback(e);
-					if (e.is_closing()) {
+					if (e.is_closing() || e.is_error()) {
 						erase(e);
 						--n;
 						--nfds;
 					}
 				}
 			}
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, const Poller& rhs) {
+			std::ostream_iterator<Event> it(out, ", ");
+			std::copy(rhs._events.cbegin(), rhs._events.cend(), it);
+			return out;
 		}
 	
 		State _state;

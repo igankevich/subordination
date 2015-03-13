@@ -9,6 +9,7 @@ namespace factory {
 			Logger(Level::COMPONENT) << "broadcasting shutdown message" << std::endl;
 			components::factory_stop();
 		}
+		void react() {}
 		void write_impl(Foreign_stream&) {}
 		void read_impl(Foreign_stream&) {}
 		bool broadcast() const { return true; }
@@ -17,6 +18,7 @@ namespace factory {
 
 
 	void emergency_shutdown(int signum);
+	void sigpipe_handler(int);
 	
 	struct Basic_factory {
 
@@ -54,13 +56,20 @@ namespace factory {
 
 		void init_signal_handlers() {
 			struct ::sigaction action;
-			::bzero(&action, sizeof(struct ::sigaction));
+			std::memset(&action, 0, sizeof(struct ::sigaction));
 			action.sa_handler = emergency_shutdown;
-			::sigaction(SIGTERM, &action, NULL);
-			::sigaction(SIGINT, &action, NULL);
-			::sigaction(SIGSEGV, &action, NULL);
+			::sigaction(SIGTERM, &action, 0);
+			::sigaction(SIGINT, &action, 0);
 			::feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_UNDERFLOW | FE_OVERFLOW);
-			::sigaction(SIGFPE, &action, NULL);
+			::sigaction(SIGFPE, &action, 0);
+			ignore_sigpipe();
+		}
+
+		void ignore_sigpipe() {
+			struct ::sigaction action;
+			std::memset(&action, 0, sizeof(struct ::sigaction));
+			action.sa_handler = sigpipe_handler;
+			::sigaction(SIGPIPE, &action, 0);
 		}
 
 		Local_server _local_server;
@@ -68,6 +77,9 @@ namespace factory {
 		Repository_stack _repository;
 	};
 
+	void sigpipe_handler(int) {
+		Logger(Level::COMPONENT) << "SIGPIPE caught" << std::endl;
+	}
 
 }
 

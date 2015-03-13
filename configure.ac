@@ -36,7 +36,7 @@ AC_TYPE_UINT8_T
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
-AC_CHECK_FUNCS([bzero clock_gettime memchr memset socket])
+AC_CHECK_FUNCS([clock_gettime memchr memset socket])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
