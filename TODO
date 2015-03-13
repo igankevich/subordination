@@ -1,4 +1,5 @@
-DONE Graceful Socket_server shutdown
-DONE Graceful Factory shutdown
+DONE [48:260086e3e0fe] Graceful Socket_server shutdown
+DONE [52:454ba97ae645] Graceful Factory shutdown
+DONE [62:520b6908f3e3] Coalesce multiple incoming and outgoing connections made between the same hosts using different ports.
+
 Kernels' recovery when upstream server goes offline after receiving the kernels.
-Coalesce multiple incoming and outgoing connections made between the same hosts using different ports.
