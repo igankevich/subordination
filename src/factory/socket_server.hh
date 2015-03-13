@@ -117,9 +117,17 @@ namespace factory {
 									log << server_addr() << ": "
 										<< "not replacing peer " << *s
 										<< std::endl;
-									socket.no_reading();
-									s->fill_from(socket);
-									socket.close();
+									// create temporary subordinate server
+									// to read kernels until the socket
+									// is closed from the other end
+									Remote_server* new_s = new Remote_server(socket, addr);
+									new_s->vaddr(vaddr);
+									new_s->parent(s);
+									_servers[socket] = new_s;
+									_poller.add(Event(DEFAULT_EVENTS, socket));
+//									socket.no_reading();
+//									s->fill_from(socket);
+//									socket.close();
 									debug("not replacing upstream");
 								} else {
 									Logger log(Level::SERVER);
@@ -290,7 +298,10 @@ namespace factory {
 				Remote_server* s = r->second;
 				Logger(Level::SERVER) << "Removing server " << *s << std::endl;
 				s->recover_kernels();
-				_upstream.erase(s->vaddr());
+				// subordinate servers are not present in upstream
+				if (!s->parent()) {
+					_upstream.erase(s->vaddr());
+				}
 				_servers.erase(fd);
 				delete s;
 			}
@@ -542,7 +553,8 @@ namespace factory {
 				_istream(),
 				_ostream(),
 				_ipacket(),
-				_buffer() {}
+				_buffer(),
+				_parent(nullptr) {}
 
 			Remote_Rserver(Remote_Rserver&& rhs):
 				_socket(std::move(rhs._socket)),
@@ -550,7 +562,8 @@ namespace factory {
 				_istream(std::move(rhs._istream)),
 				_ostream(std::move(rhs._ostream)),
 				_ipacket(rhs._ipacket),
-				_buffer(std::move(rhs._buffer)) {}
+				_buffer(std::move(rhs._buffer)) ,
+				_parent(rhs._parent) {}
 
 			void recover_kernels() {
 
@@ -632,10 +645,6 @@ namespace factory {
 				on_overflow(overflow);
 			}
 
-			void fill_from(Socket s) {
-				_istream.fill<Socket>(s);
-			}
-
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
 			void socket(Socket rhs) {
@@ -647,6 +656,9 @@ namespace factory {
 			void vaddr(Endpoint rhs) { _vaddr = rhs; }
 
 			bool empty() const { return _buffer.empty(); }
+
+			This* parent() const { return _parent; }
+			void parent(This* rhs) { _parent = rhs; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << '('
@@ -693,6 +705,8 @@ namespace factory {
 			Foreign_stream _ostream;
 			Packet _ipacket;
 			std::queue<std::pair<Pos,Kernel*>> _buffer;
+
+			This* _parent;
 		};
 
 	}
