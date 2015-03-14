@@ -2,6 +2,18 @@
 
 namespace factory {
 
+	template<class In>
+	void intersperse(In first, In last, std::ostream& result, const char* delim) {
+		if (first != last) {
+			result << *first;
+			++first;
+		}
+		while (first != last) {
+			result << delim << *first;
+			++first;
+		}
+	}
+
 	typedef ::pid_t Process_id;
 
 	struct Process {
@@ -47,6 +59,10 @@ namespace factory {
 			return ret;
 		}
 
+		friend std::ostream& operator<<(std::ostream& out, const Process& rhs) {
+			return out << rhs.id();
+		}
+
 		Process_id id() const { return _child_pid; }
 
 	private:
@@ -60,36 +76,38 @@ namespace factory {
 			_processes.push_back(Process(f));
 		}
 
-		int wait() {
-			std::vector<std::thread> threads(_processes.size());
-			for (size_t i=0; i<threads.size(); ++i) {
-				threads[i] = std::thread([this,i]() {
-					_processes[i].wait();
-				});
-			}
-			for (size_t i=0; i<threads.size(); ++i) {
-				if (threads[i].joinable()) {
-					threads[i].join();
-				}
-			}
+		int wait(bool use_threads=false) {
 			int ret = 0;
-//			std::for_each(_processes.begin(), _processes.end(), [&ret] (Process& p) {
-//				ret |= p.wait();
-//			});
+			if (use_threads) {
+				std::atomic<int> rett(0);
+				std::vector<std::thread> threads(_processes.size());
+				for (size_t i=0; i<threads.size(); ++i) {
+					threads[i] = std::thread([this,i,&rett]() {
+						rett |= _processes[i].wait();
+					});
+				}
+				for (size_t i=0; i<threads.size(); ++i) {
+					if (threads[i].joinable()) {
+						threads[i].join();
+					}
+				}
+				ret = rett;
+			} else {
+				for (Process& p : _processes) ret |= p.wait();
+			}
 			return ret;
 		}
 
 		void stop() {
-			std::for_each(_processes.begin(), _processes.end(), [] (Process& p) {
+			for (Process& p : _processes)
 				p.stop();
-			});
 		}
 
 		Process operator[](size_t i) { return _processes[i]; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Process_group& rhs) {
 			for (const Process& p : rhs._processes) {
-				out << p.id() << ' ';
+				out << p << ' ';
 			}
 			return out;
 		}
