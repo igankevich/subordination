@@ -23,6 +23,7 @@ test-driver
 src/test_buffer
 src/test_marshaling
 src/test_socket
+src/test_offline
 src/test_discovery
 
 syntax: regexp
