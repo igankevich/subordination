@@ -310,9 +310,14 @@ namespace factory {
 			Endpoint server_addr() const { return _socket.name(); }
 
 			void process_event(Remote_server* server, Event event) {
-				server->handle_event(event, [this, &event] (bool overflow) {
+				server->handle_event(event, [this, &event, server] (bool overflow) {
 					if (overflow) {
 						_poller[event.fd()]->writing();
+						// Failed kernels are sent to parent,
+						// so we need to fire write event.
+						if (server->parent() != nullptr) {
+							_poller[server->parent()->fd()]->writing();
+						}
 					} else {
 						_poller[event.fd()]->events(DEFAULT_EVENTS);
 					}
@@ -612,7 +617,11 @@ namespace factory {
 								<< int(err.kernel()->result()) << std::endl;
 							Kernel* k = err.kernel();
 							k->principal(k->parent());
-							send(k);
+							if (_parent != nullptr) {
+								_parent->send(k);
+							} else {
+								send(k);
+							}
 							overflow = true;
 						}
 						if (state_is_ok) {
@@ -696,6 +705,8 @@ namespace factory {
 			}
 			
 			void read_kernels() {
+				// Here failed kernels are written to buffer,
+				// from which they must be recovered with recover_kernels().
 				handle_event(Event(POLLIN, _socket), [](bool) {});
 			}
 
