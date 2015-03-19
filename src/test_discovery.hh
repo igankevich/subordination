@@ -12,7 +12,7 @@ std::vector<Endpoint> NEIGHBOURS = {
 	Endpoint("127.0.0.3", DISCOVERY_PORT)
 };
 
-struct Discovery: public Identifiable<Mobile<Discovery>> {
+struct Discovery: public Mobile<Discovery> {
 
 	typedef uint64_t Time;
 	typedef uint8_t State;

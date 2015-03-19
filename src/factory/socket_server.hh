@@ -595,6 +595,9 @@ namespace factory {
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
 				}
+				if (!kernel->identifiable() && !kernel->broadcast()) {
+					kernel->id(factory_generate_id());
+				}
 				if (kernel->moves_upstream() && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 				}

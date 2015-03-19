@@ -15,7 +15,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<uint32_t> shutdown_counter(0);
 
-struct Test_socket: public Identifiable<Mobile<Test_socket>> {
+struct Test_socket: public Mobile<Test_socket> {
 
 	Test_socket(): _data() {}
 	explicit Test_socket(std::vector<Datum> data): _data(data) {}

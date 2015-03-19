@@ -13,7 +13,10 @@ namespace factory {
 		void write_impl(Foreign_stream&) {}
 		void read_impl(Foreign_stream&) {}
 		bool broadcast() const { return true; }
-		static void init_type(Type* t) { t->id(123); }
+		static void init_type(Type* t) {
+			t->id(123);
+			t->name("Shutdown");
+		}
 	};
 
 
