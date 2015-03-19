@@ -54,13 +54,13 @@ private:
 	State _state = 0;
 };
 
-struct Neighbour {
+struct Peer {
 
 	typedef Discovery::Time Time;
 	typedef uint32_t Metric;
 
-	Neighbour(Endpoint a, Time t): _addr(a) { sample(t); }
-	Neighbour(const Neighbour& rhs):
+	Peer(Endpoint a, Time t): _addr(a) { sample(t); }
+	Peer(const Peer& rhs):
 		_t(rhs._t), _n(rhs._n), _addr(rhs._addr) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
@@ -76,21 +76,21 @@ struct Neighbour {
 	uint32_t num_samples() const { return _n; }
 	Endpoint addr() const { return _addr; }
 
-	bool operator<(const Neighbour& rhs) const {
+	bool operator<(const Peer& rhs) const {
 		return metric() < rhs.metric()
 			|| (metric() == rhs.metric() && _addr < rhs._addr);
 	}
 
-	Neighbour& operator=(const Neighbour& rhs) {
+	Peer& operator=(const Peer& rhs) {
 		_t = rhs._t;
 		_n = rhs._n;
 		_addr = rhs._addr;
 		return *this;
 	}
 
-//	bool operator==(const Neighbour& rhs) const { return _t == rhs._t && _n == rhs._n; }
+//	bool operator==(const Peer& rhs) const { return _t == rhs._t && _n == rhs._n; }
 
-	friend std::ostream& operator<<(std::ostream& out, const Neighbour* rhs) {
+	friend std::ostream& operator<<(std::ostream& out, const Peer* rhs) {
 		return out
 			<< rhs->metric()
 			<< ' ' << rhs->_n
@@ -106,7 +106,7 @@ private:
 };
 
 struct Higher_metric {
-	bool operator()(Neighbour* x, Neighbour* y) const {
+	bool operator()(Peer* x, Peer* y) const {
 		return *x < *y;
 	}
 };
@@ -136,18 +136,18 @@ private:
 
 struct Candidate: public Identifiable<Kernel> {
 	
-	Candidate(Endpoint src, const std::set<Neighbour>& nb):
+	Candidate(Endpoint src, const std::set<Peer>& nb):
 		factory::Identifiable<Kernel>(2),
 		_source(src),
-		_neighbours(nb) {}
+		_peers(nb) {}
 	
 	void act() {
 		_num_for = 0;
 		_num_against = 0;
 		_num_neutral = 0;
 		Logger(Level::KERNEL) << "Starting poll " << _source << std::endl;
-		std::for_each(_neighbours.cbegin(), _neighbours.cend(),
-			[this] (const Neighbour& rhs)
+		std::for_each(_peers.cbegin(), _peers.cend(),
+			[this] (const Peer& rhs)
 		{
 			Ballot* k = new Ballot;
 			k->parent(this);
@@ -176,14 +176,14 @@ struct Candidate: public Identifiable<Kernel> {
 		// ballot from another host
 		if (b->source() != _source) {
 			Logger(Level::KERNEL) << _source << ": poll vote " << std::endl;
-			// the address of the neighbour with the highest rank is the same
+			// the address of the peer with the highest rank is the same
 			// as the address of the candidate
 			Ballot* bb = new Ballot;
 			bb->parent(this);
 			bb->principal(this);
 			bb->from(b->from());
 			bb->source(b->source());
-			bb->vote(b->source() == _neighbours.cbegin()->addr());
+			bb->vote(b->source() == _peers.cbegin()->addr());
 			bb->result(Result::SUCCESS);
 			remote_server()->send(bb, b->from());
 		} else {
@@ -198,15 +198,15 @@ struct Candidate: public Identifiable<Kernel> {
 				<< _num_for << '+'
 				<< _num_against << '+'
 				<< _num_neutral << '/'
-				<< _neighbours.size()
+				<< _peers.size()
 				<< std::endl;
 			// all ballots have been returned
-			if (_num_for + _num_against + _num_neutral == _neighbours.size()) {
+			if (_num_for + _num_against + _num_neutral == _peers.size()) {
 				Logger(Level::KERNEL) << _source << " exit poll: "
 					<< _num_for << '+'
 					<< _num_against << '+'
 					<< _num_neutral << '/'
-					<< _neighbours.size()
+					<< _peers.size()
 					<< std::endl;
 //				commit(the_server());
 			}
@@ -215,7 +215,7 @@ struct Candidate: public Identifiable<Kernel> {
 
 private:
 	Endpoint _source;
-	std::set<Neighbour> _neighbours;
+	std::set<Peer> _peers;
 	
 	uint32_t _num_for = 0;
 	uint32_t _num_against = 0;
@@ -225,13 +225,13 @@ private:
 struct Discoverer: public Identifiable<Kernel> {
 
 //	void act() {
-//		auto neighbours = discover_neighbours();
-//		_num_neighbours = std::accumulate(neighbours.cbegin(), neighbours.cend(), uint32_t(0),
+//		auto peers = discover_peers();
+//		_num_peers = std::accumulate(peers.cbegin(), peers.cend(), uint32_t(0),
 //			[] (uint32_t sum, const Address_range& rhs)
 //		{
 //			return sum + rhs.end() - rhs.start();
 //		});
-//		std::for_each(neighbours.cbegin(), neighbours.cend(),
+//		std::for_each(peers.cbegin(), peers.cend(),
 //			[this] (const Address_range& range)
 //		{
 //			typedef typename Address_range::Int I;
@@ -265,7 +265,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		_attempts++;
 		_num_succeeded = 0;
 		_num_failed = 0;
-		_num_neighbours = 0;
+		_num_peers = 0;
 
 		Logger(Level::KERNEL) << _source << ": attempt #" << _attempts << std::endl;
 
@@ -275,7 +275,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		std::for_each(_servers.cbegin(), _servers.cend(),
 			[this, &kernels] (const Endpoint& ep)
 		{
-			Neighbour* n = find_neighbour(ep);
+			Peer* n = find_peer(ep);
 			Logger(Level::KERNEL) 
 				<< _source
 				<< ": sending to " << ep << ' '
@@ -291,7 +291,7 @@ struct Discoverer: public Identifiable<Kernel> {
 
 
 		// determine hosts to poll
-//		std::for_each(neighbours.cbegin(), neighbours.cend(),
+//		std::for_each(peers.cbegin(), peers.cend(),
 //			[this, &kernels] (const Port_range& range)
 //		{
 //			typedef Port I;
@@ -299,7 +299,7 @@ struct Discoverer: public Identifiable<Kernel> {
 //			I en = range.end();
 //			for (I a=st; a<en/* && a<st+10*/; ++a) {
 //				Endpoint ep(_source.host(), a);
-//				Neighbour* n = find_neighbour(ep);
+//				Peer* n = find_peer(ep);
 //				Logger(Level::KERNEL) 
 //					<< _source
 //					<< ": sending to " << ep << ' '
@@ -317,14 +317,14 @@ struct Discoverer: public Identifiable<Kernel> {
 
 		// send discovery messages
 		Logger(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
-		_num_neighbours = kernels.size();
+		_num_peers = kernels.size();
 		for (Discovery* d : kernels) {
 			remote_server()->send(d, d->to());
 		}
 
 		// repeat when nothing is discovered
-		if (_num_neighbours == 0) {
-			throw "No neighbours to update";
+		if (_num_peers == 0) {
+			throw "No peers to update";
 //			the_server()->send(this);
 		}
 	}
@@ -334,26 +334,26 @@ struct Discoverer: public Identifiable<Kernel> {
 		if (d->result() == Result::SUCCESS) {
 			Logger(Level::KERNEL) << _source << ": success for " << d->from() << std::endl;
 			_num_succeeded++;
-			if (_neighbours_map.find(d->from()) == _neighbours_map.end()) {
-				Neighbour* n = new Neighbour(d->from(), d->time());
-				_neighbours_map[d->from()] = n;
-				_neighbours_set.insert(n);
+			if (_peers_map.find(d->from()) == _peers_map.end()) {
+				Peer* n = new Peer(d->from(), d->time());
+				_peers_map[d->from()] = n;
+				_peers_set.insert(n);
 			} else {
-				_neighbours_map[d->from()]->sample(d->time());
+				_peers_map[d->from()]->sample(d->time());
 			}
 		} else {
 			_num_failed++;
-//			auto result = _neighbours_map.find(d->from());
-//			if (result != _neighbours_map.end()) {
-//				Neighbour* n = result->second;
-//				_neighbours_map.erase(result->first);
-//				_neighbours_set.erase(n);
+//			auto result = _peers_map.find(d->from());
+//			if (result != _peers_map.end()) {
+//				Peer* n = result->second;
+//				_peers_map.erase(result->first);
+//				_peers_set.erase(n);
 //				delete n;
 //			}
 		}
 //		Logger(Level::KERNEL) << "Returned: "
 //			<< _num_succeeded + _num_failed << '/' 
-//			<< _num_neighbours
+//			<< _num_peers
 //			<< " from " << d->from() 
 //			<< std::endl;
 		
@@ -363,28 +363,28 @@ struct Discoverer: public Identifiable<Kernel> {
 			<< '+'
 			<< num_failed()
 			<< '/'
-			<< num_neighbours()
+			<< num_peers()
 			<< ' '
 			<< min_samples()
 			<< std::endl;
 
-		if (_num_succeeded + _num_failed == _num_neighbours) {
+		if (_num_succeeded + _num_failed == _num_peers) {
 			
 			Logger(Level::KERNEL) << _source << ": end of attempt #" << _attempts << std::endl;
 
 			if (min_samples() == MIN_SAMPLES) {
 				Logger log(Level::KERNEL);
-				log << "Neighbours: ";
-				std::ostream_iterator<Neighbour*> it(log.ostream(), ", ");
-				std::copy(_neighbours_set.cbegin(), _neighbours_set.cend(), it);
-				std::set<Neighbour> neighbours;
-				std::for_each(_neighbours_set.cbegin(), _neighbours_set.cend(),
-					[&neighbours] (const Neighbour* rhs)
+				log << "Peers: ";
+				std::ostream_iterator<Peer*> it(log.ostream(), ", ");
+				std::copy(_peers_set.cbegin(), _peers_set.cend(), it);
+				std::set<Peer> peers;
+				std::for_each(_peers_set.cbegin(), _peers_set.cend(),
+					[&peers] (const Peer* rhs)
 				{
-					neighbours.insert(*rhs);
+					peers.insert(*rhs);
 				});
 				log << std::endl;
-				this->upstream(the_server(), new Candidate(_source, neighbours));
+				this->upstream(the_server(), new Candidate(_source, peers));
 //				commit(the_server());
 			} else {
 				act();
@@ -394,40 +394,40 @@ struct Discoverer: public Identifiable<Kernel> {
 
 	uint32_t num_failed() const { return _num_failed; }
 	uint32_t num_succeeded() const { return _num_succeeded; }
-	uint32_t num_neighbours() const { return _num_neighbours; }
+	uint32_t num_peers() const { return _num_peers; }
 
 //	void error(Kernel* k) {
 //		std::clog << "Returned ERR: " << _num_failed << std::endl;
 //	}
 
 
-	const Neighbour* leader_candidate() const {
-		return *_neighbours_set.cbegin();
+	const Peer* leader_candidate() const {
+		return *_peers_set.cbegin();
 	}
 
 private:
 
 	uint32_t min_samples() const {
-		return std::accumulate(_neighbours_set.cbegin(), _neighbours_set.cend(),
+		return std::accumulate(_peers_set.cbegin(), _peers_set.cend(),
 			std::numeric_limits<uint32_t>::max(),
-			[] (uint32_t m, const Neighbour* rhs)
+			[] (uint32_t m, const Peer* rhs)
 		{
 			return std::min(m, rhs->num_samples());
 		});
 	}
 
-	Neighbour* find_neighbour(Endpoint addr) {
-		auto result = _neighbours_map.find(addr);
-		return result == _neighbours_map.end() ? nullptr : result->second;
+	Peer* find_peer(Endpoint addr) {
+		auto result = _peers_map.find(addr);
+		return result == _peers_map.end() ? nullptr : result->second;
 	}
 
 	Endpoint _source;
 
-	std::map<Endpoint, Neighbour*> _neighbours_map;
-	std::set<Neighbour*, Higher_metric> _neighbours_set;
+	std::map<Endpoint, Peer*> _peers_map;
+	std::set<Peer*, Higher_metric> _peers_set;
 	std::vector<Endpoint> _servers;
 
-	uint32_t _num_neighbours = 0;
+	uint32_t _num_peers = 0;
 	uint32_t _num_succeeded = 0;
 	uint32_t _num_failed = 0;
 

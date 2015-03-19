@@ -47,16 +47,17 @@ namespace factory {
 		int wait() {
 			int ret = 0, sig = 0;
 			if (_child_pid > 0) {
-				check("waitpid()", ::waitpid(_child_pid, &ret, 0));
-				ret = WEXITSTATUS(ret);
-				if (WIFSIGNALED(ret)) {
-					sig = WTERMSIG(ret);
+				int status = 0;
+				check("waitpid()", ::waitpid(_child_pid, &status, 0));
+				ret = WEXITSTATUS(status);
+				if (WIFSIGNALED(status)) {
+					sig = WTERMSIG(status);
 				}
 				Logger(Level::COMPONENT)
 					<< _child_pid << ": waitpid(), ret=" << ret
 					<< ", sig=" << sig << std::endl;
 			}
-			return ret;
+			return ret | sig;
 		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Process& rhs) {
@@ -93,7 +94,7 @@ namespace factory {
 				}
 				ret = rett;
 			} else {
-				for (Process& p : _processes) ret |= p.wait();
+				for (Process& p : _processes) ret += std::abs(p.wait());
 			}
 			return ret;
 		}
