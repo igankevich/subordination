@@ -13,6 +13,7 @@ namespace factory {
 
 //			typedef decltype(out.size()) Size;
 			typedef typename Stream::Size Size;
+			typedef typename Type::Callback Callback;
 
 			void write(Stream& out, Kernel* kernel) {
 
@@ -37,7 +38,7 @@ namespace factory {
 				out.write_pos(new_pos);
 			}
 
-			bool read(Stream& in, Endpoint from) {
+			bool read(Stream& in, Callback callback) {
 				if (_state == READING_SIZE && sizeof(packet_size) <= in.size()) {
 					in >> packet_size;
 					_state = READING_PACKET;
@@ -48,7 +49,7 @@ namespace factory {
 					<< packet_size - sizeof(packet_size)
 					<< std::endl;
 				if (_state == READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
-					Type::types().read_and_send_object(in, from);
+					Type::types().read_and_send_object(in, callback);
 					_state = COMPLETE;
 				}
 				return finished();
@@ -573,7 +574,7 @@ namespace factory {
 			void recover_kernels() {
 
 				read_kernels();
-				clear_kernel_buffer(_ostream.global_read_pos());
+//				clear_kernel_buffer(_ostream.global_read_pos());
 
 				Logger(Level::HANDLER)
 					<< "Kernels left: "
@@ -582,8 +583,8 @@ namespace factory {
 				
 				// recover kernels written to output buffer
 				while (!_buffer.empty()) {
-					recover_kernel(_buffer.front().second);
-					_buffer.pop();
+					recover_kernel(_buffer.front());
+					_buffer.pop_front();
 				}
 			}
 
@@ -594,7 +595,9 @@ namespace factory {
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
 				}
-				_buffer.push(std::make_pair(_ostream.global_write_pos(), kernel));
+				if (kernel->moves_upstream() && kernel->identifiable()) {
+					_buffer.push_back(kernel);
+				}
 			}
 
 			bool valid() const {
@@ -611,7 +614,10 @@ namespace factory {
 					while (state_is_ok && !_istream.empty()) {
 						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
 						try {
-							state_is_ok = _ipacket.read(_istream, _vaddr);
+							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
+								k->from(_vaddr);
+								clear_kernel_buffer(k);
+							});
 						} catch (No_principal_found<Kernel>& err) {
 							Logger(Level::HANDLER) << "No principal found for "
 								<< int(err.kernel()->result()) << std::endl;
@@ -635,10 +641,10 @@ namespace factory {
 						_ostream.flush<Socket>(_socket);
 						if (_ostream.empty()) {
 							Logger(Level::HANDLER) << "Flushed." << std::endl;
-							clear_kernel_buffer();
+//							clear_kernel_buffer();
 							_ostream.reset();
 						} else {
-							clear_kernel_buffer(_ostream.global_read_pos());
+//							clear_kernel_buffer(_ostream.global_read_pos());
 							overflow = true;
 						}
 //					} catch (Connection_error& err) {
@@ -688,19 +694,34 @@ namespace factory {
 				factory_send(k);
 			}
 
-			void clear_kernel_buffer() {
-				while (!_buffer.empty()) {
-					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
-					delete _buffer.front().second;
-					_buffer.pop();
-				}
-			}
-
-			void clear_kernel_buffer(Pos global_read_pos) {
-				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
-					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
-					delete _buffer.front().second;
-					_buffer.pop();
+//			void clear_kernel_buffer() {
+//				while (!_buffer.empty()) {
+//					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
+//					delete _buffer.front().second;
+//					_buffer.pop();
+//				}
+//			}
+//
+//			void clear_kernel_buffer(Pos global_read_pos) {
+//				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
+//					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
+//					delete _buffer.front().second;
+//					_buffer.pop();
+//				}
+//			}
+			
+			void clear_kernel_buffer(Kernel* k) {
+				if (!k->moves_downstream()) return;
+				auto pos = std::find_if(_buffer.begin(), _buffer.end(), [k] (Kernel* rhs) {
+					return *rhs == *k;
+				});
+				if (pos != _buffer.end()) {
+					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
+					Logger(Level::HANDLER) << "Kernel erased " << k->id() << std::endl;
+					_buffer.erase(pos);
+					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
+				} else {
+					Logger(Level::HANDLER) << "Kernel not found " << k->id() << std::endl;
 				}
 			}
 			
@@ -715,7 +736,7 @@ namespace factory {
 			Foreign_stream _istream;
 			Foreign_stream _ostream;
 			Packet _ipacket;
-			std::queue<std::pair<Pos,Kernel*>> _buffer;
+			std::deque<Kernel*> _buffer;
 
 			This* _parent;
 		};

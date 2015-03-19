@@ -173,11 +173,19 @@ namespace factory {
 			}
 
 			virtual void react(This*) {
-				Logger(Level::KERNEL) << "Empty react in " << std::endl;
-				throw Error("Empty react", __FILE__, __LINE__, __func__);
+				std::stringstream msg;
+				msg << "Empty react in ";
+				if (const Type<This>* tp = type()) {
+					msg << *tp;
+				} else {
+					msg << "unknown type";
+				}
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 
-			virtual void error(This* rhs) { react(rhs); }
+			virtual void error(This* rhs) {
+				react(rhs);
+			}
 
 			virtual const Type<This>* type() const { return nullptr; }
 
@@ -284,6 +292,7 @@ namespace factory {
 
 			Id id() const { return _id; }
 			void id(Id rhs) { _id = rhs; }
+			bool identifiable() const { return _id != ROOT_ID; }
 
 			virtual Endpoint from() const { return _src; }
 			virtual void from(Endpoint rhs) { _src = rhs; }

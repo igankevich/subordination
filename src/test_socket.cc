@@ -15,7 +15,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<uint32_t> shutdown_counter(0);
 
-struct Test_socket: public Mobile<Test_socket> {
+struct Test_socket: public Identifiable<Mobile<Test_socket>> {
 
 	Test_socket(): _data() {}
 	explicit Test_socket(std::vector<Datum> data): _data(data) {}
@@ -44,6 +44,7 @@ struct Test_socket: public Mobile<Test_socket> {
 
 	static void init_type(Type* t) {
 		t->id(1);
+		t->name("Test_socket");
 	}
 	
 private:
@@ -60,6 +61,7 @@ struct Sender: public Identifiable<Kernel> {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
+			Logger(Level::COMPONENT) << " Sender id = " << this->id() << std::endl;
 			Logger(Level::COMPONENT) << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}

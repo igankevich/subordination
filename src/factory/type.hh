@@ -25,6 +25,7 @@ namespace factory {
 
 			/// A portable type id
 			typedef int16_t Type_id;
+			typedef std::function<void(K*)> Callback;
 	
 			Type(): _name() {}
 	
@@ -46,10 +47,10 @@ namespace factory {
 			std::function<K* ()> construct;
 			std::function<void (Foreign_stream& in, K* rhs)> read_object;
 			std::function<void (Foreign_stream& out, K* rhs)> write_object;
-			std::function<void (Foreign_stream& in, Endpoint)> read_and_send;
+			std::function<void (Foreign_stream& in, Callback callback)> read_and_send;
 	
 			friend std::ostream& operator<<(std::ostream& out, const Type<K>& rhs) {
-				return out << rhs.name();
+				return out << rhs.name() << '(' << rhs.id() << ')';
 			}
 
 			class Types {
@@ -84,7 +85,7 @@ namespace factory {
 					return object;
 				}
 
-				void read_and_send_object(Foreign_stream& packet, Endpoint from) const {
+				void read_and_send_object(Foreign_stream& packet, typename T::Callback callback) const {
 					Type_id id;
 					packet >> id;
 					const T* type = lookup(id);
@@ -94,7 +95,7 @@ namespace factory {
 						throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
 					}
 					try {
-						type->read_and_send(packet, from);
+						type->read_and_send(packet, callback);
 					} catch (std::bad_alloc& err) {
 						std::stringstream msg;
 						msg << "Allocation error. Demarshalled kernel was prevented"
@@ -224,10 +225,10 @@ namespace factory {
 					this->construct = [] { return new Sub; };
 					this->read_object = [] (Foreign_stream& in, K* rhs) { rhs->read(in); };
 					this->write_object = [] (Foreign_stream& out, K* rhs) { rhs->write(out); };
-					this->read_and_send = [] (Foreign_stream& in, Endpoint from) {
+					this->read_and_send = [] (Foreign_stream& in, typename Type::Callback callback) {
 						Sub* k = new Sub;
 						k->read(in);
-						k->from(from);
+						callback(k);
 						if (k->moves_downstream()) {
 							K* p = Type::instances().lookup(k->principal_id());
 							if (p == nullptr) {
@@ -239,7 +240,6 @@ namespace factory {
 						Logger(Level::COMPONENT)
 							<< "received kernel " << *k
 							<< std::endl;
-//						std::clog << "From = " << k->from() << std::endl;
 						factory_send(k);
 					};
 
@@ -265,6 +265,26 @@ namespace factory {
 		template<class Sub, class Type, class K, class Base>
 		const typename Type_init<Sub, Type, K, Base>::Init Type_init<Sub, Type, K, Base>::_type;
 
+		Id factory_start_id() {
+			const char* id = ::getenv("START_ID");
+			Id i = 1000;
+			if (id != NULL) {
+				std::stringstream tmp;
+				tmp << id;
+				if (!(tmp >> i) || i == ROOT_ID) {
+					i = 1000;
+					std::clog << "Bad START_ID value: " << id << std::endl;
+				}
+			}
+			std::clog << "START_ID = " << i << std::endl;
+			return i;
+		}
+
+		Id factory_generate_id() {
+			static std::atomic<Id> counter(factory_start_id());
+			return counter++;
+		}
+
 		template<class K, class Type>
 		class Identifiable: public K {
 
@@ -278,30 +298,8 @@ namespace factory {
 			}
 
 			Identifiable() {
-				this->id(generate_id());
+				this->id(factory_generate_id());
 				Type::instances().register_instance(this);
-			}
-
-		private:
-
-			Id generate_id() {
-				static std::atomic<Id> counter(start_id());
-				return counter++;
-			}
-
-			static Id start_id() {
-				const char* id = ::getenv("START_ID");
-				Id i = 1000;
-				if (id != NULL) {
-					std::stringstream tmp;
-					tmp << id;
-					if (!(tmp >> i) || i == ROOT_ID) {
-						i = 1000;
-						std::clog << "Bad START_ID value: " << id << std::endl;
-					}
-				}
-				std::clog << "START_ID = " << i << std::endl;
-				return i;
 			}
 
 		};
