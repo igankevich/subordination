@@ -230,7 +230,7 @@ namespace factory {
 						k->read(in);
 						callback(k);
 						if (k->moves_downstream()) {
-							K* p = Type::instances().lookup(k->principal_id());
+							K* p = Type::instances().lookup(k->principal()->id());
 							if (p == nullptr) {
 								k->result(Result::NO_PRINCIPAL_FOUND);
 								throw No_principal_found<K>(k);

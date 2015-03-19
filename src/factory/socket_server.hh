@@ -590,17 +590,18 @@ namespace factory {
 
 			void send(Kernel* kernel) {
 				Logger(Level::HANDLER) << "Remote_Rserver::send()" << std::endl;
-				Packet packet;
-				packet.write(_ostream, kernel);
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
 				}
 				if (!kernel->identifiable() && !kernel->broadcast()) {
 					kernel->id(factory_generate_id());
+					Logger(Level::HANDLER) << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if (kernel->moves_upstream() && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 				}
+				Packet packet;
+				packet.write(_ostream, kernel);
 			}
 
 			bool valid() const {

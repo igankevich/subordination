@@ -7,8 +7,6 @@ namespace factory {
 			Basic_kernel(): _result(Result::UNDEFINED) {}
 			virtual ~Basic_kernel() {}
 
-			virtual bool is_profiled() const { return true; }
-			virtual bool is_transient() const { return false; }
 			virtual void act() {}
 
 			Result result() const { return _result; }
@@ -19,11 +17,20 @@ namespace factory {
 		};
 
 		template<class K>
-		union Kernel_ref {
+		struct Kernel_ref {
 
-			Kernel_ref(): _kernel(nullptr) {}
-			Kernel_ref(K* rhs): _kernel(rhs) {}
-			Kernel_ref(Id rhs): _id(rhs) {}
+			Kernel_ref(): _kernel(nullptr), _temp(false) {}
+			Kernel_ref(K* rhs): _kernel(rhs), _temp(false) {}
+			Kernel_ref(Id rhs): _kernel(new Transient_kernel(rhs)), _temp(true) {}
+			Kernel_ref(const Kernel_ref& rhs): _kernel(rhs._kernel), _temp(rhs._temp) {
+				if (_temp) {
+					Id i = _kernel->id();
+					_kernel = new Transient_kernel(i);
+				}
+			}
+			~Kernel_ref() {
+				if (_temp) delete _kernel;
+			}
 
 			// dereference operators
 			K* operator->() { return _kernel; }
@@ -31,32 +38,59 @@ namespace factory {
 			K& operator*() { return *_kernel; }
 			const K& operator*() const { return *_kernel; }
 
+			Kernel_ref& operator=(const Kernel_ref& rhs) {
+				if (_temp) {
+					delete _kernel;
+				}
+				_temp = rhs._temp;
+				if (_temp) {
+					Id i = rhs._kernel->id();
+					_kernel = new Transient_kernel(i);
+				} else {
+					_kernel = rhs._kernel;
+				}
+				return *this;
+			}
+
 			Kernel_ref& operator=(K* rhs) {
+				if (_temp) {
+					delete _kernel;
+					_temp = false;
+				}
 				_kernel = rhs;
 				return *this;
 			}
 
 			Kernel_ref& operator=(Id rhs) {
-				_id = rhs;
+				if (_temp) {
+					delete _kernel;
+				} else {
+					_temp = true;
+				}
+				_kernel = new Transient_kernel(rhs);
 				return *this;
 			}
 
 			K* ptr() { return _kernel; }
 			const K* ptr() const { return _kernel; }
 
-			Id id() const { return _id; }
+			explicit operator bool() const { return _kernel != nullptr; }
+			bool operator !() const { return _kernel == nullptr; }
+
+			friend std::ostream& operator<<(std::ostream& out, const Kernel_ref<K>& rhs) {
+				return out << rhs->id();
+			}
 
 		private:
 			K* _kernel;
-			Id _id;
+			bool _temp;
+
+			// No one lives forever.
+			struct Transient_kernel: public Identifiable<K, Type<K>> {
+				explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i, false) {}
+			};
 		};
 
-		// No one lives forever.
-		template<class K>
-		struct Transient_kernel: public Identifiable<K, Type<K>> {
-			explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i, false) {}
-			bool is_transient() const { return true; }
-		};
 
 		// The class ensures that certain methods (e.g. read, write)
 		// are called in a sequence starting from method in the top superclass
@@ -83,17 +117,18 @@ namespace factory {
 		struct Principal: public Kernel_link<Principal<A>, A> {
 
 			typedef Principal<A> This;
-			typedef Transient_kernel<This> Transient;
+			typedef Kernel_ref<This> Ref;
 
 			Principal(): _parent(nullptr), _principal(nullptr) {}
 
-			~Principal() {
-				del(_parent);
-//				del(_principal);
+			const Ref principal() const { return _principal; }
+			Ref principal() { return _principal; }
+			void principal(Ref rhs) {
+				_principal = rhs;
+				if (this->result() == Result::UNDEFINED) {
+					this->result(Result::UNDEFINED_DOWNSTREAM);
+				}
 			}
-
-			const This* principal() const { return _principal.ptr(); }
-			This* principal() { return _principal.ptr(); }
 			void principal(This* rhs) {
 				_principal = rhs;
 				if (this->result() == Result::UNDEFINED) {
@@ -101,21 +136,25 @@ namespace factory {
 				}
 			}
 
-			Id principal_id() const { return _principal.id(); }
-			void principal_id(Id rhs) { _principal = rhs; }
+			size_t hash() const {
+				return _principal && _principal->identifiable()
+					? _principal->id()
+					: size_t(_principal.ptr()) / alignof(size_t);
+			}
 
-			const This* parent() const { return _parent; }
-			This* parent() { return _parent; }
+			const Ref parent() const { return _parent; }
+			Ref parent() { return _parent; }
+			void parent(Ref p) { _parent = p; }
 			void parent(This* p) { _parent = p; }
 
-			bool moves_upstream() const { return this->result() == Result::UNDEFINED && principal() == nullptr; }
+			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal; }
 			bool moves_downstream() const {
 				return this->result() != Result::UNDEFINED
 					|| this->result() == Result::UNDEFINED_DOWNSTREAM
-					|| principal() != nullptr; }
+					|| _principal; }
 
 			void read_impl(Foreign_stream& in) {
-				if (_parent != nullptr) {
+				if (_parent) {
 					std::stringstream s;
 					s << "Parent is not null while reading from the data stream. Parent=";
 					s << _parent;
@@ -125,7 +164,7 @@ namespace factory {
 				in >> parent_id;
 				Logger(Level::KERNEL) << "READING PARENT " << parent_id << std::endl;
 				if (parent_id != ROOT_ID) {
-					_parent = new Transient(parent_id);
+					_parent = parent_id;
 				}
 				if (this->moves_downstream()) {
 					if (_principal.ptr() != nullptr) {
@@ -155,18 +194,17 @@ namespace factory {
 			}
 
 			void write_impl(Foreign_stream& out) {
-//				Logger(Level::KERNEL) << "WRITING PARENT " << parent()->id() << std::endl;
-				out << (parent() == nullptr ? ROOT_ID : parent()->id());
+				out << (!_parent ? ROOT_ID : _parent->id());
 				Logger(Level::KERNEL)
 					<< "Writing "
 					<< (this->moves_downstream() ? "downstream" : "upstream")
 					<< std::endl;
 				if (this->moves_downstream()) {
-					if (principal() == nullptr) {
+					if (!_principal) {
 						throw Durability_error("Principal is null while writing a kernel to a stream.",
 							__FILE__, __LINE__, __func__);
 					}
-					Id id = principal()->id();
+					Id id = _principal->id();
 //					Logger(Level::KERNEL) << "WRITING PRINCIPAL = " << id << std::endl;
 					out << id;
 				}
@@ -183,9 +221,7 @@ namespace factory {
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 
-			virtual void error(This* rhs) {
-				react(rhs);
-			}
+			virtual void error(This* rhs) { react(rhs); }
 
 			virtual const Type<This>* type() const { return nullptr; }
 
@@ -197,22 +233,22 @@ namespace factory {
 						break;
 					default:
 						Logger(Level::KERNEL) << "Result is defined" << std::endl;
-						if (this->principal() == nullptr) {
+						if (!_principal) {
 							Logger(Level::KERNEL) << "Principal is null" << std::endl;
-							if (this->parent() == this->principal()) {
+							if (!_parent) {
 								delete this;
 								Logger(Level::KERNEL) << "SHUTDOWN" << std::endl;
 								factory_stop();
 							}
 						} else {
 							Logger(Level::KERNEL) << "Principal is not null" << std::endl;
-							bool del = *this->principal() == *this->parent();
+							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
 								Logger(Level::KERNEL) << "Principal react" << std::endl;
-								this->principal()->react(this);
+								_principal->react(this);
 							} else {
 								Logger(Level::KERNEL) << "Principal error" << std::endl;
-								this->principal()->error(this);
+								_principal->error(this);
 							}
 							if (del) {
 								Logger(Level::KERNEL) << "Deleting kernel" << std::endl;
@@ -245,18 +281,11 @@ namespace factory {
 
 			template<class S>
 			inline void commit(S* this_server) {
-				downstream(this_server, this, this->parent());
+				downstream(this_server, this, _parent.ptr());
 			}
 
 		private:
-
-			void del(This* ref) {
-				if (ref != nullptr && ref->is_transient()) {
-					delete ref;
-				}
-			}
-
-			This* _parent;
+			Kernel_ref<This> _parent;
 			Kernel_ref<This> _principal;
 		};
 
@@ -284,6 +313,7 @@ namespace factory {
 				uint16_t r = static_cast<uint16_t>(this->result());
 				Logger(Level::KERNEL) << "Writing result = " << r << std::endl;
 				out << r;
+				Logger(Level::KERNEL) << "Writing id = " << _id << std::endl;
 				out << _id;
 			}
 

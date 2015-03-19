@@ -43,7 +43,7 @@ namespace factory {
 					} else {
 						size_t n = Server::_upstream.size();
 						if (n > 0) {
-							size_t i = std::size_t(kernel->principal()) / ALIGNMENT * PRIME % n;
+							size_t i = kernel->hash() * PRIME % n;
 							Server::_upstream[i]->send(kernel);
 						} else {
 							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
@@ -55,7 +55,6 @@ namespace factory {
 			private:
 				std::atomic<int> _cursor;
 
-				static const size_t ALIGNMENT = 64;
 				static const size_t PRIME     = 7;
 			};
 
@@ -568,7 +567,7 @@ namespace factory {
 					Logger(Level::STRATEGY) << "Simple_hashing::send()" << std::endl;
 					size_t n = Server::_upstream.size();
 					if (n > 0) {
-						size_t i = std::size_t(pair->principal()) / ALIGNMENT * PRIME % n;
+						size_t i = pair->hash() * PRIME % n;
 						Server::_upstream[i]->send(pair);
 					} else {
 						std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
@@ -590,7 +589,6 @@ namespace factory {
 
 
 		private:
-			static const size_t ALIGNMENT = 64;
 			static const size_t PRIME     = 7;
 		};
 
@@ -697,7 +695,6 @@ namespace factory {
 //			};
 
 		private:
-			static const std::size_t ALIGNMENT = 64;
 			static const std::size_t PRIME     = 7;
 		};
 
