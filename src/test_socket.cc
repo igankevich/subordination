@@ -59,6 +59,7 @@ struct Sender: public Identifiable<Kernel> {
 
 	void act() {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(13));
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
 			Logger(Level::COMPONENT) << " Sender id = " << this->id() << std::endl;
@@ -131,7 +132,6 @@ struct App {
 					throw std::runtime_error("Wrong number of arguments.");
 				the_server()->add(0);
 				if (argv[1][0] == 'x') {
-					the_server()->add(1);
 					remote_server()->socket(server_endpoint);
 					__factory.start();
 					__factory.wait();

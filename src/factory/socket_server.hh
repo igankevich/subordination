@@ -597,6 +597,7 @@ namespace factory {
 				}
 				if (kernel->moves_upstream() && kernel->identifiable()) {
 					_buffer.push_back(kernel);
+					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				Logger(Level::COMPONENT) << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
@@ -723,6 +724,7 @@ namespace factory {
 					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
 					Logger(Level::HANDLER) << "Kernel erased " << k->id() << std::endl;
 					_buffer.erase(pos);
+					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
 					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
 				} else {
 					Logger(Level::HANDLER) << "Kernel not found " << k->id() << std::endl;

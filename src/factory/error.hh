@@ -34,9 +34,16 @@ namespace factory {
 		std::ostream& ostream() { return _buf; }
 	
 	private:
+		
+		static uint64_t now() {
+			static uint64_t start_time = std::chrono::system_clock::now().time_since_epoch().count();
+			return std::chrono::system_clock::now().time_since_epoch().count() - start_time;
+		}
 
 		void next_record() {
-			_buf << ::getpid() << ": " << std::setw(int(_level)) << ' ';
+			_buf << ::getpid() << ' '
+				<< now() << ' '
+				<< std::setw(int(_level)) << ' ';
 		}
 
 		std::stringstream _buf;
