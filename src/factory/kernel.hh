@@ -246,7 +246,7 @@ namespace factory {
 					<< (rhs.moves_upstream()   ? 'U' : ' ')
 					<< (rhs.moves_downstream() ? 'D' : ' ') 
 					<< (rhs.moves_somewhere()  ? 'S' : ' ') 
-					<< (rhs.broadcast()  ? 'B' : ' ') 
+					<< (rhs.moves_everywhere()  ? 'B' : ' ') 
 					<< ','
 					<< rhs.id() << ','
 					<< rhs.from() << ','
