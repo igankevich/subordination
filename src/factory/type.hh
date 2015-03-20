@@ -237,9 +237,6 @@ namespace factory {
 							}
 							k->principal(p);
 						}
-						Logger(Level::COMPONENT)
-							<< "received kernel " << *k
-							<< std::endl;
 						factory_send(k);
 					};
 

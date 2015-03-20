@@ -347,25 +347,23 @@ namespace factory {
 					empty = _pool.empty();
 					lock.unlock();
 
-					if (k->moves_upstream() && k->to() == Endpoint()) {
-						if (k->broadcast()) {
-							Logger(Level::SERVER)
-								<< server_addr() << ' '
-								<< "broadcast kernel" << std::endl;
-							for (auto pair : _upstream) {
-								Remote_server* s = pair.second;
-								s->send(k);
-								_poller[s->fd()]->writing();
-							}
-						} else {
-							if (_upstream.empty()) {
-								throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
-							}
-							// TODO: round robin
-							auto result = _upstream.begin();
-							result->second->send(k);
-							_poller[result->second->fd()]->writing();
+					if (k->moves_everywhere()) {
+						Logger(Level::SERVER)
+							<< server_addr() << ' '
+							<< "broadcast kernel" << std::endl;
+						for (auto pair : _upstream) {
+							Remote_server* s = pair.second;
+							s->send(k);
+							_poller[s->fd()]->writing();
 						}
+					} else if (k->moves_upstream() && k->to() == Endpoint()) {
+						if (_upstream.empty()) {
+							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
+						}
+						// TODO: round robin
+						auto result = _upstream.begin();
+						result->second->send(k);
+						_poller[result->second->fd()]->writing();
 					} else {
 						// create endpoint if necessary, and send kernel
 						if (k->to() == Endpoint()) {
@@ -593,13 +591,14 @@ namespace factory {
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
 				}
-				if (!kernel->identifiable() && !kernel->broadcast()) {
+				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(factory_generate_id());
 					Logger(Level::HANDLER) << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if (kernel->moves_upstream() && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 				}
+				Logger(Level::COMPONENT) << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
 				packet.write(_ostream, kernel);
 			}
@@ -620,6 +619,7 @@ namespace factory {
 						try {
 							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
 								k->from(_vaddr);
+								Logger(Level::COMPONENT) << "Received kernel " << *k << std::endl;
 								clear_kernel_buffer(k);
 							});
 						} catch (No_principal_found<Kernel>& err) {

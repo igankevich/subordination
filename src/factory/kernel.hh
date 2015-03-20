@@ -121,20 +121,10 @@ namespace factory {
 
 			Principal(): _parent(nullptr), _principal(nullptr) {}
 
-			const Ref principal() const { return _principal; }
+			const Ref& principal() const { return _principal; }
 			Ref principal() { return _principal; }
-			void principal(Ref rhs) {
-				_principal = rhs;
-				if (this->result() == Result::UNDEFINED) {
-					this->result(Result::UNDEFINED_DOWNSTREAM);
-				}
-			}
-			void principal(This* rhs) {
-				_principal = rhs;
-				if (this->result() == Result::UNDEFINED) {
-					this->result(Result::UNDEFINED_DOWNSTREAM);
-				}
-			}
+			void principal(Ref rhs) { _principal = rhs; }
+			void principal(This* rhs) { _principal = rhs; }
 
 			size_t hash() const {
 				return _principal && _principal->identifiable()
@@ -142,16 +132,15 @@ namespace factory {
 					: size_t(_principal.ptr()) / alignof(size_t);
 			}
 
-			const Ref parent() const { return _parent; }
+			const Ref& parent() const { return _parent; }
 			Ref parent() { return _parent; }
 			void parent(Ref p) { _parent = p; }
 			void parent(This* p) { _parent = p; }
 
-			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal; }
-			bool moves_downstream() const {
-				return this->result() != Result::UNDEFINED
-					|| this->result() == Result::UNDEFINED_DOWNSTREAM
-					|| _principal; }
+			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
+			bool moves_downstream() const { return this->result() != Result::UNDEFINED || _principal; }
+			bool moves_somewhere() const { return _principal && !_parent; }
+			bool moves_everywhere() const { return !_principal && !_parent; }
 
 			void read_impl(Foreign_stream& in) {
 				if (_parent) {
@@ -166,7 +155,7 @@ namespace factory {
 				if (parent_id != ROOT_ID) {
 					_parent = parent_id;
 				}
-				if (this->moves_downstream()) {
+				if (moves_downstream()) {
 					if (_principal.ptr() != nullptr) {
 						throw Error("Principal kernel is not null while reading from the data stream.",
 							__FILE__, __LINE__, __func__);
@@ -195,18 +184,12 @@ namespace factory {
 
 			void write_impl(Foreign_stream& out) {
 				out << (!_parent ? ROOT_ID : _parent->id());
-				Logger(Level::KERNEL)
-					<< "Writing "
-					<< (this->moves_downstream() ? "downstream" : "upstream")
-					<< std::endl;
-				if (this->moves_downstream()) {
+				if (moves_downstream()) {
 					if (!_principal) {
 						throw Durability_error("Principal is null while writing a kernel to a stream.",
 							__FILE__, __LINE__, __func__);
 					}
-					Id id = _principal->id();
-//					Logger(Level::KERNEL) << "WRITING PRINCIPAL = " << id << std::endl;
-					out << id;
+					out << _principal->id();
 				}
 			}
 
@@ -256,6 +239,20 @@ namespace factory {
 							}
 						}
 				}
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+				return out << '('
+					<< (rhs.moves_upstream()   ? 'U' : ' ')
+					<< (rhs.moves_downstream() ? 'D' : ' ') 
+					<< (rhs.moves_somewhere()  ? 'S' : ' ') 
+					<< (rhs.broadcast()  ? 'B' : ' ') 
+					<< ','
+					<< rhs.id() << ','
+					<< rhs.from() << ','
+					<< rhs.to() << ','
+					<< rhs.result()
+					<< ')';
 			}
 		
 		public:
@@ -330,19 +327,8 @@ namespace factory {
 			virtual Endpoint to() const { return _dst; }
 			virtual void to(Endpoint rhs) { _dst = rhs; }
 
-			virtual bool broadcast() const { return false; }
-
 			bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
-			}
-
-			friend std::ostream& operator<<(std::ostream& out, const Mobile<K>& rhs) {
-				return out << '('
-					<< rhs.id() << ','
-					<< rhs.from() << ','
-					<< rhs.to() << ','
-					<< rhs.result()
-					<< ')';
 			}
 
 		private:
