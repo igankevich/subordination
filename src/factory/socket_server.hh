@@ -721,11 +721,9 @@ namespace factory {
 					return *rhs == *k;
 				});
 				if (pos != _buffer.end()) {
-					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
 					Logger(Level::HANDLER) << "Kernel erased " << k->id() << std::endl;
 					_buffer.erase(pos);
 					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
-					Logger(Level::HANDLER) << "Kernel count " << _buffer.size() << std::endl;
 				} else {
 					Logger(Level::HANDLER) << "Kernel not found " << k->id() << std::endl;
 				}

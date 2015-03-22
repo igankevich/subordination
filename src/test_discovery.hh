@@ -9,7 +9,10 @@ const Port DISCOVERY_PORT = 10000;
 std::vector<Endpoint> NEIGHBOURS = {
 	Endpoint("127.0.0.1", DISCOVERY_PORT),
 	Endpoint("127.0.0.2", DISCOVERY_PORT),
-	Endpoint("127.0.0.3", DISCOVERY_PORT)
+	Endpoint("127.0.0.3", DISCOVERY_PORT),
+	Endpoint("127.0.0.4", DISCOVERY_PORT),
+	Endpoint("127.0.0.5", DISCOVERY_PORT),
+	Endpoint("127.0.0.6", DISCOVERY_PORT),
 };
 
 struct Discovery: public Mobile<Discovery> {
@@ -384,7 +387,7 @@ struct Discoverer: public Identifiable<Kernel> {
 					peers.insert(*rhs);
 				});
 				log << std::endl;
-				this->upstream(the_server(), new Candidate(_source, peers));
+//				this->upstream(the_server(), new Candidate(_source, peers));
 //				commit(the_server());
 			} else {
 				act();
