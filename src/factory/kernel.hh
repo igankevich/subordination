@@ -138,8 +138,8 @@ namespace factory {
 			void parent(This* p) { _parent = p; }
 
 			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
-			bool moves_downstream() const { return this->result() != Result::UNDEFINED || _principal; }
-			bool moves_somewhere() const { return _principal && !_parent; }
+			bool moves_downstream() const { return this->result() != Result::UNDEFINED && _principal && _parent; }
+			bool moves_somewhere() const { return this->result() == Result::UNDEFINED && _principal && _parent; }
 			bool moves_everywhere() const { return !_principal && !_parent; }
 
 			void read_impl(Foreign_stream& in) {
@@ -155,42 +155,19 @@ namespace factory {
 				if (parent_id != ROOT_ID) {
 					_parent = parent_id;
 				}
-				if (moves_downstream()) {
-					if (_principal.ptr() != nullptr) {
-						throw Error("Principal kernel is not null while reading from the data stream.",
-							__FILE__, __LINE__, __func__);
-					}
-					Id principal_id;
-					in >> principal_id;
-					Logger(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
-					// TODO: move this code to server and create instance repository in each server.
-					if (principal_id == ROOT_ID) {
-						throw Error("Principal of a mobile kernel can not be null.",
-							__FILE__, __LINE__, __func__);
-					}
-					_principal = principal_id;
-//					_principal = Type<This>::instances().lookup(principal_id);
-//					if (_principal == nullptr) {
-//						this->result(Result::NO_PRINCIPAL_FOUND);
-//						throw No_principal_found<This>(this);
-//						std::stringstream str;
-//						str << "Can not find principal kernel on this server, kernel id = "
-//							<< principal_id
-//							<< ", result = " << uint16_t(this->result());
-//						throw Durability_error(str.str(), __FILE__, __LINE__, __func__);
-//					}
+				if (_principal.ptr() != nullptr) {
+					throw Error("Principal kernel is not null while reading from the data stream.",
+						__FILE__, __LINE__, __func__);
 				}
+				Id principal_id;
+				in >> principal_id;
+				Logger(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
+				_principal = principal_id;
 			}
 
 			void write_impl(Foreign_stream& out) {
 				out << (!_parent ? ROOT_ID : _parent->id());
-				if (moves_downstream()) {
-					if (!_principal) {
-						throw Durability_error("Principal is null while writing a kernel to a stream.",
-							__FILE__, __LINE__, __func__);
-					}
-					out << _principal->id();
-				}
+				out << (!_principal ? ROOT_ID : _principal->id());
 			}
 
 			virtual void react(This*) {

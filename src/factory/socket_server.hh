@@ -595,7 +595,7 @@ namespace factory {
 					kernel->id(factory_generate_id());
 					Logger(Level::HANDLER) << "Kernel generate id = " << kernel->id() << std::endl;
 				}
-				if (kernel->moves_upstream() && kernel->identifiable()) {
+				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
 				}
@@ -621,7 +621,9 @@ namespace factory {
 							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
 								k->from(_vaddr);
 								Logger(Level::COMPONENT) << "Received kernel " << *k << std::endl;
-								clear_kernel_buffer(k);
+								if (k->moves_downstream()) {
+									clear_kernel_buffer(k);
+								}
 							});
 						} catch (No_principal_found<Kernel>& err) {
 							Logger(Level::HANDLER) << "No principal found for "
@@ -716,7 +718,6 @@ namespace factory {
 //			}
 			
 			void clear_kernel_buffer(Kernel* k) {
-				if (!k->moves_downstream()) return;
 				auto pos = std::find_if(_buffer.begin(), _buffer.end(), [k] (Kernel* rhs) {
 					return *rhs == *k;
 				});

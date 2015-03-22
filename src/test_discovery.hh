@@ -13,6 +13,10 @@ std::vector<Endpoint> NEIGHBOURS = {
 	Endpoint("127.0.0.4", DISCOVERY_PORT),
 	Endpoint("127.0.0.5", DISCOVERY_PORT),
 	Endpoint("127.0.0.6", DISCOVERY_PORT),
+	Endpoint("127.0.0.7", DISCOVERY_PORT),
+	Endpoint("127.0.0.8", DISCOVERY_PORT),
+	Endpoint("127.0.0.9", DISCOVERY_PORT),
+	Endpoint("127.0.0.10", DISCOVERY_PORT),
 };
 
 struct Discovery: public Mobile<Discovery> {
@@ -254,15 +258,6 @@ struct Discoverer: public Identifiable<Kernel> {
 		factory::Identifiable<Kernel>(1),
 		_source(endpoint),
 		_servers(create_servers(NEIGHBOURS)) {}
-	
-	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
-		std::vector<Endpoint> tmp;
-		std::copy_if(servers.cbegin(), servers.cend(),
-			std::back_inserter(tmp), [this] (Endpoint addr) {
-				return addr != this->_source;
-			});
-		return tmp;
-	}
 
 	void act() {
 		_attempts++;
@@ -273,8 +268,6 @@ struct Discoverer: public Identifiable<Kernel> {
 		Logger(Level::KERNEL) << _source << ": attempt #" << _attempts << std::endl;
 
 		std::vector<Discovery*> kernels;
-
-
 		std::for_each(_servers.cbegin(), _servers.cend(),
 			[this, &kernels] (const Endpoint& ep)
 		{
@@ -292,32 +285,6 @@ struct Discoverer: public Identifiable<Kernel> {
 			}
 		});
 
-
-		// determine hosts to poll
-//		std::for_each(peers.cbegin(), peers.cend(),
-//			[this, &kernels] (const Port_range& range)
-//		{
-//			typedef Port I;
-//			I st = range.start();
-//			I en = range.end();
-//			for (I a=st; a<en/* && a<st+10*/; ++a) {
-//				Endpoint ep(_source.host(), a);
-//				Peer* n = find_peer(ep);
-//				Logger(Level::KERNEL) 
-//					<< _source
-//					<< ": sending to " << ep << ' '
-//					<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
-//				if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
-//					Logger(Level::KERNEL) << "Sending to " << ep << std::endl;
-//					Discovery* k = new Discovery;
-//					k->parent(this);
-//					k->dest(ep);
-//					k->source(_source);
-//					kernels.push_back(k);
-//				}
-//			}
-//		});
-
 		// send discovery messages
 		Logger(Level::KERNEL) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
 		_num_peers = kernels.size();
@@ -328,69 +295,63 @@ struct Discoverer: public Identifiable<Kernel> {
 		// repeat when nothing is discovered
 		if (_num_peers == 0) {
 			throw "No peers to update";
-//			the_server()->send(this);
 		}
 	}
 
 	void react(Kernel* k) {
 		Discovery* d = dynamic_cast<Discovery*>(k);
-		if (d->result() == Result::SUCCESS) {
-			Logger(Level::KERNEL) << _source << ": success for " << d->from() << std::endl;
-			_num_succeeded++;
-			if (_peers_map.find(d->from()) == _peers_map.end()) {
-				Peer* n = new Peer(d->from(), d->time());
-				_peers_map[d->from()] = n;
-				_peers_set.insert(n);
-			} else {
-				_peers_map[d->from()]->sample(d->time());
-			}
+		if (d->moves_somewhere()) {
+			d->act();
 		} else {
-			_num_failed++;
-//			auto result = _peers_map.find(d->from());
-//			if (result != _peers_map.end()) {
-//				Peer* n = result->second;
-//				_peers_map.erase(result->first);
-//				_peers_set.erase(n);
-//				delete n;
-//			}
-		}
-//		Logger(Level::KERNEL) << "Returned: "
-//			<< _num_succeeded + _num_failed << '/' 
-//			<< _num_peers
-//			<< " from " << d->from() 
-//			<< std::endl;
-		
-		Logger(Level::KERNEL) << _source << ": result #" << _attempts
-			<< ' '
-			<< num_succeeded()
-			<< '+'
-			<< num_failed()
-			<< '/'
-			<< num_peers()
-			<< ' '
-			<< min_samples()
-			<< std::endl;
-
-		if (_num_succeeded + _num_failed == _num_peers) {
-			
-			Logger(Level::KERNEL) << _source << ": end of attempt #" << _attempts << std::endl;
-
-			if (min_samples() == MIN_SAMPLES) {
-				Logger log(Level::KERNEL);
-				log << "Peers: ";
-				std::ostream_iterator<Peer*> it(log.ostream(), ", ");
-				std::copy(_peers_set.cbegin(), _peers_set.cend(), it);
-				std::set<Peer> peers;
-				std::for_each(_peers_set.cbegin(), _peers_set.cend(),
-					[&peers] (const Peer* rhs)
-				{
-					peers.insert(*rhs);
-				});
-				log << std::endl;
-//				this->upstream(the_server(), new Candidate(_source, peers));
-//				commit(the_server());
+			if (d->result() == Result::SUCCESS) {
+				Logger(Level::KERNEL) << _source << ": success for " << d->from() << std::endl;
+				_num_succeeded++;
+				if (_peers_map.find(d->from()) == _peers_map.end()) {
+					Peer* n = new Peer(d->from(), d->time());
+					_peers_map[d->from()] = n;
+					_peers_set.insert(n);
+				} else {
+					_peers_map[d->from()]->sample(d->time());
+				}
 			} else {
-				act();
+				_num_failed++;
+//				auto result = _peers_map.find(d->from());
+//				if (result != _peers_map.end()) {
+//					Peer* n = result->second;
+//					_peers_map.erase(result->first);
+//					_peers_set.erase(n);
+//					delete n;
+//				}
+			}
+			
+			Logger(Level::KERNEL) << _source << ": result #"
+				<< _attempts << ' '
+				<< num_succeeded() << '+'
+				<< num_failed() << '/'
+				<< num_peers() << ' '
+				<< min_samples() << std::endl;
+
+			if (_num_succeeded + _num_failed == _num_peers) {
+				
+				Logger(Level::KERNEL) << _source << ": end of attempt #" << _attempts << std::endl;
+
+				if (min_samples() == MIN_SAMPLES) {
+					Logger log(Level::KERNEL);
+					log << "Peers: ";
+					std::ostream_iterator<Peer*> it(log.ostream(), ", ");
+					std::copy(_peers_set.cbegin(), _peers_set.cend(), it);
+					std::set<Peer> peers;
+					std::for_each(_peers_set.cbegin(), _peers_set.cend(),
+						[&peers] (const Peer* rhs)
+					{
+						peers.insert(*rhs);
+					});
+					log << std::endl;
+//					this->upstream(the_server(), new Candidate(_source, peers));
+//					commit(the_server());
+				} else {
+					act();
+				}
 			}
 		}
 	}
@@ -399,16 +360,20 @@ struct Discoverer: public Identifiable<Kernel> {
 	uint32_t num_succeeded() const { return _num_succeeded; }
 	uint32_t num_peers() const { return _num_peers; }
 
-//	void error(Kernel* k) {
-//		std::clog << "Returned ERR: " << _num_failed << std::endl;
-//	}
-
-
 	const Peer* leader_candidate() const {
 		return *_peers_set.cbegin();
 	}
 
 private:
+	
+	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
+		std::vector<Endpoint> tmp;
+		std::copy_if(servers.cbegin(), servers.cend(),
+			std::back_inserter(tmp), [this] (Endpoint addr) {
+				return addr != this->_source;
+			});
+		return tmp;
+	}
 
 	uint32_t min_samples() const {
 		return std::accumulate(_peers_set.cbegin(), _peers_set.cend(),
@@ -435,6 +400,7 @@ private:
 	uint32_t _num_failed = 0;
 
 	uint32_t _attempts = 0;
+	uint32_t _level = 0;
 
 	static const uint32_t MAX_ATTEMPTS = 17;
 	static const uint32_t MIN_SAMPLES = 5;
