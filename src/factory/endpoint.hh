@@ -53,9 +53,10 @@ namespace factory {
 
 		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
 			std::string host;
+			in >> std::ws;
 			std::getline(in, host, ':');
 			Port port;
-			in >> port;
+			in >> std::ws >> port;
 			rhs.addr(host.c_str(), port);
 			return in;
 		}
@@ -81,7 +82,8 @@ namespace factory {
 
 		void addr(const char* host, Port port) {
 			struct ::addrinfo* info;
-			check("getaddrinfo", ::getaddrinfo(host, NULL, NULL, &info));
+			Logger(Level::COMPONENT) << "getaddrinfo(" << host << ")" << std::endl;
+			check_addrinfo("getaddrinfo", ::getaddrinfo(host, NULL, NULL, &info));
 			struct ::sockaddr_in* a = (struct ::sockaddr_in*) info->ai_addr;
 			a->sin_port = htons(port);
 			addr(a);

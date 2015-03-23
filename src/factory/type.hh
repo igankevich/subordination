@@ -229,7 +229,7 @@ namespace factory {
 						Sub* k = new Sub;
 						k->read(in);
 						callback(k);
-						if (k->moves_downstream()) {
+						if (k->principal()) {
 							K* p = Type::instances().lookup(k->principal()->id());
 							if (p == nullptr) {
 								k->result(Result::NO_PRINCIPAL_FOUND);

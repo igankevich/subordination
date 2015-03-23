@@ -53,13 +53,14 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 
-	Sender(uint32_t n):
+	Sender(uint32_t n, uint32_t s):
 		_vector_size(n),
-		_input(_vector_size) {}
+		_input(_vector_size),
+		_sleep(s) {}
 
 	void act() {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(13));
+			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
 			Logger(Level::COMPONENT) << " Sender id = " << this->id() << std::endl;
@@ -92,17 +93,22 @@ struct Sender: public Identifiable<Kernel> {
 		}
 	}
 
+private:
+
 	uint32_t _num_returned = 0;
 	uint32_t _vector_size;
 
 	std::vector<Datum> _input;
+	uint32_t _sleep = 0;
 };
 
 struct Main: public Kernel {
 
+	Main(uint32_t s): _sleep(s) {}
+
 	void act() {
 		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-			upstream(the_server(), new Sender(i));
+			upstream(the_server(), new Sender(i, _sleep));
 	}
 
 	void react(Kernel*) {
@@ -114,22 +120,39 @@ struct Main: public Kernel {
 
 private:
 	uint32_t _num_returned = 0;
+	uint32_t _sleep = 0;
 };
+
+uint32_t sleep_time() {
+	uint32_t t = 0;
+	std::stringstream s;
+	s << ::getenv("SLEEP_TIME");
+	s >> t;
+	return t;
+}
+
 
 struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 1) {
+			uint32_t sleep = sleep_time();
 			Process_group procs;
-			procs.add([&argv] () { return execute(1000, argv[0], 'x'); });
+			procs.add([&argv, sleep] () { return execute(1000, argv[0], 'x', sleep); });
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv] () { return execute(2000, argv[0], 'y'); });
+			procs.add([&argv, sleep] () { return execute(2000, argv[0], 'y', sleep); });
 			retval = procs.wait();
 		} else {
 			try {
-				if (argc != 2)
+				if (argc != 3)
 					throw std::runtime_error("Wrong number of arguments.");
+				uint32_t sleep = 0;
+				{
+					std::stringstream s;
+					s << argv[2];
+					s >> sleep;
+				}
 				the_server()->add(0);
 				if (argv[1][0] == 'x') {
 					remote_server()->socket(server_endpoint);
@@ -140,7 +163,7 @@ struct App {
 					remote_server()->socket(client_endpoint);
 					remote_server()->peer(server_endpoint);
 					__factory.start();
-					the_server()->send(new Main);
+					the_server()->send(new Main(sleep));
 					__factory.wait();
 				}
 			} catch (std::exception& e) {

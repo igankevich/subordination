@@ -21,7 +21,9 @@ namespace factory {
 
 			Kernel_ref(): _kernel(nullptr), _temp(false) {}
 			Kernel_ref(K* rhs): _kernel(rhs), _temp(false) {}
-			Kernel_ref(Id rhs): _kernel(new Transient_kernel(rhs)), _temp(true) {}
+			Kernel_ref(Id rhs):
+				_kernel(rhs == ROOT_ID ? nullptr : new Transient_kernel(rhs)),
+				_temp(rhs != ROOT_ID) {}
 			Kernel_ref(const Kernel_ref& rhs): _kernel(rhs._kernel), _temp(rhs._temp) {
 				if (_temp) {
 					Id i = _kernel->id();
@@ -64,10 +66,14 @@ namespace factory {
 			Kernel_ref& operator=(Id rhs) {
 				if (_temp) {
 					delete _kernel;
+				}
+				if (rhs == ROOT_ID) {
+					_kernel = nullptr;
+					_temp = false;
 				} else {
+					_kernel = new Transient_kernel(rhs);
 					_temp = true;
 				}
-				_kernel = new Transient_kernel(rhs);
 				return *this;
 			}
 
@@ -188,8 +194,11 @@ namespace factory {
 			void run_act() {
 				switch (this->result()) {
 					case Result::UNDEFINED:
-						this->act();
-//						this->result(Result::SUCCESS);
+						if (_principal) {
+							_principal->react(this);
+						} else {
+							this->act();
+						}
 						break;
 					default:
 						Logger(Level::KERNEL) << "Result is defined" << std::endl;
