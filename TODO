@@ -1,8 +1,9 @@
 DONE [48:260086e3e0fe] Graceful Socket_server shutdown
 DONE [52:454ba97ae645] Graceful Factory shutdown
 DONE [62:520b6908f3e3] Coalesce multiple incoming and outgoing connections made between the same hosts using different ports.
+DONE [71:97d92e8d4d02] Kernels' recovery when upstream server goes offline after receiving the kernels.
 
-Kernels' recovery when upstream server goes offline after receiving the kernels.
+
 Add IPv6 support through 'struct sockaddr_storage', getaddrinfo() and rewrite discover_neighbours() to support large networks scanning.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
