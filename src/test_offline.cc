@@ -113,10 +113,16 @@ struct App {
 		int retval = 0;
 		if (argc <= 1) {
 			Process_group procs;
-			procs.add([&argv] () { return execute(1000, argv[0], 'x'); });
+			procs.add([&argv] () {
+				Process::env("START_ID", 1000);
+				return Process::execute(argv[0], 'x');
+			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv] () { return execute(2000, argv[0], 'y'); });
+			procs.add([&argv] () {
+				Process::env("START_ID", 2000);
+				return Process::execute(argv[0], 'y');
+			});
 			int ret = procs.wait();
 			retval = ret == SIGSEGV ? 0 : ret;
 		} else {

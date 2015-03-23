@@ -643,7 +643,8 @@ struct App {
 				int start_id = 1000;
 				for (Endpoint endpoint : all_peers) {
 					processes.add([endpoint, &argv, start_id, npeers] () {
-						return execute(start_id, argv[0], endpoint, npeers);
+						Process::env("START_ID", start_id);
+						return Process::execute(argv[0], endpoint, npeers);
 					});
 					start_id += 1000;
 				}

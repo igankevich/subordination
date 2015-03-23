@@ -66,7 +66,56 @@ namespace factory {
 
 		Process_id id() const { return _child_pid; }
 
+		template<class ... Args>
+		static int execute(const Args& ... args) {
+			To_string tmp[] = { args... };
+			const int argc = sizeof...(Args);
+			char* argv[argc + 1];
+			for (int i=0; i<argc; ++i) {
+				argv[i] = tmp[i].c_str();
+			}
+			argv[argc] = 0;
+			Logger log(Level::COMPONENT);
+			log << "Executing ";
+			std::ostream_iterator<char*> it(log.ostream(), " ");
+			std::copy(argv, argv + argc, it);
+			return check("execve()", ::execve(argv[0], argv, ::environ));
+		}
+
+		template<class T>
+		static void env(const char* key, T val) {
+			check("setenv()", ::setenv(key, To_string(val).c_str(), 1));
+		}
+
+		template<class T>
+		static T getenv(const char* key, T def) {
+			const char* text = ::getenv(key);
+			if (!text) { return def; }
+			std::stringstream s;
+			s << text;
+			T val;
+			return (s >> val) ? val : def;
+		}
+
 	private:
+		struct To_string {
+
+			template<class T>
+			To_string(T rhs): _s(to_string(rhs)) {}
+
+			char* c_str() { return (char*)_s.c_str(); }
+
+		private:
+
+			template<class T>
+			std::string to_string(T rhs) {
+				std::stringstream s;
+				s << rhs;
+				return s.str();
+			}
+			std::string _s;
+		};
+
 		Process_id _child_pid = 0;
 	};
 
@@ -118,39 +167,5 @@ namespace factory {
 	};
 
 
-	struct To_string {
-
-		template<class T>
-		To_string(T rhs): _s(to_string(rhs)) {}
-
-		char* c_str() { return (char*)_s.c_str(); }
-
-	private:
-
-		template<class T>
-		std::string to_string(T rhs) {
-			std::stringstream s;
-			s << rhs;
-			return s.str();
-		}
-		std::string _s;
-	};
-
-	template<class ... Args>
-	int execute(int start_id, const Args& ... args) {
-		To_string tmp[] = { args... };
-		const int argc = sizeof...(Args);
-		char* argv[argc + 1];
-		for (int i=0; i<argc; ++i) {
-			argv[i] = tmp[i].c_str();
-		}
-		argv[argc] = 0;
-		char* env[] = { (char*)(std::string("START_ID=") + To_string(start_id).c_str()).c_str(), 0 };
-		Logger log(Level::COMPONENT);
-		log << "Executing ";
-		std::ostream_iterator<char*> it(log.ostream(), " ");
-		std::copy(argv, argv + argc, it);
-		return check("execve()", ::execve(argv[0], argv, env));
-	}
 
 }

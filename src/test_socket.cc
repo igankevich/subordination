@@ -138,10 +138,16 @@ struct App {
 		if (argc <= 1) {
 			uint32_t sleep = sleep_time();
 			Process_group procs;
-			procs.add([&argv, sleep] () { return execute(1000, argv[0], 'x', sleep); });
+			procs.add([&argv, sleep] () {
+				Process::env("START_ID", 1000);
+				return Process::execute(argv[0], 'x', sleep);
+			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv, sleep] () { return execute(2000, argv[0], 'y', sleep); });
+			procs.add([&argv, sleep] () {
+				Process::env("START_ID", 2000);
+				return Process::execute(argv[0], 'y', sleep);
+			});
 			retval = procs.wait();
 		} else {
 			try {
