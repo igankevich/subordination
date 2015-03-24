@@ -280,6 +280,8 @@ namespace factory {
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}
+
+			Endpoint server_addr() const { return _socket.bind_addr(); }
 		
 		private:
 
@@ -307,8 +309,6 @@ namespace factory {
 				delete s;
 			}
 	
-
-			Endpoint server_addr() const { return _socket.name(); }
 
 			void process_event(Remote_server* server, Event event) {
 				server->handle_event(event, [this, &event, server] (bool overflow) {

@@ -195,23 +195,19 @@ struct Discoverer: public Identifiable<Kernel> {
 
 		if (read_cache()) {
 			Logger(Level::DISCOVERY)
-				<< _source << ": reading cache " << std::endl;
+				<< "reading cache " << std::endl;
 			_state = CONNECTING;
 			send_vote();
 			return;
 		}
 
-		Logger(Level::DISCOVERY) << _source << ": attempt #" << _attempts << std::endl;
+		Logger(Level::DISCOVERY) << "attempt #" << _attempts << std::endl;
 
 		std::vector<Discovery*> kernels;
 		std::for_each(_servers.cbegin(), _servers.cend(),
 			[this, &kernels] (const Endpoint& ep)
 		{
 			Peer* n = find_peer(ep);
-			Logger(Level::DISCOVERY) 
-				<< _source
-				<< ": sending to " << ep << ' '
-				<< ((n != nullptr) ? n->num_samples() : 0) << std::endl;
 			if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
 				Logger(Level::DISCOVERY) << "Sending to " << ep << std::endl;
 				Discovery* k = new Discovery;
@@ -222,7 +218,6 @@ struct Discoverer: public Identifiable<Kernel> {
 		});
 
 		// send discovery messages
-		Logger(Level::DISCOVERY) << "Sending discovery messages " << ::getpid() << ", " << _source << std::endl;
 		_num_peers = kernels.size();
 		for (Discovery* d : kernels) {
 			remote_server()->send(d, d->to());
@@ -247,14 +242,14 @@ struct Discoverer: public Identifiable<Kernel> {
 		if (k->moves_somewhere()) {
 			Vote* vote = dynamic_cast<Vote*>(k);
 			if (_state == DISCONNECTED) {
-				Logger(Level::DISCOVERY) << _source << ": retry vote from "
+				Logger(Level::DISCOVERY) << "retry vote from "
 					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->result(Result::USER_ERROR);
 				vote->principal(vote->parent());
 				vote->response(Vote::RETRY);
 				remote_server()->send(vote);
 			} else if (vote->from() == _downstream.addr() && vote->from() < _source) {
-				Logger(Level::DISCOVERY) << _source << ": bad vote from "
+				Logger(Level::DISCOVERY) << "bad vote from "
 					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->result(Result::USER_ERROR);
 				vote->principal(vote->parent());
@@ -263,15 +258,16 @@ struct Discoverer: public Identifiable<Kernel> {
 			} else {
 				_upstream.push_back(_peers[vote->from()]);
 				_state = CONNECTED;
-				Logger log(Level::DISCOVERY);
-				log << "Good vote: ";
-				std::ostream_iterator<Peer> it(log.ostream(), ", ");
-				std::copy(_upstream.cbegin(), _upstream.cend(), it);
-				log << std::endl;
+				Logger(Level::DISCOVERY) << "good vote from "
+					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->response(Vote::OK);
 				vote->commit(remote_server());
 				if (_upstream.size() == all_peers.size() - 1) {
-					Logger(Level::DISCOVERY) << "Hail the king " << _source << "!" << std::endl;
+					Logger log(Level::DISCOVERY);
+					log << "Hail the king! His boys: ";
+					std::ostream_iterator<Peer> it(log.ostream(), ", ");
+					std::copy(_upstream.cbegin(), _upstream.cend(), it);
+					log << std::endl;
 //					if (_source != all_peers[0]) {
 //						throw std::runtime_error("The first endpoint has not become a king.");
 //					}
@@ -291,14 +287,13 @@ struct Discoverer: public Identifiable<Kernel> {
 						vote->parent(this);
 						vote->principal(_downstream.addr().address());
 						remote_server()->send(vote);
-						Logger(Level::DISCOVERY) << this->id() << ": voting again for " << _downstream.addr().address() << std::endl;
+						Logger(Level::DISCOVERY) << "voting again for " << _downstream.addr() << std::endl;
 					}
 				}
 				return;
 			}
 			Discovery* d = dynamic_cast<Discovery*>(k);
 			if (d->result() == Result::SUCCESS) {
-				Logger(Level::DISCOVERY) << _source << ": success for " << d->from() << std::endl;
 				_num_succeeded++;
 				if (Peer* p = find_peer(d->from())) {
 					p->sample(d->time());
@@ -316,16 +311,14 @@ struct Discoverer: public Identifiable<Kernel> {
 //				}
 			}
 			
-			Logger(Level::DISCOVERY) << _source << ": result #"
-				<< _attempts << ' '
-				<< num_succeeded() << '+'
-				<< num_failed() << '/'
-				<< num_peers() << ' '
-				<< min_samples() << std::endl;
-
 			if (_num_succeeded + _num_failed == _num_peers) {
 				
-				Logger(Level::DISCOVERY) << _source << ": end of attempt #" << _attempts << std::endl;
+				Logger(Level::DISCOVERY) << "result #"
+					<< _attempts << ' '
+					<< num_succeeded() << '+'
+					<< num_failed() << '/'
+					<< num_peers() << ' '
+					<< min_samples() << std::endl;
 
 				if (min_samples() == MIN_SAMPLES) {
 
@@ -369,7 +362,7 @@ private:
 			vote->parent(this);
 			vote->principal(_downstream.addr().address());
 			remote_server()->send(vote);
-			Logger(Level::DISCOVERY) << this->id() << ": voting for " << _downstream.addr().address() << std::endl;
+			Logger(Level::DISCOVERY) << "voting for " << _downstream.addr() << std::endl;
 		}
 	}
 

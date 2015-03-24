@@ -1,7 +1,6 @@
 namespace factory {
 
 	struct Null {};
-	struct Endpoint;
 
 	namespace components {
 
@@ -9,25 +8,14 @@ namespace factory {
 
 		template<class K>
 		void factory_send(K*);
+
+		void factory_server_addr(std::ostream&);
 	}
 
 	typedef std::int64_t Time;
 
 	Time now() {
-		struct timespec tm;
-		::clock_gettime(CLOCK_MONOTONIC, &tm);
-		return Time(tm.tv_sec)*Time(INTMAX_C(1000000000)) + Time(tm.tv_nsec);
+		return std::chrono::steady_clock::now().time_since_epoch().count();
 	}
-
-#ifdef LOG_USER_EVENTS
-
-	void log_user_event(const char* name) {
-		std::stringstream tmp;
-		tmp << now() << ',' << name << '\n';
-		std::cout << tmp.str();
-	}
-#else
-#define log_user_event(unused) {}
-#endif
 
 }

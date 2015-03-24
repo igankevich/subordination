@@ -13,6 +13,9 @@ namespace factory {
 		template<class K>
 		void factory_send(K* kernel) { the_server()->send(kernel); }
 
+		void factory_server_addr(std::ostream& out) {
+			out << remote_server()->server_addr();
+		}
 	}
 
 	void emergency_shutdown(int signal) {

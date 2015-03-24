@@ -46,7 +46,11 @@ namespace factory {
 		}
 
 		void next_record() {
-			_buf << ::getpid() << SEP << now() << SEP << _tag << SEP;
+			_buf << now() << SEP;
+			components::factory_server_addr(_buf);
+			_buf << SEP;
+			_buf << ::getpid() << SEP;
+			_buf << _tag << SEP;
 		}
 
 		std::stringstream _buf;

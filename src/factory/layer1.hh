@@ -38,6 +38,7 @@
 #include <poll.h>
 
 // Base system
+#include "base.hh"
 #include "error.hh"
 #include "network.hh"
 #include "endpoint.hh"
@@ -48,7 +49,6 @@
 #include "endpoint.hh"
 #include "sockets.hh"
 #include "poller.hh"
-#include "base.hh"
 #include "type.hh"
 #include "resource.hh"
 #include "kernel.hh"
