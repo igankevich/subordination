@@ -37,7 +37,9 @@ namespace factory {
 				Logger(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
 				Logger(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
-				throw Connection_error(err.what(), __FILE__, __LINE__, __func__);
+				std::stringstream msg;
+				msg << err.what() << ". Endpoint=" << e;
+				throw Connection_error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
 
