@@ -1,16 +1,20 @@
 namespace factory {
 
-	enum struct Level {
-		KERNEL = 0,
-		SERVER = 1,
-		HANDLER = 2,
-		COMPONENT = 3,
-		STRATEGY = 3
+	namespace Level {
+		typedef const char* Tag;
+		Tag KERNEL    = "kernel";
+		Tag SERVER    = "server";
+		Tag HANDLER   = "handler";
+		Tag COMPONENT = "comp";
+		Tag STRATEGY  = "strat";
+		Tag DISCOVERY = "dscvr";
 	};
 
 	struct Logger {
 
-		Logger(Level l = Level::KERNEL): _level(l) {
+		typedef const char* Tag;
+
+		explicit Logger(Tag t = Level::KERNEL): _tag(t) {
 			next_record();
 		}
 	
@@ -36,18 +40,19 @@ namespace factory {
 	private:
 		
 		static uint64_t now() {
-			static uint64_t start_time = std::chrono::system_clock::now().time_since_epoch().count();
-			return std::chrono::system_clock::now().time_since_epoch().count() - start_time;
+			typedef std::chrono::system_clock Clock;
+			static uint64_t start_time = Clock::now().time_since_epoch().count();
+			return Clock::now().time_since_epoch().count() - start_time;
 		}
 
 		void next_record() {
-			_buf << ::getpid() << ' '
-				<< now() << ' '
-				<< std::setw(int(_level)) << ' ';
+			_buf << ::getpid() << SEP << now() << SEP << _tag << SEP;
 		}
 
 		std::stringstream _buf;
-		Level _level;
+		Tag _tag;
+		
+		static const char SEP = ' ';
 	};
 
 	std::string log_filename() {
