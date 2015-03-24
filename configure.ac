@@ -33,10 +33,12 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+AC_TYPE_PID_T
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
-AC_CHECK_FUNCS([clock_gettime memchr memset socket])
+AC_FUNC_FORK
+AC_CHECK_FUNCS([clock_gettime memchr memset socket setenv strerror])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
