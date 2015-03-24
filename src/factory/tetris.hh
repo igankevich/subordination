@@ -19,7 +19,7 @@ namespace factory {
 		
 				int n = upstream.size();
 
-				std::lock_guard<std::mutex> lock(mtx);
+				std::lock_guard<Spin_mutex> lock(mtx);
 
 				Int max_load = std::numeric_limits<Int>::min();
 				for (int i=0; i<n; ++i) {
@@ -272,7 +272,7 @@ namespace factory {
 		
 		protected:
 			Int* cache;
-			std::mutex mtx;
+			Spin_mutex mtx;
 			int size;
 			Int predicted_metric;
 			int srv1;
