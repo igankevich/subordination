@@ -66,9 +66,7 @@ namespace factory {
 			_state(State::DEFAULT),
 			_mgmt_pipe(),
 			_events()
-		{
-			add(Event(POLLIN | POLLRDHUP, _mgmt_pipe.read_end()));
-		}
+		{}
 	
 		int notification_pipe() const { return _mgmt_pipe.read_end(); }
 
@@ -84,7 +82,10 @@ namespace factory {
 
 	
 		template<class Callback>
-		void run(Callback callback) { while (!stopped()) this->wait(callback); }
+		void run(Callback callback) {
+			add(Event(POLLIN | POLLRDHUP, _mgmt_pipe.read_end()));
+			while (!stopped()) this->wait(callback);
+		}
 
 		bool stopped() const { return _state == State::STOPPED; }
 		bool stopping() const { return _state == State::STOPPING; }
