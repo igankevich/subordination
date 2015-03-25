@@ -47,7 +47,7 @@ struct Discovery: public Mobile<Discovery> {
 		}
 	}
 
-	Time time() const { return _time*0 + 12345; }
+	Time time() const { return _time; }
 
 	static Time current_time() {
 		return Clock::now().time_since_epoch().count();
