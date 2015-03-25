@@ -77,7 +77,7 @@ namespace factory {
 
 		void notify_stopping() {
 			char c = STOP_SYMBOL;
-			::write(_mgmt_pipe.write_end(), &c, 1);
+			check("Poller::notify_stopping()", ::write(_mgmt_pipe.write_end(), &c, 1));
 		}
 
 	
@@ -189,7 +189,7 @@ namespace factory {
 		union Pipe {
 
 			Pipe() {
-				::pipe(_fds);
+				check("pipe()", ::pipe(_fds));
 				int flags = ::fcntl(read_end(), F_GETFL);
 				::fcntl(read_end(), F_SETFL, flags | O_NONBLOCK | O_CLOEXEC);
 			}
