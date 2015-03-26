@@ -8,6 +8,7 @@ AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
+AC_LANG([C++])
 AC_PROG_CXX
 AC_PROG_CC
 

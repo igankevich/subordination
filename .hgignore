@@ -10,11 +10,11 @@ syntax: glob
 *.eps
 aclocal.m4
 autom4te.cache
-autoscan.log
 compile
 config.h*
-config.log
 config.status
+config.guess
+config.sub
 configure
 configure.scan
 depcomp
@@ -33,4 +33,3 @@ syntax: regexp
 (^|/)Makefile.in$
 (^|/)Makefile$
 (^|/)\.deps
-(^|/)test-suite.log
