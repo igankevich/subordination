@@ -95,6 +95,8 @@ namespace factory {
 
 		typedef Socket_server<Kernel> Remote_server;
 		typedef Socket_server<Kernel> Discovery_server;
+
+		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
 	}
 
 	using namespace configuration;

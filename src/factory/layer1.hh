@@ -18,6 +18,7 @@
 #include <functional>
 #include <unordered_map>
 #include <map>
+#include <set>
 
 // Standard portable types.
 #include <cinttypes>
@@ -45,6 +46,7 @@
 #include "socket.hh"
 #include "buffer.hh"
 #include "datastream.hh"
+#include "topology.hh"
 // for marshaling
 #include "endpoint.hh"
 #include "sockets.hh"
