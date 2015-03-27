@@ -47,7 +47,7 @@ struct Discovery: public Mobile<Discovery> {
 		}
 	}
 
-	Time time() const { return _time; }
+	Time time() const { return _time*0 + 123; }
 
 	static Time current_time() {
 		return Clock::now().time_since_epoch().count();
@@ -310,16 +310,16 @@ struct Discoverer: public Identifiable<Kernel> {
 //					delete n;
 //				}
 			}
+
+			Logger(Level::DISCOVERY) << "result #"
+				<< _attempts << ' '
+				<< num_succeeded() << '+'
+				<< num_failed() << '/'
+				<< num_peers() << ' '
+				<< min_samples() << std::endl;
 			
 			if (_num_succeeded + _num_failed == _num_peers) {
 				
-				Logger(Level::DISCOVERY) << "result #"
-					<< _attempts << ' '
-					<< num_succeeded() << '+'
-					<< num_failed() << '/'
-					<< num_peers() << ' '
-					<< min_samples() << std::endl;
-
 				if (min_samples() == MIN_SAMPLES) {
 
 					sort_peers(_peers, _sorted_peers);
@@ -502,11 +502,12 @@ struct App {
 				Process_group processes;
 				int start_id = 1000;
 				for (Endpoint endpoint : all_peers) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						Process::env("START_ID", start_id);
 						return Process::execute(argv[0],
 							"--bind-addr", endpoint,
-							"--num-peer", npeers,
+							"--num-peers", npeers,
 							"--base-ip", base_ip);
 					});
 					start_id += 1000;

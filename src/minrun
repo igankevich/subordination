@@ -35,13 +35,16 @@ try:
 	# run Factory test on each host of the virtual network
 	start_id = 1000;
 	for host in net.hosts:
-		host.cmd('START_ID=%i %s --num-peers %i --base-ip %s >/tmp/%s.log &'
+		host.cmd('START_ID=%i %s --num-peers %i --base-ip %s >/tmp/%s.log 2>&1 &'
 			% (start_id, cmd, len(net.hosts), base_ip, host.IP()))
 		start_id += 1000;
 	# wait for the completion
 	for host in net.hosts:
 		print host.cmd('wait')
-finally:
+	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '")
+except:
 	# print log records in chronological order
-	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '; rm -f /tmp/*.*.log")
+	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '")
+finally:
+	os.system("rm -f /tmp/*.*.log")
 	net.stop()

@@ -78,7 +78,7 @@ namespace factory {
 			int one = 1;
 			check("setsockopt()", ::setsockopt(_socket, SOL_SOCKET, option, &one, sizeof(one)));
 		}
-
+		
 		int error() const {
 			int ret = 0;
 			if (_socket < 0) {
