@@ -504,7 +504,10 @@ struct App {
 				for (Endpoint endpoint : all_peers) {
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						Process::env("START_ID", start_id);
-						return Process::execute(argv[0], endpoint, npeers, base_ip);
+						return Process::execute(argv[0],
+							"--bind-addr", endpoint,
+							"--num-peer", npeers,
+							"--base-ip", base_ip);
 					});
 					start_id += 1000;
 				}
@@ -518,16 +521,16 @@ struct App {
 				retval = 1;
 			}
 		} else {
-			std::stringstream cmdline;
-			for (int i=1; i<argc; ++i) cmdline << argv[i] << ' ';
 			int npeers = 3;
-			Endpoint endpoint;
-			std::string tmp;
-			cmdline >> tmp >> npeers;
-			endpoint = Endpoint(get_bind_address(), DISCOVERY_PORT);
+			Endpoint endpoint(get_bind_address(), DISCOVERY_PORT);
+			std::string base_ip = "127.0.0.1";
+			Command_line cmdline(argc, argv);
+			cmdline.parse([&endpoint, &npeers, &base_ip](const std::string& arg, std::istream& in) {
+				     if (arg == "--bind-addr") { in >> endpoint; }
+				else if (arg == "--num-peers") { in >> npeers; }
+				else if (arg == "--base-ip")   { in >> base_ip; }
+			});
 			Logger(Level::DISCOVERY) << "Bind address " << endpoint << std::endl;
-//			return 0;
-			std::string base_ip = argv[3];
 			generate_all_peers(npeers, base_ip);
 			try {
 				the_server()->add(0);

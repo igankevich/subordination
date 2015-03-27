@@ -166,6 +166,24 @@ namespace factory {
 		std::vector<Process> _processes;
 	};
 
+	struct Command_line {
+
+		Command_line(int argc, char* argv[]) {
+			std::ostream_iterator<char*> it(cmdline, " ");
+			std::copy(argv + 1, argv + argc, it);
+		}
+
+		template<class F>
+		void parse(F handle) {
+			std::string arg;
+			while (cmdline >> std::ws >> arg) {
+				handle(arg, cmdline);
+			}
+		}
+
+	private:
+		std::stringstream cmdline;
+	};
 
 
 }
