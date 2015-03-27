@@ -452,9 +452,9 @@ int num_peers() {
 
 bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
 
-void generate_all_peers(uint32_t npeers) {
+void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	all_peers.clear();
-	uint32_t start = Endpoint("127.0.0.1", 0).address();
+	uint32_t start = Endpoint(base_ip.c_str(), 0).address();
 	uint32_t end = start + npeers;
 	for (uint32_t i=start; i<end; ++i) {
 		Endpoint endpoint(i, DISCOVERY_PORT);
@@ -489,10 +489,11 @@ void write_cache_all() {
 struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
-		if (argc < 2) {
+		if (argc <= 2) {
 			try {
 				int npeers = num_peers();
-				generate_all_peers(npeers);
+				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1"; 
+				generate_all_peers(npeers, base_ip);
 				if (write_cache()) {
 					write_cache_all();
 					return 0;
@@ -501,9 +502,9 @@ struct App {
 				Process_group processes;
 				int start_id = 1000;
 				for (Endpoint endpoint : all_peers) {
-					processes.add([endpoint, &argv, start_id, npeers] () {
+					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						Process::env("START_ID", start_id);
-						return Process::execute(argv[0], endpoint, npeers);
+						return Process::execute(argv[0], endpoint, npeers, base_ip);
 					});
 					start_id += 1000;
 				}
@@ -521,8 +522,13 @@ struct App {
 			for (int i=1; i<argc; ++i) cmdline << argv[i] << ' ';
 			int npeers = 3;
 			Endpoint endpoint;
-			cmdline >> endpoint >> npeers;
-			generate_all_peers(npeers);
+			std::string tmp;
+			cmdline >> tmp >> npeers;
+			endpoint = Endpoint(get_bind_address(), DISCOVERY_PORT);
+			Logger(Level::DISCOVERY) << "Bind address " << endpoint << std::endl;
+//			return 0;
+			std::string base_ip = argv[3];
+			generate_all_peers(npeers, base_ip);
 			try {
 				the_server()->add(0);
 				the_server()->start();

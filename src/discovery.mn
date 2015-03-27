@@ -1,0 +1,3 @@
+h1 ./test_discovery h1:10000 3 10.0.0.1 &
+h2 ./test_discovery h2:10000 3 10.0.0.1 &
+h3 ./test_discovery h3:10000 3 10.0.0.1 &

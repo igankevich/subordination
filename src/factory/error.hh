@@ -5,7 +5,7 @@ namespace factory {
 		Tag KERNEL    = "kernel";
 		Tag SERVER    = "server";
 		Tag HANDLER   = "handler";
-		Tag COMPONENT = "comp";
+		Tag COMPONENT = "cmpnt";
 		Tag STRATEGY  = "strat";
 		Tag DISCOVERY = "dscvr";
 	};

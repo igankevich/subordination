@@ -49,7 +49,7 @@ namespace factory {
 	
 	union Address {
 	
-		explicit Address(uint32_t a): _addr(a) {}
+		explicit Address(uint32_t a=0): _addr(a) {}
 	
 		friend std::ostream& operator<<(std::ostream& out, const Address& rhs) {
 			return out
@@ -152,6 +152,40 @@ namespace factory {
 
 		I addr = addrs[i].start() + m;
 		return Endpoint(addr, port);
+	}
+
+	uint32_t get_bind_address() {
+
+		uint32_t ret = 0;
+	
+		struct ::ifaddrs* ifaddr;
+		check("getifaddrs()", ::getifaddrs(&ifaddr));
+	
+		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+	
+			// ignore localhost and non-IPv4 addresses
+			if (ifa->ifa_addr == NULL
+				|| htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr) == 0x7f000001ul
+				|| ifa->ifa_addr->sa_family != AF_INET)
+			{
+				continue;
+			}
+	
+			uint32_t addr_long = htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr);
+			uint32_t mask_long = htonl(((struct ::sockaddr_in*) ifa->ifa_netmask)->sin_addr.s_addr);
+	
+			// ignore 255.255.255.255 wide-area networks
+			if (mask_long == std::numeric_limits<uint32_t>::max()) {
+				continue;
+			}
+	
+			ret = addr_long;
+			break;
+		}
+	
+		::freeifaddrs(ifaddr);
+	
+		return ret;
 	}
 
 }
