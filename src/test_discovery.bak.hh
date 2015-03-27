@@ -59,8 +59,7 @@ struct Peer {
 	Peer(Endpoint a, Time t): _addr(a) { sample(t); }
 	Peer(Endpoint a): _addr(a) {}
 	Peer(const Peer& rhs):
-		_t(rhs._t), _n(rhs._n), _level(rhs._level),
-		_addr(rhs._addr) {}
+		_t(rhs._t), _n(rhs._n), _addr(rhs._addr) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
 
@@ -74,8 +73,6 @@ struct Peer {
 
 	uint32_t num_samples() const { return _n; }
 	Endpoint addr() const { return _addr; }
-	uint32_t level() const { return _level; }
-	void level(uint32_t rhs) { _level = rhs; }
 
 	bool operator<(const Peer& rhs) const {
 		return metric() < rhs.metric()
@@ -106,7 +103,6 @@ struct Peer {
 private:
 	Time _t = 0;
 	uint32_t _n = 0;
-	uint32_t _level = 0;
 	Endpoint _addr;
 
 	static const uint32_t MAX_SAMPLES = 1000;
@@ -148,60 +144,99 @@ struct Discoverer: public Identifiable<Kernel> {
 		CONNECTED
 	};
 
+//	void act() {
+//		auto peers = discover_peers();
+//		_num_peers = std::accumulate(peers.cbegin(), peers.cend(), uint32_t(0),
+//			[] (uint32_t sum, const Address_range& rhs)
+//		{
+//			return sum + rhs.end() - rhs.start();
+//		});
+//		std::for_each(peers.cbegin(), peers.cend(),
+//			[this] (const Address_range& range)
+//		{
+//			typedef typename Address_range::Int I;
+//			I st = range.start();
+//			I en = range.end();
+//			for (I a=st; a<en/* && a<st+10*/; ++a) {
+//				Endpoint ep(a, port);
+//				Logger(Level::DISCOVERY) << ep << std::endl;
+//				Discovery_kernel* k = new Discovery_kernel;
+//				k->parent(this);
+//				remote_server()->send(k, ep);
+//			}
+//		});
+//	}
+
 	Discoverer(Endpoint endpoint):
 		factory::Identifiable<Kernel>(endpoint.address()),
 		_source(endpoint),
 		_servers(create_servers(all_peers)),
-		_downstream(start_addr(all_peers)),
+		_downstream(),
 		_upstream()
 		{}
 
 	void act() {
-		if (_servers.empty()) {
-			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
-//			commit(the_server());
-		} else {
-			_num_peers = 0;
-	
-			// determine current addr being scanned
-			Endpoint current = _downstream.addr();
-	
-			// determine addr to check next
-			Endpoint addr;
-			auto res = find(_servers.begin(), _servers.end(), current);
-			if (res == _servers.end() || res == _servers.begin()) {
-				addr = _servers.back();
-			} else {
-				addr = *--res;
-			}
-	
-			// send vote
-			_downstream = Peer(addr);
+		_attempts++;
+		_num_succeeded = 0;
+		_num_failed = 0;
+		_num_peers = 0;
+
+		if (read_cache()) {
+			Logger(Level::DISCOVERY)
+				<< "reading cache " << std::endl;
+			_state = CONNECTING;
 			send_vote();
+			return;
+		}
+
+		Logger(Level::DISCOVERY) << "attempt #" << _attempts << std::endl;
+
+		std::vector<Discovery*> kernels;
+		std::for_each(_servers.cbegin(), _servers.cend(),
+			[this, &kernels] (const Endpoint& ep)
+		{
+			Peer* n = find_peer(ep);
+			if (n == nullptr || n->num_samples() < MIN_SAMPLES) {
+				Logger(Level::DISCOVERY) << "Sending to " << ep << std::endl;
+				Discovery* k = new Discovery;
+				k->parent(this);
+				k->to(ep);
+				kernels.push_back(k);
+			}
+		});
+
+		// send discovery messages
+		_num_peers = kernels.size();
+		for (Discovery* d : kernels) {
+			remote_server()->send(d, d->to());
+		}
+
+		// repeat when nothing is discovered
+		if (_num_peers == 0) {
+			throw "No peers to update";
 		}
 	}
 
 	void react(Kernel* k) {
-		if (k->moves_downstream()) {
-			++_num_scanned;
-			if (k->result() != Result::SUCCESS) {
-				// continue scanning network
-				if (_num_scanned == _servers.size()) {
-					_num_scanned = 0;
-				}
-				if (_num_scanned < _servers.size() && _state != CONNECTED) {
-					act();
-				}
-			} else {
-				// enter connected state
-				_state = CONNECTED;
-			}
-		} else {
+		if (k->result() == Result::ENDPOINT_NOT_CONNECTED &&
+			k->type()->id() == 7)
+		{
+			Vote* vote = new Vote(_level);
+			vote->to(_downstream.addr());
+			vote->parent(this);
+			vote->principal(_downstream.addr().address());
+			remote_server()->send(vote);
+		}
+		if (k->moves_somewhere()) {
 			Vote* vote = dynamic_cast<Vote*>(k);
-			if (vote->from() == _downstream.addr() ||
-				vote->from() < _source ||
-				vote->level() > _level)
-			{
+			if (_state == DISCONNECTED) {
+				Logger(Level::DISCOVERY) << "retry vote from "
+					<< k->from() << ", level=" << vote->level() << std::endl;
+				vote->result(Result::USER_ERROR);
+				vote->principal(vote->parent());
+				vote->response(Vote::RETRY);
+				remote_server()->send(vote);
+			} else if (vote->from() == _downstream.addr() && vote->from() < _source) {
 				Logger(Level::DISCOVERY) << "bad vote from "
 					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->result(Result::USER_ERROR);
@@ -209,22 +244,83 @@ struct Discoverer: public Identifiable<Kernel> {
 				vote->response(Vote::BAD_VOTE);
 				remote_server()->send(vote);
 			} else {
-				Peer new_peer(vote->from());
-				new_peer.level(vote->level());
-				_upstream.push_back(new_peer);
-				uint32_t old_level = _level;
-				_level = max_subordinate_level() + 1;
+				_upstream.push_back(_peers[vote->from()]);
 				_state = CONNECTED;
 				Logger(Level::DISCOVERY) << "good vote from "
 					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->response(Vote::OK);
 				vote->commit(remote_server());
-				Logger log(Level::DISCOVERY);
-				log << "Hail the king level " << _level << "! His boys: ";
-				std::ostream_iterator<Peer> it(log.ostream(), ", ");
-				std::copy(_upstream.cbegin(), _upstream.cend(), it);
-				log << std::endl;
-				if (old_level != _level) {
+				if (_upstream.size() == all_peers.size() - 1) {
+					Logger log(Level::DISCOVERY);
+					log << "Hail the king! His boys: ";
+					std::ostream_iterator<Peer> it(log.ostream(), ", ");
+					std::copy(_upstream.cbegin(), _upstream.cend(), it);
+					log << std::endl;
+//					if (_source != all_peers[0]) {
+//						throw std::runtime_error("The first endpoint has not become a king.");
+//					}
+					__factory.stop();
+				}
+			}
+		} else {
+			if (k->type()->id() == 7) {
+				if (k->result() == Result::USER_ERROR && _sorted_peers.size() >= 2) {
+					Vote* vote = dynamic_cast<Vote*>(k);
+					if (vote->bad_vote()) {
+						_downstream = Peer();
+					} else {
+						_downstream = vote->retry() ? *_sorted_peers.cbegin() : *(++_sorted_peers.cbegin());
+						Vote* vote = new Vote(_level);
+						vote->to(_downstream.addr());
+						vote->parent(this);
+						vote->principal(_downstream.addr().address());
+						remote_server()->send(vote);
+						Logger(Level::DISCOVERY) << "voting again for " << _downstream.addr() << std::endl;
+					}
+				}
+				return;
+			}
+			Discovery* d = dynamic_cast<Discovery*>(k);
+			if (d->result() == Result::SUCCESS) {
+				_num_succeeded++;
+				if (Peer* p = find_peer(d->from())) {
+					p->sample(d->time());
+				} else {
+					_peers[d->from()] = Peer(d->from(), d->time());
+				}
+			} else {
+				_num_failed++;
+//				auto result = _peers.find(d->from());
+//				if (result != _peers.end()) {
+//					Peer* n = result->second;
+//					_peers.erase(result->first);
+//					_sorted_peers.erase(n);
+//					delete n;
+//				}
+			}
+
+			Logger(Level::DISCOVERY) << "result #"
+				<< _attempts << ' '
+				<< num_succeeded() << '+'
+				<< num_failed() << '/'
+				<< num_peers() << ' '
+				<< min_samples() << std::endl;
+			
+			if (_num_succeeded + _num_failed == _num_peers) {
+				
+				if (min_samples() == MIN_SAMPLES) {
+
+					sort_peers(_peers, _sorted_peers);
+					_state = CONNECTING;
+
+					Logger log(Level::DISCOVERY);
+					log << "Peers: ";
+					std::ostream_iterator<Peer> it(log.ostream(), ", ");
+					std::copy(_sorted_peers.cbegin(), _sorted_peers.cend(), it);
+					log << std::endl;
+
+					send_vote();
+				} else {
 					act();
 				}
 			}
@@ -236,26 +332,6 @@ struct Discoverer: public Identifiable<Kernel> {
 	uint32_t num_peers() const { return _num_peers; }
 
 private:
-	
-	Endpoint start_addr(const std::vector<Endpoint>& peers) {
-		if (peers.empty()) return Endpoint();
-		auto res = find(peers.begin(), peers.end(), _source);
-		Endpoint st = peers.front();
-		if (res != peers.end() && res != peers.begin()) {
-			st = *--res;
-		}
-		return st;
-	}
-
-	uint32_t max_subordinate_level() const {
-		uint32_t lvl = 0;
-		for (const Peer& peer : _upstream) {
-			if (peer.level() > lvl)	{
-				lvl = peer.level();
-			}
-		}
-		return lvl;
-	}
 
 	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
 		y.clear();
@@ -267,12 +343,15 @@ private:
 	}
 		
 	void send_vote() {
-		Vote* vote = new Vote(_level);
-		vote->to(_downstream.addr());
-		vote->parent(this);
-		vote->principal(_downstream.addr().address());
-		Logger(Level::DISCOVERY) << "voting for " << vote->to() << std::endl;
-		remote_server()->send(vote);
+		if (!_sorted_peers.empty()) {
+			_downstream = *_sorted_peers.cbegin();
+			Vote* vote = new Vote(_level);
+			vote->to(_downstream.addr());
+			vote->parent(this);
+			vote->principal(_downstream.addr().address());
+			remote_server()->send(vote);
+			Logger(Level::DISCOVERY) << "voting for " << _downstream.addr() << std::endl;
+		}
 	}
 
 	std::string cache_filename() const {
@@ -309,7 +388,7 @@ private:
 		std::vector<Endpoint> tmp;
 		std::copy_if(servers.cbegin(), servers.cend(),
 			std::back_inserter(tmp), [this] (Endpoint addr) {
-				return addr < this->_source;
+				return addr != this->_source;
 			});
 		return tmp;
 	}
@@ -340,7 +419,6 @@ private:
 	uint32_t _num_peers = 0;
 	uint32_t _num_succeeded = 0;
 	uint32_t _num_failed = 0;
-	uint32_t _num_scanned = 0;
 
 	uint32_t _attempts = 0;
 	uint32_t _level = 0;
@@ -412,7 +490,7 @@ struct App {
 				Process_group processes;
 				int start_id = 1000;
 				for (Endpoint endpoint : all_peers) {
-//					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						Process::env("START_ID", start_id);
 						return Process::execute(argv[0],

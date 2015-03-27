@@ -74,6 +74,9 @@ namespace factory {
 		struct ::sockaddr_in* addr() { return &_addr; }
 		const struct ::sockaddr_in* addr() const { return &_addr; }
 
+		operator bool() const { return _addr.sin_addr.s_addr != 0; }
+		bool operator !() const { return _addr.sin_addr.s_addr == 0; }
+
 	private:
 	
 		void addr(const struct ::sockaddr_in* rhs) {
