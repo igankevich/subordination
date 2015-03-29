@@ -148,36 +148,29 @@ struct Discoverer: public Identifiable<Kernel> {
 		CONNECTED
 	};
 
-	Discoverer(Endpoint endpoint):
+	explicit Discoverer(Endpoint endpoint):
 		factory::Identifiable<Kernel>(endpoint.address()),
 		_source(endpoint),
 		_servers(create_servers(all_peers)),
-		_downstream(start_addr(all_peers)),
+		_downstream(),
+		_scan_addr(start_addr(all_peers)),
 		_upstream()
 		{}
 
 	void act() {
 		if (_servers.empty()) {
 			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
-//			commit(the_server());
 		} else {
-			_num_peers = 0;
-	
-			// determine current addr being scanned
-			Endpoint current = _downstream.addr();
-	
 			// determine addr to check next
-			Endpoint addr;
-			auto res = find(_servers.begin(), _servers.end(), current);
+			auto res = find(_servers.begin(), _servers.end(), _scan_addr);
 			if (res == _servers.end() || res == _servers.begin()) {
-				addr = _servers.back();
+				_scan_addr = _servers.back();
 			} else {
-				addr = *--res;
+				_scan_addr = *--res;
 			}
 	
 			// send vote
-			_downstream = Peer(addr);
-			send_vote();
+			send_vote(_scan_addr);
 		}
 	}
 
@@ -189,16 +182,17 @@ struct Discoverer: public Identifiable<Kernel> {
 				if (_num_scanned == _servers.size()) {
 					_num_scanned = 0;
 				}
-				if (_num_scanned < _servers.size() && _state != CONNECTED) {
+				if (!connected()) {
 					act();
 				}
 			} else {
 				// enter connected state
-				_state = CONNECTED;
+				_downstream = Peer(_scan_addr);
 			}
 		} else {
 			Vote* vote = dynamic_cast<Vote*>(k);
 			if (vote->from() == _downstream.addr() ||
+				vote->from() == _scan_addr ||
 				vote->from() < _source ||
 				vote->level() > _level)
 			{
@@ -211,10 +205,9 @@ struct Discoverer: public Identifiable<Kernel> {
 			} else {
 				Peer new_peer(vote->from());
 				new_peer.level(vote->level());
-				_upstream.push_back(new_peer);
+				_upstream.insert(new_peer);
 				uint32_t old_level = _level;
 				_level = max_subordinate_level() + 1;
-				_state = CONNECTED;
 				Logger(Level::DISCOVERY) << "good vote from "
 					<< k->from() << ", level=" << vote->level() << std::endl;
 				vote->response(Vote::OK);
@@ -225,17 +218,17 @@ struct Discoverer: public Identifiable<Kernel> {
 				std::copy(_upstream.cbegin(), _upstream.cend(), it);
 				log << std::endl;
 				if (old_level != _level) {
-					act();
+					if (_downstream.addr()) {
+						send_vote(_downstream.addr());
+					}
 				}
 			}
 		}
 	}
 
-	uint32_t num_failed() const { return _num_failed; }
-	uint32_t num_succeeded() const { return _num_succeeded; }
-	uint32_t num_peers() const { return _num_peers; }
-
 private:
+
+	bool connected() const { return _downstream.addr(); }
 	
 	Endpoint start_addr(const std::vector<Endpoint>& peers) {
 		if (peers.empty()) return Endpoint();
@@ -266,11 +259,11 @@ private:
 		return std::get<1>(rhs);
 	}
 		
-	void send_vote() {
+	void send_vote(Endpoint addr) {
 		Vote* vote = new Vote(_level);
-		vote->to(_downstream.addr());
+		vote->to(addr);
 		vote->parent(this);
-		vote->principal(_downstream.addr().address());
+		vote->principal(addr.address());
 		Logger(Level::DISCOVERY) << "voting for " << vote->to() << std::endl;
 		remote_server()->send(vote);
 	}
@@ -334,12 +327,9 @@ private:
 	std::set<Peer> _sorted_peers;
 	std::vector<Endpoint> _servers;
 	Peer _downstream;
+	Endpoint _scan_addr;
 	std::vector<Peer> _upstream;
-	State _state = DISCONNECTED;
 
-	uint32_t _num_peers = 0;
-	uint32_t _num_succeeded = 0;
-	uint32_t _num_failed = 0;
 	uint32_t _num_scanned = 0;
 
 	uint32_t _attempts = 0;
