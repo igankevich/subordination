@@ -8,13 +8,13 @@ const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
 
-struct Discovery: public Mobile<Discovery> {
+struct Discoverer: public Mobile<Discoverer> {
 
 	typedef uint64_t Time;
 	typedef uint8_t State;
 	typedef std::chrono::steady_clock Clock;
 
-	Discovery() {}
+	Discoverer() {}
 
 	void act() {
 		_state = 1;
@@ -52,14 +52,14 @@ private:
 
 struct Peer {
 
-	typedef Discovery::Time Time;
+	typedef Discoverer::Time Time;
 	typedef uint32_t Metric;
 
 	Peer(): _addr() {}
 	Peer(Endpoint a, Time t): _addr(a) { sample(t); }
 	Peer(Endpoint a): _addr(a) {}
 	Peer(const Peer& rhs):
-		_t(rhs._t), _n(rhs._n), _level(rhs._level),
+		_t(rhs._t), _n(rhs._n),
 		_addr(rhs._addr) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
@@ -74,8 +74,6 @@ struct Peer {
 
 	uint32_t num_samples() const { return _n; }
 	Endpoint addr() const { return _addr; }
-	uint32_t level() const { return _level; }
-	void level(uint32_t rhs) { _level = rhs; }
 
 	bool operator<(const Peer& rhs) const {
 		return metric() < rhs.metric()
@@ -106,149 +104,135 @@ struct Peer {
 private:
 	Time _t = 0;
 	uint32_t _n = 0;
-	uint32_t _level = 0;
+	uint32_t _num_failures = 0;
 	Endpoint _addr;
 
-	static const uint32_t MAX_SAMPLES = 1000;
+	static const uint32_t MAX_SAMPLES  = 1000;
+	static const uint32_t MAX_FAILURES = 3;
 };
 
-struct Vote: public Mobile<Vote> {
+struct Ping: public Mobile<Ping> {
 
-	enum Response : uint8_t {
-		OK,
-		RETRY,
-		BAD_VOTE
-	};
+	Ping() {}
 
-	Vote() {}
-	explicit Vote(uint32_t l): _level(l) {}
-	uint32_t level() const { return _level; }
+	void act() {
+		commit(remote_server());
+	}
 
-	bool retry() const { return _state == RETRY; }
-	bool bad_vote() const { return _state == BAD_VOTE; }
-	bool ok() const { return _state == OK; }
-	void response(Response rhs) { _state = rhs; }
+	void write_impl(Foreign_stream&) { }
+	void read_impl(Foreign_stream&) { }
 
-	void write_impl(Foreign_stream& out) { out << _level << _state; }
-	void read_impl(Foreign_stream& in) { in >> _level >> _state; }
 	static void init_type(Type* t) {
 		t->id(7);
 	}
-private:
-	uint32_t _level = 0;
-	uint8_t _state = OK;
-
 };
 
-struct Discoverer: public Identifiable<Kernel> {
+struct Scanner: public Identifiable<Kernel> {
 
-	enum State {
-		DISCONNECTED,
-		CONNECTING,
-		CONNECTED
-	};
-
-	explicit Discoverer(Endpoint endpoint):
-		factory::Identifiable<Kernel>(endpoint.address()),
-		_source(endpoint),
-		_servers(create_servers(all_peers)),
-		_downstream(),
+	explicit Scanner(Endpoint addr):
+		_source(addr),
 		_scan_addr(start_addr(all_peers)),
-		_upstream()
+		_servers(create_servers(all_peers))
 		{}
 
 	void act() {
 		if (_servers.empty()) {
 			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
+			commit(the_server(), Result::USER_ERROR);
 		} else {
-			// determine addr to check next
-			auto res = find(_servers.begin(), _servers.end(), _scan_addr);
-			if (res == _servers.end() || res == _servers.begin()) {
-				_scan_addr = _servers.back();
-			} else {
-				_scan_addr = *--res;
-			}
-	
-			// send vote
-			send_vote(_scan_addr);
+			_scan_addr = next_scan_addr();
+			try_to_connect(_scan_addr);
 		}
 	}
 
 	void react(Kernel* k) {
-		if (k->moves_downstream()) {
-			++_num_scanned;
-			if (k->result() != Result::SUCCESS) {
-				// continue scanning network
-				if (_num_scanned == _servers.size()) {
-					_num_scanned = 0;
-				}
-				if (!connected()) {
-					act();
-				}
-			} else {
-				// enter connected state
-				_downstream = Peer(_scan_addr);
-			}
+		++_num_scanned;
+		if (_num_scanned == _servers.size()) {
+			_num_scanned = 0;
+		}
+		if (k->result() != Result::SUCCESS) {
+			// continue scanning network
+			act();
 		} else {
-			Vote* vote = dynamic_cast<Vote*>(k);
-			if (vote->from() == _downstream.addr() ||
-				vote->from() == _scan_addr ||
-				vote->from() < _source ||
-				vote->level() > _level)
-			{
-				Logger(Level::DISCOVERY) << "bad vote from "
-					<< k->from() << ", level=" << vote->level() << std::endl;
-				vote->result(Result::USER_ERROR);
-				vote->principal(vote->parent());
-				vote->response(Vote::BAD_VOTE);
-				remote_server()->send(vote);
-			} else {
-				Peer new_peer(vote->from());
-				new_peer.level(vote->level());
-				_upstream.insert(new_peer);
-				uint32_t old_level = _level;
-				_level = max_subordinate_level() + 1;
-				Logger(Level::DISCOVERY) << "good vote from "
-					<< k->from() << ", level=" << vote->level() << std::endl;
-				vote->response(Vote::OK);
-				vote->commit(remote_server());
-				Logger log(Level::DISCOVERY);
-				log << "Hail the king level " << _level << "! His boys: ";
-				std::ostream_iterator<Peer> it(log.ostream(), ", ");
-				std::copy(_upstream.cbegin(), _upstream.cend(), it);
-				log << std::endl;
-				if (old_level != _level) {
-					if (_downstream.addr()) {
-						send_vote(_downstream.addr());
-					}
-				}
-			}
+			// the scan is complete
+			_candidate = _scan_addr;
+			commit(the_server());
+		}
+	}
+
+	Endpoint candidate() const { return _candidate; }
+
+private:
+
+	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
+		std::vector<Endpoint> tmp;
+		std::copy_if(servers.cbegin(), servers.cend(),
+			std::back_inserter(tmp), [this] (Endpoint addr) {
+				return addr < this->_source;
+			});
+		return tmp;
+	}
+
+	/// determine addr to check next
+	Endpoint next_scan_addr() {
+		auto res = find(_servers.begin(), _servers.end(), _scan_addr);
+		return (res == _servers.end() || res == _servers.begin()) 
+			? _servers.back()
+			: *--res;
+	}
+
+	Endpoint start_addr(const std::vector<Endpoint>& peers) {
+		if (peers.empty()) return Endpoint();
+		auto res = find(peers.begin(), peers.end(), _source);
+		Endpoint st = peers.front();
+		if (res != peers.end()) {
+			st = *res;
+		}
+		return st;
+	}
+		
+	void try_to_connect(Endpoint addr) {
+		Ping* ping = new Ping;
+		ping->to(addr);
+		ping->parent(this);
+		Logger(Level::DISCOVERY) << "scanning " << ping->to() << std::endl;
+		remote_server()->send(ping);
+	}
+
+	Endpoint _source;
+	Endpoint _scan_addr;
+	std::vector<Endpoint> _servers;
+	Endpoint _candidate;
+
+	uint32_t _num_scanned = 0;
+};
+
+struct Master_discoverer: public Identifiable<Kernel> {
+
+	explicit Master_discoverer(Endpoint endpoint):
+		factory::Identifiable<Kernel>(endpoint.address()),
+		_source(endpoint),
+		_principal(),
+		_subordinates()
+	{}
+
+	void act() {
+		upstream(the_server(), new Scanner(_source));
+	}
+
+	void react(Kernel* k) {
+		if (k->result() != Result::SUCCESS) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
+			upstream(the_server(), new Scanner(_source));
+		} else {
+			Scanner* scanner = dynamic_cast<Scanner*>(k);
+			_principal = scanner->candidate();
 		}
 	}
 
 private:
 
-	bool connected() const { return _downstream.addr(); }
-	
-	Endpoint start_addr(const std::vector<Endpoint>& peers) {
-		if (peers.empty()) return Endpoint();
-		auto res = find(peers.begin(), peers.end(), _source);
-		Endpoint st = peers.front();
-		if (res != peers.end() && res != peers.begin()) {
-			st = *--res;
-		}
-		return st;
-	}
-
-	uint32_t max_subordinate_level() const {
-		uint32_t lvl = 0;
-		for (const Peer& peer : _upstream) {
-			if (peer.level() > lvl)	{
-				lvl = peer.level();
-			}
-		}
-		return lvl;
-	}
+	bool connected() const { return _principal; }
 
 	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
 		y.clear();
@@ -257,15 +241,6 @@ private:
 
 	static Peer get_peer(const std::pair<Endpoint,Peer>& rhs) {
 		return std::get<1>(rhs);
-	}
-		
-	void send_vote(Endpoint addr) {
-		Vote* vote = new Vote(_level);
-		vote->to(addr);
-		vote->parent(this);
-		vote->principal(addr.address());
-		Logger(Level::DISCOVERY) << "voting for " << vote->to() << std::endl;
-		remote_server()->send(vote);
 	}
 
 	std::string cache_filename() const {
@@ -284,8 +259,8 @@ private:
 				in >> p >> std::ws;
 				_peers[p.addr()] = p;
 			}
-			if (_downstream.addr() != Endpoint()) {
-				_peers[_downstream.addr()] = _downstream;
+			if (connected()) {
+				_peers[_principal] = Peer(_principal);
 			}
 			sort_peers(_peers, _sorted_peers);
 		}
@@ -293,18 +268,9 @@ private:
 	}
 
 	void write_cache() {
-		std::ofstream  out(cache_filename());
+		std::ofstream out(cache_filename());
 		std::ostream_iterator<Peer> it(out, "\n");
-		std::copy(_upstream.cbegin(), _upstream.cend(), it);
-	}
-
-	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
-		std::vector<Endpoint> tmp;
-		std::copy_if(servers.cbegin(), servers.cend(),
-			std::back_inserter(tmp), [this] (Endpoint addr) {
-				return addr < this->_source;
-			});
-		return tmp;
+		std::copy(_subordinates.cbegin(), _subordinates.cend(), it);
 	}
 
 	uint32_t min_samples() const {
@@ -325,17 +291,9 @@ private:
 
 	std::map<Endpoint, Peer> _peers;
 	std::set<Peer> _sorted_peers;
-	std::vector<Endpoint> _servers;
-	Peer _downstream;
-	Endpoint _scan_addr;
-	std::vector<Peer> _upstream;
+	Endpoint _principal;
+	std::vector<Endpoint> _subordinates;
 
-	uint32_t _num_scanned = 0;
-
-	uint32_t _attempts = 0;
-	uint32_t _level = 0;
-
-	static const uint32_t MAX_ATTEMPTS = 17;
 	static const uint32_t MIN_SAMPLES = 7;
 };
 
@@ -364,8 +322,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 
 std::string cache_filename(Endpoint source) {
 	std::stringstream s;
-	s << "/tmp/";
-	s << source << ".cache";
+	s << "/tmp/" << source << ".cache";
 	return s.str();
 }
 
@@ -438,7 +395,7 @@ struct App {
 				the_server()->start();
 				remote_server()->socket(endpoint);
 				remote_server()->start();
-				the_server()->send(new Discoverer(endpoint));
+				the_server()->send(new Master_discoverer(endpoint));
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;

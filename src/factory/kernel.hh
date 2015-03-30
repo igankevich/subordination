@@ -263,8 +263,10 @@ namespace factory {
 			}
 
 			template<class S>
-			inline void commit(S* this_server) {
-				downstream(this_server, this, _parent.ptr());
+			inline void commit(S* srv, Result res = Result::SUCCESS) {
+				this->principal(_parent);
+				this->result(res);
+				srv->send(this);
 			}
 
 		private:

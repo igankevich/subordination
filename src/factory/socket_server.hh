@@ -208,11 +208,11 @@ namespace factory {
 			}
 
 			// TODO: delete
-			void send(Kernel* kernel, Endpoint endpoint) {
-				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
-				kernel->to(endpoint);
-				send(kernel);
-			}
+//			void send(Kernel* kernel, Endpoint endpoint) {
+//				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
+//				kernel->to(endpoint);
+//				send(kernel);
+//			}
 
 			void send(Kernel* kernel) {
 //				if (this->stopped()) {
