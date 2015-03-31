@@ -55,12 +55,8 @@ struct Peer {
 	typedef Profiler::Time Time;
 	typedef uint32_t Metric;
 
-	Peer(): _addr() {}
-	Peer(Endpoint a, Time t): _addr(a) { sample(t); }
-	Peer(Endpoint a): _addr(a) {}
-	Peer(const Peer& rhs):
-		_t(rhs._t), _n(rhs._n),
-		_addr(rhs._addr) {}
+	Peer() {}
+	Peer(const Peer& rhs): _t(rhs._t), _n(rhs._n) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
 
@@ -73,41 +69,50 @@ struct Peer {
 	}
 
 	uint32_t num_samples() const { return _n; }
-	Endpoint addr() const { return _addr; }
 
 	bool needs_update() const { return num_samples() < MIN_SAMPLES; }
 
 	bool operator<(const Peer& rhs) const {
-		return metric() < rhs.metric()
-			|| (metric() == rhs.metric() && _addr < rhs._addr);
+		return metric() < rhs.metric();
+	}
+
+	friend bool operator<(const std::pair<Endpoint,Peer>& lhs, const std::pair<Endpoint,Peer>& rhs) {
+		return lhs.second.metric() < rhs.second.metric()
+			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
 	}
 
 	Peer& operator=(const Peer& rhs) {
 		_t = rhs._t;
 		_n = rhs._n;
-		_addr = rhs._addr;
 		return *this;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const Peer& rhs) {
+		return out << rhs._t << ' ' << rhs._n;
+	}
+
+	friend std::ostream& operator<<(std::ostream& out, const std::pair<Endpoint,Peer>& rhs) {
 		return out
-			<< rhs._t
-			<< ' ' << rhs._n
-			<< ' ' << rhs._addr;
+			<< rhs.first << ' '
+			<< rhs.second._t << ' '
+			<< rhs.second._n;
 	}
 
 	friend std::istream& operator>>(std::istream& in, Peer& rhs) {
+		return in >> rhs._t >> rhs._n;
+	}
+
+	friend std::istream& operator>>(std::istream& in, std::pair<Endpoint,Peer>& rhs) {
 		return in
-			>> rhs._t
-			>> rhs._n
-			>> rhs._addr;
+			>> rhs.first
+			>> rhs.second._t
+			>> rhs.second._n;
 	}
 
 private:
 	Time _t = 0;
 	uint32_t _n = 0;
 	uint32_t _num_failures = 0;
-	Endpoint _addr;
 
 	static const uint32_t MAX_SAMPLES  = 1000;
 	static const uint32_t MIN_SAMPLES  = 7;
@@ -236,14 +241,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		if (k->result() != Result::SUCCESS) {
 		} else {
 			Profiler* prof = dynamic_cast<Profiler*>(k);
-			Endpoint addr = prof->from();
-			if (Peer* p = find_peer(addr)) {
-				p->sample(prof->time());
-			} else {
-				Peer p(addr);
-				p->sample(prof->time());
-				_peers[addr] = p;
-			}
+			_peers[prof->from()].sample(prof->time());
 		}
 		if (--_num_sent == 0) {
 			commit(the_server());
@@ -283,7 +281,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			} else {
 				_principal = _scanner->discovered_node();
 				if (!find_peer(_principal)) {
-					_peers[_principal] = Peer(_principal);
+					_peers.insert(std::make_pair(_principal, Peer()));
 				}
 				if (!_discoverer) {
 					run_discovery();
@@ -336,12 +334,13 @@ private:
 		bool success = in.is_open();
 		if (success) {
 			while (!in.eof()) {
+				Endpoint addr;
 				Peer p;
-				in >> p >> std::ws;
-				_peers[p.addr()] = p;
+				in >> addr >> p >> std::ws;
+				_peers[addr] = p;
 			}
 			if (_principal) {
-				_peers[_principal] = Peer(_principal);
+				_peers.insert(std::make_pair(_principal, Peer()));
 			}
 		}
 		return success;
