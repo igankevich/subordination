@@ -56,21 +56,32 @@ struct Peer {
 	typedef uint32_t Metric;
 
 	Peer() {}
-	Peer(const Peer& rhs): _t(rhs._t), _n(rhs._n) {}
+	Peer(const Peer& rhs):
+		_t(rhs._t),
+		_num_samples(rhs._num_samples),
+		_num_errors(rhs._num_errors),
+		_update_time(rhs._update_time) {}
 
 	Metric metric() const { return _t/1000/1000/1000; }
 
-	void sample(Time rhs) {
-		if (++_n == MAX_SAMPLES) {
-			_n = 1;
+	void collect_sample(Time rhs) {
+		update();
+		if (++_num_samples == MAX_SAMPLES) {
+			_num_samples = 1;
 			_t = 0;
 		}
-		_t = ((_n-1)*_t + rhs) / _n;
+		_t = ((_num_samples-1)*_t + rhs) / _num_samples;
 	}
 
-	uint32_t num_samples() const { return _n; }
+	void collect_error(uint32_t cnt) {
+		update();
+		_num_errors += cnt;
+	}
 
-	bool needs_update() const { return num_samples() < MIN_SAMPLES; }
+	bool needs_update() const {
+		return (num_samples() < MIN_SAMPLES && num_errors() < MAX_ERRORS)
+			|| age() > MAX_AGE;
+	}
 
 	bool operator<(const Peer& rhs) const {
 		return metric() < rhs.metric();
@@ -83,40 +94,76 @@ struct Peer {
 
 	Peer& operator=(const Peer& rhs) {
 		_t = rhs._t;
-		_n = rhs._n;
+		_num_samples = rhs._num_samples;
+		_num_errors = rhs._num_errors;
+		_update_time = rhs._update_time;
 		return *this;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const Peer& rhs) {
-		return out << rhs._t << ' ' << rhs._n;
+		return out
+			<< rhs._t << ' '
+			<< rhs._num_samples << ' '
+			<< rhs._num_errors << ' '
+			<< rhs._update_time;
+	}
+
+	friend std::istream& operator>>(std::istream& in, Peer& rhs) {
+		return in
+			>> rhs._t
+			>> rhs._num_samples
+			>> rhs._num_errors
+			>> rhs._update_time;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const std::pair<Endpoint,Peer>& rhs) {
 		return out
 			<< rhs.first << ' '
 			<< rhs.second._t << ' '
-			<< rhs.second._n;
-	}
-
-	friend std::istream& operator>>(std::istream& in, Peer& rhs) {
-		return in >> rhs._t >> rhs._n;
+			<< rhs.second._num_samples << ' '
+			<< rhs.second._num_errors << ' '
+			<< rhs.second._update_time;
 	}
 
 	friend std::istream& operator>>(std::istream& in, std::pair<Endpoint,Peer>& rhs) {
 		return in
 			>> rhs.first
 			>> rhs.second._t
-			>> rhs.second._n;
+			>> rhs.second._num_samples
+			>> rhs.second._num_errors
+			>> rhs.second._update_time;
 	}
 
 private:
-	Time _t = 0;
-	uint32_t _n = 0;
-	uint32_t _num_failures = 0;
 
-	static const uint32_t MAX_SAMPLES  = 1000;
-	static const uint32_t MIN_SAMPLES  = 7;
-	static const uint32_t MAX_FAILURES = 3;
+	typedef std::chrono::steady_clock Clock;
+
+	static Time now() {
+		return Clock::now().time_since_epoch().count();
+	}
+
+	uint32_t num_samples() const { return _num_samples; }
+	uint32_t num_errors() const { return _num_errors; }
+
+	Time age() const { return now() - _update_time; }
+	void update() {
+		Time old = _update_time;
+		_update_time = now();
+		if (_update_time - old > MAX_AGE) {
+			_num_errors = 0;
+		}
+	}
+
+	Time _t = 0;
+	uint32_t _num_samples = 0;
+	uint32_t _num_errors = 0;
+	Time _update_time = 0;
+
+	static const uint32_t MAX_SAMPLES = 1000;
+	static const uint32_t MIN_SAMPLES = 7;
+	static const uint32_t MAX_ERRORS  = 3;
+
+	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
 };
 
 struct Ping: public Mobile<Ping> {
@@ -238,10 +285,18 @@ struct Discoverer: public Identifiable<Kernel> {
 	}
 
 	void react(Kernel* k) {
+		Profiler* prof = dynamic_cast<Profiler*>(k);
+		Peer& p = _peers[prof->from()];
 		if (k->result() != Result::SUCCESS) {
+			p.collect_error(1);
 		} else {
-			Profiler* prof = dynamic_cast<Profiler*>(k);
-			_peers[prof->from()].sample(prof->time());
+			p.collect_sample(prof->time());
+		}
+		if (p.needs_update()) {
+			Profiler* prof2 = new Profiler;
+			prof2->to(prof->from());
+			++_num_sent;
+			upstream(remote_server(), prof2);
 		}
 		if (--_num_sent == 0) {
 			commit(the_server());
@@ -266,6 +321,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		_source(endpoint),
 		_principal(),
 		_subordinates(),
+		_peers(),
 		_scanner(nullptr),
 		_discoverer(nullptr)
 	{}
@@ -292,7 +348,13 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		if (_discoverer == k) {
 			if (k->result() != Result::SUCCESS) {
 			} else {
+				Logger log(Level::DISCOVERY);
+				log << "Peers: ";
+				std::ostream_iterator<std::pair<Endpoint,Peer>> it(log.ostream(), ", ");
+				std::copy(_peers.cbegin(), _peers.cend(), it);
+				log << std::endl;
 			}
+			run_discovery();
 		}
 	}
 
@@ -339,33 +401,21 @@ private:
 				in >> addr >> p >> std::ws;
 				_peers[addr] = p;
 			}
-			if (_principal) {
-				_peers.insert(std::make_pair(_principal, Peer()));
-			}
 		}
 		return success;
 	}
 
 	void write_cache() {
 		std::ofstream out(cache_filename());
-		std::ostream_iterator<Peer> it(out, "\n");
-		std::copy(_subordinates.cbegin(), _subordinates.cend(), it);
-	}
-
-	uint32_t min_samples() const {
-		return std::accumulate(_peers.cbegin(), _peers.cend(),
-			std::numeric_limits<uint32_t>::max(),
-			[] (uint32_t m, const std::pair<Endpoint,Peer>& rhs)
-		{
-			return std::min(m, rhs.second.num_samples());
-		});
+		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out, "\n");
+		std::copy(_peers.cbegin(), _peers.cend(), it);
 	}
 
 	Endpoint _source;
-
-	std::map<Endpoint, Peer> _peers;
 	Endpoint _principal;
 	std::vector<Endpoint> _subordinates;
+
+	std::map<Endpoint, Peer> _peers;
 
 	Scanner* _scanner;
 	Discoverer* _discoverer;
@@ -403,18 +453,15 @@ std::string cache_filename(Endpoint source) {
 }
 
 void write_cache_all() {
-	int npeers = all_peers.size();
-	for (int i=1; i<npeers; ++i) {
-		Endpoint endpoint = all_peers[i];
-		std::ofstream out(cache_filename(endpoint));
-		out << Peer(all_peers[0]) << '\n';
-	}
-	{
-		Endpoint master = all_peers[0];
-		std::ofstream out(cache_filename(master));
-		out << Peer() << '\n';
-		std::ostream_iterator<Peer> it(out, "\n");
-		std::copy(all_peers.cbegin()+1, all_peers.cend(), it);
+	std::map<Endpoint,Peer> peers;
+	std::transform(all_peers.begin(), all_peers.end(), std::inserter(peers, peers.begin()),
+		[] (Endpoint addr) {
+			return std::make_pair(addr, Peer());
+		});
+	for (Endpoint& addr : all_peers) {
+		std::ofstream out(cache_filename(addr));
+		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out);
+		std::copy(peers.begin(), peers.end(), it);
 	}
 }
 
