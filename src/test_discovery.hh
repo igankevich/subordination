@@ -8,13 +8,13 @@ const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
 
-struct Discoverer: public Mobile<Discoverer> {
+struct Profiler: public Mobile<Profiler> {
 
 	typedef uint64_t Time;
 	typedef uint8_t State;
 	typedef std::chrono::steady_clock Clock;
 
-	Discoverer() {}
+	Profiler() {}
 
 	void act() {
 		_state = 1;
@@ -52,7 +52,7 @@ private:
 
 struct Peer {
 
-	typedef Discoverer::Time Time;
+	typedef Profiler::Time Time;
 	typedef uint32_t Metric;
 
 	Peer(): _addr() {}
@@ -74,6 +74,8 @@ struct Peer {
 
 	uint32_t num_samples() const { return _n; }
 	Endpoint addr() const { return _addr; }
+
+	bool needs_update() const { return num_samples() < MIN_SAMPLES; }
 
 	bool operator<(const Peer& rhs) const {
 		return metric() < rhs.metric()
@@ -108,6 +110,7 @@ private:
 	Endpoint _addr;
 
 	static const uint32_t MAX_SAMPLES  = 1000;
+	static const uint32_t MIN_SAMPLES  = 7;
 	static const uint32_t MAX_FAILURES = 3;
 };
 
@@ -115,9 +118,7 @@ struct Ping: public Mobile<Ping> {
 
 	Ping() {}
 
-	void act() {
-		commit(remote_server());
-	}
+	void act() { commit(remote_server()); }
 
 	void write_impl(Foreign_stream&) { }
 	void read_impl(Foreign_stream&) { }
@@ -155,12 +156,12 @@ struct Scanner: public Identifiable<Kernel> {
 			act();
 		} else {
 			// the scan is complete
-			_candidate = _scan_addr;
+			_discovered_node = _scan_addr;
 			commit(the_server());
 		}
 	}
 
-	Endpoint candidate() const { return _candidate; }
+	Endpoint discovered_node() const { return _discovered_node; }
 
 private:
 
@@ -202,9 +203,62 @@ private:
 	Endpoint _source;
 	Endpoint _scan_addr;
 	std::vector<Endpoint> _servers;
-	Endpoint _candidate;
+	Endpoint _discovered_node;
 
 	uint32_t _num_scanned = 0;
+};
+
+struct Discoverer: public Identifiable<Kernel> {
+
+	explicit Discoverer(std::map<Endpoint, Peer>& peers):
+		_peers(peers) {}
+
+	void act() {
+		std::vector<Profiler*> profs;
+		for (auto& pair : _peers) {
+			if (pair.second.needs_update()) {
+				Profiler* prof = new Profiler;
+				prof->to(pair.first);
+				profs.push_back(prof);
+			}
+		}
+		if (profs.empty()) {
+			commit(the_server());
+		} else {
+			_num_sent += profs.size();
+			for (Profiler* prof : profs) {
+				upstream(remote_server(), prof);
+			}
+		}
+	}
+
+	void react(Kernel* k) {
+		if (k->result() != Result::SUCCESS) {
+		} else {
+			Profiler* prof = dynamic_cast<Profiler*>(k);
+			Endpoint addr = prof->from();
+			if (Peer* p = find_peer(addr)) {
+				p->sample(prof->time());
+			} else {
+				Peer p(addr);
+				p->sample(prof->time());
+				_peers[addr] = p;
+			}
+		}
+		if (--_num_sent == 0) {
+			commit(the_server());
+		}
+	}
+
+private:
+
+	Peer* find_peer(Endpoint addr) {
+		auto result = _peers.find(addr);
+		return result == _peers.end() ? nullptr : &result->second;
+	}
+
+	std::map<Endpoint, Peer>& _peers;
+	uint32_t _num_sent = 0;
 };
 
 struct Master_discoverer: public Identifiable<Kernel> {
@@ -213,26 +267,53 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		factory::Identifiable<Kernel>(endpoint.address()),
 		_source(endpoint),
 		_principal(),
-		_subordinates()
+		_subordinates(),
+		_scanner(nullptr),
+		_discoverer(nullptr)
 	{}
 
 	void act() {
-		upstream(the_server(), new Scanner(_source));
+		run_scan();
 	}
 
 	void react(Kernel* k) {
-		if (k->result() != Result::SUCCESS) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(200));
-			upstream(the_server(), new Scanner(_source));
-		} else {
-			Scanner* scanner = dynamic_cast<Scanner*>(k);
-			_principal = scanner->candidate();
+		if (_scanner == k) {
+			if (k->result() != Result::SUCCESS) {
+				run_scan();
+			} else {
+				_principal = _scanner->discovered_node();
+				if (!find_peer(_principal)) {
+					_peers[_principal] = Peer(_principal);
+				}
+				if (!_discoverer) {
+					run_discovery();
+				}
+				_scanner = nullptr;
+			}
+		}
+		if (_discoverer == k) {
+			if (k->result() != Result::SUCCESS) {
+			} else {
+			}
 		}
 	}
 
 private:
 
-	bool connected() const { return _principal; }
+	void run_scan() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		upstream(the_server(), _scanner = new Scanner(_source));
+	}
+	
+	void run_discovery() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		upstream(the_server(), _discoverer = new Discoverer(_peers));
+	}
+
+	Peer* find_peer(Endpoint addr) {
+		auto result = _peers.find(addr);
+		return result == _peers.end() ? nullptr : &result->second;
+	}
 
 	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
 		y.clear();
@@ -259,10 +340,9 @@ private:
 				in >> p >> std::ws;
 				_peers[p.addr()] = p;
 			}
-			if (connected()) {
+			if (_principal) {
 				_peers[_principal] = Peer(_principal);
 			}
-			sort_peers(_peers, _sorted_peers);
 		}
 		return success;
 	}
@@ -282,17 +362,14 @@ private:
 		});
 	}
 
-	Peer* find_peer(Endpoint addr) {
-		auto result = _peers.find(addr);
-		return result == _peers.end() ? nullptr : &result->second;
-	}
-
 	Endpoint _source;
 
 	std::map<Endpoint, Peer> _peers;
-	std::set<Peer> _sorted_peers;
 	Endpoint _principal;
 	std::vector<Endpoint> _subordinates;
+
+	Scanner* _scanner;
+	Discoverer* _discoverer;
 
 	static const uint32_t MIN_SAMPLES = 7;
 };
