@@ -138,6 +138,10 @@ struct Peers {
 			_peers[addr];
 		}
 	}
+
+	void remove(Endpoint addr) {
+		_peers.erase(addr);
+	}
 	
 	Endpoint best_peer() {
 		return std::min_element(_peers.begin(), _peers.end())->first;
@@ -454,6 +458,8 @@ struct Master_negotiator: public Identifiable<Kernel> {
 		}
 	}
 
+	Endpoint old_principal() const { return _old_principal; }
+
 private:
 
 	void send_negotiator(Endpoint addr) {
@@ -506,7 +512,11 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			run_discovery();
 		} else
 		if (_negotiator == k) {
-			//...
+			if (k->result() != Result::SUCCESS) {
+				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
+				revert_principal(neg->old_principal());
+			}
+			_negotiator = nullptr;
 		} else
 		if (k->type()) {
 			if (k->type()->id() == 2) {
@@ -539,14 +549,22 @@ private:
 	}
 
 	void change_principal(Endpoint new_princ) {
-		Logger(Level::DISCOVERY) << "New principal = " << new_princ << std::endl;
+		Logger(Level::DISCOVERY) << "Changing principal = " << new_princ << std::endl;
 		Endpoint old_princ = _principal;
 		_principal = new_princ;
-		_peers.add_unique(_principal);
 		if (old_princ != _principal) {
+			_peers.add_unique(_principal);
+			_peers.remove(old_princ);
 			run_negotiator(old_princ, new_princ);
 		}
 		debug();
+	}
+
+	void revert_principal(Endpoint old_princ) {
+		Logger(Level::DISCOVERY) << "Reverting principal = " << old_princ << std::endl;
+		_peers.remove(_principal);
+		_peers.add_unique(old_princ);
+		_principal = old_princ;
 	}
 
 	void debug() {
