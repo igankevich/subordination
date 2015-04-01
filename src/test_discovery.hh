@@ -194,7 +194,7 @@ struct Profiler: public Mobile<Profiler> {
 		out << _state << _time;
 		out << _principal;
 		out << uint32_t(_subordinates.size());
-		for (Endpoint& sub : _subordinates) {
+		for (const Endpoint& sub : _subordinates) {
 			out << sub;
 		}
 	}
@@ -207,13 +207,15 @@ struct Profiler: public Mobile<Profiler> {
 		in >> _principal;
 		uint32_t n = 0;
 		in >> n;
-		_subordinates.resize(n);
+		_subordinates.clear();
 		for (uint32_t i=0; i<n; ++i) {
-			in >> _subordinates[i];
+			Endpoint addr;
+			in >> addr;
+			_subordinates.insert(addr);
 		}
 	}
 
-	void peers(Endpoint princ, const std::vector<Endpoint>& subs) {
+	void peers(Endpoint princ, const std::set<Endpoint>& subs) {
 		_principal = princ;
 		_subordinates = subs;
 	}
@@ -222,7 +224,7 @@ struct Profiler: public Mobile<Profiler> {
 		if (_principal) {
 			peers.add_unique(_principal);
 		}
-		for (Endpoint& addr : _subordinates) {
+		for (const Endpoint& addr : _subordinates) {
 			peers.add_unique(addr);
 		}
 	}
@@ -243,7 +245,7 @@ private:
 	State _state = 0;
 
 	Endpoint _principal;
-	std::vector<Endpoint> _subordinates;
+	std::set<Endpoint> _subordinates;
 };
 
 
@@ -390,6 +392,82 @@ private:
 	uint32_t _num_sent = 0;
 };
 
+struct Negotiator: public Mobile<Negotiator> {
+
+	Negotiator() {}
+
+	Negotiator(Endpoint old, Endpoint neww):
+		_old_principal(old), _new_principal(neww) {}
+
+	void act(Endpoint this_addr, Endpoint& _principal, std::set<Endpoint>& _subordinates) {
+		this->principal(this->parent());
+		this->result(Result::SUCCESS);
+		if (_new_principal == _principal && this_addr < _new_principal) {
+			this->result(Result::USER_ERROR);
+		} else {
+			if (_new_principal == this_addr) {
+				_subordinates.insert(this->from());
+			} else
+			if (_old_principal == this_addr) {
+				_subordinates.erase(this->from());
+			}
+		}
+		remote_server()->send(this);
+	}
+	
+	void write_impl(Foreign_stream& out) {
+		// TODO: if moves_upstream
+		out << _old_principal << _new_principal;
+	}
+
+	void read_impl(Foreign_stream& in) {
+		in >> _old_principal >> _new_principal;
+	}
+
+	static void init_type(Type* t) {
+		t->id(8);
+		t->name("Negotiator");
+	}
+
+private:
+	Endpoint _old_principal;
+	Endpoint _new_principal;
+};
+
+struct Master_negotiator: public Identifiable<Kernel> {
+
+	Master_negotiator(Endpoint old, Endpoint neww):
+		_old_principal(old), _new_principal(neww) {}
+	
+	void act() {
+		send_negotiator(_old_principal);
+		send_negotiator(_new_principal);
+	}
+
+	void react(Kernel* k) {
+		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
+			this->result(k->result());
+		}
+		if (++_num_ret == 2) {
+			this->principal(this->parent());
+			the_server()->send(this);
+		}
+	}
+
+private:
+
+	void send_negotiator(Endpoint addr) {
+		Negotiator* n = new Negotiator(_old_principal, _new_principal);
+		n->principal(addr.address());
+		n->to(addr);
+		upstream(remote_server(), n);
+	}
+
+	Endpoint _old_principal;
+	Endpoint _new_principal;
+	uint8_t _num_ret = 0;
+};
+
 struct Master_discoverer: public Identifiable<Kernel> {
 
 	explicit Master_discoverer(Endpoint endpoint):
@@ -399,7 +477,8 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		_subordinates(),
 		_peers(),
 		_scanner(nullptr),
-		_discoverer(nullptr)
+		_discoverer(nullptr),
+		_negotiator(nullptr)
 	{}
 
 	void act() {
@@ -425,10 +504,19 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				log << std::endl;
 			}
 			run_discovery();
-		} else {
-			Profiler* prof = dynamic_cast<Profiler*>(k);
-			prof->peers(_principal, _subordinates);
-			prof->act();
+		} else
+		if (_negotiator == k) {
+			//...
+		} else
+		if (k->type()) {
+			if (k->type()->id() == 2) {
+				Profiler* prof = dynamic_cast<Profiler*>(k);
+				prof->peers(_principal, _subordinates);
+				prof->act();
+			} else if (k->type()->id() == 8) {
+				Negotiator* neg = dynamic_cast<Negotiator*>(k);
+				neg->act(_source, _principal, _subordinates);
+			}
 		}
 	}
 
@@ -444,14 +532,20 @@ private:
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}
 
-	void change_principal(Endpoint princ) {
-		Logger(Level::DISCOVERY) << "New principal = " << princ << std::endl;
+	void run_negotiator(Endpoint old_princ, Endpoint new_princ) {
+		if (!_negotiator) {
+			upstream(the_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
+		}
+	}
+
+	void change_principal(Endpoint new_princ) {
+		Logger(Level::DISCOVERY) << "New principal = " << new_princ << std::endl;
 		Endpoint old_princ = _principal;
-		_principal = princ;
+		_principal = new_princ;
 		_peers.add_unique(_principal);
-//		if (old_princ != _principal) {
-//			run_discovery();
-//		}
+		if (old_princ != _principal) {
+			run_negotiator(old_princ, new_princ);
+		}
 		debug();
 	}
 
@@ -495,12 +589,13 @@ private:
 
 	Endpoint _source;
 	Endpoint _principal;
-	std::vector<Endpoint> _subordinates;
+	std::set<Endpoint> _subordinates;
 
 	Peers _peers;
 
 	Scanner* _scanner;
 	Discoverer* _discoverer;
+	Master_negotiator* _negotiator;
 
 	static const uint32_t MIN_SAMPLES = 7;
 };
