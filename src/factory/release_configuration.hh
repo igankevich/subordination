@@ -43,8 +43,8 @@ namespace factory {
 //		template<class K>
 //			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
 
-		template<class Base>
-			using Resource_aware = factory::components::Resource_aware<Base>;
+//		template<class Base>
+//			using Resource_aware = factory::components::Resource_aware<Base>;
 
 		template<class Base, class S>
 			using Profiled_Iserver = typename S::template Strategy<typename S::template Iprofiler<Base>>;
@@ -96,7 +96,7 @@ namespace factory {
 		typedef Socket_server<Kernel> Remote_server;
 		typedef Socket_server<Kernel> Discovery_server;
 
-		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
+//		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
 	}
 
 	using namespace configuration;

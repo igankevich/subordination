@@ -1,6 +1,3 @@
-#include <ifaddrs.h>
-#include <set>
-
 namespace factory {
 
 	template<class I>

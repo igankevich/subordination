@@ -602,109 +602,109 @@ namespace factory {
 
 		// remote
 
-		template<class Top>
-		struct Resource_aware: public Top {
-
-			typedef Resource_aware<Top> This;
-
-			typedef int Index;
-
-			template<class S>
-			explicit Resource_aware(const S& s): Top(s) {}
-
-			template<class K, class I>
-			int operator()(K* kernel, I& upstream) {
-				return kernel->resource() == "" 
-					? Top::operator()(kernel, upstream)
-					: send_to_resource(kernel);
-			}
-
-			template<class K>
-			int send_to_resource(K* kernel) {
-				const Endpoint* endp = Resources::resources().lookup(kernel->resource());
-				if (endp == nullptr) {
-					std::stringstream msg;
-					msg << "Can not find server which provides resource '" << kernel->resource() << "'.";
-					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-//				Remote_server<K, This> srv(*endp);
-//				srv.send(kernel);
-				return -1;
-			}
-
+//		template<class Top>
+//		struct Resource_aware: public Top {
+//
+//			typedef Resource_aware<Top> This;
+//
+//			typedef int Index;
+//
+//			template<class S>
+//			explicit Resource_aware(const S& s): Top(s) {}
+//
 //			template<class K, class I>
-//			int operator()(Kernel_pair<K>* pair, I&) {
-////				Endpoint endp = pair->subordinate()->from();
-////				Remote_server<Kernel_pair<K>, This> srv(endp);
-////				srv.send(pair);
+//			int operator()(K* kernel, I& upstream) {
+//				return kernel->resource() == "" 
+//					? Top::operator()(kernel, upstream)
+//					: send_to_resource(kernel);
+//			}
+//
+//			template<class K>
+//			int send_to_resource(K* kernel) {
+//				const Endpoint* endp = Resources::resources().lookup(kernel->resource());
+//				if (endp == nullptr) {
+//					std::stringstream msg;
+//					msg << "Can not find server which provides resource '" << kernel->resource() << "'.";
+//					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+//				}
+////				Remote_server<K, This> srv(*endp);
+////				srv.send(kernel);
 //				return -1;
 //			}
-
-			struct Profiler: public virtual Top::Profiler {
-				Index index() const { return _index; }
-				void index(Index i) { _index = i; }
-				void endpoint(const Endpoint& endp) { _endpoint = endp; }
-				const Endpoint& endpoint() const { return _endpoint; }
-			private:
-				Index _index;
-				Endpoint _endpoint;
-			};
-
-			struct Rprofiler: public Profiler, public Top::Rprofiler {};
-
-			struct Iprofiler: public Profiler, public Top::Iprofiler {
-
-				template<class Upstream>
-				explicit Iprofiler(Upstream upstream):
-					Top::Iprofiler(upstream),
-					_resources(create_resource_map(upstream))
-				{}
-
-				Index server(const Resource& res) const {
-					auto result = _resources.find(res);
-					if (result == _resources.end()) {
-						std::stringstream msg;
-						msg << "Can not find server which provides resource '" << res << "'.";
-						throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-					return result->second;
-				}
-
-			private:
-
-				template<class Upstream>
-				std::unordered_map<Resource, Index> create_resource_map(Upstream upstream) {
-					std::unordered_map<Resource, Index> resources;
-					auto resource_map = Resources::resources().map();
-					std::for_each(resource_map.cbegin(), resource_map.cend(),
-						[&resources, &upstream] (const typename decltype(resource_map)::value_type& pair) {
-//			                Logger(Level::STRATEGY) << pair.first << " -> " << *pair.second << std::endl;
-							auto result = upstream.find(*pair.second);
-							if (result != upstream.cend()) {
-								resources[pair.first] = result->second->index();
-							}
-						}
-					);
-		            for (auto it=resources.cbegin(); it!=resources.cend(); ++it) {
-		                Logger(Level::STRATEGY) << it->first << " -> " << it->second << std::endl;
-		            }
-					return resources;
-				}
-
-				std::unordered_map<Resource, Index> _resources;
-			};
-
-			template<class K>
-			using Carrier = typename Top::template Carrier<K>;
-
-//			template<class K>
-//			struct Carrier: public Top::Carrier<K> {
-//				explicit Carrier(K* k): Top::Carrier(k) {}
+//
+////			template<class K, class I>
+////			int operator()(Kernel_pair<K>* pair, I&) {
+//////				Endpoint endp = pair->subordinate()->from();
+//////				Remote_server<Kernel_pair<K>, This> srv(endp);
+//////				srv.send(pair);
+////				return -1;
+////			}
+//
+//			struct Profiler: public virtual Top::Profiler {
+//				Index index() const { return _index; }
+//				void index(Index i) { _index = i; }
+//				void endpoint(const Endpoint& endp) { _endpoint = endp; }
+//				const Endpoint& endpoint() const { return _endpoint; }
+//			private:
+//				Index _index;
+//				Endpoint _endpoint;
 //			};
-
-		private:
-			static const std::size_t PRIME     = 7;
-		};
+//
+//			struct Rprofiler: public Profiler, public Top::Rprofiler {};
+//
+//			struct Iprofiler: public Profiler, public Top::Iprofiler {
+//
+//				template<class Upstream>
+//				explicit Iprofiler(Upstream upstream):
+//					Top::Iprofiler(upstream),
+//					_resources(create_resource_map(upstream))
+//				{}
+//
+//				Index server(const Resource& res) const {
+//					auto result = _resources.find(res);
+//					if (result == _resources.end()) {
+//						std::stringstream msg;
+//						msg << "Can not find server which provides resource '" << res << "'.";
+//						throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+//					}
+//					return result->second;
+//				}
+//
+//			private:
+//
+//				template<class Upstream>
+//				std::unordered_map<Resource, Index> create_resource_map(Upstream upstream) {
+//					std::unordered_map<Resource, Index> resources;
+//					auto resource_map = Resources::resources().map();
+//					std::for_each(resource_map.cbegin(), resource_map.cend(),
+//						[&resources, &upstream] (const typename decltype(resource_map)::value_type& pair) {
+////			                Logger(Level::STRATEGY) << pair.first << " -> " << *pair.second << std::endl;
+//							auto result = upstream.find(*pair.second);
+//							if (result != upstream.cend()) {
+//								resources[pair.first] = result->second->index();
+//							}
+//						}
+//					);
+//		            for (auto it=resources.cbegin(); it!=resources.cend(); ++it) {
+//		                Logger(Level::STRATEGY) << it->first << " -> " << it->second << std::endl;
+//		            }
+//					return resources;
+//				}
+//
+//				std::unordered_map<Resource, Index> _resources;
+//			};
+//
+//			template<class K>
+//			using Carrier = typename Top::template Carrier<K>;
+//
+////			template<class K>
+////			struct Carrier: public Top::Carrier<K> {
+////				explicit Carrier(K* k): Top::Carrier(k) {}
+////			};
+//
+//		private:
+//			static const std::size_t PRIME     = 7;
+//		};
 
 //		struct No_strategy {
 //

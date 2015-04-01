@@ -9,3 +9,4 @@ Add IPv6 support through 'struct sockaddr_storage', getaddrinfo() and rewrite di
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 Remove non-portable WebSocket dependencies on memchr, bzero and other fancy functions.
+Implement thread affinity through pthread library with fall back to native OS calls.

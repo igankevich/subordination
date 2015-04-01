@@ -1,7 +1,3 @@
-#include <signal.h>
-#include <strings.h>
-#include <fenv.h>
-
 namespace factory {
 
 	struct Shutdown: public Mobile<Shutdown> {

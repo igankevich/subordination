@@ -17,12 +17,12 @@ AC_PROG_CC
 #	AC_MSG_ERROR([Could not find SSL library]))
 #AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
 #	AC_MSG_ERROR([Could not find crypto library]))
-AC_CHECK_LIB(resolv, __b64_ntop, [],
-	AC_MSG_ERROR([Could not find resolv library]))
+#AC_CHECK_LIB(resolv, __b64_ntop, [],
+#	AC_MSG_ERROR([Could not find resolv library]))
 
 # Checks for header files.
 AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h fenv.h netdb.h netinet/in.h stdlib.h strings.h sys/socket.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h fenv.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL

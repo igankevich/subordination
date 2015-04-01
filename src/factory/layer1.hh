@@ -23,6 +23,7 @@
 // Standard portable types.
 #include <cinttypes>
 #include <cstring>
+#include <cstdlib>
 
 // C++ threads.
 #include <thread>
@@ -31,12 +32,16 @@
 
 // Linux (and hopefully POSIX) system
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
-#include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <poll.h>
+#include <fenv.h>
+#include <signal.h>
+#include <ifaddrs.h>
+
 
 // Base system
 #include "base.hh"
@@ -46,13 +51,12 @@
 #include "socket.hh"
 #include "buffer.hh"
 #include "datastream.hh"
-#include "topology.hh"
-// for marshaling
+//#include "topology.hh"
 #include "endpoint.hh"
 #include "sockets.hh"
 #include "poller.hh"
 #include "type.hh"
-#include "resource.hh"
+//#include "resource.hh"
 #include "kernel.hh"
 //#include "websocket.hh"
 #include "repository.hh"

@@ -72,11 +72,22 @@ namespace factory {
 		return ret;
 	}
 
-	int check_addrinfo(const char* func, int ret) {
-		if (ret < 0) {
+//	int check_addrinfo(const char* func, int ret) {
+//		if (ret < 0) {
+//			std::stringstream msg;
+//			msg << func << ": " << ::gai_strerror(ret);
+//			throw std::runtime_error(msg.str());
+//		}
+//		return ret;
+//	}
+
+	int check_pton(const char* func, int ret) {
+		if (ret == 0) {
 			std::stringstream msg;
-			msg << func << ": " << ::gai_strerror(ret);
+			msg << func << ". Not in presentation format.";
 			throw std::runtime_error(msg.str());
+		} else if (ret == -1) {
+			throw std::system_error(std::error_code(errno, std::system_category()), func);
 		}
 		return ret;
 	}

@@ -84,13 +84,9 @@ namespace factory {
 		}
 
 		void addr(const char* host, Port port) {
-			struct ::addrinfo* info;
-			Logger(Level::COMPONENT) << "getaddrinfo(" << host << ")" << std::endl;
-			check_addrinfo("getaddrinfo", ::getaddrinfo(host, NULL, NULL, &info));
-			struct ::sockaddr_in* a = (struct ::sockaddr_in*) info->ai_addr;
-			a->sin_port = htons(port);
-			addr(a);
-			::freeaddrinfo(info);
+			_addr.sin_family = AF_INET;
+			_addr.sin_port = htons(port);
+			check_pton("inet_pton()", ::inet_pton(AF_INET, host, &_addr.sin_addr));
 		}
 
 		void addr(const uint32_t host, Port port) {
