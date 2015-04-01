@@ -11,10 +11,7 @@ syntax: glob
 aclocal.m4
 autom4te.cache
 compile
-config.h*
-config.status
-config.guess
-config.sub
+config.*
 configure
 configure.scan
 depcomp
