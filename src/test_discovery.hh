@@ -417,8 +417,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			}
 		} else 
 		if (_discoverer == k) {
-			if (k->result() != Result::SUCCESS) {
-			} else {
+			if (k->result() == Result::SUCCESS) {
 				change_principal(_peers.best_peer());
 				Logger log(Level::DISCOVERY);
 				log << "Peers: ";
