@@ -56,7 +56,7 @@ namespace factory {
 			in >> std::ws;
 			std::getline(in, host, ':');
 			Port port;
-			in >> std::ws >> port;
+			in >> port;
 			rhs.addr(host.c_str(), port);
 			return in;
 		}

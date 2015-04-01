@@ -1,5 +1,4 @@
 AM_CPPFLAGS = -Wall -Wextra
-#AM_LDFLAGS = -pthread
 
 TESTS = test_buffer test_marshaling test_socket test_offline test_spinlock 
 bin_PROGRAMS = test_buffer test_marshaling test_socket test_offline test_discovery test_spinlock

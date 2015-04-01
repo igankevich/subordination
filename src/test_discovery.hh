@@ -8,51 +8,9 @@ const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
 
-struct Profiler: public Mobile<Profiler> {
-
-	typedef uint64_t Time;
-	typedef uint8_t State;
-	typedef std::chrono::steady_clock Clock;
-
-	Profiler() {}
-
-	void act() {
-		_state = 1;
-		commit(remote_server());
-	}
-
-	void write_impl(Foreign_stream& out) {
-		if (_state == 0) {
-			_time = current_time();
-		}
-		out << _state << _time;
-	}
-
-	void read_impl(Foreign_stream& in) {
-		in >> _state >> _time;
-		if (_state == 1) {
-			_time = current_time() - _time;
-		}
-	}
-
-	Time time() const { return _time*0 + 123; }
-
-	static Time current_time() {
-		return Clock::now().time_since_epoch().count();
-	}
-	
-	static void init_type(Type* t) {
-		t->id(2);
-	}
-
-private:
-	Time _time = 0;
-	State _state = 0;
-};
-
 struct Peer {
 
-	typedef Profiler::Time Time;
+	typedef uint64_t Time;
 	typedef uint32_t Metric;
 
 	Peer() {}
@@ -166,6 +124,126 @@ private:
 	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
 };
 
+struct Peers {
+
+	typedef std::map<Endpoint, Peer> Map;
+
+	Peer* find(Endpoint addr) {
+		auto result = _peers.find(addr);
+		return result == _peers.end() ? nullptr : &result->second;
+	}
+
+	void add_unique(Endpoint addr) {
+		auto res = _peers.find(addr);
+		if (res == _peers.end()) {
+			_peers[addr];
+		}
+	}
+
+	Map::iterator begin() { return _peers.begin(); }
+	Map::iterator end() { return _peers.end(); }
+	Map::const_iterator begin() const { return _peers.begin(); }
+	Map::const_iterator end() const { return _peers.end(); }
+
+	Peer& operator[](const Endpoint& rhs) { return _peers[rhs]; }
+
+	friend std::ostream& operator<<(std::ostream& out, const Peers& rhs) {
+		rhs.write(out, "\n");
+		return out;
+	}
+
+	friend std::istream& operator>>(std::istream& in, Peers& rhs) {
+		Endpoint addr;
+		Peer p;
+		while (in >> addr >> p) {
+			in.get();
+			rhs._peers[addr] = p;
+		}
+		return in;
+	}
+
+	void write(std::ostream& out, const char* sep = "\n") const {
+		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out, sep);
+		std::copy(_peers.begin(), _peers.end(), it);
+	}
+
+private:
+	Map _peers;
+};
+
+struct Profiler: public Mobile<Profiler> {
+
+	typedef Peer::Time Time;
+	typedef uint8_t State;
+	typedef std::chrono::steady_clock Clock;
+
+	Profiler() {}
+
+	void act() {
+		_state = 1;
+		commit(remote_server());
+	}
+
+	void write_impl(Foreign_stream& out) {
+		if (_state == 0) {
+			_time = current_time();
+		}
+		out << _state << _time;
+		out << _principal;
+		out << uint32_t(_subordinates.size());
+		for (Endpoint& sub : _subordinates) {
+			out << sub;
+		}
+	}
+
+	void read_impl(Foreign_stream& in) {
+		in >> _state >> _time;
+		if (_state == 1) {
+			_time = current_time() - _time;
+		}
+		in >> _principal;
+		uint32_t n = 0;
+		in >> n;
+		_subordinates.resize(n);
+		for (uint32_t i=0; i<n; ++i) {
+			in >> _subordinates[i];
+		}
+	}
+
+	void peers(Endpoint princ, const std::vector<Endpoint>& subs) {
+		_principal = princ;
+		_subordinates = subs;
+	}
+
+	void add_peers(Peers& peers) {
+		if (_principal) {
+			peers.add_unique(_principal);
+		}
+		for (Endpoint& addr : _subordinates) {
+			peers.add_unique(addr);
+		}
+	}
+
+	Time time() const { return _time*0 + 123; }
+
+	static Time current_time() {
+		return Clock::now().time_since_epoch().count();
+	}
+	
+	static void init_type(Type* t) {
+		t->id(2);
+	}
+
+private:
+
+	Time _time = 0;
+	State _state = 0;
+
+	Endpoint _principal;
+	std::vector<Endpoint> _subordinates;
+};
+
+
 struct Ping: public Mobile<Ping> {
 
 	Ping() {}
@@ -262,8 +340,7 @@ private:
 
 struct Discoverer: public Identifiable<Kernel> {
 
-	explicit Discoverer(std::map<Endpoint, Peer>& peers):
-		_peers(peers) {}
+	explicit Discoverer(Peers& peers): _peers(peers) {}
 
 	void act() {
 		std::vector<Profiler*> profs;
@@ -271,6 +348,7 @@ struct Discoverer: public Identifiable<Kernel> {
 			if (pair.second.needs_update()) {
 				Profiler* prof = new Profiler;
 				prof->to(pair.first);
+				prof->principal(pair.first.address());
 				profs.push_back(prof);
 			}
 		}
@@ -298,19 +376,14 @@ struct Discoverer: public Identifiable<Kernel> {
 			++_num_sent;
 			upstream(remote_server(), prof2);
 		}
+		prof->add_peers(_peers);
 		if (--_num_sent == 0) {
 			commit(the_server());
 		}
 	}
 
 private:
-
-	Peer* find_peer(Endpoint addr) {
-		auto result = _peers.find(addr);
-		return result == _peers.end() ? nullptr : &result->second;
-	}
-
-	std::map<Endpoint, Peer>& _peers;
+	Peers& _peers;
 	uint32_t _num_sent = 0;
 };
 
@@ -336,25 +409,26 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				run_scan();
 			} else {
 				_principal = _scanner->discovered_node();
-				if (!find_peer(_principal)) {
-					_peers.insert(std::make_pair(_principal, Peer()));
-				}
+				_peers.add_unique(_principal);
 				if (!_discoverer) {
 					run_discovery();
 				}
 				_scanner = nullptr;
 			}
-		}
+		} else 
 		if (_discoverer == k) {
 			if (k->result() != Result::SUCCESS) {
 			} else {
 				Logger log(Level::DISCOVERY);
 				log << "Peers: ";
-				std::ostream_iterator<std::pair<Endpoint,Peer>> it(log.ostream(), ", ");
-				std::copy(_peers.cbegin(), _peers.cend(), it);
+				_peers.write(log.ostream(), ", ");
 				log << std::endl;
 			}
 			run_discovery();
+		} else {
+			Profiler* prof = dynamic_cast<Profiler*>(k);
+			prof->peers(_principal, _subordinates);
+			prof->act();
 		}
 	}
 
@@ -368,11 +442,6 @@ private:
 	void run_discovery() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
-	}
-
-	Peer* find_peer(Endpoint addr) {
-		auto result = _peers.find(addr);
-		return result == _peers.end() ? nullptr : &result->second;
 	}
 
 	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
@@ -395,27 +464,21 @@ private:
 		std::ifstream in(cache_filename());
 		bool success = in.is_open();
 		if (success) {
-			while (!in.eof()) {
-				Endpoint addr;
-				Peer p;
-				in >> addr >> p >> std::ws;
-				_peers[addr] = p;
-			}
+			in >> _peers;
 		}
 		return success;
 	}
 
 	void write_cache() {
 		std::ofstream out(cache_filename());
-		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out, "\n");
-		std::copy(_peers.cbegin(), _peers.cend(), it);
+		out << _peers;
 	}
 
 	Endpoint _source;
 	Endpoint _principal;
 	std::vector<Endpoint> _subordinates;
 
-	std::map<Endpoint, Peer> _peers;
+	Peers _peers;
 
 	Scanner* _scanner;
 	Discoverer* _discoverer;
