@@ -13,10 +13,10 @@ AC_PROG_CXX
 AC_PROG_CC
 
 # Checks for libraries.
-AC_CHECK_LIB(ssl, SSL_library_init, [],
-	AC_MSG_ERROR([Could not find SSL library]))
-AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
-	AC_MSG_ERROR([Could not find crypto library]))
+#AC_CHECK_LIB(ssl, SSL_library_init, [],
+#	AC_MSG_ERROR([Could not find SSL library]))
+#AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
+#	AC_MSG_ERROR([Could not find crypto library]))
 AC_CHECK_LIB(resolv, __b64_ntop, [],
 	AC_MSG_ERROR([Could not find resolv library]))
 

@@ -40,8 +40,8 @@ namespace factory {
 		template<class K>
 			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type, Pool>;
 
-		template<class K>
-			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
+//		template<class K>
+//			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
 
 		template<class Base>
 			using Resource_aware = factory::components::Resource_aware<Base>;
