@@ -3,6 +3,7 @@
 
 AC_PREREQ([2.69])
 AC_INIT([Factory], [0.1], [igankevich@yandex.com])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
@@ -10,7 +11,6 @@ AC_CONFIG_HEADERS([config.h])
 # Checks for programs.
 AC_LANG([C++])
 AC_PROG_CXX
-AC_PROG_CC
 
 # Checks for libraries.
 #AC_CHECK_LIB(ssl, SSL_library_init, [],
@@ -21,7 +21,7 @@ AC_PROG_CC
 #	AC_MSG_ERROR([Could not find resolv library]))
 
 # Checks for header files.
-AC_HEADER_RESOLV
+#AC_HEADER_RESOLV
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h fenv.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -38,12 +38,13 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 AC_TYPE_PID_T
+CHECK_CXX_11
+CHECK_CXX_11_THREAD
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
 AC_CHECK_FUNCS([memchr memset socket setenv strerror])
-AX_PTHREAD
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
