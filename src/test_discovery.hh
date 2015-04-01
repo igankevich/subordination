@@ -2,8 +2,6 @@
 
 using namespace factory;
 
-typedef Interval<Port> Port_range;
-
 const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
@@ -42,13 +40,14 @@ struct Peer {
 	}
 
 	bool operator<(const Peer& rhs) const {
-		return metric() < rhs.metric();
+		return metric() > rhs.metric();
 	}
 
-	friend bool operator<(const std::pair<Endpoint,Peer>& lhs, const std::pair<Endpoint,Peer>& rhs) {
-		return lhs.second.metric() < rhs.second.metric()
-			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
-	}
+//	friend bool operator<(const std::pair<Endpoint,Peer>& lhs, const std::pair<Endpoint,Peer>& rhs) {
+////		return lhs.second.metric() < rhs.second.metric()
+////			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
+//		return lhs.first < rhs.first;
+//	}
 
 	Peer& operator=(const Peer& rhs) {
 		_t = rhs._t;
@@ -138,6 +137,10 @@ struct Peers {
 		if (res == _peers.end()) {
 			_peers[addr];
 		}
+	}
+	
+	Endpoint best_peer() {
+		return std::min_element(_peers.begin(), _peers.end())->first;
 	}
 
 	Map::iterator begin() { return _peers.begin(); }
@@ -408,17 +411,15 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			if (k->result() != Result::SUCCESS) {
 				run_scan();
 			} else {
-				_principal = _scanner->discovered_node();
-				_peers.add_unique(_principal);
-				if (!_discoverer) {
-					run_discovery();
-				}
+				change_principal(_scanner->discovered_node());
+				run_discovery();
 				_scanner = nullptr;
 			}
 		} else 
 		if (_discoverer == k) {
 			if (k->result() != Result::SUCCESS) {
 			} else {
+				change_principal(_peers.best_peer());
 				Logger log(Level::DISCOVERY);
 				log << "Peers: ";
 				_peers.write(log.ostream(), ", ");
@@ -442,6 +443,25 @@ private:
 	void run_discovery() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
+	}
+
+	void change_principal(Endpoint princ) {
+		Logger(Level::DISCOVERY) << "New principal = " << princ << std::endl;
+		Endpoint old_princ = _principal;
+		_principal = princ;
+		_peers.add_unique(_principal);
+//		if (old_princ != _principal) {
+//			run_discovery();
+//		}
+		debug();
+	}
+
+	void debug() {
+		Logger log(Level::DISCOVERY);
+		log << "Principal = " << _principal << ", subordinates = ";
+		std::ostream_iterator<Endpoint> it(log.ostream(), ",");
+		std::copy(_subordinates.begin(), _subordinates.end(), it);
+		log << std::endl;
 	}
 
 	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
