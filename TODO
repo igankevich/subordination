@@ -12,3 +12,4 @@ Remove non-portable WebSocket dependencies on memchr, bzero and other fancy func
 Implement thread affinity through pthread library with fall back to native OS calls.
 Remove stale connections from Socket_server.
 Remove stale peers from Peers.
+Limit number of peers to reduce number of persistent connections.
