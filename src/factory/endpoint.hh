@@ -109,9 +109,10 @@ namespace factory {
 			_addr.sin_port = htons(port);
 			int ret = ::inet_pton(AF_INET, host, &_addr.sin_addr);
 			if (ret == 0 || ret == -1) {
-				std::stringstream msg;
-				msg << "inet_pton(). Bad address: '" << host << "'.";
-				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				throw ret;
+//				std::stringstream msg;
+//				msg << "inet_pton(). Bad address: '" << host << "'.";
+//				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
 

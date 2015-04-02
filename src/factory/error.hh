@@ -81,16 +81,16 @@ namespace factory {
 //		return ret;
 //	}
 
-	int check_pton(const char* func, int ret) {
-		if (ret == 0) {
-			std::stringstream msg;
-			msg << func << ". Not in presentation format.";
-			throw std::runtime_error(msg.str());
-		} else if (ret == -1) {
-			throw std::system_error(std::error_code(errno, std::system_category()), func);
-		}
-		return ret;
-	}
+//	int check_pton(const char* func, int ret) {
+//		if (ret == 0) {
+//			std::stringstream msg;
+//			msg << func << ". Not in presentation format.";
+//			throw std::runtime_error(msg.str());
+//		} else if (ret == -1) {
+//			throw std::system_error(std::error_code(errno, std::system_category()), func);
+//		}
+//		return ret;
+//	}
 
 	const char* check_inet(const char* func, const char* ret) {
 		if (ret == 0) {
