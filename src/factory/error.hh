@@ -163,7 +163,7 @@ namespace factory {
 		friend std::ostream& operator<<(std::ostream& out, const Error_message& rhs) {
 			std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			char formatted_time[20];
-			std::strftime(formatted_time, 20, "%F %T", std::localtime_r(&now_time));
+			std::strftime(formatted_time, 20, "%F %T", std::localtime(&now_time));
 			out << formatted_time << ' ' << rhs._error << '\t'
 				<< rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
 				<< std::endl;
