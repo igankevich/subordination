@@ -567,14 +567,9 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				_peers.debug();
 				run_scan(_scanner->discovered_node());
 			} else {
-				Endpoint addr = _scanner->discovered_node();
-				if (addr < _peers.this_addr() || (!_peers.principal() && _peers.num_subordinates() == 0)) {
-					change_principal(addr);
-					run_discovery();
-					_scanner = nullptr;
-				} else {
-					run_scan(_scanner->discovered_node());
-				}
+				change_principal(_scanner->discovered_node());
+				run_discovery();
+				_scanner = nullptr;
 			}
 		} else 
 		if (_discoverer == k) {
