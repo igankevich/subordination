@@ -10,3 +10,5 @@ Make logs machine-readable (prepend process ID, thread ID. date and time, object
 Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 Remove non-portable WebSocket dependencies on memchr, bzero and other fancy functions.
 Implement thread affinity through pthread library with fall back to native OS calls.
+Remove stale connections from Socket_server.
+Remove stale peers from Peers.
