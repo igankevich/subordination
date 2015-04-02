@@ -15,6 +15,8 @@ namespace factory {
 			typedef typename Stream::Size Size;
 			typedef typename Type::Callback Callback;
 
+			Kernel_packet() {}
+
 			void write(Stream& out, Kernel* kernel) {
 
 				const Type* type = kernel->type();

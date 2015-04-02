@@ -11,6 +11,8 @@ namespace factory {
 				mtx(),
 				size(upstream.size())
 			{}
+
+			Tetris(const Tetris& rhs) = delete;
 		
 			~Tetris() { delete[] cache; }
 		
@@ -275,8 +277,8 @@ namespace factory {
 			Spin_mutex mtx;
 			int size;
 			Int predicted_metric;
-			int srv1;
-			int srv2;
+			int srv1 = -1;
+			int srv2 = -1;
 		};
 
 	}

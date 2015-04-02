@@ -58,14 +58,14 @@ namespace factory {
 
 	private:
 
-		template<class T>
-		static void debug(std::ostream& out, T val) {
-			int n = sizeof val;
-			unsigned char* p = reinterpret_cast<unsigned char*>(&val);
-			for (int i=0; i<n; ++i) {
-				out << std::setw(2) << (unsigned int)p[i];
-			}
-		}
+//		template<class T>
+//		static void debug(std::ostream& out, T val) {
+//			int n = sizeof val;
+//			unsigned char* p = reinterpret_cast<unsigned char*>(&val);
+//			for (int i=0; i<n; ++i) {
+//				out << std::setw(2) << (unsigned int)p[i];
+//			}
+//		}
 
 		template<class T>
 		Foreign_stream& write(T rhs) {

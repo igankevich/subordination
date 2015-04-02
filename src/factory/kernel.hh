@@ -41,6 +41,7 @@ namespace factory {
 			const K& operator*() const { return *_kernel; }
 
 			Kernel_ref& operator=(const Kernel_ref& rhs) {
+				if (&rhs == this) return *this;
 				if (_temp) {
 					delete _kernel;
 				}
@@ -55,6 +56,7 @@ namespace factory {
 			}
 
 			Kernel_ref& operator=(K* rhs) {
+				if (rhs == _kernel) return *this;
 				if (_temp) {
 					delete _kernel;
 					_temp = false;
