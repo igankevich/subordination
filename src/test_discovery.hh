@@ -130,27 +130,13 @@ struct Peers {
 
 	explicit Peers(Endpoint addr): _this_addr(addr) {}
 
-	Peer* find(Endpoint addr) {
-		auto result = _peers.find(addr);
-		return result == _peers.end() ? nullptr : &result->second;
-	}
-
 	void add_peer(Endpoint addr) {
 		if (addr == _this_addr) return;
-		auto res = _peers.find(addr);
-		if (res == _peers.end()) {
+		if (_peers.count(addr) == 0) {
 			_peers[addr];
 		}
 	}
 
-	void remove(Endpoint addr) {
-		_peers.erase(addr);
-//		auto result = _peers.find(addr);
-//		if (result != _peers.end()) {
-//			_peers.erase(result);
-//		}
-	}
-	
 	Endpoint best_peer() const {
 		return std::min_element(_peers.begin(), _peers.end())->first;
 	}
@@ -164,7 +150,7 @@ struct Peers {
 		if (old_princ != new_princ) {
 			_principal = new_princ;
 			add_peer(_principal);
-			remove(old_princ);
+			_peers.erase(old_princ);
 			success = true;
 		}
 		return success;
@@ -172,7 +158,7 @@ struct Peers {
 
 	void revert_principal(Endpoint old_princ) {
 		Logger(Level::DISCOVERY) << "Reverting principal to " << old_princ << std::endl;
-		remove(_principal);
+		_peers.erase(_principal);
 		if (old_princ) {
 			add_peer(old_princ);
 		}
@@ -196,7 +182,7 @@ struct Peers {
 	void remove_subordinate(Endpoint addr) {
 		Logger(Level::DISCOVERY) << "Removing subordinate = " << addr << std::endl;
 		_subordinates.erase(addr);
-		remove(addr);
+		_peers.erase(addr);
 	}
 
 	Map::iterator begin() { return _peers.begin(); }
