@@ -126,6 +126,7 @@ private:
 struct Peers {
 
 	typedef std::map<Endpoint, Peer> Map;
+	typedef std::set<Endpoint> Set;
 
 	explicit Peers(Endpoint addr): _this_addr(addr) {}
 
@@ -134,7 +135,7 @@ struct Peers {
 		return result == _peers.end() ? nullptr : &result->second;
 	}
 
-	void add_unique(Endpoint addr) {
+	void add_peer(Endpoint addr) {
 		if (addr == _this_addr) return;
 		auto res = _peers.find(addr);
 		if (res == _peers.end()) {
@@ -150,8 +151,52 @@ struct Peers {
 //		}
 	}
 	
-	Endpoint best_peer() {
+	Endpoint best_peer() const {
 		return std::min_element(_peers.begin(), _peers.end())->first;
+	}
+
+	Endpoint this_addr() const { return _this_addr; }
+	Endpoint principal() const { return _principal; }
+
+	bool change_principal(Endpoint new_princ) {
+		Endpoint old_princ = _principal;
+		bool success = false;
+		if (old_princ != new_princ) {
+			_principal = new_princ;
+			add_peer(_principal);
+			remove(old_princ);
+			success = true;
+		}
+		return success;
+	}
+
+	void revert_principal(Endpoint old_princ) {
+		Logger(Level::DISCOVERY) << "Reverting principal to " << old_princ << std::endl;
+		remove(_principal);
+		if (old_princ) {
+			add_peer(old_princ);
+		}
+		_principal = old_princ;
+		debug();
+	}
+
+	void connected_peers(Set& peers) const {
+		peers.insert(_subordinates.begin(), _subordinates.end());
+		if (_principal) {
+			peers.insert(_principal);
+		}
+	}
+
+	void add_subordinate(Endpoint addr) {
+		Logger(Level::DISCOVERY) << "Adding subordinate = " << addr << std::endl;
+		_subordinates.insert(addr);
+		add_peer(addr);
+	}
+
+	void remove_subordinate(Endpoint addr) {
+		Logger(Level::DISCOVERY) << "Removing subordinate = " << addr << std::endl;
+		_subordinates.erase(addr);
+		remove(addr);
 	}
 
 	Map::iterator begin() { return _peers.begin(); }
@@ -181,9 +226,21 @@ struct Peers {
 		std::copy(_peers.begin(), _peers.end(), it);
 	}
 
+	void debug() {
+		Logger log(Level::DISCOVERY);
+		log << "Principal = " << _principal << ", subordinates = ";
+		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
+		std::copy(_subordinates.begin(), _subordinates.end(), it);
+		log << " peers = ";
+		write(log.ostream(), ", ");
+		log << std::endl;
+	}
+
 private:
 	Map _peers;
 	Endpoint _this_addr;
+	Endpoint _principal;
+	Set _subordinates;
 };
 
 struct Profiler: public Mobile<Profiler> {
@@ -204,9 +261,8 @@ struct Profiler: public Mobile<Profiler> {
 			_time = current_time();
 		}
 		out << _state << _time;
-		out << _principal;
-		out << uint32_t(_subordinates.size());
-		for (const Endpoint& sub : _subordinates) {
+		out << uint32_t(_peers.size());
+		for (const Endpoint& sub : _peers) {
 			out << sub;
 		}
 	}
@@ -216,28 +272,23 @@ struct Profiler: public Mobile<Profiler> {
 		if (_state == 1) {
 			_time = current_time() - _time;
 		}
-		in >> _principal;
 		uint32_t n = 0;
 		in >> n;
-		_subordinates.clear();
+		_peers.clear();
 		for (uint32_t i=0; i<n; ++i) {
 			Endpoint addr;
 			in >> addr;
-			_subordinates.insert(addr);
+			_peers.insert(addr);
 		}
 	}
 
-	void peers(Endpoint princ, const std::set<Endpoint>& subs) {
-		_principal = princ;
-		_subordinates = subs;
+	void copy_peers_from(const Peers& peers) {
+		peers.connected_peers(_peers);
 	}
 
-	void add_peers(Peers& peers) {
-		if (_principal) {
-			peers.add_unique(_principal);
-		}
-		for (const Endpoint& addr : _subordinates) {
-			peers.add_unique(addr);
+	void copy_peers_to(Peers& peers) {
+		for (const Endpoint& addr : _peers) {
+			peers.add_peer(addr);
 		}
 	}
 
@@ -256,8 +307,7 @@ private:
 	Time _time = 0;
 	State _state = 0;
 
-	Endpoint _principal;
-	std::set<Endpoint> _subordinates;
+	std::set<Endpoint> _peers;
 };
 
 
@@ -393,7 +443,7 @@ struct Discoverer: public Identifiable<Kernel> {
 			++_num_sent;
 			upstream(remote_server(), prof2);
 		}
-		prof->add_peers(_peers);
+		prof->copy_peers_to(_peers);
 		if (--_num_sent == 0) {
 			commit(the_server());
 		}
@@ -411,19 +461,18 @@ struct Negotiator: public Mobile<Negotiator> {
 	Negotiator(Endpoint old, Endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 
-	void act(Endpoint this_addr, Endpoint& _principal, std::set<Endpoint>& _subordinates) {
+	void act(Peers& peers) {
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
-		if (this->from() == _principal && this_addr < this->from()) {
+		Endpoint this_addr = peers.this_addr();
+		if (this->from() == peers.principal() && this_addr < this->from()) {
 			this->result(Result::USER_ERROR);
 		} else {
 			if (_new_principal == this_addr) {
-				_subordinates.insert(this->from());
-				Logger(Level::DISCOVERY) << "Adding subordinate = " << this->from() << std::endl;
+				peers.add_subordinate(this->from());
 			} else
 			if (_old_principal == this_addr) {
-				_subordinates.erase(this->from());
-				Logger(Level::DISCOVERY) << "Removing subordinate = " << this->from() << std::endl;
+				peers.remove_subordinate(this->from());
 			}
 		}
 		remote_server()->send(this);
@@ -496,12 +545,9 @@ private:
 
 struct Master_discoverer: public Identifiable<Kernel> {
 
-	explicit Master_discoverer(Endpoint endpoint):
-		factory::Identifiable<Kernel>(endpoint.address()),
-		_source(endpoint),
-		_principal(),
-		_subordinates(),
-		_peers(_source),
+	explicit Master_discoverer(Endpoint this_addr):
+		factory::Identifiable<Kernel>(this_addr.address()),
+		_peers(this_addr),
 		_scanner(nullptr),
 		_discoverer(nullptr),
 		_negotiator(nullptr)
@@ -524,28 +570,25 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		if (_discoverer == k) {
 			if (k->result() == Result::SUCCESS) {
 				change_principal(_peers.best_peer());
-				Logger log(Level::DISCOVERY);
-				log << "Peers: ";
-				_peers.write(log.ostream(), ", ");
-				log << std::endl;
+				_peers.debug();
 			}
 			run_discovery();
 		} else
 		if (_negotiator == k) {
 			if (k->result() != Result::SUCCESS) {
 				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
-				revert_principal(neg->old_principal());
+				_peers.revert_principal(neg->old_principal());
 			}
 			_negotiator = nullptr;
 		} else
 		if (k->type()) {
 			if (k->type()->id() == 2) {
 				Profiler* prof = dynamic_cast<Profiler*>(k);
-				prof->peers(_principal, _subordinates);
+				prof->copy_peers_from(_peers);
 				prof->act();
 			} else if (k->type()->id() == 8) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
-				neg->act(_source, _principal, _subordinates);
+				neg->act(_peers);
 			}
 		}
 	}
@@ -554,7 +597,7 @@ private:
 
 	void run_scan() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(the_server(), _scanner = new Scanner(_source));
+		upstream(the_server(), _scanner = new Scanner(_peers.this_addr()));
 	}
 	
 	void run_discovery() {
@@ -563,55 +606,22 @@ private:
 	}
 
 	void run_negotiator(Endpoint old_princ, Endpoint new_princ) {
-			upstream(the_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
+		upstream(the_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
 	}
 
 	void change_principal(Endpoint new_princ) {
-		Endpoint old_princ = _principal;
-		if (old_princ != new_princ) {
-			Logger(Level::DISCOVERY) << "Changing principal from " 
-				<< old_princ << " to " << new_princ << ", possible="
-				<< !_negotiator << std::endl;
-			if (!_negotiator) {
-				_principal = new_princ;
-				_peers.add_unique(_principal);
-				_peers.remove(old_princ);
-				run_negotiator(old_princ, new_princ);
-			}
+		Endpoint old_princ = _peers.principal();
+		if (!_negotiator && _peers.change_principal(new_princ)) {
+			Logger(Level::DISCOVERY) << "Changing principal to " << new_princ << std::endl;
+			_peers.debug();
+			run_negotiator(old_princ, new_princ);
 		}
-		debug();
-	}
-
-	void revert_principal(Endpoint old_princ) {
-		Logger(Level::DISCOVERY) << "Reverting principal = " << old_princ << std::endl;
-		_peers.remove(_principal);
-		if (old_princ) {
-			_peers.add_unique(old_princ);
-		}
-		_principal = old_princ;
-	}
-
-	void debug() {
-		Logger log(Level::DISCOVERY);
-		log << "Principal = " << _principal << ", subordinates = ";
-		std::ostream_iterator<Endpoint> it(log.ostream(), ",");
-		std::copy(_subordinates.begin(), _subordinates.end(), it);
-		log << std::endl;
-	}
-
-	static void sort_peers(const std::map<Endpoint,Peer>& peers, std::set<Peer>& y) {
-		y.clear();
-		std::transform(peers.begin(), peers.end(), std::inserter(y, y.begin()), get_peer);
-	}
-
-	static Peer get_peer(const std::pair<Endpoint,Peer>& rhs) {
-		return std::get<1>(rhs);
 	}
 
 	std::string cache_filename() const {
 		std::stringstream s;
 		s << "/tmp/";
-		s << _source << ".cache";
+		s << _peers.this_addr() << ".cache";
 		return s.str();
 	}
 
@@ -628,10 +638,6 @@ private:
 		std::ofstream out(cache_filename());
 		out << _peers;
 	}
-
-	Endpoint _source;
-	Endpoint _principal;
-	std::set<Endpoint> _subordinates;
 
 	Peers _peers;
 
