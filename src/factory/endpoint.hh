@@ -12,9 +12,21 @@ namespace factory {
 #else
 namespace factory {
 
+	std::istream& getline_no_white_space(std::istream& in, std::string& str, char delim) {
+		char ch;
+		while ((ch = in.get()) != std::char_traits<char>::eof()
+			&& !std::isspace(ch) && ch != delim)
+		{
+			str.push_back(ch);
+		}
+		if (ch != delim) {
+			in.putback(ch);
+		}
+		return in;
+	}
+
 	typedef std::string Host;
 	typedef uint16_t Port;
-
 
 	struct Endpoint {
 
@@ -53,11 +65,20 @@ namespace factory {
 
 		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
 			std::string host;
-			in >> std::ws;
-			std::getline(in, host, ':');
 			Port port;
-			in >> port;
-			rhs.addr(host.c_str(), port);
+			in >> std::ws;
+			getline_no_white_space(in, host, ':');
+			std::cout << "Host = '" << host << "'." << std::endl;
+			std::ios_base::fmtflags oldf = in.flags() & std::ios::skipws;
+			in >> std::noskipws >> port;
+			in.flags(oldf);
+			if (in) {
+				try {
+					rhs.addr(host.c_str(), port);
+				} catch (...) {
+					in.setstate(std::ios_base::failbit);
+				}
+			}
 			return in;
 		}
 
@@ -86,7 +107,12 @@ namespace factory {
 		void addr(const char* host, Port port) {
 			_addr.sin_family = AF_INET;
 			_addr.sin_port = htons(port);
-			check_pton("inet_pton()", ::inet_pton(AF_INET, host, &_addr.sin_addr));
+			int ret = ::inet_pton(AF_INET, host, &_addr.sin_addr);
+			if (ret == 0 || ret == -1) {
+				std::stringstream msg;
+				msg << "inet_pton(). Bad address: '" << host << "'.";
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
 		}
 
 		void addr(const uint32_t host, Port port) {

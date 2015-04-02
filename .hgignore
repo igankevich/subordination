@@ -25,6 +25,7 @@ src/test_socket
 src/test_offline
 src/test_discovery
 src/test_spinlock
+src/test_endpoint
 
 syntax: regexp
 (^|/)Makefile.in$
