@@ -144,6 +144,11 @@ struct Peers {
 	Endpoint this_addr() const { return _this_addr; }
 	Endpoint principal() const { return _principal; }
 
+	void remove_principal() {
+		_peers.erase(_principal);
+		_principal = Endpoint();
+	}
+
 	bool change_principal(Endpoint new_princ) {
 		Endpoint old_princ = _principal;
 		bool success = false;
@@ -151,6 +156,7 @@ struct Peers {
 			_principal = new_princ;
 			add_peer(_principal);
 			_peers.erase(old_princ);
+			_subordinates.erase(new_princ);
 			success = true;
 		}
 		return success;
@@ -184,6 +190,8 @@ struct Peers {
 		_subordinates.erase(addr);
 		_peers.erase(addr);
 	}
+
+	size_t num_subordinates() const { return _subordinates.size(); }
 
 	Map::iterator begin() { return _peers.begin(); }
 	Map::iterator end() { return _peers.end(); }
@@ -313,9 +321,9 @@ struct Ping: public Mobile<Ping> {
 
 struct Scanner: public Identifiable<Kernel> {
 
-	explicit Scanner(Endpoint addr):
+	explicit Scanner(Endpoint addr, Endpoint st_addr):
 		_source(addr),
-		_scan_addr(start_addr(all_peers)),
+		_scan_addr(st_addr ? st_addr : start_addr(all_peers)),
 		_servers(create_servers(all_peers))
 		{}
 
@@ -451,13 +459,25 @@ struct Negotiator: public Mobile<Negotiator> {
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
 		Endpoint this_addr = peers.this_addr();
-		if (this->from() == peers.principal() && this_addr < this->from()) {
-			this->result(Result::USER_ERROR);
-		} else {
-			if (_new_principal == this_addr) {
+		if (_new_principal == this_addr) {
+			// principal becomes subordinate
+			if (this->from() == peers.principal()) {
+				if (_old_principal) {
+					peers.remove_principal();
+				} else {
+					// root tries to swap with its subordinate
+					this->result(Result::USER_ERROR);
+				}
+			}
+			if (this->result() != Result::USER_ERROR) {
 				peers.add_subordinate(this->from());
-			} else
-			if (_old_principal == this_addr) {
+			}
+		} else
+		if (_old_principal == this_addr) {
+			// something fancy is going on
+			if (this->from() == peers.principal()) {
+				this->result(Result::USER_ERROR);
+			} else {
 				peers.remove_subordinate(this->from());
 			}
 		}
@@ -539,18 +559,22 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		_negotiator(nullptr)
 	{}
 
-	void act() {
-		run_scan();
-	}
+	void act() { run_scan(); }
 
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				run_scan();
+				_peers.debug();
+				run_scan(_scanner->discovered_node());
 			} else {
-				change_principal(_scanner->discovered_node());
-				run_discovery();
-				_scanner = nullptr;
+				Endpoint addr = _scanner->discovered_node();
+				if (addr < _peers.this_addr() || (!_peers.principal() && _peers.num_subordinates() == 0)) {
+					change_principal(addr);
+					run_discovery();
+					_scanner = nullptr;
+				} else {
+					run_scan(_scanner->discovered_node());
+				}
 			}
 		} else 
 		if (_discoverer == k) {
@@ -581,9 +605,9 @@ struct Master_discoverer: public Identifiable<Kernel> {
 
 private:
 
-	void run_scan() {
+	void run_scan(Endpoint old_addr = Endpoint()) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(the_server(), _scanner = new Scanner(_peers.this_addr()));
+		upstream(the_server(), _scanner = new Scanner(_peers.this_addr(), old_addr));
 	}
 	
 	void run_discovery() {
