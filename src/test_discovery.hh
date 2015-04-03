@@ -286,7 +286,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 	}
 
-	Time time() const { return _time*0 + 123; }
+	Time time() const { return _time; }
 
 	static Time current_time() {
 		return Clock::now().time_since_epoch().count();
@@ -594,6 +594,11 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			} else if (k->type()->id() == 8) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
 				neg->act(_peers);
+				if (!_peers.principal() && _peers.num_subordinates() == all_peers.size()-1) {
+					Logger(Level::DISCOVERY) << "Hail the new king "
+						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
+					__factory.stop();
+				}
 			}
 		}
 	}
@@ -601,12 +606,12 @@ struct Master_discoverer: public Identifiable<Kernel> {
 private:
 
 	void run_scan(Endpoint old_addr = Endpoint()) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+//		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		upstream(the_server(), _scanner = new Scanner(_peers.this_addr(), old_addr));
 	}
 	
 	void run_discovery() {
-		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+//		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}
 
