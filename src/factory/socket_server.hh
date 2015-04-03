@@ -186,10 +186,11 @@ namespace factory {
 //						process_kernels();
 //						flush_kernels();
 //					}
+					++_stop_iterations;
 					if (_poller.stopping() && !this->empty()) {
 						debug("not stopping");
 					}
-					if (_poller.stopping() && this->empty()) {
+					if (_poller.stopping() && (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS)) {
 						debug("stopping");
 						_poller.stop();
 					}
@@ -434,6 +435,9 @@ namespace factory {
 			std::thread _thread;
 			std::mutex _mutex;
 
+			int _stop_iterations = 0;
+
+			static const int MAX_STOP_ITERATIONS = 13;
 			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
 		};
 
