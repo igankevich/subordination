@@ -3,7 +3,7 @@ namespace factory {
 	namespace Level {
 		typedef const char* Tag;
 		Tag KERNEL    = "krnl";
-		Tag SERVER    = "server";
+		Tag SERVER    = "srvr";
 		Tag HANDLER   = "handler";
 		Tag COMPONENT = "cmpnt";
 		Tag STRATEGY  = "strat";

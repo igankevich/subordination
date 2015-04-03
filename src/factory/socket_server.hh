@@ -186,15 +186,15 @@ namespace factory {
 //						process_kernels();
 //						flush_kernels();
 //					}
-					++_stop_iterations;
-					if (_poller.stopping() && !this->empty()) {
-						debug("not stopping");
+					if (_poller.stopping()) {
+						++_stop_iterations;
+						if (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS) {
+							debug("stopping");
+							_poller.stop();
+						} else {
+							debug("not stopping");
+						}
 					}
-					if (_poller.stopping() && (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS)) {
-						debug("stopping");
-						_poller.stop();
-					}
-					debug("periodic");
 				});
 //				if (_poller.stopped()) {
 //					process_kernels();
