@@ -117,10 +117,10 @@ private:
 	Time _update_time = 0;
 
 	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 7;
+	static const uint32_t MIN_SAMPLES = 0;
 	static const uint32_t MAX_ERRORS  = 3;
 
-	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
+	static const Time MAX_AGE = std::chrono::milliseconds(10000).count();
 };
 
 struct Peers {
@@ -375,12 +375,13 @@ private:
 
 	Endpoint start_addr(const std::vector<Endpoint>& peers) {
 		if (peers.empty()) return Endpoint();
-		auto res = find(peers.begin(), peers.end(), _source);
-		Endpoint st = peers.front();
-		if (res != peers.end()) {
-			st = *res;
-		}
-		return st;
+		return peers.front();
+//		auto res = find(peers.begin(), peers.end(), _source);
+//		Endpoint st = peers.front();
+//		if (res != peers.end()) {
+//			st = *res;
+//		}
+//		return st;
 	}
 		
 	void try_to_connect(Endpoint addr) {
