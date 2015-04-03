@@ -46,5 +46,5 @@ except:
 	# print log records in chronological order
 	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '")
 finally:
-	os.system("rm -f /tmp/*.*.log")
+#	os.system("rm -f /tmp/*.*.log")
 	net.stop()

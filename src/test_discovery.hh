@@ -117,10 +117,10 @@ private:
 	Time _update_time = 0;
 
 	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 0;
+	static const uint32_t MIN_SAMPLES = 7;
 	static const uint32_t MAX_ERRORS  = 3;
 
-	static const Time MAX_AGE = std::chrono::milliseconds(10000).count();
+	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
 };
 
 struct Peers {
@@ -130,8 +130,14 @@ struct Peers {
 
 	explicit Peers(Endpoint addr): _this_addr(addr) {}
 
+	Peers(const Peers& rhs):
+		_peers(rhs._peers),
+		_this_addr(rhs._this_addr),
+		_principal(rhs._principal),
+		_subordinates(rhs._subordinates) {}
+
 	void add_peer(Endpoint addr) {
-		if (addr == _this_addr) return;
+		if (!addr || addr == _this_addr) return;
 		if (_peers.count(addr) == 0) {
 			_peers[addr];
 		}
@@ -177,6 +183,10 @@ struct Peers {
 		if (_principal) {
 			peers.insert(_principal);
 		}
+	}
+
+	void update_peers(const Peers& rhs) {
+		_peers.insert(rhs._peers.begin(), rhs._peers.end());
 	}
 
 	void add_subordinate(Endpoint addr) {
@@ -375,13 +385,12 @@ private:
 
 	Endpoint start_addr(const std::vector<Endpoint>& peers) {
 		if (peers.empty()) return Endpoint();
-		return peers.front();
-//		auto res = find(peers.begin(), peers.end(), _source);
-//		Endpoint st = peers.front();
-//		if (res != peers.end()) {
-//			st = *res;
-//		}
-//		return st;
+		auto res = find(peers.begin(), peers.end(), _source);
+		Endpoint st = peers.front();
+		if (res != peers.end()) {
+			st = *res;
+		}
+		return st;
 	}
 		
 	void try_to_connect(Endpoint addr) {
@@ -402,7 +411,7 @@ private:
 
 struct Discoverer: public Identifiable<Kernel> {
 
-	explicit Discoverer(Peers& peers): _peers(peers) {}
+	explicit Discoverer(const Peers& peers): _peers(peers) {}
 
 	void act() {
 		std::vector<Profiler*> profs;
@@ -444,8 +453,10 @@ struct Discoverer: public Identifiable<Kernel> {
 		}
 	}
 
+	const Peers& peers() const { return _peers; }
+
 private:
-	Peers& _peers;
+	Peers _peers;
 	uint32_t _num_sent = 0;
 };
 
@@ -568,6 +579,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				_peers.debug();
 				run_scan(_scanner->discovered_node());
 			} else {
+				Logger(Level::DISCOVERY) << "Change 1" << std::endl;
 				change_principal(_scanner->discovered_node());
 				run_discovery();
 				_scanner = nullptr;
@@ -575,16 +587,22 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		} else 
 		if (_discoverer == k) {
 			if (k->result() == Result::SUCCESS) {
-				change_principal(_peers.best_peer());
+				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
+				_peers.update_peers(dsc->peers());
 				_peers.debug();
+				Logger(Level::DISCOVERY) << "Change 2" << std::endl;
+				change_principal(_peers.best_peer());
 			}
 			run_discovery();
 		} else
 		if (_negotiator == k) {
 			if (k->result() != Result::SUCCESS) {
 				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
+				Endpoint princ = _peers.principal();
 				_peers.revert_principal(neg->old_principal());
+				run_negotiator(princ, _peers.principal());
 			}
+			_peers.debug();
 			_negotiator = nullptr;
 		} else
 		if (k->type()) {
@@ -612,6 +630,7 @@ private:
 	}
 	
 	void run_discovery() {
+		Logger(Level::DISCOVERY) << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}

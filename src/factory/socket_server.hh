@@ -350,6 +350,10 @@ namespace factory {
 					empty = _pool.empty();
 					lock.unlock();
 
+					if (k->to() == server_addr()) {
+						throw Error("Kernel is sent to local node.", __FILE__, __LINE__, __func__);
+					}
+
 					if (k->moves_everywhere()) {
 						Logger(Level::SERVER)
 							<< server_addr() << ' '
@@ -651,6 +655,7 @@ namespace factory {
 				if (event.is_writing() && !event.is_closing()) {
 //					try {
 						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
 						_ostream.flush<Socket>(_socket);
 						if (_ostream.empty()) {
 							Logger(Level::HANDLER) << "Flushed." << std::endl;
@@ -702,6 +707,7 @@ namespace factory {
 		private:
 
 			static void recover_kernel(Kernel* k) {
+				k->from(k->to());
 				k->result(Result::ENDPOINT_NOT_CONNECTED);
 				k->principal(k->parent());
 				factory_send(k);

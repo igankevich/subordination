@@ -86,19 +86,22 @@ namespace factory {
 			} else {
 				socklen_t sz = sizeof(ret);
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
-				// ignore EAGAIN since it is common 'error' in asynchronous programming
-				if (ret == EAGAIN) ret = 0;
 			}
-			// If one connects to localhost to a different port and the service is offline
-			// then socket's local port can be chosed to be the same as the port of the service.
-			// If this happens the socket connects to itself and sends and replies to
-			// its own messages. This conditional solves the issue.
-			try {
-				if (ret == 0 && name() == peer_name()) {
+			// ignore EAGAIN since it is common 'error' in asynchronous programming
+			if (ret == EAGAIN || ret == EINPROGRESS) {
+				ret = 0;
+			} else {
+				// If one connects to localhost to a different port and the service is offline
+				// then socket's local port can be chosed to be the same as the port of the service.
+				// If this happens the socket connects to itself and sends and replies to
+				// its own messages. This conditional solves the issue.
+				try {
+					if (ret == 0 && name() == peer_name()) {
+						ret = -1;
+					}
+				} catch (std::system_error& err) {
 					ret = -1;
 				}
-			} catch (std::system_error& err) {
-				ret = -1;
 			}
 			return ret;
 		}
