@@ -117,7 +117,7 @@ private:
 	Time _update_time = 0;
 
 	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 7;
+	static const uint32_t MIN_SAMPLES = 0;
 	static const uint32_t MAX_ERRORS  = 3;
 
 	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
