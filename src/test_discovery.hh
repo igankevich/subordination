@@ -6,6 +6,25 @@ const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
 
+struct Node {
+	explicit Node(const Endpoint& rhs): addr(rhs) {}
+	friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
+		return out << "n" << uint64_t(rhs.addr.address()) * uint64_t(rhs.addr.port());
+	}
+private:
+	const Endpoint& addr;
+};
+
+struct Edge {
+	Edge(const Endpoint& a, const Endpoint& b): x(a), y(b) {}
+	friend std::ostream& operator<<(std::ostream& out, const Edge& rhs) {
+		return out << Node(rhs.x) << '_' << Node(rhs.y);
+	}
+private:
+	const Endpoint& x;
+	const Endpoint& y;
+};
+
 struct Peer {
 
 	typedef uint64_t Time;
@@ -191,12 +210,35 @@ struct Peers {
 
 	void add_subordinate(Endpoint addr) {
 		Logger(Level::DISCOVERY) << "Adding subordinate = " << addr << std::endl;
+		if (_subordinates.count(addr) == 0) {
+			Logger(Level::GRAPH)
+				<< "log[logline++] = {"
+				<< "redo: function () {"
+				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
+				<< "g." << Node(addr) << ',' << "g." << Node(_this_addr) << ')'
+				<< "}, "
+				<< "undo: function () {"
+				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ")"
+				<< "}}"
+				<< std::endl;
+		}
 		_subordinates.insert(addr);
 		add_peer(addr);
 	}
 
 	void remove_subordinate(Endpoint addr) {
 		Logger(Level::DISCOVERY) << "Removing subordinate = " << addr << std::endl;
+		if (_subordinates.count(addr) > 0) {
+			Logger(Level::GRAPH)
+				<< "log[logline++] = {"
+				<< "redo: function () {"
+				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ')'
+				<< "}, undo: function() {"
+				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
+				<< "g." << Node(addr) << ',' << "g." << Node(_this_addr) << ')'
+				<< "}}"
+				<< std::endl;
+		}
 		_subordinates.erase(addr);
 		_peers.erase(addr);
 	}
@@ -493,17 +535,20 @@ struct Negotiator: public Mobile<Negotiator> {
 				peers.remove_subordinate(this->from());
 			}
 		}
+		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
 		remote_server()->send(this);
 	}
 	
 	void write_impl(Foreign_stream& out) {
 		// TODO: if moves_upstream
-		out << _old_principal << _new_principal;
+		out << _old_principal << _new_principal << _stop;
 	}
 
 	void read_impl(Foreign_stream& in) {
-		in >> _old_principal >> _new_principal;
+		in >> _old_principal >> _new_principal >> _stop;
 	}
+
+	bool stop() const { return _stop; }
 
 	static void init_type(Type* t) {
 		t->id(8);
@@ -513,6 +558,7 @@ struct Negotiator: public Mobile<Negotiator> {
 private:
 	Endpoint _old_principal;
 	Endpoint _new_principal;
+	bool _stop = false;
 };
 
 struct Master_negotiator: public Identifiable<Kernel> {
@@ -534,6 +580,12 @@ struct Master_negotiator: public Identifiable<Kernel> {
 //		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
 		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
 			this->result(k->result());
+		}
+		Negotiator* neg = dynamic_cast<Negotiator*>(k);
+		if (neg->stop()) {
+			Logger(Level::DISCOVERY) << "Hail the new king " << std::endl;
+//				<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
+			__factory.stop();
 		}
 		if (--_num_sent == 0) {
 			if (this->result() == Result::UNDEFINED) {
@@ -613,11 +665,6 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			} else if (k->type()->id() == 8) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
 				neg->act(_peers);
-				if (!_peers.principal() && _peers.num_subordinates() == all_peers.size()-1) {
-					Logger(Level::DISCOVERY) << "Hail the new king "
-						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
-					__factory.stop();
-				}
 			}
 		}
 	}
@@ -720,6 +767,16 @@ void write_cache_all() {
 	}
 }
 
+void write_graph_nodes() {
+	for (Endpoint addr : all_peers) {
+		Logger(Level::GRAPH)
+			<< "log[logline++] = {"
+			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
+			<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
+			<< std::endl;
+	}
+}
+
 
 struct App {
 	int run(int argc, char* argv[]) {
@@ -729,6 +786,7 @@ struct App {
 				int npeers = num_peers();
 				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1"; 
 				generate_all_peers(npeers, base_ip);
+				write_graph_nodes();
 				if (write_cache()) {
 					write_cache_all();
 					return 0;

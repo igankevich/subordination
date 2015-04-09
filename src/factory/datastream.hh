@@ -12,6 +12,7 @@ namespace factory {
 		explicit Foreign_stream(Size buffer_size = DEFAULT_BUFFER_SIZE):
 			Buffer<Byte>(buffer_size) {}
 
+		Foreign_stream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
 		Foreign_stream& operator<<(char rhs) { return write(rhs); }
 #ifdef INT8_MAX
 		Foreign_stream& operator<<(int8_t rhs)  { return write(rhs); }
@@ -42,6 +43,9 @@ namespace factory {
 		Foreign_stream& operator<<(long double rhs) { return write(rhs); }
 		Foreign_stream& operator<<(const std::string& rhs) { return write(rhs); }
 
+		Foreign_stream& operator>>(bool& rhs) {
+			char c; read(c); rhs = c == 1; return *this;
+		}
 		Foreign_stream& operator>>(char& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int8_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int16_t& rhs) { return read(rhs); }

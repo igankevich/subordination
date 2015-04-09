@@ -8,6 +8,7 @@ namespace factory {
 		Tag COMPONENT = "cmpnt";
 		Tag STRATEGY  = "strat";
 		Tag DISCOVERY = "dscvr";
+		Tag GRAPH     = "grph";
 	};
 
 	struct Logger {

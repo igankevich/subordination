@@ -1,0 +1,126 @@
+#!/bin/sh
+
+# header
+cat << EOF
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Replay graph</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+	<script src="../js/lib/jquery-1.10.2.js"></script>
+	<script src="../js/lib/jquery-ui.js"></script>
+	<script src="../js/lib/springy.js"></script>
+	<script src="../js/lib/springyui.js"></script>
+	<style>
+	body {
+		margin: 0px;
+		text-align: center;
+	}
+	canvas {
+		background: #eee;
+		display: block;
+		position: absolute
+		z-index: -1;
+	}
+	.hud {
+		position: absolute;
+		left: 10%;
+		top: 40px;
+		width: 80%;
+	}
+	.ui-slider-range {
+		background: #404040;
+	}
+	.ui-slider .ui-slider-handle {
+		background: #505050;
+		border-style: none;
+	}
+	.ui-slider {
+		border-style: none;
+	}
+	</style>
+</head>
+<body>
+<script>
+
+// global object to store nodes and edges variables
+var g = {}
+var log = [
+	{
+		redo: function () {},
+		undo: function () {}
+	}
+]
+var logline = 1
+var currentLine = 0
+var graph = new Springy.Graph()
+
+// GENERATED CODE
+EOF
+
+./test_discovery 2>&1 | sed -rne 's/.*grph (.*)/\1/p'
+
+# footer
+cat << 'EOF'
+// END OF GENERATED CODE
+
+function showLineNo() {
+	$('#lineno').html(currentLine + 1 + '/' + log.length)
+}
+
+function gotoLine(targetLine) {
+	if (targetLine == currentLine) return;
+	if (targetLine > currentLine) {
+		for (var i=currentLine+1; i<=targetLine; ++i) {
+			log[i].redo()
+		}
+	}
+	if (targetLine < currentLine) {
+		for (var i=currentLine; i>targetLine; --i) {
+			log[i].undo()
+		}
+	}
+	currentLine = targetLine
+	showLineNo()
+}
+
+function changeLogLine() {
+	var targetLine = $('#logSlider').slider("value")
+	gotoLine(targetLine)
+}
+
+function resizeCanvas() {
+	var canvas = document.getElementById('springydemo');
+	canvas.width = window.innerWidth
+	canvas.height = window.innerHeight
+}
+
+$(window).resize(function () {
+	resizeCanvas()
+});
+
+$(document).ready(function(){
+	showLineNo()
+	resizeCanvas()
+	var springy = $('#springydemo').springy({
+		graph: graph
+	});
+	$('#logSlider').slider({
+		value: 0,
+		max: logline-1,
+		range: "min",
+		change: changeLogLine,
+		slide: changeLogLine
+	});
+});
+</script>
+
+<div class="hud">
+	<span>Epoch:&nbsp;</span><span id="lineno">1</span>&nbsp;&nbsp;
+	<div id="logSlider" style="width:77%;display:inline-block"></div><br/>
+</div>
+	<canvas id="springydemo" width="800" height="600" />
+</body>
+</html>
+EOF
