@@ -15,7 +15,6 @@ cat << EOF
 	<style>
 	body {
 		margin: 0px;
-		text-align: center;
 	}
 	canvas {
 		background: #eee;
@@ -38,6 +37,12 @@ cat << EOF
 	}
 	.ui-slider {
 		border-style: none;
+		vertical-align: top;
+	}
+	#legend {
+		display: inline-block;
+		width: 240px;
+		padding-bottom: 1em;
 	}
 	</style>
 </head>
@@ -49,7 +54,8 @@ var g = {}
 var log = [
 	{
 		redo: function () {},
-		undo: function () {}
+		undo: function () {},
+		time: 0
 	}
 ]
 var logline = 1
@@ -59,14 +65,20 @@ var graph = new Springy.Graph()
 // GENERATED CODE
 EOF
 
-./test_discovery 2>&1 | sed -rne 's/.*grph (.*)/\1/p'
+./test_discovery 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
 
 # footer
 cat << 'EOF'
 // END OF GENERATED CODE
 
+function toPrecision(x, n) {
+	var m = Math.pow(10, n)
+	return Math.floor(x * m) / m
+}
+
 function showLineNo() {
-	$('#lineno').html(currentLine + 1 + '/' + log.length)
+	$('#time').html('Time: ' + toPrecision(log[currentLine].time, 2) + 'ms')
+	$('#lineno').html('Line: ' + (currentLine + 1) + '/' + log.length)
 }
 
 function gotoLine(targetLine) {
@@ -116,10 +128,13 @@ $(document).ready(function(){
 });
 </script>
 
-<div class="hud">
-	<span>Epoch:&nbsp;</span><span id="lineno">1</span>&nbsp;&nbsp;
-	<div id="logSlider" style="width:77%;display:inline-block"></div><br/>
-</div>
+	<div class="hud">
+		<div id="legend">
+			<span id="time">1</span><br/>
+			<span id="lineno">1</span>
+		</div>
+		<div id="logSlider"></div>
+	</div>
 	<canvas id="springydemo" width="800" height="600" />
 </body>
 </html>
