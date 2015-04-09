@@ -35,9 +35,12 @@ struct Peer {
 		_t(rhs._t),
 		_num_samples(rhs._num_samples),
 		_num_errors(rhs._num_errors),
+		_num_subs(rhs._num_subs),
 		_update_time(rhs._update_time) {}
 
-	Metric metric() const { return _t/1000/1000/1000; }
+	std::pair<Metric,uint32_t> metric() const {
+		return std::make_pair(_t/1000/1000/1000, num_subs() <= 3 ? 0 : 1);
+	}
 
 	void collect_sample(Time rhs) {
 		update();
@@ -53,25 +56,24 @@ struct Peer {
 		_num_errors += cnt;
 	}
 
+	void collect_subs(uint32_t cnt) {
+		_num_subs = cnt;
+	}
+
 	bool needs_update() const {
 		return (num_samples() < MIN_SAMPLES && num_errors() < MAX_ERRORS)
 			|| age() > MAX_AGE;
 	}
 
 	bool operator<(const Peer& rhs) const {
-		return metric() > rhs.metric();
+		return metric() < rhs.metric();
 	}
-
-//	friend bool operator<(const std::pair<Endpoint,Peer>& lhs, const std::pair<Endpoint,Peer>& rhs) {
-////		return lhs.second.metric() < rhs.second.metric()
-////			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
-//		return lhs.first < rhs.first;
-//	}
 
 	Peer& operator=(const Peer& rhs) {
 		_t = rhs._t;
 		_num_samples = rhs._num_samples;
 		_num_errors = rhs._num_errors;
+		_num_subs = rhs._num_subs;
 		_update_time = rhs._update_time;
 		return *this;
 	}
@@ -81,6 +83,7 @@ struct Peer {
 			<< rhs._t << ' '
 			<< rhs._num_samples << ' '
 			<< rhs._num_errors << ' '
+			<< rhs._num_subs << ' '
 			<< rhs._update_time;
 	}
 
@@ -89,6 +92,7 @@ struct Peer {
 			>> rhs._t
 			>> rhs._num_samples
 			>> rhs._num_errors
+			>> rhs._num_subs
 			>> rhs._update_time;
 	}
 
@@ -98,6 +102,7 @@ struct Peer {
 			<< rhs.second._t << ' '
 			<< rhs.second._num_samples << ' '
 			<< rhs.second._num_errors << ' '
+			<< rhs.second._num_subs << ' '
 			<< rhs.second._update_time;
 	}
 
@@ -107,10 +112,9 @@ struct Peer {
 			>> rhs.second._t
 			>> rhs.second._num_samples
 			>> rhs.second._num_errors
+			>> rhs.second._num_subs
 			>> rhs.second._update_time;
 	}
-
-private:
 
 	typedef std::chrono::steady_clock Clock;
 
@@ -118,8 +122,11 @@ private:
 		return Clock::now().time_since_epoch().count();
 	}
 
+private:
+
 	uint32_t num_samples() const { return _num_samples; }
 	uint32_t num_errors() const { return _num_errors; }
+	uint32_t num_subs() const { return _num_subs; }
 
 	Time age() const { return now() - _update_time; }
 	void update() {
@@ -133,14 +140,27 @@ private:
 	Time _t = 0;
 	uint32_t _num_samples = 0;
 	uint32_t _num_errors = 0;
+	uint32_t _num_subs = 0;
 	Time _update_time = 0;
 
 	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 0;
+	static const uint32_t MIN_SAMPLES = 3;
 	static const uint32_t MAX_ERRORS  = 3;
 
-	static const Time MAX_AGE = std::chrono::milliseconds(1000).count();
+	static const Time MAX_AGE = std::chrono::milliseconds(100).count();
 };
+
+Peer::Time prog_start = Peer::now();
+
+namespace std {
+	bool operator<(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) {
+		Logger(Level::DISCOVERY) << "hoho" << std::endl;
+		return lhs.second.metric() < rhs.second.metric();
+//		return lhs.second.metric() < rhs.second.metric()
+//			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
+//		return lhs.first > rhs.first;
+	}
+}
 
 struct Peers {
 
@@ -205,7 +225,14 @@ struct Peers {
 	}
 
 	void update_peers(const Peers& rhs) {
-		_peers.insert(rhs._peers.begin(), rhs._peers.end());
+		for (const auto& p : rhs._peers) {
+			auto it = _peers.find(p.first);
+			if (it == _peers.end()) {
+				_peers.insert(p);
+			} else {
+				it->second = p.second;
+			}
+		}
 	}
 
 	void add_subordinate(Endpoint addr) {
@@ -337,6 +364,8 @@ struct Profiler: public Mobile<Profiler> {
 			peers.add_peer(addr);
 		}
 	}
+
+	uint32_t num_peers() const { return _peers.size(); }
 
 	Time time() const { return _time; }
 
@@ -483,6 +512,7 @@ struct Discoverer: public Identifiable<Kernel> {
 		} else {
 			p.collect_sample(prof->time());
 		}
+		p.collect_subs(prof->num_peers());
 		if (p.needs_update()) {
 			Profiler* prof2 = new Profiler;
 			prof2->to(prof->from());
@@ -582,7 +612,8 @@ struct Master_negotiator: public Identifiable<Kernel> {
 			this->result(k->result());
 		}
 		Negotiator* neg = dynamic_cast<Negotiator*>(k);
-		if (neg->stop()) {
+		if (Peer::now() - prog_start > 10000000000UL) {
+//		if (neg->stop()) {
 			Logger(Level::DISCOVERY) << "Hail the new king " << std::endl;
 //				<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 			__factory.stop();
