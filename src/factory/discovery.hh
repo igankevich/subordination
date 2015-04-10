@@ -1,5 +1,17 @@
 namespace factory {
 
+	uint32_t log2(uint32_t x) {
+		uint32_t n = 0;
+		while (x >>= 1) n++;
+		return n;
+	}
+
+	uint32_t log(uint32_t x, uint32_t p = 1) {
+		uint32_t n = 0;
+		while (x >>= p) n++;
+		return n;
+	}
+
 	template<class I>
 	struct Interval {
 

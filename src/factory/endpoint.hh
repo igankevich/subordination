@@ -92,10 +92,15 @@ namespace factory {
 		Port port() const { return ntohs(_addr.sin_port); }
 		void port(Port rhs) { _addr.sin_port = htons(rhs); }
 
+		uint32_t position(uint32_t netmask) const {
+			uint32_t a = address();
+			return a - (a & netmask);
+		}
+
 		struct ::sockaddr_in* addr() { return &_addr; }
 		const struct ::sockaddr_in* addr() const { return &_addr; }
 
-		operator bool() const { return _addr.sin_addr.s_addr != 0; }
+		explicit operator bool() const { return _addr.sin_addr.s_addr != 0; }
 		bool operator !() const { return _addr.sin_addr.s_addr == 0; }
 
 	private:

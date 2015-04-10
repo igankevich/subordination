@@ -6,6 +6,11 @@ const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
 
+uint32_t my_netmask() {
+	return std::numeric_limits<uint32_t>::max()
+		- (pow(uint32_t(2), std::ceil(std::log2(all_peers.size() - 1))) - 1);
+}
+
 struct Node {
 	explicit Node(const Endpoint& rhs): addr(rhs) {}
 	friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
@@ -142,9 +147,9 @@ namespace std {
 	bool operator<(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) {
 		Logger(Level::DISCOVERY) << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
-		return lhs.second.metric() < rhs.second.metric()
-			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
-//		return lhs.first > rhs.first;
+//		return lhs.second.metric() < rhs.second.metric()
+//			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
+		return lhs.first < rhs.first;
 	}
 }
 
@@ -759,6 +764,21 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	for (uint32_t i=start; i<end; ++i) {
 		Endpoint endpoint(i, DISCOVERY_PORT);
 		all_peers.push_back(endpoint);
+	}
+	uint32_t p = 1;
+	uint32_t fanout = 1 << p;
+	for (Endpoint addr : all_peers) {
+		uint32_t pos = addr.position(my_netmask());
+		uint32_t lvl = log(pos, p);
+		uint32_t rem = pos - (1 << lvl);
+		Logger(Level::DISCOVERY)
+			<< "Netmask = "
+			<< addr << ", "
+			<< Endpoint(my_netmask(), 0) << ", "
+			<< pos << ", "
+			<< lvl << ":" << rem << " --> "
+			<< lvl-1 << ":" << rem/fanout
+			<< std::endl;
 	}
 }
 
