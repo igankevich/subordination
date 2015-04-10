@@ -878,7 +878,6 @@ struct App {
 				int npeers = num_peers();
 				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1"; 
 				generate_all_peers(npeers, base_ip);
-				write_graph_nodes();
 				if (write_cache()) {
 					write_cache_all();
 					return 0;
@@ -908,22 +907,25 @@ struct App {
 			}
 		} else {
 			int npeers = 3;
-			Endpoint endpoint(get_bind_address(), DISCOVERY_PORT);
+			Endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
 			std::string base_ip = "127.0.0.1";
 			Command_line cmdline(argc, argv);
-			cmdline.parse([&endpoint, &npeers, &base_ip](const std::string& arg, std::istream& in) {
-				     if (arg == "--bind-addr") { in >> endpoint; }
+			cmdline.parse([&bind_addr, &npeers, &base_ip](const std::string& arg, std::istream& in) {
+				     if (arg == "--bind-addr") { in >> bind_addr; }
 				else if (arg == "--num-peers") { in >> npeers; }
 				else if (arg == "--base-ip")   { in >> base_ip; }
 			});
-			Logger(Level::DISCOVERY) << "Bind address " << endpoint << std::endl;
+			Logger(Level::DISCOVERY) << "Bind address " << bind_addr << std::endl;
 			generate_all_peers(npeers, base_ip);
+			if (Endpoint(base_ip,0).address() == bind_addr.address()) {
+				write_graph_nodes();
+			}
 			try {
 				the_server()->add(0);
 				the_server()->start();
-				remote_server()->socket(endpoint);
+				remote_server()->socket(bind_addr);
 				remote_server()->start();
-				the_server()->send(new Master_discoverer(endpoint));
+				the_server()->send(new Master_discoverer(bind_addr));
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;

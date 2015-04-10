@@ -17,6 +17,7 @@ ensureRoot()
 parser = OptionParser(description='Runs a command on each host of Mininet.')
 parser.add_option('--depth', '-d', type='int', dest='depth', default=1)
 parser.add_option('--fanout', '-f', type='int', dest='fanout', default=3)
+parser.add_option('--pattern', '-p', type='string', dest='pattern', default='dscvr')
 opts, args = parser.parse_args()
 cmd=' '.join(args)
 base_ip = '10.0.0.1'
@@ -41,10 +42,10 @@ try:
 	# wait for the completion
 	for host in net.hosts:
 		print host.cmd('wait')
-	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '")
+	os.system("grep -h %s /tmp/*.*.log | sort -nk1 -t' '" % opts.pattern)
 except:
 	# print log records in chronological order
-	os.system("grep -h dscvr /tmp/*.*.log | sort -nk1 -t' '")
+	os.system("grep -h %s /tmp/*.*.log | sort -nk1 -t' '" % opts.pattern)
 finally:
 #	os.system("rm -f /tmp/*.*.log")
 	net.stop()

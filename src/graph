@@ -1,5 +1,11 @@
 #!/bin/sh
 
+cmd=$@
+
+if [ -z "$cmd" ]; then
+	cmd="./test_discovery"
+fi
+
 # header
 cat << EOF
 <!DOCTYPE html>
@@ -65,7 +71,7 @@ var graph = new Springy.Graph()
 // GENERATED CODE
 EOF
 
-./test_discovery 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
+$cmd 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
 
 # footer
 cat << 'EOF'
