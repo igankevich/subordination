@@ -35,12 +35,9 @@ struct Peer {
 		_t(rhs._t),
 		_num_samples(rhs._num_samples),
 		_num_errors(rhs._num_errors),
-		_num_subs(rhs._num_subs),
 		_update_time(rhs._update_time) {}
 
-	std::pair<Metric,uint32_t> metric() const {
-		return std::make_pair(_t/1000/1000/1000, num_subs() <= 3 ? 0 : 1);
-	}
+	Metric metric() const { return _t/1000/1000/1000; }
 
 	void collect_sample(Time rhs) {
 		update();
@@ -56,10 +53,6 @@ struct Peer {
 		_num_errors += cnt;
 	}
 
-	void collect_subs(uint32_t cnt) {
-		_num_subs = cnt;
-	}
-
 	bool needs_update() const {
 		return (num_samples() < MIN_SAMPLES && num_errors() < MAX_ERRORS)
 			|| age() > MAX_AGE;
@@ -73,7 +66,6 @@ struct Peer {
 		_t = rhs._t;
 		_num_samples = rhs._num_samples;
 		_num_errors = rhs._num_errors;
-		_num_subs = rhs._num_subs;
 		_update_time = rhs._update_time;
 		return *this;
 	}
@@ -83,7 +75,6 @@ struct Peer {
 			<< rhs._t << ' '
 			<< rhs._num_samples << ' '
 			<< rhs._num_errors << ' '
-			<< rhs._num_subs << ' '
 			<< rhs._update_time;
 	}
 
@@ -92,7 +83,6 @@ struct Peer {
 			>> rhs._t
 			>> rhs._num_samples
 			>> rhs._num_errors
-			>> rhs._num_subs
 			>> rhs._update_time;
 	}
 
@@ -102,7 +92,6 @@ struct Peer {
 			<< rhs.second._t << ' '
 			<< rhs.second._num_samples << ' '
 			<< rhs.second._num_errors << ' '
-			<< rhs.second._num_subs << ' '
 			<< rhs.second._update_time;
 	}
 
@@ -112,7 +101,6 @@ struct Peer {
 			>> rhs.second._t
 			>> rhs.second._num_samples
 			>> rhs.second._num_errors
-			>> rhs.second._num_subs
 			>> rhs.second._update_time;
 	}
 
@@ -126,7 +114,6 @@ private:
 
 	uint32_t num_samples() const { return _num_samples; }
 	uint32_t num_errors() const { return _num_errors; }
-	uint32_t num_subs() const { return _num_subs; }
 
 	Time age() const { return now() - _update_time; }
 	void update() {
@@ -140,11 +127,10 @@ private:
 	Time _t = 0;
 	uint32_t _num_samples = 0;
 	uint32_t _num_errors = 0;
-	uint32_t _num_subs = 0;
 	Time _update_time = 0;
 
 	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 3;
+	static const uint32_t MIN_SAMPLES = 0;
 	static const uint32_t MAX_ERRORS  = 3;
 
 	static const Time MAX_AGE = std::chrono::milliseconds(100).count();
@@ -155,9 +141,9 @@ Peer::Time prog_start = Peer::now();
 namespace std {
 	bool operator<(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) {
 		Logger(Level::DISCOVERY) << "hoho" << std::endl;
-		return lhs.second.metric() < rhs.second.metric();
-//		return lhs.second.metric() < rhs.second.metric()
-//			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
+//		return lhs.second.metric() < rhs.second.metric();
+		return lhs.second.metric() < rhs.second.metric()
+			|| (lhs.second.metric() == rhs.second.metric() && lhs.first > rhs.first);
 //		return lhs.first > rhs.first;
 	}
 }
@@ -410,7 +396,7 @@ struct Scanner: public Identifiable<Kernel> {
 
 	void act() {
 		if (_servers.empty()) {
-			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
+//			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
 			commit(the_server(), Result::USER_ERROR);
 		} else {
 			_scan_addr = next_scan_addr();
@@ -512,7 +498,6 @@ struct Discoverer: public Identifiable<Kernel> {
 		} else {
 			p.collect_sample(prof->time());
 		}
-		p.collect_subs(prof->num_peers());
 		if (p.needs_update()) {
 			Profiler* prof2 = new Profiler;
 			prof2->to(prof->from());
@@ -611,13 +596,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
 			this->result(k->result());
 		}
-		Negotiator* neg = dynamic_cast<Negotiator*>(k);
-		if (Peer::now() - prog_start > 10000000000UL) {
-//		if (neg->stop()) {
-			Logger(Level::DISCOVERY) << "Hail the new king " << std::endl;
-//				<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
-			__factory.stop();
-		}
+//		Negotiator* neg = dynamic_cast<Negotiator*>(k);
 		if (--_num_sent == 0) {
 			if (this->result() == Result::UNDEFINED) {
 				this->result(Result::SUCCESS);
@@ -659,7 +638,11 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				_peers.debug();
+				if (Peer::now() - prog_start > 20000000000UL) {
+					Logger(Level::DISCOVERY) << "Hail the new king "
+						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
+					__factory.stop();
+				}
 				run_scan(_scanner->discovered_node());
 			} else {
 				Logger(Level::DISCOVERY) << "Change 1" << std::endl;
