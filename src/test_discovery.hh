@@ -8,7 +8,7 @@ std::vector<Endpoint> all_peers;
 
 uint32_t my_netmask() {
 	return std::numeric_limits<uint32_t>::max()
-		- (pow(uint32_t(2), std::ceil(std::log2(all_peers.size() - 1))) - 1);
+		- (pow(uint32_t(2), std::ceil(std::log2(all_peers.size()))) - 1);
 }
 
 struct Node {
@@ -143,15 +143,53 @@ private:
 
 Peer::Time prog_start = Peer::now();
 
-namespace std {
-	bool operator<(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) {
+struct Compare_distance {
+
+	explicit Compare_distance(Endpoint from): _from(from) {}
+
+	bool operator()(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) const {
 		Logger(Level::DISCOVERY) << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
 //			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
-		return lhs.first < rhs.first;
+		
+		return std::make_pair(addr_distance(_from, lhs.first), lhs.first)
+			< std::make_pair(addr_distance(_from, rhs.first), rhs.first);
 	}
-}
+
+	bool operator()(const Endpoint& lhs, const Endpoint& rhs) const {
+		return std::make_pair(addr_distance(_from, lhs), lhs)
+			< std::make_pair(addr_distance(_from, rhs), rhs);
+	}
+
+private:
+	static uint32_t abs_sub(uint32_t a, uint32_t b) {
+		return a < b ? b-a : a-b;
+	}
+	
+	static uint32_t lvl_sub(uint32_t a, uint32_t b) {
+		return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
+	}
+
+	static const uint32_t p = 1;
+	static const uint32_t fanout = 1 << p;
+	
+	static std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
+		uint32_t pos = addr.position(my_netmask());
+		uint32_t lvl = log(pos, p);
+		uint32_t num = pos - (1 << lvl);
+		return std::make_pair(lvl, num);
+	}
+	
+	static std::pair<uint32_t, uint32_t> addr_distance(Endpoint lhs, Endpoint rhs) {
+		auto p1 = addr_level_num(lhs);
+		auto p2 = addr_level_num(rhs);
+		return std::make_pair(lvl_sub(p2.first, p1.first),
+			abs_sub(p2.second, p1.second/fanout));
+	}
+
+	Endpoint _from;
+};
 
 struct Peers {
 
@@ -174,7 +212,8 @@ struct Peers {
 	}
 
 	Endpoint best_peer() const {
-		return std::min_element(_peers.begin(), _peers.end())->first;
+		return std::min_element(_peers.begin(), _peers.end(),
+			Compare_distance(_this_addr))->first;
 	}
 
 	Endpoint this_addr() const { return _this_addr; }
@@ -425,6 +464,7 @@ struct Scanner: public Identifiable<Kernel> {
 	}
 
 	Endpoint discovered_node() const { return _discovered_node; }
+	Endpoint scan_addr() const { return _scan_addr; }
 
 private:
 
@@ -445,8 +485,12 @@ private:
 			: *--res;
 	}
 
-	Endpoint start_addr(const std::vector<Endpoint>& peers) {
+	Endpoint start_addr(const std::vector<Endpoint>& peers) const {
 		if (peers.empty()) return Endpoint();
+		auto it = std::min_element(peers.begin(), peers.end(), Compare_distance(_source));
+		if (*it != _source) {
+			return *it;
+		}
 		auto res = find(peers.begin(), peers.end(), _source);
 		Endpoint st = peers.front();
 		if (res != peers.end()) {
@@ -638,12 +682,14 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		_negotiator(nullptr)
 	{}
 
-	void act() { run_scan(); }
+	void act() {
+		run_scan();
+	}
 
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				if (Peer::now() - prog_start > 20000000000UL) {
+				if (Peer::now() - prog_start > 30000000000UL) {
 					Logger(Level::DISCOVERY) << "Hail the new king "
 						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 					__factory.stop();
@@ -692,7 +738,11 @@ private:
 
 	void run_scan(Endpoint old_addr = Endpoint()) {
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(the_server(), _scanner = new Scanner(_peers.this_addr(), old_addr));
+		_scanner = new Scanner(_peers.this_addr(), old_addr);
+		if (!old_addr) {
+			_peers.add_peer(_scanner->scan_addr());
+		}
+		upstream(the_server(), _scanner);
 	}
 	
 	void run_discovery() {
@@ -757,30 +807,6 @@ int num_peers() {
 
 bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
 
-uint32_t abs_sub(uint32_t a, uint32_t b) {
-	return a < b ? b-a : a-b;
-}
-
-uint32_t lvl_sub(uint32_t a, uint32_t b) {
-	return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
-}
-
-std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
-	static const uint32_t p = 1;
-	static const uint32_t fanout = 1 << p;
-	uint32_t pos = addr.position(my_netmask());
-	uint32_t lvl = log(pos, p);
-	uint32_t num = pos - (1 << lvl);
-	return std::make_pair(lvl, num);
-}
-
-std::pair<uint32_t, uint32_t> addr_distance(Endpoint lhs, Endpoint rhs) {
-	auto p1 = addr_level_num(lhs);
-	auto p2 = addr_level_num(rhs);
-	return std::make_pair(lvl_sub(p2.first, p1.first),
-		abs_sub(p2.second, p1.second));
-}
-
 void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	all_peers.clear();
 	uint32_t start = Endpoint(base_ip.c_str(), 0).address();
@@ -789,23 +815,29 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 		Endpoint endpoint(i, DISCOVERY_PORT);
 		all_peers.push_back(endpoint);
 	}
-	uint32_t p = 1;
-	uint32_t fanout = 1 << p;
 	for (Endpoint addr : all_peers) {
-		uint32_t pos = addr.position(my_netmask());
-		uint32_t lvl = log(pos, p);
-		uint32_t rem = pos - (1 << lvl);
-		auto dist = addr_distance(all_peers[7], addr);
+		auto it = std::min_element(all_peers.begin(), all_peers.end(),
+			Compare_distance(addr));
 		Logger(Level::DISCOVERY)
-			<< "Netmask = "
-			<< addr << ", "
-			<< Endpoint(my_netmask(), 0) << ", "
-			<< pos << ", "
-			<< lvl << ":" << rem << " --> "
-			<< lvl-1 << ":" << rem/fanout << ", distance = "
-			<< dist.first << ',' << dist.second
-			<< std::endl;
+			<< "Best link: " << addr << " -> " << *it << std::endl;
 	}
+//	uint32_t p = 1;
+//	uint32_t fanout = 1 << p;
+//	for (Endpoint addr : all_peers) {
+//		uint32_t pos = addr.position(my_netmask());
+//		uint32_t lvl = log(pos, p);
+//		uint32_t rem = pos - (1 << lvl);
+//		auto dist = addr_distance(all_peers[7], addr);
+//		Logger(Level::DISCOVERY)
+//			<< "Netmask = "
+//			<< addr << ", "
+//			<< Endpoint(my_netmask(), 0) << ", "
+//			<< pos << ", "
+//			<< lvl << ":" << rem << " --> "
+//			<< lvl-1 << ":" << rem/fanout << ", distance = "
+//			<< dist.first << ',' << dist.second
+//			<< std::endl;
+//	}
 }
 
 std::string cache_filename(Endpoint source) {
