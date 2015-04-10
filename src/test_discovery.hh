@@ -757,6 +757,30 @@ int num_peers() {
 
 bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
 
+uint32_t abs_sub(uint32_t a, uint32_t b) {
+	return a < b ? b-a : a-b;
+}
+
+uint32_t lvl_sub(uint32_t a, uint32_t b) {
+	return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
+}
+
+std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
+	static const uint32_t p = 1;
+	static const uint32_t fanout = 1 << p;
+	uint32_t pos = addr.position(my_netmask());
+	uint32_t lvl = log(pos, p);
+	uint32_t num = pos - (1 << lvl);
+	return std::make_pair(lvl, num);
+}
+
+std::pair<uint32_t, uint32_t> addr_distance(Endpoint lhs, Endpoint rhs) {
+	auto p1 = addr_level_num(lhs);
+	auto p2 = addr_level_num(rhs);
+	return std::make_pair(lvl_sub(p2.first, p1.first),
+		abs_sub(p2.second, p1.second));
+}
+
 void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	all_peers.clear();
 	uint32_t start = Endpoint(base_ip.c_str(), 0).address();
@@ -771,13 +795,15 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
 		uint32_t rem = pos - (1 << lvl);
+		auto dist = addr_distance(all_peers[7], addr);
 		Logger(Level::DISCOVERY)
 			<< "Netmask = "
 			<< addr << ", "
 			<< Endpoint(my_netmask(), 0) << ", "
 			<< pos << ", "
 			<< lvl << ":" << rem << " --> "
-			<< lvl-1 << ":" << rem/fanout
+			<< lvl-1 << ":" << rem/fanout << ", distance = "
+			<< dist.first << ',' << dist.second
 			<< std::endl;
 	}
 }
