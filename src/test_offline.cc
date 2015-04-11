@@ -18,7 +18,7 @@ std::atomic<uint32_t> shutdown_counter(0);
 struct Test_socket: public Mobile<Test_socket> {
 
 	Test_socket(): _data() {}
-	explicit Test_socket(std::vector<Datum> data): _data(data) {}
+	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
 		Logger log(Level::COMPONENT);
