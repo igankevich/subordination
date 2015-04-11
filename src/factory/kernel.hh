@@ -202,6 +202,11 @@ namespace factory {
 							this->act();
 						}
 						break;
+					case Result::SUCCESS:
+					case Result::ENDPOINT_NOT_CONNECTED:
+					case Result::NO_UPSTREAM_SERVERS_LEFT:
+					case Result::NO_PRINCIPAL_FOUND:
+					case Result::USER_ERROR:
 					default:
 						Logger(Level::KERNEL) << "Result is defined" << std::endl;
 						if (!_principal) {

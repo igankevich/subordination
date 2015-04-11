@@ -31,8 +31,8 @@ namespace factory {
 	struct Endpoint {
 
 		Endpoint() { std::memset((void*)&_addr, 0, sizeof(_addr)); }
-		Endpoint(const Host& host, Port port) { addr(host.c_str(), port); }
-		Endpoint(uint32_t host, Port port) { addr(host, port); }
+		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
+		Endpoint(uint32_t h, Port p) { addr(h, p); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
 		Endpoint(struct ::sockaddr_in* rhs) { addr(rhs); }
 
@@ -83,9 +83,10 @@ namespace factory {
 		}
 
 		Host host() const {
-			char host[64];
-			check_inet("inet_ntop()", ::inet_ntop(AF_INET, &_addr.sin_addr.s_addr, host, sizeof(host)));
-			return Host(host);
+			char h[64];
+			check_inet("inet_ntop()",
+				::inet_ntop(AF_INET, &_addr.sin_addr.s_addr, h, sizeof(h)));
+			return Host(h);
 		}
 
 		uint32_t address() const { return ntohl(_addr.sin_addr.s_addr); }
@@ -109,23 +110,23 @@ namespace factory {
 			std::memcpy((void*)&_addr, (const void*)rhs, sizeof(_addr));
 		}
 
-		void addr(const char* host, Port port) {
+		void addr(const char* h, Port p) {
 			_addr.sin_family = AF_INET;
-			_addr.sin_port = htons(port);
-			int ret = ::inet_pton(AF_INET, host, &_addr.sin_addr);
+			_addr.sin_port = htons(p);
+			int ret = ::inet_pton(AF_INET, h, &_addr.sin_addr);
 			if (ret == 0 || ret == -1) {
 				throw ret;
 //				std::stringstream msg;
-//				msg << "inet_pton(). Bad address: '" << host << "'.";
+//				msg << "inet_pton(). Bad address: '" << h << "'.";
 //				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
 
-		void addr(const uint32_t host, Port port) {
+		void addr(const uint32_t h, Port p) {
 			struct ::sockaddr_in a;
 			a.sin_family = AF_INET;
-			a.sin_addr.s_addr = htonl(host);
-			a.sin_port = htons(port);
+			a.sin_addr.s_addr = htonl(h);
+			a.sin_port = htons(p);
 			addr(&a);
 		}
 

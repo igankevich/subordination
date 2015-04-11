@@ -9,7 +9,7 @@ namespace factory {
 		Tag STRATEGY  = "strat";
 		Tag DISCOVERY = "dscvr";
 		Tag GRAPH     = "grph";
-	};
+	}
 
 	struct Logger {
 
@@ -213,7 +213,6 @@ namespace factory {
 	enum struct Result: uint16_t {
 		SUCCESS = 0,
 		UNDEFINED = 1,
-		UNDEFINED_DOWNSTREAM = 2,
 		ENDPOINT_NOT_CONNECTED = 3,
 		NO_UPSTREAM_SERVERS_LEFT = 4,
 		NO_PRINCIPAL_FOUND = 5,
@@ -224,11 +223,11 @@ namespace factory {
 		switch (rhs) {
 			case Result::SUCCESS: out << "SUCCESS"; break;
 			case Result::UNDEFINED: out << "UNDEFINED"; break;
-			case Result::UNDEFINED_DOWNSTREAM: out << "UNDEFINED_DOWNSTREAM"; break;
 			case Result::ENDPOINT_NOT_CONNECTED: out << "ENDPOINT_NOT_CONNECTED"; break;
 			case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
 			case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
 			case Result::USER_ERROR: out << "USER_ERROR"; break;
+			default: out << "UNKNOWN_RESULT";
 		}
 		return out;
 	}
