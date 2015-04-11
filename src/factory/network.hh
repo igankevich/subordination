@@ -21,6 +21,8 @@ namespace factory {
 		T val;
 		uint32_t i;
 		char bytes[sizeof(T)];
+
+		static_assert(sizeof(T) == sizeof(uint32_t), "Bad 'float' type size");
 	};
 
 	template<>
@@ -33,6 +35,8 @@ namespace factory {
 		T val;
 		uint64_t i;
 		char bytes[sizeof(T)];
+
+		static_assert(sizeof(T) == sizeof(uint64_t), "Bad 'double' type size");
 	};
 
 	
