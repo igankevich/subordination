@@ -143,12 +143,12 @@ namespace factory {
 			struct Carrier {
 
 				Carrier(): kernel(nullptr) {}
-				Carrier(A* a): kernel(a), arrival(now()) {}
+				Carrier(A* a): kernel(a), arrival(current_time_nano()) {}
 
 				void act() { 
-					Time t0 = now();
+					Time t0 = current_time_nano();
 					kernel->act();
-					Time t1 = now();
+					Time t1 = current_time_nano();
 					action = t1-t0;
 				}
 
@@ -196,9 +196,9 @@ namespace factory {
 						return false;
 					}
 		
-					Time t0 = now();
+					Time t0 = current_time_nano();
 					carrier.act();
-					Time t1 = now();
+					Time t1 = current_time_nano();
 					Time sample = (t1 - t0);
 		
 					collect_sample(sample);
@@ -266,7 +266,7 @@ namespace factory {
 			struct Advisor {
 				template<class A, class S>
 				bool is_ready_to_go(const Carrier<A>& carrier, const S* server, Profiler& profiler) const {
-					Time wait_time = now() - carrier.arrival_time();
+					Time wait_time = current_time_nano() - carrier.arrival_time();
 					Time avg = server->upstream_pool().size()*(profiler.dynamic_metric());
 					return wait_time > avg && wait_time > 100000000 && avg > 0;
 				}

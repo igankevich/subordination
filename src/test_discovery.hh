@@ -32,7 +32,6 @@ private:
 
 struct Peer {
 
-	typedef uint64_t Time;
 	typedef uint32_t Metric;
 
 	Peer() {}
@@ -109,21 +108,15 @@ struct Peer {
 			>> rhs.second._update_time;
 	}
 
-	typedef std::chrono::steady_clock Clock;
-
-	static Time now() {
-		return Clock::now().time_since_epoch().count();
-	}
-
 private:
 
 	uint32_t num_samples() const { return _num_samples; }
 	uint32_t num_errors() const { return _num_errors; }
 
-	Time age() const { return now() - _update_time; }
+	Time age() const { return current_time_nano() - _update_time; }
 	void update() {
 		Time old = _update_time;
-		_update_time = now();
+		_update_time = current_time_nano();
 		if (_update_time - old > MAX_AGE) {
 			_num_errors = 0;
 		}
@@ -141,7 +134,7 @@ private:
 	static const Time MAX_AGE = std::chrono::milliseconds(100).count();
 };
 
-Peer::Time prog_start = Peer::now();
+Time prog_start = current_time_nano();
 
 struct Compare_distance {
 
@@ -172,12 +165,12 @@ private:
 	}
 
 	static const uint32_t p = 1;
-	static const uint32_t fanout = 1 << p;
+	static const uint32_t fanout = uint32_t(1) << p;
 	
 	static std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
-		uint32_t num = pos - (1 << lvl);
+		uint32_t num = pos - (uint32_t(1) << lvl);
 		return std::make_pair(lvl, num);
 	}
 	
@@ -348,9 +341,7 @@ private:
 
 struct Profiler: public Mobile<Profiler> {
 
-	typedef Peer::Time Time;
 	typedef uint8_t State;
-	typedef std::chrono::steady_clock Clock;
 
 	Profiler() {}
 
@@ -361,7 +352,7 @@ struct Profiler: public Mobile<Profiler> {
 
 	void write_impl(Foreign_stream& out) {
 		if (_state == 0) {
-			_time = current_time();
+			_time = current_time_nano();
 		}
 		out << _state << _time;
 		out << uint32_t(_peers.size());
@@ -373,7 +364,7 @@ struct Profiler: public Mobile<Profiler> {
 	void read_impl(Foreign_stream& in) {
 		in >> _state >> _time;
 		if (_state == 1) {
-			_time = current_time() - _time;
+			_time = current_time_nano() - _time;
 		}
 		uint32_t n = 0;
 		in >> n;
@@ -398,10 +389,6 @@ struct Profiler: public Mobile<Profiler> {
 	uint32_t num_peers() const { return _peers.size(); }
 
 	Time time() const { return _time; }
-
-	static Time current_time() {
-		return Clock::now().time_since_epoch().count();
-	}
 	
 	static void init_type(Type* t) {
 		t->id(2);
@@ -517,7 +504,7 @@ private:
 
 struct Discoverer: public Identifiable<Kernel> {
 
-	explicit Discoverer(const Peers& peers): _peers(peers) {}
+	explicit Discoverer(const Peers& p): _peers(p) {}
 
 	void act() {
 		std::vector<Profiler*> profs;
@@ -689,7 +676,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				if (Peer::now() - prog_start > 30000000000UL) {
+				if (current_time_nano() - prog_start > 30000000000L) {
 					Logger(Level::DISCOVERY) << "Hail the new king "
 						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 					__factory.stop();
@@ -794,10 +781,10 @@ private:
 	static const uint32_t MIN_SAMPLES = 7;
 };
 
-int num_peers() {
+uint32_t num_peers() {
 	std::stringstream s;
 	s << ::getenv("NUM_PEERS");
-	int n = 0;
+	uint32_t n = 0;
 	s >> n;
 	if (n <= 1) {
 		n = 3;
@@ -875,7 +862,7 @@ struct App {
 		int retval = 0;
 		if (argc <= 2) {
 			try {
-				int npeers = num_peers();
+				uint32_t npeers = num_peers();
 				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1"; 
 				generate_all_peers(npeers, base_ip);
 				if (write_cache()) {
@@ -906,7 +893,7 @@ struct App {
 				retval = 1;
 			}
 		} else {
-			int npeers = 3;
+			uint32_t npeers = 3;
 			Endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
 			std::string base_ip = "127.0.0.1";
 			Command_line cmdline(argc, argv);

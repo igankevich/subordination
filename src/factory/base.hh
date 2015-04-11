@@ -12,10 +12,19 @@ namespace factory {
 		void factory_server_addr(std::ostream&);
 	}
 
-	typedef std::int64_t Time;
+//	typedef std::int64_t Time;
+//
+//	Time now() {
+//		return std::chrono::steady_clock::now().time_since_epoch().count();
+//	}
 
-	Time now() {
-		return std::chrono::steady_clock::now().time_since_epoch().count();
+	typedef std::chrono::nanoseconds::rep Time;
+
+	static Time current_time_nano() {
+		using namespace std::chrono;
+		typedef std::chrono::steady_clock Clock;
+		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
 	}
+
 
 }
