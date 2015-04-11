@@ -85,15 +85,14 @@ namespace factory {
 	            " numbers exactly in the same way, you can ignore this assertion"
 	            " by defining IGNORE_ISO_IEC559.");
 #endif
-			Bytes<T> tmp = rhs;
-			Bytes<T> val;
-			val.i = network_format(tmp.i);
+			Bytes<T> val = rhs;
+			val.to_network_format();
 //			std::clog << "Converted from " << std::hex << std::setfill('0');
 //			debug(std::clog, rhs);
 //			std::clog << " to ";
 //			debug(std::clog, val.val);
 //			std::clog << std::dec << std::endl;
-			Buffer<Byte>::write(val.bytes, sizeof(rhs));
+			Buffer<Byte>::write(val, sizeof(rhs));
 			return *this;
 		}
 
@@ -108,10 +107,9 @@ namespace factory {
 		template<class T>
 		Foreign_stream& read(T& rhs) {
 			Bytes<T> val;
-			read(val.bytes, sizeof(rhs));
-			Bytes<T> tmp;
-			tmp.i = host_format(val.i);
-			rhs = tmp.val;
+			read(val, sizeof(rhs));
+			val.to_host_format();
+			rhs = val;
 //			std::clog << "Converted from " << std::hex << std::setfill('0');
 //			debug(std::clog, val);
 //			std::clog << " to ";

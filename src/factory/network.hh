@@ -1,147 +1,59 @@
 namespace factory {
 
+	template<size_t bytes>
+	struct Integer {
+		typedef uint8_t value[bytes];
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+		static void to_network_format(value& val) { std::reverse(val, val + bytes); }
+		static void to_host_format(value& val) { std::reverse(val, val + bytes); }
+#else
+		static void to_network_format(value&) {}
+		static void to_host_format(value&) {}
+#endif
+	};
+
+	template<> struct Integer<1> {
+		typedef uint8_t value;
+		static void to_network_format(value&) {}
+		static void to_host_format(value&) {}
+	};
+
+	template<> struct Integer<2> {
+		typedef uint16_t value;
+		static void to_network_format(value& val) { val = htobe16(val); }
+		static void to_host_format(value& val) { val = be16toh(val); }
+	};
+
+	template<> struct Integer<4> {
+		typedef uint32_t value;
+		static void to_network_format(value& val) { val = htobe32(val); }
+		static void to_host_format(value& val) { val = be32toh(val); }
+	};
+
+	template<> struct Integer<8> {
+		typedef uint64_t value;
+		static void to_network_format(value& val) { val = htobe64(val); }
+		static void to_host_format(value& val) { val = be64toh(val); }
+	};
+
 	template<class T>
 	union Bytes {
 
-		Bytes() {}
-		Bytes(T v): val(v) {}
-
-		T val;
-		T i;
-		char bytes[sizeof(T)];
-	};
-
-	template<>
-	union Bytes<float> {
-		typedef float T;
+		typedef Integer<sizeof(T)> Int;
 
 		Bytes() {}
 		Bytes(T v): val(v) {}
 
+		void to_network_format() { Int::to_network_format(i); }
+		void to_host_format() { Int::to_host_format(i); }
+
+		operator T& () { return val; }
+		operator char* () { return bytes; }
+
+	private:
 		T val;
-		uint32_t i;
+		typename Int::value i;
 		char bytes[sizeof(T)];
-
-		static_assert(sizeof(T) == sizeof(uint32_t), "Bad 'float' type size");
 	};
-
-	template<>
-	union Bytes<double> {
-		typedef double T;
-
-		Bytes() {}
-		Bytes(T v): val(v) {}
-
-		T val;
-		uint64_t i;
-		char bytes[sizeof(T)];
-
-		static_assert(sizeof(T) == sizeof(uint64_t), "Bad 'double' type size");
-	};
-
-	
-	namespace components {
-
-		template<class T>
-		struct base_format {
-			base_format(T value): _value(value) {}
-			operator T() const { return _value; }
-		protected:
-			T _value;
-		};
-
-		template<class T, size_t bytes>
-		struct network_format: public base_format<T> {
-			network_format(T value): base_format<T>(value) {}
-			operator T() const {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-				const char* raw = reinterpret_cast<const char*>(&(base_format<T>::_value));
-				T newval;
-				std::reverse_copy(raw, raw + bytes, (char*)&newval);
-				return newval;
-#else
-				return base_format<T>::_value;
-#endif
-			}
-		};
-
-		template<class T>
-		struct network_format<T, 1>: public base_format<T> {
-			network_format(T value): base_format<T>(value) {}
-			operator T() const { return base_format<T>::_value; }
-		};
-
-		template<class T>
-		struct network_format<T, 2>: public base_format<T> {
-			network_format(T value): base_format<T>(value) {}
-			operator T() const { return htobe16(base_format<T>::_value); }
-		};
-
-		template<class T>
-		struct network_format<T, 4>: public base_format<T> {
-			network_format(T value): base_format<T>(value) {}
-			operator T() const { return htobe32(base_format<T>::_value); }
-		};
-
-		template<class T>
-		struct network_format<T, 8>: public base_format<T> {
-			network_format(T value): base_format<T>(value) {}
-			operator T() const { return htobe64(base_format<T>::_value); }
-		};
-
-		// -----------
-		// Host format
-		// -----------
-
-		template<class T, size_t bytes>
-		struct host_format: public base_format<T> {
-			host_format(T value): base_format<T>(value) {}
-			operator T() const {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-				const char* raw = reinterpret_cast<const char*>(&(base_format<T>::_value));
-				T newval;
-				std::reverse_copy(raw, raw + bytes, (char*)&newval);
-				return newval;
-#else
-				return base_format<T>::_value;
-#endif
-			}
-		};
-
-		template<class T>
-		struct host_format<T, 1>: public base_format<T> {
-			host_format(T value): base_format<T>(value) {}
-			operator T() const { return base_format<T>::_value; }
-		};
-
-		template<class T>
-		struct host_format<T, 2>: public base_format<T> {
-			host_format(T value): base_format<T>(value) {}
-			operator T() const { return be16toh(base_format<T>::_value); }
-		};
-
-		template<class T>
-		struct host_format<T, 4>: public base_format<T> {
-			host_format(T value): base_format<T>(value) {}
-			operator T() const { return be32toh(base_format<T>::_value); }
-		};
-
-		template<class T>
-		struct host_format<T, 8>: public base_format<T> {
-			host_format(T value): base_format<T>(value) {}
-			operator T() const { return be64toh(base_format<T>::_value); }
-		};
-
-	}
-
-	template<class T>
-	T host_format(T value) {
-		return components::host_format<T, sizeof(T)>(value);
-	}
-
-	template<class T>
-	T network_format(T value) {
-		return components::network_format<T, sizeof(T)>(value);
-	}
 
 }
