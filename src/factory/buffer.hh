@@ -1,5 +1,10 @@
 namespace factory {
 
+	namespace constants {
+		static const uint32_t CHUNK_SIZE = 128;
+		static const uint32_t MIN_CHUNK_SIZE = 1;
+	}
+
 	template<class T>
 	struct Buffer {
 
@@ -8,8 +13,8 @@ namespace factory {
 		typedef uint32_t Nbytes;
 		typedef T Value;
 
-		explicit Buffer(Size base_size = CHUNK_SIZE):
-			_chunk_size(std::max(base_size, MIN_CHUNK_SIZE)),
+		explicit Buffer(Size base_size = constants::CHUNK_SIZE):
+			_chunk_size(std::max(base_size, constants::MIN_CHUNK_SIZE)),
 			_chunks(),
 			_read_pos(0),
 			_write_pos(0),
@@ -196,9 +201,6 @@ namespace factory {
 
 		Pos _global_read_pos;
 		Pos _global_write_pos;
-
-		static const Size CHUNK_SIZE = 128;
-		static const Size MIN_CHUNK_SIZE = 1;
 	};
 
 }

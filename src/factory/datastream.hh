@@ -44,7 +44,7 @@ namespace factory {
 		Foreign_stream& operator<<(const std::string& rhs) { return write(rhs); }
 
 		Foreign_stream& operator>>(bool& rhs) {
-			char c; read(c); rhs = c == 1; return *this;
+			char c = 0; read(c); rhs = c == 1; return *this;
 		}
 		Foreign_stream& operator>>(char& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(int8_t& rhs) { return read(rhs); }

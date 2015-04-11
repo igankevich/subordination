@@ -24,7 +24,7 @@ struct Test_socket: public Mobile<Test_socket> {
 		Logger log(Level::COMPONENT);
 		log << "kernel count = " << shutdown_counter << std::endl;
 		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
-			*(reinterpret_cast<int*>(0)) = 1;
+			*(reinterpret_cast<volatile int*>(0)) = 1;
 		}
 //		commit(remote_server());
 	}
