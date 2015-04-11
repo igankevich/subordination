@@ -39,11 +39,19 @@ namespace factory {
 		std::ostream& ostream() { return _buf; }
 	
 	private:
+
+		typedef std::chrono::nanoseconds::rep Time;
+		typedef std::chrono::system_clock Clock;
+
+		static Time current_time_nano() {
+			using namespace std::chrono;
+			return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+		}
 		
-		static uint64_t now() {
-			typedef std::chrono::system_clock Clock;
-			static uint64_t start_time = Clock::now().time_since_epoch().count();
-			return Clock::now().time_since_epoch().count() - start_time;
+		static Time now() {
+			using namespace std::chrono;
+			static Time start_time = current_time_nano();
+			return current_time_nano() - start_time;
 		}
 
 		void next_record() {
