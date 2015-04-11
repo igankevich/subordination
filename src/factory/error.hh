@@ -15,9 +15,15 @@ namespace factory {
 
 		typedef const char* Tag;
 
-		explicit Logger(Tag t = Level::KERNEL): _tag(t) {
+		explicit Logger(Tag t = Level::KERNEL):
+			_buf(),
+			_tag(t)
+		{
 			next_record();
 		}
+
+		Logger(const Logger&) = delete;
+		Logger& operator=(const Logger&) = delete;
 	
 		template<class T>
 		Logger& operator<<(const T& rhs) {
@@ -27,7 +33,7 @@ namespace factory {
 	
 		Logger& operator<<(std::ostream& ( *pf )(std::ostream&)) {
 			_buf << pf;
-			if (pf == (std::ostream& (*)(std::ostream&))&std::endl) {
+			if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
 				std::cout << _buf.str() << std::flush;
 				_buf.str("");
 				_buf.clear();
@@ -66,7 +72,8 @@ namespace factory {
 		return s.str();
 	}
 
-	int check(const char* func, int ret) {
+	template<class Ret>
+	Ret check(const char* func, Ret ret) {
 		if (ret < 0) {
 			throw std::system_error(std::error_code(errno, std::system_category()), func);
 		}
@@ -105,6 +112,11 @@ namespace factory {
 		Error(const std::string& msg, const char* file, const int line, const char* function):
 			std::runtime_error(msg), _file(file), _line(line), _function(function)
 		{}
+
+		Error(const Error& rhs):
+			std::runtime_error(rhs), _file(rhs._file), _line(rhs._line), _function(rhs._function) {}
+
+		Error& operator=(const Error&) = delete;
 
 		virtual const char* prefix() const { return "Error"; }
 

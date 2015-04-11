@@ -42,7 +42,7 @@ namespace factory {
 					if (kernel->moves_upstream()) {
 						size_t n = Server::_upstream.size();
 						if (n > 0) {
-							uint32_t i = _cursor = (_cursor + 1) % n;
+							size_t i = _cursor = (_cursor + 1) % n;
 							Server::_upstream[i]->send(kernel);
 						} else {
 							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
@@ -61,9 +61,9 @@ namespace factory {
 				}
 
 			private:
-				std::atomic<uint32_t> _cursor;
+				std::atomic<size_t> _cursor;
 
-				static const size_t PRIME     = 7;
+				static const size_t PRIME = 7;
 			};
 
 			template<class Server>

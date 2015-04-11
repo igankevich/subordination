@@ -1,7 +1,8 @@
 namespace factory {
 
-	uint32_t log2(uint32_t x) {
-		uint32_t n = 0;
+	template<class I>
+	I log2(I x) {
+		I n = 0;
 		while (x >>= 1) n++;
 		return n;
 	}
@@ -81,22 +82,26 @@ namespace factory {
 		std::set<Address_range> ranges;
 	
 		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-	
-			// ignore localhost and non-IPv4 addresses
-			if (ifa->ifa_addr == NULL
-				|| htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr) == 0x7f000001ul
-				|| ifa->ifa_addr->sa_family != AF_INET)
-			{
+
+			if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+				// ignore non-internet networks
+				continue;
+			}
+
+			Endpoint addr(ifa->ifa_addr);
+			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
+				// ignore localhost and non-IPv4 addresses
+				continue;
+			}
+
+			Endpoint netmask(ifa->ifa_netmask);
+			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
+				// ignore wide-area networks
 				continue;
 			}
 	
-			uint32_t addr_long = htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr);
-			uint32_t mask_long = htonl(((struct ::sockaddr_in*) ifa->ifa_netmask)->sin_addr.s_addr);
-	
-			// ignore 255.255.255.255 wide-area networks
-			if (mask_long == std::numeric_limits<uint32_t>::max()) {
-				continue;
-			}
+			uint32_t addr_long = addr.address();
+			uint32_t mask_long = netmask.address();
 	
 			uint32_t start = (addr_long & mask_long) + 1;
 			uint32_t end = (addr_long & mask_long) + (~mask_long);
@@ -172,24 +177,26 @@ namespace factory {
 		check("getifaddrs()", ::getifaddrs(&ifaddr));
 	
 		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-	
-			// ignore localhost and non-IPv4 addresses
-			if (ifa->ifa_addr == NULL
-				|| htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr) == 0x7f000001ul
-				|| ifa->ifa_addr->sa_family != AF_INET)
-			{
+
+			if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+				// ignore non-internet networks
+				continue;
+			}
+
+			Endpoint addr(ifa->ifa_addr);
+			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
+				// ignore localhost and non-IPv4 addresses
+				continue;
+			}
+
+			Endpoint netmask(ifa->ifa_netmask);
+			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
+				// ignore wide-area networks
 				continue;
 			}
 	
-			uint32_t addr_long = htonl(((struct ::sockaddr_in*) ifa->ifa_addr)->sin_addr.s_addr);
-			uint32_t mask_long = htonl(((struct ::sockaddr_in*) ifa->ifa_netmask)->sin_addr.s_addr);
+			ret = addr.address();
 	
-			// ignore 255.255.255.255 wide-area networks
-			if (mask_long == std::numeric_limits<uint32_t>::max()) {
-				continue;
-			}
-	
-			ret = addr_long;
 			break;
 		}
 	

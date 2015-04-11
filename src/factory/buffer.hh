@@ -5,6 +5,7 @@ namespace factory {
 
 		typedef uint32_t Size;
 		typedef uint32_t Pos;
+		typedef uint32_t Nbytes;
 		typedef T Value;
 
 		explicit Buffer(Size base_size = CHUNK_SIZE):
@@ -82,11 +83,11 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t fill(S source) {
+		Nbytes fill(S source) {
 			if (_chunks.empty()) {
 				_chunks.push_back(new T[_chunk_size]);
 			}
-			ssize_t bytes_read;
+			Nbytes bytes_read;
 			T* chunk = _chunks.back();
 			while ((bytes_read = source.read(chunk + _write_pos, _chunk_size - _write_pos)) > 0) {
 				Logger(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
@@ -103,8 +104,8 @@ namespace factory {
 		}
 
 		template<class S>
-		ssize_t flush(S sink) {
-			ssize_t n = 0;
+		Nbytes flush(S sink) {
+			Nbytes n = 0;
 			T* chunk = _chunks.front();
 			Size m; 
 			while (n = 0, m = (last_chunk() ? _write_pos : _chunk_size), !_chunks.empty()
@@ -119,11 +120,11 @@ namespace factory {
 					_read_pos = 0;
 				}
 			}
-			if (n == -1) {
-				if (errno == EPIPE) {
-					Logger(Level::COMPONENT) << "EPIPE fd=" << (int)sink << std::endl;
-				}
-			}
+//			if (n == -1) {
+//				if (errno == EPIPE) {
+//					Logger(Level::COMPONENT) << "EPIPE fd=" << (int)sink << std::endl;
+//				}
+//			}
 			Logger(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
 			return n;
 		}
@@ -154,7 +155,8 @@ namespace factory {
 			if (rhs._chunks.size() > 1) {
 				std::for_each(rhs._chunks.cbegin(), rhs._chunks.cend()-1, [&rhs, &out] (T* chunk) {
 					for (size_t i=0; i<rhs._chunk_size; ++i) {
-						out << std::setw(2) << (unsigned int)(unsigned char)chunk[i];
+						out << std::setw(2)
+							<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
 					}
 				});
 			}
@@ -162,7 +164,8 @@ namespace factory {
 				T* chunk = rhs._chunks.back();
 				size_t n = std::max(rhs._write_pos, rhs._read_pos);
 				for (size_t i=0; i<n; ++i) {
-					out << std::setw(2) << (unsigned int)(unsigned char)chunk[i];
+					out << std::setw(2)
+						<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
 				}
 			}
 			out << std::dec << std::setfill(' ');
@@ -187,12 +190,12 @@ namespace factory {
 
 		Size _chunk_size;
 		std::deque<T*> _chunks;
-		Size _read_pos;
-		Size _write_pos;
-		Size _chunk_write_pos;
+		Pos _read_pos;
+		Pos _write_pos;
+		Pos _chunk_write_pos;
 
-		Size _global_read_pos;
-		Size _global_write_pos;
+		Pos _global_read_pos;
+		Pos _global_write_pos;
 
 		static const Size CHUNK_SIZE = 128;
 		static const Size MIN_CHUNK_SIZE = 1;

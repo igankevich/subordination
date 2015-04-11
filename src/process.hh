@@ -69,10 +69,10 @@ namespace factory {
 		template<class ... Args>
 		static int execute(const Args& ... args) {
 			To_string tmp[] = { args... };
-			const int argc = sizeof...(Args);
+			const size_t argc = sizeof...(Args);
 			char* argv[argc + 1];
-			for (int i=0; i<argc; ++i) {
-				argv[i] = tmp[i].c_str();
+			for (size_t i=0; i<argc; ++i) {
+				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
 			Logger log(Level::COMPONENT);
@@ -103,7 +103,7 @@ namespace factory {
 			template<class T>
 			To_string(T rhs): _s(to_string(rhs)) {}
 
-			char* c_str() { return (char*)_s.c_str(); }
+			const char* c_str() { return _s.c_str(); }
 
 		private:
 
@@ -120,6 +120,8 @@ namespace factory {
 	};
 
 	struct Process_group {
+
+		Process_group(): _processes() {}
 
 		template<class F>
 		void add(F f) {
@@ -168,7 +170,7 @@ namespace factory {
 
 	struct Command_line {
 
-		Command_line(int argc, char* argv[]) {
+		Command_line(int argc, char* argv[]): cmdline() {
 			std::ostream_iterator<char*> it(cmdline, " ");
 			std::copy(argv + 1, argv + argc, it);
 		}

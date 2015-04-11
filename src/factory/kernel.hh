@@ -290,6 +290,8 @@ namespace factory {
 
 		template<class K>
 		struct Mobile: public K {
+		
+			Mobile(): _src(), _dst() {}
 
 			virtual void read(Foreign_stream& in) { 
 				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");

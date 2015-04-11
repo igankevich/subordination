@@ -10,12 +10,13 @@ void test_buffer() {
 	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
 	auto dice = std::bind(distribution, generator);
 
-	const size_t MAX_SIZE_POWER = 12;
+	typedef typename Buffer<T>::Size I;
+	const I MAX_SIZE_POWER = 12;
 
-	for (size_t k=1; k<=133; ++k) {
-		const size_t chunk_size = k;
-		for (size_t i=0; i<=MAX_SIZE_POWER; ++i) {
-			size_t size = size_t(2) << i;
+	for (I k=1; k<=133; ++k) {
+		const I chunk_size = k;
+		for (I i=0; i<=MAX_SIZE_POWER; ++i) {
+			I size = I(2) << i;
 			std::vector<T> input(size);
 			for (size_t j=0; j<size; ++j)
 				input[j] = dice();
@@ -26,7 +27,7 @@ void test_buffer() {
 				msg << buf.size();
 				throw std::runtime_error(msg.str());
 			}
-			buf.write(&input[0], input.size());
+			buf.write(&input[0], size);
 			if (buf.size() != input.size()) {
 				std::stringstream msg;
 				msg << std::string(__func__) + ". Buffer size is not equal to input size. ";
@@ -34,7 +35,7 @@ void test_buffer() {
 				throw std::runtime_error(msg.str());
 			}
 			std::vector<T> output(size);
-			buf.read(&output[0], output.size());
+			buf.read(&output[0], size);
 			if (!buf.empty()) {
 				std::stringstream msg;
 				msg << std::string(__func__) + ". Buffer is not empty after read. ";

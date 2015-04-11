@@ -27,7 +27,14 @@ namespace factory {
 			typedef int16_t Type_id;
 			typedef std::function<void(K*)> Callback;
 	
-			Type(): _name() {}
+			Type():
+				_id(),
+				_name(),
+				construct(),
+				read_object(),
+				write_object(),
+				read_and_send()
+			{}
 	
 			Type(const Type& rhs):
 				_id(rhs._id),
@@ -44,11 +51,6 @@ namespace factory {
 			const char* name() const { return _name.c_str(); }
 			void name(const char* n) { _name = n; }
 
-			std::function<K* ()> construct;
-			std::function<void (Foreign_stream& in, K* rhs)> read_object;
-			std::function<void (Foreign_stream& out, K* rhs)> write_object;
-			std::function<void (Foreign_stream& in, Callback callback)> read_and_send;
-	
 			friend std::ostream& operator<<(std::ostream& out, const Type<K>& rhs) {
 				return out << rhs.name() << '(' << rhs.id() << ')';
 			}
@@ -57,6 +59,8 @@ namespace factory {
 			public:
 	
 				typedef Type<K> T;
+
+				Types(): _types_by_id() {}
 	
 				const T* lookup(Type_id type_name) const {
 					auto result = _types_by_id.find(type_name);
@@ -145,7 +149,7 @@ namespace factory {
 
 			public:
 
-				Instances(): _instances() {}
+				Instances(): _instances(), _mutex() {}
 
 				K* lookup(Id id) {
 					std::unique_lock<std::mutex> lock(_mutex);
@@ -212,6 +216,12 @@ namespace factory {
 
 			Type_id _id;
 			std::string _name;
+
+		protected:
+			std::function<K* ()> construct;
+			std::function<void (Foreign_stream& in, K* rhs)> read_object;
+			std::function<void (Foreign_stream& out, K* rhs)> write_object;
+			std::function<void (Foreign_stream& in, Callback callback)> read_and_send;
 		};
 
 		template<class Sub, class Type, class K, class Base=K>

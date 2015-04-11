@@ -11,6 +11,7 @@ namespace factory {
 		Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 		Socket(Socket&& rhs): _socket(rhs._socket) { rhs._socket = -1; }
+		virtual ~Socket() {}
 
 		void create_socket_if_necessary() {
 			if (_socket <= 0) {
@@ -21,7 +22,7 @@ namespace factory {
 		void bind(Endpoint e) {
 			create_socket_if_necessary();
 			options(SO_REUSEADDR);
-			check("bind()", ::bind(_socket, (struct sockaddr*)e.addr(), sizeof(sockaddr_in)));
+			check("bind()", ::bind(_socket, e.sockaddr(), sizeof(sockaddr_in)));
 			Logger(Level::COMPONENT) << "Binding to " << e << std::endl;
 		}
 		
@@ -33,7 +34,7 @@ namespace factory {
 		void connect(Endpoint e) {
 			try {
 				create_socket_if_necessary();
-				check_connect("connect()", ::connect(_socket, (struct ::sockaddr*)e.addr(), sizeof(sockaddr_in)));
+				check_connect("connect()", ::connect(_socket, e.sockaddr(), sizeof(sockaddr_in)));
 				Logger(Level::COMPONENT) << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
 				Logger(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
@@ -44,14 +45,13 @@ namespace factory {
 		}
 
 		std::pair<Socket, Endpoint> accept() {
-			struct sockaddr_in addr;
-			socklen_t acc_len = sizeof(addr);
-			Socket socket = check("accept()", ::accept(_socket, (struct sockaddr*)&addr, &acc_len));
+			Endpoint addr;
+			socklen_t len = sizeof(::sockaddr_in);
+			Socket socket = check("accept()", ::accept(_socket, addr.sockaddr(), &len));
 			socket.flags(O_NONBLOCK);
 			socket.flags2(FD_CLOEXEC);
-			Endpoint endpoint(&addr);
-			Logger(Level::COMPONENT) << "Accepted connection from " << endpoint << std::endl;
-			return std::make_pair(socket, endpoint);
+			Logger(Level::COMPONENT) << "Accepted connection from " << addr << std::endl;
+			return std::make_pair(socket, addr);
 		}
 
 		void close() {
@@ -68,6 +68,8 @@ namespace factory {
 				check("no_reading()", ::shutdown(_socket, SHUT_RD));
 			}
 		}
+
+		int fd() const { return _socket; }
 
 		void flags2(Flag f) { ::fcntl(_socket, F_SETFD, flags2() | f); }
 		Flag flags2() const { return ::fcntl(_socket, F_GETFD); }
@@ -107,33 +109,34 @@ namespace factory {
 		}
 
 		Endpoint bind_addr() const {
-			struct ::sockaddr_in addr;
-			socklen_t len = sizeof(addr);
-			int ret = ::getsockname(_socket, (struct ::sockaddr*)&addr, &len);
-			return ret == -1 ? Endpoint() : Endpoint(&addr);
+			Endpoint addr;
+			socklen_t len = sizeof(::sockaddr_in);
+			int ret = ::getsockname(_socket, addr.sockaddr(), &len);
+			return ret == -1 ? Endpoint() : addr;
 		}
 
 		Endpoint name() const {
-			struct ::sockaddr_in addr;
-			socklen_t len = sizeof(addr);
-			check("getsockname()", ::getsockname(_socket, (struct ::sockaddr*)&addr, &len));
-			return Endpoint(&addr);
+			Endpoint addr;
+			socklen_t len = sizeof(::sockaddr_in);
+			check("getsockname()", ::getsockname(_socket, addr.sockaddr(), &len));
+			return addr;
 		}
 
 		Endpoint peer_name() const {
-			struct ::sockaddr_in addr;
-			socklen_t len = sizeof(addr);
-			check("getsockname()", ::getpeername(_socket, (struct ::sockaddr*)&addr, &len));
-			return Endpoint(&addr);
+			Endpoint addr;
+			socklen_t len = sizeof(::sockaddr_in);
+			check("getpeername()", ::getpeername(_socket, addr.sockaddr(), &len));
+			return addr;
 		}
 
-		ssize_t read(char* buf, size_t size) {
-			return ::read(_socket, buf, size);
+		uint32_t read(char* buf, size_t size) {
+			ssize_t ret = ::read(_socket, buf, size);
+			return ret == -1 ? 0 : static_cast<uint32_t>(ret);
 		}
 
-		ssize_t write(const char* buf, size_t size) {
-//			return ::write(_socket, buf, size);
-			return ::send(_socket, buf, size, MSG_NOSIGNAL);
+		uint32_t write(const char* buf, size_t size) {
+			ssize_t ret = ::send(_socket, buf, size, MSG_NOSIGNAL);
+			return ret == -1 ? 0 : static_cast<uint32_t>(ret);
 		}
 
 		operator int() const { return _socket; }

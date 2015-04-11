@@ -96,7 +96,7 @@ namespace factory {
 					if (event.fd() == _poller.notification_pipe()) {
 						Logger(Level::SERVER) << "Notification " << event << std::endl;
 						process_kernels();
-					} else if (event.fd() == (int)_socket) {
+					} else if (event.fd() == _socket.fd()) {
 						if (event.is_reading()) {
 							auto pair = _socket.accept();
 							Socket sock = pair.first;
@@ -409,7 +409,7 @@ namespace factory {
 				log << std::endl;
 			}
 
-			Remote_server* peer(Endpoint addr, int events) {
+			Remote_server* peer(Endpoint addr, Event::Evs events) {
 				// bind to server address with ephemeral port
 				Endpoint srv_addr = server_addr();
 				srv_addr.port(0);
@@ -419,7 +419,7 @@ namespace factory {
 				return peer(sock, sock.bind_addr(), addr, events);
 			}
 
-			Remote_server* peer(Socket sock, Endpoint addr, Endpoint vaddr, int events) {
+			Remote_server* peer(Socket sock, Endpoint addr, Endpoint vaddr, Event::Evs events) {
 				Remote_server* s = new Remote_server(sock, addr);
 				s->vaddr(vaddr);
 				_upstream[vaddr] = s;
@@ -570,6 +570,9 @@ namespace factory {
 				_buffer(),
 				_parent(nullptr) {}
 
+			Remote_Rserver(const Remote_Rserver&) = delete;
+			Remote_Rserver& operator=(const Remote_Rserver&) = delete;
+
 			Remote_Rserver(Remote_Rserver&& rhs):
 				_socket(std::move(rhs._socket)),
 				_vaddr(rhs._vaddr),
@@ -578,6 +581,13 @@ namespace factory {
 				_ipacket(rhs._ipacket),
 				_buffer(std::move(rhs._buffer)) ,
 				_parent(rhs._parent) {}
+
+			virtual ~Remote_Rserver() {
+				while (!_buffer.empty()) {
+					delete _buffer.front();
+					_buffer.pop_front();
+				}
+			}
 
 			void recover_kernels() {
 

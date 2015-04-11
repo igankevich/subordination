@@ -97,10 +97,10 @@ namespace factory {
 		}
 
 		Foreign_stream& write(const std::string& rhs) {
-			Size length = rhs.size();
+			Size length = static_cast<Size>(rhs.size());
 //			std::clog << "Writing string of length = " << length << std::endl;
 			write(length);
-			write(rhs.c_str(), length*sizeof(std::string::value_type));
+			write(rhs.c_str(), length);
 			return *this;
 		}
 

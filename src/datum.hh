@@ -19,9 +19,12 @@ void rnd(T& val) {
 
 struct Datum {
 
-	Datum() {
+	Datum():
+		x(), y(), z(),
+		u(), v(), w()
+	{
 		rnd(x); rnd(y); rnd(z);
-		rnd(u); rnd(v); rnd(w);
+		rnd(u); rnd(static_cast<float&>(v)); rnd(static_cast<double&>(w));
 	}
 
 	Datum(const Datum& rhs):
@@ -70,6 +73,6 @@ private:
 	int16_t y;
 	int32_t z;
 	int64_t u;
-	float v;
-	double w;
+	Bytes<float> v;
+	Bytes<double> w;
 };

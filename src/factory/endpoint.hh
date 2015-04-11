@@ -14,7 +14,7 @@ namespace factory {
 
 	std::istream& getline_no_white_space(std::istream& in, std::string& str, char delim) {
 		char ch;
-		while ((ch = in.get()) != std::char_traits<char>::eof()
+		while ((ch = static_cast<char>(in.get())) != std::char_traits<char>::eof()
 			&& !std::isspace(ch) && ch != delim)
 		{
 			str.push_back(ch);
@@ -28,13 +28,14 @@ namespace factory {
 	typedef std::string Host;
 	typedef uint16_t Port;
 
-	struct Endpoint {
+	union Endpoint {
 
-		Endpoint() { std::memset((void*)&_addr, 0, sizeof(_addr)); }
+		Endpoint() { std::memset(static_cast<void*>(&_addr), 0, sizeof(_addr)); }
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
 		Endpoint(uint32_t h, Port p) { addr(h, p); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
 		Endpoint(struct ::sockaddr_in* rhs) { addr(rhs); }
+		Endpoint(struct ::sockaddr* rhs) { addr(rhs); }
 
 		Endpoint& operator=(const Endpoint& rhs) {
 			addr(&rhs._addr);
@@ -98,6 +99,7 @@ namespace factory {
 			return a - (a & netmask);
 		}
 
+		struct ::sockaddr* sockaddr() { return &_sockaddr; }
 		struct ::sockaddr_in* addr() { return &_addr; }
 		const struct ::sockaddr_in* addr() const { return &_addr; }
 
@@ -107,7 +109,12 @@ namespace factory {
 	private:
 	
 		void addr(const struct ::sockaddr_in* rhs) {
-			std::memcpy((void*)&_addr, (const void*)rhs, sizeof(_addr));
+			std::memcpy(static_cast<void*>(&_addr),
+				static_cast<const void*>(rhs), sizeof(_addr));
+		}
+
+		void addr(const struct ::sockaddr* rhs) {
+			_sockaddr = *rhs;
 		}
 
 		void addr(const char* h, Port p) {
@@ -131,6 +138,7 @@ namespace factory {
 		}
 
 		struct ::sockaddr_in _addr;
+		struct ::sockaddr _sockaddr;
 	};
 
 }

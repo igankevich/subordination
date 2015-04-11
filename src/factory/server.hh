@@ -79,6 +79,7 @@ namespace factory {
 		struct Resident {
 
 			Resident(): _stopped(false) {}
+			virtual ~Resident() {}
 
 			bool stopped() const { return _stopped; }
 			void stopped(bool b) { _stopped = b; }
@@ -133,6 +134,8 @@ namespace factory {
 				srv->affinity(cpu);
 				_upstream.push_back(srv);
 			}
+
+			Iserver(): _upstream() {}
 		
 			virtual ~Iserver() {
 				std::for_each(
@@ -192,7 +195,9 @@ namespace factory {
 			Rserver():
 				_pool(),
 				_cpu(0),
-				_thread()
+				_thread(),
+				_mutex(),
+				_semaphore()
 			{}
 
 			virtual ~Rserver() {
@@ -209,7 +214,7 @@ namespace factory {
 			void send(Kernel* kernel) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_pool.push(kernel);
-				_semaphor.notify_one();
+				_semaphore.notify_one();
 			}
 
 			void wait_impl() {
@@ -221,7 +226,7 @@ namespace factory {
 
 			void stop_impl() {
 				Logger(Level::SERVER) << "Rserver::stop_impl()" << std::endl;
-				_semaphor.notify_all();
+				_semaphore.notify_all();
 			}
 
 			void start() {
@@ -261,7 +266,7 @@ namespace factory {
 
 			void wait_for_a_kernel() {
 				std::unique_lock<std::mutex> lock(_mutex);
-				_semaphor.wait(lock, [this] {
+				_semaphore.wait(lock, [this] {
 					return !_pool.empty() || this->stopped();
 				});
 			}
@@ -269,9 +274,9 @@ namespace factory {
 			Pool<Kernel*> _pool;
 			size_t _cpu;
 		
-			std::mutex _mutex;
-			std::condition_variable _semaphor;
 			std::thread _thread;
+			std::mutex _mutex;
+			std::condition_variable _semaphore;
 		};
 
 		template<class Server>

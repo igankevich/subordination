@@ -4,12 +4,14 @@ namespace factory {
 
 	struct Event: public Basic_event {
 
+		typedef decltype(Basic_event::events) Evs;
+
 		Event()  { fd(-1); events(0); Basic_event::revents = 0; }
 		explicit Event(int f)  { fd(f); }
-		Event(int e, int f)  { fd(f); events(e); }
+		Event(Evs e, int f)  { fd(f); events(e); }
 
-		int events() const { return Basic_event::revents; }
-		void events(int rhs) { Basic_event::events = rhs; }
+		Evs events() const { return Basic_event::revents; }
+		void events(Evs rhs) { Basic_event::events = rhs; }
 
 		void fd(int rhs) { Basic_event::fd = rhs; }
 		int fd() const { return Basic_event::fd; }
@@ -118,7 +120,7 @@ namespace factory {
 		void consume_notify() {
 			const size_t n = 20;
 			char tmp[n];
-			int c;
+			ssize_t c;
 			while ((c = ::read(_mgmt_pipe.read_end(), tmp, n)) != -1) {
 				if (std::any_of(tmp, tmp + c, [this] (char rhs) { return rhs == STOP_SYMBOL; })) {
 					_state = State::STOPPING;

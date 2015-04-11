@@ -5,7 +5,7 @@ namespace factory {
 			Logger(Level::COMPONENT) << "broadcasting shutdown message" << std::endl;
 			components::factory_stop();
 		}
-		void react() {}
+//		void react() {}
 		void write_impl(Foreign_stream&) {}
 		void read_impl(Foreign_stream&) {}
 		static void init_type(Type* t) {

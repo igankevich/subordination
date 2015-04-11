@@ -7,8 +7,11 @@ const Port DISCOVERY_PORT = 10000;
 std::vector<Endpoint> all_peers;
 
 uint32_t my_netmask() {
-	return std::numeric_limits<uint32_t>::max()
-		- (pow(uint32_t(2), std::ceil(std::log2(all_peers.size()))) - 1);
+	uint32_t npeers = static_cast<uint32_t>(all_peers.size());
+	uint32_t power = factory::log2(npeers);
+	uint32_t rem = UINT32_C(1) << power;
+	if (rem < npeers) rem <<= 1;
+	return std::numeric_limits<uint32_t>::max() - (rem - 1);
 }
 
 struct Node {
@@ -32,7 +35,7 @@ private:
 
 struct Peer {
 
-	typedef uint32_t Metric;
+	typedef int64_t Metric;
 
 	Peer() {}
 	Peer(const Peer& rhs):
@@ -165,12 +168,12 @@ private:
 	}
 
 	static const uint32_t p = 1;
-	static const uint32_t fanout = uint32_t(1) << p;
+	static const uint32_t fanout = UINT32_C(1) << p;
 	
 	static std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
-		uint32_t num = pos - (uint32_t(1) << lvl);
+		uint32_t num = pos - (UINT32_C(1) << lvl);
 		return std::make_pair(lvl, num);
 	}
 	
@@ -189,7 +192,12 @@ struct Peers {
 	typedef std::map<Endpoint, Peer> Map;
 	typedef std::set<Endpoint> Set;
 
-	explicit Peers(Endpoint addr): _this_addr(addr) {}
+	explicit Peers(Endpoint addr):
+		_peers(),
+		_this_addr(addr),
+		_principal(),
+		_subordinates()
+	{}
 
 	Peers(const Peers& rhs):
 		_peers(rhs._peers),
@@ -343,7 +351,7 @@ struct Profiler: public Mobile<Profiler> {
 
 	typedef uint8_t State;
 
-	Profiler() {}
+	Profiler(): _peers() {}
 
 	void act() {
 		_state = 1;
@@ -386,7 +394,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 	}
 
-	uint32_t num_peers() const { return _peers.size(); }
+//	uint32_t num_peers() const { return _peers.size(); }
 
 	Time time() const { return _time; }
 	
@@ -422,7 +430,8 @@ struct Scanner: public Identifiable<Kernel> {
 	explicit Scanner(Endpoint addr, Endpoint st_addr):
 		_source(addr),
 		_scan_addr(st_addr ? st_addr : start_addr(all_peers)),
-		_servers(create_servers(all_peers))
+		_servers(create_servers(all_peers)),
+		_discovered_node()
 		{}
 
 	void act() {
@@ -550,17 +559,18 @@ struct Discoverer: public Identifiable<Kernel> {
 
 private:
 	Peers _peers;
-	uint32_t _num_sent = 0;
+	size_t _num_sent = 0;
 };
 
 struct Negotiator: public Mobile<Negotiator> {
 
-	Negotiator() {}
+	Negotiator():
+		_old_principal(), _new_principal() {}
 
 	Negotiator(Endpoint old, Endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 
-	void act(Peers& peers) {
+	void negotiate(Peers& peers) {
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
 		Endpoint this_addr = peers.this_addr();
@@ -661,6 +671,9 @@ private:
 
 struct Master_discoverer: public Identifiable<Kernel> {
 
+	Master_discoverer(const Master_discoverer&) = delete;
+	Master_discoverer& operator=(const Master_discoverer&) = delete;
+
 	explicit Master_discoverer(Endpoint this_addr):
 		factory::Identifiable<Kernel>(this_addr.address()),
 		_peers(this_addr),
@@ -716,7 +729,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				prof->act();
 			} else if (k->type()->id() == 8) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
-				neg->act(_peers);
+				neg->negotiate(_peers);
 			}
 		}
 	}

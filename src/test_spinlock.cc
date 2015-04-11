@@ -1,13 +1,13 @@
 #include <factory/factory.hh>
 using namespace factory;
 
-void test_spinlock(int nthreads, int increment) {
-	volatile uint64_t counter = 0;
+void test_spinlock(unsigned nthreads, unsigned increment) {
+	volatile unsigned counter = 0;
 	std::vector<std::thread> threads;
 	Spin_mutex m;
-	for (int i=0; i<nthreads; ++i) {
+	for (unsigned i=0; i<nthreads; ++i) {
 		threads.push_back(std::thread([&counter, increment, &m] () {
-			for (int j=0; j<increment; ++j) {
+			for (unsigned j=0; j<increment; ++j) {
 				std::lock_guard<Spin_mutex> lock(m);
 				++counter;
 			}
@@ -16,7 +16,7 @@ void test_spinlock(int nthreads, int increment) {
 	for (std::thread& t : threads) {
 		t.join();
 	}
-	uint64_t good_counter = nthreads*increment;
+	unsigned good_counter = nthreads*increment;
 	if (counter != good_counter) {
 		std::stringstream msg;
 		msg << "Bad counter: " << counter << "/=" << good_counter;
@@ -26,12 +26,12 @@ void test_spinlock(int nthreads, int increment) {
 
 int main() {
 	try {
-		int npowers = 16;
+		unsigned npowers = 16;
 		unsigned min_threads = 2;
 		unsigned max_threads = std::max(std::thread::hardware_concurrency(), 2*min_threads);
 		for (unsigned j=min_threads; j<=max_threads; ++j) {
-			for (int i=0; i<npowers; ++i) {
-				test_spinlock(j, 1 << i);
+			for (unsigned i=0; i<npowers; ++i) {
+				test_spinlock(j, unsigned(1) << i);
 			}
 		}
 	} catch (std::exception& e) {

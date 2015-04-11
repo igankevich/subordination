@@ -72,7 +72,7 @@ struct Sender: public Identifiable<Kernel> {
 
 		std::clog << "Sender::react()" << std::endl;
 
-		Test_socket* test_kernel = reinterpret_cast<Test_socket*>(child);
+		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 
 		if (_input.size() != output.size())

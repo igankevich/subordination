@@ -3,15 +3,11 @@
 
 using namespace factory;
 
-unsigned long time_seed() {
-	return std::chrono::high_resolution_clock::now().time_since_epoch().count();
-}
-
 template<class T = uint32_t>
 struct Test_endpoint {
 
 	Test_endpoint():
-		generator(time_seed()),
+		generator(static_cast<std::default_random_engine::result_type>(current_time_nano())),
 		distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max()),
 		dice(std::bind(distribution, generator))
 	{}
@@ -85,7 +81,28 @@ struct Test_endpoint {
 		check_read(" 10.0.0.1 : 100 "      , Endpoint("0.0.0.0"         , 0));
 	}
 
+	void test_operators() {
+		check_bool(Endpoint(), false);
+		check_bool(!Endpoint(), true);
+		check_bool(Endpoint("127.0.0.1", 100), true);
+		check_bool(!Endpoint("127.0.0.1", 100), false);
+		check_bool(Endpoint("127.0.0.1", 0), true);
+		check_bool(!Endpoint("127.0.0.1", 0), false);
+	}
+
 private:
+
+	void check_bool(Endpoint x, bool y) {
+		if ((x && !y) || (!(x) && y)) {
+			throw std::runtime_error("Boolean operator failed.");
+		}
+	}
+
+	void check_bool(bool x, bool y) {
+		if (x != y) {
+			throw std::runtime_error("Boolean operator failed.");
+		}
+	}
 
 	void check_read(const char* str, Endpoint expected_result) {
 		Endpoint addr;
@@ -114,6 +131,7 @@ struct App {
 			test.test_single();
 			test.test_multiple();
 			test.test_variations();
+			test.test_operators();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

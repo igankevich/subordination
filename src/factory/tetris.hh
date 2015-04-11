@@ -12,7 +12,8 @@ namespace factory {
 				size(upstream.size())
 			{}
 
-			Tetris(const Tetris& rhs) = delete;
+			Tetris(const Tetris&) = delete;
+			Tetris& operator=(const Tetris&) = delete;
 		
 			~Tetris() { delete[] cache; }
 		
@@ -78,6 +79,7 @@ namespace factory {
 			}
 		
 			struct Profiler {
+				virtual ~Profiler() {}
 				virtual std::int64_t sum_dynamic_metric() const = 0;
 				virtual Int dynamic_metric() const = 0;
 				virtual Int static_metric() const = 0;
