@@ -209,6 +209,9 @@ namespace factory {
 			} _unused;
 			int _fds[2];
 
+			static_assert(sizeof(_unused) == sizeof(_fds),
+				"Sizes of 'Pipe' union fields do not match.");
+
 		} _mgmt_pipe;
 	
 		std::vector<Event> _events;
