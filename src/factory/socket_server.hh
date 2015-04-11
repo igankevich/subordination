@@ -33,10 +33,10 @@ namespace factory {
 				kernel->write(out);
 				auto new_pos = out.write_pos();
 				auto new_size = out.size();
-				auto packet_size = new_size - old_size;
-				Logger(Level::COMPONENT) << "Packet size = " << packet_size - sizeof(packet_size) << std::endl;
+				auto packet_sz = new_size - old_size;
+				Logger(Level::COMPONENT) << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
 				out.write_pos(old_pos);
-				out << packet_size;
+				out << packet_sz;
 				out.write_pos(new_pos);
 			}
 
@@ -99,12 +99,12 @@ namespace factory {
 					} else if (event.fd() == (int)_socket) {
 						if (event.is_reading()) {
 							auto pair = _socket.accept();
-							Socket socket = pair.first;
+							Socket sock = pair.first;
 							Endpoint addr = pair.second;
 							Endpoint vaddr = virtual_addr(addr);
 							auto res = _upstream.find(vaddr);
 							if (res == _upstream.end()) {
-								Remote_server* s = peer(socket, addr, vaddr, DEFAULT_EVENTS);
+								Remote_server* s = peer(sock, addr, vaddr, DEFAULT_EVENTS);
 								Logger(Level::SERVER)
 									<< server_addr() << ": "
 									<< "connected peer " << s->vaddr() << std::endl;
@@ -123,14 +123,14 @@ namespace factory {
 									// create temporary subordinate server
 									// to read kernels until the socket
 									// is closed from the other end
-									Remote_server* new_s = new Remote_server(socket, addr);
+									Remote_server* new_s = new Remote_server(sock, addr);
 									new_s->vaddr(vaddr);
 									new_s->parent(s);
-									_servers[socket] = new_s;
-									_poller.add(Event(DEFAULT_EVENTS, socket));
-//									socket.no_reading();
-//									s->fill_from(socket);
-//									socket.close();
+									_servers[sock] = new_s;
+									_poller.add(Event(DEFAULT_EVENTS, sock));
+//									sock.no_reading();
+//									s->fill_from(sock);
+//									sock.close();
 									debug("not replacing upstream");
 								} else {
 									Logger log(Level::SERVER);
@@ -139,15 +139,15 @@ namespace factory {
 									_poller.ignore(s->fd());
 									_servers.erase(s->fd());
 									Remote_server* new_s = new Remote_server(std::move(*s));
-									new_s->socket(socket);
-									_servers[socket] = new_s;
+									new_s->socket(sock);
+									_servers[sock] = new_s;
 									_upstream[vaddr] = new_s;
-									Event ev(DEFAULT_EVENTS | POLLOUT, socket);
+									Event ev(DEFAULT_EVENTS | POLLOUT, sock);
 									ev.reading();
 									ev.writing();
 									_poller.add(ev);
 //									erase(s->bind_addr());
-//									peer(socket, addr, vaddr, DEFAULT_EVENTS);
+//									peer(sock, addr, vaddr, DEFAULT_EVENTS);
 									log << " with " << *new_s << std::endl;
 									debug("replacing upstream");
 									delete s;
@@ -337,17 +337,17 @@ namespace factory {
 
 			void process_kernels() {
 				Logger(Level::SERVER) << "Socket_server::process_kernels()" << std::endl;
-				bool empty = false;
+				bool pool_is_empty = false;
 				{
 					std::unique_lock<std::mutex> lock(_mutex);
-					empty = _pool.empty();
+					pool_is_empty = _pool.empty();
 				}
-				while (!empty) {
+				while (!pool_is_empty) {
 
 					std::unique_lock<std::mutex> lock(_mutex);
 					Kernel* k = _pool.front();
 					_pool.pop();
-					empty = _pool.empty();
+					pool_is_empty = _pool.empty();
 					lock.unlock();
 
 					if (k->to() == server_addr()) {
@@ -413,18 +413,18 @@ namespace factory {
 				// bind to server address with ephemeral port
 				Endpoint srv_addr = server_addr();
 				srv_addr.port(0);
-				Socket socket;
-				socket.bind(srv_addr);
-				socket.connect(addr);
-				return peer(socket, socket.bind_addr(), addr, events);
+				Socket sock;
+				sock.bind(srv_addr);
+				sock.connect(addr);
+				return peer(sock, sock.bind_addr(), addr, events);
 			}
 
-			Remote_server* peer(Socket socket, Endpoint addr, Endpoint vaddr, int events) {
-				Remote_server* s = new Remote_server(socket, addr);
+			Remote_server* peer(Socket sock, Endpoint addr, Endpoint vaddr, int events) {
+				Remote_server* s = new Remote_server(sock, addr);
 				s->vaddr(vaddr);
 				_upstream[vaddr] = s;
-				_servers[socket] = s;
-				_poller.add(Event(events, socket));
+				_servers[sock] = s;
+				_poller.add(Event(events, sock));
 				return s;
 			}
 
@@ -561,8 +561,8 @@ namespace factory {
 			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
 			typedef typename Foreign_stream::Pos Pos;
 
-			Remote_Rserver(Socket socket, Endpoint endpoint):
-				_socket(socket),
+			Remote_Rserver(Socket sock, Endpoint endpoint):
+				_socket(sock),
 				_vaddr(endpoint),
 				_istream(),
 				_ostream(),

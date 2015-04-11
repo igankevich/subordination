@@ -4,17 +4,15 @@
 // Getting number of CPUs.
 #include <unistd.h>
 namespace {
-	int total_cpus() { return ::sysconf(_SC_NPROCESSORS_ONLN); }
+	size_t total_cpus() { return static_cast<size_t>(::sysconf(_SC_NPROCESSORS_ONLN)); }
 //	int thread_affinity() { return ::sched_getcpu(); }
-	void thread_affinity(int cpu) {
-		if (cpu != -1) {
-			int num_cpus = total_cpus();
-			::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
-			std::size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
-			CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
-			::sched_setaffinity(0, cpuset_size, cpuset);
-			CPU_FREE(cpuset);
-		}
+	void thread_affinity(size_t cpu) {
+		size_t num_cpus = total_cpus();
+		::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
+		size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
+		CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
+		::sched_setaffinity(0, cpuset_size, cpuset);
+		CPU_FREE(cpuset);
 	}
 }
 #endif
@@ -24,16 +22,16 @@ namespace {
 // Getting number of CPUs.
 #include <unistd.h>
 namespace {
-	void thread_affinity(int) {
+	void thread_affinity(size_t) {
 //		int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 //		processor_bind(P_LWPID, P_MYID, cpu_id%num_cpus, NULL);
 	}
-	int thread_affinity() {
-		processorid_t id;
-		processor_bind(P_LWPID, P_MYID, PBIND_QUERY, &id);
-		return id;
-	}
-	int total_cpus() { return ::sysconf(_SC_NPROCESSORS_ONLN); }
+//	int thread_affinity() {
+//		processorid_t id;
+//		processor_bind(P_LWPID, P_MYID, PBIND_QUERY, &id);
+//		return id;
+//	}
+	size_t total_cpus() { return static_cast<size_t>(::sysconf(_SC_NPROCESSORS_ONLN)); }
 }
 #endif
 
@@ -129,7 +127,8 @@ namespace factory {
 			typedef Iserver<Server, Sub_server> This;
 		
 			void add(Srv* srv) { _upstream.push_back(srv); }
-			void add(int cpu) {
+
+			void add_cpu(size_t cpu) {
 				Sub_server* srv = new Sub_server;
 				srv->affinity(cpu);
 				_upstream.push_back(srv);
@@ -238,7 +237,7 @@ namespace factory {
 				return out << "rserver " << rhs._cpu;
 			}
 
-			void affinity(int cpu) { _cpu = cpu; }
+			void affinity(size_t cpu) { _cpu = cpu; }
 
 		protected:
 
@@ -268,7 +267,7 @@ namespace factory {
 			}
 
 			Pool<Kernel*> _pool;
-			int _cpu;
+			size_t _cpu;
 		
 			std::mutex _mutex;
 			std::condition_variable _semaphor;
@@ -337,7 +336,7 @@ namespace factory {
 				_semaphore.notify_all();
 			}
 
-			void affinity(int cpu) { _cpu = cpu; }
+			void affinity(size_t cpu) { _cpu = cpu; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "srvserver " << rhs._cpu;
@@ -348,7 +347,7 @@ namespace factory {
 			std::mutex _queue_mutex;
 			std::mutex _control_mutex;
 			std::condition_variable _semaphore;
-			int _cpu;
+			size_t _cpu;
 		};
 
 		template<class Server=Null, class ... Next_server>

@@ -148,8 +148,8 @@ namespace factory {
 				check_poll("poll()", ::poll(_events.data(), _events.size(), -1));
 			} while (errno == EINTR);
 
-			int nfds = _events.size();
-			for (int n=0; n<nfds; ++n) {
+			size_t nfds = _events.size();
+			for (size_t n=0; n<nfds; ++n) {
 				Event e = _events[n];
 				if (e.bad_fd()) {
 					erase(e);

@@ -129,9 +129,9 @@ struct App {
 			try {
 				if (argc != 2)
 					throw std::runtime_error("Wrong number of arguments.");
-				the_server()->add(0);
+				the_server()->add_cpu(0);
 				if (argv[1][0] == 'x') {
-					the_server()->add(1);
+					the_server()->add_cpu(1);
 					remote_server()->socket(server_endpoint);
 					__factory.start();
 					__factory.wait();

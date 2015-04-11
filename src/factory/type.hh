@@ -254,7 +254,7 @@ namespace factory {
 			// Static template members are initialised on demand,
 			// i.e. only if they are accessed in a program.
 			// This function tries to fool the compiler.
-			virtual Id unused() { return _type.id(); }
+			virtual typename Type::Type_id unused() { return _type.id(); }
 
 			static const Init _type;
 		};

@@ -1,4 +1,6 @@
-unsigned long time_seed() {
+typedef std::chrono::nanoseconds::rep Time;
+
+Time time_seed() {
 	return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
@@ -9,7 +11,8 @@ void rnd(T& val) {
 			std::uniform_real_distribution<T>,
 				std::uniform_int_distribution<T>>::type
 					Distribution;
-	static std::default_random_engine generator(time_seed());
+	typedef std::default_random_engine::result_type Res_type;
+	static std::default_random_engine generator(static_cast<Res_type>(time_seed()));
 	static Distribution distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
 	val = distribution(generator);
 }

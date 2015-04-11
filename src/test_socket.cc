@@ -18,7 +18,7 @@ std::atomic<uint32_t> shutdown_counter(0);
 struct Test_socket: public Mobile<Test_socket> {
 
 	Test_socket(): _data() {}
-	explicit Test_socket(std::vector<Datum> data): _data(data) {}
+	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
 		Logger log(Level::COMPONENT);
@@ -159,7 +159,7 @@ struct App {
 					s << argv[2];
 					s >> sleep;
 				}
-				the_server()->add(0);
+				the_server()->add_cpu(0);
 				if (argv[1][0] == 'x') {
 					remote_server()->socket(server_endpoint);
 					__factory.start();

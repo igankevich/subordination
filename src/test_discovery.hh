@@ -921,7 +921,7 @@ struct App {
 				write_graph_nodes();
 			}
 			try {
-				the_server()->add(0);
+				the_server()->add_cpu(0);
 				the_server()->start();
 				remote_server()->socket(bind_addr);
 				remote_server()->start();

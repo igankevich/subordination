@@ -44,11 +44,11 @@ namespace factory {
 			}
 		}
 
-		Size read(T* buffer, Size size) {
+		Size read(T* buffer, Size sz) {
 			Size offset = 0;
-			while (offset != size && !_chunks.empty()) {
+			while (offset != sz && !_chunks.empty()) {
 				Size m = (last_chunk() ? _write_pos : _chunk_size);
-				Size n = std::min(m - _read_pos, size - offset);
+				Size n = std::min(m - _read_pos, sz - offset);
 				T* chunk = _chunks.front();
 				std::copy(chunk + _read_pos, chunk + _read_pos + n, buffer + offset);
 				_read_pos += n;
@@ -62,14 +62,14 @@ namespace factory {
 			return offset;
 		}
 
-		void write(const T* buffer, Size size) {
+		void write(const T* buffer, Size sz) {
 			if (_chunks.empty()) {
 				_chunks.push_back(new T[_chunk_size]);
 			}
 			Size offset = 0;
-			while (offset != size) {
+			while (offset != sz) {
 				T* chunk = _chunks[_chunk_write_pos];
-				Size n = std::min(_chunk_size - _write_pos, size - offset);
+				Size n = std::min(_chunk_size - _write_pos, sz - offset);
 				std::copy(buffer + offset, buffer + offset + n, chunk + _write_pos);
 				_write_pos += n;
 				_global_write_pos += n;

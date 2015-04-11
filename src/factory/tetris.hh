@@ -32,37 +32,37 @@ namespace factory {
 					cache[i] = x;
 				}
 
-				Int predicted_metric = upstream.dynamic_metric();
-				if (predicted_metric == 0) {
-					predicted_metric = 1;
+				Int pred_metric = upstream.dynamic_metric();
+				if (pred_metric == 0) {
+					pred_metric = 1;
 				}
 
-				int srv1 = -1;
-				int srv2 = -1;
+				int sr1 = -1;
+				int sr2 = -1;
 				Int obj1 = std::numeric_limits<Int>::max();
 				Int obj2 = std::numeric_limits<Int>::min();
 
 				for (int i=0; i<n; ++i) {
-					Int obj = max_load - cache[i] - predicted_metric;
+					Int obj = max_load - cache[i] - pred_metric;
 					if (obj >= 0) {
 						if (obj < obj1) {
-							srv1 = i;
+							sr1 = i;
 							obj1 = obj;
 						}
 					} else {
 						if (obj > obj2) {
-							srv2 = i;
+							sr2 = i;
 							obj2 = obj;
 						}
 					}
 				}
 
-				this->predicted_metric = predicted_metric;
-				this->srv1 = srv1;
-				this->srv2 = srv2;
+				this->predicted_metric = pred_metric;
+				this->srv1 = sr1;
+				this->srv2 = sr2;
 
-				int server = srv1 == -1 ? srv2 : srv1;
-				upstream[server].increase_load(predicted_metric);
+				int server = sr1 == -1 ? sr2 : sr1;
+				upstream[server].increase_load(pred_metric);
 				return server;
 			}
 
@@ -94,9 +94,9 @@ namespace factory {
 				void increase_load(Int) {}
 
 				Int sum_load() const {
-					int n = upstream_.size();
+					size_t n = upstream_.size();
 					Int sum = 0;
-					for (int i=0; i<n; ++i)
+					for (size_t i=0; i<n; ++i)
 						sum += upstream_[i]->sum_load();
 					return sum;
 				}
@@ -104,9 +104,9 @@ namespace factory {
 				Int load() const { return sum_load() / static_metric(); }
 		
 				std::int64_t sum_dynamic_metric() const {
-					int n = upstream_.size();
-					std::int64_t sum = 0;
-					for (int i=0; i<n; ++i)
+					size_t n = upstream_.size();
+					int64_t sum = 0;
+					for (size_t i=0; i<n; ++i)
 						sum += upstream_[i]->sum_dynamic_metric();
 					return sum;
 				}
@@ -116,24 +116,24 @@ namespace factory {
 				}
 		
 				Int static_metric() const { 
-					int n = upstream_.size();
+					size_t n = upstream_.size();
 					Int sum = 0;
-					for (int i=0; i<n; ++i)
+					for (size_t i=0; i<n; ++i)
 						if (upstream_[i]->num_samples() > 0)
 							sum += upstream_[i]->static_metric();
 					return sum == 0 ? 1 : sum;
 				}	
 			
 				int num_samples() const {
-					int n = upstream_.size();
+					size_t n = upstream_.size();
 					int sum = 0;
-					for (int i=0; i<n; ++i)
+					for (size_t i=0; i<n; ++i)
 						sum += upstream_[i]->num_samples();
 					return sum == 0 ? 1 : sum;
 				}
 		
-				Profiler& operator[](int i) { return *upstream_[i]; }
-				int size() const { return upstream_.size(); }
+				Profiler& operator[](size_t i) { return *upstream_[i]; }
+				size_t size() const { return upstream_.size(); }
 		
 			private:
 				std::vector<Profiler*> upstream_;

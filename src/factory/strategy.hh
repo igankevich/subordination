@@ -40,9 +40,9 @@ namespace factory {
 				void send(Kernel* kernel) {
 					Logger(Level::STRATEGY) << "Round_robin::send()" << std::endl;
 					if (kernel->moves_upstream()) {
-						int n = Server::_upstream.size();
+						size_t n = Server::_upstream.size();
 						if (n > 0) {
-							int i = _cursor = (_cursor + 1) % n;
+							uint32_t i = _cursor = (_cursor + 1) % n;
 							Server::_upstream[i]->send(kernel);
 						} else {
 							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
@@ -61,7 +61,7 @@ namespace factory {
 				}
 
 			private:
-				std::atomic<int> _cursor;
+				std::atomic<uint32_t> _cursor;
 
 				static const size_t PRIME     = 7;
 			};

@@ -142,17 +142,18 @@ namespace factory {
 
 		typedef typename Address_range::Int I;
 
-		int n = addrs.size();
+		size_t n = addrs.size();
 		I total_count = 0;
-		for (int i=0; i<n; ++i) {
+		for (size_t i=0; i<n; ++i) {
 			total_count += addrs[i].end() - addrs[i].start();
 		}
 
-		static std::default_random_engine generator(std::chrono::steady_clock::now().time_since_epoch().count());
+		typedef std::default_random_engine::result_type Res_type;
+		static std::default_random_engine generator(static_cast<Res_type>(std::chrono::steady_clock::now().time_since_epoch().count()));
 		std::uniform_int_distribution<I> distribution(0, total_count-1);
 		I m = distribution(generator);
 
-		int i = 0;
+		size_t i = 0;
 		I cnt;
 		while (m > (cnt = addrs[i].end() - addrs[i].start()) && i < n) {
 			m -= cnt;

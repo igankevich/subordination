@@ -10,14 +10,14 @@ void test_buffer() {
 	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
 	auto dice = std::bind(distribution, generator);
 
-	const int32_t MAX_SIZE_POWER = 12;
+	const size_t MAX_SIZE_POWER = 12;
 
-	for (int32_t k=1; k<=133; ++k) {
-		const uint32_t chunk_size = k;
-		for (int32_t i=0; i<=MAX_SIZE_POWER; ++i) {
-			int32_t size = 2 << i;
+	for (size_t k=1; k<=133; ++k) {
+		const size_t chunk_size = k;
+		for (size_t i=0; i<=MAX_SIZE_POWER; ++i) {
+			size_t size = size_t(2) << i;
 			std::vector<T> input(size);
-			for (int32_t j=0; j<size; ++j)
+			for (size_t j=0; j<size; ++j)
 				input[j] = dice();
 			Buffer<T> buf(chunk_size);
 			if (!buf.empty()) {
@@ -41,7 +41,7 @@ void test_buffer() {
 				msg << buf.size();
 				throw std::runtime_error(msg.str());
 			}
-			for (int32_t j=0; j<size; ++j)
+			for (size_t j=0; j<size; ++j)
 				if (input[j] != output[j])
 					throw std::runtime_error(std::string(__func__) + ". Input and output does not match.");
 		}
