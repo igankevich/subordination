@@ -134,7 +134,7 @@ private:
 	static const uint32_t MIN_SAMPLES = 0;
 	static const uint32_t MAX_ERRORS  = 3;
 
-	static const Time MAX_AGE = std::chrono::milliseconds(100).count();
+	static const Time MAX_AGE = std::chrono::milliseconds(100000).count();
 };
 
 Time prog_start = current_time_nano();
