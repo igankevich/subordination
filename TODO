@@ -13,3 +13,4 @@ Implement thread affinity through pthread library with fall back to native OS ca
 Remove stale connections from Socket_server.
 Remove stale peers from Peers.
 Limit number of peers to reduce number of persistent connections.
+Add Valgrind memory tests.
