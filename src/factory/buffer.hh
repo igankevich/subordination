@@ -42,7 +42,7 @@ namespace factory {
 //			_global_write_pos = 0;
 		}
 
-		~Buffer() {
+		virtual ~Buffer() {
 			while (!_chunks.empty()) {
 				T* chunk = _chunks.front();
 				delete[] chunk;

@@ -188,7 +188,7 @@ namespace factory {
 	
 		State _state;
 
-		union Pipe {
+		struct Pipe {
 
 			Pipe() {
 				check("pipe()", ::pipe(_fds));
@@ -205,15 +205,7 @@ namespace factory {
 			int write_end() const { return _fds[1]; }
 
 		private:
-			struct {
-				int _read_fd;
-				int _write_fd;
-			} _unused;
 			int _fds[2];
-
-			static_assert(sizeof(_unused) == sizeof(_fds),
-				"Sizes of 'Pipe' union fields do not match.");
-
 		} _mgmt_pipe;
 	
 		std::vector<Event> _events;

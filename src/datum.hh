@@ -20,8 +20,8 @@ void rnd(T& val) {
 struct Datum {
 
 	Datum():
-		x(), y(), z(),
-		u(), v(), w()
+		x(0), y(0), z(0),
+		u(0), v(0), w(0)
 	{
 		rnd(x); rnd(y); rnd(z);
 		rnd(u); rnd(static_cast<float&>(v)); rnd(static_cast<double&>(w));
