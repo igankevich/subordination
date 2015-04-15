@@ -59,6 +59,10 @@ namespace factory {
 		T val;
 		typename Int::value i;
 		char bytes[sizeof(T)];
+
+		static_assert(
+			sizeof(decltype(val)) == sizeof(decltype(i)),
+			"Bad size of integral type.");
 	};
 
 	template<class T>

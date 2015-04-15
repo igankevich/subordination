@@ -11,8 +11,10 @@ set key inside left top Left reverse
 set xtics nomirror out
 set ytics nomirror out
 
-set xlabel 'No. of nodes'
-set ylabel 'Time [s]'
+#set xlabel 'No. of nodes'
+#set ylabel 'Time [s]'
+set xlabel 'Кол-во узлов'
+set ylabel 'Время [с]'
 
 set datafile separator ','
 set output 'discovery.svg'
@@ -20,10 +22,10 @@ set xrange [2:50]
 set xtics 8,8,50 add ('2' 2)
 set ytics 0,1
 plot \
-     'discovery.log.nocache'   with lines ls 1 title 'Discovery without cache', \
-     'discovery.log.nocache.2' with lines smooth unique ls 2 title 'Discovery without cache (2)',\
-     'discovery.log.nocache.3' with lines smooth unique ls 3 title 'Discovery without cache (3)',\
-     'discovery.log.cache'     with lines ls 4 title 'Discovery with cache', \
+     'discovery.log.nocache'   with lines ls 1 title 'Без кэша (1)', \
+     'discovery.log.nocache.2' with lines smooth unique ls 2 title 'Без кэша (2)',\
+     'discovery.log.nocache.3' with lines smooth unique ls 3 title 'Без кэша (3)',\
+     'discovery.log.cache'     with lines ls 4 title 'С кэшем', \
 
 #reset
 #set datafile separator ','
