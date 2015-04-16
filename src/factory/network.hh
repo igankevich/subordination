@@ -62,9 +62,11 @@ namespace factory {
 		typename Int::value i;
 		char bytes[sizeof(T)];
 
-		static_assert(
-			sizeof(decltype(val)) == sizeof(decltype(i)),
+		static_assert(sizeof(decltype(val)) == sizeof(decltype(i)),
 			"Bad size of integral type.");
+
+		static_assert(std::is_arithmetic<T>::value, 
+			"Bad type for byte representation.");
 	};
 
 	template<class T>
