@@ -9,6 +9,7 @@ namespace factory {
 		Tag STRATEGY  = "strat";
 		Tag DISCOVERY = "dscvr";
 		Tag GRAPH     = "grph";
+		Tag WEBSOCKET = "wbsckt";
 	}
 
 	struct Logger {

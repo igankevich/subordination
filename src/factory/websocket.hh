@@ -1,4 +1,18 @@
+/*
+ * WebSocket lib with support for "wss://" encryption.
+ * Copyright 2010 Joel Martin
+ * Licensed under LGPL version 3 (see docs/LICENSE.LGPL-3)
+ *
+ * You can make a cert/key with openssl using:
+ * openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
+ * as taken from http://docs.python.org/dev/library/ssl.html#certificates
+ */
+
+#include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/md5.h> /* md5 hash */
+#include <openssl/sha.h> /* sha1 hash */
+
 namespace factory {
 	// Initialize the library
 	struct Autoinitialize_openssl_library {
@@ -8,11 +22,10 @@ namespace factory {
 			::SSL_load_error_strings();
 		}
 	} _autoinitialize_openssl_library;
-}
 
 
-#define BUFSIZE 65536
-#define DBUFSIZE (BUFSIZE * 3) / 4 - 20
+const size_t BUFSIZE = 65536;
+const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
 
 #define SERVER_HANDSHAKE_HIXIE "HTTP/1.1 101 Web Socket Protocol Handshake\r\n\
 Upgrade: WebSocket\r\n\
@@ -29,11 +42,8 @@ Sec-WebSocket-Accept: %s\r\n\
 Sec-WebSocket-Protocol: %s\r\n\
 \r\n"
 
-#define HYBI_GUID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-#define HYBI10_ACCEPTHDRLEN 29
-
-#define HIXIE_MD5_DIGEST_LENGTH 16
 
 #define POLICY_RESPONSE "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\" /></cross-domain-policy>\n"
 
@@ -86,55 +96,26 @@ typedef struct {
     int run_once;
 } settings_t;
 
+int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t targsize) {
+	std::string str(src, src + srclength);
+	std::string ret = factory::base64_encode(str);
+	if (ret.size() > targsize) {
+		ret = ret.substr(0, targsize);
+	}
+	std::copy(ret.begin(), ret.end(), target);
+	return 0;
+}
 
-//ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len);
+int b64_pton(const char *src, unsigned char* target, size_t targsize) {
+	std::string str(src, src + targsize);
+	std::string ret = factory::base64_decode(str);
+	if (ret.size() > targsize) {
+		ret = ret.substr(0, targsize);
+	}
+	std::copy(ret.begin(), ret.end(), target);
+	return 0;
+}
 
-//ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len);
-
-/* base64.c declarations */
-//int b64_ntop(u_char const *src, size_t srclength, char *target, size_t targsize);
-//int b64_pton(char const *src, u_char *target, size_t targsize);
-
-#define gen_handler_msg(stream, ...) \
-    if (! settings.daemon) { \
-        fprintf(stream, "  %d: ", settings.handler_id); \
-        fprintf(stream, __VA_ARGS__); \
-    }
-
-#define handler_msg(...) gen_handler_msg(stdout, __VA_ARGS__);
-#define handler_emsg(...) gen_handler_msg(stderr, __VA_ARGS__);
-
-
-
-
-
-/*
- * WebSocket lib with support for "wss://" encryption.
- * Copyright 2010 Joel Martin
- * Licensed under LGPL version 3 (see docs/LICENSE.LGPL-3)
- *
- * You can make a cert/key with openssl using:
- * openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
- * as taken from http://docs.python.org/dev/library/ssl.html#certificates
- */
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <strings.h>
-#include <sys/types.h> 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <signal.h> // daemonizing
-#include <fcntl.h>  // daemonizing
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <resolv.h>      /* base64 encode/decode */
-#include <openssl/md5.h> /* md5 hash */
-#include <openssl/sha.h> /* sha1 hash */
-//#include "websocket.h"
 
 /*
  * Global state
@@ -162,29 +143,6 @@ void fatal(const char *msg)
     exit(1);
 }
 
-/* resolve host with also IP address parsing */ 
-int resolve_host(struct in_addr *sin_addr, const char *hostname) 
-{ 
-    if (!inet_aton(hostname, sin_addr)) { 
-        struct addrinfo *ai, *cur; 
-        struct addrinfo hints; 
-        memset(&hints, 0, sizeof(hints)); 
-        hints.ai_family = AF_INET; 
-        if (getaddrinfo(hostname, NULL, &hints, &ai)) 
-            return -1; 
-        for (cur = ai; cur; cur = cur->ai_next) { 
-            if (cur->ai_family == AF_INET) { 
-                *sin_addr = ((struct sockaddr_in *)cur->ai_addr)->sin_addr; 
-                freeaddrinfo(ai); 
-                return 0; 
-            } 
-        } 
-        freeaddrinfo(ai); 
-        return -1; 
-    } 
-    return 0; 
-} 
-
 
 /*
  * SSL Wrapper Code
@@ -192,7 +150,7 @@ int resolve_host(struct in_addr *sin_addr, const char *hostname)
 
 ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len) {
     if (ctx->ssl) {
-        //handler_msg("SSL recv\n");
+        //Logger(Level::WEBSOCKET) << "SSL recv" << std::endl;
         return SSL_read(ctx->ssl, buf, len);
     } else {
         return recv(ctx->sockfd, buf, len, 0);
@@ -201,7 +159,7 @@ ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len) {
 
 ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
     if (ctx->ssl) {
-        //handler_msg("SSL send\n");
+        //Logger(Level::WEBSOCKET) << "SSL send" << std::endl;
         return SSL_write(ctx->ssl, buf, len);
     } else {
         return send(ctx->sockfd, buf, len, 0);
@@ -273,7 +231,7 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfi
     }
 
 //    if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "DEFAULT") != 1) {
-//        sprintf(msg, "Unable to set cipher\n");
+//        sprintf(msg, "Unable to set cipher" << std::endl;
 //        fatal(msg);
 //    }
 
@@ -329,7 +287,7 @@ int decode_hixie(char *src, size_t srclength,
     int len, framecount = 0, retlen = 0;
 //    unsigned char chr;
     if ((src[0] != '\x00') || (src[srclength-1] != '\xff')) {
-        handler_emsg("WebSocket framing error\n");
+        Logger(Level::WEBSOCKET) << "WebSocket framing error" << std::endl;
         return -1;
     }
     *left = srclength;
@@ -387,7 +345,7 @@ int encode_hybi(u_char const *src, size_t srclength,
         *(u_short*)&(target[2]) = htons(b64_sz);
         payload_offset = 4;
     } else {
-        handler_emsg("Sending frames larger than 65535 bytes not supported\n");
+        Logger(Level::WEBSOCKET) << "Sending frames larger than 65535 bytes not supported" << std::endl;
         return -1;
         //target[1] = (char) 127;
         //*(u_long*)&(target[2]) = htonl(b64_sz);
@@ -418,7 +376,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
     *left = srclength;
     frame = src;
 
-    //printf("Deocde new frame\n");
+    //printf("Deocde new frame" << std::endl;
     while (1) {
         // Need at least two bytes of the header
         // Find beginning of next frame. First time hdr_length, masked and
@@ -436,7 +394,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
         }
         remaining = (src + srclength) - frame;
         if (remaining < 2) {
-            //printf("Truncated frame header from client\n");
+            //printf("Truncated frame header from client" << std::endl;
             break;
         }
         framecount ++;
@@ -457,7 +415,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
             payload_length = (frame[2] << 8) + frame[3];
             hdr_length = 4;
         } else {
-            handler_emsg("Receiving frames larger than 65535 bytes not supported\n");
+            Logger(Level::WEBSOCKET) << "Receiving frames larger than 65535 bytes not supported" << std::endl;
             return -1;
         }
         if ((hdr_length + 4*masked + payload_length) > remaining) {
@@ -467,17 +425,18 @@ int decode_hybi(unsigned char *src, size_t srclength,
         payload = frame + hdr_length + 4*masked;
 
         if (*opcode != 1 && *opcode != 2) {
-            handler_msg("Ignoring non-data frame, opcode 0x%x\n", *opcode);
+            Logger(Level::WEBSOCKET) << "Ignoring non-data frame, opcode 0x"
+				<< std::hex << *opcode << std::dec << std::endl;
             continue;
         }
 
         if (payload_length == 0) {
-            handler_msg("Ignoring empty frame\n");
+            Logger(Level::WEBSOCKET) << "Ignoring empty frame" << std::endl;
             continue;
         }
 
         if ((payload_length > 0) && (!masked)) {
-            handler_emsg("Received unmasked payload from client\n");
+            Logger(Level::WEBSOCKET) << "Received unmasked payload from client" << std::endl;
             return -1;
         }
 
@@ -506,7 +465,7 @@ int decode_hybi(unsigned char *src, size_t srclength,
         // Restore the first character of the next frame
         payload[payload_length] = save_char;
 //        if (len < 0) {
-//            handler_emsg("Base64 decode error code %d", len);
+//            Logger(Level::WEBSOCKET) << "Base64 decode error code %d", len);
 //            return len;
 //        }
         target_offset += len;
@@ -626,7 +585,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
     return 1;
 }
 
-int parse_hixie76_key(const char * key) {
+unsigned long parse_hixie76_key(const char * key) {
     unsigned long i, spaces = 0, num = 0;
     for (i=0; i < strlen(key); i++) {
         if (key[i] == ' ') {
@@ -641,19 +600,22 @@ int parse_hixie76_key(const char * key) {
 
 int gen_md5(const headers_t *headers, char *target) {
 
+	static const size_t HIXIE_MD5_DIGEST_LENGTH = 16;
+
     unsigned long key1_long = parse_hixie76_key(headers->key1);
     unsigned long key2_long = parse_hixie76_key(headers->key2);
 
-	union Bytes {
-		Bytes(unsigned long ll): l(ll) {}
-		char operator[](int i) const { return bytes[i]; }
-	private:
-		unsigned long l;
-		char bytes[4];
-	};
+//	union Bytes {
+//		Bytes(unsigned long ll): l(ll) {}
+//		char operator[](int i) const { return bytes[i]; }
+//	private:
+//		unsigned long l;
+//		char bytes[4];
+//	};
 
-	Bytes key1(key1_long);
-	Bytes key2(key2_long);
+	using factory::Bytes;
+	Bytes<unsigned long> key1 = key1_long;
+	Bytes<unsigned long> key2 = key2_long;
 
     const char *key3 = headers->key3;
 
@@ -678,13 +640,16 @@ int gen_md5(const headers_t *headers, char *target) {
 }
 
 static void gen_sha1(headers_t *headers, char *target) {
-    SHA_CTX c;
+
+	static const size_t HYBI10_ACCEPTHDRLEN = 29;
+
+    ::SHA_CTX c;
     unsigned char hash[SHA_DIGEST_LENGTH];
 
-    SHA1_Init(&c);
-    SHA1_Update(&c, headers->key1, strlen(headers->key1));
-    SHA1_Update(&c, HYBI_GUID, 36);
-    SHA1_Final(hash, &c);
+    ::SHA1_Init(&c);
+    ::SHA1_Update(&c, headers->key1, strlen(headers->key1));
+    ::SHA1_Update(&c, HYBI_GUID, 36);
+    ::SHA1_Final(hash, &c);
 
     b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
     //assert(r == HYBI10_ACCEPTHDRLEN - 1);
@@ -702,45 +667,46 @@ ws_ctx_t *do_handshake(int sock) {
     len = recv(sock, handshake, 1024, MSG_PEEK);
     handshake[len] = 0;
     if (len == 0) {
-        handler_msg("ignoring empty handshake\n");
+        Logger(Level::WEBSOCKET) << "ignoring empty handshake" << std::endl;
         return NULL;
     } else if (bcmp(handshake, "<policy-file-request/>", 22) == 0) {
         len = recv(sock, handshake, 1024, 0);
         handshake[len] = 0;
-        handler_msg("sending flash policy response\n");
+        Logger(Level::WEBSOCKET) << "sending flash policy response" << std::endl;
+		// TODO: this line sends NULL character
         send(sock, POLICY_RESPONSE, sizeof(POLICY_RESPONSE), 0);
         return NULL;
     } else if ((bcmp(handshake, "\x16", 1) == 0) ||
                (bcmp(handshake, "\x80", 1) == 0)) {
         // SSL
         if (!settings.cert) {
-            handler_msg("SSL connection but no cert specified\n");
+            Logger(Level::WEBSOCKET) << "SSL connection but no cert specified" << std::endl;
             return NULL;
         } else if (access(settings.cert, R_OK) != 0) {
-            handler_msg("SSL connection but '%s' not found\n",
-                        settings.cert);
+            Logger(Level::WEBSOCKET) << "SSL connection but '"
+				<< settings.cert << "' not found" << std::endl;
             return NULL;
         }
         ws_ctx = alloc_ws_ctx();
         ws_socket_ssl(ws_ctx, sock, settings.cert, settings.key);
         if (! ws_ctx) { return NULL; }
         scheme = "wss";
-        handler_msg("using SSL socket\n");
+        Logger(Level::WEBSOCKET) << "using SSL socket" << std::endl;
     } else if (settings.ssl_only) {
-        handler_msg("non-SSL connection disallowed\n");
+        Logger(Level::WEBSOCKET) << "non-SSL connection disallowed" << std::endl;
         return NULL;
     } else {
         ws_ctx = alloc_ws_ctx();
         ws_socket(ws_ctx, sock);
         if (! ws_ctx) { return NULL; }
         scheme = "ws";
-        handler_msg("using plain (not SSL) socket\n");
+        Logger(Level::WEBSOCKET) << "using plain (not SSL) socket" << std::endl;
     }
     offset = 0;
     for (i = 0; i < 10; i++) {
         len = ws_recv(ws_ctx, handshake+offset, 4096);
         if (len == 0) {
-            handler_emsg("Client closed during handshake\n");
+            Logger(Level::WEBSOCKET) << "Client closed during handshake" << std::endl;
             return NULL;
         }
         offset += len;
@@ -751,9 +717,9 @@ ws_ctx_t *do_handshake(int sock) {
         usleep(10);
     }
 
-    handler_msg("handshake: %s\n", handshake);
+    Logger(Level::WEBSOCKET) << "handshake: " <<  handshake << std::endl;
     if (!parse_handshake(ws_ctx, handshake)) {
-        handler_emsg("Invalid WS request\n");
+        Logger(Level::WEBSOCKET) << "Invalid WS request" << std::endl;
         return NULL;
     }
 
@@ -761,16 +727,16 @@ ws_ctx_t *do_handshake(int sock) {
 
     headers = ws_ctx->headers;
     if (ws_ctx->hybi > 0) {
-        handler_msg("using protocol HyBi/IETF 6455 %d\n", ws_ctx->hybi);
+        Logger(Level::WEBSOCKET) << "using protocol HyBi/IETF 6455 " << ws_ctx->hybi << std::endl;
         gen_sha1(headers, sha1);
         sprintf(response, SERVER_HANDSHAKE_HYBI, sha1, SUBPROTOCOL_NAMES[ws_ctx->subproto]);
     } else {
         if (ws_ctx->hixie == 76) {
-            handler_msg("using protocol Hixie 76\n");
+            Logger(Level::WEBSOCKET) << "using protocol Hixie 76" << std::endl;
             gen_md5(headers, trailer);
             pre = "Sec-";
         } else {
-            handler_msg("using protocol Hixie 75\n");
+            Logger(Level::WEBSOCKET) << "using protocol Hixie 75" << std::endl;
             trailer[0] = '\0';
             pre = "";
         }
@@ -778,21 +744,11 @@ ws_ctx_t *do_handshake(int sock) {
                 headers->host, headers->path, pre.c_str(), SUBPROTOCOL_NAMES[ws_ctx->subproto], trailer);
     }
     
-    //handler_msg("response: %s\n", response);
+    //Logger(Level::WEBSOCKET) << "response: %s\n", response);
     ws_send(ws_ctx, response, strlen(response));
 
     return ws_ctx;
 }
-
-//void signal_handler(int sig) {
-//    switch (sig) {
-//        case SIGHUP: break; // ignore for now
-////        case SIGPIPE: pipe_error = 1; break; // handle inline
-//        case SIGTERM: exit(0); break;
-//    }
-//}
-
-namespace factory {
 
 	struct Web_socket {
 

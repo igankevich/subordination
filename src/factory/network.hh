@@ -52,6 +52,8 @@ namespace factory {
 		operator char* () { return bytes; }
 		operator const char* () const { return bytes; }
 
+		char operator[](size_t idx) const { return bytes[idx]; }
+
 		bool operator==(const Bytes<T>& rhs) const { return i == rhs.i; }
 		bool operator!=(const Bytes<T>& rhs) const { return i != rhs.i; }
 
