@@ -15,8 +15,7 @@ namespace factory {
 	};
 
 
-	void emergency_shutdown(int signum);
-	void sigpipe_handler(int);
+	void emergency_shutdown(int);
 	
 	struct Basic_factory {
 
@@ -58,8 +57,6 @@ namespace factory {
 			action.sa_handler = emergency_shutdown;
 			::sigaction(SIGTERM, &action, 0);
 			::sigaction(SIGINT, &action, 0);
-			::feenableexcept(FE_INVALID | FE_DIVBYZERO | FE_UNDERFLOW | FE_OVERFLOW);
-			::sigaction(SIGFPE, &action, 0);
 			ignore_sigpipe();
 		}
 

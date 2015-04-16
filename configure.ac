@@ -29,7 +29,7 @@ AC_PROG_CXX
 
 # Checks for header files.
 #AC_HEADER_RESOLV
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h fenv.h netinet/in.h sys/socket.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL

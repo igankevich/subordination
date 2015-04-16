@@ -39,8 +39,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
-#include <fenv.h>
-#include <signal.h>
+#include <csignal>
 #include <ifaddrs.h>
 
 

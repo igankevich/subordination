@@ -18,18 +18,12 @@ namespace factory {
 		}
 	}
 
-	void emergency_shutdown(int signal) {
+	void emergency_shutdown(int sig) {
 		__factory.stop();
 		static int num_calls = 0;
 		static const int MAX_CALLS = 3;
 		num_calls++;
-		std::clog << "EMERGENCY shutdown." << std::endl;
-		if (signal == SIGFPE) {
-			std::clog << "Arithmetic exception caught." << std::endl;
-		}
-		if (signal == SIGSEGV) {
-			std::clog << "Segfault caught." << std::endl;
-		}
+		std::clog << "Ctrl-C shutdown." << std::endl;
 		if (num_calls >= MAX_CALLS) {
 			std::clog << "MAX_CALLS reached. Aborting." << std::endl;
 			std::abort();
