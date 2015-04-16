@@ -94,23 +94,16 @@ typedef struct {
 } settings_t;
 
 int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t targsize) {
-	std::string str(src, src + srclength);
-	std::string ret = factory::base64_encode(str);
-	if (ret.size() > targsize) {
-		ret = ret.substr(0, targsize);
-	}
-	std::copy(ret.begin(), ret.end(), target);
-	return 0;
+	size_t encoded_size = factory::base64_encoded_size(srclength);
+	if (encoded_size > targsize) return -1;
+	factory::base64_encode(src, src + srclength, target);
+	return encoded_size;
 }
 
 int b64_pton(const char *src, unsigned char* target, size_t targsize, size_t srclength) {
-	std::string str(src, src + srclength);
-	std::string ret = factory::base64_decode(str);
-	if (ret.size() > targsize) {
-		ret = ret.substr(0, targsize);
-	}
-	std::copy(ret.begin(), ret.end(), target);
-	return 0;
+	size_t max_size = factory::base64_max_decoded_size(srclength);
+	if (max_size > targsize) return -1;
+	return factory::base64_decode(src, src + srclength, target);
 }
 
 

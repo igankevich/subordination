@@ -18,7 +18,7 @@ namespace factory {
 		}
 	}
 
-	void emergency_shutdown(int sig) {
+	void emergency_shutdown(int) {
 		__factory.stop();
 		static int num_calls = 0;
 		static const int MAX_CALLS = 3;

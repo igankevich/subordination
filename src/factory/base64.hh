@@ -4,7 +4,7 @@ namespace factory {
 
 	static const char BASE64_TABLE[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	
-	static const char reverse_table[128] = {
+	static const unsigned char reverse_table[128] = {
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
@@ -26,24 +26,26 @@ namespace factory {
 	template<class It, class Res>
 	void base64_encode(It first, It last, Res result) {
 	
+		typedef typename std::remove_reference<decltype(*result)>::type char_type;
 		using std::numeric_limits;
 	
-		const size_t binlen = last - first;
+		const size_t binlen = static_cast<size_t>(last - first);
 		if (binlen > (numeric_limits<size_t>::max() / 4u) * 3u) {
 			throw std::length_error("Converting too large a string to base64.");
 		}
 	
-		const Res last_result = result + base64_encoded_size(binlen);
+		Res last_result = result + std::ptrdiff_t(base64_encoded_size(binlen));
 	
 		int bits_collected = 0;
 		unsigned int accumulator = 0;
 	
 		while (first != last) {
-			accumulator = (accumulator << 8) | (*first & 0xffu);
+			const unsigned int ch = static_cast<unsigned int>(*first);
+			accumulator = (accumulator << 8) | (ch & 0xffu);
 			bits_collected += 8;
 			while (bits_collected >= 6) {
 				bits_collected -= 6;
-				*result = BASE64_TABLE[(accumulator >> bits_collected) & 0x3fu];
+				*result = static_cast<char_type>(BASE64_TABLE[(accumulator >> bits_collected) & 0x3fu]);
 				++result;
 			}
 			++first;
@@ -51,7 +53,7 @@ namespace factory {
 		if (bits_collected > 0) { // Any trailing bits that are missing.
 	//	      assert(bits_collected < 6);
 			accumulator <<= 6 - bits_collected;
-			*result = BASE64_TABLE[accumulator & 0x3fu];
+			*result = static_cast<char_type>(BASE64_TABLE[accumulator & 0x3fu]);
 			++result;
 		}
 		while (result != last_result) {
@@ -65,6 +67,8 @@ namespace factory {
 	
 	template<class It, class Res>
 	size_t base64_decode(It first, It last, Res result) {
+
+		typedef typename std::remove_reference<decltype(*result)>::type char_type;
 	
 		int bits_collected = 0;
 		unsigned int accumulator = 0;
@@ -85,11 +89,11 @@ namespace factory {
 			bits_collected += 6;
 			if (bits_collected >= 8) {
 				bits_collected -= 8;
-				*result++ = static_cast<char>((accumulator >> bits_collected) & 0xffu);
+				*result++ = static_cast<char_type>((accumulator >> bits_collected) & 0xffu);
 			}
 		}
 
-		return result - start;
+		return static_cast<size_t>(result - start);
 	}
 
 }
