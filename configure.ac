@@ -4,9 +4,16 @@
 AC_PREREQ([2.69])
 AC_INIT([Factory], [0.1], [igankevich@yandex.com])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
+
+# Automake initialisation.
+AM_INIT_AUTOMAKE
+#AM_SILENT_RULES([yes])
+
+# Check for arguments.
+AC_ARG_ENABLE([warnings],
+	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
 
 # Checks for programs.
 AC_LANG([C++])
@@ -40,7 +47,8 @@ AC_TYPE_UINT8_T
 AC_TYPE_PID_T
 CHECK_CXX_11
 CHECK_CXX_11_THREAD
-AX_CXX_WARNINGS
+
+AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
