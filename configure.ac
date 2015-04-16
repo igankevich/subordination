@@ -61,7 +61,7 @@ AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
-AC_CHECK_FUNCS([memchr memset socket setenv strerror])
+AC_CHECK_FUNCS([memset socket setenv strerror])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

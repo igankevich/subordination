@@ -4,7 +4,7 @@ namespace factory {
 
 	static const char BASE64_TABLE[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	
-	static const char BASE64_RTABLE[128] = {
+	static const char reverse_table[128] = {
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
 	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
@@ -15,34 +15,36 @@ namespace factory {
 	   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
 	};
 	
-	std::string base64_encode(const std::string &bindata)
-	{
+	template<class It>
+	std::string base64_encode(It first, It last) {
+
 	   using std::string;
 	   using std::numeric_limits;
+
+	   const size_t binlen = last - first;
 	
-	   if (bindata.size() > (numeric_limits<string::size_type>::max() / 4u) * 3u) {
+	   if (binlen > (numeric_limits<string::size_type>::max() / 4u) * 3u) {
 	      throw std::length_error("Converting too large a string to base64.");
 	   }
 	
-	   const std::size_t binlen = bindata.size();
 	   // Use = signs so the end is properly padded.
 	   string retval((((binlen + 2) / 3) * 4), '=');
 	   std::size_t outpos = 0;
 	   int bits_collected = 0;
 	   unsigned int accumulator = 0;
-	   const string::const_iterator binend = bindata.end();
 	
-	   for (string::const_iterator i = bindata.begin(); i != binend; ++i) {
-	      accumulator = (accumulator << 8) | (*i & 0xffu);
+	   while (first != last) {
+	      accumulator = (accumulator << 8) | (*first & 0xffu);
 	      bits_collected += 8;
 	      while (bits_collected >= 6) {
 	         bits_collected -= 6;
 	         retval[outpos++] = BASE64_TABLE[(accumulator >> bits_collected) & 0x3fu];
 	      }
+		  ++first;
 	   }
 	   if (bits_collected > 0) { // Any trailing bits that are missing.
 //	      assert(bits_collected < 6);
-//	      accumulator <<= 6 - bits_collected;
+	      accumulator <<= 6 - bits_collected;
 	      retval[outpos++] = BASE64_TABLE[accumulator & 0x3fu];
 	   }
 //	   assert(outpos >= (retval.size() - 2));
@@ -50,24 +52,25 @@ namespace factory {
 	   return retval;
 	}
 	
-	std::string base64_decode(const std::string &ascdata)
-	{
+	template<class It>
+	std::string base64_decode(It first, It last) {
+
 	   using std::string;
 	   string retval;
-	   const string::const_iterator last = ascdata.end();
 	   int bits_collected = 0;
 	   unsigned int accumulator = 0;
 	
-	   for (string::const_iterator i = ascdata.begin(); i != last; ++i) {
-	      const int c = *i;
+	   while (first != last) {
+	      const int c = *first;
+		  ++first;
 	      if (std::isspace(c) || c == '=') {
 	         // Skip whitespace and padding. Be liberal in what you accept.
 	         continue;
 	      }
-	      if ((c > 127) || (c < 0) || (BASE64_RTABLE[c] > 63)) {
+	      if ((c > 127) || (c < 0) || (reverse_table[c] > 63)) {
 	         throw std::invalid_argument("This contains characters not legal in a base64 encoded string.");
 	      }
-	      accumulator = (accumulator << 6) | BASE64_RTABLE[c];
+	      accumulator = (accumulator << 6) | reverse_table[c];
 	      bits_collected += 6;
 	      if (bits_collected >= 8) {
 	         bits_collected -= 8;

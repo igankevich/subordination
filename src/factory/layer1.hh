@@ -59,7 +59,7 @@
 //#include "resource.hh"
 #include "kernel.hh"
 #include "base64.hh"
-#include "websocket.hh"
+//#include "websocket.hh"
 #include "repository.hh"
 #include "server.hh"
 #include "socket_server.hh"

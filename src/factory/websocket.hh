@@ -14,7 +14,7 @@
 #include <openssl/sha.h> /* sha1 hash */
 
 namespace factory {
-	// Initialize the library
+
 	struct Autoinitialize_openssl_library {
 		Autoinitialize_openssl_library() {
 			::SSL_library_init();
@@ -24,8 +24,8 @@ namespace factory {
 	} _autoinitialize_openssl_library;
 
 
-const size_t BUFSIZE = 65536;
-const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
+	const size_t BUFSIZE = 65536;
+	const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
 
 #define SERVER_HANDSHAKE_HIXIE "HTTP/1.1 101 Web Socket Protocol Handshake\r\n\
 Upgrade: WebSocket\r\n\
@@ -41,9 +41,6 @@ Connection: Upgrade\r\n\
 Sec-WebSocket-Accept: %s\r\n\
 Sec-WebSocket-Protocol: %s\r\n\
 \r\n"
-
-const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-
 
 #define POLICY_RESPONSE "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\" /></cross-domain-policy>\n"
 
@@ -71,8 +68,8 @@ typedef struct {
 
 typedef struct {
     int        sockfd;
-    SSL_CTX   *ssl_ctx;
-    SSL       *ssl;
+    ::SSL_CTX   *ssl_ctx;
+    ::SSL       *ssl;
     int        hixie;
     int        hybi;
 	Subprotocol subproto;
@@ -106,8 +103,8 @@ int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t ta
 	return 0;
 }
 
-int b64_pton(const char *src, unsigned char* target, size_t targsize) {
-	std::string str(src, src + targsize);
+int b64_pton(const char *src, unsigned char* target, size_t targsize, size_t srclength) {
+	std::string str(src, src + srclength);
 	std::string ret = factory::base64_decode(str);
 	if (ret.size() > targsize) {
 		ret = ret.substr(0, targsize);
@@ -125,23 +122,6 @@ int b64_pton(const char *src, unsigned char* target, size_t targsize) {
 settings_t settings;
 
 
-void traffic(char * token) {
-    if ((settings.verbose) && (! settings.daemon)) {
-        fprintf(stdout, "%s", token);
-        fflush(stdout);
-    }
-}
-
-void error(const char *msg)
-{
-    perror(msg);
-}
-
-void fatal(const char *msg)
-{
-    perror(msg);
-    exit(1);
-}
 
 
 /*
@@ -151,7 +131,7 @@ void fatal(const char *msg)
 ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len) {
     if (ctx->ssl) {
         //Logger(Level::WEBSOCKET) << "SSL recv" << std::endl;
-        return SSL_read(ctx->ssl, buf, len);
+        return ::SSL_read(ctx->ssl, buf, len);
     } else {
         return recv(ctx->sockfd, buf, len, 0);
     }
@@ -160,7 +140,7 @@ ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len) {
 ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
     if (ctx->ssl) {
         //Logger(Level::WEBSOCKET) << "SSL send" << std::endl;
-        return SSL_write(ctx->ssl, buf, len);
+        return ::SSL_write(ctx->ssl, buf, len);
     } else {
         return send(ctx->sockfd, buf, len, 0);
     }
@@ -168,18 +148,11 @@ ssize_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
 
 ws_ctx_t *alloc_ws_ctx() {
     ws_ctx_t *ctx;
-    if (! (ctx = new ws_ctx_t) )
-        { fatal("malloc()"); }
-
-    if (! (ctx->cin_buf = new char[BUFSIZE]) )
-        { fatal("malloc of cin_buf"); }
-    if (! (ctx->cout_buf = new char[BUFSIZE]) )
-        { fatal("malloc of cout_buf"); }
-    if (! (ctx->tin_buf = new char[BUFSIZE]) )
-        { fatal("malloc of tin_buf"); }
-    if (! (ctx->tout_buf = new char[BUFSIZE]) )
-        { fatal("malloc of tout_buf"); }
-
+	ctx = new ws_ctx_t;
+	ctx->cin_buf = new char[BUFSIZE];
+	ctx->cout_buf = new char[BUFSIZE];
+	ctx->tin_buf = new char[BUFSIZE];
+	ctx->tout_buf = new char[BUFSIZE];
     ctx->headers = new headers_t;
     ctx->ssl = NULL;
     ctx->ssl_ctx = NULL;
@@ -199,9 +172,9 @@ void ws_socket(ws_ctx_t *ctx, int socket) {
 }
 
 ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfile) {
+
     int ret;
-    char msg[1024];
-    char * use_keyfile;
+    char* use_keyfile;
     ws_socket(ctx, socket);
 
     if (keyfile && (keyfile[0] != '\0')) {
@@ -212,36 +185,38 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfi
         use_keyfile = certfile;
     }
 
-    ctx->ssl_ctx = SSL_CTX_new(TLSv1_server_method());
+    ctx->ssl_ctx = ::SSL_CTX_new(TLSv1_server_method());
     if (ctx->ssl_ctx == NULL) {
-        ERR_print_errors_fp(stderr);
-        fatal("Failed to configure SSL context");
+        ::ERR_print_errors_fp(stderr);
+        throw std::runtime_error("Failed to configure SSL context");
     }
 
-    if (SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, use_keyfile,
+    if (::SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, use_keyfile,
                                     SSL_FILETYPE_PEM) <= 0) {
-        sprintf(msg, "Unable to load private key file %s\n", use_keyfile);
-        fatal(msg);
+		std::stringstream msg;
+        msg << "Unable to load private key file '" << use_keyfile << "'." << std::endl;
+        throw std::runtime_error(msg.str());
     }
 
-    if (SSL_CTX_use_certificate_file(ctx->ssl_ctx, certfile,
+    if (::SSL_CTX_use_certificate_file(ctx->ssl_ctx, certfile,
                                      SSL_FILETYPE_PEM) <= 0) {
-        sprintf(msg, "Unable to load certificate file %s\n", certfile);
-        fatal(msg);
+		std::stringstream msg;
+        msg << "Unable to load certificate file '" << certfile << "'." << std::endl;
+        throw std::runtime_error(msg.str());
     }
 
 //    if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "DEFAULT") != 1) {
 //        sprintf(msg, "Unable to set cipher" << std::endl;
-//        fatal(msg);
+//        throw std::runtime_error(msg);
 //    }
 
     // Associate socket and ssl object
-    ctx->ssl = SSL_new(ctx->ssl_ctx);
-    SSL_set_fd(ctx->ssl, socket);
+    ctx->ssl = ::SSL_new(ctx->ssl_ctx);
+    ::SSL_set_fd(ctx->ssl, socket);
 
-    ret = SSL_accept(ctx->ssl);
+    ret = ::SSL_accept(ctx->ssl);
     if (ret < 0) {
-        ERR_print_errors_fp(stderr);
+        ::ERR_print_errors_fp(stderr);
         return NULL;
     }
 
@@ -250,11 +225,11 @@ ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfi
 
 void ws_socket_free(ws_ctx_t *ctx) {
     if (ctx->ssl) {
-        SSL_free(ctx->ssl);
+        ::SSL_free(ctx->ssl);
         ctx->ssl = NULL;
     }
     if (ctx->ssl_ctx) {
-        SSL_CTX_free(ctx->ssl_ctx);
+        ::SSL_CTX_free(ctx->ssl_ctx);
         ctx->ssl_ctx = NULL;
     }
     if (ctx->sockfd) {
@@ -304,9 +279,12 @@ int decode_hixie(char *src, size_t srclength,
     start = src+1; // Skip '\x00' start
     do {
         /* We may have more than one frame */
-        end = (char *)memchr(start, '\xff', srclength);
+//        end = (char *)memchr(start, '\xff', srclength);
+		// TODO: check this
+        end = std::find(start, src + srclength, '\xff');
         *end = '\x00';
-        len = b64_pton(start, target+retlen, targsize-retlen);
+		// TODO: check this
+        len = b64_pton(start, target+retlen, targsize-retlen, end-start);
         if (len < 0) {
             return len;
         }
@@ -316,7 +294,6 @@ int decode_hixie(char *src, size_t srclength,
     } while (end < (src+srclength-1));
     if (framecount > 1) {
         snprintf(cntstr, 3, "%d", framecount);
-        traffic(cntstr);
     }
     *left = 0;
     return retlen;
@@ -475,7 +452,6 @@ int decode_hybi(unsigned char *src, size_t srclength,
 
     if (framecount > 1) {
         snprintf(cntstr, 3, "%d", framecount);
-        traffic(cntstr);
     }
     
     *left = remaining;
@@ -619,7 +595,7 @@ int gen_md5(const headers_t *headers, char *target) {
 
     const char *key3 = headers->key3;
 
-    MD5_CTX c;
+    ::MD5_CTX c;
     char in[HIXIE_MD5_DIGEST_LENGTH] = {
 // TODO: check this refactoring
 //        key1 >> 24, key1 >> 16, key1 >> 8, key1,
@@ -642,6 +618,7 @@ int gen_md5(const headers_t *headers, char *target) {
 static void gen_sha1(headers_t *headers, char *target) {
 
 	static const size_t HYBI10_ACCEPTHDRLEN = 29;
+	static const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
     ::SHA_CTX c;
     unsigned char hash[SHA_DIGEST_LENGTH];
