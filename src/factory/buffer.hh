@@ -60,6 +60,10 @@ namespace factory {
 				_read_pos += n;
 				_global_read_pos += n;
 				offset += n;
+				if (_read_pos == _write_pos && last_chunk()) {
+					_read_pos = 0;
+					_write_pos = 0;
+				}
 				if (_read_pos == _chunk_size) {
 					remove_chunk();
 					_read_pos = 0;
