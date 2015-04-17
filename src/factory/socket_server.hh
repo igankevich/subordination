@@ -102,6 +102,7 @@ namespace factory {
 							Socket sock = pair.first;
 							Endpoint addr = pair.second;
 							Endpoint vaddr = virtual_addr(addr);
+//							Endpoint vaddr = addr;
 							auto res = _upstream.find(vaddr);
 							if (res == _upstream.end()) {
 								Remote_server* s = peer(sock, addr, vaddr, DEFAULT_EVENTS);
@@ -554,10 +555,10 @@ namespace factory {
 //		Socket_service<Web_socket_handler<N>>* _service;
 //	};
 
-		template<class Kernel, template<class X> class Pool, class Type>
+		template<class Kernel, template<class X> class Pool, class Type, class Server_socket>
 		struct Remote_Rserver {
 
-			typedef Remote_Rserver<Kernel, Pool, Type> This;
+			typedef Remote_Rserver<Kernel, Pool, Type, Server_socket> This;
 			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
 			typedef typename Foreign_stream::Pos Pos;
 
@@ -633,7 +634,7 @@ namespace factory {
 			void handle_event(Event event, F on_overflow) {
 				bool overflow = false;
 				if (event.is_reading()) {
-					_istream.fill<Socket>(_socket);
+					_istream.fill<Server_socket&>(_socket);
 					bool state_is_ok = true;
 					while (state_is_ok && !_istream.empty()) {
 						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
@@ -666,7 +667,7 @@ namespace factory {
 //					try {
 						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
 						std::this_thread::sleep_for(std::chrono::milliseconds(100));
-						_ostream.flush<Socket>(_socket);
+						_ostream.flush<Server_socket&>(_socket);
 						if (_ostream.empty()) {
 							Logger(Level::HANDLER) << "Flushed." << std::endl;
 //							clear_kernel_buffer();
@@ -691,7 +692,7 @@ namespace factory {
 			int fd() const { return _socket; }
 			Socket socket() const { return _socket; }
 			void socket(Socket rhs) {
-				_istream.fill<Socket>(_socket);
+				_istream.fill<Server_socket&>(_socket);
 				_socket = rhs;
 			}
 			Endpoint bind_addr() const { return _socket.bind_addr(); }

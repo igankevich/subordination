@@ -24,7 +24,8 @@ check_PROGRAMS = \
 	test_discovery \
 	test_spinlock \
 	test_endpoint \
-	test_base64
+	test_base64 \
+	test_websocket
 
 test_buffer_SOURCES     = test_buffer.cc
 test_marshaling_SOURCES = test_marshaling.cc
@@ -34,3 +35,4 @@ test_discovery_SOURCES  = test_discovery.cc
 test_spinlock_SOURCES   = test_spinlock.cc
 test_endpoint_SOURCES   = test_endpoint.cc
 test_base64_SOURCES     = test_base64.cc
+test_websocket_SOURCES  = test_websocket.cc

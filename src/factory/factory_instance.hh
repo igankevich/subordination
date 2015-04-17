@@ -22,6 +22,7 @@ namespace factory {
 		Basic_factory():
 			_local_server(),
 			_remote_server(),
+			_ext_server(),
 			_repository()
 		{
 			init_signal_handlers();
@@ -32,21 +33,25 @@ namespace factory {
 		void start() {
 			_local_server.start();
 			_remote_server.start();
+			_ext_server.start();
 		}
 
 		void stop() {
 			_local_server.stop();
 			_remote_server.send(new Shutdown);
 			_remote_server.stop();
+			_ext_server.stop();
 		}
 
 		void wait() {
 			_local_server.wait();
 			_remote_server.wait();
+			_ext_server.wait();
 		}
 
 		Local_server* local_server() { return &_local_server; }
 		Remote_server* remote_server() { return &_remote_server; }
+		External_server* ext_server() { return &_ext_server; }
 		Repository_stack* repository() { return &_repository; }
 
 	private:
@@ -69,6 +74,7 @@ namespace factory {
 
 		Local_server _local_server;
 		Remote_server _remote_server;
+		External_server _ext_server;
 		Repository_stack _repository;
 	};
 

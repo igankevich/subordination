@@ -27,6 +27,7 @@ src/test_discovery
 src/test_spinlock
 src/test_endpoint
 src/test_base64
+src/test_websocket
 src/*.html
 
 syntax: regexp

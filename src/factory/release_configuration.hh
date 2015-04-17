@@ -35,10 +35,16 @@ namespace factory {
 			using Iserver = factory::components::Iserver<Base, Sub>;
 
 		template<class K>
-			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type>;
+			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type, factory::Server_socket>;
+
+		template<class K>
+			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type, factory::Web_socket>;
 
 		template<class K>
 			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type, Pool>;
+
+		template<class K>
+			using Web_socket_server = factory::components::Socket_server<Server<K>, Web_socket_remote_Rserver<Kernel>, Kernel, Type, Pool>;
 
 //		template<class K>
 //			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;
@@ -94,7 +100,7 @@ namespace factory {
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 
 		typedef Socket_server<Kernel> Remote_server;
-		typedef Socket_server<Kernel> Discovery_server;
+		typedef Web_socket_server<Kernel> External_server;
 
 //		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
 	}

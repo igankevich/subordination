@@ -57,6 +57,9 @@ namespace factory {
 		bool operator==(const Bytes<T>& rhs) const { return i == rhs.i; }
 		bool operator!=(const Bytes<T>& rhs) const { return i != rhs.i; }
 
+		char* begin() { return bytes; }
+		char* end() { return bytes + sizeof(T); }
+
 	private:
 		T val;
 		typename Int::value i;
@@ -65,8 +68,8 @@ namespace factory {
 		static_assert(sizeof(decltype(val)) == sizeof(decltype(i)),
 			"Bad size of integral type.");
 
-		static_assert(std::is_arithmetic<T>::value, 
-			"Bad type for byte representation.");
+//		static_assert(std::is_arithmetic<T>::value, 
+//			"Bad type for byte representation.");
 	};
 
 	template<class T>

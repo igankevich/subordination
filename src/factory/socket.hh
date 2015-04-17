@@ -58,7 +58,8 @@ namespace factory {
 			if (_socket > 0) {
 				Logger(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
-				check("close()", ::close(_socket));
+				::close(_socket);
+//				check("close()", ::close(_socket));
 			}
 			_socket = -1;
 		}
@@ -160,6 +161,7 @@ namespace factory {
 			return (errno == EINPROGRESS) ? ret : check(func, ret);
 		}
 
+	protected:
 		int _socket;
 	};
 
