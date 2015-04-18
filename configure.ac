@@ -63,5 +63,8 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
 AC_CHECK_FUNCS([memset socket setenv strerror])
 
+# Clean ALL files
+AX_CLEAN_ALL
+
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
