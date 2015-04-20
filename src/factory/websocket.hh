@@ -27,14 +27,6 @@ namespace factory {
 	const size_t BUFSIZE = 65536;
 	const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
 
-#define SERVER_HANDSHAKE_HIXIE "HTTP/1.1 101 Web Socket Protocol Handshake\r\n\
-Upgrade: WebSocket\r\n\
-Connection: Upgrade\r\n\
-%sWebSocket-Origin: %s\r\n\
-%sWebSocket-Location: %s://%s%s\r\n\
-%sWebSocket-Protocol: %s\r\n\
-\r\n%s"
-
 #define SERVER_HANDSHAKE_HYBI "HTTP/1.1 101 Switching Protocols\r\n\
 Upgrade: websocket\r\n\
 Connection: Upgrade\r\n\
@@ -70,7 +62,6 @@ typedef struct {
     int        sockfd;
     ::SSL_CTX   *ssl_ctx;
     ::SSL       *ssl;
-    int        hixie;
     int        hybi;
 	Subprotocol subproto;
     headers_t *headers;
@@ -100,11 +91,11 @@ int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t ta
 	return encoded_size;
 }
 
-int b64_pton(const char *src, unsigned char* target, size_t targsize, size_t srclength) {
-	size_t max_size = factory::base64_max_decoded_size(srclength);
-	if (max_size > targsize) return -1;
-	return factory::base64_decode(src, src + srclength, target);
-}
+//int b64_pton(const char *src, unsigned char* target, size_t targsize, size_t srclength) {
+//	size_t max_size = factory::base64_max_decoded_size(srclength);
+//	if (max_size > targsize) return -1;
+//	return factory::base64_decode(src, src + srclength, target);
+//}
 
 
 /*
@@ -234,65 +225,6 @@ void ws_socket_free(ws_ctx_t *ctx) {
     }
 }
 
-/* ------------------------------------------------------- */
-
-
-int encode_hixie(u_char const *src, size_t srclength,
-                 char *target, size_t targsize) {
-    int sz = 0, len = 0;
-    target[sz++] = '\x00';
-    len = b64_ntop(src, srclength, target+sz, targsize-sz);
-    if (len < 0) {
-        return len;
-    }
-    sz += len;
-    target[sz++] = '\xff';
-    return sz;
-}
-
-int decode_hixie(char *src, size_t srclength,
-                 u_char *target, size_t targsize,
-                 unsigned int *opcode, unsigned int *left) {
-    char *start, *end, cntstr[4];
-    int len, framecount = 0, retlen = 0;
-//    unsigned char chr;
-    if ((src[0] != '\x00') || (src[srclength-1] != '\xff')) {
-        Logger(Level::WEBSOCKET) << "WebSocket framing error" << std::endl;
-        return -1;
-    }
-    *left = srclength;
-
-    if (srclength == 2 &&
-        (src[0] == '\xff') && 
-        (src[1] == '\x00')) {
-        // client sent orderly close frame
-        *opcode = 0x8; // Close frame
-        return 0;
-    }
-    *opcode = 0x1; // Text frame
-
-    start = src+1; // Skip '\x00' start
-    do {
-        /* We may have more than one frame */
-//        end = (char *)memchr(start, '\xff', srclength);
-		// TODO: check this
-        end = std::find(start, src + srclength, '\xff');
-        *end = '\x00';
-		// TODO: check this
-        len = b64_pton(start, target+retlen, targsize-retlen, end-start);
-        if (len < 0) {
-            return len;
-        }
-        retlen += len;
-        start = end + 2; // Skip '\xff' end and '\x00' start 
-        framecount++;
-    } while (end < (src+srclength-1));
-    if (framecount > 1) {
-        snprintf(cntstr, 3, "%d", framecount);
-    }
-    *left = 0;
-    return retlen;
-}
 
 enum struct Opcode: int8_t {
 	CONT_FRAME   = 0x0,
@@ -304,7 +236,7 @@ enum struct Opcode: int8_t {
 };
 
 struct Web_socket_frame_header {
-//	uint16_t extlen : 16;
+	uint16_t extlen : 16;
 	uint16_t len    : 7;
 	uint16_t mask   : 1;
 	uint16_t opcode : 4;
@@ -319,7 +251,7 @@ int encode_hybi(u_char const *src, size_t srclength,
 {
     if (srclength == 0) { return 0; }
 	Web_socket_frame_header hdr = { 0 };
-	size_t offset = sizeof(hdr);
+	size_t offset = 2;
 	hdr.opcode = static_cast<uint16_t>(opcode);
 	hdr.fin = 1;
     if (srclength <= 125) {
@@ -535,7 +467,6 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         end = strstr(start, "\r\n");
         strncpy(headers->version, start, end-start);
         headers->version[end-start] = '\0';
-        ws_ctx->hixie = 0;
         ws_ctx->hybi = strtol(headers->version, NULL, 10);
 
         start = strstr(handshake, "\r\nSec-WebSocket-Key: ");
@@ -558,90 +489,7 @@ int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
         end = strstr(start, "\r\n");
         strncpy(headers->protocols, start, end-start);
         headers->protocols[end-start] = '\0';
-    } else {
-        // Hixie 75 or 76
-        ws_ctx->hybi = 0;
-
-        start = strstr(handshake, "\r\n\r\n");
-        if (!start) { return 0; }
-        start += 4;
-        if (strlen(start) == 8) {
-            ws_ctx->hixie = 76;
-            strncpy(headers->key3, start, 8);
-            headers->key3[8] = '\0';
-
-            start = strstr(handshake, "\r\nSec-WebSocket-Key1: ");
-            if (!start) { return 0; }
-            start += 22;
-            end = strstr(start, "\r\n");
-            strncpy(headers->key1, start, end-start);
-            headers->key1[end-start] = '\0';
-        
-            start = strstr(handshake, "\r\nSec-WebSocket-Key2: ");
-            if (!start) { return 0; }
-            start += 22;
-            end = strstr(start, "\r\n");
-            strncpy(headers->key2, start, end-start);
-            headers->key2[end-start] = '\0';
-        } else {
-            ws_ctx->hixie = 75;
-        }
-
     }
-
-    return 1;
-}
-
-unsigned long parse_hixie76_key(const char * key) {
-    unsigned long i, spaces = 0, num = 0;
-    for (i=0; i < strlen(key); i++) {
-        if (key[i] == ' ') {
-            spaces += 1;
-        }
-        if ((key[i] >= 48) && (key[i] <= 57)) {
-            num = num * 10 + (key[i] - 48);
-        }
-    }
-    return num / spaces;
-}
-
-int gen_md5(const headers_t *headers, char *target) {
-
-	static const size_t HIXIE_MD5_DIGEST_LENGTH = 16;
-
-    unsigned long key1_long = parse_hixie76_key(headers->key1);
-    unsigned long key2_long = parse_hixie76_key(headers->key2);
-
-//	union Bytes {
-//		Bytes(unsigned long ll): l(ll) {}
-//		char operator[](int i) const { return bytes[i]; }
-//	private:
-//		unsigned long l;
-//		char bytes[4];
-//	};
-
-	using factory::Bytes;
-	Bytes<unsigned long> key1 = key1_long;
-	Bytes<unsigned long> key2 = key2_long;
-
-    const char *key3 = headers->key3;
-
-    ::MD5_CTX c;
-    char in[HIXIE_MD5_DIGEST_LENGTH] = {
-// TODO: check this refactoring
-//        key1 >> 24, key1 >> 16, key1 >> 8, key1,
-//        key2 >> 24, key2 >> 16, key2 >> 8, key2,
-        key1[0], key1[1], key1[2], key1[3],
-        key2[0], key2[1], key2[2], key2[3],
-        key3[0], key3[1], key3[2], key3[3],
-        key3[4], key3[5], key3[6], key3[7]
-    };
-
-    ::MD5_Init(&c);
-    ::MD5_Update(&c, (void *)in, sizeof in);
-    ::MD5_Final((unsigned char *)target, &c);
-
-    target[HIXIE_MD5_DIGEST_LENGTH] = '\0';
 
     return 1;
 }
@@ -740,18 +588,6 @@ static void gen_sha1(headers_t *headers, char *target) {
 		        Logger(Level::WEBSOCKET) << "using protocol HyBi/IETF 6455 " << ws_ctx->hybi << std::endl;
 		        gen_sha1(headers, sha1);
 		        sprintf(response, SERVER_HANDSHAKE_HYBI, sha1, SUBPROTOCOL_NAMES[ws_ctx->subproto]);
-		    } else {
-		        if (ws_ctx->hixie == 76) {
-		            Logger(Level::WEBSOCKET) << "using protocol Hixie 76" << std::endl;
-		            gen_md5(headers, trailer);
-		            pre = "Sec-";
-		        } else {
-		            Logger(Level::WEBSOCKET) << "using protocol Hixie 75" << std::endl;
-		            trailer[0] = '\0';
-		            pre = "";
-		        }
-		        sprintf(response, SERVER_HANDSHAKE_HIXIE, pre.c_str(), headers->origin, pre.c_str(), scheme.c_str(),
-		                headers->host, headers->path, pre.c_str(), SUBPROTOCOL_NAMES[ws_ctx->subproto], trailer);
 		    }
 		    
 		    //Logger(Level::WEBSOCKET) << "response: %s\n", response);
@@ -832,11 +668,6 @@ static void gen_sha1(headers_t *headers, char *target) {
             	                      tin_end-tin_start,
             	                      (unsigned char*)_context->tout_buf + tout_end, BUFSIZE-1,
             	                      &opcode, &left);
-            	} else {
-            	    len = decode_hixie(_context->tin_buf + tin_start,
-            	                       tin_end-tin_start,
-            	                       (unsigned char*)_context->tout_buf + tout_end, BUFSIZE-1,
-            	                       &opcode, &left);
             	}
             	if (opcode == 8 || len < 0) {
 					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
@@ -880,9 +711,6 @@ static void gen_sha1(headers_t *headers, char *target) {
     	        if (_context->hybi) {
     	            encoded_size = encode_hybi((unsigned char*)buf, size,
 						_context->cout_buf + cout_end, BUFSIZE, Opcode::BINARY_FRAME);
-    	        } else {
-    	            encoded_size = encode_hixie((unsigned char*)buf, size,
-						_context->cout_buf + cout_end, BUFSIZE);
     	        }
 				cout_end += encoded_size;
 				uint32_t bytes = ws_send(_context, _context->cout_buf + cout_start, cout_end - cout_start);
