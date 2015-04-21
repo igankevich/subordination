@@ -4,7 +4,6 @@
 #include <sstream>
 #include <ctime>
 #include <vector>
-#include <atomic>
 #include <stdexcept>
 #include <system_error>
 #include <queue>
@@ -26,10 +25,11 @@
 #include <cstring>
 #include <cstdlib>
 
-// C++ threads.
+// C++ multi-threading.
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 
 // Linux (and hopefully POSIX) system
 #include <unistd.h>
