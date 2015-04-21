@@ -90,9 +90,20 @@ namespace factory {
 		typedef Socket_server<Kernel> Remote_server;
 		typedef Web_socket_server<Kernel> External_server;
 
+		typedef factory::components::Shutdown<Mobile, Type> Shutdown;
+
+		typedef factory::components::Basic_factory<
+			Local_server,
+			Remote_server,
+			External_server,
+			Repository_stack,
+			Shutdown>
+			Factory;
+
 //		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
 	}
 
-	using namespace configuration;
+	using namespace factory::configuration;
 
 }
+#define FACTORY_CONFIGURATION

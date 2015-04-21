@@ -281,3 +281,108 @@ namespace factory {
 
 	}
 }
+namespace factory {
+
+	namespace components {
+
+		template<template<class X> class Mobile, class Type>
+		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
+			void act() {
+				Logger(Level::COMPONENT) << "broadcasting shutdown message" << std::endl;
+				components::factory_stop();
+			}
+//			void react() {}
+			void write_impl(Foreign_stream&) {}
+			void read_impl(Foreign_stream&) {}
+			static void init_type(Type* t) {
+				t->id(123);
+				t->name("Shutdown");
+			}
+		};
+
+		
+		template<
+			class Local_server,
+			class Remote_server,
+			class External_server,
+			class Repository_stack,
+			class Shutdown
+		>
+		struct Basic_factory {
+
+			Basic_factory():
+				_local_server(),
+				_remote_server(),
+				_ext_server(),
+				_repository()
+			{
+				init_signal_handlers();
+			}
+
+			virtual ~Basic_factory() {}
+
+			void start() {
+				_local_server.start();
+				_remote_server.start();
+				_ext_server.start();
+			}
+
+			void stop() {
+				_local_server.stop();
+				_remote_server.send(new Shutdown);
+				_remote_server.stop();
+				_ext_server.stop();
+			}
+
+			void wait() {
+				_local_server.wait();
+				_remote_server.wait();
+				_ext_server.wait();
+			}
+
+			Local_server* local_server() { return &_local_server; }
+			Remote_server* remote_server() { return &_remote_server; }
+			External_server* ext_server() { return &_ext_server; }
+			Repository_stack* repository() { return &_repository; }
+
+		private:
+
+			void init_signal_handlers() {
+				struct ::sigaction action;
+				std::memset(&action, 0, sizeof(struct ::sigaction));
+				action.sa_sigaction = emergency_shutdown;
+				::sigaction(SIGTERM, &action, 0);
+				::sigaction(SIGINT, &action, 0);
+				ignore_sigpipe();
+			}
+
+			void ignore_sigpipe() {
+				struct ::sigaction action;
+				std::memset(&action, 0, sizeof(struct ::sigaction));
+				action.sa_handler = SIG_IGN;
+				::sigaction(SIGPIPE, &action, 0);
+			}
+
+			static void emergency_shutdown(int, ::siginfo_t*, void* ptr) {
+				Basic_factory* factory = reinterpret_cast<Basic_factory*>(ptr);
+				factory->stop();
+				static int num_calls = 0;
+				static const int MAX_CALLS = 3;
+				num_calls++;
+				std::clog << "Ctrl-C shutdown." << std::endl;
+				if (num_calls >= MAX_CALLS) {
+					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
+					std::abort();
+				}
+			}
+
+			Local_server _local_server;
+			Remote_server _remote_server;
+			External_server _ext_server;
+			Repository_stack _repository;
+		};
+
+	}
+
+}
+
