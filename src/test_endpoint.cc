@@ -56,7 +56,7 @@ struct Test_endpoint {
 		}
 	}
 
-	void test_variations() {
+	void test_variations_ipv4() {
 		// basic functionality
 		check_read("0.0.0.0:0"             , Endpoint("0.0.0.0"         , 0));
 		check_read("0.0.0.0:1234"          , Endpoint("0.0.0.0"         , 1234));
@@ -130,7 +130,7 @@ struct App {
 			Test_endpoint<uint32_t> test;
 			test.test_single();
 			test.test_multiple();
-			test.test_variations();
+			test.test_variations_ipv4();
 			test.test_operators();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;

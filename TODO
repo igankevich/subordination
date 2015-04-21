@@ -17,3 +17,4 @@ Add Valgrind memory tests.
 Manually align structures.
 Place relevant classes into a common header file (Socket, Server_socket, Client_socket, Web_socket into socket.hh).
 Clean obsolete classes (Server_stack, Server_server).
+Remove factory_stop() and other global functions.
