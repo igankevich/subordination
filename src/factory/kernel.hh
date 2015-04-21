@@ -281,13 +281,6 @@ namespace factory {
 			Kernel_ref<This> _principal;
 		};
 
-		template<class A>
-		struct Service: public A {
-			virtual void stop() = 0;
-//			virtual void wait() = 0;
-		};
-
-
 		template<class K>
 		struct Mobile: public K {
 		

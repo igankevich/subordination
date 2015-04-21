@@ -15,17 +15,12 @@ namespace factory {
 
 		typedef factory::components::Type<Kernel> Type;
 
-		typedef factory::components::Service<Kernel> Service;
-
 		template<class K>
 			using Identifiable = factory::components::Identifiable<K, Type>;
 		
 		template<class K>
 			using Server = factory::components::Server<K>;
 	
-		template<class K>
-			using Server_server = factory::components::Server_server<Server<K>>;
-
 		template<class X> using Pool = std::queue<X>;
 
 		template<class S>
@@ -72,15 +67,8 @@ namespace factory {
 //		template<class Base, class S>
 //			using Profiled_Dserver = typename S::template Rprofiler<Dserver<typename S::template Rprofiler_top<Base>>>;
 
-		typedef factory::components::Server_stack<
-			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
-//			Profiled_Iserver2<Iserver<Server<Kernel>, Profiled_Rserver2<Server<Kernel>, Round_robin, Simple_hashing<Kernel_pair>>>, Round_robin, Simple_hashing<Kernel_pair>>,
-//			Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>,
-//			Profiled_Iserver<Server<Kernel_pair>, Profiled_Dserver<Server<Kernel_pair>, Simple_hashing>, Simple_hashing>,
-//			Profiled_Rserver<Server<Reader>, No_strategy>,
-//			Server_server<Service>
-			> Local_server;
-
+		typedef Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
+			Local_server;
 
 		template<class K, class V>
 			using Repository = factory::components::Repository<K, V>;

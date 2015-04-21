@@ -42,28 +42,29 @@
 #include <csignal>
 #include <ifaddrs.h>
 
+// Cryptography.
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/md5.h> /* md5 hash */
+#include <openssl/sha.h> /* sha1 hash */
+
 
 // Base system
 #include "base.hh"
 #include "error.hh"
 #include "network.hh"
+#include "base64.hh"
 #include "endpoint.hh"
 #include "socket.hh"
 #include "buffer.hh"
-#include "datastream.hh"
 //#include "topology.hh"
 #include "endpoint.hh"
-#include "sockets.hh"
 #include "poller.hh"
 #include "type.hh"
 //#include "resource.hh"
 #include "kernel.hh"
-#include "base64.hh"
-#include "websocket.hh"
 #include "repository.hh"
 #include "server.hh"
 #include "socket_server.hh"
-//#include "servers/web_socket_server.hh"
 #include "discovery.hh"
 #include "strategy.hh"
-#include "tetris.hh"
