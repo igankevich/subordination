@@ -173,7 +173,7 @@ private:
 	static std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
-		uint32_t num = pos - (UINT32_C(1) << lvl);
+		uint32_t num = pos - (UINT32_C(1) << (lvl*p));
 		return std::make_pair(lvl, num);
 	}
 	
