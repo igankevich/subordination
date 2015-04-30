@@ -214,62 +214,24 @@ namespace factory {
 	const size_t BUFSIZE = 65536;
 	const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
 
-#define SERVER_HANDSHAKE_HYBI "HTTP/1.1 101 Switching Protocols\r\n\
-Upgrade: websocket\r\n\
-Connection: Upgrade\r\n\
-Sec-WebSocket-Accept: %s\r\n\
-Sec-WebSocket-Protocol: %s\r\n\
-\r\n"
-
-#define POLICY_RESPONSE "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\" /></cross-domain-policy>\n"
-
-	enum Subprotocol {
-		BINARY = 0,
-		BASE64 = 1
-	};
-	
-	const char* SUBPROTOCOL_NAMES[] = {
-		"binary",
-		"base64"
-	};
-	
 	typedef struct {
-	    char path[1024+1];
-	    char host[1024+1];
-	    char origin[1024+1];
-	    char version[1024+1];
-	    char connection[1024+1];
-	    char protocols[1024+1];
-	    char key1[1024+1];
-	    char key2[1024+1];
-	    char key3[8+1];
-	} headers_t;
-	
-	typedef struct {
-	    int        sockfd;
-	    ::SSL_CTX   *ssl_ctx;
-	    ::SSL       *ssl;
-	    int        hybi;
-		Subprotocol subproto;
-	    headers_t *headers;
-	    char      *cin_buf;
-	    char      *cout_buf;
-	    char      *tin_buf;
-	    char      *tout_buf;
+		char	  *cin_buf;
+		char	  *cout_buf;
+		char	  *tin_buf;
+		char	  *tout_buf;
+		std::unordered_map<std::string, std::string> header;
+
+		bool header_is_present(const char* name) const {
+			return header.count(name) != 0;
+		}
+
+		bool header_equals(const char* name, const char* value) const {
+			auto it = header.find(name);
+			return it != header.end() && it->second == value;
+		}
+
 	} ws_ctx_t;
 	
-	typedef struct {
-	    int verbose;
-	    char listen_host[256];
-	    int listen_port;
-	    void (*handler)(ws_ctx_t*);
-	    int handler_id;
-	    char *cert;
-	    char *key;
-	    int ssl_only;
-	    int daemon;
-	    int run_once;
-	} settings_t;
 	
 	int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t targsize) {
 		size_t encoded_size = factory::base64_encoded_size(srclength);
@@ -278,130 +240,20 @@ Sec-WebSocket-Protocol: %s\r\n\
 		return encoded_size;
 	}
 	
-	//int b64_pton(const char *src, unsigned char* target, size_t targsize, size_t srclength) {
-	//	size_t max_size = factory::base64_max_decoded_size(srclength);
-	//	if (max_size > targsize) return -1;
-	//	return factory::base64_decode(src, src + srclength, target);
-	//}
-	
-	
-	/*
-	 * Global state
-	 *
-	 *   Warning: not thread safe
-	 */
-	settings_t settings;
-	
-	
-	
-	
-	/*
-	 * SSL Wrapper Code
-	 */
-	
-	ssize_t ws_recv(ws_ctx_t *ctx, void *buf, size_t len) {
-	    if (ctx->ssl) {
-	        //Logger(Level::WEBSOCKET) << "SSL recv" << std::endl;
-	        return ::SSL_read(ctx->ssl, buf, len);
-	    } else {
-	        return ::read(ctx->sockfd, buf, len);
-	    }
-	}
-	
-	uint32_t ws_send(ws_ctx_t *ctx, const void *buf, size_t len) {
+	uint32_t ws_send(int sock, const void *buf, size_t len) {
 		ssize_t ret = 0;
-	    if (ctx->ssl) {
-	        //Logger(Level::WEBSOCKET) << "SSL send" << std::endl;
-	        ret = ::SSL_write(ctx->ssl, buf, len);
-	    } else {
-	        ret = ::write(ctx->sockfd, buf, len);
-	    }
+		ret = ::write(sock, buf, len);
 		return ret < 0 ? 0 : static_cast<uint32_t>(ret);
 	}
 	
 	ws_ctx_t *alloc_ws_ctx() {
-	    ws_ctx_t *ctx;
+		ws_ctx_t *ctx;
 		ctx = new ws_ctx_t;
 		ctx->cin_buf = new char[BUFSIZE];
 		ctx->cout_buf = new char[BUFSIZE];
 		ctx->tin_buf = new char[BUFSIZE];
 		ctx->tout_buf = new char[BUFSIZE];
-	    ctx->headers = new headers_t;
-	    ctx->ssl = NULL;
-	    ctx->ssl_ctx = NULL;
-	    return ctx;
-	}
-	
-	void ws_socket(ws_ctx_t *ctx, int socket) {
-	    ctx->sockfd = socket;
-	}
-	
-	ws_ctx_t *ws_socket_ssl(ws_ctx_t *ctx, int socket, char * certfile, char * keyfile) {
-	
-	    int ret;
-	    char* use_keyfile;
-	    ws_socket(ctx, socket);
-	
-	    if (keyfile && (keyfile[0] != '\0')) {
-	        // Separate key file
-	        use_keyfile = keyfile;
-	    } else {
-	        // Combined key and cert file
-	        use_keyfile = certfile;
-	    }
-	
-	    ctx->ssl_ctx = ::SSL_CTX_new(TLSv1_server_method());
-	    if (ctx->ssl_ctx == NULL) {
-	        ::ERR_print_errors_fp(stderr);
-	        throw std::runtime_error("Failed to configure SSL context");
-	    }
-	
-	    if (::SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, use_keyfile,
-	                                    SSL_FILETYPE_PEM) <= 0) {
-			std::stringstream msg;
-	        msg << "Unable to load private key file '" << use_keyfile << "'." << std::endl;
-	        throw std::runtime_error(msg.str());
-	    }
-	
-	    if (::SSL_CTX_use_certificate_file(ctx->ssl_ctx, certfile,
-	                                     SSL_FILETYPE_PEM) <= 0) {
-			std::stringstream msg;
-	        msg << "Unable to load certificate file '" << certfile << "'." << std::endl;
-	        throw std::runtime_error(msg.str());
-	    }
-	
-	//    if (SSL_CTX_set_cipher_list(ctx->ssl_ctx, "DEFAULT") != 1) {
-	//        sprintf(msg, "Unable to set cipher" << std::endl;
-	//        throw std::runtime_error(msg);
-	//    }
-	
-	    // Associate socket and ssl object
-	    ctx->ssl = ::SSL_new(ctx->ssl_ctx);
-	    ::SSL_set_fd(ctx->ssl, socket);
-	
-	    ret = ::SSL_accept(ctx->ssl);
-	    if (ret < 0) {
-	        ::ERR_print_errors_fp(stderr);
-	        return NULL;
-	    }
-	
-	    return ctx;
-	}
-	
-	void ws_socket_free(ws_ctx_t *ctx) {
-	    if (ctx->ssl) {
-	        ::SSL_free(ctx->ssl);
-	        ctx->ssl = NULL;
-	    }
-	    if (ctx->ssl_ctx) {
-	        ::SSL_CTX_free(ctx->ssl_ctx);
-	        ctx->ssl_ctx = NULL;
-	    }
-	    if (ctx->sockfd) {
-	        shutdown(ctx->sockfd, SHUT_RDWR);
-	        close(ctx->sockfd);
-	        ctx->sockfd = 0;
-	    }
+		return ctx;
 	}
 	
 	enum struct Opcode: int8_t {
@@ -409,30 +261,30 @@ Sec-WebSocket-Protocol: %s\r\n\
 		TEXT_FRAME   = 0x1,
 		BINARY_FRAME = 0x2,
 		CONN_CLOSE   = 0x8,
-		PING         = 0x9,
-		PONG         = 0xa
+		PING		 = 0x9,
+		PONG		 = 0xa
 	};
 	
 	struct Web_socket_frame_header {
 		uint16_t extlen : 16;
-		uint16_t len    : 7;
+		uint16_t len	: 7;
 		uint16_t mask   : 1;
 		uint16_t opcode : 4;
 		uint16_t rsv3   : 1;
 		uint16_t rsv2   : 1;
 		uint16_t rsv1   : 1;
-		uint16_t fin    : 1;
+		uint16_t fin	: 1;
 	};
 	
 	int encode_hybi(u_char const *src, size_t srclength,
-	                char *target, size_t targsize, Opcode opcode)
+					char *target, size_t targsize, Opcode opcode)
 	{
-	    if (srclength == 0) { return 0; }
+		if (srclength == 0) { return 0; }
 		Web_socket_frame_header hdr = { 0 };
 		size_t offset = 2;
 		hdr.opcode = static_cast<uint16_t>(opcode);
 		hdr.fin = 1;
-	    if (srclength <= 125) {
+		if (srclength <= 125) {
 			hdr.len = srclength;
 		} else if (srclength > 125 && srclength < 65536) {
 			hdr.len = 126;
@@ -475,98 +327,98 @@ Sec-WebSocket-Protocol: %s\r\n\
 			std::copy(src, src + srclength, target + offset);
 			ret = offset + srclength;
 		}
-	    
-	    return ret;
+		
+		return ret;
 	}
 	
 	int decode_hybi(unsigned char *src, size_t srclength,
-	                u_char *target, size_t,
-	                unsigned int *opcode, unsigned int *left)
+					u_char *target, size_t,
+					unsigned int *opcode, unsigned int *left)
 	{
-	    unsigned char *frame, *mask, *payload, save_char;
-	    char cntstr[4];
-	    int masked = 0;
-	    int len, framecount = 0;
+		unsigned char *frame, *mask, *payload, save_char;
+		char cntstr[4];
+		int masked = 0;
+		int len, framecount = 0;
 		unsigned int i = 0;
-	    size_t remaining = 0;
-	    unsigned int target_offset = 0, hdr_length = 0, payload_length = 0;
-	    
-	    *left = srclength;
-	    frame = src;
+		size_t remaining = 0;
+		unsigned int target_offset = 0, hdr_length = 0, payload_length = 0;
+		
+		*left = srclength;
+		frame = src;
 	
-	    //printf("Deocde new frame" << std::endl;
-	    while (1) {
-	        // Need at least two bytes of the header
-	        // Find beginning of next frame. First time hdr_length, masked and
-	        // payload_length are zero
-	        frame += hdr_length + 4*masked + payload_length;
-	        //printf("frame[0..3]: 0x%x 0x%x 0x%x 0x%x (tot: %d)\n",
-	        //       (unsigned char) frame[0],
-	        //       (unsigned char) frame[1],
-	        //       (unsigned char) frame[2],
-	        //       (unsigned char) frame[3], srclength);
+		//printf("Deocde new frame" << std::endl;
+		while (1) {
+			// Need at least two bytes of the header
+			// Find beginning of next frame. First time hdr_length, masked and
+			// payload_length are zero
+			frame += hdr_length + 4*masked + payload_length;
+			//printf("frame[0..3]: 0x%x 0x%x 0x%x 0x%x (tot: %d)\n",
+			//	   (unsigned char) frame[0],
+			//	   (unsigned char) frame[1],
+			//	   (unsigned char) frame[2],
+			//	   (unsigned char) frame[3], srclength);
 	
-	        if (frame > src + srclength) {
-	            //printf("Truncated frame from client, need %d more bytes\n", frame - (src + srclength) );
-	            break;
-	        }
-	        remaining = (src + srclength) - frame;
-	        if (remaining < 2) {
-	            //printf("Truncated frame header from client" << std::endl;
-	            break;
-	        }
-	        framecount ++;
+			if (frame > src + srclength) {
+				//printf("Truncated frame from client, need %d more bytes\n", frame - (src + srclength) );
+				break;
+			}
+			remaining = (src + srclength) - frame;
+			if (remaining < 2) {
+				//printf("Truncated frame header from client" << std::endl;
+				break;
+			}
+			framecount ++;
 	
-	        *opcode = frame[0] & 0x0f;
-	        masked = (frame[1] & 0x80) >> 7;
+			*opcode = frame[0] & 0x0f;
+			masked = (frame[1] & 0x80) >> 7;
 	
-	        if (*opcode == 0x8) {
-	            // client sent orderly close frame
-	            break;
-	        }
+			if (*opcode == 0x8) {
+				// client sent orderly close frame
+				break;
+			}
 	
-	        payload_length = frame[1] & 0x7f;
-	        if (payload_length < 126) {
-	            hdr_length = 2;
-	            //frame += 2 * sizeof(char);
-	        } else if (payload_length == 126) {
-	            payload_length = (frame[2] << 8) + frame[3];
-	            hdr_length = 4;
-	        } else {
-	            Logger(Level::WEBSOCKET) << "Receiving frames larger than 65535 bytes not supported" << std::endl;
-	            return -1;
-	        }
-	        if ((hdr_length + 4*masked + payload_length) > remaining) {
-	            continue;
-	        }
-	        //printf("    payload_length: %u, raw remaining: %u\n", payload_length, remaining);
-	        payload = frame + hdr_length + 4*masked;
+			payload_length = frame[1] & 0x7f;
+			if (payload_length < 126) {
+				hdr_length = 2;
+				//frame += 2 * sizeof(char);
+			} else if (payload_length == 126) {
+				payload_length = (frame[2] << 8) + frame[3];
+				hdr_length = 4;
+			} else {
+				Logger(Level::WEBSOCKET) << "Receiving frames larger than 65535 bytes not supported" << std::endl;
+				return -1;
+			}
+			if ((hdr_length + 4*masked + payload_length) > remaining) {
+				continue;
+			}
+			//printf("	payload_length: %u, raw remaining: %u\n", payload_length, remaining);
+			payload = frame + hdr_length + 4*masked;
 	
-	        if (*opcode != 1 && *opcode != 2) {
-	            Logger(Level::WEBSOCKET) << "Ignoring non-data frame, opcode 0x"
+			if (*opcode != 1 && *opcode != 2) {
+				Logger(Level::WEBSOCKET) << "Ignoring non-data frame, opcode 0x"
 					<< std::hex << *opcode << std::dec << std::endl;
-	            continue;
-	        }
+				continue;
+			}
 	
-	        if (payload_length == 0) {
-	            Logger(Level::WEBSOCKET) << "Ignoring empty frame" << std::endl;
-	            continue;
-	        }
+			if (payload_length == 0) {
+				Logger(Level::WEBSOCKET) << "Ignoring empty frame" << std::endl;
+				continue;
+			}
 	
-	        if ((payload_length > 0) && (!masked)) {
-	            Logger(Level::WEBSOCKET) << "Received unmasked payload from client" << std::endl;
-	            return -1;
-	        }
+			if ((payload_length > 0) && (!masked)) {
+				Logger(Level::WEBSOCKET) << "Received unmasked payload from client" << std::endl;
+				return -1;
+			}
 	
-	        // Terminate with a null for base64 decode
-	        save_char = payload[payload_length];
-	        payload[payload_length] = '\0';
+			// Terminate with a null for base64 decode
+			save_char = payload[payload_length];
+			payload[payload_length] = '\0';
 	
-	        // unmask the data
-	        mask = payload - 4;
-	        for (i = 0; i < payload_length; i++) {
-	            payload[i] ^= mask[i%4];
-	        }
+			// unmask the data
+			mask = payload - 4;
+			for (i = 0; i < payload_length; i++) {
+				payload[i] ^= mask[i%4];
+			}
 	
 			std::cout << "payload size = " << payload_length << std::endl;
 			std::cout << "payload: ";
@@ -576,211 +428,211 @@ Sec-WebSocket-Protocol: %s\r\n\
 			std::cout << std::endl;
 			std::copy(payload, payload + payload_length, target);
 	
-	        // base64 decode the data
+			// base64 decode the data
 			len = payload_length;
-	//        len = b64_pton((const char*)payload, target+target_offset, targsize);
+	//		len = b64_pton((const char*)payload, target+target_offset, targsize);
 	
-	        // Restore the first character of the next frame
-	        payload[payload_length] = save_char;
-	//        if (len < 0) {
-	//            Logger(Level::WEBSOCKET) << "Base64 decode error code %d", len);
-	//            return len;
-	//        }
-	        target_offset += len;
+			// Restore the first character of the next frame
+			payload[payload_length] = save_char;
+	//		if (len < 0) {
+	//			Logger(Level::WEBSOCKET) << "Base64 decode error code %d", len);
+	//			return len;
+	//		}
+			target_offset += len;
 	
-	        //printf("    len %d, raw %s\n", len, frame);
-	    }
+			//printf("	len %d, raw %s\n", len, frame);
+		}
 	
-	    if (framecount > 1) {
-	        snprintf(cntstr, 3, "%d", framecount);
-	    }
-	    
-	    *left = remaining;
-	    return target_offset;
+		if (framecount > 1) {
+			snprintf(cntstr, 3, "%d", framecount);
+		}
+		
+		*left = remaining;
+		return target_offset;
 	}
 	
-	
-	
-	int parse_handshake(ws_ctx_t *ws_ctx, char *handshake) {
-	    char *start, *end;
-	    headers_t *headers = ws_ctx->headers;
-	
-	    headers->key1[0] = '\0';
-	    headers->key2[0] = '\0';
-	    headers->key3[0] = '\0';
-	    
-	    if ((strlen(handshake) < 92) || (bcmp(handshake, "GET ", 4) != 0)) {
-	        return 0;
-	    }
-	    start = handshake+4;
-	    end = strstr(start, " HTTP/1.1");
-	    if (!end) { return 0; }
-	    strncpy(headers->path, start, end-start);
-	    headers->path[end-start] = '\0';
-	
-	    start = strstr(handshake, "\r\nHost: ");
-	    if (!start) { return 0; }
-	    start += 8;
-	    end = strstr(start, "\r\n");
-	    strncpy(headers->host, start, end-start);
-	    headers->host[end-start] = '\0';
-	
-	    headers->origin[0] = '\0';
-	    start = strstr(handshake, "\r\nOrigin: ");
-	    if (start) {
-	        start += 10;
-	    } else {
-	        start = strstr(handshake, "\r\nSec-WebSocket-Origin: ");
-	        if (!start) { return 0; }
-	        start += 24;
-	    }
-	    end = strstr(start, "\r\n");
-	    strncpy(headers->origin, start, end-start);
-	    headers->origin[end-start] = '\0';
-	   
-	    start = strstr(handshake, "\r\nSec-WebSocket-Version: ");
-	    if (start) {
-	        // HyBi/RFC 6455
-	        start += 25;
-	        end = strstr(start, "\r\n");
-	        strncpy(headers->version, start, end-start);
-	        headers->version[end-start] = '\0';
-	        ws_ctx->hybi = strtol(headers->version, NULL, 10);
-	
-	        start = strstr(handshake, "\r\nSec-WebSocket-Key: ");
-	        if (!start) { return 0; }
-	        start += 21;
-	        end = strstr(start, "\r\n");
-	        strncpy(headers->key1, start, end-start);
-	        headers->key1[end-start] = '\0';
-	   
-	        start = strstr(handshake, "\r\nConnection: ");
-	        if (!start) { return 0; }
-	        start += 14;
-	        end = strstr(start, "\r\n");
-	        strncpy(headers->connection, start, end-start);
-	        headers->connection[end-start] = '\0';
-	   
-	        start = strstr(handshake, "\r\nSec-WebSocket-Protocol: ");
-	        if (!start) { return 0; }
-	        start += 26;
-	        end = strstr(start, "\r\n");
-	        strncpy(headers->protocols, start, end-start);
-	        headers->protocols[end-start] = '\0';
-	    }
-	
-	    return 1;
-	}
-	
-	static void gen_sha1(headers_t *headers, char *target) {
+	static void gen_sha1(const std::string& web_socket_key, char *target) {
 	
 		static const size_t HYBI10_ACCEPTHDRLEN = 29;
 		static const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	
-	    ::SHA_CTX c;
-	    unsigned char hash[SHA_DIGEST_LENGTH];
+		unsigned char hash[SHA_DIGEST_LENGTH];
+
+		::SHA_CTX c;
+		::SHA1_Init(&c);
+		::SHA1_Update(&c, web_socket_key.data(), web_socket_key.size());
+		::SHA1_Update(&c, HYBI_GUID, sizeof(HYBI_GUID)-1);
+		::SHA1_Final(hash, &c);
 	
-	    ::SHA1_Init(&c);
-	    ::SHA1_Update(&c, headers->key1, strlen(headers->key1));
-	    ::SHA1_Update(&c, HYBI_GUID, 36);
-	    ::SHA1_Final(hash, &c);
-	
-	    b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
-	    //assert(r == HYBI10_ACCEPTHDRLEN - 1);
+		b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
+		target[HYBI10_ACCEPTHDRLEN-1] = 0;
 	}
 
 
 	struct Handshake {
 
-		ws_ctx_t *do_handshake(int sock) {
-		    char handshake[4096], response[4096], sha1[29], trailer[17];
-		    std::string scheme, pre;
-		    headers_t *headers;
-		    int len, i, offset;
-		    ws_ctx_t * ws_ctx;
-		
-		    // Peek, but don't read the data
-		    len = recv(sock, handshake, 1024, MSG_PEEK);
-		    handshake[len] = 0;
-		    if (len == 0) {
-		        Logger(Level::WEBSOCKET) << "ignoring empty handshake" << std::endl;
-		        return NULL;
-		    } else if (bcmp(handshake, "<policy-file-request/>", 22) == 0) {
-		        len = recv(sock, handshake, 1024, 0);
-		        handshake[len] = 0;
-		        Logger(Level::WEBSOCKET) << "sending flash policy response" << std::endl;
-				// TODO: this line sends NULL character
-		        send(sock, POLICY_RESPONSE, sizeof(POLICY_RESPONSE), 0);
-		        return NULL;
-		    } else if ((bcmp(handshake, "\x16", 1) == 0) ||
-		               (bcmp(handshake, "\x80", 1) == 0)) {
-		        // SSL
-		        if (!settings.cert) {
-		            Logger(Level::WEBSOCKET) << "SSL connection but no cert specified" << std::endl;
-		            return NULL;
-		        } else if (access(settings.cert, R_OK) != 0) {
-		            Logger(Level::WEBSOCKET) << "SSL connection but '"
-						<< settings.cert << "' not found" << std::endl;
-		            return NULL;
-		        }
-		        ws_ctx = alloc_ws_ctx();
-		        ws_socket_ssl(ws_ctx, sock, settings.cert, settings.key);
-		        if (! ws_ctx) { return NULL; }
-		        scheme = "wss";
-		        Logger(Level::WEBSOCKET) << "using SSL socket" << std::endl;
-		    } else if (settings.ssl_only) {
-		        Logger(Level::WEBSOCKET) << "non-SSL connection disallowed" << std::endl;
-		        return NULL;
-		    } else {
-		        ws_ctx = alloc_ws_ctx();
-		        ws_socket(ws_ctx, sock);
-		        if (! ws_ctx) { return NULL; }
-		        scheme = "ws";
-		        Logger(Level::WEBSOCKET) << "using plain (not SSL) socket" << std::endl;
-		    }
-		    offset = 0;
-		    for (i = 0; i < 10; i++) {
-		        len = ws_recv(ws_ctx, handshake+offset, 4096);
-		        if (len == 0) {
-		            Logger(Level::WEBSOCKET) << "Client closed during handshake" << std::endl;
-		            return NULL;
-		        }
-		        offset += len;
-		        handshake[offset] = 0;
-		        if (strstr(handshake, "\r\n\r\n")) {
-		            break;
-		        }
-		        usleep(10);
-		    }
-		
-		    Logger(Level::WEBSOCKET) << "handshake: " <<  handshake << std::endl;
-		    if (!parse_handshake(ws_ctx, handshake)) {
-		        Logger(Level::WEBSOCKET) << "Invalid WS request" << std::endl;
-		        return NULL;
-		    }
-		
-			ws_ctx->subproto = BINARY;
-		
-		    headers = ws_ctx->headers;
-		    if (ws_ctx->hybi > 0) {
-		        Logger(Level::WEBSOCKET) << "using protocol HyBi/IETF 6455 " << ws_ctx->hybi << std::endl;
-		        gen_sha1(headers, sha1);
-		        sprintf(response, SERVER_HANDSHAKE_HYBI, sha1, SUBPROTOCOL_NAMES[ws_ctx->subproto]);
-		    }
-		    
-		    //Logger(Level::WEBSOCKET) << "response: %s\n", response);
-		    ws_send(ws_ctx, response, strlen(response));
-		
-		    return ws_ctx;
+		enum struct State: char {
+			PARSING_HTTP_METHOD,
+			PARSING_HEADERS,
+			PARSING_ERROR,
+			HANDSHAKE_SUCCESS
+		};
+
+		Handshake():
+			buffer(BUFFER_SIZE, 0),
+			_context(alloc_ws_ctx())
+		{}
+
+		template<class It>
+		void read_header(It first, It last) {
+			switch (state) {
+				case State::PARSING_HTTP_METHOD: {
+					std::string line(first, last);
+					if (line.find("GET") == 0) {
+						state = State::PARSING_HEADERS;
+						Logger(Level::WEBSOCKET) << "parsing headers" << std::endl;
+					} else {
+						state = State::PARSING_ERROR;
+						Logger(Level::WEBSOCKET)
+							<< "bad method in web socket hand shake" << std::endl;
+					}
+					} break;
+				case State::PARSING_HEADERS: {
+					It it = std::find(first, last, ':');
+					if (it != last) {
+						std::string key(first, it);
+						// advance two characters further (colon plus space)
+						std::string value(it+2, last);
+						if (_context->header.size() == MAX_HEADERS) {
+							state = State::PARSING_ERROR;
+							Logger(Level::WEBSOCKET)
+								<< "too many headers in HTTP request" << std::endl;
+						} else if (_context->header.find(key) != _context->header.end()) {
+							state = State::PARSING_ERROR;
+							Logger(Level::WEBSOCKET)
+								<< "duplicate HTTP header: '" << key << '\'' << std::endl;
+						} else {
+							_context->header[key] = value;
+							Logger(Level::WEBSOCKET)
+								<< "Header['" << key << "'] = '" << value << "'" << std::endl;
+						}
+					}
+					} break;
+				case State::PARSING_ERROR:
+				case State::HANDSHAKE_SUCCESS:
+				default: break;
+			}
 		}
 
-		void clear() {
-			handshake.clear();
+		ws_ctx_t *do_handshake(int sock) {
+			read_method_and_headers(sock);
+			switch (state) {
+				case State::HANDSHAKE_SUCCESS:
+					reply_success(sock);
+					break;
+				case State::PARSING_ERROR:
+					reply_error(sock);
+					break;
+				case State::PARSING_HTTP_METHOD:
+				case State::PARSING_HEADERS:
+				default:
+					break;
+			}
+			return _context;
+		}
+
+		bool success() const { return state == State::HANDSHAKE_SUCCESS; }
+
+		bool validate_headers() {
+			return
+				_context->header_is_present("Sec-WebSocket-Key")
+				&& _context->header_is_present("Sec-WebSocket-Version")
+				&& _context->header_equals("Sec-WebSocket-Protocol", "binary")
+				&& _context->header_equals("Upgrade", "websocket");
 		}
 
 	private:
-		std::stringstream handshake;
+
+		void read_method_and_headers(int sock) {
+			ssize_t len = ::read(sock, &buffer[buffer_offset], BUFFER_SIZE);
+			size_t pos = 0;
+			size_t found;
+			while ((found = buffer.find(HTTP_FIELD_SEPARATOR, pos)) != std::string::npos
+				&& pos != found && found < buffer_offset + len
+				&& state != State::PARSING_ERROR)
+			{
+				read_header(buffer.begin() + pos, buffer.begin() + found);
+				pos = found + 2;
+			}
+			if (pos == found) {
+				if (!validate_headers()) {
+					state = State::PARSING_ERROR;
+					Logger(Level::WEBSOCKET) << "parsing error" << std::endl;
+				} else {
+					state = State::HANDSHAKE_SUCCESS;
+					Logger(Level::WEBSOCKET) << "parsing success" << std::endl;
+				}
+				buffer_offset = 0;
+			} else {
+				std::copy(buffer.data() + pos, buffer.data() + found, &buffer[0]);
+				buffer_offset = found - pos;
+			}
+		}
+
+		void reply_success(int sock) {
+			char sha1[29];
+			gen_sha1(_context->header["Sec-WebSocket-Key"], sha1);
+			std::stringstream response;
+			response
+				<< "HTTP/1.1 101 Switching Protocols" << HTTP_FIELD_SEPARATOR
+				<< "Upgrade: websocket" << HTTP_FIELD_SEPARATOR
+				<< "Connection: Upgrade" << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Accept: " << sha1 << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Protocol: binary" << HTTP_FIELD_SEPARATOR
+				<< HTTP_FIELD_SEPARATOR;
+			std::string buf = response.str();
+			ws_send(sock, buf.data(), buf.size());
+		}
+
+		void reply_error(int sock) {
+			std::string resp = "HTTP/1.1 400 Bad Request\r\n\r\n";
+			ws_send(sock, resp.data(), resp.size());
+		}
+
+	public:
+		uint32_t write(int _socket, const char* buf, size_t size) {
+			uint32_t ret = 0;
+			if (state == State::HANDSHAKE_SUCCESS) {
+				unsigned int encoded_size;
+				encoded_size = encode_hybi((unsigned char*)buf, size,
+					_context->cout_buf + cout_end, BUFSIZE, Opcode::BINARY_FRAME);
+				cout_end += encoded_size;
+				uint32_t bytes = ws_send(_socket, _context->cout_buf + cout_start, cout_end - cout_start);
+				cout_start += bytes;
+				if (cout_start == cout_end) {
+					ret = size;
+					cout_start = 0;
+					cout_end = 0;
+				}
+			}
+			return ret;
+		}
+	
+	private:
+		std::string buffer;
+		size_t buffer_offset = 0;
+		State state = State::PARSING_HTTP_METHOD;
+		ws_ctx_t * _context;
+
+		unsigned int cout_start = 0;
+		unsigned int cout_end = 0;
+
+		static const size_t BUFFER_SIZE = 1024;
+		static const size_t MAX_HEADERS = 20;
+		static const char* HTTP_FIELD_SEPARATOR;
 	};
+
+	const char* Handshake::HTTP_FIELD_SEPARATOR = "\r\n";
 
 	struct Web_socket: public Socket {
 
@@ -795,11 +647,11 @@ Sec-WebSocket-Protocol: %s\r\n\
 		virtual ~Web_socket() {
 			this->close();
 			if (_context) {
-    			delete[] _context->cin_buf;
-    			delete[] _context->cout_buf;
-    			delete[] _context->tin_buf;
-    			delete[] _context->tout_buf;
-    			delete _context;
+				delete[] _context->cin_buf;
+				delete[] _context->cout_buf;
+				delete[] _context->tin_buf;
+				delete[] _context->tout_buf;
+				delete _context;
 			}
 		}
 
@@ -814,7 +666,7 @@ Sec-WebSocket-Protocol: %s\r\n\
 					_handshaker = new Handshake;
 				}
 				_context = _handshaker->do_handshake(_socket);
-				if (_context) {
+				if (_handshaker->success()) {
 					Logger(Level::WEBSOCKET) << "Handshake completed" << std::endl;
 					delete _handshaker;
 				}
@@ -832,10 +684,9 @@ Sec-WebSocket-Protocol: %s\r\n\
 						return cnt;
 					}
 				}
-//            	ssize_t bytes = ws_recv(_context, _context->tin_buf + tin_end, BUFSIZE-1);
-        		ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
+				ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
 				int len = 0;
-    			unsigned int left = 0, opcode = 0;
+				unsigned int left = 0, opcode = 0;
 				if (bytes <= 0) {
 					Logger(Level::WEBSOCKET)
 						<< "Nothing to read: "
@@ -847,26 +698,24 @@ Sec-WebSocket-Protocol: %s\r\n\
 						<< std::endl;
 					return 0;
 				}
-            	tin_end += bytes;
-            	if (_context->hybi) {
-            	    len = decode_hybi((unsigned char*)_context->tin_buf + tin_start,
-            	                      tin_end-tin_start,
-            	                      (unsigned char*)_context->tout_buf + tout_end, BUFSIZE-1,
-            	                      &opcode, &left);
-            	}
-            	if (opcode == 8 || len < 0) {
+				tin_end += bytes;
+				len = decode_hybi((unsigned char*)_context->tin_buf + tin_start,
+								  tin_end-tin_start,
+								  (unsigned char*)_context->tout_buf + tout_end, BUFSIZE-1,
+								  &opcode, &left);
+				if (opcode == 8 || len < 0) {
 					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
 					return 0;
 				}
-            	if (left) {
-            	    tin_start = tin_end - left;
-            	    //printf("partial frame from client");
+				if (left) {
+					tin_start = tin_end - left;
+					//printf("partial frame from client");
 					Logger(Level::WEBSOCKET) << "Partial frame" << std::endl;
-            	} else {
-            	    tin_start = 0;
-            	    tin_end = 0;
+				} else {
+					tin_start = 0;
+					tin_end = 0;
 					Logger(Level::WEBSOCKET) << "End of frame" << std::endl;
-            	}
+				}
 				tout_end += len;
 				unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
 				std::copy(_context->tout_buf + tout_start,
@@ -879,10 +728,10 @@ Sec-WebSocket-Protocol: %s\r\n\
 				Logger log(Level::WEBSOCKET);
 				log << "Message ";
 				log << std::hex << std::setfill('0');
-            	for (int i=0; i< bytes; i++) {
-            	    log << std::setw(2)
+				for (int i=0; i< bytes; i++) {
+					log << std::setw(2)
 						<< (unsigned int)(unsigned char)(_context->tin_buf[i]);
-            	}
+				}
 				log << std::endl;
 				return cnt;
 			}
@@ -890,38 +739,20 @@ Sec-WebSocket-Protocol: %s\r\n\
 		}
 
 		uint32_t write(const char* buf, size_t size) {
-			uint32_t ret = 0;
-			if (_context) {
-				unsigned int encoded_size;
-    	        if (_context->hybi) {
-    	            encoded_size = encode_hybi((unsigned char*)buf, size,
-						_context->cout_buf + cout_end, BUFSIZE, Opcode::BINARY_FRAME);
-    	        }
-				cout_end += encoded_size;
-				uint32_t bytes = ws_send(_context, _context->cout_buf + cout_start, cout_end - cout_start);
-				cout_start += bytes;
-				if (cout_start == cout_end) {
-					ret = size;
-					cout_start = 0;
-					cout_end = 0;
-				}
-			}
-			return ret;
+			return _handshaker->write(_socket, buf, size);
 		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Web_socket& rhs) {
-			return out << rhs._context->sockfd;
+			return out << rhs._socket;
 		}
 
 	private:
 		ws_ctx_t* _context;
 		Handshake* _handshaker;
-    	unsigned int tin_start = 0;
+		unsigned int tin_start = 0;
 		unsigned int tin_end = 0;
-    	unsigned int tout_start = 0;
+		unsigned int tout_start = 0;
 		unsigned int tout_end = 0;
-    	unsigned int cout_start = 0;
-		unsigned int cout_end = 0;
 	};
 
 }
