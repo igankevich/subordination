@@ -41,7 +41,7 @@ AC_DEFUN([AX_CXX_NEEDS_FLAG],
 
 dnl @synopsis CHECK_CXX_11_THREAD
 dnl @summary check whether compiler supports C++11 threads
-AC_DEFUN([CHECK_CXX_11_THREAD],
+AC_DEFUN([AX_CXX_11_THREAD],
 [dnl
 	AX_CXX_NEEDS_FLAG(
 		[whether $CXX supports C++11 threads],

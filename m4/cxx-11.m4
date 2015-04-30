@@ -1,6 +1,4 @@
-dnl @synopsis CHECK_CXX_11
-dnl @summary check whether compiler supports C++11 standard
-AC_DEFUN([CHECK_CXX_11],
+AC_DEFUN([AX_CXX_11],
 [dnl
 	AC_MSG_CHECKING([whether $CXX supports C++11 by default])
 	AC_LANG_PUSH([C++])
