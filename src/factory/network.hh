@@ -43,6 +43,8 @@ namespace factory {
 
 		Bytes() {}
 		Bytes(T v): val(v) {}
+		template<class It>
+		Bytes(It first, It last) { std::copy(first, last, bytes); }
 
 		void to_network_format() { Int::to_network_format(i); }
 		void to_host_format() { Int::to_host_format(i); }
@@ -59,6 +61,9 @@ namespace factory {
 
 		char* begin() { return bytes; }
 		char* end() { return bytes + sizeof(T); }
+
+		const T& value() const { return val; }
+		T& value() { return val; }
 
 	private:
 		T val;

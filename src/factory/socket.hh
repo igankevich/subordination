@@ -230,6 +230,11 @@ namespace factory {
 			return it != header.end() && it->second == value;
 		}
 
+		bool header_contains(const char* name, const char* value) const {
+			auto it = header.find(name);
+			return it != header.end() && it->second.find(value) != std::string::npos;
+		}
+
 	} ws_ctx_t;
 	
 	
@@ -274,6 +279,18 @@ namespace factory {
 		uint16_t rsv2   : 1;
 		uint16_t rsv1   : 1;
 		uint16_t fin	: 1;
+
+		friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame_header& rhs) {
+			return out
+				<< "fin=" << rhs.fin << ','
+				<< "rsv1=" << rhs.rsv1 << ','
+				<< "rsv2=" << rhs.rsv2 << ','
+				<< "rsv3=" << rhs.rsv3 << ','
+				<< "opcode=" << rhs.opcode << ','
+				<< "mask=" << rhs.mask << ','
+				<< "len=" << rhs.len << ','
+				<< "extlen=" << rhs.extlen;
+		}
 	};
 	
 	int encode_hybi(u_char const *src, size_t srclength,
@@ -330,16 +347,47 @@ namespace factory {
 		
 		return ret;
 	}
+
+	int decode_hybi2(char *src, size_t srclength,
+					char *target,
+					Opcode* opcode)
+	{
+		static const size_t MASK_SIZE = 4;
+		size_t header_len = 2;
+		if (srclength < header_len) return 0;
+		Bytes<Web_socket_frame_header> raw_hdr(src, src + header_len);
+		raw_hdr.to_host_format();
+		Web_socket_frame_header hdr = raw_hdr;
+		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
+		*opcode = static_cast<Opcode>(hdr.opcode);
+		if (hdr.mask == 1) header_len += MASK_SIZE;
+		if (srclength < hdr.len + header_len
+			|| Opcode(hdr.opcode) != Opcode::BINARY_FRAME)
+		{
+			return 0;
+		}
+		if (hdr.mask == 1) {
+			Bytes<char[MASK_SIZE]> mask(
+				src + header_len - MASK_SIZE, src + header_len);
+			size_t i = 0;
+			std::transform(src + header_len, src + header_len + hdr.len, target,
+				[&i,&mask] (char ch) {
+					ch ^= mask[i%4]; ++i; return ch;
+				}
+			);
+		} else {
+			std::copy(src + header_len, src + header_len + hdr.len, target);
+		}
+		return hdr.len;
+	}
 	
 	int decode_hybi(unsigned char *src, size_t srclength,
 					u_char *target, size_t,
 					unsigned int *opcode, unsigned int *left)
 	{
 		unsigned char *frame, *mask, *payload, save_char;
-		char cntstr[4];
 		int masked = 0;
-		int len, framecount = 0;
-		unsigned int i = 0;
+		int len;
 		size_t remaining = 0;
 		unsigned int target_offset = 0, hdr_length = 0, payload_length = 0;
 		
@@ -367,7 +415,6 @@ namespace factory {
 				//printf("Truncated frame header from client" << std::endl;
 				break;
 			}
-			framecount ++;
 	
 			*opcode = frame[0] & 0x0f;
 			masked = (frame[1] & 0x80) >> 7;
@@ -416,7 +463,7 @@ namespace factory {
 	
 			// unmask the data
 			mask = payload - 4;
-			for (i = 0; i < payload_length; i++) {
+			for (unsigned int i = 0; i < payload_length; i++) {
 				payload[i] ^= mask[i%4];
 			}
 	
@@ -441,10 +488,6 @@ namespace factory {
 			target_offset += len;
 	
 			//printf("	len %d, raw %s\n", len, frame);
-		}
-	
-		if (framecount > 1) {
-			snprintf(cntstr, 3, "%d", framecount);
 		}
 		
 		*left = remaining;
@@ -548,7 +591,8 @@ namespace factory {
 				_context->header_is_present("Sec-WebSocket-Key")
 				&& _context->header_is_present("Sec-WebSocket-Version")
 				&& _context->header_equals("Sec-WebSocket-Protocol", "binary")
-				&& _context->header_equals("Upgrade", "websocket");
+				&& _context->header_equals("Upgrade", "websocket")
+				&& _context->header_contains("Connection", "Upgrade");
 		}
 
 	private:
@@ -686,7 +730,8 @@ namespace factory {
 				}
 				ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
 				int len = 0;
-				unsigned int left = 0, opcode = 0;
+				unsigned int left = 0;
+				Opcode opcode = Opcode::CONT_FRAME;
 				if (bytes <= 0) {
 					Logger(Level::WEBSOCKET)
 						<< "Nothing to read: "
@@ -699,23 +744,16 @@ namespace factory {
 					return 0;
 				}
 				tin_end += bytes;
-				len = decode_hybi((unsigned char*)_context->tin_buf + tin_start,
+				len = decode_hybi2(_context->tin_buf + tin_start,
 								  tin_end-tin_start,
-								  (unsigned char*)_context->tout_buf + tout_end, BUFSIZE-1,
-								  &opcode, &left);
-				if (opcode == 8 || len < 0) {
+								  _context->tout_buf + tout_end,
+								  &opcode);
+				if (opcode == Opcode::CONN_CLOSE || len < 0) {
 					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
 					return 0;
 				}
-				if (left) {
-					tin_start = tin_end - left;
-					//printf("partial frame from client");
-					Logger(Level::WEBSOCKET) << "Partial frame" << std::endl;
-				} else {
-					tin_start = 0;
-					tin_end = 0;
-					Logger(Level::WEBSOCKET) << "End of frame" << std::endl;
-				}
+				tin_start = 0;
+				tin_end = 0;
 				tout_end += len;
 				unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
 				std::copy(_context->tout_buf + tout_start,
