@@ -271,6 +271,12 @@ namespace factory {
 		uint16_t rsv1   : 1;
 		uint16_t fin	: 1;
 
+		bool masked() const { return mask == 1; }
+		bool is_binary_frame() const {
+			return static_cast<Opcode>(opcode) == Opcode::BINARY_FRAME;
+		}
+		bool has_valid_opcode() const { return opcode >= 0x0 && opcode <= 0xf; }
+
 		friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame_header& rhs) {
 			return out
 				<< "fin=" << rhs.fin << ','
@@ -348,13 +354,14 @@ namespace factory {
 		Web_socket_frame_header hdr = raw_hdr;
 		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
 		*opcode = static_cast<Opcode>(hdr.opcode);
-		if (hdr.mask == 1) header_len += MASK_SIZE;
+		if (hdr.masked()) header_len += MASK_SIZE;
 		if (srclength < hdr.len + header_len
-			|| Opcode(hdr.opcode) != Opcode::BINARY_FRAME)
+			|| !hdr.has_valid_opcode()
+			|| !hdr.is_binary_frame())
 		{
 			return 0;
 		}
-		if (hdr.mask == 1) {
+		if (hdr.masked()) {
 			Bytes<char[MASK_SIZE]> mask(
 				src + header_len - MASK_SIZE, src + header_len);
 			size_t i = 0;
@@ -367,119 +374,6 @@ namespace factory {
 			std::copy(src + header_len, src + header_len + hdr.len, target);
 		}
 		return hdr.len;
-	}
-	
-	int decode_hybi(unsigned char *src, size_t srclength,
-					u_char *target, size_t,
-					unsigned int *opcode, unsigned int *left)
-	{
-		unsigned char *frame, *mask, *payload, save_char;
-		int masked = 0;
-		int len;
-		size_t remaining = 0;
-		unsigned int target_offset = 0, hdr_length = 0, payload_length = 0;
-		
-		*left = srclength;
-		frame = src;
-	
-		//printf("Deocde new frame" << std::endl;
-		while (1) {
-			// Need at least two bytes of the header
-			// Find beginning of next frame. First time hdr_length, masked and
-			// payload_length are zero
-			frame += hdr_length + 4*masked + payload_length;
-			//printf("frame[0..3]: 0x%x 0x%x 0x%x 0x%x (tot: %d)\n",
-			//	   (unsigned char) frame[0],
-			//	   (unsigned char) frame[1],
-			//	   (unsigned char) frame[2],
-			//	   (unsigned char) frame[3], srclength);
-	
-			if (frame > src + srclength) {
-				//printf("Truncated frame from client, need %d more bytes\n", frame - (src + srclength) );
-				break;
-			}
-			remaining = (src + srclength) - frame;
-			if (remaining < 2) {
-				//printf("Truncated frame header from client" << std::endl;
-				break;
-			}
-	
-			*opcode = frame[0] & 0x0f;
-			masked = (frame[1] & 0x80) >> 7;
-	
-			if (*opcode == 0x8) {
-				// client sent orderly close frame
-				break;
-			}
-	
-			payload_length = frame[1] & 0x7f;
-			if (payload_length < 126) {
-				hdr_length = 2;
-				//frame += 2 * sizeof(char);
-			} else if (payload_length == 126) {
-				payload_length = (frame[2] << 8) + frame[3];
-				hdr_length = 4;
-			} else {
-				Logger(Level::WEBSOCKET) << "Receiving frames larger than 65535 bytes not supported" << std::endl;
-				return -1;
-			}
-			if ((hdr_length + 4*masked + payload_length) > remaining) {
-				continue;
-			}
-			//printf("	payload_length: %u, raw remaining: %u\n", payload_length, remaining);
-			payload = frame + hdr_length + 4*masked;
-	
-			if (*opcode != 1 && *opcode != 2) {
-				Logger(Level::WEBSOCKET) << "Ignoring non-data frame, opcode 0x"
-					<< std::hex << *opcode << std::dec << std::endl;
-				continue;
-			}
-	
-			if (payload_length == 0) {
-				Logger(Level::WEBSOCKET) << "Ignoring empty frame" << std::endl;
-				continue;
-			}
-	
-			if ((payload_length > 0) && (!masked)) {
-				Logger(Level::WEBSOCKET) << "Received unmasked payload from client" << std::endl;
-				return -1;
-			}
-	
-			// Terminate with a null for base64 decode
-			save_char = payload[payload_length];
-			payload[payload_length] = '\0';
-	
-			// unmask the data
-			mask = payload - 4;
-			for (unsigned int i = 0; i < payload_length; i++) {
-				payload[i] ^= mask[i%4];
-			}
-	
-			std::cout << "payload size = " << payload_length << std::endl;
-			std::cout << "payload: ";
-			for (unsigned int i=0; i<payload_length; ++i) {
-				std::cout << (int)payload[i] << ' ';
-			}
-			std::cout << std::endl;
-			std::copy(payload, payload + payload_length, target);
-	
-			// base64 decode the data
-			len = payload_length;
-	//		len = b64_pton((const char*)payload, target+target_offset, targsize);
-	
-			// Restore the first character of the next frame
-			payload[payload_length] = save_char;
-	//		if (len < 0) {
-	//			Logger(Level::WEBSOCKET) << "Base64 decode error code %d", len);
-	//			return len;
-	//		}
-			target_offset += len;
-	
-			//printf("	len %d, raw %s\n", len, frame);
-		}
-	
-		*left = remaining;
-		return target_offset;
 	}
 	
 	static void gen_sha1(const std::string& web_socket_key, char *target) {
