@@ -383,9 +383,9 @@ namespace factory {
 	
 		Bytes<Bytes<unsigned, unsigned char>[5], unsigned char> hash2;
 		SHA1 sha1;
-		sha1.Input(web_socket_key.data(), web_socket_key.size());
-		sha1.Input(HYBI_GUID, sizeof(HYBI_GUID)-1);
-		sha1.Result(hash2.value());
+		sha1.input(web_socket_key.begin(), web_socket_key.end());
+		sha1.input(HYBI_GUID, HYBI_GUID + sizeof(HYBI_GUID)-1);
+		sha1.result(hash2.value());
 		std::for_each(hash2.value(), hash2.value() + 5,
 			std::mem_fun_ref(&Bytes<unsigned, unsigned char>::to_network_format));
 

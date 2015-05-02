@@ -50,11 +50,12 @@ void test_base64() {
 	}
 }
 
-const std::array<std::tuple<std::string, std::string>, 4> KNOWN_HASHES = {
+const std::vector<std::tuple<std::string, std::string>> KNOWN_HASHES = {
 	std::make_tuple("",    "da39a3ee 5e6b4b0d 3255bfef 95601890 afd80709"),
 	std::make_tuple("sha", "d8f45903 20e1343a 915b6394 170650a8 f35d6926"),
 	std::make_tuple("Sha", "ba79baeb 9f10896a 46ae7471 5271b7f5 86e74640"),
 	std::make_tuple("The quick brown fox jumps over the lazy dog", "2fd4e1c6 7a2d28fc ed849ee1 bb76e739 1b93eb12"),
+	std::make_tuple("The quick brown fox jumps over the lazy cog", "de9f2c7f d25e1b3a fad3e85a 0bd17d9b 100db4b3"),
 };
 
 void test_sha1(const std::string& input, const std::string& expected_output) {
@@ -62,8 +63,9 @@ void test_sha1(const std::string& input, const std::string& expected_output) {
 	sha1_encode(input.begin(), input.end(), result.begin());
 	std::stringstream str;
 	str << std::hex << std::setfill('0');
-	std::ostream_iterator<uint32_t> it(str, " ");
-	std::copy(result.begin(), result.end(), it);
+	std::for_each(result.begin(), result.end(), [&str] (uint32_t n) {
+		str << std::setw(8) << n << ' ';
+	});
 	std::string output = str.str();
 	output.pop_back(); // remove space character
 	if (output != expected_output) {
