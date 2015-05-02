@@ -202,54 +202,34 @@ namespace factory {
 
 namespace factory {
 
-	const size_t BUFSIZE = 65536;
-	const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
+	struct HTTP_headers {
 
-	typedef struct {
-		char	  *cin_buf;
-		char	  *cout_buf;
-		char	  *tin_buf;
-		char	  *tout_buf;
-		std::unordered_map<std::string, std::string> header;
+		size_t size() const { return header.size(); }
+		std::string& operator[](const std::string& key) { return header[key]; }
 
-		bool header_is_present(const char* name) const {
+		bool contain(const char* name) const {
 			return header.count(name) != 0;
 		}
 
-		bool header_equals(const char* name, const char* value) const {
+		bool contain(const char* name, const char* value) const {
 			auto it = header.find(name);
 			return it != header.end() && it->second == value;
 		}
 
-		bool header_contains(const char* name, const char* value) const {
+		bool contain_value(const char* name, const char* value) const {
 			auto it = header.find(name);
 			return it != header.end() && it->second.find(value) != std::string::npos;
 		}
 
-	} ws_ctx_t;
+	private:
+		std::unordered_map<std::string, std::string> header;
+	};
 	
-	
-	int b64_ntop(const unsigned char* src, size_t srclength, char *target, size_t targsize) {
-		size_t encoded_size = factory::base64_encoded_size(srclength);
-		if (encoded_size > targsize) return -1;
-		factory::base64_encode(src, src + srclength, target);
-		return encoded_size;
-	}
 	
 	uint32_t ws_send(int sock, const void *buf, size_t len) {
 		ssize_t ret = 0;
 		ret = ::write(sock, buf, len);
 		return ret < 0 ? 0 : static_cast<uint32_t>(ret);
-	}
-	
-	ws_ctx_t *alloc_ws_ctx() {
-		ws_ctx_t *ctx;
-		ctx = new ws_ctx_t;
-		ctx->cin_buf = new char[BUFSIZE];
-		ctx->cout_buf = new char[BUFSIZE];
-		ctx->tin_buf = new char[BUFSIZE];
-		ctx->tout_buf = new char[BUFSIZE];
-		return ctx;
 	}
 	
 	enum struct Opcode: int8_t {
@@ -290,7 +270,15 @@ namespace factory {
 		}
 	};
 	
-	int encode_hybi(const char* src, size_t srclength, LBuffer<char>& buffer) {
+	template<class It, class Res>
+	void encode_hybi(It first, It last, Res result) {
+
+		static_assert(std::is_same<typename std::iterator_traits<Res>::iterator_category,
+			std::output_iterator_tag>::value
+			&& std::is_same<typename std::iterator_traits<It>::iterator_category,
+			std::random_access_iterator_tag>::value, "encode_hybi is defined for input and output iterators only");
+
+		size_t srclength = last - first;
 		if (srclength == 0) return 0;
 		// TODO: mask data with random key
 		Web_socket_frame_header hdr = { 0 };
@@ -334,23 +322,23 @@ namespace factory {
 //			<< ' ' << sizeof(hdr) << ' '
 //			<< std::endl;
 	
-		buffer.write(bytes.begin(), offset);
-		buffer.write(src, srclength);
+//		buffer.write(bytes.begin(), offset);
+//		buffer.write(first, srclength);
+		std::copy(bytes.begin(), bytes.begin() + offset, result);
+		std::copy(first, last, result);
 //		std::copy(src, src + srclength, target + offset);
-		int ret = offset + srclength;
-		
-		return ret;
 	}
 
-	int decode_hybi2(char *src, size_t srclength,
-					char *target,
-					Opcode* opcode,
-					size_t& header_len)
+	template<class It, class Res>
+	size_t decode_hybi2(It first, It last,
+					Res output,
+					Opcode* opcode)
 	{
+		size_t srclength = first - last;
 		static const size_t MASK_SIZE = 4;
-		header_len = 2;
+		size_t header_len = 2;
 		if (srclength < header_len) return 0;
-		Bytes<Web_socket_frame_header> raw_hdr(src, src + header_len);
+		Bytes<Web_socket_frame_header> raw_hdr(first, first + header_len);
 		raw_hdr.to_host_format();
 		Web_socket_frame_header hdr = raw_hdr;
 		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
@@ -364,17 +352,22 @@ namespace factory {
 		}
 		if (hdr.masked()) {
 			Bytes<char[MASK_SIZE]> mask(
-				src + header_len - MASK_SIZE, src + header_len);
+				first + header_len - MASK_SIZE, first + header_len);
 			size_t i = 0;
-			std::transform(src + header_len, src + header_len + hdr.len, target,
+			std::transform(first + header_len, first + header_len + hdr.len, output,
 				[&i,&mask] (char ch) {
 					ch ^= mask[i%4]; ++i; return ch;
 				}
 			);
+//			std::for_each(first + header_len, first + header_len + hdr.len,
+//				[&i,&mask] (char& ch) { ch ^= mask[i%4]; ++i; }
+//			);
+//			output.write(first + header_len, hdr.len);
 		} else {
-			std::copy(src + header_len, src + header_len + hdr.len, target);
+			std::copy(first + header_len, first + header_len + hdr.len, output);
+//			output.write(first + header_len, hdr.len);
 		}
-		return hdr.len;
+		return header_len + hdr.len;
 	}
 	
 	static void gen_sha1(const std::string& web_socket_key, char *target) {
@@ -406,7 +399,8 @@ namespace factory {
 //				<< std::endl;
 //		}
 	
-		b64_ntop(hash2, sizeof(hash2), target, HYBI10_ACCEPTHDRLEN);
+		base64_encode(hash2.begin(), hash2.end(), target);
+//		b64_ntop(hash2, sizeof(hash2), target, HYBI10_ACCEPTHDRLEN);
 //		b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
 		target[HYBI10_ACCEPTHDRLEN-1] = 0;
 	}
@@ -423,8 +417,10 @@ namespace factory {
 
 		Handshake():
 			buffer(BUFFER_SIZE, 0),
-			_context(alloc_ws_ctx()),
-			send_buffer(BUFSIZE)
+			_http_headers(),
+			send_buffer(BUFFER_SIZE),
+			recv_buffer(BUFFER_SIZE),
+			mid_buffer(BUFFER_SIZE)
 		{}
 
 		template<class It>
@@ -447,16 +443,16 @@ namespace factory {
 						std::string key(first, it);
 						// advance two characters further (colon plus space)
 						std::string value(it+2, last);
-						if (_context->header.size() == MAX_HEADERS) {
+						if (_http_headers.size() == MAX_HEADERS) {
 							state = State::PARSING_ERROR;
 							Logger(Level::WEBSOCKET)
 								<< "too many headers in HTTP request" << std::endl;
-						} else if (_context->header.find(key) != _context->header.end()) {
+						} else if (_http_headers.contain(key.c_str())) {
 							state = State::PARSING_ERROR;
 							Logger(Level::WEBSOCKET)
 								<< "duplicate HTTP header: '" << key << '\'' << std::endl;
 						} else {
-							_context->header[key] = value;
+							_http_headers[key] = value;
 							Logger(Level::WEBSOCKET)
 								<< "Header['" << key << "'] = '" << value << "'" << std::endl;
 						}
@@ -468,9 +464,9 @@ namespace factory {
 			}
 		}
 
-		ws_ctx_t *do_handshake(int sock) {
-			if (state == State::HANDSHAKE_SUCCESS) return _context;
-			read_method_and_headers(sock);
+		void do_handshake(int sock) {
+			if (state == State::HANDSHAKE_SUCCESS) return;
+			read_http_method_and_headers(sock);
 			switch (state) {
 				case State::HANDSHAKE_SUCCESS:
 					reply_success(sock);
@@ -483,23 +479,22 @@ namespace factory {
 				default:
 					break;
 			}
-			return _context;
 		}
 
 		bool success() const { return state == State::HANDSHAKE_SUCCESS; }
 
 		bool validate_headers() {
 			return
-				_context->header_is_present("Sec-WebSocket-Key")
-				&& _context->header_is_present("Sec-WebSocket-Version")
-				&& _context->header_equals("Sec-WebSocket-Protocol", "binary")
-				&& _context->header_equals("Upgrade", "websocket")
-				&& _context->header_contains("Connection", "Upgrade");
+				_http_headers.contain("Sec-WebSocket-Key")
+				&& _http_headers.contain("Sec-WebSocket-Version")
+				&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
+				&& _http_headers.contain("Upgrade", "websocket")
+				&& _http_headers.contain_value("Connection", "Upgrade");
 		}
 
 	private:
 
-		void read_method_and_headers(int sock) {
+		void read_http_method_and_headers(int sock) {
 			ssize_t len = ::read(sock, &buffer[buffer_offset], BUFFER_SIZE);
 			size_t pos = 0;
 			size_t found;
@@ -527,7 +522,7 @@ namespace factory {
 
 		void reply_success(int sock) {
 			char sha1[29];
-			gen_sha1(_context->header["Sec-WebSocket-Key"], sha1);
+			gen_sha1(_http_headers["Sec-WebSocket-Key"], sha1);
 			std::stringstream response;
 			response
 				<< "HTTP/1.1 101 Switching Protocols" << HTTP_FIELD_SEPARATOR
@@ -549,7 +544,7 @@ namespace factory {
 		uint32_t write(int _socket, const char* buf, size_t size) {
 			uint32_t ret = 0;
 			if (state == State::HANDSHAKE_SUCCESS) {
-				encode_hybi(buf, size, send_buffer);
+				encode_hybi(buf, buf + size, std::back_inserter(send_buffer));
 				send_buffer.flush(Socket(_socket));
 				if (send_buffer.empty()) {
 					ret = size;
@@ -557,14 +552,39 @@ namespace factory {
 			}
 			return ret;
 		}
+
+		uint32_t read(int _socket, char* buf, size_t size) {
+			uint32_t bytes_read = 0;
+			if (state != State::HANDSHAKE_SUCCESS) {
+				do_handshake(_socket);
+			} else {
+				Opcode opcode = Opcode::CONT_FRAME;
+				if (mid_buffer.empty()) {
+					recv_buffer.fill(Socket(_socket));
+					size_t len = decode_hybi2(recv_buffer.read_begin(),
+									  recv_buffer.read_end(),
+									  std::back_inserter(mid_buffer),
+									  &opcode);
+					recv_buffer.ignore(len);
+				}
+				if (opcode == Opcode::CONN_CLOSE) {
+					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
+				} else {
+					bytes_read = mid_buffer.read(buf, size);
+				}
+			}
+			return bytes_read;
+		}
 	
 	private:
 		std::string buffer;
 		size_t buffer_offset = 0;
 		State state = State::PARSING_HTTP_METHOD;
-		ws_ctx_t * _context;
+		HTTP_headers _http_headers;
 
 		LBuffer<char> send_buffer;
+		LBuffer<char> recv_buffer;
+		LBuffer<char> mid_buffer;
 
 		static const size_t BUFFER_SIZE = 1024;
 		static const size_t MAX_HEADERS = 20;
@@ -575,35 +595,17 @@ namespace factory {
 
 	struct Web_socket: public Socket {
 
-		enum State {
-			HANDSHAKE,
-			NORMAL
-		};
-
 		Web_socket():
-			_context(nullptr),
-			_handshaker(),
-			recv_buffer(BUFSIZE),
-			mid_buffer(BUFSIZE)
+			_handshaker()
 			{}
 
 		explicit Web_socket(const Socket& rhs):
 			Socket(rhs),
-			_context(nullptr),
-			_handshaker(),
-			recv_buffer(BUFSIZE),
-			mid_buffer(BUFSIZE)
+			_handshaker()
 			{}
 
 		virtual ~Web_socket() {
 			this->close();
-			if (_context) {
-				delete[] _context->cin_buf;
-				delete[] _context->cout_buf;
-				delete[] _context->tin_buf;
-				delete[] _context->tout_buf;
-				delete _context;
-			}
 		}
 
 		Web_socket& operator=(const Socket& rhs) {
@@ -611,94 +613,10 @@ namespace factory {
 			return *this;
 		}
 
-		uint32_t read(char* buf, size_t size) {
-			if (!_context) {
-				_context = _handshaker.do_handshake(_socket);
-			} else {
-				if (!mid_buffer.empty()) {
-					return mid_buffer.read(buf, size);
-				}
-				recv_buffer.fill(Socket(_socket));
-				Opcode opcode = Opcode::CONT_FRAME;
-				size_t header_len = 0;
-				int len = decode_hybi2(recv_buffer.read_begin(),
-								  recv_buffer.size(),
-								  _context->tout_buf,
-								  &opcode, header_len);
-				if (opcode == Opcode::CONN_CLOSE || len < 0) {
-					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
-					return 0;
-				}
-				recv_buffer.ignore(len + header_len);
-				mid_buffer.write(_context->tout_buf, len);
-				return mid_buffer.read(buf, size);
-			}
-		}
 
-//		uint32_t readold(char* buf, size_t size) {
-//			if (!_context) {
-//				_context = _handshaker.do_handshake(_socket);
-//			} else {
-//				{
-//					unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
-//					if (cnt > 0) {
-//						std::copy(_context->tout_buf + tout_start,
-//							_context->tout_buf + tout_start + cnt, buf);
-//						tout_start += cnt;
-//						if (tout_start == tout_end) {
-//							tout_start = 0;
-//							tout_end = 0;
-//						}
-//						return cnt;
-//					}
-//				}
-//				ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
-//				int len = 0;
-//				unsigned int left = 0;
-//				Opcode opcode = Opcode::CONT_FRAME;
-//				if (bytes <= 0) {
-//					Logger(Level::WEBSOCKET)
-//						<< "Nothing to read: "
-//						<< strerror(errno)
-//						<< ", tin_start = " << tin_start
-//						<< ", tin_end = " << tin_end
-//						<< ", tout_start = " << tout_start
-//						<< ", tout_end = " << tout_end
-//						<< std::endl;
-//					return 0;
-//				}
-//				tin_end += bytes;
-//				len = decode_hybi2(_context->tin_buf + tin_start,
-//								  tin_end-tin_start,
-//								  _context->tout_buf + tout_end,
-//								  &opcode);
-//				if (opcode == Opcode::CONN_CLOSE || len < 0) {
-//					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
-//					return 0;
-//				}
-//				tin_start = 0;
-//				tin_end = 0;
-//				tout_end += len;
-//				unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
-//				std::copy(_context->tout_buf + tout_start,
-//					_context->tout_buf + tout_start + cnt, buf);
-//				tout_start += cnt;
-//				if (tout_start == tout_end) {
-//					tout_start = 0;
-//					tout_end = 0;
-//				}
-//				Logger log(Level::WEBSOCKET);
-//				log << "Message ";
-//				log << std::hex << std::setfill('0');
-//				for (int i=0; i< bytes; i++) {
-//					log << std::setw(2)
-//						<< (unsigned int)(unsigned char)(_context->tin_buf[i]);
-//				}
-//				log << std::endl;
-//				return cnt;
-//			}
-//			return 0;
-//		}
+		uint32_t read(char* buf, size_t size) {
+			return _handshaker.read(_socket, buf, size);
+		}
 
 		uint32_t write(const char* buf, size_t size) {
 			return _handshaker.write(_socket, buf, size);
@@ -709,14 +627,7 @@ namespace factory {
 		}
 
 	private:
-		ws_ctx_t* _context;
 		Handshake _handshaker;
-		LBuffer<char> recv_buffer;
-		LBuffer<char> mid_buffer;
-		unsigned int tin_start = 0;
-		unsigned int tin_end = 0;
-		unsigned int tout_start = 0;
-		unsigned int tout_end = 0;
 	};
 
 }

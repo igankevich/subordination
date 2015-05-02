@@ -26,7 +26,7 @@ src/test_offline
 src/test_discovery
 src/test_spinlock
 src/test_endpoint
-src/test_base64
+src/test_encoding
 src/test_websocket
 src/*.html
 

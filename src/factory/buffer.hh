@@ -346,8 +346,23 @@ namespace factory {
 
 	template<class T>
 	struct LBuffer {
+		
+		typedef T value_type;
 
 		explicit LBuffer(size_t base_size): _data(base_size) {}
+
+		void push_back(const T byte) {
+			if (write_pos + 1 == buffer_size()) { double_size(); }
+			_data[write_pos] = byte;
+			++write_pos;
+		}
+
+		const T& front() const { return _data[read_pos]; }
+		T& front() { return _data[read_pos]; }
+
+		void pop_front() {
+			if (!empty()) ++read_pos;
+		}
 
 		size_t write(const T* buf, size_t sz) {
 			while (write_pos + sz >= buffer_size()) { double_size(); }
@@ -394,6 +409,9 @@ namespace factory {
 		T* read_begin() { return &_data[read_pos]; }
 		T* read_end() { return &_data[write_pos]; }
 
+		T* begin() { return read_begin(); }
+		T* end() { return read_end(); }
+
 		template<class S>
 		size_t flush(S sink) {
 			size_t bytes_written;
@@ -431,6 +449,55 @@ namespace factory {
 		std::vector<T> _data;
 		size_t write_pos = 0;
 		size_t read_pos = 0;
+	};
+
+	template<class Container>
+	class front_pop_iterator:
+	    public std::iterator<std::input_iterator_tag, typename Container::value_type>
+	{
+	public:
+		typedef Container container_type;
+		typedef typename Container::value_type value_type;
+		typedef typename Container::value_type iterator;
+
+		explicit front_pop_iterator(Container& x):
+			container(&x), ptr(x.begin()) {}
+		front_pop_iterator(Container& x, iterator it):
+			container(&x), ptr(it) {}
+		front_pop_iterator(front_pop_iterator& rhs):
+			container(rhs.container), ptr(rhs.ptr) {}
+
+		std::ptrdiff_t operator-(const front_pop_iterator<Container>& rhs) {
+			return ptr - rhs.ptr;
+		}
+		front_pop_iterator<Container> operator+(std::ptrdiff_t rhs) const {
+			return front_pop_iterator<Container>(container,
+				std::advance(container.begin(), rhs));
+		}
+		bool operator==(const front_pop_iterator<Container>& rhs) const {
+			return ptr == rhs.ptr;
+		}
+		bool operator!=(const front_pop_iterator<Container>& rhs) const {
+			return ptr != rhs.ptr;
+		}
+
+		const value_type& operator*() const { return *ptr; }
+		const value_type* operator->() const { return ptr; }
+		front_pop_iterator<Container>& operator++ () {
+			ptr = container.front();
+			container.pop_front();
+			return *this;
+		}
+
+		front_pop_iterator<Container> operator++ (int) {
+			front_pop_iterator<Container> tmp = *this;
+			++*this;
+			return tmp;
+		}
+
+	protected:
+		Container& container;
+		value_type* ptr;
 	};
 
 }

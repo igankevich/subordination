@@ -69,7 +69,6 @@ namespace factory {
 			Port port;
 			in >> std::ws;
 			getline_no_white_space(in, host, ':');
-			std::cout << "Host = '" << host << "'." << std::endl;
 			std::ios_base::fmtflags oldf = in.flags() & std::ios::skipws;
 			in >> std::noskipws >> port;
 			in.flags(oldf);
