@@ -359,6 +359,22 @@ namespace factory {
 		size_t read(T* buf, size_t sz) {
 			size_t min_sz = std::min(sz, size()); 
 			std::copy(&_data[read_pos], &_data[min_sz], buf);
+			read_pos += min_sz;
+			if (read_pos == write_pos) {
+				reset();
+			}
+			return min_sz;
+		}
+
+		size_t readsome(T* buf, size_t sz) {
+			size_t min_sz = std::min(sz, size()); 
+			std::copy(&_data[read_pos], &_data[min_sz], buf);
+			return min_sz;
+		}
+
+		size_t ignore(size_t nbytes) {
+			size_t min_sz = std::min(nbytes, size()); 
+			read_pos += min_sz;
 			return min_sz;
 		}
 

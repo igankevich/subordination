@@ -344,10 +344,11 @@ namespace factory {
 
 	int decode_hybi2(char *src, size_t srclength,
 					char *target,
-					Opcode* opcode)
+					Opcode* opcode,
+					size_t& header_len)
 	{
 		static const size_t MASK_SIZE = 4;
-		size_t header_len = 2;
+		header_len = 2;
 		if (srclength < header_len) return 0;
 		Bytes<Web_socket_frame_header> raw_hdr(src, src + header_len);
 		raw_hdr.to_host_format();
@@ -579,8 +580,20 @@ namespace factory {
 			NORMAL
 		};
 
-		Web_socket(): _context(nullptr), _handshaker() {}
-		explicit Web_socket(const Socket& rhs): Socket(rhs), _context(nullptr), _handshaker() {}
+		Web_socket():
+			_context(nullptr),
+			_handshaker(),
+			recv_buffer(BUFSIZE),
+			mid_buffer(BUFSIZE)
+			{}
+
+		explicit Web_socket(const Socket& rhs):
+			Socket(rhs),
+			_context(nullptr),
+			_handshaker(),
+			recv_buffer(BUFSIZE),
+			mid_buffer(BUFSIZE)
+			{}
 
 		virtual ~Web_socket() {
 			this->close();
@@ -602,66 +615,90 @@ namespace factory {
 			if (!_context) {
 				_context = _handshaker.do_handshake(_socket);
 			} else {
-				{
-					unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
-					if (cnt > 0) {
-						std::copy(_context->tout_buf + tout_start,
-							_context->tout_buf + tout_start + cnt, buf);
-						tout_start += cnt;
-						if (tout_start == tout_end) {
-							tout_start = 0;
-							tout_end = 0;
-						}
-						return cnt;
-					}
+				if (!mid_buffer.empty()) {
+					return mid_buffer.read(buf, size);
 				}
-				ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
-				int len = 0;
-				unsigned int left = 0;
+				recv_buffer.fill(Socket(_socket));
 				Opcode opcode = Opcode::CONT_FRAME;
-				if (bytes <= 0) {
-					Logger(Level::WEBSOCKET)
-						<< "Nothing to read: "
-						<< strerror(errno)
-						<< ", tin_start = " << tin_start
-						<< ", tin_end = " << tin_end
-						<< ", tout_start = " << tout_start
-						<< ", tout_end = " << tout_end
-						<< std::endl;
-					return 0;
-				}
-				tin_end += bytes;
-				len = decode_hybi2(_context->tin_buf + tin_start,
-								  tin_end-tin_start,
-								  _context->tout_buf + tout_end,
-								  &opcode);
+				size_t header_len = 0;
+				int len = decode_hybi2(recv_buffer.read_begin(),
+								  recv_buffer.size(),
+								  _context->tout_buf,
+								  &opcode, header_len);
 				if (opcode == Opcode::CONN_CLOSE || len < 0) {
 					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
 					return 0;
 				}
-				tin_start = 0;
-				tin_end = 0;
-				tout_end += len;
-				unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
-				std::copy(_context->tout_buf + tout_start,
-					_context->tout_buf + tout_start + cnt, buf);
-				tout_start += cnt;
-				if (tout_start == tout_end) {
-					tout_start = 0;
-					tout_end = 0;
-				}
-				Logger log(Level::WEBSOCKET);
-				log << "Message ";
-				log << std::hex << std::setfill('0');
-				for (int i=0; i< bytes; i++) {
-					log << std::setw(2)
-						<< (unsigned int)(unsigned char)(_context->tin_buf[i]);
-				}
-				log << std::endl;
-				return cnt;
+				recv_buffer.ignore(len + header_len);
+				mid_buffer.write(_context->tout_buf, len);
+				return mid_buffer.read(buf, size);
 			}
-			return 0;
 		}
+
+//		uint32_t readold(char* buf, size_t size) {
+//			if (!_context) {
+//				_context = _handshaker.do_handshake(_socket);
+//			} else {
+//				{
+//					unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
+//					if (cnt > 0) {
+//						std::copy(_context->tout_buf + tout_start,
+//							_context->tout_buf + tout_start + cnt, buf);
+//						tout_start += cnt;
+//						if (tout_start == tout_end) {
+//							tout_start = 0;
+//							tout_end = 0;
+//						}
+//						return cnt;
+//					}
+//				}
+//				ssize_t bytes = ::read(_socket, _context->tin_buf + tin_end, BUFSIZE-1);
+//				int len = 0;
+//				unsigned int left = 0;
+//				Opcode opcode = Opcode::CONT_FRAME;
+//				if (bytes <= 0) {
+//					Logger(Level::WEBSOCKET)
+//						<< "Nothing to read: "
+//						<< strerror(errno)
+//						<< ", tin_start = " << tin_start
+//						<< ", tin_end = " << tin_end
+//						<< ", tout_start = " << tout_start
+//						<< ", tout_end = " << tout_end
+//						<< std::endl;
+//					return 0;
+//				}
+//				tin_end += bytes;
+//				len = decode_hybi2(_context->tin_buf + tin_start,
+//								  tin_end-tin_start,
+//								  _context->tout_buf + tout_end,
+//								  &opcode);
+//				if (opcode == Opcode::CONN_CLOSE || len < 0) {
+//					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
+//					return 0;
+//				}
+//				tin_start = 0;
+//				tin_end = 0;
+//				tout_end += len;
+//				unsigned int cnt = std::min(tout_end-tout_start, (unsigned int)size);
+//				std::copy(_context->tout_buf + tout_start,
+//					_context->tout_buf + tout_start + cnt, buf);
+//				tout_start += cnt;
+//				if (tout_start == tout_end) {
+//					tout_start = 0;
+//					tout_end = 0;
+//				}
+//				Logger log(Level::WEBSOCKET);
+//				log << "Message ";
+//				log << std::hex << std::setfill('0');
+//				for (int i=0; i< bytes; i++) {
+//					log << std::setw(2)
+//						<< (unsigned int)(unsigned char)(_context->tin_buf[i]);
+//				}
+//				log << std::endl;
+//				return cnt;
+//			}
+//			return 0;
+//		}
 
 		uint32_t write(const char* buf, size_t size) {
 			return _handshaker.write(_socket, buf, size);
@@ -674,6 +711,8 @@ namespace factory {
 	private:
 		ws_ctx_t* _context;
 		Handshake _handshaker;
+		LBuffer<char> recv_buffer;
+		LBuffer<char> mid_buffer;
 		unsigned int tin_start = 0;
 		unsigned int tin_end = 0;
 		unsigned int tout_start = 0;
