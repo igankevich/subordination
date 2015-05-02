@@ -14,20 +14,20 @@ AM_INIT_AUTOMAKE
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
-AC_ARG_ENABLE([ssl],
-	AS_HELP_STRING([--enable-ssl], [enable SSL library]))
+#AC_ARG_ENABLE([ssl],
+#	AS_HELP_STRING([--enable-ssl], [enable SSL library]))
 
 # Checks for programs.
 AC_LANG([C++])
 AC_PROG_CXX
 
 # Checks for libraries.
-AS_IF([test "x$enable_ssl" = "xyes"], [
-	AC_CHECK_LIB(ssl, SSL_library_init, [],
-		AC_MSG_ERROR([Could not find SSL library]))
-	AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
-		AC_MSG_ERROR([Could not find crypto library]))
-])
+#AS_IF([test "x$enable_ssl" = "xyes"], [
+#	AC_CHECK_LIB(ssl, SSL_library_init, [],
+#		AC_MSG_ERROR([Could not find SSL library]))
+#	AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
+#		AC_MSG_ERROR([Could not find crypto library]))
+#])
 #AC_CHECK_LIB(ssl, SSL_library_init, [],
 #	AC_MSG_ERROR([Could not find SSL library]))
 #AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],

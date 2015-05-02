@@ -202,15 +202,6 @@ namespace factory {
 
 namespace factory {
 
-	struct Autoinitialize_openssl_library {
-		Autoinitialize_openssl_library() {
-			::SSL_library_init();
-			::OpenSSL_add_all_algorithms();
-			::SSL_load_error_strings();
-		}
-	} _autoinitialize_openssl_library;
-
-
 	const size_t BUFSIZE = 65536;
 	const size_t DBUFSIZE = (BUFSIZE * 3) / 4 - 20;
 
@@ -295,10 +286,9 @@ namespace factory {
 	
 	int encode_hybi(const char* src, size_t srclength, LBuffer<char>& buffer) {
 		// TODO: mask data with random key
-		const Opcode opcode = Opcode::BINARY_FRAME;
 		Web_socket_frame_header hdr = { 0 };
 		size_t offset = 2;
-		hdr.opcode = static_cast<uint16_t>(opcode);
+		hdr.opcode = static_cast<uint16_t>(Opcode::BINARY_FRAME);
 		hdr.fin = 1;
 		if (srclength <= 125) {
 			hdr.len = srclength;
@@ -496,15 +486,32 @@ namespace factory {
 		static const size_t HYBI10_ACCEPTHDRLEN = 29;
 		static const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	
-		unsigned char hash[SHA_DIGEST_LENGTH];
+		Bytes<Bytes<unsigned, unsigned char>[5], unsigned char> hash2;
+		SHA1 sha1;
+		sha1.Input(web_socket_key.data(), web_socket_key.size());
+		sha1.Input(HYBI_GUID, sizeof(HYBI_GUID)-1);
+		sha1.Result(hash2.value());
+		std::for_each(hash2.value(), hash2.value() + 5,
+			std::mem_fun_ref(&Bytes<unsigned, unsigned char>::to_network_format));
 
-		::SHA_CTX c;
-		::SHA1_Init(&c);
-		::SHA1_Update(&c, web_socket_key.data(), web_socket_key.size());
-		::SHA1_Update(&c, HYBI_GUID, sizeof(HYBI_GUID)-1);
-		::SHA1_Final(hash, &c);
+//		auto ret = std::mismatch(hash, hash + SHA_DIGEST_LENGTH, hash2.begin());
+//		if (ret.first == hash + SHA_DIGEST_LENGTH) {
+//			Logger(Level::WEBSOCKET) << "SHA1 match" << std::endl;
+//		} else {
+//			Logger(Level::WEBSOCKET) << "SHA1 do not match: "
+//				<< Bytes<char[SHA_DIGEST_LENGTH]>(hash, hash + SHA_DIGEST_LENGTH)
+//				<< " /= "
+//				<< hash2
+//				<< std::endl;
+//			Logger(Level::WEBSOCKET) << "Mismatching elem: "
+//				<< Bytes<char>(*ret.first)
+//				<< " /= "
+//				<< Bytes<char>(*ret.second)
+//				<< std::endl;
+//		}
 	
-		b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
+		b64_ntop(hash2, sizeof(hash2), target, HYBI10_ACCEPTHDRLEN);
+//		b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
 		target[HYBI10_ACCEPTHDRLEN-1] = 0;
 	}
 

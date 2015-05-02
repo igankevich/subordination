@@ -36,7 +36,7 @@ namespace factory {
 		static void to_host_format(value& val) { val = be64toh(val); }
 	};
 
-	template<class T>
+	template<class T, class Byte=char>
 	union Bytes {
 
 		typedef Integer<sizeof(T)> Int;
@@ -51,16 +51,19 @@ namespace factory {
 
 		operator T& () { return val; }
 		operator const T& () const { return val; }
-		operator char* () { return bytes; }
-		operator const char* () const { return bytes; }
+		operator Byte* () { return bytes; }
+		operator const Byte* () const { return bytes; }
 
-		char operator[](size_t idx) const { return bytes[idx]; }
+		Byte operator[](size_t idx) const { return bytes[idx]; }
 
 		bool operator==(const Bytes<T>& rhs) const { return i == rhs.i; }
 		bool operator!=(const Bytes<T>& rhs) const { return i != rhs.i; }
 
-		char* begin() { return bytes; }
-		char* end() { return bytes + sizeof(T); }
+		Byte* begin() { return bytes; }
+		Byte* end() { return bytes + sizeof(T); }
+
+		const Byte* begin() const { return bytes; }
+		const Byte* end() const { return bytes + sizeof(T); }
 
 		const T& value() const { return val; }
 		T& value() { return val; }
@@ -68,7 +71,7 @@ namespace factory {
 	private:
 		T val;
 		typename Int::value i;
-		char bytes[sizeof(T)];
+		Byte bytes[sizeof(T)];
 
 		static_assert(sizeof(decltype(val)) == sizeof(decltype(i)),
 			"Bad size of integral type.");
@@ -77,13 +80,21 @@ namespace factory {
 //			"Bad type for byte representation.");
 	};
 
-	template<class T>
-	std::ostream& operator<<(std::ostream& out, const Bytes<T>& rhs) {
-		return out << static_cast<const T&>(rhs);
+	template<class T, class B>
+	std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
+		out << std::hex << std::setfill('0');
+		std::ostream_iterator<unsigned int> it(out, " ");
+		std::for_each(rhs.begin(), rhs.end(), [&out] (char ch) {
+			out << (unsigned int)(unsigned char)ch << ' ';
+		});
+//		std::copy(rhs.begin(), rhs.end(), it);
+		out << std::dec << std::setfill(' ');
+		return out;
+//		return out << static_cast<const T&>(rhs);
 	}
 
-	template<class T>
-	std::istream& operator>>(std::istream& in, Bytes<T>& rhs) {
+	template<class T, class B>
+	std::istream& operator>>(std::istream& in, Bytes<T,B>& rhs) {
 		return in >> static_cast<T&>(rhs);
 	}
 

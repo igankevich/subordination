@@ -42,15 +42,9 @@
 #include <csignal>
 #include <ifaddrs.h>
 
-// Cryptography.
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-#include <openssl/md5.h> /* md5 hash */
-#include <openssl/sha.h> /* sha1 hash */
-
-
 // Base system
 #include "base.hh"
+#include "sha1.hh"
 #include "error.hh"
 #include "network.hh"
 #include "base64.hh"
