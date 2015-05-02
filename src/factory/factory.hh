@@ -44,10 +44,9 @@
 
 // Base system
 #include "base.hh"
-#include "sha1.hh"
 #include "error.hh"
 #include "network.hh"
-#include "base64.hh"
+#include "encoding.hh"
 #include "endpoint.hh"
 #include "buffer.hh"
 #include "socket.hh"
