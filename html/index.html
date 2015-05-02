@@ -25,6 +25,12 @@
 			function writeErr(msg) {
 				writeLog('<span class="error">' + msg + '</span>')
 			}
+			function ab2str(buf) {
+				var s = ""
+				var b = new Uint8Array(buf);
+				for (var i=0; i<b.length; ++i) s += Number(b[i]) + " "
+				return s
+			}
 			function connect() {
                 window.WebSocket = window.WebSocket || window.MozWebSocket;
 
@@ -48,7 +54,7 @@
                 websocket.onmessage = function (message) {
                     console.log(message);
                     console.log(new Uint8Array(message.data));
-                    $('div').append($('<p>', { text: message.data }));
+                    $('#log').append($('<p>', { text: ab2str(message.data) }));
                 };
 
 				websocket.onclose = function () {

@@ -285,6 +285,7 @@ namespace factory {
 	};
 	
 	int encode_hybi(const char* src, size_t srclength, LBuffer<char>& buffer) {
+		if (srclength == 0) return 0;
 		// TODO: mask data with random key
 		Web_socket_frame_header hdr = { 0 };
 		size_t offset = 2;
