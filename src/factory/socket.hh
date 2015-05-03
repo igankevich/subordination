@@ -204,224 +204,61 @@ namespace factory {
 
 	struct HTTP_headers {
 
-		size_t size() const { return header.size(); }
-		std::string& operator[](const std::string& key) { return header[key]; }
+		size_t size() const { return hdrs.size(); }
+		std::string& operator[](const std::string& key) { return hdrs[key]; }
 
 		bool contain(const char* name) const {
-			return header.count(name) != 0;
+			return hdrs.count(name) != 0;
 		}
 
 		bool contain(const char* name, const char* value) const {
-			auto it = header.find(name);
-			return it != header.end() && it->second == value;
+			auto it = hdrs.find(name);
+			return it != hdrs.end() && it->second == value;
 		}
 
 		bool contain_value(const char* name, const char* value) const {
-			auto it = header.find(name);
-			return it != header.end() && it->second.find(value) != std::string::npos;
+			auto it = hdrs.find(name);
+			return it != hdrs.end() && it->second.find(value) != std::string::npos;
 		}
 
 	private:
-		std::unordered_map<std::string, std::string> header;
+		std::unordered_map<std::string, std::string> hdrs;
 	};
 	
-	
-	uint32_t ws_send(int sock, const void *buf, size_t len) {
-		ssize_t ret = 0;
-		ret = ::write(sock, buf, len);
-		return ret < 0 ? 0 : static_cast<uint32_t>(ret);
-	}
-	
-	enum struct Opcode: int8_t {
-		CONT_FRAME   = 0x0,
-		TEXT_FRAME   = 0x1,
-		BINARY_FRAME = 0x2,
-		CONN_CLOSE   = 0x8,
-		PING		 = 0x9,
-		PONG		 = 0xa
-	};
-	
-	struct Web_socket_frame_header {
-		uint16_t extlen : 16;
-		uint16_t len	: 7;
-		uint16_t mask   : 1;
-		uint16_t opcode : 4;
-		uint16_t rsv3   : 1;
-		uint16_t rsv2   : 1;
-		uint16_t rsv1   : 1;
-		uint16_t fin	: 1;
+	struct Web_socket: public Socket {
 
-		bool masked() const { return mask == 1; }
-		bool is_binary_frame() const {
-			return static_cast<Opcode>(opcode) == Opcode::BINARY_FRAME;
-		}
-		bool has_valid_opcode() const { return opcode >= 0x0 && opcode <= 0xf; }
-
-		friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame_header& rhs) {
-			return out
-				<< "fin=" << rhs.fin << ','
-				<< "rsv1=" << rhs.rsv1 << ','
-				<< "rsv2=" << rhs.rsv2 << ','
-				<< "rsv3=" << rhs.rsv3 << ','
-				<< "opcode=" << rhs.opcode << ','
-				<< "mask=" << rhs.mask << ','
-				<< "len=" << rhs.len << ','
-				<< "extlen=" << rhs.extlen;
-		}
-	};
-	
-	template<class It, class Res>
-	void encode_hybi(It first, It last, Res result) {
-
-		static_assert(std::is_same<typename std::iterator_traits<Res>::iterator_category,
-			std::output_iterator_tag>::value
-			&& std::is_same<typename std::iterator_traits<It>::iterator_category,
-			std::random_access_iterator_tag>::value, "encode_hybi is defined for input and output iterators only");
-
-		size_t srclength = last - first;
-		if (srclength == 0) return 0;
-		// TODO: mask data with random key
-		Web_socket_frame_header hdr = { 0 };
-		size_t offset = 2;
-		hdr.opcode = static_cast<uint16_t>(Opcode::BINARY_FRAME);
-		hdr.fin = 1;
-		if (srclength <= 125) {
-			hdr.len = srclength;
-		} else if (srclength > 125 && srclength < 65536) {
-			hdr.len = 126;
-			hdr.extlen = srclength;
-//			Bytes<uint16_t> raw = srclength;
-//			raw.to_network_format();
-//			std::copy(raw.begin(), raw.end(), target + offset);
-			offset += 2;
-		} else {
-			hdr.len = 127;
-			// TODO: ???
-//			Bytes<uint64_t> raw = srclength;
-//			raw.to_network_format();
-//			std::copy(raw.begin(), raw.end(), target + offset);
-//			offset += 8;
-		}
-	
-		Bytes<Web_socket_frame_header> bytes = hdr;
-		bytes.to_network_format();
-//		std::copy(bytes.begin(), bytes.begin() + offset, target);
-	
-//		Logger(Level::WEBSOCKET)
-//			<< "assertions: " << std::boolalpha
-//			<< (target[0] == (char)((static_cast<int>(opcode) & 0x0F) | 0x80))
-//			<< (target[1] == (char)srclength)
-//			<< std::endl;
-//	
-//		Logger(Level::WEBSOCKET)
-//			<< "Header: "
-//			<< (uint32_t)target[0] << ' ' << (uint32_t)target[1] << ' '
-//			<< (uint32_t)bytes[0] << ' ' << (uint32_t)hdr.fin << ' '
-//			<< (uint32_t)(unsigned char)((static_cast<uint32_t>(opcode) & 0x0F) | 0x80)
-//			<< ' ' << (uint32_t)(char)srclength << ' '
-//			<< ' ' << sizeof(hdr) << ' '
-//			<< std::endl;
-	
-//		buffer.write(bytes.begin(), offset);
-//		buffer.write(first, srclength);
-		std::copy(bytes.begin(), bytes.begin() + offset, result);
-		std::copy(first, last, result);
-//		std::copy(src, src + srclength, target + offset);
-	}
-
-	template<class It, class Res>
-	size_t decode_hybi2(It first, It last,
-					Res output,
-					Opcode* opcode)
-	{
-		size_t srclength = first - last;
-		static const size_t MASK_SIZE = 4;
-		size_t header_len = 2;
-		if (srclength < header_len) return 0;
-		Bytes<Web_socket_frame_header> raw_hdr(first, first + header_len);
-		raw_hdr.to_host_format();
-		Web_socket_frame_header hdr = raw_hdr;
-		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
-		*opcode = static_cast<Opcode>(hdr.opcode);
-		if (hdr.masked()) header_len += MASK_SIZE;
-		if (srclength < hdr.len + header_len
-			|| !hdr.has_valid_opcode()
-			|| !hdr.is_binary_frame())
-		{
-			return 0;
-		}
-		if (hdr.masked()) {
-			Bytes<char[MASK_SIZE]> mask(
-				first + header_len - MASK_SIZE, first + header_len);
-			size_t i = 0;
-			std::transform(first + header_len, first + header_len + hdr.len, output,
-				[&i,&mask] (char ch) {
-					ch ^= mask[i%4]; ++i; return ch;
-				}
-			);
-//			std::for_each(first + header_len, first + header_len + hdr.len,
-//				[&i,&mask] (char& ch) { ch ^= mask[i%4]; ++i; }
-//			);
-//			output.write(first + header_len, hdr.len);
-		} else {
-			std::copy(first + header_len, first + header_len + hdr.len, output);
-//			output.write(first + header_len, hdr.len);
-		}
-		return header_len + hdr.len;
-	}
-	
-	static void gen_sha1(const std::string& web_socket_key, char *target) {
-	
-		static const size_t HYBI10_ACCEPTHDRLEN = 29;
-		static const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-	
-		Bytes<Bytes<unsigned, unsigned char>[5], unsigned char> hash2;
-		SHA1 sha1;
-		sha1.input(web_socket_key.begin(), web_socket_key.end());
-		sha1.input(HYBI_GUID, HYBI_GUID + sizeof(HYBI_GUID)-1);
-		sha1.result(hash2.value());
-		std::for_each(hash2.value(), hash2.value() + 5,
-			std::mem_fun_ref(&Bytes<unsigned, unsigned char>::to_network_format));
-
-//		auto ret = std::mismatch(hash, hash + SHA_DIGEST_LENGTH, hash2.begin());
-//		if (ret.first == hash + SHA_DIGEST_LENGTH) {
-//			Logger(Level::WEBSOCKET) << "SHA1 match" << std::endl;
-//		} else {
-//			Logger(Level::WEBSOCKET) << "SHA1 do not match: "
-//				<< Bytes<char[SHA_DIGEST_LENGTH]>(hash, hash + SHA_DIGEST_LENGTH)
-//				<< " /= "
-//				<< hash2
-//				<< std::endl;
-//			Logger(Level::WEBSOCKET) << "Mismatching elem: "
-//				<< Bytes<char>(*ret.first)
-//				<< " /= "
-//				<< Bytes<char>(*ret.second)
-//				<< std::endl;
-//		}
-	
-		base64_encode(hash2.begin(), hash2.end(), target);
-//		b64_ntop(hash2, sizeof(hash2), target, HYBI10_ACCEPTHDRLEN);
-//		b64_ntop(hash, sizeof hash, target, HYBI10_ACCEPTHDRLEN);
-		target[HYBI10_ACCEPTHDRLEN-1] = 0;
-	}
-
-
-	struct Handshake {
-
-		enum struct State: char {
+		enum struct State: uint8_t {
 			PARSING_HTTP_METHOD,
 			PARSING_HEADERS,
 			PARSING_ERROR,
 			HANDSHAKE_SUCCESS
 		};
 
-		Handshake():
+		Web_socket():
 			buffer(BUFFER_SIZE, 0),
 			_http_headers(),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
 			mid_buffer(BUFFER_SIZE)
-		{}
+			{}
+
+		explicit Web_socket(const Socket& rhs):
+			Socket(rhs),
+			buffer(BUFFER_SIZE, 0),
+			_http_headers(),
+			send_buffer(BUFFER_SIZE),
+			recv_buffer(BUFFER_SIZE),
+			mid_buffer(BUFFER_SIZE)
+			{}
+
+		virtual ~Web_socket() {
+			this->close();
+		}
+
+		Web_socket& operator=(const Socket& rhs) {
+			Socket::operator=(rhs);
+			return *this;
+		}
 
 		template<class It>
 		void read_header(It first, It last) {
@@ -464,7 +301,7 @@ namespace factory {
 			}
 		}
 
-		void do_handshake(int sock) {
+		void handshake(int sock) {
 			if (state == State::HANDSHAKE_SUCCESS) return;
 			read_http_method_and_headers(sock);
 			switch (state) {
@@ -521,14 +358,14 @@ namespace factory {
 		}
 
 		void reply_success(int sock) {
-			char sha1[29];
-			gen_sha1(_http_headers["Sec-WebSocket-Key"], sha1);
+			std::string accept_header(ACCEPT_HEADER_LENGTH, 0);
+			generate_accept_header(_http_headers["Sec-WebSocket-Key"], accept_header.begin());
 			std::stringstream response;
 			response
 				<< "HTTP/1.1 101 Switching Protocols" << HTTP_FIELD_SEPARATOR
 				<< "Upgrade: websocket" << HTTP_FIELD_SEPARATOR
 				<< "Connection: Upgrade" << HTTP_FIELD_SEPARATOR
-				<< "Sec-WebSocket-Accept: " << sha1 << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Accept: " << accept_header << HTTP_FIELD_SEPARATOR
 				<< "Sec-WebSocket-Protocol: binary" << HTTP_FIELD_SEPARATOR
 				<< HTTP_FIELD_SEPARATOR;
 			std::string buf = response.str();
@@ -540,11 +377,30 @@ namespace factory {
 			ws_send(sock, resp.data(), resp.size());
 		}
 
+		uint32_t ws_send(int sock, const void *buf, size_t len) {
+			ssize_t ret = 0;
+			ret = ::write(sock, buf, len);
+			return ret < 0 ? 0 : static_cast<uint32_t>(ret);
+		}
+
+		template<class Res>
+		static void generate_accept_header(const std::string& web_socket_key, Res header) {
+			static const char HYBI_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+			Bytes<Bytes<uint32_t, unsigned char>[5], unsigned char> hash;
+			SHA1 sha1;
+			sha1.input(web_socket_key.begin(), web_socket_key.end());
+			sha1.input(HYBI_GUID, HYBI_GUID + sizeof(HYBI_GUID)-1);
+			sha1.result(hash.value());
+			std::for_each(hash.value(), hash.value() + 5,
+				std::mem_fun_ref(&Bytes<uint32_t, unsigned char>::to_network_format));
+			base64_encode(hash.begin(), hash.end(), header);
+		}
+
 	public:
-		uint32_t write(int _socket, const char* buf, size_t size) {
+		uint32_t write(const char* buf, size_t size) {
 			uint32_t ret = 0;
 			if (state == State::HANDSHAKE_SUCCESS) {
-				encode_hybi(buf, buf + size, std::back_inserter(send_buffer));
+				websocket_decode(buf, buf + size, std::back_inserter(send_buffer));
 				send_buffer.flush(Socket(_socket));
 				if (send_buffer.empty()) {
 					ret = size;
@@ -553,15 +409,15 @@ namespace factory {
 			return ret;
 		}
 
-		uint32_t read(int _socket, char* buf, size_t size) {
+		uint32_t read(char* buf, size_t size) {
 			uint32_t bytes_read = 0;
 			if (state != State::HANDSHAKE_SUCCESS) {
-				do_handshake(_socket);
+				handshake(_socket);
 			} else {
 				Opcode opcode = Opcode::CONT_FRAME;
 				if (mid_buffer.empty()) {
 					recv_buffer.fill(Socket(_socket));
-					size_t len = decode_hybi2(recv_buffer.read_begin(),
+					size_t len = websocket_decode(recv_buffer.read_begin(),
 									  recv_buffer.read_end(),
 									  std::back_inserter(mid_buffer),
 									  &opcode);
@@ -574,6 +430,10 @@ namespace factory {
 				}
 			}
 			return bytes_read;
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, const Web_socket& rhs) {
+			return out << rhs._socket;
 		}
 	
 	private:
@@ -588,46 +448,10 @@ namespace factory {
 
 		static const size_t BUFFER_SIZE = 1024;
 		static const size_t MAX_HEADERS = 20;
+		static const size_t ACCEPT_HEADER_LENGTH = 29;
 		static const char* HTTP_FIELD_SEPARATOR;
 	};
 
-	const char* Handshake::HTTP_FIELD_SEPARATOR = "\r\n";
-
-	struct Web_socket: public Socket {
-
-		Web_socket():
-			_handshaker()
-			{}
-
-		explicit Web_socket(const Socket& rhs):
-			Socket(rhs),
-			_handshaker()
-			{}
-
-		virtual ~Web_socket() {
-			this->close();
-		}
-
-		Web_socket& operator=(const Socket& rhs) {
-			Socket::operator=(rhs);
-			return *this;
-		}
-
-
-		uint32_t read(char* buf, size_t size) {
-			return _handshaker.read(_socket, buf, size);
-		}
-
-		uint32_t write(const char* buf, size_t size) {
-			return _handshaker.write(_socket, buf, size);
-		}
-
-		friend std::ostream& operator<<(std::ostream& out, const Web_socket& rhs) {
-			return out << rhs._socket;
-		}
-
-	private:
-		Handshake _handshaker;
-	};
+	const char* Web_socket::HTTP_FIELD_SEPARATOR = "\r\n";
 
 }

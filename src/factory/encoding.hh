@@ -394,5 +394,143 @@ namespace factory {
 		sha1.input(first, last);
 		sha1.result(result);
 	}
+	
+	enum struct Opcode: int8_t {
+		CONT_FRAME   = 0x0,
+		TEXT_FRAME   = 0x1,
+		BINARY_FRAME = 0x2,
+		CONN_CLOSE   = 0x8,
+		PING		 = 0x9,
+		PONG		 = 0xa
+	};
+	
+	struct Web_socket_frame_header {
+		uint16_t extlen : 16;
+		uint16_t len	: 7;
+		uint16_t mask   : 1;
+		uint16_t opcode : 4;
+		uint16_t rsv3   : 1;
+		uint16_t rsv2   : 1;
+		uint16_t rsv1   : 1;
+		uint16_t fin	: 1;
+
+		bool masked() const { return mask == 1; }
+		bool is_binary_frame() const {
+			return static_cast<Opcode>(opcode) == Opcode::BINARY_FRAME;
+		}
+		bool has_valid_opcode() const { return opcode >= 0x0 && opcode <= 0xf; }
+
+		friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame_header& rhs) {
+			return out
+				<< "fin=" << rhs.fin << ','
+				<< "rsv1=" << rhs.rsv1 << ','
+				<< "rsv2=" << rhs.rsv2 << ','
+				<< "rsv3=" << rhs.rsv3 << ','
+				<< "opcode=" << rhs.opcode << ','
+				<< "mask=" << rhs.mask << ','
+				<< "len=" << rhs.len << ','
+				<< "extlen=" << rhs.extlen;
+		}
+	};
+	
+	template<class It, class Res>
+	void websocket_decode(It first, It last, Res result) {
+
+		static_assert(std::is_same<typename std::iterator_traits<Res>::iterator_category,
+			std::output_iterator_tag>::value
+			&& std::is_same<typename std::iterator_traits<It>::iterator_category,
+			std::random_access_iterator_tag>::value, "websocket_decode is defined for input and output iterators only");
+
+		size_t srclength = last - first;
+		if (srclength == 0) return;
+		// TODO: mask data with random key
+		Web_socket_frame_header hdr = { 0 };
+		size_t offset = 2;
+		hdr.opcode = static_cast<uint16_t>(Opcode::BINARY_FRAME);
+		hdr.fin = 1;
+		if (srclength <= 125) {
+			hdr.len = srclength;
+		} else if (srclength > 125 && srclength < 65536) {
+			hdr.len = 126;
+			hdr.extlen = srclength;
+//			Bytes<uint16_t> raw = srclength;
+//			raw.to_network_format();
+//			std::copy(raw.begin(), raw.end(), target + offset);
+			offset += 2;
+		} else {
+			hdr.len = 127;
+			// TODO: ???
+//			Bytes<uint64_t> raw = srclength;
+//			raw.to_network_format();
+//			std::copy(raw.begin(), raw.end(), target + offset);
+//			offset += 8;
+		}
+	
+		Bytes<Web_socket_frame_header> bytes = hdr;
+		bytes.to_network_format();
+//		std::copy(bytes.begin(), bytes.begin() + offset, target);
+	
+//		Logger(Level::WEBSOCKET)
+//			<< "assertions: " << std::boolalpha
+//			<< (target[0] == (char)((static_cast<int>(opcode) & 0x0F) | 0x80))
+//			<< (target[1] == (char)srclength)
+//			<< std::endl;
+//	
+//		Logger(Level::WEBSOCKET)
+//			<< "Header: "
+//			<< (uint32_t)target[0] << ' ' << (uint32_t)target[1] << ' '
+//			<< (uint32_t)bytes[0] << ' ' << (uint32_t)hdr.fin << ' '
+//			<< (uint32_t)(unsigned char)((static_cast<uint32_t>(opcode) & 0x0F) | 0x80)
+//			<< ' ' << (uint32_t)(char)srclength << ' '
+//			<< ' ' << sizeof(hdr) << ' '
+//			<< std::endl;
+	
+//		buffer.write(bytes.begin(), offset);
+//		buffer.write(first, srclength);
+		std::copy(bytes.begin(), bytes.begin() + offset, result);
+		std::copy(first, last, result);
+//		std::copy(src, src + srclength, target + offset);
+	}
+
+	template<class It, class Res>
+	size_t websocket_decode(It first, It last,
+					Res output,
+					Opcode* opcode)
+	{
+		size_t srclength = first - last;
+		static const size_t MASK_SIZE = 4;
+		size_t header_len = 2;
+		if (srclength < header_len) return 0;
+		Bytes<Web_socket_frame_header> raw_hdr(first, first + header_len);
+		raw_hdr.to_host_format();
+		Web_socket_frame_header hdr = raw_hdr;
+		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
+		*opcode = static_cast<Opcode>(hdr.opcode);
+		if (hdr.masked()) header_len += MASK_SIZE;
+		if (srclength < hdr.len + header_len
+			|| !hdr.has_valid_opcode()
+			|| !hdr.is_binary_frame())
+		{
+			return 0;
+		}
+		if (hdr.masked()) {
+			Bytes<char[MASK_SIZE]> mask(
+				first + header_len - MASK_SIZE, first + header_len);
+			size_t i = 0;
+			std::transform(first + header_len, first + header_len + hdr.len, output,
+				[&i,&mask] (char ch) {
+					ch ^= mask[i%4]; ++i; return ch;
+				}
+			);
+//			std::for_each(first + header_len, first + header_len + hdr.len,
+//				[&i,&mask] (char& ch) { ch ^= mask[i%4]; ++i; }
+//			);
+//			output.write(first + header_len, hdr.len);
+		} else {
+			std::copy(first + header_len, first + header_len + hdr.len, output);
+//			output.write(first + header_len, hdr.len);
+		}
+		return header_len + hdr.len;
+	}
 
 }
