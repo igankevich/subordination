@@ -493,10 +493,7 @@ namespace factory {
 	}
 
 	template<class It, class Res>
-	size_t websocket_decode(It first, It last,
-					Res output,
-					Opcode* opcode)
-	{
+	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
 		size_t srclength = first - last;
 		static const size_t MASK_SIZE = 4;
 		size_t header_len = 2;
