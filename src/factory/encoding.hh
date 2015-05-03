@@ -434,12 +434,12 @@ namespace factory {
 	};
 	
 	template<class It, class Res>
-	void websocket_decode(It first, It last, Res result) {
+	void websocket_encode(It first, It last, Res result) {
 
 		static_assert(std::is_same<typename std::iterator_traits<Res>::iterator_category,
 			std::output_iterator_tag>::value
 			&& std::is_same<typename std::iterator_traits<It>::iterator_category,
-			std::random_access_iterator_tag>::value, "websocket_decode is defined for input and output iterators only");
+			std::random_access_iterator_tag>::value, "websocket_encode is defined for input and output iterators only");
 
 		size_t srclength = last - first;
 		if (srclength == 0) return;

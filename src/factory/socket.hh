@@ -401,7 +401,7 @@ namespace factory {
 		uint32_t write(const char* buf, size_t size) {
 			uint32_t ret = 0;
 			if (state == State::HANDSHAKE_SUCCESS) {
-				websocket_decode(buf, buf + size, std::back_inserter(send_buffer));
+				websocket_encode(buf, buf + size, std::back_inserter(send_buffer));
 				send_buffer.flush(Socket(_socket));
 				if (send_buffer.empty()) {
 					ret = size;
@@ -419,9 +419,8 @@ namespace factory {
 				if (mid_buffer.empty()) {
 					recv_buffer.fill(Socket(_socket));
 					size_t len = websocket_decode(recv_buffer.read_begin(),
-									  recv_buffer.read_end(),
-									  std::back_inserter(mid_buffer),
-									  &opcode);
+						recv_buffer.read_end(), std::back_inserter(mid_buffer),
+						&opcode);
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
