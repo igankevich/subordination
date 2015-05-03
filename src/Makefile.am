@@ -5,6 +5,7 @@
 #-Wunsafe-loop-optimizations         -- false positive for Process:execute
 #-Waggregate-return                  -- detects return of structs and unions
 #-Wabi                               -- probably not needed
+#AM_LDFLAGS = -rdynamic
 
 
 TESTS = \

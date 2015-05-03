@@ -1,3 +1,4 @@
+#include <execinfo.h>
 #ifdef __linux__
 // Locking thread to a single CPU.
 #include <sched.h>
@@ -350,9 +351,11 @@ namespace factory {
 			void init_signal_handlers() {
 				struct ::sigaction action;
 				std::memset(&action, 0, sizeof(struct ::sigaction));
-				action.sa_sigaction = emergency_shutdown;
+				action.sa_handler = emergency_shutdown;
+				_ptr_for_sighandler = this;
 				::sigaction(SIGTERM, &action, 0);
 				::sigaction(SIGINT, &action, 0);
+//				::sigaction(SIGSEGV, &action, 0);
 				ignore_sigpipe();
 			}
 
@@ -363,8 +366,14 @@ namespace factory {
 				::sigaction(SIGPIPE, &action, 0);
 			}
 
-			static void emergency_shutdown(int, ::siginfo_t*, void* ptr) {
-				Basic_factory* factory = reinterpret_cast<Basic_factory*>(ptr);
+			static void emergency_shutdown(int sig) {
+//				if (sig == SIGSEGV) {
+//					static const size_t STACK_TRACE_SIZE = 64;
+//					void* stack[STACK_TRACE_SIZE];
+//					size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
+//					::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
+//				}
+				Basic_factory* factory = _ptr_for_sighandler;
 				factory->stop();
 				static int num_calls = 0;
 				static const int MAX_CALLS = 3;
@@ -380,7 +389,12 @@ namespace factory {
 			Remote_server _remote_server;
 			External_server _ext_server;
 			Repository_stack _repository;
+
+			static Basic_factory* _ptr_for_sighandler;
 		};
+
+		template<class A, class B, class C, class D, class E>
+		Basic_factory<A,B,C,D,E>* Basic_factory<A,B,C,D,E>::_ptr_for_sighandler = nullptr;
 
 	}
 

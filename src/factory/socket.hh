@@ -425,6 +425,7 @@ namespace factory {
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
 					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
+					this->close();
 				} else {
 					bytes_read = mid_buffer.read(buf, size);
 				}

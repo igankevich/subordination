@@ -351,7 +351,7 @@ namespace factory {
 					pool_is_empty = _pool.empty();
 					lock.unlock();
 
-					if (k->to() == server_addr()) {
+					if (server_addr() && k->to() == server_addr()) {
 						throw Error("Kernel is sent to local node.", __FILE__, __LINE__, __func__);
 					}
 

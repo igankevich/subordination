@@ -48,7 +48,8 @@ namespace factory {
 			int ret = 0, sig = 0;
 			if (_child_pid > 0) {
 				int status = 0;
-				check("waitpid()", ::waitpid(_child_pid, &status, 0));
+//				check("waitpid()", ::waitpid(_child_pid, &status, 0));
+				::waitpid(_child_pid, &status, 0);
 				ret = WEXITSTATUS(status);
 				if (WIFSIGNALED(status)) {
 					sig = WTERMSIG(status);
