@@ -310,7 +310,7 @@ namespace factory {
 			Size length = static_cast<Size>(rhs.size());
 //			std::clog << "Writing string of length = " << length << std::endl;
 			write(length);
-			write(rhs.c_str(), length);
+			write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
 			return *this;
 		}
 
@@ -333,7 +333,7 @@ namespace factory {
 			read(length);
 			std::string::value_type* bytes = new std::string::value_type[length];
 //			std::clog << "Reading string of length = " << length << std::endl;
-			read(bytes, length);
+			read(reinterpret_cast<Byte*>(bytes), length);
 			rhs.assign(bytes, bytes + length);
 			delete[] bytes;
 			return *this;
