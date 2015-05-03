@@ -13,25 +13,25 @@
 #include <tuple>
 #include <array>
 
-// Metadata.
+// Metadata
 #include <string>
 #include <functional>
 #include <unordered_map>
 #include <map>
 #include <set>
 
-// Standard portable types.
+// Standard portable types
 #include <cinttypes>
 #include <cstring>
 #include <cstdlib>
 
-// C++ multi-threading.
+// C++ multi-threading
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
 
-// Linux (and hopefully POSIX) system
+// POSIX system
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -41,6 +41,7 @@
 #include <poll.h>
 #include <csignal>
 #include <ifaddrs.h>
+#include <execinfo.h>
 
 // Base system
 #include "base.hh"

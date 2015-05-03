@@ -8,7 +8,7 @@ AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
 
 # Automake initialisation.
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wall])
 #AM_SILENT_RULES([yes])
 
 # Check for arguments.
@@ -55,6 +55,7 @@ AC_TYPE_UINT8_T
 AC_TYPE_PID_T
 AX_CXX_11
 AX_CXX_11_THREAD
+AX_STACK_TRACE
 
 AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 

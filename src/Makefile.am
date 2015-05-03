@@ -7,6 +7,7 @@
 #-Wabi                               -- probably not needed
 #AM_LDFLAGS = -rdynamic
 
+AM_DEFAULT_SOURCE_EXT = .cc
 
 TESTS = \
 	test_buffer \
@@ -28,12 +29,15 @@ check_PROGRAMS = \
 	test_encoding \
 	test_websocket
 
-test_buffer_SOURCES     = test_buffer.cc
-test_marshaling_SOURCES = test_marshaling.cc
-test_socket_SOURCES     = test_socket.cc
-test_offline_SOURCES    = test_offline.cc
-test_discovery_SOURCES  = test_discovery.cc
-test_spinlock_SOURCES   = test_spinlock.cc
-test_endpoint_SOURCES   = test_endpoint.cc
-test_encoding_SOURCES   = test_encoding.cc
-test_websocket_SOURCES  = test_websocket.cc
+
+#test_buffer_SOURCES     = test_buffer.cc
+#test_marshaling_SOURCES = test_marshaling.cc
+#test_socket_SOURCES     = test_socket.cc
+#test_offline_SOURCES    = test_offline.cc
+#test_discovery_SOURCES  = test_discovery.cc
+#test_spinlock_SOURCES   = test_spinlock.cc
+#test_endpoint_SOURCES   = test_endpoint.cc
+#test_encoding_SOURCES   = test_encoding.cc
+#test_websocket_SOURCES  = test_websocket.cc
+
+test_offline_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE

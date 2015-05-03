@@ -1,4 +1,3 @@
-#include <execinfo.h>
 #ifdef __linux__
 // Locking thread to a single CPU.
 #include <sched.h>
@@ -355,8 +354,8 @@ namespace factory {
 				_ptr_for_sighandler = this;
 				::sigaction(SIGTERM, &action, 0);
 				::sigaction(SIGINT, &action, 0);
-//				::sigaction(SIGSEGV, &action, 0);
 				ignore_sigpipe();
+				stack_trace_on_segv();
 			}
 
 			void ignore_sigpipe() {
@@ -366,13 +365,26 @@ namespace factory {
 				::sigaction(SIGPIPE, &action, 0);
 			}
 
+#ifndef FACTORY_NO_STACK_TRACE
+			void stack_trace_on_segv() {
+				struct ::sigaction action;
+				std::memset(&action, 0, sizeof(struct ::sigaction));
+				action.sa_handler = print_stack_trace;
+				::sigaction(SIGSEGV, &action, 0);
+			}
+
+			static void print_stack_trace(int) {
+				static const size_t STACK_TRACE_SIZE = 64;
+				void* stack[STACK_TRACE_SIZE];
+				size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
+				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
+				std::abort();
+			}
+#else
+			void stack_trace_on_segv() {}
+#endif
+
 			static void emergency_shutdown(int sig) {
-//				if (sig == SIGSEGV) {
-//					static const size_t STACK_TRACE_SIZE = 64;
-//					void* stack[STACK_TRACE_SIZE];
-//					size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
-//					::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
-//				}
 				Basic_factory* factory = _ptr_for_sighandler;
 				factory->stop();
 				static int num_calls = 0;
