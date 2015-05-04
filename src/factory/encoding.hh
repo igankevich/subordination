@@ -434,6 +434,9 @@ namespace factory {
 			uint32_t mask    : 32;
 		} hdr;
 
+		static_assert(sizeof(hdr) == 16,
+			"Bad websocket frame header size.");
+
 		unsigned char rawhdr[constants::MAX_HEADER_SIZE];
 
 		Web_socket_frame() {
@@ -577,9 +580,6 @@ namespace factory {
 				<< "size=" << rhs.payload_size();
 		}
 	};
-
-	static_assert(sizeof(Web_socket_frame) == 16,
-		"Bad websocket frame header size.");
 	
 	template<class It, class Res>
 	void websocket_encode(It first, It last, Res result) {

@@ -1,3 +1,7 @@
+#if __cplusplus < 2011L
+	#error Factory requires C++11 compiler.
+#else
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -69,3 +73,5 @@
 // Derived system
 #include "derived.hh"
 #include "kernel.hh"
+
+#endif
