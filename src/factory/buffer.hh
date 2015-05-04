@@ -430,6 +430,9 @@ namespace factory {
 		T* begin() { return read_begin(); }
 		T* end() { return read_end(); }
 
+		const T* begin() const { return &_data[read_pos]; }
+		const T* end() const { return &_data[write_pos]; }
+
 		template<class S>
 		size_t flush(S sink) {
 			size_t bytes_written;
@@ -452,15 +455,28 @@ namespace factory {
 		template<class S>
 		size_t fill(S source) {
 			size_t bytes_read;
-			size_t total = write_pos;
+			size_t old_pos = write_pos;
 			while ((bytes_read = source.read(write_begin(), write_size())) > 0) {
 				write_pos += bytes_read;
+				if (write_pos == buffer_size()) {
+					double_size();
+				}
 			}
-			total = write_pos - total;
-			return total;
+			return write_pos - old_pos;
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, const LBuffer<T>& rhs) {
+			out << std::hex << std::setfill('0');
+			std::for_each(rhs.begin(), rhs.end(), [&out] (T x) {
+				out << std::setw(2) << to_binary(x);
+			});
+			return out;
 		}
 
 	private:
+		static unsigned int to_binary(T x) {
+			return static_cast<unsigned int>(static_cast<unsigned char>(x));
+		}
 
 		void double_size() { _data.resize(buffer_size()*2u); }
 

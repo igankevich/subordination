@@ -495,7 +495,7 @@ namespace factory {
 	template<class It, class Res>
 	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
 		static const size_t MASK_SIZE = 4;
-		size_t srclength = first - last;
+		size_t srclength = last - first;
 		size_t header_len = 2;
 		if (srclength < header_len) return 0;
 		Bytes<Web_socket_frame_header> raw_hdr(first, first + header_len);
@@ -512,11 +512,12 @@ namespace factory {
 		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
 		*opcode = static_cast<Opcode>(hdr.opcode);
 		if (hdr.masked()) header_len += MASK_SIZE;
-		if (srclength < payload_length + header_len
-			|| !hdr.has_valid_opcode()
-			|| !hdr.is_binary_frame())
-		{
+		if (srclength < payload_length + header_len) {
 			return 0;
+		}
+		// ignore non-binary and invalid frames
+		if (!hdr.is_binary_frame() || !hdr.has_valid_opcode()) {
+			return header_len + payload_length;
 		}
 		if (hdr.masked()) {
 			Bytes<char[MASK_SIZE]> mask(

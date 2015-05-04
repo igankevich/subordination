@@ -417,10 +417,15 @@ namespace factory {
 			} else {
 				Opcode opcode = Opcode::CONT_FRAME;
 				if (mid_buffer.empty()) {
-					recv_buffer.fill(Socket(_socket));
+					recv_buffer.fill<Socket&>(*this);
 					size_t len = websocket_decode(recv_buffer.read_begin(),
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
+					Logger(Level::WEBSOCKET) << "recv buffer"
+						<< "(" << recv_buffer.size() << ") "
+						<< recv_buffer << std::endl;
+					Logger(Level::WEBSOCKET) << "mid buffer "
+						<< mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {

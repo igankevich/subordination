@@ -48,13 +48,14 @@
 
                 websocket.onerror = function (e) {
 					writeErr('Error occured. Reconnecting...')
-					setTimeout(connect, 1000);
+//					setTimeout(connect, 1000);
                 };
 
                 websocket.onmessage = function (message) {
                     console.log(message);
                     console.log(new Uint8Array(message.data));
-                    $('#log').append($('<p>', { text: ab2str(message.data) }));
+//                    $('#log').append($('<p>', { text: ab2str(message.data) }));
+                    writeLog('Recv buffer ' + ab2str(message.data));
                 };
 
 				websocket.onclose = function () {
@@ -89,9 +90,9 @@
 						view.setUint32(offset + 14, kernel._principal)
 						view.setUint32(offset + 20, kernel.data)
 					}
+					writeLog('Sending buffer ('
+						+ buf.byteLength + ') ' + ab2str(buf))
                     websocket.send(buf);
-					writeLog('Sent buffer')
-//                    $('#input').val('');
                 });
 			}
 			function initAll() {
