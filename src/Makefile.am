@@ -41,3 +41,4 @@ check_PROGRAMS = \
 #test_websocket_SOURCES  = test_websocket.cc
 
 test_offline_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
+test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE

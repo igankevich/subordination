@@ -75,15 +75,20 @@
 						_principal: 0,
 						data: 123
 					};
-					var buf = new ArrayBuffer(4 + 2 + 4 + 4 + 2 + 4 + 4)
+					var kernelSize = 24
+					var numKernels = 6
+					var buf = new ArrayBuffer(kernelSize * numKernels)
 					var view = new DataView(buf);
-					view.setUint32(0, buf.byteLength)
-					view.setUint16(4, kernel._type.id)
-					view.setUint16(6, kernel._result)
-					view.setUint32(8, kernel._id)
-					view.setUint32(12, kernel._parent)
-					view.setUint32(14, kernel._principal)
-					view.setUint32(20, kernel.data)
+					for (var i=0; i<numKernels; ++i) {
+						var offset = kernelSize * i
+						view.setUint32(offset + 0, kernelSize)
+						view.setUint16(offset + 4, kernel._type.id)
+						view.setUint16(offset + 6, kernel._result)
+						view.setUint32(offset + 8, kernel._id)
+						view.setUint32(offset + 12, kernel._parent)
+						view.setUint32(offset + 14, kernel._principal)
+						view.setUint32(offset + 20, kernel.data)
+					}
                     websocket.send(buf);
 					writeLog('Sent buffer')
 //                    $('#input').val('');
@@ -98,13 +103,9 @@
     </head>
     <body>
         <h1>test_websocket</h1>
-		<div class="pageHalf">
-			<h3>Output</h3>
-	        <button>Send</button>
-			<div id="output"></div>
-		</div>
-        <div class="pageHalf" id="log">
+        <div id="log">
 			<h3>Log</h3>
+	        <button>Send</button><br>
 		</div>
     </body>
 </html>

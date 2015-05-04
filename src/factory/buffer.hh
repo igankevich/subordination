@@ -161,20 +161,38 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Buffer& rhs) {
 			out << std::hex << std::setfill('0');
-			if (rhs._chunks.size() > 1) {
-				std::for_each(rhs._chunks.cbegin(), rhs._chunks.cend()-1, [&rhs, &out] (T* chunk) {
-					for (size_t i=0; i<rhs._chunk_size; ++i) {
+			switch (rhs._chunks.size()) {
+				case 0: break;
+				case 1: {
+					T* chunk = rhs._chunks.back();
+					size_t st = rhs._read_pos;
+					size_t en = rhs._write_pos;
+					for (size_t i=st; i<en; ++i) {
 						out << std::setw(2)
 							<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
 					}
-				});
-			}
-			if (!rhs._chunks.empty()) {
-				T* chunk = rhs._chunks.back();
-				size_t n = std::max(rhs._write_pos, rhs._read_pos);
-				for (size_t i=0; i<n; ++i) {
-					out << std::setw(2)
-						<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
+				} break;
+				default: {
+					T* chunk = rhs._chunks.front();
+					size_t n = rhs._read_pos;
+					for (size_t i=n; i<rhs._chunk_size; ++i) {
+						out << std::setw(2)
+							<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
+					}
+					out << ' ';
+					std::for_each(rhs._chunks.cbegin()+1, rhs._chunks.cend()-1, [&rhs, &out] (T* chunk) {
+						for (size_t i=0; i<rhs._chunk_size; ++i) {
+							out << std::setw(2)
+								<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
+							out << ' ';
+						}
+					});
+					chunk = rhs._chunks.back();
+					n = rhs._write_pos;
+					for (size_t i=0; i<n; ++i) {
+						out << std::setw(2)
+							<< static_cast<unsigned int>(static_cast<unsigned char>(chunk[i]));
+					}
 				}
 			}
 			out << std::dec << std::setfill(' ');
@@ -373,7 +391,7 @@ namespace factory {
 
 		size_t read(T* buf, size_t sz) {
 			size_t min_sz = std::min(sz, size()); 
-			std::copy(&_data[read_pos], &_data[min_sz], buf);
+			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
 			read_pos += min_sz;
 			if (read_pos == write_pos) {
 				reset();
@@ -383,7 +401,7 @@ namespace factory {
 
 		size_t readsome(T* buf, size_t sz) {
 			size_t min_sz = std::min(sz, size()); 
-			std::copy(&_data[read_pos], &_data[min_sz], buf);
+			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
 			return min_sz;
 		}
 

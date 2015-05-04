@@ -494,17 +494,25 @@ namespace factory {
 
 	template<class It, class Res>
 	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
-		size_t srclength = first - last;
 		static const size_t MASK_SIZE = 4;
+		size_t srclength = first - last;
 		size_t header_len = 2;
 		if (srclength < header_len) return 0;
 		Bytes<Web_socket_frame_header> raw_hdr(first, first + header_len);
 		raw_hdr.to_host_format();
+		if (raw_hdr.value().len == 126) {
+			raw_hdr.to_network_format();
+			std::copy(first + header_len, first + header_len + 2,
+				raw_hdr.begin() + header_len);
+			header_len += 2;
+			raw_hdr.to_host_format();
+		}
 		Web_socket_frame_header hdr = raw_hdr;
+		size_t payload_length = hdr.len == 126 ? hdr.extlen : hdr.len;
 		Logger(Level::WEBSOCKET) << "recv header " << hdr << std::endl;
 		*opcode = static_cast<Opcode>(hdr.opcode);
 		if (hdr.masked()) header_len += MASK_SIZE;
-		if (srclength < hdr.len + header_len
+		if (srclength < payload_length + header_len
 			|| !hdr.has_valid_opcode()
 			|| !hdr.is_binary_frame())
 		{
@@ -514,20 +522,20 @@ namespace factory {
 			Bytes<char[MASK_SIZE]> mask(
 				first + header_len - MASK_SIZE, first + header_len);
 			size_t i = 0;
-			std::transform(first + header_len, first + header_len + hdr.len, output,
+			std::transform(first + header_len, first + header_len + payload_length, output,
 				[&i,&mask] (char ch) {
 					ch ^= mask[i%4]; ++i; return ch;
 				}
 			);
-//			std::for_each(first + header_len, first + header_len + hdr.len,
+//			std::for_each(first + header_len, first + header_len + payload_length,
 //				[&i,&mask] (char& ch) { ch ^= mask[i%4]; ++i; }
 //			);
-//			output.write(first + header_len, hdr.len);
+//			output.write(first + header_len, payload_length);
 		} else {
-			std::copy(first + header_len, first + header_len + hdr.len, output);
-//			output.write(first + header_len, hdr.len);
+			std::copy(first + header_len, first + header_len + payload_length, output);
+//			output.write(first + header_len, payload_length);
 		}
-		return header_len + hdr.len;
+		return header_len + payload_length;
 	}
 
 }
