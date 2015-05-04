@@ -405,18 +405,22 @@ namespace factory {
 	};
 	
 	struct Web_socket_frame {
-		uint16_t extlen : 16;
-		uint8_t         : 0;
-		uint16_t len	: 7;
-		uint16_t mask   : 1;
-		uint8_t         : 0;
-		uint16_t opcode : 4;
-		uint16_t rsv3   : 1;
-		uint16_t rsv2   : 1;
-		uint16_t rsv1   : 1;
-		uint16_t fin	: 1;
+		uint16_t opcode  : 4;
+		uint16_t rsv3    : 1;
+		uint16_t rsv2    : 1;
+		uint16_t rsv1    : 1;
+		uint16_t fin	 : 1;
+		uint8_t          : 0;
+		uint16_t len	 : 7;
+		uint16_t maskbit : 1;
+		uint8_t          : 0;
+		uint16_t extlen  : 16;
+		uint32_t extlen2 : 32;
+		uint8_t          : 0;
+		uint64_t extlen3 : 16;
+		uint32_t mask    : 32;
 
-		bool masked() const { return mask == 1; }
+		bool masked() const { return maskbit == 1; }
 		bool is_binary() const {
 			return static_cast<Opcode>(opcode) == Opcode::BINARY_FRAME;
 		}
@@ -426,6 +430,18 @@ namespace factory {
 				case 126: return sizeof(uint16_t);
 				case 127: return sizeof(uint64_t);
 				default:  return sizeof(uint8_t);
+			}
+		}
+
+		size_t payload_size() const {
+			switch (len) {
+//				case 126: {
+//					return Bytes<uint16_t>(extlen.extlen64).to_host_format();
+//				}
+//				case 127:
+//					return Bytes<uint64_t>(extlen.extlen64).to_host_format();
+				default:
+					return this->len;
 			}
 		}
 
@@ -463,6 +479,16 @@ namespace factory {
 			}
 		}
 
+		void set_payload_size(size_t input_size) {
+			if (input_size <= 125) {
+				this->len = input_size;
+			} else if (input_size > 125 && input_size < 65536) {
+				this->len = 126;
+			} else {
+				this->len = 127;
+			}
+		}
+
 		friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame& rhs) {
 			return out
 				<< "fin=" << rhs.fin << ','
@@ -470,54 +496,58 @@ namespace factory {
 				<< "rsv2=" << rhs.rsv2 << ','
 				<< "rsv3=" << rhs.rsv3 << ','
 				<< "opcode=" << rhs.opcode << ','
-				<< "mask=" << rhs.mask << ','
+				<< "maskbit=" << rhs.maskbit << ','
 				<< "len=" << rhs.len << ','
-				<< "extlen=" << rhs.extlen;
+				<< "extlen16=" << Bytes<uint16_t>(rhs.extlen) << ','
+				<< "mask16=" << Bytes<uint32_t>(rhs.extlen2) << ','
+				<< "extlen64=" << Bytes<uint64_t>(rhs.extlen3) << ','
+				<< "mask64=" << Bytes<uint32_t>(rhs.mask) << ','
+				<< "sizeof=" << sizeof(rhs);
 		}
 
 		static const size_t MASK_SIZE = 4;
 		static const size_t BASE_SIZE = 2;
 	};
 
-	static_assert(sizeof(Web_socket_frame) == 4,
-		"Bad websocket header size.");
+	static_assert(sizeof(Web_socket_frame) == 16,
+		"Bad websocket frame header size.");
 	
 	template<class It, class Res>
 	void websocket_encode(It first, It last, Res result) {
 
-		size_t srclength = last - first;
-		if (srclength == 0) return;
+		size_t input_size = last - first;
+		if (input_size == 0) return;
 		// TODO: mask data with random key
 		Web_socket_frame hdr = { 0 };
 		size_t offset = 2;
 		hdr.opcode = static_cast<uint16_t>(Opcode::BINARY_FRAME);
 		hdr.fin = 1;
-		if (srclength <= 125) {
-			hdr.len = srclength;
-		} else if (srclength > 125 && srclength < 65536) {
+		hdr.set_payload_size(input_size);
+		if (input_size <= 125) {
+			hdr.len = input_size;
+		} else if (input_size > 125 && input_size < 65536) {
 			hdr.len = 126;
-			hdr.extlen = srclength;
-//			Bytes<uint16_t> raw = srclength;
-//			raw.to_network_format();
-//			std::copy(raw.begin(), raw.end(), target + offset);
+			Bytes<uint16_t> raw = input_size;
+			raw.to_network_format();
+			hdr.extlen = raw.value();
 			offset += 2;
 		} else {
 			hdr.len = 127;
 			// TODO: ???
-//			Bytes<uint64_t> raw = srclength;
+//			Bytes<uint64_t> raw = input_size;
 //			raw.to_network_format();
 //			std::copy(raw.begin(), raw.end(), target + offset);
 //			offset += 8;
 		}
 	
 		Bytes<Web_socket_frame> bytes = hdr;
-		bytes.to_network_format();
+//		bytes.to_network_format();
 //		std::copy(bytes.begin(), bytes.begin() + offset, target);
 	
 //		Logger(Level::WEBSOCKET)
 //			<< "assertions: " << std::boolalpha
 //			<< (target[0] == (char)((static_cast<int>(opcode) & 0x0F) | 0x80))
-//			<< (target[1] == (char)srclength)
+//			<< (target[1] == (char)input_size)
 //			<< std::endl;
 //	
 //		Logger(Level::WEBSOCKET)
@@ -525,31 +555,37 @@ namespace factory {
 //			<< (uint32_t)target[0] << ' ' << (uint32_t)target[1] << ' '
 //			<< (uint32_t)bytes[0] << ' ' << (uint32_t)hdr.fin << ' '
 //			<< (uint32_t)(unsigned char)((static_cast<uint32_t>(opcode) & 0x0F) | 0x80)
-//			<< ' ' << (uint32_t)(char)srclength << ' '
+//			<< ' ' << (uint32_t)(char)input_size << ' '
 //			<< ' ' << sizeof(hdr) << ' '
 //			<< std::endl;
 	
 //		buffer.write(bytes.begin(), offset);
-//		buffer.write(first, srclength);
+//		buffer.write(first, input_size);
 		std::copy(bytes.begin(), bytes.begin() + offset, result);
 		std::copy(first, last, result);
-//		std::copy(src, src + srclength, target + offset);
+//		std::copy(src, src + input_size, target + offset);
 	}
 
 	template<class It, class Res>
 	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
-		size_t srclength = last - first;
-		if (srclength < Web_socket_frame::BASE_SIZE) return 0;
+		size_t input_size = last - first;
+		if (input_size < Web_socket_frame::BASE_SIZE) return 0;
 		Bytes<Web_socket_frame> raw_hdr(first,
 			first + Web_socket_frame::BASE_SIZE);
-		raw_hdr.to_host_format();
+		std::fill(raw_hdr.begin(), raw_hdr.end(), 0);
+		std::copy(first, first + Web_socket_frame::BASE_SIZE, raw_hdr.begin());
+//		if (raw_hdr.value().header_size() > Web_socket_frame::BASE_SIZE) {
+			std::copy(first + Web_socket_frame::BASE_SIZE,
+				first + raw_hdr.value().header_size(),
+				raw_hdr.begin() + Web_socket_frame::BASE_SIZE);
+//		}
 		Web_socket_frame frame = raw_hdr;
 		size_t payload_size = frame.payload_size(first
 			+ Web_socket_frame::BASE_SIZE);
 		size_t hdr_sz = frame.header_size();
 		Logger(Level::WEBSOCKET) << "recv header " << frame << std::endl;
 		*opcode = static_cast<Opcode>(frame.opcode);
-		if (srclength < payload_size + hdr_sz) {
+		if (input_size < payload_size + hdr_sz) {
 			return 0;
 		}
 		// ignore non-binary and invalid frames
