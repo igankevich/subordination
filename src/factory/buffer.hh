@@ -379,7 +379,9 @@ namespace factory {
 		T& front() { return _data[read_pos]; }
 
 		void pop_front() {
-			if (!empty()) ++read_pos;
+			if (!empty()) {
+				advance_read_pos(1);
+			}
 		}
 
 		size_t write(const T* buf, size_t sz) {
@@ -392,10 +394,7 @@ namespace factory {
 		size_t read(T* buf, size_t sz) {
 			size_t min_sz = std::min(sz, size()); 
 			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
-			read_pos += min_sz;
-			if (read_pos == write_pos) {
-				reset();
-			}
+			advance_read_pos(min_sz);
 			return min_sz;
 		}
 
@@ -407,7 +406,7 @@ namespace factory {
 
 		size_t ignore(size_t nbytes) {
 			size_t min_sz = std::min(nbytes, size()); 
-			read_pos += min_sz;
+			advance_read_pos(min_sz);
 			return min_sz;
 		}
 
@@ -476,6 +475,13 @@ namespace factory {
 	private:
 		static unsigned int to_binary(T x) {
 			return static_cast<unsigned int>(static_cast<unsigned char>(x));
+		}
+
+		void advance_read_pos(size_t amount) {
+			read_pos += amount;
+			if (read_pos == write_pos) {
+				reset();
+			}
 		}
 
 		void double_size() { _data.resize(buffer_size()*2u); }
