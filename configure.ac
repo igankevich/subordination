@@ -14,29 +14,14 @@ AM_INIT_AUTOMAKE([-Wall])
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
-#AC_ARG_ENABLE([ssl],
-#	AS_HELP_STRING([--enable-ssl], [enable SSL library]))
 
 # Checks for programs.
 AC_LANG([C++])
 AC_PROG_CXX
 
 # Checks for libraries.
-#AS_IF([test "x$enable_ssl" = "xyes"], [
-#	AC_CHECK_LIB(ssl, SSL_library_init, [],
-#		AC_MSG_ERROR([Could not find SSL library]))
-#	AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
-#		AC_MSG_ERROR([Could not find crypto library]))
-#])
-#AC_CHECK_LIB(ssl, SSL_library_init, [],
-#	AC_MSG_ERROR([Could not find SSL library]))
-#AC_CHECK_LIB(crypto, OPENSSL_add_all_algorithms_noconf, [],
-#	AC_MSG_ERROR([Could not find crypto library]))
-#AC_CHECK_LIB(resolv, __b64_ntop, [],
-#	AC_MSG_ERROR([Could not find resolv library]))
 
 # Checks for header files.
-#AC_HEADER_RESOLV
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -52,6 +37,7 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_PID_T
 AX_CXX_11
 AX_CXX_11_THREAD
