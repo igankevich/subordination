@@ -28,8 +28,11 @@ check_PROGRAMS = \
 	test_encoding \
 	test_websocket
 
+# disable stack trace for tests where a child process must fail
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
 test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
+
+# disable Factory global objects where they are not needed to reduce build time
 test_buffer_CPPFLAGS     = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_spinlock_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_endpoint_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
