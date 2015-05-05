@@ -12,7 +12,7 @@ struct Shared_memory {
 	typedef unsigned char Byte;
 
 	Shared_memory(int id, size_t sz, int perms = DEFAULT_SHMEM_PERMS):
-		_addr(nullptr), _id(id), _size(sz), _shmid(0)
+		_addr(nullptr), _id(id), _size(sz), _shmid(0), _owner(true)
 	{
 		_path = filename(id);
 		{ std::ofstream out(_path); }
@@ -22,7 +22,7 @@ struct Shared_memory {
 		store_size();
 	}
 
-	Shared_memory(int id):
+	explicit Shared_memory(int id):
 		_id(id), _size(0), _shmid(0), _path()
 	{
 		_path = filename(id);
@@ -47,7 +47,7 @@ struct Shared_memory {
 	void* ptr() { return _addr; }
 	const void* ptr() const { return _addr; }
 	size_t size() const { return _size; }
-	bool is_owner() const { return _id == ::getpid(); }
+	bool is_owner() const { return _owner; }
 
 private:
 
@@ -77,10 +77,11 @@ private:
 	}
 
 	Byte* _addr;
-	int _id;
-	size_t _size;
-	int _shmid;
+	int _id = 0;
+	size_t _size = 0;
+	int _shmid = 0;
 	std::string _path;
+	bool _owner = false;
 
 	static const int DEFAULT_SHMEM_PERMS = 0666;
 	static const int PROJ_ID = 'Q';
