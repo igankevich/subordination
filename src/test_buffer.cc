@@ -1,5 +1,4 @@
-#include "factory/factory.hh"
-#include <random>
+#include <factory/factory.hh>
 
 using namespace factory;
 
