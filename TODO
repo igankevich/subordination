@@ -19,3 +19,4 @@ Manually align structures.
 Remove factory_stop() and other global functions.
 Add macros to generate code for parallel and distributed framework versions.
 Add support for provenance.
+Replace std::mutex with Spin_mutex in server queues.
