@@ -84,50 +84,52 @@ private:
 };
 
 template<class T>
-struct Shared_memory_queue {
+struct Shmem_queue {
 
 	struct Header {
-		uint32_t offset = 0;
+		uint16_t head = 0;
+		uint16_t tail = 0;
 		Spin_mutex mutex;
-		uint64_t : 56;
+		char padding[3];
 	};
 
-	static_assert(sizeof(Header) == 16,
-		"Bad Shared_memory_queue header size.");
+	static_assert(sizeof(Header) == 8,
+		"Bad Shmem_queue header size.");
 	
-	Shared_memory_queue(int id, size_t max_elems):
-		shmem(id, sizeof(T)*max_elems + sizeof(Header))
+	Shmem_queue(int id, size_t max_elems):
+		shmem(id, sizeof(T)*max_elems + sizeof(Header)),
+		header(new (shmem.ptr()) Header),
+		first(new (shmem.ptr() + sizeof(Header)) T[max_elems]),
+		last(first + max_elems)
 	{
 		std::cout << "sizeof" << sizeof(Header) << std::endl;
-		std::cout << "sizeof" << sizeof(std::condition_variable_any) << std::endl;
-		header = new (shmem.ptr()) Header;	
-		first = new (shmem.ptr() + sizeof(Header)) T[max_elems];
-		last = first + max_elems;
+		std::cout << "sizeof" << sizeof(Spin_mutex) << std::endl;
 	}
 
-	explicit Shared_memory_queue(int id): shmem(id) {
-		size_t max_elems = (shmem.size() - sizeof(Header)) / sizeof(T);
-		header = reinterpret_cast<Header*>(shmem.ptr());
-		first = reinterpret_cast<T*>(shmem.ptr() + sizeof(Header));
-		last = first + max_elems;
-	}
+	explicit Shmem_queue(int id):
+		shmem(id),
+		header(reinterpret_cast<Header*>(shmem.ptr())),
+		first(reinterpret_cast<T*>(shmem.ptr() + sizeof(Header))),
+		last(first + (shmem.size() - sizeof(Header)) / sizeof(T))
+	{}
 
 	void push(const T& val) {
-		std::lock_guard<Spin_mutex> lock(header->mutex);
-		first[header->offset++] = val;
-		cv.notify_one();
+		first[header->tail++] = val;
 	}
 
-	void pop() { header->offset--; }
-	T& front() { return first[header->offset]; }
-	uint32_t size() const { return header->offset; }
+	void pop() { header->head++; }
+	T& front() { return first[header->head]; }
+	const T& front() const { return first[header->head]; }
+	uint32_t size() const { return header->tail - header->head; }
+	bool empty() const { return size() == 0; }
+	Spin_mutex& mutex() { return header->mutex; }
 	
 private:
 
-	friend std::ostream& operator<<(std::ostream& out, const Shared_memory_queue& rhs) {
-		out << "shmem = " << rhs.shmem << ", offset = ";
+	friend std::ostream& operator<<(std::ostream& out, const Shmem_queue& rhs) {
+		out << "shmem = " << rhs.shmem << ", head = ";
 		if (rhs.header) {
-			out << rhs.header->offset;
+			out << rhs.header->head;
 		} else {
 			out << "none";
 		}
@@ -139,22 +141,73 @@ private:
 	T* first;
 	T* last;
 
+};
+
+template<class T>
+struct Shmem_server {
+
+	explicit Shmem_server(int id):
+		_pool(id) {}
+
+	Shmem_server(int id, size_t size):
+		_pool(id, size),
+		worker([this] () { serve(); }) {}
+
+	void send(T val) {
+		std::lock_guard<Spin_mutex> lock(_pool.mutex());
+		_pool.push(val);
+		cv.notify_one();
+		if (val == 'q') {
+			stopped = true;
+		}
+	}
+
+	void wait() {
+		if (worker.joinable()) {
+			worker.join();
+		}
+	}
+
+private:
+
+	void serve() {
+		while (!stopped) {
+			std::lock_guard<Spin_mutex> lock(_pool.mutex());
+			cv.wait(_pool.mutex(),
+				[this] () { return stopped || !_pool.empty(); });
+			if (stopped) { break; }
+			T val = _pool.front();
+			_pool.pop();
+			std::cout << "Recv " << val << std::endl;
+			if (val == 'q') {
+				stopped = true;
+			}
+		}
+	}
+	
+	Shmem_queue<T> _pool;
 	std::condition_variable_any cv;
+	std::thread worker;
+	volatile bool stopped = false;
 };
 
 
 void test_shmem_client() {
-	Shared_memory_queue<char> queue(::getppid());
-	std::cout << "client: queue = " << queue << std::endl;
+	Shmem_server<char> queue(::getppid());
+	queue.send('a');
+	queue.send('q');
+	queue.wait();
+//	std::cout << "client: queue = " << queue << std::endl;
 }
 
 void test_shmem_server(char** argv) {
-	Shared_memory_queue<char> queue(::getpid(), 1024);
-	std::cout << "server: queue = " << queue << std::endl;
+	Shmem_server<char> queue(::getpid(), 1024);
+//	std::cout << "server: queue = " << queue << std::endl;
 	Process_group procs;
 	procs.add([&argv] () {
 		return Process::execute(argv[0], "client");
 	});
+	queue.wait();
 	procs.wait();
 }
 
