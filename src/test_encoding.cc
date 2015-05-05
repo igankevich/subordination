@@ -56,11 +56,11 @@ const std::vector<std::tuple<std::string, std::string>> KNOWN_HASHES = {
 	std::make_tuple("Sha", "ba79baeb 9f10896a 46ae7471 5271b7f5 86e74640"),
 	std::make_tuple("The quick brown fox jumps over the lazy dog", "2fd4e1c6 7a2d28fc ed849ee1 bb76e739 1b93eb12"),
 	std::make_tuple("The quick brown fox jumps over the lazy cog", "de9f2c7f d25e1b3a fad3e85a 0bd17d9b 100db4b3"),
+	std::make_tuple("abc", "a9993e36 4706816a ba3e2571 7850c26c 9cd0d89d"),
+	std::make_tuple("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "84983e44 1c3bd26e baae4aa1 f95129e5 e54670f1"),
 };
 
-void test_sha1(const std::string& input, const std::string& expected_output) {
-	std::vector<uint32_t> result(5);
-	sha1_encode(input.begin(), input.end(), result.begin());
+std::string sha1_digest_to_string(const std::vector<uint32_t>& result) {
 	std::stringstream str;
 	str << std::hex << std::setfill('0');
 	std::for_each(result.begin(), result.end(), [&str] (uint32_t n) {
@@ -68,6 +68,10 @@ void test_sha1(const std::string& input, const std::string& expected_output) {
 	});
 	std::string output = str.str();
 	output.pop_back(); // remove space character
+	return output;
+}
+
+void validate_sha1_output(const std::string& input, const std::string& output, const std::string& expected_output) {
 	if (output != expected_output) {
 		std::stringstream msg;
 		msg << "SHA1 hash does not match the expected output:\n";
@@ -75,6 +79,25 @@ void test_sha1(const std::string& input, const std::string& expected_output) {
 		msg << " /= " << expected_output << std::endl;
 		throw std::runtime_error(msg.str());
 	}
+}
+
+void test_sha1(const std::string& input, const std::string& expected_output) {
+	std::vector<uint32_t> result(5);
+	sha1_encode(input.begin(), input.end(), result.begin());
+	std::string output = sha1_digest_to_string(result);
+	validate_sha1_output(input, output, expected_output);
+}
+
+void test_sha1_2() {
+	static const std::string expected_output = "34aa973c d4c4daa4 f61eeb2b dbad2731 6534016f";
+	SHA1 sha1;
+	std::string a = "aaaaaaaaaa";
+    for(int i=0; i<100000; i++)
+		sha1.input(a.begin(), a.end());
+	std::vector<uint32_t> result(5);
+	sha1.result(result.begin());
+	std::string output = sha1_digest_to_string(result);
+	validate_sha1_output("one million of 'a'", output, expected_output);
 }
 
 void test_sha1() {
@@ -92,6 +115,7 @@ struct App {
 			test_base64<char>();
 			test_base64<unsigned char>();
 			test_sha1();
+			test_sha1_2();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
