@@ -28,6 +28,7 @@ src/test_spinlock
 src/test_endpoint
 src/test_encoding
 src/test_websocket
+src/test_shmem
 src/*.html
 
 syntax: regexp

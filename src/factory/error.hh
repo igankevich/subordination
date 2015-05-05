@@ -75,7 +75,7 @@ namespace factory {
 
 	template<class Ret>
 	Ret check(const char* func, Ret ret) {
-		if (ret < 0) {
+		if (ret == Ret(-1)) {
 			throw std::system_error(std::error_code(errno, std::system_category()), func);
 		}
 		return ret;

@@ -26,7 +26,8 @@ check_PROGRAMS = \
 	test_spinlock \
 	test_endpoint \
 	test_encoding \
-	test_websocket
+	test_websocket \
+	test_shmem
 
 # disable stack trace for tests where a child process must fail
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
@@ -38,3 +39,4 @@ test_spinlock_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_endpoint_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_encoding_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_marshaling_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
+#test_shmem_CPPFLAGS      = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
