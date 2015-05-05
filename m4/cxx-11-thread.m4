@@ -23,12 +23,10 @@ AC_DEFUN([AX_CXX_NEEDS_FLAG],
 			[
 				AC_MSG_RESULT([no])
 				ax_cxx_needs_flag_ok=no
+				CXXFLAGS="$ax_saved_cxxflags"
+				LDFLAGS="$ax_saved_ldflags"
 			]
 		)
-		CXXFLAGS="$ax_saved_cxxflags"
-		LDFLAGS="$ax_saved_ldflags"
-		AC_SUBST([AM_CXXFLAGS])
-		AC_SUBST([AM_LDFLAGS])
 		if test x"$ax_cxx_needs_flag_ok" = xyes; then
 			break
 		fi
