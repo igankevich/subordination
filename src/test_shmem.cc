@@ -1,108 +1,7 @@
 #include <factory/factory.hh>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <semaphore.h>
 
-#include "process.hh"
 
 using namespace factory;
-
-struct Shared_memory {
-
-	typedef unsigned char Byte;
-
-	Shared_memory(int id, size_t sz, int perms = DEFAULT_SHMEM_PERMS):
-		_addr(nullptr), _id(id), _size(sz), _shmid(0), _owner(true)
-	{
-		_path = filename(id);
-		{ std::ofstream out(_path); }
-		::key_t key = check("ftok()", ::ftok(_path.c_str(), PROJ_ID));
-		_shmid = check("shmget()", ::shmget(key, size(), perms | IPC_CREAT));
-		_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
-	}
-
-	explicit Shared_memory(int id):
-		_id(id), _size(0), _shmid(0), _path()
-	{
-		_path = filename(id);
-		{ std::ofstream out(_path); }
-		::key_t key = check("ftok()", ::ftok(_path.c_str(), PROJ_ID));
-		_shmid = check("shmget()", ::shmget(key, 0, 0));
-		_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
-		load_size();
-	}
-
-	~Shared_memory() {
-		check("shmdt()", ::shmdt(_addr));
-		if (is_owner()) {
-			check("shmctl()", ::shmctl(_shmid, IPC_RMID, 0));
-			check("remove()", ::remove(_path.c_str()));
-		}
-	}
-
-	Shared_memory(const Shared_memory&) = delete;
-	Shared_memory& operator=(const Shared_memory&) = delete;
-
-	unsigned char* ptr() { return _addr; }
-	const unsigned char* ptr() const { return _addr; }
-	size_t size() const { return _size; }
-	bool is_owner() const { return _owner; }
-
-private:
-
-	void load_size() {
-		::shmid_ds stat;
-		check("shmctl()", ::shmctl(_shmid, IPC_STAT, &stat));
-		_size = stat.shm_segsz;
-	}
-	
-	std::string filename(int id) const {
-		std::stringstream path;
-		path << "/var/tmp";
-		path << "/factory.";
-		path << id;
-		path << ".shmem";
-		return path.str();
-	}
-
-	friend std::ostream& operator<<(std::ostream& out, const Shared_memory& rhs) {
-		return out << "addr = " << reinterpret_cast<const void*>(rhs.ptr())
-			<< ", size = " << rhs.size()
-			<< ", owner = " << rhs.is_owner()
-			<< ", path = " << rhs._path;
-	}
-
-	Byte* _addr;
-	int _id = 0;
-	size_t _size = 0;
-	int _shmid = 0;
-	std::string _path;
-	bool _owner = false;
-
-	static const int DEFAULT_SHMEM_PERMS = 0666;
-	static const int PROJ_ID = 'Q';
-};
-
-struct Semaphore {
-	explicit Semaphore(const std::string& name):
-		Semaphore(name.c_str()) {}
-	explicit Semaphore(const char* name) {
-		_sem = check("sem_open()", ::sem_open(name, O_CREAT, 0666, 0), SEM_FAILED);
-	}
-	~Semaphore() { check("sem_close()", ::sem_close(_sem)); }
-	void wait() {
-		std::cout << "sem = " << _sem << std::endl;
-		check("sem_wait()", ::sem_wait(_sem));
-	}
-	void notify_one() { check("sem_post()", ::sem_post(_sem)); }
-
-	void lock() { this->wait(); }
-	void unlock() { this->notify_one(); }
-
-private:
-	::sem_t* _sem;
-};
 
 template<class T>
 struct Shmem_queue {
@@ -236,7 +135,7 @@ private:
 
 
 void test_shmem_client() {
-	Shmem_server<char> queue(::getppid());
+	Shmem_server<char> queue(this_process::parent_id());
 	sleep(2);
 	queue.send('a');
 	queue.send('q');
@@ -245,10 +144,10 @@ void test_shmem_client() {
 }
 
 void test_shmem_server(char** argv) {
-	Shmem_server<char> queue(::getpid(), 1024);
+	Shmem_server<char> queue(this_process::id(), 1024);
 	Process_group procs;
 	procs.add([&argv] () {
-		return Process::execute(argv[0], "client");
+		return this_process::execute(argv[0], "client");
 	});
 	queue.wait();
 	procs.wait();

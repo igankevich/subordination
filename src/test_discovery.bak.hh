@@ -492,8 +492,8 @@ struct App {
 				for (Endpoint endpoint : all_peers) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
-						Process::env("START_ID", start_id);
-						return Process::execute(argv[0],
+						this_process::env("START_ID", start_id);
+						return this_process::execute(argv[0],
 							"--bind-addr", endpoint,
 							"--num-peers", npeers,
 							"--base-ip", base_ip);

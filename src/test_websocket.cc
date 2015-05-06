@@ -4,7 +4,6 @@
 using namespace factory;
 
 #include "datum.hh"
-#include "process.hh"
 
 Endpoint server_endpoint("127.0.0.1", 10002);
 Endpoint client_endpoint("127.0.0.2", 10002);
@@ -166,14 +165,14 @@ struct App {
 			uint32_t sleep = sleep_time();
 			Process_group procs;
 			procs.add([&argv, sleep] () {
-				Process::env("START_ID", 1000);
-				return Process::execute(argv[0], 'x', sleep);
+				this_process::env("START_ID", 1000);
+				return this_process::execute(argv[0], 'x', sleep);
 			});
 //			// wait for master to start
 //			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 //			procs.add([&argv, sleep] () {
-//				Process::env("START_ID", 2000);
-//				return Process::execute(argv[0], 'y', sleep);
+//				this_process::env("START_ID", 2000);
+//				return this_process::execute(argv[0], 'y', sleep);
 //			});
 			retval = procs.wait();
 		} else {

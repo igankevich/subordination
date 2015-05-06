@@ -1,6 +1,12 @@
+// autoconf defines
+#ifdef HAVE_CONFIG_H
+	#include "config.h"
+#endif
+
 #if __cplusplus < 2011L
 	#error Factory requires C++11 compiler.
 #else
+	// STL
 	#include <iostream>
 	#include <iomanip>
 	#include <fstream>
@@ -15,8 +21,6 @@
 	#include <chrono>
 	#include <tuple>
 	#include <random>
-	
-	// Metadata
 	#include <string>
 	#include <functional>
 	#include <unordered_map>
@@ -27,6 +31,7 @@
 	#include <cinttypes>
 	#include <cstring>
 	#include <cstdlib>
+	#include <csignal>
 	
 	// C++ multi-threading
 	#include <thread>
@@ -39,10 +44,12 @@
 	#include <fcntl.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
+	#include <sys/ipc.h>
+	#include <sys/shm.h>
+	#include <semaphore.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <poll.h>
-	#include <csignal>
 	#include <ifaddrs.h>
 	#include <execinfo.h>
 	
@@ -64,6 +71,7 @@
 	#include "server.hh"
 	#include "socket_server.hh"
 	#include "discovery.hh"
+	#include "process.hh"
 	#include "strategy.hh"
 	
 	// Configuration

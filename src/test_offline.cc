@@ -1,10 +1,8 @@
-#include "factory/factory.hh"
-#include <random>
+#include <factory/factory.hh>
 
 using namespace factory;
 
 #include "datum.hh"
-#include "process.hh"
 
 Endpoint server_endpoint("127.0.0.1", 10001);
 Endpoint client_endpoint("127.0.0.2", 10001);
@@ -114,14 +112,14 @@ struct App {
 		if (argc <= 1) {
 			Process_group procs;
 			procs.add([&argv] () {
-				Process::env("START_ID", 1000);
-				return Process::execute(argv[0], 'x');
+				this_process::env("START_ID", 1000);
+				return this_process::execute(argv[0], 'x');
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () {
-				Process::env("START_ID", 2000);
-				return Process::execute(argv[0], 'y');
+				this_process::env("START_ID", 2000);
+				return this_process::execute(argv[0], 'y');
 			});
 			int ret = procs.wait();
 			retval = ret == SIGSEGV ? 0 : ret;

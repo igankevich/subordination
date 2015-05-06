@@ -1,19 +1,5 @@
 namespace factory {
 
-	/// Fast mutex for scheduling strategies.
-	struct Spin_mutex {
-
-		void lock() { while (_flag.test_and_set(std::memory_order_acquire)); }
-		void unlock() { _flag.clear(std::memory_order_release); }
-
-		Spin_mutex() {}
-		Spin_mutex& operator=(const Spin_mutex&) = delete;
-		Spin_mutex(const Spin_mutex&) = delete;
-
-	private:
-		std::atomic_flag _flag = ATOMIC_FLAG_INIT;
-	};
-
 	/// Base 2 logarithm. Works for positive x only.
 	int log2(std::int64_t x) {
 		if (x < 0) {
