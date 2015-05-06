@@ -88,10 +88,13 @@ struct Semaphore {
 	explicit Semaphore(const std::string& name):
 		Semaphore(name.c_str()) {}
 	explicit Semaphore(const char* name) {
-		_sem = check("sem_open()", ::sem_open(name, O_CREAT, 0666, 0));
+		_sem = check("sem_open()", ::sem_open(name, O_CREAT, 0666, 0), SEM_FAILED);
 	}
 	~Semaphore() { check("sem_close()", ::sem_close(_sem)); }
-	void wait() { check("sem_wait()", ::sem_wait(_sem)); }
+	void wait() {
+		std::cout << "sem = " << _sem << std::endl;
+		check("sem_wait()", ::sem_wait(_sem));
+	}
 	void notify_one() { check("sem_post()", ::sem_post(_sem)); }
 
 	void lock() { this->wait(); }
@@ -226,9 +229,9 @@ private:
 	}
 	
 	Shmem_queue<T> _pool;
-	std::thread worker;
 	Semaphore _semaphore;
 	volatile bool stopped = false;
+	std::thread worker;
 };
 
 
@@ -237,13 +240,12 @@ void test_shmem_client() {
 	sleep(2);
 	queue.send('a');
 	queue.send('q');
+	sleep(2);
 	queue.wait();
-//	std::cout << "client: queue = " << queue << std::endl;
 }
 
 void test_shmem_server(char** argv) {
 	Shmem_server<char> queue(::getpid(), 1024);
-//	std::cout << "server: queue = " << queue << std::endl;
 	Process_group procs;
 	procs.add([&argv] () {
 		return Process::execute(argv[0], "client");
