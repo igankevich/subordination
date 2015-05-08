@@ -11,6 +11,8 @@ syntax: glob
 *.gcov
 *.gcda
 *.gcno
+*.tmp
+*-coverage
 aclocal.m4
 autom4te.cache
 compile

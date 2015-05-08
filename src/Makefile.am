@@ -31,9 +31,9 @@ check_PROGRAMS = \
 	test_websocket \
 	test_shmem
 
-CODE_COVERAGE_LCOV_OPTIONS = --checksum
+CODE_COVERAGE_LCOV_OPTIONS = --checksum --rc lcov_branch_coverage=1
 CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
-CODE_COVERAGE_GENHTML_OPTIONS = --demangle-cpp
+CODE_COVERAGE_GENHTML_OPTIONS = --demangle-cpp --css-file=../gcov/gcov.css
 @CODE_COVERAGE_RULES@
 
 # disable stack trace for tests where a child process must fail
