@@ -52,6 +52,9 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
 AC_CHECK_FUNCS([memset socket setenv strerror])
 
+# Code coverage.
+AX_CODE_COVERAGE
+
 # Clean ALL files
 AX_CLEAN_ALL
 

@@ -7,6 +7,8 @@
 #-Wabi                               -- probably not needed
 
 AM_DEFAULT_SOURCE_EXT = .cc
+AM_CXXFLAGS = $(CODE_COVERAGE_CFLAGS)
+AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 TESTS = \
 	test_buffer \
@@ -28,6 +30,11 @@ check_PROGRAMS = \
 	test_encoding \
 	test_websocket \
 	test_shmem
+
+CODE_COVERAGE_LCOV_OPTIONS = --checksum
+CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
+CODE_COVERAGE_GENHTML_OPTIONS = --demangle-cpp
+@CODE_COVERAGE_RULES@
 
 # disable stack trace for tests where a child process must fail
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
