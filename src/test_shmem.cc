@@ -44,6 +44,18 @@ struct Shmem_queue {
 		first[header->tail++] = val;
 	}
 
+	size_t write(const T* buf, size_t size) {
+		size_t sz = std::min(size, first + header->tail - last);
+		std::copy_n(buf, sz, first + header->tail);
+		return sz;
+	}
+
+	size_t read(T* buf, size_t size) {
+		size_t sz = std::min(size, header->tail - header->head);
+		std::copy_n(first + header->head, sz, buf);
+		return sz;
+	}
+
 	void pop() { header->head++; }
 	T& front() { return first[header->head]; }
 	const T& front() const { return first[header->head]; }
@@ -67,7 +79,6 @@ private:
 	Header* header;
 	T* first;
 	T* last;
-
 };
 
 template<class T>
