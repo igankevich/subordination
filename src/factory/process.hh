@@ -189,23 +189,24 @@ namespace factory {
 	struct Shared_memory {
 	
 		typedef unsigned char Byte;
+		typedef uint8_t Sequence_num;
 	
-		Shared_memory(int id, size_t sz, int perms = DEFAULT_SHMEM_PERMS):
+		Shared_memory(int id, size_t sz, Sequence_num num = PROJ_ID, int perms = DEFAULT_SHMEM_PERMS):
 			_addr(nullptr), _id(id), _size(sz), _shmid(0), _owner(true)
 		{
 			_path = filename(id);
 			{ std::ofstream out(_path); }
-			::key_t key = check("ftok()", ::ftok(_path.c_str(), PROJ_ID));
+			::key_t key = check("ftok()", ::ftok(_path.c_str(), num));
 			_shmid = check("shmget()", ::shmget(key, size(), perms | IPC_CREAT));
 			_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
 		}
 	
-		explicit Shared_memory(int id):
+		explicit Shared_memory(int id, Sequence_num num = PROJ_ID):
 			_id(id), _size(0), _shmid(0), _path()
 		{
 			_path = filename(id);
-			{ std::ofstream out(_path); }
-			::key_t key = check("ftok()", ::ftok(_path.c_str(), PROJ_ID));
+			{ std::filebuf out; out.open(_path, std::ios_base::out); }
+			::key_t key = check("ftok()", ::ftok(_path.c_str(), num));
 			_shmid = check("shmget()", ::shmget(key, 0, 0));
 			_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
 			load_size();
@@ -259,7 +260,7 @@ namespace factory {
 		bool _owner = false;
 	
 		static const int DEFAULT_SHMEM_PERMS = 0666;
-		static const int PROJ_ID = 'Q';
+		static const uint8_t PROJ_ID = 0;
 	};
 
 	struct Semaphore {

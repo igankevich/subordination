@@ -279,6 +279,22 @@ namespace factory {
 			std::condition_variable _semaphore;
 		};
 
+//		template<template<class A> class Pool, class Server>
+//		struct App_server: public Server_link<App_server<Pool, Server>, Server> {
+//
+//			typedef typename Server::Kernel Kernel;
+//			
+//			void send(Kernel* k) {
+//			}
+//
+//			void stop_impl() { _procs.stop(); }
+//
+//			void wait_impl() { _procs.wait(); }
+//
+//		private:
+//			Process_group _procs;
+//		};
+
 	}
 }
 namespace factory {
