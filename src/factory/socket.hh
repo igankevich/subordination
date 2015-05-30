@@ -7,8 +7,8 @@ namespace factory {
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
-		Socket(): _socket(0) {}
-		Socket(int socket): _socket(socket) {}
+		constexpr Socket(): _socket(0) {}
+		constexpr Socket(int socket): _socket(socket) {}
 		Socket(const Socket& rhs): _socket(rhs._socket) {}
 		Socket(Socket&& rhs): _socket(rhs._socket) { rhs._socket = -1; }
 		virtual ~Socket() {}
@@ -169,7 +169,7 @@ namespace factory {
 namespace factory {
 
 	struct Server_socket: public Socket {
-		Server_socket() {}
+		constexpr Server_socket() {}
 		explicit Server_socket(const Socket& rhs): Socket(rhs) {}
 		explicit Server_socket(const Endpoint& endp) {
 			this->bind(endp);

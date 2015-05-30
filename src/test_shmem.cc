@@ -3,6 +3,10 @@
 
 using namespace factory;
 
+struct Allocator {
+};
+
+
 template<class T>
 struct Shmem_queue {
 
