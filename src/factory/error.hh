@@ -1,13 +1,13 @@
 namespace factory {
 
 	enum struct Level: uint8_t {
-		KERNEL    ,
-		SERVER    ,
-		HANDLER   ,
-		COMPONENT ,
-		STRATEGY  ,
-		DISCOVERY ,
-		GRAPH     ,
+		KERNEL,
+		SERVER,
+		HANDLER,
+		COMPONENT,
+		STRATEGY,
+		DISCOVERY,
+		GRAPH,
 		WEBSOCKET
 	};
 
@@ -21,6 +21,7 @@ namespace factory {
 			case Level::DISCOVERY : out << "dscvr";   break;
 			case Level::GRAPH     : out << "grph";    break;
 			case Level::WEBSOCKET : out << "wbsckt";  break;
+			default               : out << "unknwn"; break;
 		}
 		return out;
 	}
@@ -34,13 +35,6 @@ namespace factory {
 		{
 			next_record();
 		}
-
-//		explicit Logger(Level t = Level::KERNEL):
-//			_buf(),
-//			_tag(t)
-//		{
-//			next_record();
-//		}
 
 		Logger(const Logger&) = delete;
 		Logger& operator=(const Logger&) = delete;
@@ -94,8 +88,11 @@ namespace factory {
 		No_logger& operator=(const No_logger&) = delete;
 	
 		template<class T>
-		constexpr const No_logger& operator<<(const T&) const { return *this; }
-		constexpr const No_logger& operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
+		constexpr const No_logger&
+		operator<<(const T&) const { return *this; }
+
+		constexpr const No_logger&
+		operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
 
 		std::ostream& ostream() const {
 			static std::stringstream tmp;
@@ -103,14 +100,14 @@ namespace factory {
 		}
 	};
 
-	template<> struct Logger<Level::KERNEL    >: public No_logger {};
-	template<> struct Logger<Level::SERVER    >: public No_logger {};
-	template<> struct Logger<Level::HANDLER   >: public No_logger {};
-	template<> struct Logger<Level::COMPONENT >: public No_logger {};
-	template<> struct Logger<Level::STRATEGY  >: public No_logger {};
-	template<> struct Logger<Level::DISCOVERY >: public No_logger {};
-//	template<> struct Logger<Level::GRAPH     >: public No_logger {};
-	template<> struct Logger<Level::WEBSOCKET >: public No_logger {};
+	template<> struct Logger<Level::KERNEL   >: public No_logger {};
+	template<> struct Logger<Level::SERVER   >: public No_logger {};
+	template<> struct Logger<Level::HANDLER  >: public No_logger {};
+	template<> struct Logger<Level::COMPONENT>: public No_logger {};
+	template<> struct Logger<Level::STRATEGY >: public No_logger {};
+	template<> struct Logger<Level::DISCOVERY>: public No_logger {};
+//	template<> struct Logger<Level::GRAPH    >: public No_logger {};
+	template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
 
 	std::string log_filename() {
 		std::stringstream s;
@@ -121,33 +118,6 @@ namespace factory {
 	template<class Ret>
 	Ret check(const char* func, Ret ret, Ret bad=Ret(-1)) {
 		if (ret == bad) {
-			throw std::system_error(std::error_code(errno, std::system_category()), func);
-		}
-		return ret;
-	}
-
-//	int check_addrinfo(const char* func, int ret) {
-//		if (ret < 0) {
-//			std::stringstream msg;
-//			msg << func << ": " << ::gai_strerror(ret);
-//			throw std::runtime_error(msg.str());
-//		}
-//		return ret;
-//	}
-
-//	int check_pton(const char* func, int ret) {
-//		if (ret == 0) {
-//			std::stringstream msg;
-//			msg << func << ". Not in presentation format.";
-//			throw std::runtime_error(msg.str());
-//		} else if (ret == -1) {
-//			throw std::system_error(std::error_code(errno, std::system_category()), func);
-//		}
-//		return ret;
-//	}
-
-	const char* check_inet(const char* func, const char* ret) {
-		if (ret == 0) {
 			throw std::system_error(std::error_code(errno, std::system_category()), func);
 		}
 		return ret;
@@ -216,7 +186,7 @@ namespace factory {
 
 	struct Error_message {
 
-		Error_message(const Error& err, const char* file, const int line, const char* function):
+		constexpr Error_message(const Error& err, const char* file, const int line, const char* function):
 			_error(err), _file(file), _line(line), _function(function) {}
 
 		friend std::ostream& operator<<(std::ostream& out, const Error_message& rhs) {
@@ -238,7 +208,7 @@ namespace factory {
 
 	struct String_message {
 
-		String_message(const char* err, const char* file, const int line, const char* function):
+		constexpr String_message(const char* err, const char* file, const int line, const char* function):
 			_error(err), _file(file), _line(line), _function(function) {}
 
 		String_message(const std::exception& err, const char* file, const int line, const char* func):
@@ -258,12 +228,12 @@ namespace factory {
 		const char* _function;
 	};
 
-	const char* UNKNOWN_ERROR = "Unknown error.";
+	constexpr const char* UNKNOWN_ERROR = "Unknown error.";
 
 	template<class K>
 	struct No_principal_found {
-		explicit No_principal_found(K* k): _kernel(k) {}
-		K* kernel() { return _kernel; }
+		constexpr explicit No_principal_found(K* k): _kernel(k) {}
+		constexpr K* kernel() { return _kernel; }
 	private:
 		K* _kernel;
 	};

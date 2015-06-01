@@ -60,7 +60,9 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
 			char host[64];
-			check_inet("inet_ntop()", ::inet_ntop(AF_INET, &rhs._addr.sin_addr.s_addr, host, sizeof(host)));
+			check<const char*>("inet_ntop()",
+				::inet_ntop(AF_INET, &rhs._addr.sin_addr.s_addr, host, sizeof(host)),
+				nullptr);
 			return out << host << ':' << ntohs(rhs._addr.sin_port);
 		}
 
@@ -84,8 +86,9 @@ namespace factory {
 
 		Host host() const {
 			char h[64];
-			check_inet("inet_ntop()",
-				::inet_ntop(AF_INET, &_addr.sin_addr.s_addr, h, sizeof(h)));
+			check<const char*>("inet_ntop()",
+				::inet_ntop(AF_INET, &_addr.sin_addr.s_addr, h, sizeof(h)),
+				nullptr);
 			return Host(h);
 		}
 
