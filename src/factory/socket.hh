@@ -23,21 +23,21 @@ namespace factory {
 			create_socket_if_necessary();
 			options(SO_REUSEADDR);
 			check("bind()", ::bind(_socket, e.sockaddr(), sizeof(sockaddr_in)));
-			Logger(Level::COMPONENT) << "Binding to " << e << std::endl;
+			Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 		}
 		
 		void listen() {
 			check("listen()", ::listen(_socket, SOMAXCONN));
-			Logger(Level::COMPONENT) << "Listening on " << name() << std::endl;
+			Logger<Level::COMPONENT>() << "Listening on " << name() << std::endl;
 		}
 
 		void connect(Endpoint e) {
 			try {
 				create_socket_if_necessary();
 				check_connect("connect()", ::connect(_socket, e.sockaddr(), sizeof(sockaddr_in)));
-				Logger(Level::COMPONENT) << "Connecting to " << e << std::endl;
+				Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
-				Logger(Level::COMPONENT) << "Rethrowing connection error." << std::endl;
+				Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
 				std::stringstream msg;
 				msg << err.what() << ". Endpoint=" << e;
 				throw Connection_error(msg.str(), __FILE__, __LINE__, __func__);
@@ -50,13 +50,13 @@ namespace factory {
 			Socket socket = check("accept()", ::accept(_socket, addr.sockaddr(), &len));
 			socket.flags(O_NONBLOCK);
 			socket.flags2(FD_CLOEXEC);
-			Logger(Level::COMPONENT) << "Accepted connection from " << addr << std::endl;
+			Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
 			return std::make_pair(socket, addr);
 		}
 
 		void close() {
 			if (_socket > 0) {
-				Logger(Level::COMPONENT) << "Closing socket " << _socket << std::endl;
+				Logger<Level::COMPONENT>() << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
 //				check("close()", ::close(_socket));
@@ -267,10 +267,10 @@ namespace factory {
 					std::string line(first, last);
 					if (line.find("GET") == 0) {
 						state = State::PARSING_HEADERS;
-						Logger(Level::WEBSOCKET) << "parsing headers" << std::endl;
+						Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
 					} else {
 						state = State::PARSING_ERROR;
-						Logger(Level::WEBSOCKET)
+						Logger<Level::WEBSOCKET>()
 							<< "bad method in web socket hand shake" << std::endl;
 					}
 					} break;
@@ -282,15 +282,15 @@ namespace factory {
 						std::string value(it+2, last);
 						if (_http_headers.size() == MAX_HEADERS) {
 							state = State::PARSING_ERROR;
-							Logger(Level::WEBSOCKET)
+							Logger<Level::WEBSOCKET>()
 								<< "too many headers in HTTP request" << std::endl;
 						} else if (_http_headers.contain(key.c_str())) {
 							state = State::PARSING_ERROR;
-							Logger(Level::WEBSOCKET)
+							Logger<Level::WEBSOCKET>()
 								<< "duplicate HTTP header: '" << key << '\'' << std::endl;
 						} else {
 							_http_headers[key] = value;
-							Logger(Level::WEBSOCKET)
+							Logger<Level::WEBSOCKET>()
 								<< "Header['" << key << "'] = '" << value << "'" << std::endl;
 						}
 					}
@@ -345,10 +345,10 @@ namespace factory {
 			if (pos == found) {
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
-					Logger(Level::WEBSOCKET) << "parsing error" << std::endl;
+					Logger<Level::WEBSOCKET>() << "parsing error" << std::endl;
 				} else {
 					state = State::HANDSHAKE_SUCCESS;
-					Logger(Level::WEBSOCKET) << "parsing success" << std::endl;
+					Logger<Level::WEBSOCKET>() << "parsing success" << std::endl;
 				}
 				buffer_offset = 0;
 			} else {
@@ -421,15 +421,15 @@ namespace factory {
 					size_t len = websocket_decode(recv_buffer.read_begin(),
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
-					Logger(Level::WEBSOCKET) << "recv buffer"
+					Logger<Level::WEBSOCKET>() << "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
 						<< recv_buffer << std::endl;
-					Logger(Level::WEBSOCKET) << "mid buffer "
+					Logger<Level::WEBSOCKET>() << "mid buffer "
 						<< mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
-					Logger(Level::WEBSOCKET) << "Close frame" << std::endl;
+					Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
 					this->close();
 				} else {
 					bytes_read = mid_buffer.read(buf, size);

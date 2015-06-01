@@ -19,7 +19,7 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
-		Logger log(Level::COMPONENT);
+		Logger<Level::COMPONENT>() log;
 		log << "kernel count = " << shutdown_counter << std::endl;
 		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
 			*(reinterpret_cast<volatile int*>(0)) = 1;
@@ -62,8 +62,8 @@ struct Sender: public Identifiable<Kernel> {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
-			Logger(Level::COMPONENT) << " Sender id = " << this->id() << std::endl;
-			Logger(Level::COMPONENT) << " kernel count2 = " << shutdown_counter << std::endl;
+			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
+			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 
@@ -76,7 +76,7 @@ struct Sender: public Identifiable<Kernel> {
 			throw std::runtime_error(msg.str());
 		}
 
-		Logger(Level::COMPONENT) << "Sender::kernel count = " << _num_returned+1 << std::endl;
+		Logger<Level::COMPONENT>() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -96,7 +96,7 @@ struct Main: public Kernel {
 	}
 
 	void react(Kernel*) {
-		Logger(Level::COMPONENT) << "Main::kernel count = " << _num_returned+1 << std::endl;
+		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_SIZES) {
 			commit(the_server());
 		}

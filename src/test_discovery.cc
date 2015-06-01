@@ -144,7 +144,7 @@ struct Compare_distance {
 	explicit Compare_distance(Endpoint from): _from(from) {}
 
 	bool operator()(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) const {
-		Logger(Level::DISCOVERY) << "hoho" << std::endl;
+		Logger<Level::DISCOVERY>() << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
 //			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
@@ -239,7 +239,7 @@ struct Peers {
 	}
 
 	void revert_principal(Endpoint old_princ) {
-		Logger(Level::DISCOVERY) << "Reverting principal to " << old_princ << std::endl;
+		Logger<Level::DISCOVERY>() << "Reverting principal to " << old_princ << std::endl;
 		_peers.erase(_principal);
 		if (old_princ) {
 			add_peer(old_princ);
@@ -267,9 +267,9 @@ struct Peers {
 	}
 
 	void add_subordinate(Endpoint addr) {
-		Logger(Level::DISCOVERY) << "Adding subordinate = " << addr << std::endl;
+		Logger<Level::DISCOVERY>() << "Adding subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) == 0) {
-			Logger(Level::GRAPH)
+			Logger<Level::GRAPH>()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
@@ -285,9 +285,9 @@ struct Peers {
 	}
 
 	void remove_subordinate(Endpoint addr) {
-		Logger(Level::DISCOVERY) << "Removing subordinate = " << addr << std::endl;
+		Logger<Level::DISCOVERY>() << "Removing subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) > 0) {
-			Logger(Level::GRAPH)
+			Logger<Level::GRAPH>()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ')'
@@ -331,7 +331,7 @@ struct Peers {
 	}
 
 	void debug() {
-		Logger log(Level::DISCOVERY);
+		Logger<Level::DISCOVERY> log;
 		log << "Principal = " << _principal << ", subordinates = ";
 		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
 		std::copy(_subordinates.begin(), _subordinates.end(), it);
@@ -436,7 +436,7 @@ struct Scanner: public Identifiable<Kernel> {
 
 	void act() {
 		if (_servers.empty()) {
-//			Logger(Level::DISCOVERY) << "There are no servers to scan." << std::endl;
+//			Logger<Level::DISCOVERY>() << "There are no servers to scan." << std::endl;
 			commit(the_server(), Result::USER_ERROR);
 		} else {
 			_scan_addr = next_scan_addr();
@@ -499,7 +499,7 @@ private:
 		Ping* ping = new Ping;
 		ping->to(addr);
 		ping->parent(this);
-		Logger(Level::DISCOVERY) << "scanning " << ping->to() << std::endl;
+		Logger<Level::DISCOVERY>() << "scanning " << ping->to() << std::endl;
 		remote_server()->send(ping);
 	}
 
@@ -635,7 +635,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 	}
 
 	void react(Kernel* k) {
-		Logger(Level::DISCOVERY)
+		Logger<Level::DISCOVERY>()
 			<< "Negotiator returned from " << k->from()
 			<< " with result=" << k->result() << std::endl; 
 //		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
@@ -690,13 +690,13 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
 				if (current_time_nano() - prog_start > 30000000000L) {
-					Logger(Level::DISCOVERY) << "Hail the new king "
+					Logger<Level::DISCOVERY>() << "Hail the new king "
 						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 					__factory.stop();
 				}
 				run_scan(_scanner->discovered_node());
 			} else {
-				Logger(Level::DISCOVERY) << "Change 1" << std::endl;
+				Logger<Level::DISCOVERY>() << "Change 1" << std::endl;
 				change_principal(_scanner->discovered_node());
 				run_discovery();
 				_scanner = nullptr;
@@ -707,7 +707,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
 				_peers.update_peers(dsc->peers());
 				_peers.debug();
-				Logger(Level::DISCOVERY) << "Change 2" << std::endl;
+				Logger<Level::DISCOVERY>() << "Change 2" << std::endl;
 				change_principal(_peers.best_peer());
 			}
 			run_discovery();
@@ -746,7 +746,7 @@ private:
 	}
 	
 	void run_discovery() {
-		Logger(Level::DISCOVERY) << "Discovering..." << std::endl;
+		Logger<Level::DISCOVERY>() << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}
@@ -758,7 +758,7 @@ private:
 	void change_principal(Endpoint new_princ) {
 		Endpoint old_princ = _peers.principal();
 		if (!_negotiator && _peers.change_principal(new_princ)) {
-			Logger(Level::DISCOVERY) << "Changing principal to " << new_princ << std::endl;
+			Logger<Level::DISCOVERY>() << "Changing principal to " << new_princ << std::endl;
 			_peers.debug();
 			run_negotiator(old_princ, new_princ);
 		}
@@ -818,7 +818,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	for (Endpoint addr : all_peers) {
 		auto it = std::min_element(all_peers.begin(), all_peers.end(),
 			Compare_distance(addr));
-		Logger(Level::DISCOVERY)
+		Logger<Level::DISCOVERY>()
 			<< "Best link: " << addr << " -> " << *it << std::endl;
 	}
 //	uint32_t p = 1;
@@ -828,7 +828,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 //		uint32_t lvl = log(pos, p);
 //		uint32_t rem = pos - (1 << lvl);
 //		auto dist = addr_distance(all_peers[7], addr);
-//		Logger(Level::DISCOVERY)
+//		Logger<Level::DISCOVERY>()
 //			<< "Netmask = "
 //			<< addr << ", "
 //			<< Endpoint(my_netmask(), 0) << ", "
@@ -861,7 +861,7 @@ void write_cache_all() {
 
 void write_graph_nodes() {
 	for (Endpoint addr : all_peers) {
-		Logger(Level::GRAPH)
+		Logger<Level::GRAPH>()
 			<< "log[logline++] = {"
 			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 			<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
@@ -897,7 +897,7 @@ struct App {
 					start_id += 1000;
 				}
 
-				Logger(Level::DISCOVERY) << "Forked " << processes << std::endl;
+				Logger<Level::DISCOVERY>() << "Forked " << processes << std::endl;
 				
 				retval = processes.wait();
 
@@ -915,7 +915,7 @@ struct App {
 				else if (arg == "--num-peers") { in >> npeers; }
 				else if (arg == "--base-ip")   { in >> base_ip; }
 			});
-			Logger(Level::DISCOVERY) << "Bind address " << bind_addr << std::endl;
+			Logger<Level::DISCOVERY>() << "Bind address " << bind_addr << std::endl;
 			generate_all_peers(npeers, base_ip);
 			if (Endpoint(base_ip,0).address() == bind_addr.address()) {
 				write_graph_nodes();

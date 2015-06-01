@@ -54,7 +54,7 @@ namespace factory {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			Logger log(Level::COMPONENT);
+			Logger<Level::COMPONENT> log;
 			log << "Executing ";
 			std::ostream_iterator<char*> it(log.ostream(), " ");
 			std::copy(argv, argv + argc, it);
@@ -75,7 +75,7 @@ namespace factory {
 			_child_pid = ::fork();
 			if (_child_pid == 0) {
 				int ret = f();
-				Logger(Level::COMPONENT)
+				Logger<Level::COMPONENT>()
 					<< ::getpid() << ": exit(" << ret << ')' << std::endl;
 				::exit(ret);
 			} else {
@@ -99,7 +99,7 @@ namespace factory {
 				if (WIFSIGNALED(status)) {
 					sig = WTERMSIG(status);
 				}
-				Logger(Level::COMPONENT)
+				Logger<Level::COMPONENT>()
 					<< _child_pid << ": waitpid(), ret=" << ret
 					<< ", sig=" << sig << std::endl;
 			}

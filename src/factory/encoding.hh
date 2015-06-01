@@ -602,7 +602,7 @@ namespace factory {
 		Web_socket_frame frame;
 		std::pair<It,It> payload = frame.decode(first, last);
 		if (payload.first == first) return 0;
-		Logger(Level::WEBSOCKET) << "recv header " << frame << std::endl;
+		Logger<Level::WEBSOCKET>() << "recv header " << frame << std::endl;
 		*opcode = frame.opcode();
 		// ignore non-binary and invalid frames
 		if (frame.is_binary() && frame.has_valid_opcode()) {

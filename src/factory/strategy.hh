@@ -30,7 +30,7 @@ namespace factory {
 //				using Server::send;
 
 				void send(Kernel* kernel) {
-					Logger(Level::STRATEGY) << "Round_robin::send()" << std::endl;
+					Logger<Level::STRATEGY>() << "Round_robin::send()" << std::endl;
 					if (kernel->moves_upstream()) {
 						size_t n = Server::_upstream.size();
 						if (n > 0) {
@@ -64,7 +64,7 @@ namespace factory {
 			template<class Server>
 			struct Rprofiler: public Server {
 				void process_kernel(Kernel* kernel) {
-					Logger(Level::STRATEGY) << "Round_robin::process_kernel()" << std::endl;
+					Logger<Level::STRATEGY>() << "Round_robin::process_kernel()" << std::endl;
                     kernel->run_act();
 				}
 			};
@@ -564,7 +564,7 @@ namespace factory {
 //				typedef typename Server::Kernel Kernel;
 
 				void send(Kernel* pair) {
-					Logger(Level::STRATEGY) << "Simple_hashing::send()" << std::endl;
+					Logger<Level::STRATEGY>() << "Simple_hashing::send()" << std::endl;
 					size_t n = Server::_upstream.size();
 					if (n > 0) {
 						size_t i = pair->hash() * PRIME % n;
@@ -579,7 +579,7 @@ namespace factory {
 			template<class Server>
 			struct Rprofiler: public Server {
 				void process_kernel(Kernel* kernel) {
-					Logger(Level::STRATEGY) << "Simple_hashing::process_kernel()" << std::endl;
+					Logger<Level::STRATEGY>() << "Simple_hashing::process_kernel()" << std::endl;
                     kernel->run_act();
 				}
 			};
@@ -670,7 +670,7 @@ namespace factory {
 //					auto resource_map = Resources::resources().map();
 //					std::for_each(resource_map.cbegin(), resource_map.cend(),
 //						[&resources, &upstream] (const typename decltype(resource_map)::value_type& pair) {
-////			                Logger(Level::STRATEGY) << pair.first << " -> " << *pair.second << std::endl;
+////			                Logger<Level::STRATEGY>() << pair.first << " -> " << *pair.second << std::endl;
 //							auto result = upstream.find(*pair.second);
 //							if (result != upstream.cend()) {
 //								resources[pair.first] = result->second->index();
@@ -678,7 +678,7 @@ namespace factory {
 //						}
 //					);
 //		            for (auto it=resources.cbegin(); it!=resources.cend(); ++it) {
-//		                Logger(Level::STRATEGY) << it->first << " -> " << it->second << std::endl;
+//		                Logger<Level::STRATEGY>() << it->first << " -> " << it->second << std::endl;
 //		            }
 //					return resources;
 //				}

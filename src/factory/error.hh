@@ -1,27 +1,46 @@
 namespace factory {
 
-	namespace Level {
-		typedef const char* Tag;
-		Tag KERNEL    = "krnl";
-		Tag SERVER    = "srvr";
-		Tag HANDLER   = "handler";
-		Tag COMPONENT = "cmpnt";
-		Tag STRATEGY  = "strat";
-		Tag DISCOVERY = "dscvr";
-		Tag GRAPH     = "grph";
-		Tag WEBSOCKET = "wbsckt";
+	enum struct Level: uint8_t {
+		KERNEL    ,
+		SERVER    ,
+		HANDLER   ,
+		COMPONENT ,
+		STRATEGY  ,
+		DISCOVERY ,
+		GRAPH     ,
+		WEBSOCKET
+	};
+
+	std::ostream& operator<<(std::ostream& out, const Level rhs) {
+		switch (rhs) {
+			case Level::KERNEL    : out << "krnl";    break;
+			case Level::SERVER    : out << "srvr";    break;
+			case Level::HANDLER   : out << "handler"; break;
+			case Level::COMPONENT : out << "cmpnt";   break;
+			case Level::STRATEGY  : out << "strat";   break;
+			case Level::DISCOVERY : out << "dscvr";   break;
+			case Level::GRAPH     : out << "grph";    break;
+			case Level::WEBSOCKET : out << "wbsckt";  break;
+		}
+		return out;
 	}
 
+	template<Level lvl=Level::KERNEL>
 	struct Logger {
 
-		typedef const char* Tag;
-
-		explicit Logger(Tag t = Level::KERNEL):
+		Logger():
 			_buf(),
-			_tag(t)
+			_tag(lvl)
 		{
 			next_record();
 		}
+
+//		explicit Logger(Level t = Level::KERNEL):
+//			_buf(),
+//			_tag(t)
+//		{
+//			next_record();
+//		}
 
 		Logger(const Logger&) = delete;
 		Logger& operator=(const Logger&) = delete;
@@ -62,10 +81,37 @@ namespace factory {
 		}
 
 		std::stringstream _buf;
-		Tag _tag;
+		Level _tag;
 		
 		static const char SEP = ' ';
 	};
+
+	struct No_logger {
+
+		No_logger() { _buf.setstate(std::ios::failbit); }
+
+		No_logger(const No_logger&) = delete;
+		No_logger& operator=(const No_logger&) = delete;
+	
+		template<class T>
+		No_logger& operator<<(const T& rhs) { return *this; }
+		No_logger& operator<<(std::ostream& ( *pf )(std::ostream&)) { return *this; }
+
+		std::ostream& ostream() { return _buf; }
+	
+	private:
+		
+		std::stringstream _buf;
+	};
+
+	template<> struct Logger<Level::KERNEL    >: public No_logger {};
+	template<> struct Logger<Level::SERVER    >: public No_logger {};
+	template<> struct Logger<Level::HANDLER   >: public No_logger {};
+	template<> struct Logger<Level::COMPONENT >: public No_logger {};
+	template<> struct Logger<Level::STRATEGY  >: public No_logger {};
+	template<> struct Logger<Level::DISCOVERY >: public No_logger {};
+//	template<> struct Logger<Level::GRAPH     >: public No_logger {};
+	template<> struct Logger<Level::WEBSOCKET >: public No_logger {};
 
 	std::string log_filename() {
 		std::stringstream s;

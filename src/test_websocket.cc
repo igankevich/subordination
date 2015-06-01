@@ -19,7 +19,7 @@ struct Test_web_socket: public Mobile<Test_web_socket> {
 	Test_web_socket(): _data() {}
 
 	void act() {
-		Logger(Level::WEBSOCKET) << "Hello from web socket! Data = " << _data << std::endl;
+		Logger<Level::WEBSOCKET>() << "Hello from web socket! Data = " << _data << std::endl;
 		_data = 321;
 		commit(ext_server());
 	}
@@ -47,7 +47,7 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
-		Logger log(Level::COMPONENT);
+		Logger<Level::COMPONENT>() log;
 		log << "kernel count = " << shutdown_counter << std::endl;
 		commit(remote_server());
 	}
@@ -89,8 +89,8 @@ struct Sender: public Identifiable<Kernel> {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
-			Logger(Level::COMPONENT) << " Sender id = " << this->id() << std::endl;
-			Logger(Level::COMPONENT) << " kernel count2 = " << shutdown_counter << std::endl;
+			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
+			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 
@@ -113,7 +113,7 @@ struct Sender: public Identifiable<Kernel> {
 			}
 		}
 
-		Logger(Level::COMPONENT) << "Sender::kernel count = " << _num_returned+1 << std::endl;
+		Logger<Level::COMPONENT>() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -138,7 +138,7 @@ struct Main: public Kernel {
 	}
 
 	void react(Kernel*) {
-		Logger(Level::COMPONENT) << "Main::kernel count = " << _num_returned+1 << std::endl;
+		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_SIZES) {
 			commit(the_server());
 		}

@@ -34,7 +34,7 @@ namespace factory {
 				auto new_pos = out.write_pos();
 				auto new_size = out.size();
 				auto packet_sz = new_size - old_size;
-				Logger(Level::COMPONENT) << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
+				Logger<Level::COMPONENT>() << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
 				out.write_pos(old_pos);
 				out << packet_sz;
 				out.write_pos(new_pos);
@@ -45,7 +45,7 @@ namespace factory {
 					in >> packet_size;
 					_state = READING_PACKET;
 				}
-				Logger(Level::COMPONENT)<< "Bytes received = "
+				Logger<Level::COMPONENT>()<< "Bytes received = "
 					<< in.size()
 					<< '/'
 					<< packet_size - sizeof(packet_size)
@@ -91,10 +91,10 @@ namespace factory {
 					if (_poller.stopping()) {
 						event.no_reading();
 					}
-					Logger(Level::SERVER)
+					Logger<Level::SERVER>()
 						<< "Event " << event.fd() << ' ' << event << std::endl;
 					if (event.fd() == _poller.notification_pipe()) {
-						Logger(Level::SERVER) << "Notification " << event << std::endl;
+						Logger<Level::SERVER>() << "Notification " << event << std::endl;
 						process_kernels();
 					} else if (event.fd() == _socket.fd()) {
 						if (event.is_reading()) {
@@ -106,18 +106,18 @@ namespace factory {
 							auto res = _upstream.find(vaddr);
 							if (res == _upstream.end()) {
 								Remote_server* s = peer(sock, addr, vaddr, DEFAULT_EVENTS);
-								Logger(Level::SERVER)
+								Logger<Level::SERVER>()
 									<< server_addr() << ": "
 									<< "connected peer " << s->vaddr() << std::endl;
 							} else {
 								Remote_server* s = res->second;
-								Logger(Level::SERVER)
+								Logger<Level::SERVER>()
 									<< "ports: "
 									<< addr.port() << ' '
 									<< s->bind_addr().port()
 									<< std::endl;
 								if (addr.port() < s->bind_addr().port()) {
-									Logger log(Level::SERVER);
+									Logger<Level::SERVER> log;
 									log << server_addr() << ": "
 										<< "not replacing peer " << *s
 										<< std::endl;
@@ -134,7 +134,7 @@ namespace factory {
 //									sock.close();
 									debug("not replacing upstream");
 								} else {
-									Logger log(Level::SERVER);
+									Logger<Level::SERVER> log;
 									log << server_addr() << ": "
 										<< "replacing peer " << *s;
 									_poller.ignore(s->fd());
@@ -158,7 +158,7 @@ namespace factory {
 					} else {
 						bool erasing = false;
 						if (event.is_error()) {
-							Logger(Level::SERVER) << "Invalid socket" << std::endl;
+							Logger<Level::SERVER>() << "Invalid socket" << std::endl;
 							erasing = true;
 						} else {
 							auto res = _servers.find(event.fd());
@@ -167,12 +167,12 @@ namespace factory {
 								std::stringstream msg;
 								msg << ::getpid() << ' ' << server_addr() << ' ';
 								msg << " can not find server to process event: fd=" << event.fd();
-								Logger(Level::SERVER) << msg.str() << std::endl;
+								Logger<Level::SERVER>() << msg.str() << std::endl;
 								throw Error(msg.str(), __FILE__, __LINE__, __func__);
 							}
 							Remote_server* s = res->second;
 							if (!s->valid()) {
-								Logger(Level::SERVER) << "Invalid socket" << std::endl;
+								Logger<Level::SERVER>() << "Invalid socket" << std::endl;
 								erasing = true;
 							} else {
 								process_event(s, event);
@@ -213,7 +213,7 @@ namespace factory {
 
 			// TODO: delete
 //			void send(Kernel* kernel, Endpoint endpoint) {
-//				Logger(Level::SERVER) << "Socket_server::send(" << endpoint << ")" << std::endl;
+//				Logger<Level::SERVER>() << "Socket_server::send(" << endpoint << ")" << std::endl;
 //				kernel->to(endpoint);
 //				send(kernel);
 //			}
@@ -238,7 +238,7 @@ namespace factory {
 			}
 
 			void erase(Endpoint addr) {
-				Logger(Level::SERVER) << "Removing " << addr << std::endl;
+				Logger<Level::SERVER>() << "Removing " << addr << std::endl;
 				auto res = _upstream.find(addr);
 				if (res == _upstream.end()) {
 					std::stringstream msg;
@@ -258,21 +258,21 @@ namespace factory {
 			}
 
 			void start() {
-				Logger(Level::SERVER) << "Socket_server::start()" << std::endl;
+				Logger<Level::SERVER>() << "Socket_server::start()" << std::endl;
 				_thread = std::thread([this] { this->serve(); });
 			}
 	
 			void stop_impl() {
-				Logger(Level::SERVER) << "Socket_server::stop_impl()" << std::endl;
+				Logger<Level::SERVER>() << "Socket_server::stop_impl()" << std::endl;
 				_poller.notify_stopping();
 			}
 
 			void wait_impl() {
-				Logger(Level::SERVER) << "Socket_server::wait_impl()" << std::endl;
+				Logger<Level::SERVER>() << "Socket_server::wait_impl()" << std::endl;
 				if (_thread.joinable()) {
 					_thread.join();
 				}
-				Logger(Level::SERVER) << "Socket_server::wait_impl() end" << std::endl;
+				Logger<Level::SERVER>() << "Socket_server::wait_impl() end" << std::endl;
 			}
 
 			void affinity(int cpu) { _cpu = cpu; }
@@ -303,7 +303,7 @@ namespace factory {
 					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 				Remote_server* s = r->second;
-				Logger(Level::SERVER) << "Removing server " << *s << std::endl;
+				Logger<Level::SERVER>() << "Removing server " << *s << std::endl;
 				s->recover_kernels();
 				// subordinate servers are not present in upstream
 				if (!s->parent()) {
@@ -337,7 +337,7 @@ namespace factory {
 			}
 
 			void process_kernels() {
-				Logger(Level::SERVER) << "Socket_server::process_kernels()" << std::endl;
+				Logger<Level::SERVER>() << "Socket_server::process_kernels()" << std::endl;
 				bool pool_is_empty = false;
 				{
 					std::unique_lock<std::mutex> lock(_mutex);
@@ -356,7 +356,7 @@ namespace factory {
 					}
 
 					if (k->moves_everywhere()) {
-						Logger(Level::SERVER)
+						Logger<Level::SERVER>()
 							<< server_addr() << ' '
 							<< "broadcast kernel" << std::endl;
 						for (auto pair : _upstream) {
@@ -390,7 +390,7 @@ namespace factory {
 			}
 
 			void debug(const char* msg = "") {
-				Logger log(Level::SERVER);
+				Logger<Level::SERVER> log;
 				log << _socket.bind_addr() << ' ';
 				log << msg << " upstream ";
 				for (auto p : _upstream) {
@@ -486,7 +486,7 @@ namespace factory {
 				read_kernels();
 //				clear_kernel_buffer(_ostream.global_read_pos());
 
-				Logger(Level::HANDLER)
+				Logger<Level::HANDLER>()
 					<< "Kernels left: "
 					<< _buffer.size()
 					<< std::endl;
@@ -499,19 +499,19 @@ namespace factory {
 			}
 
 			void send(Kernel* kernel) {
-				Logger(Level::HANDLER) << "Remote_Rserver::send()" << std::endl;
+				Logger<Level::HANDLER>() << "Remote_Rserver::send()" << std::endl;
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
-					Logger(Level::HANDLER) << "poll send error " << _ostream << std::endl;
+					Logger<Level::HANDLER>() << "poll send error " << _ostream << std::endl;
 				}
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(factory_generate_id());
-					Logger(Level::HANDLER) << "Kernel generate id = " << kernel->id() << std::endl;
+					Logger<Level::HANDLER>() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
-					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
+					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				}
-				Logger(Level::COMPONENT) << "Sent kernel " << *kernel << std::endl;
+				Logger<Level::COMPONENT>() << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
 				packet.write(_ostream, kernel);
 			}
@@ -528,17 +528,17 @@ namespace factory {
 					_istream.fill<Server_socket&>(_socket);
 					bool state_is_ok = true;
 					while (state_is_ok && !_istream.empty()) {
-						Logger(Level::HANDLER) << "Recv " << _istream << std::endl;
+						Logger<Level::HANDLER>() << "Recv " << _istream << std::endl;
 						try {
 							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
 								k->from(_vaddr);
-								Logger(Level::COMPONENT) << "Received kernel " << *k << std::endl;
+								Logger<Level::COMPONENT>() << "Received kernel " << *k << std::endl;
 								if (k->moves_downstream()) {
 									clear_kernel_buffer(k);
 								}
 							});
 						} catch (No_principal_found<Kernel>& err) {
-							Logger(Level::HANDLER) << "No principal found for "
+							Logger<Level::HANDLER>() << "No principal found for "
 								<< int(err.kernel()->result()) << std::endl;
 							Kernel* k = err.kernel();
 							k->principal(k->parent());
@@ -556,11 +556,11 @@ namespace factory {
 				}
 				if (event.is_writing() && !event.is_closing()) {
 //					try {
-						Logger(Level::HANDLER) << "Send " << _ostream << std::endl;
+						Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
 						std::this_thread::sleep_for(std::chrono::milliseconds(100));
 						_ostream.flush<Server_socket&>(_socket);
 						if (_ostream.empty()) {
-							Logger(Level::HANDLER) << "Flushed." << std::endl;
+							Logger<Level::HANDLER>() << "Flushed." << std::endl;
 //							clear_kernel_buffer();
 							_ostream.reset();
 						} else {
@@ -568,13 +568,13 @@ namespace factory {
 							overflow = true;
 						}
 //					} catch (Connection_error& err) {
-//						Logger(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
+//						Logger<Level::HANDLER>() << Error_message(err, __FILE__, __LINE__, __func__);
 //					} catch (Error& err) {
-//						Logger(Level::HANDLER) << Error_message(err, __FILE__, __LINE__, __func__);
+//						Logger<Level::HANDLER>() << Error_message(err, __FILE__, __LINE__, __func__);
 //					} catch (std::exception& err) {
-//						Logger(Level::HANDLER) << String_message(err, __FILE__, __LINE__, __func__);
+//						Logger<Level::HANDLER>() << String_message(err, __FILE__, __LINE__, __func__);
 //					} catch (...) {
-//						Logger(Level::HANDLER) << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+//						Logger<Level::HANDLER>() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
 //					}
 				}
 				on_overflow(overflow);
@@ -617,7 +617,7 @@ namespace factory {
 
 //			void clear_kernel_buffer() {
 //				while (!_buffer.empty()) {
-//					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
+//					Logger<Level::HANDLER>() << "sent kernel " << *_buffer.front().second << std::endl;;
 //					delete _buffer.front().second;
 //					_buffer.pop();
 //				}
@@ -625,7 +625,7 @@ namespace factory {
 //
 //			void clear_kernel_buffer(Pos global_read_pos) {
 //				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
-//					Logger(Level::HANDLER) << "sent kernel " << *_buffer.front().second << std::endl;;
+//					Logger<Level::HANDLER>() << "sent kernel " << *_buffer.front().second << std::endl;;
 //					delete _buffer.front().second;
 //					_buffer.pop();
 //				}
@@ -636,11 +636,11 @@ namespace factory {
 					return *rhs == *k;
 				});
 				if (pos != _buffer.end()) {
-					Logger(Level::HANDLER) << "Kernel erased " << k->id() << std::endl;
+					Logger<Level::HANDLER>() << "Kernel erased " << k->id() << std::endl;
 					_buffer.erase(pos);
-					Logger(Level::COMPONENT) << "Buffer size = " << _buffer.size() << std::endl;
+					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {
-					Logger(Level::HANDLER) << "Kernel not found " << k->id() << std::endl;
+					Logger<Level::HANDLER>() << "Kernel not found " << k->id() << std::endl;
 				}
 			}
 			

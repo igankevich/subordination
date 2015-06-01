@@ -160,7 +160,7 @@ namespace factory {
 				}
 				Id parent_id;
 				in >> parent_id;
-				Logger(Level::KERNEL) << "READING PARENT " << parent_id << std::endl;
+				Logger<Level::KERNEL>() << "READING PARENT " << parent_id << std::endl;
 				if (parent_id != ROOT_ID) {
 					_parent = parent_id;
 				}
@@ -170,7 +170,7 @@ namespace factory {
 				}
 				Id principal_id;
 				in >> principal_id;
-				Logger(Level::KERNEL) << "READING PRINCIPAL " << principal_id << std::endl;
+				Logger<Level::KERNEL>() << "READING PRINCIPAL " << principal_id << std::endl;
 				_principal = principal_id;
 			}
 
@@ -209,26 +209,26 @@ namespace factory {
 					case Result::NO_PRINCIPAL_FOUND:
 					case Result::USER_ERROR:
 					default:
-						Logger(Level::KERNEL) << "Result is defined" << std::endl;
+						Logger<Level::KERNEL>() << "Result is defined" << std::endl;
 						if (!_principal) {
-							Logger(Level::KERNEL) << "Principal is null" << std::endl;
+							Logger<Level::KERNEL>() << "Principal is null" << std::endl;
 							if (!_parent) {
 								delete this;
-								Logger(Level::KERNEL) << "SHUTDOWN" << std::endl;
+								Logger<Level::KERNEL>() << "SHUTDOWN" << std::endl;
 								factory_stop();
 							}
 						} else {
-							Logger(Level::KERNEL) << "Principal is not null" << std::endl;
+							Logger<Level::KERNEL>() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
-								Logger(Level::KERNEL) << "Principal react" << std::endl;
+								Logger<Level::KERNEL>() << "Principal react" << std::endl;
 								_principal->react(this);
 							} else {
-								Logger(Level::KERNEL) << "Principal error" << std::endl;
+								Logger<Level::KERNEL>() << "Principal error" << std::endl;
 								_principal->error(this);
 							}
 							if (del) {
-								Logger(Level::KERNEL) << "Deleting kernel" << std::endl;
+								Logger<Level::KERNEL>() << "Deleting kernel" << std::endl;
 								delete this;
 							}
 						}
@@ -292,16 +292,16 @@ namespace factory {
 				uint16_t r;
 				in >> r;
 				this->result(Result(r));
-				Logger(Level::KERNEL) << "Reading result = " << r << std::endl;
+				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
 				in >> _id;
 			}
 
 			virtual void write(Foreign_stream& out) {
 				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
 				uint16_t r = static_cast<uint16_t>(this->result());
-				Logger(Level::KERNEL) << "Writing result = " << r << std::endl;
+				Logger<Level::KERNEL>() << "Writing result = " << r << std::endl;
 				out << r;
-				Logger(Level::KERNEL) << "Writing id = " << _id << std::endl;
+				Logger<Level::KERNEL>() << "Writing id = " << _id << std::endl;
 				out << _id;
 			}
 

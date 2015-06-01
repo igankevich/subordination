@@ -45,10 +45,10 @@ namespace {
 //			tmp << threads;
 //			if (!(tmp >> t) || t < 0 || t > total_cpus()) {
 //				t = total_cpus();
-//				Logger(Level::SERVER) << "Bad NUM_THREADS value: " << threads << std::endl;
+//				Logger<Level::SERVER>() << "Bad NUM_THREADS value: " << threads << std::endl;
 //			}
 //		}
-////		Logger(Level::SERVER) << "threads = " <<  t << std::endl;
+////		Logger<Level::SERVER>() << "threads = " <<  t << std::endl;
 //		return t;
 //	}
 //
@@ -60,7 +60,7 @@ namespace {
 //			tmp << threads;
 //			if (!(tmp >> t) || t < 0) {
 //				t = 1;
-//				Logger(Level::SERVER) << "Bad NUM_VTHREADS value: " << threads << std::endl;
+//				Logger<Level::SERVER>() << "Bad NUM_VTHREADS value: " << threads << std::endl;
 //			}
 //		}
 //		return t;
@@ -145,7 +145,7 @@ namespace factory {
 			}
 		
 			void wait_impl() {
-				Logger(Level::SERVER) << "Iserver::wait()" << std::endl;
+				Logger<Level::SERVER>() << "Iserver::wait()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -153,7 +153,7 @@ namespace factory {
 			}
 		
 			void stop_impl() {
-				Logger(Level::SERVER) << "Iserver::stop()" << std::endl;
+				Logger<Level::SERVER>() << "Iserver::stop()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -174,7 +174,7 @@ namespace factory {
 			}
 			
 			void start() {
-				Logger(Level::SERVER) << "Iserver::start()" << std::endl;
+				Logger<Level::SERVER>() << "Iserver::start()" << std::endl;
 				std::for_each(
 					_upstream.begin(),
 					_upstream.end(),
@@ -218,19 +218,19 @@ namespace factory {
 			}
 
 			void wait_impl() {
-				Logger(Level::SERVER) << "Rserver::wait()" << std::endl;
+				Logger<Level::SERVER>() << "Rserver::wait()" << std::endl;
 				if (_thread.joinable()) {
 					_thread.join();
 				}
 			}
 
 			void stop_impl() {
-				Logger(Level::SERVER) << "Rserver::stop_impl()" << std::endl;
+				Logger<Level::SERVER>() << "Rserver::stop_impl()" << std::endl;
 				_semaphore.notify_all();
 			}
 
 			void start() {
-				Logger(Level::SERVER) << "Rserver::start()" << std::endl;
+				Logger<Level::SERVER>() << "Rserver::start()" << std::endl;
 				_thread = std::thread([this] { this->serve(); });
 			}
 
@@ -304,7 +304,7 @@ namespace factory {
 		template<template<class X> class Mobile, class Type>
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
 			void act() {
-				Logger(Level::COMPONENT) << "broadcasting shutdown message" << std::endl;
+				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
 				components::factory_stop();
 			}
 //			void react() {}

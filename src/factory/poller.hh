@@ -93,12 +93,12 @@ namespace factory {
 		bool stopping() const { return _state == State::STOPPING; }
 
 		void stop() {
-			Logger(Level::COMPONENT) << "Poller::stop()" << std::endl;
+			Logger<Level::COMPONENT>() << "Poller::stop()" << std::endl;
 			::close(_mgmt_pipe.write_end());
 		}
 	
 		void add(Event rhs) {
-			Logger(Level::COMPONENT) << "Poller::add(" << rhs.fd() << ", " << rhs << ")" << std::endl;
+			Logger<Level::COMPONENT>() << "Poller::add(" << rhs.fd() << ", " << rhs << ")" << std::endl;
 			_events.push_back(rhs);
 		}
 
@@ -110,7 +110,7 @@ namespace factory {
 		void ignore(int fd) {
 			auto pos = std::find(_events.begin(), _events.end(), Event(fd));
 			if (pos != _events.end()) {
-				Logger(Level::COMPONENT) << "ignoring fd=" << pos->fd() << std::endl;
+				Logger<Level::COMPONENT>() << "ignoring fd=" << pos->fd() << std::endl;
 				pos->fd(-1);
 			}
 		}
@@ -146,7 +146,7 @@ namespace factory {
 		void wait(Callback callback) {
 
 			do {
-				Logger(Level::COMPONENT) << "poll()" << std::endl;
+				Logger<Level::COMPONENT>() << "poll()" << std::endl;
 				check_poll("poll()", ::poll(_events.data(), _events.size(), -1));
 			} while (errno == EINTR);
 
@@ -162,7 +162,7 @@ namespace factory {
 				if (e.events() == 0) continue;
 				if (e.fd() == _mgmt_pipe.read_end()) {
 					if (e.is_closing()) {
-						Logger(Level::COMPONENT) << "Stopping poller" << std::endl;
+						Logger<Level::COMPONENT>() << "Stopping poller" << std::endl;
 						_state = State::STOPPED;
 					}
 					if (e.is_reading()) {

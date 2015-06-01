@@ -99,7 +99,7 @@ namespace factory {
 			Nbytes bytes_read;
 			T* chunk = _chunks.back();
 			while ((bytes_read = source.read(chunk + _write_pos, _chunk_size - _write_pos)) > 0) {
-				Logger(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
+				Logger<Level::COMPONENT>() << "Bytes read = " << bytes_read << std::endl;
 				_write_pos += bytes_read;
 				_global_write_pos += bytes_read;
 				if (_write_pos == _chunk_size) {
@@ -108,7 +108,7 @@ namespace factory {
 					_write_pos = 0;
 				}
 			}
-			Logger(Level::COMPONENT) << "Bytes read = " << bytes_read << std::endl;
+			Logger<Level::COMPONENT>() << "Bytes read = " << bytes_read << std::endl;
 			return bytes_read;
 		}
 
@@ -120,7 +120,7 @@ namespace factory {
 			while (n = 0, m = (last_chunk() ? _write_pos : _chunk_size), !_chunks.empty()
 				&& (n = sink.write(chunk + _read_pos, m - _read_pos)) > 0)
 			{
-				Logger(Level::COMPONENT) << "Bytes written = " << n << std::endl;
+				Logger<Level::COMPONENT>() << "Bytes written = " << n << std::endl;
 				_read_pos += n;
 				_global_read_pos += n;
 				if (_read_pos == _chunk_size) {
@@ -131,10 +131,10 @@ namespace factory {
 			}
 //			if (n == -1) {
 //				if (errno == EPIPE) {
-//					Logger(Level::COMPONENT) << "EPIPE fd=" << (int)sink << std::endl;
+//					Logger<Level::COMPONENT>() << "EPIPE fd=" << (int)sink << std::endl;
 //				}
 //			}
-			Logger(Level::COMPONENT) << "Chunks = " << _chunks.size() << std::endl;
+			Logger<Level::COMPONENT>() << "Chunks = " << _chunks.size() << std::endl;
 			return n;
 		}
 
@@ -438,10 +438,10 @@ namespace factory {
 			size_t total = read_pos;
 			while ((bytes_written = sink.write(read_begin(), write_pos-read_pos)) > 0) {
 				read_pos += bytes_written;
-				Logger(Level::COMPONENT) << "bytes written = " << bytes_written << std::endl;
+				Logger<Level::COMPONENT>() << "bytes written = " << bytes_written << std::endl;
 			}
 			total = read_pos - total;
-			Logger(Level::COMPONENT)
+			Logger<Level::COMPONENT>()
 				<< "readpos = " << read_pos
 				<< ", writepos = " << write_pos
 				<< std::endl;
