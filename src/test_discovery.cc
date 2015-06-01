@@ -159,11 +159,11 @@ struct Compare_distance {
 	}
 
 private:
-	static uint32_t abs_sub(uint32_t a, uint32_t b) {
+	constexpr static uint32_t abs_sub(uint32_t a, uint32_t b) {
 		return a < b ? b-a : a-b;
 	}
 	
-	static uint32_t lvl_sub(uint32_t a, uint32_t b) {
+	constexpr static uint32_t lvl_sub(uint32_t a, uint32_t b) {
 		return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
 	}
 
