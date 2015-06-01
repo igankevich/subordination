@@ -144,7 +144,7 @@ struct Compare_distance {
 	explicit Compare_distance(Endpoint from): _from(from) {}
 
 	bool operator()(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) const {
-		Logger<Level::DISCOVERY>() << "hoho" << std::endl;
+//		Logger<Level::DISCOVERY>() << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
 //			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);

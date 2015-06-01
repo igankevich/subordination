@@ -88,20 +88,19 @@ namespace factory {
 
 	struct No_logger {
 
-		No_logger() { _buf.setstate(std::ios::failbit); }
+		constexpr No_logger() {}
 
 		No_logger(const No_logger&) = delete;
 		No_logger& operator=(const No_logger&) = delete;
 	
 		template<class T>
-		No_logger& operator<<(const T& rhs) { return *this; }
-		No_logger& operator<<(std::ostream& ( *pf )(std::ostream&)) { return *this; }
+		constexpr const No_logger& operator<<(const T&) const { return *this; }
+		constexpr const No_logger& operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
 
-		std::ostream& ostream() { return _buf; }
-	
-	private:
-		
-		std::stringstream _buf;
+		std::ostream& ostream() const {
+			static std::stringstream tmp;
+			return tmp;
+		}
 	};
 
 	template<> struct Logger<Level::KERNEL    >: public No_logger {};
