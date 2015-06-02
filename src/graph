@@ -16,13 +16,14 @@ cat << EOF
 	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
 	<script src="../js/lib/jquery-1.10.2.js"></script>
 	<script src="../js/lib/jquery-ui.js"></script>
+	<script src="../js/lib/raphael-min.js"></script>
 	<script src="../js/lib/springy.js"></script>
-	<script src="../js/lib/springyui.js"></script>
+	<script src="../js/lib/springy-raphael.js"></script>
 	<style>
 	body {
 		margin: 0px;
 	}
-	canvas {
+	#springydemo {
 		background: #eee;
 		display: block;
 		position: absolute
@@ -33,6 +34,7 @@ cat << EOF
 		left: 10%;
 		top: 40px;
 		width: 80%;
+		z-index: 10000;
 	}
 	.ui-slider-range {
 		background: #404040;
@@ -49,6 +51,13 @@ cat << EOF
 		display: inline-block;
 		width: 240px;
 		padding-bottom: 1em;
+	}
+	#download {
+		display: inline-block;
+		float: right;
+	}
+	#springydemo {
+		position: fixed;
 	}
 	</style>
 </head>
@@ -109,9 +118,9 @@ function changeLogLine() {
 }
 
 function resizeCanvas() {
-	var canvas = document.getElementById('springydemo');
-	canvas.width = window.innerWidth
-	canvas.height = window.innerHeight
+	console.log('321')
+	$('#springydemo').width(window.innerWidth)
+	$('#springydemo').height(window.innerHeight)
 }
 
 $(window).resize(function () {
@@ -120,10 +129,13 @@ $(window).resize(function () {
 
 $(document).ready(function(){
 	showLineNo()
-	resizeCanvas()
-	var springy = $('#springydemo').springy({
+	$('#springydemo').springyRaphael({
 		graph: graph
 	});
+	$(window).resize()
+	$('#downloadLink').click(function () {
+		$('#downloadLink').attr('href', downloadSVG())
+	})
 	$('#logSlider').slider({
 		value: 0,
 		max: logline-1,
@@ -139,9 +151,12 @@ $(document).ready(function(){
 			<span id="time">1</span><br/>
 			<span id="lineno">1</span>
 		</div>
+		<div id="download">
+			<a id="downloadLink" href="#" download="graph.svg" href-lang="image/svg+xml">Download SVG</a>
+		</div>
 		<div id="logSlider"></div>
 	</div>
-	<canvas id="springydemo" width="800" height="600" />
+	<div id="springydemo" width="800" height="600"></div>
 </body>
 </html>
 EOF

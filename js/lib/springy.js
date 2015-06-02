@@ -82,7 +82,10 @@
 
 		this.nodeSet[node.id] = node;
 
-		this.notify();
+		this.notify({
+			action: 'addNode',
+			target: node
+		});
 		return node;
 	};
 
@@ -122,7 +125,10 @@
 			this.adjacency[edge.source.id][edge.target.id].push(edge);
 		}
 
-		this.notify();
+		this.notify({
+			action: 'addEdge',
+			target: edge
+		});
 		return edge;
 	};
 
@@ -228,7 +234,10 @@
 			}
 		}, this);
 
-		this.notify();
+		this.notify({
+			action: 'detachNode',
+			target: node
+		});
 	};
 
 	// remove a node and it's associated edges from the graph
@@ -261,7 +270,10 @@
 			}
 		}
 
-		this.notify();
+		this.notify({
+			action: 'removeEdge',
+			target: edge
+		});
 	};
 
 	/* Merge a list of nodes and edges into the current graph. eg.
@@ -319,9 +331,9 @@
 		this.eventListeners.push(obj);
 	};
 
-	Graph.prototype.notify = function() {
+	Graph.prototype.notify = function(ev) {
 		this.eventListeners.forEach(function(obj){
-			obj.graphChanged();
+			obj.graphChanged(ev);
 		});
 	};
 
