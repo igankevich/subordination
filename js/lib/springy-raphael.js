@@ -164,6 +164,54 @@ jQuery.fn.springyRaphael = function(params) {
 		return new Springy.Vector(sx, sy);
 	};
 
+	fromScreen = function(s) {
+		var size = currentBB.topright.subtract(currentBB.bottomleft);
+		var px = (s.x / r.width) * size.x + currentBB.bottomleft.x;
+		var py = (s.y / r.height) * size.y + currentBB.bottomleft.y;
+		return new Springy.Vector(px, py);
+	};
+
+	// half-assed drag and drop
+	var selected = null;
+	var nearest = null;
+	var dragged = null;
+	var nodeSelected = params.nodeSelected || null;
+	var renderer
+
+	jQuery(cnt).mousedown(function(e) {
+		var pos = jQuery(this).offset();
+		var p = fromScreen({x: e.pageX - pos.left, y: e.pageY - pos.top});
+		selected = nearest = dragged = layout.nearest(p);
+		console.log(e)
+
+		if (selected.node !== null) {
+			dragged.point.m = 10000.0;
+
+			if (nodeSelected) {
+				nodeSelected(selected.node);
+			}
+		}
+
+		renderer.start();
+	});
+
+	jQuery(cnt).mousemove(function(e) {
+		var pos = jQuery(this).offset();
+		var p = fromScreen({x: e.pageX - pos.left, y: e.pageY - pos.top});
+		nearest = layout.nearest(p);
+
+		if (dragged !== null && dragged.node !== null) {
+			dragged.point.p.x = p.x;
+			dragged.point.p.y = p.y;
+		}
+
+		renderer.start();
+	});
+
+	jQuery(window).bind('mouseup',function(e) {
+		dragged = null;
+	});
+
 	graph.addGraphListener({
 		graphChanged: function (ev) {
 			switch (ev.action) {
@@ -184,7 +232,7 @@ jQuery.fn.springyRaphael = function(params) {
 		}
 	});
 
-    var renderer = new Springy.Renderer(layout,
+    renderer = new Springy.Renderer(layout,
         function clear() {
         },
         function drawEdge(edge, p1, p2) {
