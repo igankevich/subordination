@@ -22,6 +22,25 @@ cat << EOF
 	<style>
 	body {
 		margin: 0px;
+	    -webkit-touch-callout: none;
+	    -webkit-user-select: none;
+	    -khtml-user-select: none;
+	    -moz-user-select: none;
+	    -ms-user-select: none;
+	    user-select: none;
+	}
+	a {
+	    color: #2a7ae2;
+	    text-decoration: none;
+	}
+	
+	a:visited {
+	    color: #2a7ae2;
+	}
+	
+	a:hover {
+	    color: #2a7ae2;
+	    text-decoration: underline;
 	}
 	#springydemo {
 		background: #eee;
