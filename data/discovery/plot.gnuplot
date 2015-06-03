@@ -23,6 +23,5 @@ set xrange [100:400]
 set yrange [0:4]
 set xtics 100,100
 set ytics 0,1
-#plot 'discovery.log.tree'   with lines ls 1 title 'IP mapping'
 
 plot 'scalability.csv' using 1:($2*10**-9) with lines ls 1 notitle
