@@ -298,9 +298,10 @@ namespace factory {
 			void erase(int fd) {
 				auto r = _servers.find(fd);
 				if (r == _servers.end()) {
-					std::stringstream msg;
-					msg << "Can not find server to erase: fd=" << fd;
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+					return;
+//					std::stringstream msg;
+//					msg << "Can not find server to erase: fd=" << fd;
+//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 				Remote_server* s = r->second;
 				Logger<Level::SERVER>() << "Removing server " << *s << std::endl;

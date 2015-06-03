@@ -6,6 +6,9 @@
 namespace {
 	size_t total_cpus() { return static_cast<size_t>(::sysconf(_SC_NPROCESSORS_ONLN)); }
 //	int thread_affinity() { return ::sched_getcpu(); }
+#ifdef FACTORY_DISABLE_CPU_BINDING
+	void thread_affinity(size_t) {}
+#else
 	void thread_affinity(size_t cpu) {
 		size_t num_cpus = total_cpus();
 		::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
@@ -14,6 +17,7 @@ namespace {
 		::sched_setaffinity(0, cpuset_size, cpuset);
 		CPU_FREE(cpuset);
 	}
+#endif
 }
 #endif
 

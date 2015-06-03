@@ -278,6 +278,7 @@ struct Peers {
 				<< "undo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ")"
 				<< "}}"
+				<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
 				<< std::endl;
 		}
 		_subordinates.insert(addr);
@@ -295,6 +296,7 @@ struct Peers {
 				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
 				<< "g." << Node(addr) << ',' << "g." << Node(_this_addr) << ')'
 				<< "}}"
+				<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
 				<< std::endl;
 		}
 		_subordinates.erase(addr);
@@ -683,6 +685,15 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	{}
 
 	void act() {
+		Time start_time = this_process::getenv("START_TIME", Time(0));
+		if (start_time > 0) {
+			using namespace std::chrono;
+			nanoseconds now = duration_cast<nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
+			nanoseconds amount = nanoseconds(start_time) - now;
+			std::clog << "Sleeping for " << amount.count() << "ns" << std::endl;
+			std::this_thread::sleep_for(amount);
+			prog_start = current_time_nano();
+		}
 		Logger<Level::GRAPH>()
 			<< "startTime.push("
 			<< current_time_nano() - prog_start
@@ -871,6 +882,7 @@ void write_graph_nodes() {
 			<< "log[logline++] = {"
 			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 			<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
+			<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
 			<< std::endl;
 	}
 }
@@ -892,7 +904,6 @@ struct App {
 				Process_group processes;
 				int start_id = 1000;
 				for (Endpoint endpoint : all_peers) {
-//					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						this_process::env("START_ID", start_id);
 						return this_process::execute(argv[0],

@@ -100,7 +100,8 @@ var startTime = []
 // GENERATED CODE
 EOF
 
-$cmd 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
+#$cmd 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
+$cmd
 
 # footer
 cat << 'EOF'
