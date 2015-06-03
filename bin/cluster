@@ -9,6 +9,11 @@ while [ -n "$1" ]; do
 			cluster=$1
 			shift
 			;;
+		--bridge|-b)
+			shift
+			bridge=$1
+			shift
+			;;
 		--nodes|-n)
 			shift
 			nodes=$1
@@ -31,18 +36,25 @@ while [ -n "$1" ]; do
 	esac
 done
 
+node0=$(echo $nodes | sed -rne 's/(.*)-(.*)/\1/p')
+node1=$(echo $nodes | sed -rne 's/(.*)-(.*)/\2/p')
+
+echo "Nodes = $node0-$node1"
+#exit 0
+
 usage() {
 	echo "USAGE: $(basename $0) -c CLUSTER -n NODES -- APP"
 }
 
 del_cluster() {
-	local nodes=$(ip netns list | grep $cluster | wc -l)
-	for n in $(seq 1 $nodes); do
-		ip netns delete $cluster$n
+	for n in $(ip netns list | grep $cluster); do
+		ip netns delete $n
 	done
-	if ip link list | grep $cluster >/dev/null; then
-		ip link set dev $cluster down
-		brctl delbr $cluster
+	if [ "$bridge" != "$cluster" ]; then
+		if ip link list | grep "$cluster:" >/dev/null; then
+			ip link set dev $cluster down
+			brctl delbr $cluster
+		fi
 	fi
 }
 
@@ -56,29 +68,39 @@ if [ -z "$user" ]; then
 fi
 
 del_cluster
-for n in $(seq 1 $nodes); do
+for n in $(seq $node0 $node1); do
 	name=$cluster$n
+	x0=$(expr $n / 254)
+	x1=$(expr $n % 254)
 	ip netns add $name
 	ip netns exec $name ip link set dev lo up
 	ip link add v$cluster$n type veth peer name veth0
 	ip link set veth0 netns $name
-	ip netns exec $name ifconfig veth0 10.1.1.$n/24 up
-	ifconfig v$cluster$n 10.1.2.$n/24 up
+	ip netns exec $name ifconfig veth0 10.0.$x0.$x1/16 up
+	ifconfig v$cluster$n 10.1.$x0.$x1/16 up
 done
 
-brctl addbr $cluster
-
-for n in $(seq 1 $nodes); do
-	brctl addif $cluster v$cluster$n
-done
-ip link set dev $cluster up
+if [ -z "$bridge" ]; then
+	# create temporary bridge
+	brctl addbr $cluster
+	for n in $(seq $node0 $node1); do
+		brctl addif $cluster v$cluster$n
+	done
+	ip link set dev $cluster up
+else
+	# use existing bridge
+	for n in $(seq $node0 $node1); do
+		brctl addif $bridge v$cluster$n
+	done
+fi
 
 script=$(mktemp)
 cat >$script << EOF
-sudo -u $user $app >/tmp/$cluster\$1.out 2>&1
+#sudo -u $user $app >/tmp/$cluster\$1.out 2>&1
+$app >/tmp/$cluster\$1.out 2>&1
 EOF
 chmod +x $script
-for n in $(seq 1 $nodes); do
+for n in $(seq $node0 $node1); do
 	nohup ip netns exec $cluster$n $script $n >/dev/null 2>&1 &
 done
 wait
