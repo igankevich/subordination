@@ -19,19 +19,10 @@ set ylabel 'Time [s]'
 
 set datafile separator ','
 set output 'discovery.svg'
-set xrange [100:900]
-#set xtics 8,8,50 add ('2' 2)
-#set ytics 0,1
+set xrange [100:400]
+set yrange [0:4]
+set xtics 100,100
+set ytics 0,1
 #plot 'discovery.log.tree'   with lines ls 1 title 'IP mapping'
 
-plot \
-     'scalability.csv' using 1:($2*10**-9) with lines ls 1 title 'IP mapping',\
-
-#     'discovery.log.cache'     with lines ls 4 title 'Using cached topology', \
-
-#     'discovery.log.nocache.2' with lines smooth unique ls 2 title 'qq',\
-#reset
-#set datafile separator ','
-#plot \
-#     '< paste -d, discovery.log.nocache discovery.log.cache' \
-#	 using 1:($2/$4) with lines smooth csplines ls 1 title 'Speedup'
+plot 'scalability.csv' using 1:($2*10**-9) with lines ls 1 notitle
