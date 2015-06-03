@@ -688,7 +688,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		Time start_time = this_process::getenv("START_TIME", Time(0));
 		if (start_time > 0) {
 			using namespace std::chrono;
-			nanoseconds now = duration_cast<nanoseconds>(std::chrono::system_clock::now().time_since_epoch());
+			nanoseconds now = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
 			nanoseconds amount = nanoseconds(start_time) - now;
 			std::clog << "Sleeping for " << amount.count() << "ns" << std::endl;
 			std::this_thread::sleep_for(amount);
@@ -706,7 +706,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				if (current_time_nano() - prog_start > 30000000000L) {
+				if (current_time_nano() - prog_start > 120000000000UL) {
 					Logger<Level::DISCOVERY>() << "Hail the new king "
 						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 					__factory.stop();

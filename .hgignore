@@ -40,3 +40,4 @@ syntax: regexp
 (^|/)Makefile.in$
 (^|/)Makefile$
 (^|/)\.deps
+(^|/)nohup.out

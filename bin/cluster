@@ -71,6 +71,7 @@ brctl addbr $cluster
 for n in $(seq 1 $nodes); do
 	brctl addif $cluster v$cluster$n
 done
+ip link set dev $cluster up
 
 script=$(mktemp)
 cat >$script << EOF
@@ -82,7 +83,7 @@ for n in $(seq 1 $nodes); do
 done
 wait
 
-cat /tmp/$cluster*1.out
+cat /tmp/$cluster*.out
 rm /tmp/$cluster*.out
 rm $script
 
