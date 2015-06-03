@@ -36,6 +36,8 @@ while [ -n "$1" ]; do
 	esac
 done
 
+echo "Cluster start time: $START_TIME" 1>&2
+
 node0=$(echo $nodes | sed -rne 's/(.*)-(.*)/\1/p')
 node1=$(echo $nodes | sed -rne 's/(.*)-(.*)/\2/p')
 
@@ -49,6 +51,10 @@ usage() {
 del_cluster() {
 	for n in $(ip netns list | grep $cluster); do
 		ip netns delete $n
+	done
+	ip link list | sed -rne 's/.*(v'$cluster'[0-9]+).*/\1/p' |
+	while read line; do
+		ip link del $line 2>/dev/null;
 	done
 	if [ "$bridge" != "$cluster" ]; then
 		if ip link list | grep "$cluster:" >/dev/null; then
@@ -70,8 +76,8 @@ fi
 del_cluster
 for n in $(seq $node0 $node1); do
 	name=$cluster$n
-	x0=$(expr $n / 254)
-	x1=$(expr $n % 254)
+	x0=$(expr $n / 255)
+	x1=$(expr $n % 255)
 	ip netns add $name
 	ip netns exec $name ip link set dev lo up
 	ip link add v$cluster$n type veth peer name veth0
@@ -97,14 +103,18 @@ fi
 script=$(mktemp)
 cat >$script << EOF
 #sudo -u $user $app >/tmp/$cluster\$1.out 2>&1
+export START_ID=\$2
+export START_TIME=$START_TIME
 $app >/tmp/$cluster\$1.out 2>&1
 EOF
 chmod +x $script
 for n in $(seq $node0 $node1); do
-	nohup ip netns exec $cluster$n $script $n >/dev/null 2>&1 &
+	start_id=$(expr 1000 \* $n)
+	nohup ip netns exec $cluster$n $script $n $start_id >/dev/null 2>&1 &
 done
 wait
 
+#grep -h ' grph ' /tmp/$cluster*.out | sort -nk1 -t' ' 
 cat /tmp/$cluster*.out
 rm /tmp/$cluster*.out
 rm $script
