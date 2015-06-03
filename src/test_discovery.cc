@@ -62,7 +62,7 @@ struct Peer {
 
 	bool needs_update() const {
 		return (num_samples() < MIN_SAMPLES && num_errors() < MAX_ERRORS)
-			|| age() > MAX_AGE;
+			|| (age() > MAX_AGE && MIN_SAMPLES > 0);
 	}
 
 	bool operator<(const Peer& rhs) const {
@@ -700,13 +700,16 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			<< "*1e-6); // "
 			<< _peers.this_addr()
 			<< std::endl;
+//		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
 		run_scan();
+//		}
 	}
 
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				if (current_time_nano() - prog_start > 120000000000UL) {
+				Time wait_time = this_process::getenv("WAIT_TIME", Time(60000000000UL));
+				if (current_time_nano() - prog_start > wait_time) {
 					Logger<Level::DISCOVERY>() << "Hail the new king "
 						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 					__factory.stop();
