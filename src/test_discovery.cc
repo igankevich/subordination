@@ -683,6 +683,12 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	{}
 
 	void act() {
+		Logger<Level::GRAPH>()
+			<< "startTime.push("
+			<< current_time_nano() - prog_start
+			<< "*1e-6); // "
+			<< _peers.this_addr()
+			<< std::endl;
 		run_scan();
 	}
 

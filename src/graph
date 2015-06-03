@@ -95,6 +95,7 @@ var log = [
 var logline = 1
 var currentLine = 0
 var graph = new Springy.Graph()
+var startTime = []
 
 // GENERATED CODE
 EOF
@@ -111,6 +112,8 @@ function toPrecision(x, n) {
 }
 
 function showLineNo() {
+	var maxTime = Math.max.apply(Math, startTime);
+	$('#startTime').html('Start time: ' + toPrecision(maxTime, 2) + 'ms')
 	$('#time').html('Time: ' + toPrecision(log[currentLine].time, 2) + 'ms')
 	$('#lineno').html('Line: ' + (currentLine + 1) + '/' + log.length)
 }
@@ -167,8 +170,9 @@ $(document).ready(function(){
 
 	<div class="hud">
 		<div id="legend">
-			<span id="time">1</span><br/>
-			<span id="lineno">1</span>
+			<span id="startTime"></span><br/>
+			<span id="time"></span><br/>
+			<span id="lineno"></span>
 		</div>
 		<div id="download">
 			<a id="downloadLink" href="#" download="graph.svg" href-lang="image/svg+xml">Download SVG</a>

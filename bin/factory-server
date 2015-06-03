@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd "$(dirname $0)/.."
+echo "Serving files from $PWD"
+python -m SimpleHTTPServer 8000
