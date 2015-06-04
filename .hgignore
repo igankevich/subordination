@@ -36,6 +36,7 @@ src/test_websocket
 src/test_shmem
 src/test_timer
 src/*.html
+src/*.xml
 
 syntax: regexp
 (^|/)Makefile.in$
