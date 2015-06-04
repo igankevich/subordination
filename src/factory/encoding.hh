@@ -15,11 +15,11 @@ namespace factory {
 	   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
 	};
 
-	size_t base64_encoded_size(size_t len) {
+	constexpr size_t base64_encoded_size(size_t len) {
 		return ((len + 2) / 3) * 4;
 	}
 
-	size_t base64_max_decoded_size(size_t len) {
+	constexpr size_t base64_max_decoded_size(size_t len) {
 		return len == 0 ? 0 : ((len / 4) * 3);
 	}
 	
@@ -132,13 +132,9 @@ namespace factory {
 	
 	struct SHA1 {
 
-		SHA1() {
-			H[0] = 0x67452301;
-			H[1] = 0xEFCDAB89;
-			H[2] = 0x98BADCFE;
-			H[3] = 0x10325476;
-			H[4] = 0xC3D2E1F0;
-		}
+		constexpr SHA1():
+			H{0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0},
+			Message_Block{} {}
 	
 		template<class It>
 		void result(It output) {

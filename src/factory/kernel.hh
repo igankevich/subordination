@@ -30,8 +30,8 @@ namespace factory {
 		template<class K>
 		struct Kernel_ref {
 
-			Kernel_ref(): _kernel(nullptr), _temp(false) {}
-			Kernel_ref(K* rhs): _kernel(rhs), _temp(false) {}
+			constexpr Kernel_ref(): _kernel(nullptr), _temp(false) {}
+			constexpr Kernel_ref(K* rhs): _kernel(rhs), _temp(false) {}
 			Kernel_ref(Id rhs):
 				_kernel(rhs == ROOT_ID ? nullptr : new Transient_kernel(rhs)),
 				_temp(rhs != ROOT_ID) {}
@@ -138,7 +138,7 @@ namespace factory {
 			typedef Principal<A> This;
 			typedef Kernel_ref<This> Ref;
 
-			Principal(): _parent(nullptr), _principal(nullptr) {}
+			constexpr Principal(): _parent(nullptr), _principal(nullptr) {}
 
 			const Ref& principal() const { return _principal; }
 			Ref principal() { return _principal; }
