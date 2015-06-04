@@ -8,7 +8,7 @@ struct Sleepy_kernel: public Kernel {
 	int pos() const { return position; }
 
 	void act() {
-		std::clog << "Waking up at "
+		Logger<Level::TEST>() << "Waking up at "
 			<< current_time_nano() << ", scheduled at "
 			<< this->at().time_since_epoch().count() << std::endl;
 		commit(the_server());
@@ -53,12 +53,12 @@ private:
 
 struct App {
 	int run(int argc, char* argv[]) {
-		std::clog << "sizeof(time_point) == " << sizeof(Kernel::Clock::time_point) << std::endl;
-		std::clog << "sizeof(duration) == " << sizeof(Kernel::Clock::duration) << std::endl;
+		Logger<Level::TEST>() << "sizeof(time_point) == " << sizeof(Kernel::Clock::time_point) << std::endl;
+		Logger<Level::TEST>() << "sizeof(duration) == " << sizeof(Kernel::Clock::duration) << std::endl;
 		int retval = 0;
 		try {
 			the_server()->add_cpu(0);
-			std::clog << "Starting at " << current_time_nano() << std::endl;
+			Logger<Level::TEST>() << "Starting at " << current_time_nano() << std::endl;
 			__factory.start();
 			the_server()->send(new Main);
 			__factory.wait();

@@ -27,7 +27,7 @@ struct Datum {
 		rnd(u); rnd(static_cast<float&>(v)); rnd(static_cast<double&>(w));
 	}
 
-	Datum(const Datum& rhs):
+	constexpr Datum(const Datum& rhs):
 		x(rhs.x), y(rhs.y), z(rhs.z),
 		u(rhs.u), v(rhs.v), w(rhs.w)
 	{}
@@ -62,7 +62,7 @@ struct Datum {
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	static size_t real_size() {
+	static constexpr size_t real_size() {
 		return
 			sizeof(x) + sizeof(y) + sizeof(z) +
 			sizeof(u) + sizeof(v) + sizeof(w);

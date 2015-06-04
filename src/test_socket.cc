@@ -68,8 +68,6 @@ struct Sender: public Identifiable<Kernel> {
 
 	void react(Kernel* child) {
 
-		std::clog << "Sender::react()" << std::endl;
-
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 
