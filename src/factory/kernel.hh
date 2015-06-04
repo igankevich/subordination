@@ -5,7 +5,11 @@ namespace factory {
 
 		struct Basic_kernel {
 
-			Basic_kernel(): _result(Result::UNDEFINED) {}
+			typedef std::chrono::steady_clock Clock;
+			typedef Clock::time_point Time_point;
+			typedef Clock::duration Duration;
+
+			constexpr Basic_kernel() {}
 			virtual ~Basic_kernel() {}
 
 			virtual void act() {}
@@ -13,8 +17,14 @@ namespace factory {
 			Result result() const { return _result; }
 			void result(Result rhs) { _result = rhs; }
 
+			Time_point at() const { return _at; }
+			void at(Time_point t)  { _at = t; }
+			void after(Duration delay) { _at = Clock::now() + delay; }
+			bool timed() const { return _at != Time_point(Duration::zero()); }
+
 		private:
-			Result _result;
+			Result _result = Result::UNDEFINED;
+			Time_point _at = Time_point(Duration::zero());
 		};
 
 		template<class K>

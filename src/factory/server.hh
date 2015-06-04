@@ -283,6 +283,115 @@ namespace factory {
 			std::condition_variable _semaphore;
 		};
 
+		template<class Server>
+		struct Tserver: public Server_link<Tserver<Server>, Server> {
+
+			typedef Server Srv;
+			typedef typename Server::Kernel Kernel;
+			typedef Tserver<Server> This;
+
+			struct Compare_time {
+				bool operator()(const Kernel* lhs, const Kernel* rhs) const {
+					return (lhs->timed() && !rhs->timed()) || lhs->at() > rhs->at();
+				}
+			};
+
+			typedef std::priority_queue<Kernel*, std::vector<Kernel*>, Compare_time> Pool;
+
+			Tserver():
+				_pool(),
+				_cpu(0),
+				_thread(),
+				_mutex(),
+				_semaphore()
+			{}
+
+			virtual ~Tserver() {
+				std::unique_lock<std::mutex> lock(_mutex);
+				while (!_pool.empty()) {
+					Kernel* kernel = _pool.top();
+					_pool.pop();
+					delete kernel;
+				}
+			}
+
+			void add() {}
+
+			void send(Kernel* kernel) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				_pool.push(kernel);
+				_semaphore.notify_one();
+			}
+
+			void wait_impl() {
+				Logger<Level::SERVER>() << "Tserver::wait()" << std::endl;
+				if (_thread.joinable()) {
+					_thread.join();
+				}
+			}
+
+			void stop_impl() {
+				Logger<Level::SERVER>() << "Tserver::stop_impl()" << std::endl;
+				_semaphore.notify_all();
+			}
+
+			void start() {
+				Logger<Level::SERVER>() << "Tserver::start()" << std::endl;
+				_thread = std::thread([this] { this->serve(); });
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const This* rhs) {
+				return operator<<(out, *rhs);
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+				return out << "rserver " << rhs._cpu;
+			}
+
+			void affinity(size_t cpu) { _cpu = cpu; }
+
+		protected:
+
+			void serve() {
+				thread_affinity(_cpu);
+				while (!this->stopped()) {
+					if (!_pool.empty()) {
+						std::unique_lock<std::mutex> lock(_mutex);
+						Kernel* kernel = _pool.top();
+						bool run = true;
+						if (kernel->at() > Kernel::Clock::now() && kernel->timed()) {
+							using namespace std::chrono;
+							run = _semaphore.wait_until(lock, kernel->at(),
+								[this] { return this->stopped(); });
+						}
+						if (run) {
+							_pool.pop();
+							lock.unlock();
+							factory_send(kernel);
+						}
+					} else {
+						wait_for_a_kernel();
+					}
+				}
+			}
+
+		private:
+
+			void wait_for_a_kernel() {
+				std::unique_lock<std::mutex> lock(_mutex);
+				_semaphore.wait(lock, [this] {
+					return !_pool.empty() || this->stopped();
+				});
+			}
+
+			Pool _pool;
+			size_t _cpu;
+		
+			std::thread _thread;
+			std::mutex _mutex;
+			std::condition_variable _semaphore;
+		};
+
 //		template<template<class A> class Pool, class Server>
 //		struct App_server: public Server_link<App_server<Pool, Server>, Server> {
 //
@@ -325,6 +434,7 @@ namespace factory {
 			class Local_server,
 			class Remote_server,
 			class External_server,
+			class Timer_server,
 			class Repository_stack,
 			class Shutdown
 		>
@@ -334,6 +444,7 @@ namespace factory {
 				_local_server(),
 				_remote_server(),
 				_ext_server(),
+				_timer_server(),
 				_repository()
 			{
 				init_signal_handlers();
@@ -345,6 +456,7 @@ namespace factory {
 				_local_server.start();
 				_remote_server.start();
 				_ext_server.start();
+				_timer_server.start();
 			}
 
 			void stop() {
@@ -352,17 +464,20 @@ namespace factory {
 				_remote_server.send(new Shutdown);
 				_remote_server.stop();
 				_ext_server.stop();
+				_timer_server.stop();
 			}
 
 			void wait() {
 				_local_server.wait();
 				_remote_server.wait();
 				_ext_server.wait();
+				_timer_server.wait();
 			}
 
 			Local_server* local_server() { return &_local_server; }
 			Remote_server* remote_server() { return &_remote_server; }
 			External_server* ext_server() { return &_ext_server; }
+			Timer_server* timer_server() { return &_timer_server; }
 			Repository_stack* repository() { return &_repository; }
 
 		private:
@@ -420,13 +535,14 @@ namespace factory {
 			Local_server _local_server;
 			Remote_server _remote_server;
 			External_server _ext_server;
+			Timer_server _timer_server;
 			Repository_stack _repository;
 
 			static Basic_factory* _ptr_for_sighandler;
 		};
 
-		template<class A, class B, class C, class D, class E>
-		Basic_factory<A,B,C,D,E>* Basic_factory<A,B,C,D,E>::_ptr_for_sighandler = nullptr;
+		template<class A, class B, class C, class D, class E, class F>
+		Basic_factory<A,B,C,D,E,F>* Basic_factory<A,B,C,D,E,F>::_ptr_for_sighandler = nullptr;
 
 	}
 

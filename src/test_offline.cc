@@ -19,7 +19,7 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
-		Logger<Level::COMPONENT>() log;
+		Logger<Level::COMPONENT> log;
 		log << "kernel count = " << shutdown_counter << std::endl;
 		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
 			*(reinterpret_cast<volatile int*>(0)) = 1;

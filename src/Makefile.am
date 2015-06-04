@@ -17,7 +17,8 @@ TESTS = \
 	test_offline \
 	test_spinlock \
 	test_endpoint \
-	test_encoding
+	test_encoding \
+	test_timer
 
 check_PROGRAMS = \
 	test_buffer \
@@ -29,7 +30,8 @@ check_PROGRAMS = \
 	test_endpoint \
 	test_encoding \
 	test_websocket \
-	test_shmem
+	test_shmem \
+	test_timer
 
 CODE_COVERAGE_LCOV_OPTIONS = --checksum --rc lcov_branch_coverage=1
 CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
