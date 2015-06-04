@@ -298,17 +298,19 @@ namespace factory {
 			Mobile(): _src(), _dst() {}
 
 			virtual void read(Foreign_stream& in) { 
-				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
-				uint16_t r;
+				typedef std::underlying_type<Result>::type Raw_result;
+//				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
+				Raw_result r;
 				in >> r;
-				this->result(Result(r));
+				this->result(static_cast<Result>(r));
 				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
 				in >> _id;
 			}
 
 			virtual void write(Foreign_stream& out) {
-				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
-				uint16_t r = static_cast<uint16_t>(this->result());
+				typedef std::underlying_type<Result>::type Raw_result;
+//				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
+				Raw_result r = static_cast<Raw_result>(this->result());
 				Logger<Level::KERNEL>() << "Writing result = " << r << std::endl;
 				out << r;
 				Logger<Level::KERNEL>() << "Writing id = " << _id << std::endl;
