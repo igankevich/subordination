@@ -4,6 +4,7 @@ namespace factory {
 	struct Integer {
 		typedef uint8_t value[bytes];
 #if __BYTE_ORDER == __LITTLE_ENDIAN
+// TODO: is ``reverse'' needed here?
 		static void to_network_format(value& val) { std::reverse(val, val + bytes); }
 		static void to_host_format(value& val) { std::reverse(val, val + bytes); }
 #else
@@ -41,8 +42,8 @@ namespace factory {
 
 		typedef Integer<sizeof(T)> Int;
 
-		Bytes() {}
-		Bytes(T v): val(v) {}
+		constexpr Bytes() {}
+		constexpr Bytes(T v): val(v) {}
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }
 

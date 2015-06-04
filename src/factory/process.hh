@@ -65,7 +65,7 @@ namespace factory {
 
 	struct Process {
 
-		Process() {}
+		constexpr Process() {}
 
 		template<class F>
 		explicit Process(F f) { run(f); }
@@ -119,8 +119,6 @@ namespace factory {
 	};
 
 	struct Process_group {
-
-		Process_group(): _procs() {}
 
 		template<class F>
 		void add(F f) {
@@ -292,13 +290,11 @@ namespace factory {
 		void lock() { while (_flag.test_and_set(std::memory_order_acquire)); }
 		void unlock() { _flag.clear(std::memory_order_release); }
 
-		Spin_mutex() {}
 		Spin_mutex& operator=(const Spin_mutex&) = delete;
 		Spin_mutex(const Spin_mutex&) = delete;
 
 	private:
 		std::atomic_flag _flag = ATOMIC_FLAG_INIT;
 	};
-
 
 }

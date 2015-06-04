@@ -27,7 +27,7 @@ namespace factory {
 			typedef int16_t Type_id;
 			typedef std::function<void(K*)> Callback;
 	
-			Type():
+			constexpr Type():
 				_id(),
 				_name(),
 				construct(),
@@ -36,7 +36,7 @@ namespace factory {
 				read_and_send()
 			{}
 	
-			Type(const Type& rhs):
+			constexpr Type(const Type& rhs):
 				_id(rhs._id),
 				_name(rhs._name),
 				construct(rhs.construct),
