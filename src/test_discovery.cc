@@ -5,6 +5,7 @@ using namespace factory;
 const Port DISCOVERY_PORT = 10000;
 
 std::vector<Endpoint> all_peers;
+std::thread exiter;
 
 uint32_t my_netmask() {
 	uint32_t npeers = static_cast<uint32_t>(all_peers.size());
@@ -694,6 +695,10 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			std::this_thread::sleep_for(amount);
 			prog_start = current_time_nano();
 		}
+		exiter = std::thread([] () { 
+			std::this_thread::sleep_for(std::chrono::seconds(60));
+			std::exit(0);
+		});
 		Logger<Level::GRAPH>()
 			<< "startTime.push("
 			<< current_time_nano() - prog_start
@@ -708,12 +713,12 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-				Time wait_time = this_process::getenv("WAIT_TIME", Time(60000000000UL));
-				if (current_time_nano() - prog_start > wait_time) {
-					Logger<Level::DISCOVERY>() << "Hail the new king "
-						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
-					__factory.stop();
-				}
+//				Time wait_time = this_process::getenv("WAIT_TIME", Time(60000000000UL));
+//				if (current_time_nano() - prog_start > wait_time) {
+//					Logger<Level::DISCOVERY>() << "Hail the new king "
+//						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
+//					__factory.stop();
+//				}
 				run_scan(_scanner->discovered_node());
 			} else {
 				Logger<Level::DISCOVERY>() << "Change 1" << std::endl;

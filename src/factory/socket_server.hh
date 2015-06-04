@@ -504,17 +504,23 @@ namespace factory {
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger<Level::HANDLER>() << "poll send error " << _ostream << std::endl;
 				}
+				bool erase_kernel = true;
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(factory_generate_id());
+					erase_kernel = false;
 					Logger<Level::HANDLER>() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
+					erase_kernel = false;
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				Logger<Level::COMPONENT>() << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
 				packet.write(_ostream, kernel);
+				if (erase_kernel) {
+					delete kernel;
+				}
 			}
 
 			bool valid() const {

@@ -111,10 +111,10 @@ Raphael.fn.label = function(str) {
 
     this.setStart();
 
-    var shape = this.rect(0, 0, 60, 30, 10);
+    var shape = this.rect(0, 0, 80, 30, 10);
     shape.attr({fill: color, stroke: color, "fill-opacity": 0, "stroke-width": 2, cursor: "move"}).setOffset();
 
-    var text = this.text(30, 15, str).attr({'font-size': 15}).setOffset();
+    var text = this.text(40, 15, str).attr({'font-size': 15}).setOffset();
 
     return this.setFinish();
 
