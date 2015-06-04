@@ -13,6 +13,7 @@ namespace {
 		size_t num_cpus = total_cpus();
 		::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
 		size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
+		CPU_ZERO_S(cpuset_size, cpuset);
 		CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
 		::sched_setaffinity(0, cpuset_size, cpuset);
 		CPU_FREE(cpuset);
@@ -276,7 +277,7 @@ namespace factory {
 			}
 
 			Pool<Kernel*> _pool;
-			size_t _cpu;
+			size_t _cpu = 0;
 		
 			std::thread _thread;
 			std::mutex _mutex;
@@ -418,6 +419,7 @@ namespace factory {
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
 			void act() {
 				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
+				delete this;
 				components::factory_stop();
 			}
 //			void react() {}

@@ -7,8 +7,8 @@ using namespace factory;
 Endpoint server_endpoint("127.0.0.1", 10000);
 Endpoint client_endpoint("127.0.0.2", 10000);
 
-const uint32_t NUM_SIZES = 13;
-const uint32_t NUM_KERNELS = 7;
+const uint32_t NUM_SIZES = 1;
+const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<uint32_t> shutdown_counter(0);
@@ -61,8 +61,8 @@ struct Sender: public Identifiable<Kernel> {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
-			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
-			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
+//			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
+//			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 

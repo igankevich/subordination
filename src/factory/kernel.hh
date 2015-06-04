@@ -211,6 +211,9 @@ namespace factory {
 							_principal->react(this);
 						} else {
 							this->act();
+//							if (this->moves_everywhere()) {
+//								delete this;
+//							}
 						}
 						break;
 					case Result::SUCCESS:

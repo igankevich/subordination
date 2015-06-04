@@ -85,6 +85,14 @@ namespace factory {
 				_mutex()
 			{}
 
+			~Socket_server() {
+				std::for_each(_upstream.begin(), _upstream.end(),
+					[] (const std::pair<const Endpoint, Remote_server*>& rhs) {
+						delete rhs.second;
+					}
+				);
+			}
+
 			void serve() {
 				process_kernels();
 				_poller.run([this] (Event event) {
@@ -365,6 +373,8 @@ namespace factory {
 							s->send(k);
 							_poller[s->fd()]->writing();
 						}
+						// delete broadcast kernel
+						delete k;
 					} else if (k->moves_upstream() && k->to() == Endpoint()) {
 						if (_upstream.empty()) {
 							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
@@ -518,7 +528,7 @@ namespace factory {
 				Logger<Level::COMPONENT>() << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
 				packet.write(_ostream, kernel);
-				if (erase_kernel) {
+				if (erase_kernel && !kernel->moves_everywhere()) {
 					delete kernel;
 				}
 			}

@@ -6,9 +6,9 @@ namespace factory {
 
 		typedef decltype(Basic_event::events) Evs;
 
-		Event()  { fd(-1); events(0); Basic_event::revents = 0; }
-		explicit Event(int f) { fd(f); }
-		Event(Evs e, int f)  { fd(f); events(e); }
+		constexpr Event(): Basic_event{-1,0,0} {}
+		constexpr explicit Event(int f): Basic_event{f,0,0} {}
+		constexpr Event(Evs e, int f): Basic_event{f, e, 0} {}
 
 		Evs events() const { return Basic_event::revents; }
 		void events(Evs rhs) { Basic_event::events = rhs; }
