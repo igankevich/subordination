@@ -15,8 +15,6 @@ namespace factory {
 			typedef typename Stream::Size Size;
 			typedef typename Type::Callback Callback;
 
-			Kernel_packet() {}
-
 			void write(Stream& out, Kernel* kernel) {
 
 				const Type* type = kernel->type();
@@ -529,6 +527,7 @@ namespace factory {
 				Packet packet;
 				packet.write(_ostream, kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
+					Logger<Level::TEST>() << "Delete kernel " << *kernel << std::endl;
 					delete kernel;
 				}
 			}
@@ -549,7 +548,7 @@ namespace factory {
 						try {
 							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
 								k->from(_vaddr);
-								Logger<Level::COMPONENT>() << "Received kernel " << *k << std::endl;
+								Logger<Level::TEST>() << "Received kernel " << *k << std::endl;
 								if (k->moves_downstream()) {
 									clear_kernel_buffer(k);
 								}
@@ -653,11 +652,12 @@ namespace factory {
 					return *rhs == *k;
 				});
 				if (pos != _buffer.end()) {
-					Logger<Level::HANDLER>() << "Kernel erased " << k->id() << std::endl;
+					Logger<Level::TEST>() << "Kernel erased " << k->id() << std::endl;
+					delete *pos;
 					_buffer.erase(pos);
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {
-					Logger<Level::HANDLER>() << "Kernel not found " << k->id() << std::endl;
+					Logger<Level::TEST>() << "Kernel not found " << k->id() << std::endl;
 				}
 			}
 			

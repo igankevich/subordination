@@ -11,16 +11,23 @@ const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
-std::atomic<uint32_t> shutdown_counter(0);
+std::atomic<int> kernel_count(0);
 
 struct Test_socket: public Mobile<Test_socket> {
 
-	Test_socket(): _data() {}
-	explicit Test_socket(std::vector<Datum> x): _data(x) {}
+	Test_socket(): _data() {
+	}
+
+	explicit Test_socket(std::vector<Datum> x): _data(x) {
+		++kernel_count;
+	}
+
+	virtual ~Test_socket() {
+		--kernel_count;
+	}
 
 	void act() {
 		Logger<Level::COMPONENT> log;
-		log << "kernel count = " << shutdown_counter << std::endl;
 		commit(remote_server());
 	}
 
@@ -38,7 +45,13 @@ struct Test_socket: public Mobile<Test_socket> {
 			in >> _data[i];
 	}
 
-	std::vector<Datum> data() const { return _data; }
+	std::vector<Datum> data() const { 
+		Logger<Level::TEST>()
+			<< "parent.id = " << (parent() ? parent()->id() : 12345)
+			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
+			<< std::endl;
+		return _data;
+	}
 
 	static void init_type(Type* t) {
 		t->id(1);
@@ -57,12 +70,15 @@ struct Sender: public Identifiable<Kernel> {
 		_sleep(s) {}
 
 	void act() {
+		Logger<Level::TEST>() << "Sender "
+			<< "id = " << id()
+			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
+			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
+			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(remote_server(), new Test_socket(_input));
-			++shutdown_counter;
 //			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
-//			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 
@@ -70,6 +86,8 @@ struct Sender: public Identifiable<Kernel> {
 
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
+
+		Logger<Level::TEST>() << "kernel = " << *test_kernel << std::endl;
 
 		if (_input.size() != output.size())
 			throw std::runtime_error("test_socket. Input and output size does not match.");
@@ -109,6 +127,7 @@ struct Main: public Kernel {
 
 	void react(Kernel*) {
 		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
+		Logger<Level::TEST>() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
 			commit(the_server());
 		}

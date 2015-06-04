@@ -120,6 +120,8 @@ namespace factory {
 		template<class Sub, class Super>
 		struct Kernel_link: public Super {
 
+			virtual ~Kernel_link() {}
+
 			void read(Foreign_stream& in) {
 				Super::read(in);
 				static_cast<Sub*>(this)->Sub::read_impl(in);
@@ -139,6 +141,7 @@ namespace factory {
 			typedef Kernel_ref<This> Ref;
 
 			constexpr Principal(): _parent(nullptr), _principal(nullptr) {}
+			virtual ~Principal() {}
 
 			const Ref& principal() const { return _principal; }
 			Ref principal() { return _principal; }
@@ -241,7 +244,7 @@ namespace factory {
 								_principal->error(this);
 							}
 							if (del) {
-								Logger<Level::KERNEL>() << "Deleting kernel" << std::endl;
+								Logger<Level::TEST>() << "Deleting kernel " << *this << std::endl;
 								delete this;
 							}
 						}

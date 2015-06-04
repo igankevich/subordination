@@ -30,7 +30,8 @@ namespace factory {
 
 	union Endpoint {
 
-		Endpoint() { std::memset(static_cast<void*>(&_addr), 0, sizeof(_addr)); }
+//		Endpoint() { std::memset(static_cast<void*>(&_addr), 0, sizeof(_addr)); }
+		constexpr Endpoint(): _addr{0} {}
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
 		Endpoint(uint32_t h, Port p) { addr(h, p); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
