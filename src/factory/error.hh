@@ -240,7 +240,7 @@ namespace factory {
 		K* _kernel;
 	};
 
-	enum struct Result: uint8_t {
+	enum struct Result: uint16_t {
 		SUCCESS = 0,
 		UNDEFINED = 1,
 		ENDPOINT_NOT_CONNECTED = 3,
