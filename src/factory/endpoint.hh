@@ -70,7 +70,7 @@ namespace factory {
 			check<const char*>("inet_ntop()",
 				::inet_ntop(AF_INET, &rhs._addr.sin_addr.s_addr, host, sizeof(host)),
 				nullptr);
-			return out << host << ':' << ntohs(rhs._addr.sin_port);
+			return out << host << ':' << to_host_format<Port>(rhs._addr.sin_port);
 		}
 
 		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
@@ -99,13 +99,12 @@ namespace factory {
 			return Host(h);
 		}
 
-		uint32_t address() const { return ntohl(_addr.sin_addr.s_addr); }
-		Port port() const { return ntohs(_addr.sin_port); }
-		void port(Port rhs) { _addr.sin_port = htons(rhs); }
+		constexpr uint32_t address() const { return to_host_format<uint32_t>(_addr.sin_addr.s_addr); }
+		constexpr Port port() const { return to_host_format<Port>(_addr.sin_port); }
+		void port(Port rhs) { _addr.sin_port = to_network_format<Port>(rhs); }
 
-		uint32_t position(uint32_t netmask) const {
-			uint32_t a = address();
-			return a - (a & netmask);
+		constexpr uint32_t position(uint32_t netmask) const {
+			return position_helper(address(), netmask);
 		}
 
 		Addr* sockaddr() { return &_sockaddr; }
@@ -113,6 +112,11 @@ namespace factory {
 		constexpr const Addr_in* addr() const { return &_addr; }
 
 	private:
+
+		constexpr static
+		uint32_t position_helper(uint32_t a, uint32_t netmask) {
+			return a - (a & netmask);
+		}
 	
 		void addr(const Addr_in* rhs) {
 			std::memcpy(static_cast<void*>(&_addr),
@@ -125,7 +129,7 @@ namespace factory {
 
 		void addr(const char* h, Port p) {
 			_addr.sin_family = AF_INET;
-			_addr.sin_port = htons(p);
+			_addr.sin_port = to_network_format<Port>(p);
 			int ret = ::inet_pton(AF_INET, h, &_addr.sin_addr);
 			if (ret == 0 || ret == -1) {
 				throw ret;
@@ -138,8 +142,8 @@ namespace factory {
 		void addr(const uint32_t h, Port p) {
 			Addr_in a;
 			a.sin_family = AF_INET;
-			a.sin_addr.s_addr = htonl(h);
-			a.sin_port = htons(p);
+			a.sin_addr.s_addr = to_network_format<uint32_t>(h);
+			a.sin_port = to_network_format<Port>(p);
 			addr(&a);
 		}
 
