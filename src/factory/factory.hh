@@ -46,6 +46,7 @@
 	#include <sys/socket.h>
 	#include <sys/ipc.h>
 	#include <sys/shm.h>
+	#include <sys/wait.h>
 	#include <semaphore.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>

@@ -1,5 +1,3 @@
-#include <sys/wait.h>
-
 namespace factory {
 
 	typedef ::pid_t Process_id;
@@ -262,18 +260,18 @@ namespace factory {
 	};
 
 	struct Semaphore {
-		explicit Semaphore(const std::string& name):
-			Semaphore(name.c_str()) {}
+
+		explicit Semaphore(const std::string& name): Semaphore(name.c_str()) {}
 		explicit Semaphore(const char* name) {
 			_sem = check("sem_open()", ::sem_open(name, O_CREAT, 0666, 0), SEM_FAILED);
 		}
 		~Semaphore() { check("sem_close()", ::sem_close(_sem)); }
+
 		void wait() {
 			std::cout << "sem = " << _sem << std::endl;
 			check("sem_wait()", ::sem_wait(_sem));
 		}
 		void notify_one() { check("sem_post()", ::sem_post(_sem)); }
-	
 		void lock() { this->wait(); }
 		void unlock() { this->notify_one(); }
 	
@@ -290,8 +288,9 @@ namespace factory {
 		void lock() { while (_flag.test_and_set(std::memory_order_acquire)); }
 		void unlock() { _flag.clear(std::memory_order_release); }
 
-		Spin_mutex& operator=(const Spin_mutex&) = delete;
+		constexpr Spin_mutex() {}
 		Spin_mutex(const Spin_mutex&) = delete;
+		Spin_mutex& operator=(const Spin_mutex&) = delete;
 
 	private:
 		std::atomic_flag _flag = ATOMIC_FLAG_INIT;
