@@ -41,32 +41,32 @@ namespace factory {
 	union Bytes {
 
 		typedef Integer<sizeof(T)> Int;
+		typedef Bytes<T,Byte> This;
 
 		constexpr Bytes() {}
 		constexpr Bytes(T v): val(v) {}
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }
 
-		Bytes<T,Byte>& to_network_format() { Int::to_network_format(i); return *this; }
-		Bytes<T,Byte>& to_host_format() { Int::to_host_format(i); return *this; }
+		This& to_network_format() { Int::to_network_format(i); return *this; }
+		This& to_host_format() { Int::to_host_format(i); return *this; }
 
 		operator T& () { return val; }
-		operator const T& () const { return val; }
 		operator Byte* () { return bytes; }
-		operator const Byte* () const { return bytes; }
+		constexpr operator const T& () const { return val; }
+		constexpr operator const Byte* () const { return bytes; }
 
-		Byte operator[](size_t idx) const { return bytes[idx]; }
-
-		bool operator==(const Bytes<T>& rhs) const { return i == rhs.i; }
-		bool operator!=(const Bytes<T>& rhs) const { return i != rhs.i; }
+		constexpr Byte operator[](size_t idx) const { return bytes[idx]; }
+		constexpr bool operator==(const Bytes<T>& rhs) const { return i == rhs.i; }
+		constexpr bool operator!=(const Bytes<T>& rhs) const { return i != rhs.i; }
 
 		Byte* begin() { return bytes; }
 		Byte* end() { return bytes + sizeof(T); }
 
-		const Byte* begin() const { return bytes; }
-		const Byte* end() const { return bytes + sizeof(T); }
+		constexpr const Byte* begin() const { return bytes; }
+		constexpr const Byte* end() const { return bytes + sizeof(T); }
 
-		const T& value() const { return val; }
+		constexpr const T& value() const { return val; }
 		T& value() { return val; }
 
 	private:

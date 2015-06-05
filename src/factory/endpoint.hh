@@ -30,34 +30,40 @@ namespace factory {
 
 	union Endpoint {
 
+		typedef struct ::sockaddr Addr;
+		typedef struct ::sockaddr_in Addr_in;
+
 //		Endpoint() { std::memset(static_cast<void*>(&_addr), 0, sizeof(_addr)); }
 		constexpr Endpoint(): _addr{0} {}
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
 		Endpoint(uint32_t h, Port p) { addr(h, p); }
 		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
-		Endpoint(struct ::sockaddr_in* rhs) { addr(rhs); }
-		Endpoint(struct ::sockaddr* rhs) { addr(rhs); }
+		Endpoint(Addr_in* rhs) { addr(rhs); }
+		Endpoint(Addr* rhs) { addr(rhs); }
 
 		Endpoint& operator=(const Endpoint& rhs) {
 			addr(&rhs._addr);
 			return *this;
 		}
 
-		bool operator<(const Endpoint& rhs) const {
+		constexpr bool operator<(const Endpoint& rhs) const {
 			return _addr.sin_addr.s_addr < rhs._addr.sin_addr.s_addr
 				|| (_addr.sin_addr.s_addr == rhs._addr.sin_addr.s_addr
 				&& _addr.sin_port < rhs._addr.sin_port);
 		}
 
-		bool operator==(const Endpoint& rhs) const {
+		constexpr bool operator==(const Endpoint& rhs) const {
 			return _addr.sin_addr.s_addr == rhs._addr.sin_addr.s_addr
 				&& _addr.sin_port == rhs._addr.sin_port;
 		}
 
-		bool operator!=(const Endpoint& rhs) const {
+		constexpr bool operator!=(const Endpoint& rhs) const {
 			return _addr.sin_addr.s_addr != rhs._addr.sin_addr.s_addr
 				|| _addr.sin_port != rhs._addr.sin_port;
 		}
+
+		constexpr explicit operator bool() const { return _addr.sin_addr.s_addr != 0; }
+		constexpr bool operator !() const { return _addr.sin_addr.s_addr == 0; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
 			char host[64];
@@ -102,21 +108,18 @@ namespace factory {
 			return a - (a & netmask);
 		}
 
-		struct ::sockaddr* sockaddr() { return &_sockaddr; }
-		struct ::sockaddr_in* addr() { return &_addr; }
-		const struct ::sockaddr_in* addr() const { return &_addr; }
-
-		explicit operator bool() const { return _addr.sin_addr.s_addr != 0; }
-		bool operator !() const { return _addr.sin_addr.s_addr == 0; }
+		Addr* sockaddr() { return &_sockaddr; }
+		Addr_in* addr() { return &_addr; }
+		constexpr const Addr_in* addr() const { return &_addr; }
 
 	private:
 	
-		void addr(const struct ::sockaddr_in* rhs) {
+		void addr(const Addr_in* rhs) {
 			std::memcpy(static_cast<void*>(&_addr),
 				static_cast<const void*>(rhs), sizeof(_addr));
 		}
 
-		void addr(const struct ::sockaddr* rhs) {
+		void addr(const Addr* rhs) {
 			_sockaddr = *rhs;
 		}
 
@@ -133,15 +136,15 @@ namespace factory {
 		}
 
 		void addr(const uint32_t h, Port p) {
-			struct ::sockaddr_in a;
+			Addr_in a;
 			a.sin_family = AF_INET;
 			a.sin_addr.s_addr = htonl(h);
 			a.sin_port = htons(p);
 			addr(&a);
 		}
 
-		struct ::sockaddr_in _addr;
-		struct ::sockaddr _sockaddr;
+		Addr_in _addr;
+		Addr _sockaddr;
 	};
 
 }

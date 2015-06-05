@@ -577,10 +577,8 @@ namespace factory {
 						_ostream.flush<Server_socket&>(_socket);
 						if (_ostream.empty()) {
 							Logger<Level::HANDLER>() << "Flushed." << std::endl;
-//							clear_kernel_buffer();
 							_ostream.reset();
 						} else {
-//							clear_kernel_buffer(_ostream.global_read_pos());
 							overflow = true;
 						}
 //					} catch (Connection_error& err) {
@@ -631,22 +629,6 @@ namespace factory {
 				factory_send(k);
 			}
 
-//			void clear_kernel_buffer() {
-//				while (!_buffer.empty()) {
-//					Logger<Level::HANDLER>() << "sent kernel " << *_buffer.front().second << std::endl;;
-//					delete _buffer.front().second;
-//					_buffer.pop();
-//				}
-//			}
-//
-//			void clear_kernel_buffer(Pos global_read_pos) {
-//				while (!_buffer.empty() && _buffer.front().first <= global_read_pos) {
-//					Logger<Level::HANDLER>() << "sent kernel " << *_buffer.front().second << std::endl;;
-//					delete _buffer.front().second;
-//					_buffer.pop();
-//				}
-//			}
-			
 			void clear_kernel_buffer(Kernel* k) {
 				auto pos = std::find_if(_buffer.begin(), _buffer.end(), [k] (Kernel* rhs) {
 					return *rhs == *k;
