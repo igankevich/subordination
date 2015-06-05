@@ -93,8 +93,8 @@ namespace factory {
 			K* ptr() { return _kernel; }
 			const K* ptr() const { return _kernel; }
 
-			explicit operator bool() const { return _kernel != nullptr; }
-			bool operator !() const { return _kernel == nullptr; }
+			constexpr explicit operator bool() const { return _kernel != nullptr; }
+			constexpr bool operator !() const { return _kernel == nullptr; }
 
 			friend std::ostream& operator<<(std::ostream& out, const Kernel_ref<K>& rhs) {
 				return out << rhs->id();
@@ -244,7 +244,7 @@ namespace factory {
 								_principal->error(this);
 							}
 							if (del) {
-								Logger<Level::TEST>() << "Deleting kernel " << *this << std::endl;
+								Logger<Level::KERNEL>() << "Deleting kernel " << *this << std::endl;
 								delete this;
 							}
 						}
@@ -301,7 +301,7 @@ namespace factory {
 		template<class K>
 		struct Mobile: public K {
 		
-			Mobile(): _src(), _dst() {}
+			constexpr Mobile(): _src(), _dst() {}
 
 			virtual void read(Foreign_stream& in) { 
 				typedef std::underlying_type<Result>::type Raw_result;
@@ -326,9 +326,9 @@ namespace factory {
 			virtual void read_impl(Foreign_stream&) {}
 			virtual void write_impl(Foreign_stream&) {}
 
-			Id id() const { return _id; }
+			constexpr Id id() const { return _id; }
 			void id(Id rhs) { _id = rhs; }
-			bool identifiable() const { return _id != ROOT_ID; }
+			constexpr bool identifiable() const { return _id != ROOT_ID; }
 
 			virtual Endpoint from() const { return _src; }
 			virtual void from(Endpoint rhs) { _src = rhs; }
@@ -336,7 +336,7 @@ namespace factory {
 			virtual Endpoint to() const { return _dst; }
 			virtual void to(Endpoint rhs) { _dst = rhs; }
 
-			bool operator==(const Mobile<K>& rhs) const {
+			constexpr bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 

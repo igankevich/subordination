@@ -18,7 +18,8 @@ TESTS = \
 	test_spinlock \
 	test_endpoint \
 	test_encoding \
-	test_timer
+	test_timer \
+	test_swap
 
 check_PROGRAMS = \
 	test_buffer \
@@ -31,7 +32,8 @@ check_PROGRAMS = \
 	test_encoding \
 	test_websocket \
 	test_shmem \
-	test_timer
+	test_timer \
+	test_swap
 
 CODE_COVERAGE_LCOV_OPTIONS = --checksum --rc lcov_branch_coverage=1
 CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
@@ -48,6 +50,7 @@ test_spinlock_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_endpoint_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_encoding_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_marshaling_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
+test_swap_CPPFLAGS       = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 #test_shmem_CPPFLAGS      = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_DISABLE_CPU_BINDING

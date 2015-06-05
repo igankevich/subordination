@@ -1,55 +1,77 @@
 namespace factory {
 
-	template<size_t bytes>
-	struct Integer {
-		typedef uint8_t value[bytes];
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-// TODO: is ``reverse'' needed here?
-		static void to_network_format(value& val) { std::reverse(val, val + bytes); }
-		static void to_host_format(value& val) { std::reverse(val, val + bytes); }
+	template<class T>
+	constexpr T byte_swap (T n) { return n; }
+	
+	template<>
+	constexpr uint16_t byte_swap<uint16_t>(uint16_t n) {
+		return ((n & 0xFF00)>>8) | ((n & 0x00FF)<<8);
+	}
+	
+	template<>
+	constexpr uint32_t byte_swap<uint32_t>(uint32_t n) {
+		return
+			((n & UINT32_C(0xff000000)) >> 24) |
+			((n & UINT32_C(0x00ff0000)) >> 8) |
+			((n & UINT32_C(0x0000ff00)) << 8) |
+			((n & UINT32_C(0x000000ff)) << 24);
+	}
+	
+	template<>
+	constexpr uint64_t byte_swap<uint64_t>(uint64_t n) {
+#ifdef HAVE___BUILTIN_BSWAP64
+		return __builtin_bswap64(n);
 #else
-		static void to_network_format(value&) {}
-		static void to_host_format(value&) {}
+		return
+			((n & UINT64_C(0xff00000000000000)) >> 56) |
+			((n & UINT64_C(0x00ff000000000000)) >> 40) |
+			((n & UINT64_C(0x0000ff0000000000)) >> 24) |
+			((n & UINT64_C(0x000000ff00000000)) >> 8) |
+			((n & UINT64_C(0x00000000ff000000)) << 8) |
+			((n & UINT64_C(0x0000000000ff0000)) << 24) |
+			((n & UINT64_C(0x000000000000ff00)) << 40) |
+			((n & UINT64_C(0x00000000000000ff)) << 56);
 #endif
-	};
+	}
 
-	template<> struct Integer<1> {
-		typedef uint8_t value;
-		static void to_network_format(value&) {}
-		static void to_host_format(value&) {}
-	};
+	constexpr bool is_network_byte_order() {
+#if __BYTE_ORDER == __BIG_ENDIAN
+		return true;
+#else
+		return false;
+#endif
+	}
 
-	template<> struct Integer<2> {
-		typedef uint16_t value;
-		static void to_network_format(value& val) { val = htobe16(val); }
-		static void to_host_format(value& val) { val = be16toh(val); }
-	};
+	template<class T>
+	constexpr T to_network_format(T n) {
+		return is_network_byte_order() ? n : byte_swap<T>(n);
+	}
 
-	template<> struct Integer<4> {
-		typedef uint32_t value;
-		static void to_network_format(value& val) { val = htobe32(val); }
-		static void to_host_format(value& val) { val = be32toh(val); }
-	};
+	template<class T>
+	constexpr T to_host_format(T n) { return to_network_format(n); }
 
-	template<> struct Integer<8> {
-		typedef uint64_t value;
-		static void to_network_format(value& val) { val = htobe64(val); }
-		static void to_host_format(value& val) { val = be64toh(val); }
-	};
+	template<size_t bytes>
+	struct Integral { typedef uint8_t type[bytes]; };
+	template<> struct Integral<1> { typedef uint8_t type; };
+	template<> struct Integral<2> { typedef uint16_t type; };
+	template<> struct Integral<4> { typedef uint32_t type; };
+	template<> struct Integral<8> { typedef uint64_t type; };
 
 	template<class T, class Byte=char>
 	union Bytes {
 
-		typedef Integer<sizeof(T)> Int;
+		typedef typename Integral<sizeof(T)>::type Int;
 		typedef Bytes<T,Byte> This;
+		typedef typename std::conditional<std::is_array<T>::value,
+			Int*, Int>::type Retval;
 
 		constexpr Bytes() {}
 		constexpr Bytes(T v): val(v) {}
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }
 
-		This& to_network_format() { Int::to_network_format(i); return *this; }
-		This& to_host_format() { Int::to_host_format(i); return *this; }
+		Retval to_network_format() { return factory::to_network_format(i); }
+		Retval to_host_format() { return factory::to_host_format(i); }
 
 		operator T& () { return val; }
 		operator Byte* () { return bytes; }
@@ -71,14 +93,11 @@ namespace factory {
 
 	private:
 		T val;
-		typename Int::value i;
+		Int i;
 		Byte bytes[sizeof(T)];
 
 		static_assert(sizeof(decltype(val)) == sizeof(decltype(i)),
 			"Bad size of integral type.");
-
-//		static_assert(std::is_arithmetic<T>::value, 
-//			"Bad type for byte representation.");
 	};
 
 	template<class T, class B>

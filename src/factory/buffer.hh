@@ -268,7 +268,7 @@ namespace factory {
 #endif
 		Foreign_stream& operator<<(float rhs) { return write(rhs); }
 		Foreign_stream& operator<<(double rhs) { return write(rhs); }
-		Foreign_stream& operator<<(long double rhs) { return write(rhs); }
+//		Foreign_stream& operator<<(long double rhs) { return write(rhs); }
 		Foreign_stream& operator<<(const std::string& rhs) { return write(rhs); }
 
 		Foreign_stream& operator>>(bool& rhs) {
@@ -285,7 +285,7 @@ namespace factory {
 		Foreign_stream& operator>>(uint64_t& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(float& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(double& rhs) { return read(rhs); }
-		Foreign_stream& operator>>(long double& rhs) { return read(rhs); }
+//		Foreign_stream& operator>>(long double& rhs) { return read(rhs); }
 		Foreign_stream& operator>>(std::string& rhs) { return read(rhs); }
 
 	private:

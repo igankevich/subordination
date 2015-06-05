@@ -44,6 +44,7 @@ AC_TYPE_PID_T
 AX_CXX_11
 AX_CXX_11_THREAD
 AX_STACK_TRACE
+AX_GCC_BUILTIN([__builtin_bswap64])
 
 AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 

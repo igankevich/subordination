@@ -1,8 +1,8 @@
 #!/bin/sh
 
-for NUM_PEERS in $(seq 600 100 1000); do
+for NUM_PEERS in $(seq 1000 100 1000); do
 	export NUM_PEERS
-	export START_TIME=$(expr $(date +%s%N) \+ 40000000000)
+#	export START_TIME=$(expr $(date +%s%N) \+ 40000000000)
 	echo "No. of nodes = $NUM_PEERS, start time = $START_TIME"
 	./graph >graph-$NUM_PEERS.html
 #	sudo ./graph ./minrun --fanout=$NUM_PEERS --pattern=grph ./test_discovery >graph-$NUM_PEERS.html

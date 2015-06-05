@@ -102,14 +102,14 @@ namespace factory {
 		}
 	};
 
-	template<> struct Logger<Level::KERNEL   >: public No_logger {};
-	template<> struct Logger<Level::SERVER   >: public No_logger {};
-	template<> struct Logger<Level::HANDLER  >: public No_logger {};
-	template<> struct Logger<Level::COMPONENT>: public No_logger {};
-	template<> struct Logger<Level::STRATEGY >: public No_logger {};
-	template<> struct Logger<Level::DISCOVERY>: public No_logger {};
-//	template<> struct Logger<Level::GRAPH    >: public No_logger {};
-	template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
+//	template<> struct Logger<Level::KERNEL   >: public No_logger {};
+//	template<> struct Logger<Level::SERVER   >: public No_logger {};
+//	template<> struct Logger<Level::HANDLER  >: public No_logger {};
+//	template<> struct Logger<Level::COMPONENT>: public No_logger {};
+//	template<> struct Logger<Level::STRATEGY >: public No_logger {};
+//	template<> struct Logger<Level::DISCOVERY>: public No_logger {};
+////	template<> struct Logger<Level::GRAPH    >: public No_logger {};
+//	template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
 
 	std::string log_filename() {
 		std::stringstream s;

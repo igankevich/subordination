@@ -334,13 +334,13 @@ struct Peers {
 	}
 
 	void debug() {
-		Logger<Level::DISCOVERY> log;
-		log << "Principal = " << _principal << ", subordinates = ";
-		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
-		std::copy(_subordinates.begin(), _subordinates.end(), it);
-		log << " peers = ";
-		write(log.ostream(), ", ");
-		log << std::endl;
+//		Logger<Level::DISCOVERY> log;
+//		log << "Principal = " << _principal << ", subordinates = ";
+//		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
+//		std::copy(_subordinates.begin(), _subordinates.end(), it);
+//		log << " peers = ";
+//		write(log.ostream(), ", ");
+//		log << std::endl;
 	}
 
 private:
@@ -686,17 +686,18 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	{}
 
 	void act() {
-		Time start_time = this_process::getenv("START_TIME", Time(0));
-		if (start_time > 0) {
-			using namespace std::chrono;
-			nanoseconds now = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
-			nanoseconds amount = nanoseconds(start_time) - now;
-			std::clog << "Sleeping for " << amount.count() << "ns" << std::endl;
-			std::this_thread::sleep_for(amount);
-			prog_start = current_time_nano();
-		}
+		prog_start = current_time_nano();
+//		Time start_time = this_process::getenv("START_TIME", Time(0));
+//		if (start_time > 0) {
+//			using namespace std::chrono;
+//			nanoseconds now = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
+//			nanoseconds amount = nanoseconds(start_time) - now;
+//			std::clog << "Sleeping for " << amount.count() << "ns" << std::endl;
+//			std::this_thread::sleep_for(amount);
+//			prog_start = current_time_nano();
+//		}
 		exiter = std::thread([] () { 
-			std::this_thread::sleep_for(std::chrono::seconds(60));
+			std::this_thread::sleep_for(std::chrono::seconds(30));
 			std::exit(0);
 		});
 		Logger<Level::GRAPH>()
@@ -705,9 +706,9 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			<< "*1e-6); // "
 			<< _peers.this_addr()
 			<< std::endl;
-//		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
-		run_scan();
-//		}
+		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
+			run_scan();
+		}
 	}
 
 	void react(Kernel* k) {
@@ -734,8 +735,9 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				_peers.debug();
 				Logger<Level::DISCOVERY>() << "Change 2" << std::endl;
 				change_principal(_peers.best_peer());
+			} else {
+				run_discovery();
 			}
-			run_discovery();
 		} else
 		if (_negotiator == k) {
 			if (k->result() != Result::SUCCESS) {
@@ -947,10 +949,12 @@ struct App {
 			}
 			try {
 				the_server()->add_cpu(0);
-				the_server()->start();
 				remote_server()->socket(bind_addr);
-				remote_server()->start();
-				the_server()->send(new Master_discoverer(bind_addr));
+				__factory.start();
+				Time start_time = this_process::getenv("START_TIME", Time(0));
+				Master_discoverer* master = new Master_discoverer(bind_addr);
+				master->at(Kernel::Time_point(std::chrono::nanoseconds(start_time)));
+				timer_server()->send(master);
 				__factory.wait();
 			} catch (std::exception& e) {
 				std::cerr << e.what() << std::endl;
