@@ -69,8 +69,8 @@ namespace factory {
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }
 
-		Retval to_network_format() { return factory::to_network_format(i); }
-		Retval to_host_format() { return factory::to_host_format(i); }
+		Retval to_network_format() { return i = factory::to_network_format(i); }
+		Retval to_host_format() { return i = factory::to_host_format(i); }
 
 		operator T& () { return val; }
 		operator Byte* () { return bytes; }
