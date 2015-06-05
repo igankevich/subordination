@@ -1,19 +1,6 @@
-// This code is adopted from Omnifarious answer to Stackoverflow question.
+// This code is adapted from Omnifarious answer to Stackoverflow question.
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c
 namespace factory {
-
-	static const char BASE64_TABLE[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	
-	static const unsigned char reverse_table[128] = {
-	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-	   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
-	   52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
-	   64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-	   15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
-	   64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-	   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
-	};
 
 	constexpr size_t base64_encoded_size(size_t len) {
 		return ((len + 2) / 3) * 4;
@@ -24,7 +11,10 @@ namespace factory {
 	}
 	
 	template<class It, class Res>
-	void base64_encode(It first, It last, Res result) {
+	void base64_encode(It first, It last, Res result) noexcept {
+
+		constexpr static const char BASE64_TABLE[65] =
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 		static_assert(sizeof(*first) == 1,
 			"base64_encode() works for sequences of 1-byte sized types.");
@@ -71,6 +61,18 @@ namespace factory {
 	template<class It, class Res>
 	size_t base64_decode(It first, It last, Res result) {
 
+		constexpr static const unsigned char BASE64_REVERSE_TABLE[128] = {
+		   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+		   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+		   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
+		   52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
+		   64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+		   15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
+		   64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+		   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64
+		};
+
+
 		static_assert(sizeof(*first) == 1,
 			"base64_decode() works for sequences of 1-byte sized types.");
 
@@ -88,10 +90,10 @@ namespace factory {
 				// Skip whitespace and padding. Be liberal in what you accept.
 				continue;
 			}
-			if ((c > 127) || (c < 0) || (reverse_table[c] > 63)) {
+			if ((c > 127) || (c < 0) || (BASE64_REVERSE_TABLE[c] > 63)) {
 				throw std::invalid_argument("This contains characters not legal in a base64 encoded string.");
 			}
-			accumulator = (accumulator << 6) | reverse_table[c];
+			accumulator = (accumulator << 6) | BASE64_REVERSE_TABLE[c];
 			bits_collected += 6;
 			if (bits_collected >= 8) {
 				bits_collected -= 8;
@@ -156,6 +158,7 @@ namespace factory {
 				Message_Block[Message_Block_Index++] = *first;
 
 				Length_Low += 8;
+				// TODO: bad practise
 				if (Length_Low == 0) {
 					Length_High++;
 					if (Length_High == 0) {
@@ -333,7 +336,8 @@ namespace factory {
 		/*
 		 *  Performs a circular left shift operation
 		 */
-		inline uint32_t CircularShift(int bits, uint32_t word) {
+		constexpr static
+		uint32_t CircularShift(int bits, uint32_t word) {
 			return (word << bits) | (word >> (32-bits));
 		}
 	
@@ -435,8 +439,8 @@ namespace factory {
 
 		unsigned char rawhdr[constants::MAX_HEADER_SIZE];
 
-		Web_socket_frame() {
-			std::fill_n(rawhdr, constants::MAX_HEADER_SIZE, 0);
+		constexpr Web_socket_frame(): hdr{0} {
+//			std::fill_n(rawhdr, constants::MAX_HEADER_SIZE, 0);
 		}
 
 		template<class It>
@@ -459,26 +463,28 @@ namespace factory {
 		}
 
 		template<class Res>
-		void encode(Res result) {
+		void encode(Res result) const {
 			std::copy(rawhdr, rawhdr + header_size(), result);
 		}
 
 		void fin(int rhs) { hdr.fin = rhs; }
 
 		void opcode(Opcode rhs) { hdr.opcode = static_cast<uint16_t>(rhs); }
-		Opcode opcode() const { return static_cast<Opcode>(hdr.opcode); }
-		bool is_masked() const { return hdr.maskbit == 1; }
-		bool is_binary() const {
+		constexpr Opcode opcode() const { return static_cast<Opcode>(hdr.opcode); }
+		constexpr bool is_masked() const { return hdr.maskbit == 1; }
+		constexpr bool is_binary() const {
 			return opcode() == Opcode::BINARY_FRAME;
 		}
-		bool has_valid_opcode() const { return hdr.opcode >= 0x0 && hdr.opcode <= 0xf; }
-		size_t extlen_size() const {
+		constexpr bool has_valid_opcode() const { return hdr.opcode >= 0x0 && hdr.opcode <= 0xf; }
+		constexpr size_t extlen_size() const {
 			using namespace constants;
-			switch (hdr.len) {
-				case LEN16_TAG: return sizeof(Len16);
-				case LEN64_TAG: return sizeof(Len64);
-				default: return 0;
-			}
+			return hdr.len == LEN16_TAG ? sizeof(Len16) :
+				hdr.len == LEN64_TAG ? sizeof(Len64) : 0;
+//			switch (hdr.len) {
+//				case LEN16_TAG: return sizeof(Len16);
+//				case LEN64_TAG: return sizeof(Len64);
+//				default: return 0;
+//			}
 		}
 
 		Len64 payload_size() const {
@@ -511,7 +517,7 @@ namespace factory {
 			}
 		}
 
-		size_t header_size() const {
+		constexpr size_t header_size() const {
 			using namespace constants;
 			return BASE_SIZE + extlen_size() + (is_masked() ? MASK_SIZE : 0);
 		}
@@ -541,7 +547,7 @@ namespace factory {
 		}
 
 		template<class It, class Res>
-		void copy_payload(It first, It last, Res result) {
+		void copy_payload(It first, It last, Res result) const {
 			using namespace constants;
 			if (is_masked()) {
 				Bytes<Mask> m = mask();
@@ -578,7 +584,7 @@ namespace factory {
 	};
 	
 	template<class It, class Res>
-	void websocket_encode(It first, It last, Res result) {
+	void websocket_encode(It first, It last, Res result) noexcept {
 		static std::random_device rng;
 		static_assert(sizeof(std::random_device::result_type)
 			>= sizeof(Web_socket_frame::Mask), "Bad RNG return type");
@@ -594,7 +600,7 @@ namespace factory {
 	}
 
 	template<class It, class Res>
-	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
+	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) noexcept {
 		Web_socket_frame frame;
 		std::pair<It,It> payload = frame.decode(first, last);
 		if (payload.first == first) return 0;
