@@ -62,8 +62,7 @@ namespace factory {
 
 		typedef typename Integral<sizeof(T)>::type Int;
 		typedef Bytes<T,Byte> This;
-		typedef typename std::conditional<std::is_array<T>::value,
-			Int*, Int>::type Retval;
+		typedef typename std::decay<Int>::type Retval;
 
 		constexpr Bytes() {}
 		constexpr Bytes(T v): val(v) {}
