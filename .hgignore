@@ -35,6 +35,7 @@ src/test_encoding
 src/test_websocket
 src/test_shmem
 src/test_timer
+src/test_swap
 src/*.html
 src/*.xml
 

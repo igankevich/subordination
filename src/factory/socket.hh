@@ -7,11 +7,10 @@ namespace factory {
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
-		constexpr Socket(): _socket(0) {}
-		constexpr Socket(int socket): _socket(socket) {}
-		Socket(const Socket& rhs): _socket(rhs._socket) {}
-		Socket(Socket&& rhs): _socket(rhs._socket) { rhs._socket = -1; }
-		virtual ~Socket() {}
+		constexpr Socket() noexcept: _socket(0) {}
+		constexpr Socket(int socket) noexcept: _socket(socket) {}
+		constexpr Socket(const Socket& rhs) noexcept: _socket(rhs._socket) {}
+		Socket(Socket&& rhs) noexcept: _socket(rhs._socket) { rhs._socket = -1; }
 
 		void create_socket_if_necessary() {
 			if (_socket <= 0) {
@@ -69,8 +68,6 @@ namespace factory {
 				check("no_reading()", ::shutdown(_socket, SHUT_RD));
 			}
 		}
-
-		int fd() const { return _socket; }
 
 		void flags2(Flag f) { ::fcntl(_socket, F_SETFD, flags2() | f); }
 		Flag flags2() const { return ::fcntl(_socket, F_GETFD); }
@@ -140,8 +137,9 @@ namespace factory {
 			return ret == -1 ? 0 : static_cast<uint32_t>(ret);
 		}
 
-		operator int() const { return _socket; }
-		bool operator==(const Socket& rhs) const { return _socket == rhs._socket; }
+		constexpr int fd() const noexcept { return _socket; }
+		constexpr operator int() const noexcept { return _socket; }
+		constexpr bool operator==(const Socket& rhs) const noexcept { return _socket == rhs._socket; }
 
 		Socket& operator=(const Socket& rhs) {
 			this->close();
@@ -455,9 +453,7 @@ namespace factory {
 		static const size_t BUFFER_SIZE = 1024;
 		static const size_t MAX_HEADERS = 20;
 		static const size_t ACCEPT_HEADER_LENGTH = 29;
-		static const char* HTTP_FIELD_SEPARATOR;
+		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
 	};
-
-	const char* Web_socket::HTTP_FIELD_SEPARATOR = "\r\n";
 
 }

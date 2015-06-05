@@ -45,10 +45,10 @@ namespace factory {
 				read_and_send(rhs.read_and_send)
 			{}
 
-			Type_id id() const { return _id; }
+			constexpr Type_id id() const { return _id; }
 			void id(Type_id i) { _id = i; }
 
-			const char* name() const { return _name.c_str(); }
+			constexpr const char* name() const { return _name.c_str(); }
 			void name(const char* n) { _name = n; }
 
 			friend std::ostream& operator<<(std::ostream& out, const Type<K>& rhs) {
@@ -227,7 +227,7 @@ namespace factory {
 		template<class Sub, class Type, class K, class Base=K>
 		class Type_init: public Base {
 		public:
-			const Type* type() const { return &_type; }
+			constexpr const Type* type() const { return &_type; }
 
 		private:
 			struct Init: public Type {
