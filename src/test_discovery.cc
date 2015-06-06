@@ -951,9 +951,10 @@ struct App {
 				the_server()->add_cpu(0);
 				remote_server()->socket(bind_addr);
 				__factory.start();
-				Time start_time = this_process::getenv("START_TIME", Time(0));
+				Time start_delay = this_process::getenv("START_DELAY", Time(0));
 				Master_discoverer* master = new Master_discoverer(bind_addr);
-				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
+				master->after(std::chrono::seconds(start_delay));
+//				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 				timer_server()->send(master);
 				__factory.wait();
 			} catch (std::exception& e) {
