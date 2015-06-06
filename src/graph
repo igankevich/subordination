@@ -17,8 +17,10 @@ cat << EOF
 	<script src="../js/lib/jquery-1.10.2.js"></script>
 	<script src="../js/lib/jquery-ui.js"></script>
 	<script src="../js/lib/raphael-min.js"></script>
+	<script src="../js/lib/pixi.min.js"></script>
 	<script src="../js/lib/springy.js"></script>
-	<script src="../js/lib/springy-raphael.js"></script>
+<!--	<script src="../js/lib/springy-raphael.js"></script> -->
+	<script src="../js/lib/springy-pixi.js"></script>
 	<style>
 	body {
 		margin: 0px;
@@ -100,8 +102,8 @@ var startTime = []
 // GENERATED CODE
 EOF
 
-#$cmd 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
-$cmd
+$cmd 2>&1 | sed -rne 's/^([0-9]+).*grph (.*)/\2;log[logline-1].time=\1*1e-6;/p'
+#$cmd
 
 # footer
 cat << 'EOF'
@@ -152,7 +154,7 @@ $(window).resize(function () {
 
 $(document).ready(function(){
 	showLineNo()
-	$('#springydemo').springyRaphael({
+	$('#springydemo').springyPixi({
 		graph: graph
 	});
 	$(window).resize()

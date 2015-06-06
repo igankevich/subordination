@@ -953,7 +953,7 @@ struct App {
 				__factory.start();
 				Time start_time = this_process::getenv("START_TIME", Time(0));
 				Master_discoverer* master = new Master_discoverer(bind_addr);
-				master->at(Kernel::Time_point(std::chrono::nanoseconds(start_time)));
+				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 				timer_server()->send(master);
 				__factory.wait();
 			} catch (std::exception& e) {
