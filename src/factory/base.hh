@@ -42,10 +42,8 @@ namespace factory {
 		return t1-t0;
 	}
 
-	Skew CLOCK_SKEW_AT_STARTUP = clock_skew();
-
 	static Time to_factory_time(Time system_time) {
-		return system_time - CLOCK_SKEW_AT_STARTUP;
+		return system_time - clock_skew();
 	}
 
 
