@@ -217,13 +217,6 @@ namespace factory {
 				});
 			}
 
-			// TODO: delete
-//			void send(Kernel* kernel, Endpoint endpoint) {
-//				Logger<Level::SERVER>() << "Socket_server::send(" << endpoint << ")" << std::endl;
-//				kernel->to(endpoint);
-//				send(kernel);
-//			}
-
 			void send(Kernel* kernel) {
 //				if (this->stopped()) {
 //					throw Error("Can not send kernel when the server is stopped.",
@@ -571,25 +564,15 @@ namespace factory {
 					}
 				}
 				if (event.is_writing() && !event.is_closing()) {
-//					try {
-						Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
-						std::this_thread::sleep_for(std::chrono::milliseconds(100));
-						_ostream.flush<Server_socket&>(_socket);
-						if (_ostream.empty()) {
-							Logger<Level::HANDLER>() << "Flushed." << std::endl;
-							_ostream.reset();
-						} else {
-							overflow = true;
-						}
-//					} catch (Connection_error& err) {
-//						Logger<Level::HANDLER>() << Error_message(err, __FILE__, __LINE__, __func__);
-//					} catch (Error& err) {
-//						Logger<Level::HANDLER>() << Error_message(err, __FILE__, __LINE__, __func__);
-//					} catch (std::exception& err) {
-//						Logger<Level::HANDLER>() << String_message(err, __FILE__, __LINE__, __func__);
-//					} catch (...) {
-//						Logger<Level::HANDLER>() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
-//					}
+					Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					_ostream.flush<Server_socket&>(_socket);
+					if (_ostream.empty()) {
+						Logger<Level::HANDLER>() << "Flushed." << std::endl;
+						_ostream.reset();
+					} else {
+						overflow = true;
+					}
 				}
 				on_overflow(overflow);
 			}
