@@ -171,7 +171,7 @@ namespace factory {
 							if (res == _servers.end()) {
 								debug("qqq");
 								std::stringstream msg;
-								msg << ::getpid() << ' ' << server_addr() << ' ';
+								msg << this_process::id() << ' ' << server_addr() << ' ';
 								msg << " can not find server to process event: fd=" << event.fd();
 								Logger<Level::SERVER>() << msg.str() << std::endl;
 								throw Error(msg.str(), __FILE__, __LINE__, __func__);

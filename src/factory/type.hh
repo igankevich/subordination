@@ -273,17 +273,13 @@ namespace factory {
 		const typename Type_init<Sub, Type, K, Base>::Init Type_init<Sub, Type, K, Base>::_type;
 
 		Id factory_start_id() {
-			const char* id = ::getenv("START_ID");
-			Id i = 1000;
-			if (id != NULL) {
-				std::stringstream tmp;
-				tmp << id;
-				if (!(tmp >> i) || i == ROOT_ID) {
-					i = 1000;
-					std::clog << "Bad START_ID value: " << id << std::endl;
-				}
+			constexpr static const Id DEFAULT_START_ID = 1000;
+			Id i = this_process::getenv("START_ID", DEFAULT_START_ID);
+			if (i == ROOT_ID) {
+				i = DEFAULT_START_ID;
+				Logger<Level::COMPONENT>() << "Bad START_ID value: " << ROOT_ID << std::endl;
 			}
-			std::clog << "START_ID = " << i << std::endl;
+			Logger<Level::COMPONENT>() << "START_ID = " << i << std::endl;
 			return i;
 		}
 

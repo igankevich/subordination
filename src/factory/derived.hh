@@ -1,3 +1,18 @@
+#ifdef FACTORY_NO_DERIVED_SYSTEM
+namespace factory {
+	namespace components {
+
+		void factory_stop() {}
+
+		template<class K>
+		void factory_send(K*) {}
+
+		void factory_server_addr(std::ostream& out) {
+			out << "0.0.0.0";
+		}
+	}
+}
+#else
 namespace factory {
 
 	Factory __factory;
@@ -21,3 +36,4 @@ namespace factory {
 	}
 
 }
+#endif

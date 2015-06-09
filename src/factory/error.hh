@@ -72,7 +72,7 @@ namespace factory {
 			_buf << now() << SEP;
 			components::factory_server_addr(_buf);
 			_buf << SEP;
-			_buf << ::getpid() << SEP;
+			_buf << this_process::id() << SEP;
 			_buf << _tag << SEP;
 		}
 
@@ -113,7 +113,7 @@ namespace factory {
 
 	std::string log_filename() {
 		std::stringstream s;
-		s << "/tmp/" << ::getpid() << ".log";
+		s << "/tmp/" << this_process::id() << ".log";
 		return s.str();
 	}
 

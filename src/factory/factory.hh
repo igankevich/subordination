@@ -56,6 +56,7 @@
 	
 	// Base system
 	#include "base.hh"
+	#include "process.hh"
 	#include "error.hh"
 	#include "network.hh"
 	#include "encoding.hh"
@@ -78,9 +79,9 @@
 	// Configuration
 	#include "release_configuration.hh"
 	
+	#include "derived.hh"
 	#if !defined(FACTORY_NO_DERIVED_SYSTEM)
 		// Derived system
-		#include "derived.hh"
 		#include "kernel.hh"
 	#elif defined(FACTORY_EXTEND_DERIVED_SYSTEM)
 		#include "kernel.hh"

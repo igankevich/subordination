@@ -10,11 +10,15 @@ namespace factory {
 	
 	template<>
 	constexpr uint32_t byte_swap<uint32_t>(uint32_t n) {
+#ifdef HAVE___BUILTIN_BSWAP32
+		return __builtin_bswap32(n);
+#else
 		return
 			((n & UINT32_C(0xff000000)) >> 24) |
 			((n & UINT32_C(0x00ff0000)) >> 8) |
 			((n & UINT32_C(0x0000ff00)) << 8) |
 			((n & UINT32_C(0x000000ff)) << 24);
+#endif
 	}
 	
 	template<>
@@ -35,11 +39,7 @@ namespace factory {
 	}
 
 	constexpr bool is_network_byte_order() {
-#if __BYTE_ORDER == __BIG_ENDIAN
-		return true;
-#else
-		return false;
-#endif
+		return __BYTE_ORDER == __BIG_ENDIAN;
 	}
 
 	template<class T>

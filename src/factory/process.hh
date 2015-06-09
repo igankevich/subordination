@@ -1,26 +1,8 @@
+#ifndef FACTORY_PROCESS
+#define FACTORY_PROCESS
 namespace factory {
 
 	typedef ::pid_t Process_id;
-
-	namespace components {
-		struct To_string {
-
-			template<class T>
-			To_string(T rhs): _s(to_string(rhs)) {}
-
-			const char* c_str() { return _s.c_str(); }
-
-		private:
-
-			template<class T>
-			std::string to_string(T rhs) {
-				std::stringstream s;
-				s << rhs;
-				return s.str();
-			}
-			std::string _s;
-		};
-	}
 
 	namespace this_process {
 
@@ -36,6 +18,35 @@ namespace factory {
 			T val;
 			return (s >> val) ? val : dflt;
 		}
+
+	}
+
+}
+#else
+namespace factory {
+
+	namespace components {
+		struct To_string {
+
+			template<class T>
+			To_string(T rhs): _s(to_string(rhs)) {}
+
+			const char* c_str() const { return _s.c_str(); }
+
+		private:
+
+			template<class T>
+			static std::string to_string(T rhs) {
+				std::stringstream s;
+				s << rhs;
+				return s.str();
+			}
+
+			std::string _s;
+		};
+	}
+
+	namespace this_process {
 
 		// TODO: setenv() is known to cause memory leaks
 		template<class T>
@@ -73,11 +84,8 @@ namespace factory {
 			_child_pid = ::fork();
 			if (_child_pid == 0) {
 				int ret = f();
-				Logger<Level::COMPONENT>()
-					<< ::getpid() << ": exit(" << ret << ')' << std::endl;
-				::exit(ret);
-			} else {
-//				std::clog << "fork " << id() << std::endl;
+				Logger<Level::COMPONENT>() << ": exit(" << ret << ')' << std::endl;
+				std::exit(ret);
 			}
 		}
 
@@ -108,8 +116,7 @@ namespace factory {
 			return out << rhs.id();
 		}
 
-		Process_id id() const { return _child_pid; }
-
+		constexpr Process_id id() const { return _child_pid; }
 
 	private:
 
@@ -150,7 +157,8 @@ namespace factory {
 				p.stop();
 		}
 
-		Process operator[](size_t i) { return _procs[i]; }
+		Process& operator[](size_t i) { return _procs[i]; }
+		const Process& operator[](size_t i) const { return _procs[i]; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Process_group& rhs) {
 			for (const Process& p : rhs._procs) {
@@ -297,3 +305,4 @@ namespace factory {
 	};
 
 }
+#endif
