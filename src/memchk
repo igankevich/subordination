@@ -5,4 +5,5 @@ valgrind \
 	--track-fds=yes \
 	--track-origins=yes \
 	--leak-check=full \
+	--error-exitcode=1 \
 	"$@"
