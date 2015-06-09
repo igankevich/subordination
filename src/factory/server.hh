@@ -485,8 +485,7 @@ namespace factory {
 		private:
 
 			void init_signal_handlers() {
-				struct ::sigaction action;
-				std::memset(&action, 0, sizeof(struct ::sigaction));
+				struct ::sigaction action{};
 				action.sa_handler = emergency_shutdown;
 				_ptr_for_sighandler = this;
 				::sigaction(SIGTERM, &action, 0);
@@ -496,16 +495,14 @@ namespace factory {
 			}
 
 			void ignore_sigpipe() {
-				struct ::sigaction action;
-				std::memset(&action, 0, sizeof(struct ::sigaction));
+				struct ::sigaction action{};
 				action.sa_handler = SIG_IGN;
 				::sigaction(SIGPIPE, &action, 0);
 			}
 
 #ifndef FACTORY_NO_STACK_TRACE
 			void stack_trace_on_segv() {
-				struct ::sigaction action;
-				std::memset(&action, 0, sizeof(struct ::sigaction));
+				struct ::sigaction action{};
 				action.sa_handler = print_stack_trace;
 				::sigaction(SIGSEGV, &action, 0);
 			}

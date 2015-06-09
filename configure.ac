@@ -1,6 +1,3 @@
-#                                               -*- Autoconf -*-
-# Process this file with autoconf to produce a configure script.
-
 AC_PREREQ([2.69])
 AC_INIT([Factory], [0.1], [Ivan Gankevich <igankevich@yandex.com>])
 AC_CONFIG_MACRO_DIR([m4])
@@ -27,8 +24,6 @@ AC_PROG_CXX
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_HEADER_STDBOOL
-AC_C_INLINE
 AC_TYPE_INT16_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
@@ -50,9 +45,8 @@ AX_GCC_BUILTIN(__builtin_bswap32)
 AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 
 # Checks for library functions.
-AC_FUNC_ERROR_AT_LINE
 AC_FUNC_FORK
-AC_CHECK_FUNCS([memset socket setenv strerror])
+AC_CHECK_FUNCS([socket setenv strerror])
 
 # Code coverage.
 AX_CODE_COVERAGE

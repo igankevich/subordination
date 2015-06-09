@@ -149,7 +149,7 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
 			return out << '[' << rhs._socket << ','
-				<< (rhs.error() == 0 ? " " : strerror(errno))
+				<< (rhs.error() == 0 ? " " : ::strerror(errno))
 				<< ']';
 		}
 
