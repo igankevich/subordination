@@ -43,6 +43,17 @@ CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
 CODE_COVERAGE_GENHTML_OPTIONS = --demangle-cpp --css-file=../style/gcov.css
 @CODE_COVERAGE_RULES@
 
+VALGRIND_FLAGS = --gen-suppressions=all
+VALGRIND_SUPPRESSIONS_FILES = valgrind.supp
+VALGRIND_memcheck_FLAGS = \
+	--trace-children=yes \
+	--track-fds=yes \
+	--track-origins=yes \
+	--leak-check=full \
+	--show-reachable=no
+
+@VALGRIND_CHECK_RULES@
+
 # disable stack trace for tests where a child process must fail
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
 test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE

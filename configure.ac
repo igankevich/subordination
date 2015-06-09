@@ -50,6 +50,8 @@ AC_CHECK_FUNCS([socket setenv strerror])
 
 # Code coverage.
 AX_CODE_COVERAGE
+# Memory and threading errors.
+AX_VALGRIND_CHECK
 
 # Clean ALL files
 AX_CLEAN_ALL

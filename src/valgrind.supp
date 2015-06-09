@@ -1,0 +1,10 @@
+{
+	test_spinlock ingore conflicting memory access
+	drd:ConflictingAccess
+	obj:*test_spinlock
+}
+{
+	test_spinlock ingore race conditions
+	Helgrind:Race
+	obj:*test_spinlock
+}

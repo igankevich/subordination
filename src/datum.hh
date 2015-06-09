@@ -62,17 +62,18 @@ struct Datum {
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	static constexpr size_t real_size() {
+	constexpr static size_t real_size() {
 		return
 			sizeof(x) + sizeof(y) + sizeof(z) +
 			sizeof(u) + sizeof(v) + sizeof(w);
 	}
 
 private:
-	int8_t x;
-	int16_t y;
-	int32_t z;
 	int64_t u;
+	int32_t z;
 	Bytes<float> v;
 	Bytes<double> w;
+	int16_t y;
+	int8_t x;
+	uint64_t : 40;
 };

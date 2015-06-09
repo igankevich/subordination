@@ -64,7 +64,7 @@ namespace factory {
 		typedef Bytes<T,Byte> This;
 		typedef typename std::decay<Int>::type Retval;
 
-		constexpr Bytes() {}
+		constexpr Bytes(): val{} {}
 		constexpr Bytes(T v): val(v) {}
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }

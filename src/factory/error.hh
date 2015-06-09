@@ -82,6 +82,16 @@ namespace factory {
 		static const char SEP = ' ';
 	};
 
+	struct No_stream: public std::ostream {
+		No_stream(): std::ostream(&nobuf) {}
+		
+	private:
+		struct No_buffer: public std::streambuf {
+			int overflow(int c) const { return c; }
+		};
+		No_buffer nobuf;
+	};
+
 	struct No_logger {
 
 		constexpr No_logger() {}
@@ -97,7 +107,7 @@ namespace factory {
 		operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
 
 		std::ostream& ostream() const {
-			static std::stringstream tmp;
+			static No_stream tmp;
 			return tmp;
 		}
 	};

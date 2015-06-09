@@ -134,9 +134,9 @@ void test_perf(Bigint m) {
 
 int main() {
 	try {
-		test_spinlock<unsigned>(spinlock_counter, 2, 16);
-		test_perf<uint32_t>(16);
-		test_perf<uint64_t>(16);
+		test_spinlock<unsigned>(spinlock_counter, 2, 10);
+		test_perf<uint32_t>(10);
+		test_perf<uint64_t>(10);
 	} catch (std::exception& e) {
 		std::cerr << "Error. " << e.what() << std::endl;
 		return 1;

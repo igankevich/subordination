@@ -310,9 +310,8 @@ namespace factory {
 			virtual ~Tserver() {
 				std::unique_lock<std::mutex> lock(_mutex);
 				while (!_pool.empty()) {
-					Kernel* kernel = _pool.top();
+					delete _pool.top();
 					_pool.pop();
-					delete kernel;
 				}
 			}
 

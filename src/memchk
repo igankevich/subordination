@@ -1,9 +1,0 @@
-#!/bin/sh
-
-valgrind \
-	--trace-children=yes \
-	--track-fds=yes \
-	--track-origins=yes \
-	--leak-check=full \
-	--error-exitcode=1 \
-	"$@"
