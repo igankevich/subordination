@@ -1,6 +1,6 @@
 // autoconf defines
 #ifdef HAVE_CONFIG_H
-	#include "config.h"
+	#include <config.h>
 #endif
 
 #if __cplusplus < 2011L
