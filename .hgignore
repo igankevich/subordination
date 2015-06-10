@@ -38,6 +38,7 @@ src/test_timer
 src/test_swap
 src/*.html
 src/*.xml
+doxygen-doc/*
 
 syntax: regexp
 (^|/)Makefile.in$
