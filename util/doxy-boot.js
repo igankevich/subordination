@@ -117,4 +117,11 @@ $( document ).ready(function() {
 			$(this).siblings('.memItemRight').remove();
 		}
 	});
+    $(".fragment").each(function(i,node) {
+        var $node = $(node);
+        $node.html("<pre><code class='" +
+                   $node.attr("class")+"'>" + 
+                   $node.text()+"</code></pre>");
+        hljs.highlightBlock(node);
+    });
 });
