@@ -1,5 +1,8 @@
 namespace factory {
 
+	/// @addtogroup byteswap Byte swap
+	/// @brief Compile-time byte swapping functions.
+	/// @{
 	template<class T>
 	constexpr T byte_swap (T n) { return n; }
 	
@@ -37,6 +40,7 @@ namespace factory {
 			((n & UINT64_C(0x00000000000000ff)) << 56);
 #endif
 	}
+	/// @}
 
 	constexpr bool is_network_byte_order() {
 		return __BYTE_ORDER == __BIG_ENDIAN;

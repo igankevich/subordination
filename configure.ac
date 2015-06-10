@@ -24,16 +24,16 @@ AC_PROG_CXX
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_INT8_T
 AC_TYPE_INT16_T
 AC_TYPE_INT32_T
 AC_TYPE_INT64_T
-AC_TYPE_INT8_T
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
+AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
 AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_PID_T
 AX_CXX_11
@@ -48,10 +48,22 @@ AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
 AC_FUNC_FORK
 AC_CHECK_FUNCS([socket setenv strerror])
 
-# Code coverage.
+# Code coverage, memory leaks and threading errors automated tests.
 AX_CODE_COVERAGE
-# Memory and threading errors.
 AX_VALGRIND_CHECK
+
+# Documentation.
+DX_DOXYGEN_FEATURE(ON)
+DX_DOT_FEATURE(OFF)
+DX_HTML_FEATURE(ON)
+DX_CHM_FEATURE(OFF)
+DX_CHI_FEATURE(OFF)
+DX_MAN_FEATURE(OFF)
+DX_RTF_FEATURE(OFF)
+DX_XML_FEATURE(OFF)
+DX_PDF_FEATURE(OFF)
+DX_PS_FEATURE(OFF)
+DX_INIT_DOXYGEN(factory)
 
 # Clean ALL files
 AX_CLEAN_ALL
