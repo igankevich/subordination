@@ -2,7 +2,7 @@
 namespace factory {
 	namespace components {
 
-		void factory_stop() {}
+		void factory_stop(bool) {}
 
 		template<class K>
 		void factory_send(K*) {}
@@ -25,7 +25,7 @@ namespace factory {
 
 	namespace components {
 
-		void factory_stop() { __factory.stop(); }
+		void factory_stop(bool force) { __factory.stop(force); }
 
 		template<class K>
 		void factory_send(K* kernel) { the_server()->send(kernel); }

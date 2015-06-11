@@ -190,10 +190,10 @@ namespace factory {
 						}
 					}
 //					if (_poller.stopping()) {
-//						process_kernels();
-//						flush_kernels();
 //					}
 					if (_poller.stopping()) {
+						process_kernels();
+						flush_kernels();
 						++_stop_iterations;
 						if (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS) {
 							debug("stopping");

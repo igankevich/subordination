@@ -256,7 +256,8 @@ namespace factory {
 		ENDPOINT_NOT_CONNECTED = 3,
 		NO_UPSTREAM_SERVERS_LEFT = 4,
 		NO_PRINCIPAL_FOUND = 5,
-		USER_ERROR = 6
+		USER_ERROR = 6,
+		FATAL_ERROR = 7
 	};
 
 	std::ostream& operator<<(std::ostream& out, Result rhs) {
@@ -267,6 +268,7 @@ namespace factory {
 			case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
 			case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
 			case Result::USER_ERROR: out << "USER_ERROR"; break;
+			case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
 			default: out << "UNKNOWN_RESULT";
 		}
 		return out;

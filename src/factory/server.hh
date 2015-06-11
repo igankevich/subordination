@@ -416,10 +416,12 @@ namespace factory {
 
 		template<template<class X> class Mobile, class Type>
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
+			explicit Shutdown(bool f=false): force(f) {}
 			void act() {
 				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
+				bool f = this->force;
 				delete this;
-				components::factory_stop();
+				components::factory_stop(f);
 			}
 //			void react() {}
 			void write_impl(Foreign_stream&) {}
@@ -428,6 +430,8 @@ namespace factory {
 				t->id(123);
 				t->name("Shutdown");
 			}
+		private:
+			bool force = false;
 		};
 
 		
@@ -460,12 +464,18 @@ namespace factory {
 				_timer_server.start();
 			}
 
-			void stop() {
-				_local_server.stop();
-				_remote_server.send(new Shutdown);
-				_remote_server.stop();
-				_ext_server.stop();
-				_timer_server.stop();
+			void stop(bool now=false) {
+				if (now) {
+					_local_server.stop();
+					_remote_server.stop();
+					_ext_server.stop();
+					_timer_server.stop();
+				} else {
+					_remote_server.send(new Shutdown);
+					Shutdown* s = new Shutdown(true);
+					s->after(std::chrono::milliseconds(500));
+					_timer_server.send(s);
+				}
 			}
 
 			void wait() {

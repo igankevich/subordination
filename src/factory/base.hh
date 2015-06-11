@@ -4,7 +4,7 @@ namespace factory {
 
 	namespace components {
 
-		void factory_stop();
+		void factory_stop(bool force=false);
 
 		template<class K>
 		void factory_send(K*);

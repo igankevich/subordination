@@ -1,0 +1,10 @@
+VALGRIND_FLAGS = --gen-suppressions=all
+VALGRIND_SUPPRESSIONS_FILES = valgrind.supp
+VALGRIND_memcheck_FLAGS = \
+	--trace-children=yes \
+	--track-fds=yes \
+	--track-origins=yes \
+	--leak-check=full \
+	--show-reachable=no
+
+@VALGRIND_CHECK_RULES@

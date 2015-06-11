@@ -4,8 +4,8 @@ using namespace factory;
 
 #include "datum.hh"
 
-Endpoint server_endpoint("127.0.0.1", 10001);
-Endpoint client_endpoint("127.0.0.2", 10001);
+Endpoint server_endpoint("127.0.0.3", 10001);
+Endpoint client_endpoint("127.0.0.4", 10001);
 
 const uint32_t NUM_SIZES = 13;
 const uint32_t NUM_KERNELS = 7;
@@ -19,10 +19,16 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
+		// Delete kernel for Valgrind memory checker.
+		delete this;
 		Logger<Level::COMPONENT> log;
 		log << "kernel count = " << shutdown_counter << std::endl;
 		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
-			*(reinterpret_cast<volatile int*>(0)) = 1;
+//			Shutdown* s = new Shutdown(true);
+//			s->after(std::chrono::milliseconds(5000));
+//			timer_server()->send(s);
+			__factory.stop(true);
+//			*(reinterpret_cast<volatile int*>(0)) = 1;
 		}
 //		commit(remote_server());
 	}
@@ -54,7 +60,7 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 
-	Sender(uint32_t n):
+	explicit Sender(uint32_t n):
 		_vector_size(n),
 		_input(_vector_size) {}
 
