@@ -3,6 +3,14 @@
 	#include <config.h>
 #endif
 
+// Patching stdc++ for Valgrind.
+#ifdef HAVE_VALGRIND
+#include <valgrind/drd.h>
+#include <valgrind/helgrind.h>
+#define _GLIBCXX_SYNCHRONIZATION_HAPPENS_BEFORE(A) ANNOTATE_HAPPENS_BEFORE(A)
+#define _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(A)  ANNOTATE_HAPPENS_AFTER(A)
+#endif
+
 #if __cplusplus < 2011L
 	#error Factory requires C++11 compiler.
 #else

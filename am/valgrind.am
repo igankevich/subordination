@@ -1,5 +1,5 @@
 VALGRIND_FLAGS = --gen-suppressions=all
-VALGRIND_SUPPRESSIONS_FILES = valgrind.supp
+VALGRIND_SUPPRESSIONS_FILES = $(top_srcdir)/util/valgrind.supp
 VALGRIND_memcheck_FLAGS = \
 	--trace-children=yes \
 	--track-fds=yes \

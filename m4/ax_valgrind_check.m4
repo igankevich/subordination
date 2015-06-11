@@ -70,7 +70,14 @@ AC_DEFUN([AX_VALGRIND_CHECK],[
 	AS_IF([test "$enable_valgrind" = "yes" -a "$VALGRIND" = ""],[
 		AC_MSG_ERROR([Could not find valgrind; either install it or reconfigure with --disable-valgrind])
 	])
-	AS_IF([test "$enable_valgrind" != "no"],[enable_valgrind=yes])
+
+	# Define config.h macro.
+	AS_IF([test "$enable_valgrind" = "yes" -a "$VALGRIND" != ""],[
+        AC_DEFINE_UNQUOTED(AS_TR_CPP(HAVE_VALGRIND), 1,
+            [Define to 1 if the system has the `Valgrind'])])
+
+	# Disabled by default.
+#	AS_IF([test "$enable_valgrind" != "no"],[enable_valgrind=yes])
 
 	AM_CONDITIONAL([VALGRIND_ENABLED],[test "$enable_valgrind" = "yes"])
 	AC_SUBST([VALGRIND_ENABLED],[$enable_valgrind])
