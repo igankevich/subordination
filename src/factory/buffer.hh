@@ -366,6 +366,7 @@ namespace factory {
 	struct LBuffer {
 		
 		typedef T value_type;
+		typedef size_t Size;
 
 		explicit LBuffer(size_t base_size): _data(base_size) {}
 

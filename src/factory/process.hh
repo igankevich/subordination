@@ -130,25 +130,9 @@ namespace factory {
 			_procs.push_back(Process(f));
 		}
 
-		int wait(bool use_threads=false) {
+		int wait() {
 			int ret = 0;
-			if (use_threads) {
-				std::atomic<int> rett(0);
-				std::vector<std::thread> threads(_procs.size());
-				for (size_t i=0; i<threads.size(); ++i) {
-					threads[i] = std::thread([this,i,&rett]() {
-						rett |= _procs[i].wait();
-					});
-				}
-				for (size_t i=0; i<threads.size(); ++i) {
-					if (threads[i].joinable()) {
-						threads[i].join();
-					}
-				}
-				ret = rett;
-			} else {
-				for (Process& p : _procs) ret += std::abs(p.wait());
-			}
+			for (Process& p : _procs) ret += std::abs(p.wait());
 			return ret;
 		}
 

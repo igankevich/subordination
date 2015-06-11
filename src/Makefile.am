@@ -1,3 +1,6 @@
+include $(top_srcdir)/am/gcov.am
+include $(top_srcdir)/am/valgrind.am
+
 #-Wstack-protector -fstack-protector -- security concerns
 #-Wpadded                            -- detects padding
 #-fmudflapth                         -- pointer range check
@@ -52,6 +55,3 @@ factory_time_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 #test_shmem_CPPFLAGS      = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_DISABLE_CPU_BINDING
-
-include $(top_srcdir)/am/gcov.am
-include $(top_srcdir)/am/valgrind.am

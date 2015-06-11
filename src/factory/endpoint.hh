@@ -33,15 +33,15 @@ namespace factory {
 		typedef struct ::sockaddr Addr;
 		typedef struct ::sockaddr_in Addr_in;
 
-		constexpr Endpoint(): _addr{} {}
+		constexpr Endpoint() {}
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
 		Endpoint(uint32_t h, Port p) { addr(h, p); }
-		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
-		Endpoint(Addr_in* rhs) { addr(rhs); }
-		Endpoint(Addr* rhs) { addr(rhs); }
+//		Endpoint(const Endpoint& rhs) { addr(&rhs._addr); }
+		Endpoint(Addr_in* rhs): _addr(*rhs) {}
+		Endpoint(Addr* rhs): _sockaddr(*rhs) {}
 
 		Endpoint& operator=(const Endpoint& rhs) {
-			addr(&rhs._addr);
+			_sockaddr = rhs._sockaddr;
 			return *this;
 		}
 
@@ -117,15 +117,6 @@ namespace factory {
 			return a - (a & netmask);
 		}
 	
-		void addr(const Addr_in* rhs) {
-			std::memcpy(static_cast<void*>(&_addr),
-				static_cast<const void*>(rhs), sizeof(_addr));
-		}
-
-		void addr(const Addr* rhs) {
-			_sockaddr = *rhs;
-		}
-
 		void addr(const char* h, Port p) {
 			_addr.sin_family = AF_INET;
 			_addr.sin_port = to_network_format<Port>(p);
@@ -139,14 +130,12 @@ namespace factory {
 		}
 
 		void addr(const uint32_t h, Port p) {
-			Addr_in a;
-			a.sin_family = AF_INET;
-			a.sin_addr.s_addr = to_network_format<uint32_t>(h);
-			a.sin_port = to_network_format<Port>(p);
-			addr(&a);
+			_addr.sin_family = AF_INET;
+			_addr.sin_addr.s_addr = to_network_format<uint32_t>(h);
+			_addr.sin_port = to_network_format<Port>(p);
 		}
 
-		Addr_in _addr;
+		Addr_in _addr = {};
 		Addr _sockaddr;
 	};
 

@@ -89,6 +89,39 @@ struct Test_endpoint {
 		check_bool(!Endpoint("127.0.0.1", 0), false);
 	}
 
+	void test_io() {
+		std::vector<Endpoint> addrs(10);
+		std::generate(addrs.begin(), addrs.end(), [this] () { return random_addr(); });
+
+		// write
+		Foreign_stream os;
+		std::for_each(addrs.begin(), addrs.end(), [&os] (const Endpoint& rhs) {
+			os << rhs;
+		});
+
+		// read
+		std::vector<Endpoint> addrs2(addrs.size());
+		std::for_each(addrs2.begin(), addrs2.end(), [&os] (Endpoint& rhs) {
+			os >> rhs;
+		});
+
+		if (addrs.size() != addrs2.size()) {
+			std::stringstream msg;
+			msg << "[multiple] Read/write arrays size do not match: "
+				<< addrs.size() << " /= " << addrs2.size();
+			throw std::runtime_error(msg.str());
+		}
+
+		for (size_t i=0; i<addrs.size(); ++i) {
+			if (addrs[i] != addrs2[i]) {
+				std::stringstream msg;
+				msg << "[multiple] Addresses does not match: "
+					<< addrs[i] << " /= " << addrs2[i];
+				throw std::runtime_error(msg.str());
+			}
+		}
+	}
+
 private:
 
 	void check_bool(Endpoint x, bool y) {
@@ -131,6 +164,7 @@ struct App {
 			test.test_multiple();
 			test.test_variations_ipv4();
 			test.test_operators();
+			test.test_io();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
