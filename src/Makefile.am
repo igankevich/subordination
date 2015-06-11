@@ -7,8 +7,6 @@
 #-Wabi                               -- probably not needed
 
 AM_DEFAULT_SOURCE_EXT = .cc
-AM_CXXFLAGS = $(CODE_COVERAGE_CFLAGS)
-AM_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = \
 	factory_time
@@ -38,10 +36,6 @@ check_PROGRAMS = \
 	test_timer \
 	test_swap
 
-CODE_COVERAGE_LCOV_OPTIONS = --checksum --rc lcov_branch_coverage=1
-CODE_COVERAGE_IGNORE_PATTERN = '/usr/include/*'
-CODE_COVERAGE_GENHTML_OPTIONS = --demangle-cpp --css-file=../util/gcov.css
-@CODE_COVERAGE_RULES@
 
 # disable stack trace for tests where a child process must fail
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
@@ -59,4 +53,5 @@ factory_time_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_DISABLE_CPU_BINDING
 
+include $(top_srcdir)/am/gcov.am
 include $(top_srcdir)/am/valgrind.am
