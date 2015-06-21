@@ -10,10 +10,10 @@ namespace factory {
 		constexpr Socket() noexcept: _socket(0) {}
 		constexpr Socket(int socket) noexcept: _socket(socket) {}
 		constexpr Socket(const Socket& rhs) noexcept: _socket(rhs._socket) {}
-		Socket(Socket&& rhs) noexcept: _socket(rhs._socket) { rhs._socket = -1; }
+		Socket(Socket&& rhs) noexcept: _socket(rhs._socket) { rhs._socket = INVALID_SOCKET; }
 
 		void create_socket_if_necessary() {
-			if (_socket <= 0) {
+			if (!this->is_valid()) {
 				check("socket()", _socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
 			}
 		}
@@ -54,17 +54,17 @@ namespace factory {
 		}
 
 		void close() {
-			if (_socket > 0) {
+			if (this->is_valid()) {
 				Logger<Level::COMPONENT>() << "Closing socket " << _socket << std::endl;
 				::shutdown(_socket, SHUT_RDWR);
 				::close(_socket);
 //				check("close()", ::close(_socket));
 			}
-			_socket = -1;
+			_socket = INVALID_SOCKET;
 		}
 
 		void no_reading() {
-			if (_socket > 0) {
+			if (this->is_valid()) {
 				check("no_reading()", ::shutdown(_socket, SHUT_RD));
 			}
 		}
@@ -78,10 +78,12 @@ namespace factory {
 			int one = 1;
 			check("setsockopt()", ::setsockopt(_socket, SOL_SOCKET, option, &one, sizeof(one)));
 		}
+
+		constexpr bool is_valid() const { return _socket > 0; }
 		
 		int error() const {
 			int ret = 0;
-			if (_socket < 0) {
+			if (!this->is_valid()) {
 				ret = -1;
 			} else {
 				socklen_t sz = sizeof(ret);
@@ -161,6 +163,7 @@ namespace factory {
 
 	protected:
 		int _socket;
+		static const int INVALID_SOCKET = -1;
 	};
 
 }

@@ -36,6 +36,7 @@ src/test_websocket
 src/test_shmem
 src/test_timer
 src/test_swap
+src/factory_time
 src/*.html
 src/*.xml
 doxygen-doc/*
