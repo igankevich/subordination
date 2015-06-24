@@ -387,13 +387,14 @@ namespace factory {
 		template<class Res>
 		static void generate_accept_header(const std::string& web_socket_key, Res header) {
 			static const char WEBSOCKET_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+			static const size_t SHA_DIGEST_SIZE = 5;
 			typedef Bytes<uint32_t, unsigned char> Digest_item;
-			Bytes<Digest_item[5], unsigned char> hash;
+			Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
 			SHA1 sha1;
 			sha1.input(web_socket_key.begin(), web_socket_key.end());
 			sha1.input(WEBSOCKET_GUID, WEBSOCKET_GUID + sizeof(WEBSOCKET_GUID)-1);
 			sha1.result(hash.value());
-			std::for_each(hash.value(), hash.value() + 5,
+			std::for_each(hash.value(), hash.value() + SHA_DIGEST_SIZE,
 				std::mem_fun_ref(&Digest_item::to_network_format));
 			base64_encode(hash.begin(), hash.end(), header);
 		}

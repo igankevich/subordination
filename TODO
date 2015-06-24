@@ -24,3 +24,4 @@ Handle cases when a machine has multiple IP addresses.
 Specialise Bytes class for fixed size arrays.
 Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 Make Factory::stop() reliable.
+Add handshake states to WebSocket class.
