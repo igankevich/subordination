@@ -94,9 +94,9 @@ namespace factory {
 				ret = 0;
 			} else {
 				// If one connects to localhost to a different port and the service is offline
-				// then socket's local port can be chosed to be the same as the port of the service.
+				// then socket's local port can be chosen to be the same as the port of the service.
 				// If this happens the socket connects to itself and sends and replies to
-				// its own messages. This conditional solves the issue.
+				// its own messages (at least on Linux). This conditional solves the issue.
 				try {
 					if (ret == 0 && name() == peer_name()) {
 						ret = -1;
@@ -229,12 +229,16 @@ namespace factory {
 		};
 
 		enum struct State: uint8_t {
+			INITIAL_STATE,
 			PARSING_HTTP_METHOD,
 			PARSING_HEADERS,
 			PARSING_ERROR,
 			PARSING_SUCCESS,
 			REPLYING_TO_HANDSHAKE,
-			HANDSHAKE_SUCCESS
+			HANDSHAKE_SUCCESS,
+			STARTING_HANDSHAKE,
+			WRITING_HANDSHAKE,
+			READING_CLIENT_RESPONSE
 		};
 
 		Web_socket():
@@ -264,6 +268,9 @@ namespace factory {
 		uint32_t write(const char* buf, size_t size) {
 			uint32_t ret = 0;
 			if (state != State::HANDSHAKE_SUCCESS) {
+				if (state == State::INITIAL_STATE) {
+					state = State::STARTING_HANDSHAKE;
+				}
 				handshake();
 			} else {
 				websocket_encode(buf, buf + size, std::back_inserter(send_buffer));
@@ -277,6 +284,9 @@ namespace factory {
 		uint32_t read(char* buf, size_t size) {
 			uint32_t bytes_read = 0;
 			if (state != State::HANDSHAKE_SUCCESS) {
+				if (state == State::INITIAL_STATE) {
+					state = State::PARSING_HTTP_METHOD;
+				}
 				handshake();
 			} else {
 				Opcode opcode = Opcode::CONT_FRAME;
@@ -294,7 +304,7 @@ namespace factory {
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
 					Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
-					this->close();
+//					this->close();
 				} else {
 					bytes_read = mid_buffer.read(buf, size);
 				}
@@ -306,7 +316,6 @@ namespace factory {
 
 		template<class It>
 		void read_header(It first, It last) {
-			Logger<Level::WEBSOCKET>() << "read header line = " << std::string(first, last) << std::endl;
 			switch (state) {
 				case State::PARSING_HTTP_METHOD: {
 					std::string line(first, last);
@@ -363,6 +372,19 @@ namespace factory {
 				case State::PARSING_ERROR:
 					reply_error();
 					break;
+				case State::STARTING_HANDSHAKE:
+					start_handshake();
+					break;
+				case State::WRITING_HANDSHAKE:
+					if (this->flush()) {
+						state = State::READING_CLIENT_RESPONSE;
+					}
+					break;
+				case State::READING_CLIENT_RESPONSE:
+					this->fill();
+					this->check_client_response();
+					break;
+				case State::INITIAL_STATE:
 				case State::PARSING_HTTP_METHOD:
 				case State::PARSING_HEADERS:
 				default: {
@@ -378,12 +400,17 @@ namespace factory {
 		bool success() const { return state == State::HANDSHAKE_SUCCESS; }
 
 		bool validate_headers() {
-			return
-				_http_headers.contain("Sec-WebSocket-Key")
-				&& _http_headers.contain("Sec-WebSocket-Version")
-				&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
-				&& _http_headers.contain("Upgrade", "websocket")
-				&& _http_headers.contain_value("Connection", "Upgrade");
+			bool ret = false;
+			if (state == State::READING_CLIENT_RESPONSE) {
+				ret = _http_headers.contain("Sec-WebSocket-Key");
+			} else {
+				ret = _http_headers.contain("Sec-WebSocket-Key")
+					&& _http_headers.contain("Sec-WebSocket-Version")
+					&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
+					&& _http_headers.contain("Upgrade", "websocket")
+					&& _http_headers.contain_value("Connection", "Upgrade");
+			}
+			return ret;
 		}
 
 		void read_http_method_and_headers() {
@@ -433,16 +460,51 @@ namespace factory {
 			state = State::REPLYING_TO_HANDSHAKE;
 		}
 
+		void start_handshake() {
+			std::string key(WEBSOCKET_KEY_BASE64_LENGTH, 0);
+			websocket_key(key.begin());
+			std::stringstream request;
+			request
+				<< "GET / HTTP/1.1" << HTTP_FIELD_SEPARATOR
+				<< "User-Agent: Factory/" << VERSION << HTTP_FIELD_SEPARATOR
+				<< "Connection: Upgrade" << HTTP_FIELD_SEPARATOR
+				<< "Upgrade: websocket" << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Protocol: binary" << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Version: 13" << HTTP_FIELD_SEPARATOR
+				<< "Sec-WebSocket-Key: " << key << HTTP_FIELD_SEPARATOR
+				<< HTTP_FIELD_SEPARATOR;
+			std::string buf = request.str();
+			send_buffer.write(buf.data(), buf.size());
+			state = State::WRITING_HANDSHAKE;
+			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
+		}
+
+		void check_client_response() {
+			// TODO: check websocket key
+			// TODO: read and validate headers
+			if (!recv_buffer.empty()) {
+				std::string tmp;
+				std::copy(recv_buffer.begin(), recv_buffer.end(), std::back_inserter(tmp));
+				Logger<Level::WEBSOCKET>() << "client response " << tmp << std::endl;
+				recv_buffer.reset();
+				state = State::HANDSHAKE_SUCCESS;
+			}
+		}
+
 		bool flush() {
 			send_buffer.flush(Socket(_socket));
 			return send_buffer.empty();
+		}
+
+		void fill() {
+			recv_buffer.fill(Socket(_socket));
 		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Web_socket& rhs) {
 			return out << rhs._socket;
 		}
 	
-		State state = State::PARSING_HTTP_METHOD;
+		State state = State::INITIAL_STATE;
 		HTTP_headers _http_headers;
 
 		LBuffer<char> send_buffer;
@@ -452,6 +514,7 @@ namespace factory {
 		static const size_t BUFFER_SIZE = 1024;
 		static const size_t MAX_HEADERS = 20;
 		static const size_t ACCEPT_HEADER_LENGTH = 29;
+		static const size_t WEBSOCKET_KEY_BASE64_LENGTH = 24;
 
 		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
 		constexpr static const char* BAD_REQUEST = "HTTP/2.1 400 Bad Request\r\n\r\n";

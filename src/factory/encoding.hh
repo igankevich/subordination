@@ -582,10 +582,13 @@ namespace factory {
 				<< "size=" << rhs.payload_size();
 		}
 	};
+
+	namespace components {
+		std::random_device rng;
+	}
 	
 	template<class It, class Res>
 	void websocket_encode(It first, It last, Res result) noexcept {
-		static std::random_device rng;
 		static_assert(sizeof(std::random_device::result_type)
 			>= sizeof(Web_socket_frame::Mask), "Bad RNG return type");
 		size_t input_size = last - first;
@@ -594,7 +597,7 @@ namespace factory {
 		frame.opcode(Opcode::BINARY_FRAME);
 		frame.fin(1);
 		frame.payload_size(input_size);
-		frame.mask(rng());
+		frame.mask(components::rng());
 		frame.encode(result);
 		frame.copy_payload(first, last, result);
 	}
@@ -626,6 +629,21 @@ namespace factory {
 		std::for_each(hash.value(), hash.value() + SHA_DIGEST_SIZE,
 			std::mem_fun_ref(&Digest_item::to_network_format));
 		base64_encode(hash.begin(), hash.end(), header);
+	}
+
+	template<class Res>
+	void websocket_key(Res key) {
+		typedef std::random_device::result_type T;
+		static const size_t WEBSOCKET_KEY_SIZE = 16;
+		size_t ncopied = 0;
+		unsigned char buf[WEBSOCKET_KEY_SIZE];
+		while (ncopied < WEBSOCKET_KEY_SIZE) {
+			size_t nb = std::min(WEBSOCKET_KEY_SIZE - ncopied, sizeof(T));
+			Bytes<T> bytes = components::rng();
+			std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
+			ncopied += nb;
+		}
+		base64_encode(buf, buf + WEBSOCKET_KEY_SIZE, key);
 	}
 
 }

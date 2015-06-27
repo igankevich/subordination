@@ -26,3 +26,4 @@ Specialise Bytes class for fixed size arrays.
 Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 Make Factory::stop() reliable.
 Make Buffer and LBuffer a subclass of std::streambuf.
+Test web socket and socket with random input to cover parsing and other errors.

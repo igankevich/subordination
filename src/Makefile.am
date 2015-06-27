@@ -19,6 +19,7 @@ TESTS = \
 	test_marshaling \
 	test_socket \
 	test_offline \
+	test_websocket \
 	test_spinlock \
 	test_endpoint \
 	test_encoding \

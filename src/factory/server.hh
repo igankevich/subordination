@@ -472,6 +472,7 @@ namespace factory {
 					_timer_server.stop();
 				} else {
 					_remote_server.send(new Shutdown);
+					_ext_server.send(new Shutdown);
 					Shutdown* s = new Shutdown(true);
 					s->after(std::chrono::milliseconds(500));
 					_timer_server.send(s);

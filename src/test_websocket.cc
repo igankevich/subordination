@@ -49,7 +49,7 @@ struct Test_socket: public Mobile<Test_socket> {
 	void act() {
 		Logger<Level::COMPONENT> log;
 		log << "kernel count = " << shutdown_counter << std::endl;
-		commit(remote_server());
+		commit(ext_server());
 	}
 
 	void write_impl(Foreign_stream& out) {
@@ -87,7 +87,7 @@ struct Sender: public Identifiable<Kernel> {
 	void act() {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-			upstream(remote_server(), new Test_socket(_input));
+			upstream(ext_server(), new Test_socket(_input));
 			++shutdown_counter;
 			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
 			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
@@ -100,12 +100,12 @@ struct Sender: public Identifiable<Kernel> {
 		std::vector<Datum> output = test_kernel->data();
 
 		if (_input.size() != output.size())
-			throw std::runtime_error("test_socket. Input and output size does not match.");
+			throw std::runtime_error("test_websocket. Input and output size does not match.");
 
 		for (size_t i=0; i<_input.size(); ++i) {
 			if (_input[i] != output[i]) {
 				std::stringstream msg;
-				msg << "test_socket. Input and output does not match: ";
+				msg << "test_websocket. Input and output does not match: ";
 				msg << _input[i] << " != " << output[i];
 				throw std::runtime_error(msg.str());
 			}
@@ -166,12 +166,12 @@ struct App {
 				this_process::env("START_ID", 1000);
 				return this_process::execute(argv[0], 'x', sleep);
 			});
-//			// wait for master to start
-//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//			procs.add([&argv, sleep] () {
-//				this_process::env("START_ID", 2000);
-//				return this_process::execute(argv[0], 'y', sleep);
-//			});
+			// wait for master to start
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			procs.add([&argv, sleep] () {
+				this_process::env("START_ID", 2000);
+				return this_process::execute(argv[0], 'y', sleep);
+			});
 			retval = procs.wait();
 		} else {
 			try {
@@ -190,8 +190,8 @@ struct App {
 					__factory.wait();
 				}
 				if (argv[1][0] == 'y') {
-					remote_server()->socket(client_endpoint);
-					remote_server()->peer(server_endpoint);
+					ext_server()->socket(client_endpoint);
+					ext_server()->peer(server_endpoint);
 					__factory.start();
 					the_server()->send(new Main(sleep));
 					__factory.wait();
