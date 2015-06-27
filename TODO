@@ -5,6 +5,7 @@ DONE [71:97d92e8d4d02] Kernels' recovery when upstream server goes offline after
 DONE [83:a6c333464330] Use spin locks for scheduling strategies.
 DONE [179:c228b05b2d32] Clean obsolete classes (Server_stack, Server_server). Place relevant classes into a common header file (Socket, Server_socket, Client_socket, Web_socket into socket.hh).
 DONE [184:b3afe82e233a] Remove non-portable WebSocket dependencies on memchr, bzero and other fancy functions.
+DONE [289:] Add handshake states to WebSocket class.
 
 
 Add IPv6 support through 'struct sockaddr_storage', getaddrinfo() and rewrite discover_neighbours() to support large networks scanning.
@@ -24,4 +25,4 @@ Handle cases when a machine has multiple IP addresses.
 Specialise Bytes class for fixed size arrays.
 Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 Make Factory::stop() reliable.
-Add handshake states to WebSocket class.
+Make Buffer and LBuffer a subclass of std::streambuf.

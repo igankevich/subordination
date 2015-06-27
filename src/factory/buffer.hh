@@ -399,6 +399,12 @@ namespace factory {
 			return min_sz;
 		}
 
+		size_t skip(size_t n) {
+			size_t min_n = std::min(n, size()); 
+			advance_read_pos(min_n);
+			return min_n;
+		}
+
 		size_t readsome(T* buf, size_t sz) {
 			size_t min_sz = std::min(sz, size()); 
 			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
