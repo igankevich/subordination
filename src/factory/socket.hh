@@ -213,6 +213,11 @@ namespace factory {
 			bool contain(const char* name) const {
 				return hdrs.count(name) != 0;
 			}
+
+			bool contain(const char* name, const std::string& value) const {
+				auto it = hdrs.find(name);
+				return it != hdrs.end() && it->second == value;
+			}
 	
 			bool contain(const char* name, const char* value) const {
 				auto it = hdrs.find(name);
@@ -231,18 +236,21 @@ namespace factory {
 		enum struct State: uint8_t {
 			INITIAL_STATE,
 			PARSING_HTTP_METHOD,
+			PARSING_HTTP_STATUS,
 			PARSING_HEADERS,
 			PARSING_ERROR,
 			PARSING_SUCCESS,
 			REPLYING_TO_HANDSHAKE,
 			HANDSHAKE_SUCCESS,
 			STARTING_HANDSHAKE,
-			WRITING_HANDSHAKE,
-			READING_CLIENT_RESPONSE
+			WRITING_HANDSHAKE
 		};
+
+		enum struct Role: uint8_t { SERVER, CLIENT };
 
 		Web_socket():
 			_http_headers(),
+			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
 			mid_buffer(BUFFER_SIZE)
@@ -251,14 +259,13 @@ namespace factory {
 		explicit Web_socket(const Socket& rhs):
 			Socket(rhs),
 			_http_headers(),
+			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
 			mid_buffer(BUFFER_SIZE)
 			{}
 
-		virtual ~Web_socket() {
-			this->close();
-		}
+		virtual ~Web_socket() { this->close(); }
 
 		Web_socket& operator=(const Socket& rhs) {
 			Socket::operator=(rhs);
@@ -270,6 +277,7 @@ namespace factory {
 			if (state != State::HANDSHAKE_SUCCESS) {
 				if (state == State::INITIAL_STATE) {
 					state = State::STARTING_HANDSHAKE;
+					role = Role::CLIENT;
 				}
 				handshake();
 			} else {
@@ -286,12 +294,13 @@ namespace factory {
 			if (state != State::HANDSHAKE_SUCCESS) {
 				if (state == State::INITIAL_STATE) {
 					state = State::PARSING_HTTP_METHOD;
+					role = Role::SERVER;
 				}
 				handshake();
 			} else {
 				Opcode opcode = Opcode::CONT_FRAME;
 				if (mid_buffer.empty()) {
-					recv_buffer.fill<Socket&>(*this);
+					this->fill();
 					size_t len = websocket_decode(recv_buffer.read_begin(),
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
@@ -304,7 +313,7 @@ namespace factory {
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
 					Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
-//					this->close();
+					this->close();
 				} else {
 					bytes_read = mid_buffer.read(buf, size);
 				}
@@ -317,49 +326,84 @@ namespace factory {
 		template<class It>
 		void read_header(It first, It last) {
 			switch (state) {
-				case State::PARSING_HTTP_METHOD: {
-					std::string line(first, last);
-					if (line.find("GET") == 0) {
+				case State::PARSING_HTTP_STATUS: parse_http_status(std::string(first, last)); break;
+				case State::PARSING_HTTP_METHOD: parse_http_method(first, last); break;
+				case State::PARSING_HEADERS: parse_http_headers(first, last); break;
+				case State::PARSING_ERROR:
+				case State::PARSING_SUCCESS:
+				case State::HANDSHAKE_SUCCESS:
+				case State::INITIAL_STATE:
+				case State::REPLYING_TO_HANDSHAKE:
+				case State::STARTING_HANDSHAKE:
+				case State::WRITING_HANDSHAKE:
+				default: break;
+			}
+		}
+
+		void parse_http_status(std::string line) {
+			if (line.find("HTTP") == 0) {
+				auto sep1 = line.find(' ');
+				if (sep1 != std::string::npos) {
+					auto sep2 = line.find(' ', sep1);
+					if (sep2 != std::string::npos && line.compare(sep1, sep2-sep1, "101")) {
 						state = State::PARSING_HEADERS;
 						Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
 					} else {
 						state = State::PARSING_ERROR;
 						Logger<Level::WEBSOCKET>()
-							<< "bad method in web socket hand shake" << std::endl;
+							<< "bad HTTP status in web socket hand shake" << std::endl;
 					}
-					} break;
-				case State::PARSING_HEADERS: {
-					It it = std::find(first, last, ':');
-					if (it != last) {
-						std::string key(first, it);
-						// advance two characters further (colon plus space)
-						std::string value(it+2, last);
-						if (_http_headers.size() == MAX_HEADERS) {
-							state = State::PARSING_ERROR;
-							Logger<Level::WEBSOCKET>()
-								<< "too many headers in HTTP request" << std::endl;
-						} else if (_http_headers.contain(key.c_str())) {
-							state = State::PARSING_ERROR;
-							Logger<Level::WEBSOCKET>()
-								<< "duplicate HTTP header: '" << key << '\'' << std::endl;
-						} else {
-							_http_headers[key] = value;
-							Logger<Level::WEBSOCKET>()
-								<< "Header['" << key << "'] = '" << value << "'" << std::endl;
-						}
-					}
-					} break;
-				case State::PARSING_ERROR:
-				case State::HANDSHAKE_SUCCESS:
-				default: break;
+				}
+			} else {
+				state = State::PARSING_ERROR;
+				Logger<Level::WEBSOCKET>()
+					<< "bad method in web socket hand shake" << std::endl;
 			}
 		}
+
+		template<class It>
+		void parse_http_method(It first, It last) {
+			static const char GET[] = "GET";
+			if (std::search(first, last, GET, GET + sizeof(GET)-1) != last) {
+				state = State::PARSING_HEADERS;
+				Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
+			} else {
+				state = State::PARSING_ERROR;
+				Logger<Level::WEBSOCKET>()
+					<< "bad method in web socket hand shake" << std::endl;
+			}
+		}
+
+		template<class It>
+		void parse_http_headers(It first, It last) {
+			It it = std::find(first, last, ':');
+			if (it != last) {
+				std::string key(first, it);
+				// advance two characters further (colon plus space)
+				std::string value(it+2, last);
+				if (_http_headers.size() == MAX_HEADERS) {
+					state = State::PARSING_ERROR;
+					Logger<Level::WEBSOCKET>()
+						<< "too many headers in HTTP request" << std::endl;
+				} else if (_http_headers.contain(key.c_str())) {
+					state = State::PARSING_ERROR;
+					Logger<Level::WEBSOCKET>()
+						<< "duplicate HTTP header: '" << key << '\'' << std::endl;
+				} else {
+					_http_headers[key] = value;
+					Logger<Level::WEBSOCKET>()
+						<< "Header['" << key << "'] = '" << value << "'" << std::endl;
+				}
+			}
+		}
+
+		bool is_server() const { return role == Role::SERVER; }
+		bool is_client() const { return role == Role::CLIENT; }
 
 		void handshake() {
 			State old_state = this->state;
 			switch (state) {
-				case State::HANDSHAKE_SUCCESS:
-					break;
+				case State::HANDSHAKE_SUCCESS: break;
 				case State::REPLYING_TO_HANDSHAKE:
 					this->flush();
 					if (send_buffer.empty()) {
@@ -367,66 +411,62 @@ namespace factory {
 					}
 					break;
 				case State::PARSING_SUCCESS:
-					reply_success();
+					if (is_server()) reply_success(); else state = State::HANDSHAKE_SUCCESS;
 					break;
 				case State::PARSING_ERROR:
-					reply_error();
+					is_server() ? reply_error() : this->close();
 					break;
 				case State::STARTING_HANDSHAKE:
 					start_handshake();
 					break;
 				case State::WRITING_HANDSHAKE:
 					if (this->flush()) {
-						state = State::READING_CLIENT_RESPONSE;
+						state = State::PARSING_HTTP_STATUS;
 					}
-					break;
-				case State::READING_CLIENT_RESPONSE:
-					this->fill();
-					this->check_client_response();
 					break;
 				case State::INITIAL_STATE:
 				case State::PARSING_HTTP_METHOD:
+				case State::PARSING_HTTP_STATUS:
 				case State::PARSING_HEADERS:
-				default: {
 					read_http_method_and_headers();
 					break;
-				}
+				default: break;
 			}
 			if (old_state != this->state) {
 				handshake();
 			}
 		}
 
-		bool success() const { return state == State::HANDSHAKE_SUCCESS; }
-
-		bool validate_headers() {
-			bool ret = false;
-			if (state == State::READING_CLIENT_RESPONSE) {
-				ret = _http_headers.contain("Sec-WebSocket-Key");
+		bool validate_headers() const {
+			bool ret;
+			if (is_client()) {
+				std::string valid_accept(ACCEPT_HEADER_LENGTH, 0);
+				websocket_accept_header(this->key, valid_accept.begin());
+				ret = _http_headers.contain("Sec-WebSocket-Accept", valid_accept);
 			} else {
 				ret = _http_headers.contain("Sec-WebSocket-Key")
-					&& _http_headers.contain("Sec-WebSocket-Version")
-					&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
-					&& _http_headers.contain("Upgrade", "websocket")
-					&& _http_headers.contain_value("Connection", "Upgrade");
+					&& _http_headers.contain("Sec-WebSocket-Version");
 			}
+			ret = ret 
+				&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
+				&& _http_headers.contain("Upgrade", "websocket")
+				&& _http_headers.contain_value("Connection", "Upgrade");
 			return ret;
 		}
 
 		void read_http_method_and_headers() {
-			recv_buffer.fill(Socket(_socket));
+			this->fill();
 			typedef decltype(recv_buffer.begin()) It;
 			It pos = recv_buffer.begin();
 			It found;
 			while ((found = std::search(pos, recv_buffer.end(),
 				HTTP_FIELD_SEPARATOR, HTTP_FIELD_SEPARATOR + 2)) != recv_buffer.end()
-				&& pos != found
-				&& state != State::PARSING_ERROR)
+				&& pos != found && state != State::PARSING_ERROR)
 			{
 				read_header(pos, found);
 				pos = found + 2;
 			}
-			if (pos == found) {
+			if (pos == found && pos != recv_buffer.begin()) {
 				recv_buffer.reset();
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
@@ -461,8 +501,7 @@ namespace factory {
 		}
 
 		void start_handshake() {
-			std::string key(WEBSOCKET_KEY_BASE64_LENGTH, 0);
-			websocket_key(key.begin());
+			websocket_key(this->key.begin());
 			std::stringstream request;
 			request
 				<< "GET / HTTP/1.1" << HTTP_FIELD_SEPARATOR
@@ -479,33 +518,17 @@ namespace factory {
 			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
 		}
 
-		void check_client_response() {
-			// TODO: check websocket key
-			// TODO: read and validate headers
-			if (!recv_buffer.empty()) {
-				std::string tmp;
-				std::copy(recv_buffer.begin(), recv_buffer.end(), std::back_inserter(tmp));
-				Logger<Level::WEBSOCKET>() << "client response " << tmp << std::endl;
-				recv_buffer.reset();
-				state = State::HANDSHAKE_SUCCESS;
-			}
-		}
-
 		bool flush() {
 			send_buffer.flush(Socket(_socket));
 			return send_buffer.empty();
 		}
 
-		void fill() {
-			recv_buffer.fill(Socket(_socket));
-		}
+		void fill() { recv_buffer.fill(Socket(_socket)); }
 
-		friend std::ostream& operator<<(std::ostream& out, const Web_socket& rhs) {
-			return out << rhs._socket;
-		}
-	
 		State state = State::INITIAL_STATE;
+		Role role = Role::SERVER;
 		HTTP_headers _http_headers;
+		std::string key;
 
 		LBuffer<char> send_buffer;
 		LBuffer<char> recv_buffer;
@@ -517,7 +540,7 @@ namespace factory {
 		static const size_t WEBSOCKET_KEY_BASE64_LENGTH = 24;
 
 		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
-		constexpr static const char* BAD_REQUEST = "HTTP/2.1 400 Bad Request\r\n\r\n";
+		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 	};
 
 }
