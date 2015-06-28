@@ -21,7 +21,7 @@ namespace factory {
 		void bind(Endpoint e) {
 			create_socket_if_necessary();
 			options(SO_REUSEADDR);
-			check("bind()", ::bind(_socket, e.sockaddr(), sizeof(sockaddr_in)));
+			check("bind()", ::bind(_socket, e.sockaddr(), e.sockaddrlen()));
 			Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 		}
 		
@@ -33,7 +33,7 @@ namespace factory {
 		void connect(Endpoint e) {
 			try {
 				create_socket_if_necessary();
-				check_connect("connect()", ::connect(_socket, e.sockaddr(), sizeof(sockaddr_in)));
+				check_connect("connect()", ::connect(_socket, e.sockaddr(), e.sockaddrlen()));
 				Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
 			} catch (std::system_error& err) {
 				Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
@@ -45,7 +45,7 @@ namespace factory {
 
 		std::pair<Socket, Endpoint> accept() {
 			Endpoint addr;
-			socklen_t len = sizeof(::sockaddr_in);
+			Endpoint::Sock_len len = sizeof(Endpoint);
 			Socket socket = check("accept()", ::accept(_socket, addr.sockaddr(), &len));
 			socket.flags(O_NONBLOCK);
 			socket.flags2(FD_CLOEXEC);
@@ -86,7 +86,7 @@ namespace factory {
 			if (!this->is_valid()) {
 				ret = -1;
 			} else {
-				socklen_t sz = sizeof(ret);
+				Endpoint::Sock_len sz = sizeof(ret);
 				check("getsockopt()", ::getsockopt(_socket, SOL_SOCKET, SO_ERROR, &ret, &sz));
 			}
 			// ignore EAGAIN since it is common 'error' in asynchronous programming
@@ -110,21 +110,21 @@ namespace factory {
 
 		Endpoint bind_addr() const {
 			Endpoint addr;
-			socklen_t len = sizeof(::sockaddr_in);
+			Endpoint::Sock_len len = sizeof(Endpoint);
 			int ret = ::getsockname(_socket, addr.sockaddr(), &len);
 			return ret == -1 ? Endpoint() : addr;
 		}
 
 		Endpoint name() const {
 			Endpoint addr;
-			socklen_t len = sizeof(::sockaddr_in);
+			Endpoint::Sock_len len = sizeof(Endpoint);
 			check("getsockname()", ::getsockname(_socket, addr.sockaddr(), &len));
 			return addr;
 		}
 
 		Endpoint peer_name() const {
 			Endpoint addr;
-			socklen_t len = sizeof(::sockaddr_in);
+			Endpoint::Sock_len len = sizeof(Endpoint);
 			check("getpeername()", ::getpeername(_socket, addr.sockaddr(), &len));
 			return addr;
 		}

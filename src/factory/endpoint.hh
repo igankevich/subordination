@@ -27,38 +27,44 @@ namespace factory {
 				return in;
 			}
 		};
+	
+		template<class Base, class Rep>
+		struct Num {
+			constexpr Num(): n(0) {}
+			constexpr Num(Rep x): n(x) {}
+			friend std::ostream& operator<<(std::ostream& out, Num rhs) {
+				return out << rhs.n;
+			}
+			friend std::istream& operator>>(std::istream& in, Num& rhs) {
+				in >> rhs.n;
+				if (rhs.n > std::numeric_limits<Base>::max()) {
+					in.setstate(std::ios::failbit);
+				}
+				return in;
+			}
+			constexpr operator Rep() const { return n; }
+			constexpr Rep rep() const { return n; }
+		private:
+			Rep n;
+		};
 
 		typedef struct ::sockaddr Addr;
-		typedef struct ::sockaddr_in Addr_in;
+		typedef struct ::sockaddr_in Addr4;
+		typedef struct ::sockaddr_in6 Addr6;
+		typedef struct ::sockaddr_storage Storage;
+		typedef ::socklen_t Sock_len;
+		typedef ::sa_family_t Family;
 		typedef Const_char<':'> Colon;
+		typedef Const_char<'.'> Dot;
 
 		struct IPv4_addr {
 	
 			typedef uint32_t Rep;
-			typedef Const_char<'.'> Dot;
-	
-			struct Octet {
-				constexpr Octet(): n(0) {}
-				constexpr Octet(Rep x): n(x) {}
-				friend std::ostream& operator<<(std::ostream& out, Octet rhs) {
-					return out << rhs.n;
-				}
-				friend std::istream& operator>>(std::istream& in, Octet& rhs) {
-					in >> rhs.n;
-					if (rhs.n > std::numeric_limits<uint8_t>::max()) {
-						in.setstate(std::ios::failbit);
-					}
-					return in;
-				}
-				constexpr operator Rep() const { return n; }
-				constexpr Rep rep() const { return n; }
-			private:
-				Rep n;
-			};
+			typedef Num<uint8_t, Rep> Octet;
 	
 			constexpr IPv4_addr(): addr(0) {}
 			constexpr IPv4_addr(Rep a): addr(a) {}
-			constexpr IPv4_addr(const Addr_in& a): addr(a.sin_addr.s_addr) {}
+			constexpr IPv4_addr(const Addr4& a): addr(a.sin_addr.s_addr) {}
 	
 			friend std::ostream& operator<<(std::ostream& out, IPv4_addr rhs) {
 				return out
@@ -88,52 +94,153 @@ namespace factory {
 			Rep addr;
 		};
 
+		union IPv6_addr {
+
+			typedef uint16_t Elem;
+			typedef Elem Rep[8];
+			typedef const Elem* Const_rep;
+			typedef struct ::in6_addr In_addr6;
+
+			constexpr IPv6_addr(): addr{} {}
+			IPv6_addr(const Addr6& a) {
+				Bytes<decltype(a.sin6_addr)> tmp = a.sin6_addr;
+				std::copy(tmp.begin(), tmp.end(), this->raw);
+			}
+
+			constexpr operator Const_rep() const { return addr; }
+			constexpr Const_rep rep() const { return addr; }
+
+			operator const In_addr6&() const {
+				return inaddr6;
+			}
+
+			bool operator<(const IPv6_addr& rhs) const {
+				return std::lexicographical_compare(begin(), end(), rhs.begin(), rhs.end());
+			}
+
+			bool operator==(const IPv6_addr& rhs) const {
+				return std::equal(begin(), end(), rhs.begin());
+			}
+
+			explicit operator bool() const {
+				return std::any_of(begin(), end(), [] (unsigned char x) { return x != 0; });
+			}
+
+			bool operator !() const { return !operator bool(); }
+
+			friend std::ostream& operator<<(std::ostream& out, const IPv6_addr& rhs) {
+				std::ios_base::fmtflags oldf = out.flags();
+				out << std::hex;
+				std::ostream_iterator<uint16_t> it(out, ":");
+				std::copy(rhs.begin(), rhs.end()-1, it);
+				out << *(rhs.end()-1);
+				out.flags(oldf);
+				return out;
+			}
+
+			friend std::istream& operator>>(std::istream& in, IPv6_addr& rhs) {
+				typedef Endpoint::Num<uint16_t, uint32_t> Hextet;
+				typedef Endpoint::Colon Colon;
+				std::ios_base::fmtflags oldf = in.flags();
+				Hextet h1, h2, h3, h4;
+				Hextet h5, h6, h7, h8;
+				in >> std::hex;
+				in >> h1 >> Colon() >> h2 >> Colon() >> h3 >> Colon() >> h4 >> Colon();
+				in >> h5 >> Colon() >> h6 >> Colon() >> h7 >> Colon() >> h8;
+				in.flags(oldf);
+				if (!in.fail()) {
+					rhs.addr[0] = h1;
+					rhs.addr[1] = h2;
+					rhs.addr[2] = h3;
+					rhs.addr[3] = h4;
+					rhs.addr[4] = h5;
+					rhs.addr[5] = h6;
+					rhs.addr[6] = h7;
+					rhs.addr[7] = h8;
+				}
+				return in;
+			}
+
+		private:
+			constexpr Const_rep begin() const { return addr; }
+			constexpr Const_rep end() const { return addr + sizeof(addr) / sizeof(Elem); }
+
+			Rep addr;
+			unsigned char raw[sizeof(addr)];
+			In_addr6 inaddr6;
+		};
 
 		constexpr Endpoint() {}
 		Endpoint(const char* h, Port p) { addr(h, p); }
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
-		Endpoint(uint32_t h, Port p) { addr(h, p); }
-		Endpoint(const Endpoint& rhs): _sockaddr(rhs._sockaddr) {}
-		Endpoint(Addr_in* rhs): _addr(*rhs) {}
+		Endpoint(IPv4_addr h, Port p) { addr(h, p); }
+		Endpoint(const Endpoint& rhs): storage(rhs.storage) {}
+		Endpoint(Addr4* rhs): addr4(*rhs) {}
+		Endpoint(Addr6* rhs): addr6(*rhs) {}
 		Endpoint(Addr* rhs): _sockaddr(*rhs) {}
 
 		Endpoint& operator=(const Endpoint& rhs) {
-			_sockaddr = rhs._sockaddr;
+			storage = rhs.storage;
 			return *this;
 		}
 
 		constexpr bool operator<(const Endpoint& rhs) const {
-			return _addr.sin_addr.s_addr < rhs._addr.sin_addr.s_addr
-				|| (_addr.sin_addr.s_addr == rhs._addr.sin_addr.s_addr
-				&& _addr.sin_port < rhs._addr.sin_port);
+			return family() == AF_INET
+				? std::make_pair(addr4.sin_addr.s_addr, addr4.sin_port) <
+				std::make_pair(rhs.addr4.sin_addr.s_addr, rhs.addr4.sin_port)
+				: std::make_pair(IPv6_addr(addr6), addr6.sin6_port) <
+				std::make_pair(IPv6_addr(rhs.addr6), rhs.addr6.sin6_port);
 		}
 
 		constexpr bool operator==(const Endpoint& rhs) const {
-			return _addr.sin_addr.s_addr == rhs._addr.sin_addr.s_addr
-				&& _addr.sin_port == rhs._addr.sin_port;
+			return family() == AF_INET
+				? addr4.sin_addr.s_addr == rhs.addr4.sin_addr.s_addr
+				&& addr4.sin_port == rhs.addr4.sin_port
+				: IPv6_addr(addr6) == IPv6_addr(rhs.addr6)
+				&& addr6.sin6_port == rhs.addr6.sin6_port;
 		}
 
 		constexpr bool operator!=(const Endpoint& rhs) const {
-			return _addr.sin_addr.s_addr != rhs._addr.sin_addr.s_addr
-				|| _addr.sin_port != rhs._addr.sin_port;
+			return !operator==(rhs);
 		}
 
-		constexpr explicit operator bool() const { return _addr.sin_addr.s_addr != 0; }
-		constexpr bool operator !() const { return _addr.sin_addr.s_addr == 0; }
+		constexpr explicit operator bool() const {
+			return family() != 0 && (family() == AF_INET ? addr4.sin_addr.s_addr != 0 : IPv6_addr(addr6));
+		}
+
+		constexpr bool operator !() const { return !operator bool(); }
 
 		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
-			return out << Endpoint::IPv4_addr(rhs._addr)
-				<< Endpoint::Colon() << to_host_format<Port>(rhs._addr.sin_port);
+			if (rhs.family() == AF_INET6) {
+				out << Endpoint::IPv6_addr(rhs.addr6);
+			} else {
+				out << Endpoint::IPv4_addr(rhs.addr4);
+			}
+			out << Endpoint::Colon() << to_host_format<Port>(rhs.addr4.sin_port);
+			return out;
 		}
 
 		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
 			Endpoint::IPv4_addr host;
+			Endpoint::IPv6_addr host6;
 			Port port;
 			std::ios_base::fmtflags oldf = in.flags();
-			if (in >> std::ws >> std::noskipws >> host >> Endpoint::Colon() >> port) {
-				rhs._addr.sin_family = AF_INET;
-				rhs._addr.sin_addr.s_addr = host;
-				rhs._addr.sin_port = to_network_format<Port>(port);
+			in >> std::ws >> std::noskipws;
+			std::streampos oldg = in.tellg();
+			if (in >> host >> Endpoint::Colon() >> port) {
+				rhs.addr4.sin_family = AF_INET;
+				rhs.addr4.sin_addr.s_addr = host;
+				rhs.addr4.sin_port = to_network_format<Port>(port);
+				std::clog << "Reading host = " << host << std::endl;
+			} else {
+				in.clear();
+				in.seekg(oldg);
+				if (in >> host6 >> Endpoint::Colon() >> port) {
+					rhs.addr6.sin6_family = AF_INET6;
+					rhs.addr6.sin6_addr = host6;
+					rhs.addr6.sin6_port = to_network_format<Port>(port);
+					std::clog << "Reading host = " << host6 << std::endl;
+				}
 			}
 			in.flags(oldf);
 			return in;
@@ -141,21 +248,26 @@ namespace factory {
 
 //		Host host() const {
 //			std::ostringstream tmp;
-//			tmp << IPv4_addr(_addr);
+//			tmp << IPv4_addr(addr4);
 //			return tmp.str();
 //		}
 
-		constexpr uint32_t address() const { return to_host_format<uint32_t>(_addr.sin_addr.s_addr); }
-		constexpr Port port() const { return to_host_format<Port>(_addr.sin_port); }
-		void port(Port rhs) { _addr.sin_port = to_network_format<Port>(rhs); }
+		constexpr uint32_t address() const { return to_host_format<uint32_t>(addr4.sin_addr.s_addr); }
+		constexpr Port port() const { return to_host_format<Port>(addr4.sin_port); }
+		void port(Port rhs) { addr4.sin_port = to_network_format<Port>(rhs); }
 
 		constexpr uint32_t position(uint32_t netmask) const {
 			return position_helper(address(), netmask);
 		}
 
 		Addr* sockaddr() { return &_sockaddr; }
-		Addr_in* addr() { return &_addr; }
-		constexpr const Addr_in* addr() const { return &_addr; }
+		constexpr Sock_len sockaddrlen() const {
+			return family() == AF_INET6 ? sizeof(Addr6) : sizeof(Addr4);
+		}
+		Addr4* addr() { return &addr4; }
+		constexpr const Addr4* addr() const { return &addr4; }
+
+		constexpr Family family() const { return storage.ss_family; }
 
 	private:
 
@@ -165,23 +277,24 @@ namespace factory {
 		}
 	
 		void addr(const char* host, Port p) {
-			IPv4_addr a;
-			std::istringstream tmp(host);
-			tmp >> a;
-			_addr.sin_family = AF_INET;
-			_addr.sin_port = to_network_format<Port>(p);
-			_addr.sin_addr.s_addr = a;
+			std::stringstream tmp;
+			tmp << host << Colon() << p;
+			tmp >> *this;
 		}
 
-		void addr(const uint32_t h, Port p) {
-			_addr.sin_family = AF_INET;
-			_addr.sin_addr.s_addr = to_network_format<uint32_t>(h);
-			_addr.sin_port = to_network_format<Port>(p);
+		void addr(const IPv4_addr h, Port p) {
+			addr4.sin_family = AF_INET;
+			addr4.sin_addr.s_addr = to_network_format<IPv4_addr::Rep>(h);
+			addr4.sin_port = to_network_format<Port>(p);
 		}
 
-		Addr_in _addr = {};
+		Addr6 addr6 = {};
+		Addr4 addr4;
 		Addr _sockaddr;
+		Storage storage;
 	};
+
+	static_assert(sizeof(Endpoint) == sizeof(Endpoint::Storage), "Bad sockaddr_storage size");
 
 }
 #endif

@@ -352,7 +352,10 @@ namespace factory {
 					lock.unlock();
 
 					if (server_addr() && k->to() == server_addr()) {
-						throw Error("Kernel is sent to local node.", __FILE__, __LINE__, __func__);
+						std::ostringstream msg;
+						msg << "Kernel is sent to local node. From="
+							<< server_addr() << ", to=" << k->to();
+						throw Error(msg.str(), __FILE__, __LINE__, __func__);
 					}
 
 					if (k->moves_everywhere()) {

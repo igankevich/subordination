@@ -78,6 +78,24 @@ struct Test_endpoint {
 		check_read("10.0.0.1 :100"         , Endpoint("0.0.0.0"         , 0));
 		check_read("10.0.0.1 : 100"        , Endpoint("0.0.0.0"         , 0));
 		check_read(" 10.0.0.1 : 100 "      , Endpoint("0.0.0.0"         , 0));
+		// fancy addrs
+		check_read("10:100"                , Endpoint("0.0.0.0"         , 0));
+		check_read("10.1:100"              , Endpoint("0.0.0.0"         , 0));
+		check_read("10.0.1:100"            , Endpoint("0.0.0.0"         , 0));
+		check_read(""                      , Endpoint("0.0.0.0"         , 0));
+		check_read("anc:100"               , Endpoint("0.0.0.0"         , 0));
+		check_read(":100"                  , Endpoint("0.0.0.0"         , 0));
+	}
+
+	void test_variations_ipv6() {
+		// basic functionality
+		check_read("0:0:0:0:0:0:0:0:0"     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("0:0:0:0:0:0:0:0:1234"  , Endpoint("0:0:0:0:0:0:0:0"  , 1234));
+		check_read("0:0:0:0:0:0:0:0:65535" , Endpoint("0:0:0:0:0:0:0:0"  , 65535));
+		check_read("10:1:0:1:0:0:0:0:0"    , Endpoint("10:1:0:1:0:0:0:0" , 0));
+		check_read("255:0:0:1:1:2:3:4:0"   , Endpoint("255:0:0:1:1:2:3:4", 0));
+		check_read("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff:65535",
+			Endpoint("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" , 65535));
 	}
 
 	void test_operators() {
@@ -143,8 +161,8 @@ private:
 		s >> addr;
 		if (addr != expected_result) {
 			std::stringstream msg;
-			msg << "Can not read " << str << ": "
-				<< addr << " (read) /= " << expected_result << " (expected).";
+			msg << "Can not read '" << str << "': '"
+				<< addr << "' (read) /= '" << expected_result << "' (expected).";
 			throw std::runtime_error(msg.str());
 		}
 	}
@@ -163,6 +181,7 @@ struct App {
 			test.test_single();
 			test.test_multiple();
 			test.test_variations_ipv4();
+			test.test_variations_ipv6();
 			test.test_operators();
 			test.test_io();
 		} catch (std::exception& e) {
