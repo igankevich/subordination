@@ -7,10 +7,12 @@ DONE [179:c228b05b2d32] Clean obsolete classes (Server_stack, Server_server). Pl
 DONE [184:b3afe82e233a] Remove non-portable WebSocket dependencies on memchr, bzero and other fancy functions.
 DONE [286:2ecc671dd024] Add Valgrind memory tests.
 DONE [289:619c7dbe9fcc] Add handshake states to WebSocket class.
+DONE [297:67e9297e83d0] Add IPv6 support through 'struct sockaddr_storage'.
+DONE [297:67e9297e83d0] Replace inet_ntop, inet_pton with C++ analogs, possibly with IPv6 support.
 
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 
-Add IPv6 support through 'struct sockaddr_storage', getaddrinfo() and rewrite discover_neighbours() to support large networks scanning.
+Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 Implement thread affinity through pthread library with fall back to native OS calls.
@@ -27,4 +29,3 @@ Make Factory::stop() reliable.
 Remove factory_stop() and other global functions.
 Make Buffer and LBuffer a subclass of std::streambuf.
 Test web socket and socket with random input to cover parsing and other errors.
-Replace inet_ntop, inet_pton with C++ analogs, possibly with IPv6 support.

@@ -156,6 +156,7 @@ struct Test_endpoint {
 		check_bool(Endpoint("10.0.0.2", 0) < Endpoint("10.0.0.1", 0), false);
 		check_bool(Endpoint("10::1", 0) < Endpoint("10::2", 0), true);
 		check_bool(Endpoint("10::2", 0) < Endpoint("10::1", 0), false);
+		check_bool(Endpoint("10.0.0.1", 0) < Endpoint("10::1", 0), true);
 	}
 
 	void test_io() {
