@@ -56,6 +56,8 @@ namespace factory {
 		typedef ::sa_family_t Family;
 		typedef Const_char<':'> Colon;
 		typedef Const_char<'.'> Dot;
+		typedef Const_char<'['> Left_br;
+		typedef Const_char<']'> Right_br;
 
 		struct IPv4_addr {
 	
@@ -96,9 +98,9 @@ namespace factory {
 
 		union IPv6_addr {
 
-			typedef uint16_t Elem;
-			typedef Elem Rep[8];
-			typedef const Elem* Const_rep;
+			typedef uint16_t Field;
+			typedef Field Rep[8];
+			typedef const Field* Const_rep;
 			typedef struct ::in6_addr In_addr6;
 
 			constexpr IPv6_addr(): addr{} {}
@@ -122,8 +124,8 @@ namespace factory {
 				return std::equal(begin(), end(), rhs.begin());
 			}
 
-			explicit operator bool() const {
-				return std::any_of(begin(), end(), [] (unsigned char x) { return x != 0; });
+			operator bool() const {
+				return !std::all_of(begin(), end(), [] (Field x) { return x == 0; });
 			}
 
 			bool operator !() const { return !operator bool(); }
@@ -141,29 +143,58 @@ namespace factory {
 			friend std::istream& operator>>(std::istream& in, IPv6_addr& rhs) {
 				typedef Endpoint::Num<uint16_t, uint32_t> Hextet;
 				typedef Endpoint::Colon Colon;
+				typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
+				typedef IPv6_addr::Field Field;
 				std::ios_base::fmtflags oldf = in.flags();
-				Hextet h1, h2, h3, h4;
-				Hextet h5, h6, h7, h8;
 				in >> std::hex;
-				in >> h1 >> Colon() >> h2 >> Colon() >> h3 >> Colon() >> h4 >> Colon();
-				in >> h5 >> Colon() >> h6 >> Colon() >> h7 >> Colon() >> h8;
+				int field_no = 0;
+				int zeros_field = -1;
+				std::for_each(rhs.begin(), rhs.end(), [&field_no,&in,&zeros_field] (Field& field) {
+					Hextet h;
+					char ch = in.get();
+					if (ch == ':') {
+						if (field_no == 0) { in >> Colon(); }
+						if (zeros_field != -1) {
+							in.setstate(std::ios::failbit);
+						} else {
+							zeros_field = field_no;
+						}
+						in >> h;
+					} else {
+						in.putback(ch);
+						in >> h;
+						if (field_no != IPv6_addr::num_fields()-1) {
+							in >> Colon();
+						}
+					}
+					field = h;
+					if (!in.fail()) {
+						++field_no;
+					}
+				});
+				if (zeros_field != -1) {
+					in.clear();
+					auto zeros_start = rhs.begin() + zeros_field;
+					auto zeros_end = rhs.end() - (field_no - zeros_field);
+					std::copy(zeros_start, rhs.begin() + field_no, zeros_end);
+					std::fill(zeros_start, zeros_end, 0);
+				}
 				in.flags(oldf);
-				if (!in.fail()) {
-					rhs.addr[0] = h1;
-					rhs.addr[1] = h2;
-					rhs.addr[2] = h3;
-					rhs.addr[3] = h4;
-					rhs.addr[4] = h5;
-					rhs.addr[5] = h6;
-					rhs.addr[6] = h7;
-					rhs.addr[7] = h8;
+				if (in.fail()) {
+					std::fill(rhs.begin(), rhs.end(), 0);
 				}
 				return in;
 			}
 
 		private:
 			constexpr Const_rep begin() const { return addr; }
-			constexpr Const_rep end() const { return addr + sizeof(addr) / sizeof(Elem); }
+			constexpr Const_rep end() const { return addr + num_fields(); }
+
+			Field* begin() { return addr; }
+			Field* end() { return addr + sizeof(addr) / sizeof(Field); }
+
+			static constexpr 
+			int num_fields() { return sizeof(addr) / sizeof(Field); }
 
 			Rep addr;
 			unsigned char raw[sizeof(addr)];
@@ -193,11 +224,12 @@ namespace factory {
 		}
 
 		constexpr bool operator==(const Endpoint& rhs) const {
-			return family() == AF_INET
+			return (family() == rhs.family() || family() == 0 || rhs.family() == 0)
+				&& (family() == AF_INET
 				? addr4.sin_addr.s_addr == rhs.addr4.sin_addr.s_addr
 				&& addr4.sin_port == rhs.addr4.sin_port
 				: IPv6_addr(addr6) == IPv6_addr(rhs.addr6)
-				&& addr6.sin6_port == rhs.addr6.sin6_port;
+				&& addr6.sin6_port == rhs.addr6.sin6_port);
 		}
 
 		constexpr bool operator!=(const Endpoint& rhs) const {
@@ -212,7 +244,8 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
 			if (rhs.family() == AF_INET6) {
-				out << Endpoint::IPv6_addr(rhs.addr6);
+				out << Endpoint::Left_br() << Endpoint::IPv6_addr(rhs.addr6)
+					<< Endpoint::Right_br();
 			} else {
 				out << Endpoint::IPv4_addr(rhs.addr4);
 			}
@@ -235,7 +268,7 @@ namespace factory {
 			} else {
 				in.clear();
 				in.seekg(oldg);
-				if (in >> host6 >> Endpoint::Colon() >> port) {
+				if (in >> Endpoint::Left_br() >> host6 >> Endpoint::Right_br() >> Endpoint::Colon() >> port) {
 					rhs.addr6.sin6_family = AF_INET6;
 					rhs.addr6.sin6_addr = host6;
 					rhs.addr6.sin6_port = to_network_format<Port>(port);
@@ -277,15 +310,32 @@ namespace factory {
 		}
 	
 		void addr(const char* host, Port p) {
-			std::stringstream tmp;
-			tmp << host << Colon() << p;
-			tmp >> *this;
+			IPv4_addr a4;
+			std::stringstream tmp(host);
+			if (tmp >> a4) {
+				addr4.sin_family = AF_INET;
+				addr4.sin_addr.s_addr = a4;
+				addr4.sin_port = to_network_format<Port>(p);
+			} else {
+				tmp.clear();
+				tmp.seekg(0);
+				IPv6_addr a6;
+				if (tmp >> a6) {
+					this->addr(a6, p);
+				}
+			}
 		}
 
 		void addr(const IPv4_addr h, Port p) {
 			addr4.sin_family = AF_INET;
 			addr4.sin_addr.s_addr = to_network_format<IPv4_addr::Rep>(h);
 			addr4.sin_port = to_network_format<Port>(p);
+		}
+
+		void addr(const IPv6_addr& h, Port p) {
+			addr6.sin6_family = AF_INET6;
+			addr6.sin6_addr = h;
+			addr6.sin6_port = to_network_format<Port>(p);
 		}
 
 		Addr6 addr6 = {};
