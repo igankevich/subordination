@@ -88,13 +88,13 @@ namespace factory {
 				continue;
 			}
 
-			Endpoint addr(ifa->ifa_addr);
+			Endpoint addr(*ifa->ifa_addr);
 			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
 				// ignore localhost and non-IPv4 addresses
 				continue;
 			}
 
-			Endpoint netmask(ifa->ifa_netmask);
+			Endpoint netmask(*ifa->ifa_netmask);
 			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
 				// ignore wide-area networks
 				continue;
@@ -183,13 +183,13 @@ namespace factory {
 				continue;
 			}
 
-			Endpoint addr(ifa->ifa_addr);
+			Endpoint addr(*ifa->ifa_addr);
 			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
 				// ignore localhost and non-IPv4 addresses
 				continue;
 			}
 
-			Endpoint netmask(ifa->ifa_netmask);
+			Endpoint netmask(*ifa->ifa_netmask);
 			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
 				// ignore wide-area networks
 				continue;

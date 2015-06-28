@@ -99,22 +99,12 @@ namespace factory {
 		union IPv6_addr {
 
 			typedef uint16_t Field;
-			typedef Field Rep[8];
-			typedef const Field* Const_rep;
 			typedef struct ::in6_addr In_addr6;
 
 			constexpr IPv6_addr(): addr{} {}
-			IPv6_addr(const Addr6& a) {
-				Bytes<decltype(a.sin6_addr)> tmp = a.sin6_addr;
-				std::copy(tmp.begin(), tmp.end(), this->raw);
-			}
+			constexpr IPv6_addr(const Addr6& a): inaddr6(a.sin6_addr) {}
 
-			constexpr operator Const_rep() const { return addr; }
-			constexpr Const_rep rep() const { return addr; }
-
-			operator const In_addr6&() const {
-				return inaddr6;
-			}
+			operator const In_addr6&() const { return inaddr6; }
 
 			bool operator<(const IPv6_addr& rhs) const {
 				return std::lexicographical_compare(begin(), end(), rhs.begin(), rhs.end());
@@ -131,9 +121,11 @@ namespace factory {
 			bool operator !() const { return !operator bool(); }
 
 			friend std::ostream& operator<<(std::ostream& out, const IPv6_addr& rhs) {
+				typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
+				typedef IPv6_addr::Field Field;
 				std::ios_base::fmtflags oldf = out.flags();
 				out << std::hex;
-				std::ostream_iterator<uint16_t> it(out, ":");
+				std::ostream_iterator<Field> it(out, ":");
 				std::copy(rhs.begin(), rhs.end()-1, it);
 				out << *(rhs.end()-1);
 				out.flags(oldf);
@@ -143,35 +135,44 @@ namespace factory {
 			friend std::istream& operator>>(std::istream& in, IPv6_addr& rhs) {
 				typedef Endpoint::Num<uint16_t, uint32_t> Hextet;
 				typedef Endpoint::Colon Colon;
+				typedef Endpoint::Dot Dot;
 				typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
 				typedef IPv6_addr::Field Field;
 				std::ios_base::fmtflags oldf = in.flags();
 				in >> std::hex;
 				int field_no = 0;
 				int zeros_field = -1;
-				std::for_each(rhs.begin(), rhs.end(), [&field_no,&in,&zeros_field] (Field& field) {
-					Hextet h;
-					char ch = in.get();
-					if (ch == ':') {
+				std::for_each(rhs.begin(), rhs.end(), [&field_no,&in,&zeros_field,&rhs] (Field& field) {
+					if (in.fail()) return;
+					// compressed notation
+					if (in.peek() == ':') {
+						in.get();
 						if (field_no == 0) { in >> Colon(); }
 						if (zeros_field != -1) {
 							in.setstate(std::ios::failbit);
 						} else {
 							zeros_field = field_no;
 						}
-						in >> h;
-					} else {
-						in.putback(ch);
-						in >> h;
-						if (field_no != IPv6_addr::num_fields()-1) {
+					}
+					Hextet h;
+					if (in >> h) {
+						char ch = in.peek();
+						// if prefixed with ::ffff:
+						if (field_no >= 1 && rhs.addr[0] == 0xffff && zeros_field == 0) {
+							in >> Dot();
+						} else {
 							in >> Colon();
 						}
-					}
-					field = h;
-					if (!in.fail()) {
+						// put back the first character after the address
+						if (in.fail()) {
+							in.clear();
+							in.putback(ch);
+						}
+						field = h;
 						++field_no;
 					}
 				});
+				// push fields after :: towards the end 
 				if (zeros_field != -1) {
 					in.clear();
 					auto zeros_start = rhs.begin() + zeros_field;
@@ -187,17 +188,16 @@ namespace factory {
 			}
 
 		private:
-			constexpr Const_rep begin() const { return addr; }
-			constexpr Const_rep end() const { return addr + num_fields(); }
+			constexpr const Field* begin() const { return addr; }
+			constexpr const Field* end() const { return addr + num_fields(); }
 
 			Field* begin() { return addr; }
-			Field* end() { return addr + sizeof(addr) / sizeof(Field); }
+			Field* end() { return addr + num_fields(); }
 
 			static constexpr 
 			int num_fields() { return sizeof(addr) / sizeof(Field); }
 
-			Rep addr;
-			unsigned char raw[sizeof(addr)];
+			Field addr[8];
 			In_addr6 inaddr6;
 		};
 
@@ -205,10 +205,11 @@ namespace factory {
 		Endpoint(const char* h, Port p) { addr(h, p); }
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
 		Endpoint(IPv4_addr h, Port p) { addr(h, p); }
-		Endpoint(const Endpoint& rhs): storage(rhs.storage) {}
-		Endpoint(Addr4* rhs): addr4(*rhs) {}
-		Endpoint(Addr6* rhs): addr6(*rhs) {}
-		Endpoint(Addr* rhs): _sockaddr(*rhs) {}
+		Endpoint(const IPv6_addr& h, Port p) { addr(h, p); }
+		constexpr Endpoint(const Endpoint& rhs): storage(rhs.storage) {}
+		constexpr Endpoint(const Addr4& rhs): addr4(rhs) {}
+		constexpr Endpoint(const Addr6& rhs): addr6(rhs) {}
+		constexpr Endpoint(const Addr& rhs): _sockaddr(rhs) {}
 
 		Endpoint& operator=(const Endpoint& rhs) {
 			storage = rhs.storage;
@@ -321,7 +322,9 @@ namespace factory {
 				tmp.seekg(0);
 				IPv6_addr a6;
 				if (tmp >> a6) {
-					this->addr(a6, p);
+					addr6.sin6_family = AF_INET6;
+					addr6.sin6_addr = a6;
+					addr6.sin6_port = to_network_format<Port>(p);
 				}
 			}
 		}
@@ -333,8 +336,10 @@ namespace factory {
 		}
 
 		void addr(const IPv6_addr& h, Port p) {
+			Bytes<IPv6_addr> tmp = h;
+			tmp.to_network_format();
 			addr6.sin6_family = AF_INET6;
-			addr6.sin6_addr = h;
+			addr6.sin6_addr = tmp.value();
 			addr6.sin6_port = to_network_format<Port>(p);
 		}
 

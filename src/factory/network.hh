@@ -40,6 +40,11 @@ namespace factory {
 			((n & UINT64_C(0x00000000000000ff)) << 56);
 #endif
 	}
+	template<>
+	std::array<uint8_t,16> byte_swap(std::array<uint8_t,16> n) {
+		std::reverse(n.begin(), n.end());
+		return n;
+	}
 	/// @}
 
 	constexpr bool is_network_byte_order() {
@@ -60,6 +65,7 @@ namespace factory {
 	template<> struct Integral<2> { typedef uint16_t type; };
 	template<> struct Integral<4> { typedef uint32_t type; };
 	template<> struct Integral<8> { typedef uint64_t type; };
+	template<> struct Integral<16> { typedef std::array<uint8_t,16> type; };
 
 	template<class T, class Byte=char>
 	union Bytes {

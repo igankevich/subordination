@@ -112,10 +112,10 @@ struct Test_endpoint {
 		check_read("[10::1]:100 "              , Endpoint("10::1"        , 100));
 		check_read(" [10::1]:100 "             , Endpoint("10::1"        , 100));
 		// bad spaces
-		check_read("[10.0.0.1]: 100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[10.0.0.1 ]:100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[10.0.0.1 ]: 100"        , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read(" [10.0.0.1 ]: 100 "      , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[10::1]: 100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[10::1 ]:100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[10::1 ]: 100"        , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read(" [10::1 ]: 100 "      , Endpoint("0:0:0:0:0:0:0:0"  , 0));
 		// fancy addrs
 		check_read("[::1::1]:0"              , Endpoint("0:0:0:0:0:0:0:0"  , 0));
 		check_read("[:::]:0"                 , Endpoint("0:0:0:0:0:0:0:0"  , 0));
@@ -124,6 +124,8 @@ struct Test_endpoint {
 		check_read("]:0"                     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
 		check_read("[:0"                     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
 		check_read("[10:0:0:0:0:0:0:0:1]:0"  , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		// IPv4 mapped addrs
+		check_read("[::ffff:127.1.2.3]:0"    , Endpoint("0:0:0:ffff:127:1:2:3", 0));
 	}
 
 	void test_operators() {
