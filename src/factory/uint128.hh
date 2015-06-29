@@ -18,10 +18,16 @@
 /// from http://www.codef00.com/code/uint128.h
 
 // prefer builtin types over substitute implementation
-//#if defined(HAVE___INT128_T)
-//typedef unsigned __int128_t uint128_t;
-#if defined(HAVE___INT128) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
+#if defined(HAVE___UINT128_T) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
+typedef __uint128_t uint128_t;
+namespace std {
+	typedef ::uint128_t uint128_t;
+}
+#elif defined(HAVE___INT128) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
 typedef unsigned __int128 uint128_t;
+namespace std {
+	typedef ::uint128_t uint128_t;
+}
 #else
 struct uint128 {
 
@@ -40,7 +46,7 @@ struct uint128 {
 	}
 
 	uint128 &operator=(const uint128 &other) {
-		if(&other != this) {
+		if (&other != this) {
 			lo = other.lo;
 			hi = other.hi;
 		}
@@ -381,6 +387,9 @@ private:
 };
 
 typedef uint128 uint128_t;
+namespace std {
+	typedef ::uint128_t uint128_t;
+}
 
 // convinience macro
 #define UINT128_C(s) uint128_t(#s)
