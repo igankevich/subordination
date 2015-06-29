@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo -n "#define REPO_VERSION "
+hg parent --template '"{node|short}"\n'
+echo -n "#define REPO_DATE "
+hg parent --template '"{date|isodate}"\n'

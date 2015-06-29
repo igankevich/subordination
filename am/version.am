@@ -1,0 +1,6 @@
+
+.PHONY: force
+version.hh: force
+	$(REPO_VERSION) | cmp -s - $@ || $(REPO_VERSION) >$@
+all: version.hh
+check: version.hh

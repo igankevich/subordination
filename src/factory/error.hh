@@ -149,8 +149,8 @@ namespace factory {
 		virtual const char* prefix() const { return "Error"; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Error& rhs) {
-			out << rhs.prefix() << ". " << rhs.what() << "\n\t";
-			out << rhs._function << '[' << rhs._file << ':' << rhs._line << ']' << '\n';
+			out << "What:          " << rhs.prefix() << ". " << rhs.what()
+				<< "\nOrigin:        " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']';
 			return out;
 		}
 
@@ -205,8 +205,13 @@ namespace factory {
 			std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 			char formatted_time[21];
 			std::strftime(formatted_time, 21, "%FT%T%z", std::localtime(&now_time));
-			out << formatted_time << ' ' << rhs._error << '\t'
-				<< rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
+			out << "---------- ERROR ----------"
+				<< '\n' << rhs._error
+				<< "\nCaught at:     " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
+				<< "\nDate:          " << formatted_time
+				<< "\nBuild version: " << REPO_VERSION
+				<< "\nBuild date:    " << REPO_DATE
+				<< "\n---------------------------"
 				<< std::endl;
 			return out;
 		}

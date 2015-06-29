@@ -17,6 +17,7 @@ namespace factory {
 			Result result() const { return _result; }
 			void result(Result rhs) { _result = rhs; }
 
+			// timed kernels
 			Time_point at() const { return _at; }
 			void at(Time_point t)  { _at = t; }
 			void after(Duration delay) { _at = Clock::now() + delay; }

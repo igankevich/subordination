@@ -1,5 +1,6 @@
 include $(top_srcdir)/am/gcov.am
 include $(top_srcdir)/am/valgrind.am
+include $(top_srcdir)/am/version.am
 
 #-Wstack-protector -fstack-protector -- security concerns
 #-Wpadded                            -- detects padding
@@ -9,6 +10,8 @@ include $(top_srcdir)/am/valgrind.am
 #-Waggregate-return                  -- detects return of structs and unions
 #-Wabi                               -- probably not needed
 
+
+REPO_VERSION = $(top_srcdir)/bin/repo-version
 AM_DEFAULT_SOURCE_EXT = .cc
 
 bin_PROGRAMS = \

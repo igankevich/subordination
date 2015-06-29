@@ -2,6 +2,7 @@
 #ifdef HAVE_CONFIG_H
 	#include <config.h>
 #endif
+#include "version.hh"
 
 // Patching stdc++ for Valgrind.
 #ifdef HAVE_VALGRIND
