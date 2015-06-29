@@ -203,8 +203,9 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const Error_message& rhs) {
 			std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-			char formatted_time[21];
-			std::strftime(formatted_time, 21, "%FT%T%z", std::localtime(&now_time));
+			char formatted_time[25];
+			std::strftime(formatted_time, sizeof(formatted_time),
+				"%FT%T%z", std::localtime(&now_time));
 			out << "---------- ERROR ----------"
 				<< '\n' << rhs._error
 				<< "\nCaught at:     " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
