@@ -63,6 +63,7 @@
 	#include <execinfo.h>
 	
 	// Base system
+	#include "uint128.hh"
 	#include "base.hh"
 	#include "process.hh"
 	#include "error.hh"
