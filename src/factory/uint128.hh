@@ -39,7 +39,6 @@ struct uint128 {
 		from_string(sz.begin(), sz.end());
 	}
 
-
 	uint128 &operator=(const uint128 &other) {
 		if(&other != this) {
 			lo = other.lo;
@@ -67,25 +66,17 @@ struct uint128 {
 		return ~uint128(*this) + 1u;
 	}
 
-    constexpr uint128 operator~() const {
-		return uint128(~lo, ~hi);
-//		uint128 t(*this);
-//		t.lo = ~t.lo;
-//		t.hi = ~t.hi;
-//		return t;
-	}
+    constexpr uint128 operator~() const { return uint128(~lo, ~hi); }
 
     uint128& operator++() {
-    	if(++lo == 0) {
+    	if (++lo == 0) {
 			++hi;
 		}
     	return *this;
 	}
 
     uint128& operator--() {
-    	if(lo-- == 0) {
-        	--hi;
-		}
+    	if (lo-- == 0) { --hi; }
     	return *this;
 	}
 
@@ -94,7 +85,7 @@ struct uint128 {
     uint128 operator--(int) const { return --uint128(*this); }
 
 	// basic math operators
-    uint128 &operator+=(const uint128 &b) {
+    uint128& operator+=(const uint128 &b) {
 		const base_type old_lo = lo;
 
     	lo += b.lo;
@@ -107,7 +98,7 @@ struct uint128 {
     	return *this;
 	}
 
-    uint128 &operator-=(const uint128 &b) {
+    uint128& operator-=(const uint128 &b) {
 		// it happens to be way easier to write it
 		// this way instead of make a subtraction algorithm
 		return *this += -b;
@@ -141,37 +132,37 @@ struct uint128 {
     	return *this;
 	}
 
-    uint128 &operator|=(const uint128 &b) {
+    uint128& operator|=(const uint128 &b) {
     	hi |= b.hi;
     	lo |= b.lo;
     	return *this;
 	}
 
-    uint128 &operator&=(const uint128 &b) {
+    uint128& operator&=(const uint128 &b) {
     	hi &= b.hi;
     	lo &= b.lo;
     	return *this;
 	}
 
-    uint128 &operator^=(const uint128 &b) {
+    uint128& operator^=(const uint128& b) {
     	hi ^= b.hi;
     	lo ^= b.lo;
     	return *this;
 	}
 
-    uint128 &operator/=(const uint128 &b) {
+    uint128& operator/=(const uint128& b) {
 		uint128 remainder;
 		divide(*this, b, *this, remainder);
 		return *this;
     }
 
-    uint128 &operator%=(const uint128 &b) {
+    uint128& operator%=(const uint128& b) {
 		uint128 quotient;
 		divide(*this, b, quotient, *this);
 		return *this;
     }
 
-    uint128 &operator<<=(const uint128& rhs) {
+    uint128& operator<<=(const uint128& rhs) {
 
 		unsigned int n = rhs.to_integer();
 
