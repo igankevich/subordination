@@ -18,9 +18,9 @@
 /// from http://www.codef00.com/code/uint128.h
 
 // prefer builtin types over substitute implementation
-#if defined(HAVE___INT128_T)
-typedef unsigned __int128_t uint128_t;
-#elif defined(HAVE___INT128)
+//#if defined(HAVE___INT128_T)
+//typedef unsigned __int128_t uint128_t;
+#if defined(HAVE___INT128) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
 typedef unsigned __int128 uint128_t;
 #else
 struct uint128 {
@@ -36,75 +36,9 @@ struct uint128 {
 	constexpr uint128(base_type l, base_type h): lo(l), hi(h) {}
 
 	uint128(const std::string &sz): lo(0), hi(0) {
-
-		// do we have at least one character?
-		if(!sz.empty()) {
-			// make some reasonable assumptions
-			unsigned int radix = 10;
-			bool minus = false;
-
-			std::string::const_iterator i = sz.begin();
-
-			// check for minus sign, i suppose technically this should only apply
-			// to base 10, but who says that -0x1 should be invalid?
-			if(*i == '-') {
-				++i;
-				minus = true;
-			}
-
-			// check if there is radix changing prefix (0 or 0x)
-			if(i != sz.end()) {
-				if(*i == '0') {
-					radix = 8;
-					++i;
-					if(i != sz.end()) {
-						if(*i == 'x') {
-							radix = 16;
-							++i;
-						}
-					}
-				}
-
-				while(i != sz.end()) {
-					unsigned int n;
-					const char ch = *i;
-
-					if(ch >= 'A' && ch <= 'Z') {
-						if(((ch - 'A') + 10) < radix) {
-							n = (ch - 'A') + 10;
-						} else {
-							break;
-						}
-					} else if(ch >= 'a' && ch <= 'z') {
-						if(((ch - 'a') + 10) < radix) {
-							n = (ch - 'a') + 10;
-						} else {
-							break;
-						}
-					} else if(ch >= '0' && ch <= '9') {
-						if((ch - '0') < radix) {
-							n = (ch - '0');
-						} else {
-							break;
-						}
-					} else {
-						/* completely invalid character */
-						break;
-					}
-
-					(*this) *= radix;
-					(*this) += n;
-
-					++i;
-				}
-			}
-
-			// if this was a negative number, do that two's compliment madness :-P
-			if(minus) {
-				*this = -*this;
-			}
-		}
+		from_string(sz.begin(), sz.end());
 	}
+
 
 	uint128 &operator=(const uint128 &other) {
 		if(&other != this) {
@@ -166,7 +100,7 @@ struct uint128 {
     	lo += b.lo;
     	hi += b.hi;
 
-		if(lo < old_lo) {
+		if (lo < old_lo) {
 			++hi;
 		}
 
@@ -179,16 +113,15 @@ struct uint128 {
 		return *this += -b;
     }
 
-    uint128 &operator*=(const uint128 &b) {
+    uint128& operator*=(const uint128 &b) {
 
 		// check for multiply by 0
 		// result is always 0 :-P
 		if (b == 0u) {
-			hi = 0;
 			lo = 0;
+			hi = 0;
+		// check we aren't multiplying by 1
 		} else if (b != 1u) {
-
-			// check we aren't multiplying by 1
 
     		uint128 a(*this);
     		uint128 t = b;
@@ -196,8 +129,8 @@ struct uint128 {
     		lo = 0;
     		hi = 0;
 
-    		for (unsigned int i = 0; i < NBITS; ++i) {
-        		if((t & 1) != 0) {
+    		for (unsigned int i=0; i<NBITS; ++i) {
+        		if ((t & 1) != 0) {
             		*this += (a << i);
 				}
 
@@ -316,25 +249,25 @@ struct uint128 {
 	constexpr uint128 operator&(const uint128& rhs) const { return uint128(lo & rhs.lo, hi & rhs.hi); }
 	constexpr uint128 operator|(const uint128& rhs) const { return uint128(lo | rhs.lo, hi | rhs.hi); }
 	constexpr uint128 operator^(const uint128& rhs) const { return uint128(lo ^ rhs.lo, hi ^ rhs.hi); }
-	constexpr uint128 operator<<(const uint128& rhs) const { return uint128(lo << rhs.lo, hi << rhs.hi); }
-	constexpr uint128 operator>>(const uint128& rhs) const { return uint128(lo >> rhs.lo, hi >> rhs.hi); }
+	uint128 operator<<(const uint128& rhs) const { return uint128(*this) <<= rhs; }
+	uint128 operator>>(const uint128& rhs) const { return uint128(*this) >>= rhs; }
 
 	constexpr int to_integer() const { return static_cast<int>(lo); }
 	constexpr base_type to_base_type() const { return lo; }
 
     std::string to_string(unsigned int radix = 10) const {
-    	if(*this == 0) {
+    	if (*this == 0) {
 			return "0";
 		}
 
-    	if(radix < 2 || radix > 37) {
+    	if (radix < 2 || radix > 37) {
 			return "(invalid radix)";
 		}
 
 		// at worst it will be NBITS digits (base 2) so make our buffer
 		// that plus room for null terminator
-    	static char sz [NBITS + 1];
-		sz[sizeof(sz) - 1] = '\0';
+    	char buf[NBITS + 1];
+		buf[sizeof(buf) - 1] = '\0';
 
     	uint128 ii(*this);
     	int i = NBITS - 1;
@@ -343,38 +276,85 @@ struct uint128 {
 
 			uint128 remainder;
 			divide(ii, uint128(radix), ii, remainder);
-        	sz [--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
+        	buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
     	}
 
-    	return &sz[i];
+    	return &buf[i];
 	}
 
 	friend std::ostream &operator<<(std::ostream &o, const uint128 &n) {
 		switch(o.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
-		case std::ios_base::hex:
-			o << n.to_string(16);
-			break;
-		case std::ios_base::dec:
-			o << n.to_string(10);
-			break;
-		case std::ios_base::oct:
-			o << n.to_string(8);
-			break;
-		default:
-			o << n.to_string();
-			break;
+			case std::ios_base::hex: o << n.to_string(16); break;
+			case std::ios_base::dec: o << n.to_string(10); break;
+			case std::ios_base::oct: o << n.to_string(8); break;
+			default: o << n.to_string(); break;
 		}
 		return o;
 	}
 
+	friend std::istream& operator>>(std::istream& in, uint128& rhs) {
+		std::istream_iterator<char> it(in), eos;
+		rhs.from_string(it, eos);
+		return in;
+	}
+
 private:
-	base_type lo;
-	base_type hi;
+
+	template<class It>
+	void from_string(It first, It last) {
+		// do we have at least one character?
+		if (first == last) return;
+		// make some reasonable assumptions
+		unsigned int radix = 10;
+		// check if there is radix changing prefix (0 or 0x)
+		if (*first == '0') {
+			radix = 8;
+			++first;
+			if (first != last) {
+				if (*first == 'x') {
+					radix = 16;
+					++first;
+				}
+			}
+		}
+
+		while (first != last) {
+			unsigned int n;
+			const char ch = *first;
+			if (ch >= 'A' && ch <= 'Z') {
+				if (ch - 'A' + 10 < radix) {
+					n = ch - 'A' + 10;
+				} else {
+					break;
+				}
+			} else if (ch >= 'a' && ch <= 'z') {
+				if (ch - 'a' + 10 < radix) {
+					n = ch - 'a' + 10;
+				} else {
+					break;
+				}
+			} else if (ch >= '0' && ch <= '9') {
+				if (ch - '0' < radix) {
+					n = ch - '0';
+				} else {
+					break;
+				}
+			} else {
+				/* completely invalid character */
+				break;
+			}
+
+			(*this) *= radix;
+			(*this) += n;
+
+			++first;
+		}
+	}
 
 	static void divide(const uint128 &numerator, const uint128 &denominator,
 		uint128 &quotient, uint128 &remainder)
 	{
-		if(denominator == 0) {
+		if (denominator == 0) {
 			throw std::domain_error("divide by zero");
 		} else {
 			uint128 n      = numerator;
@@ -382,13 +362,12 @@ private:
 			uint128 x      = 1;
 			uint128 answer = 0;
 	
-	
-			while((n >= d) && (((d >> (NBITS - 1)) & 1) == 0)) {
+			while ((n >= d) && (((d >> (NBITS - 1)) & 1) == 0)) {
 				x <<= 1;
 				d <<= 1;
 			}
 	
-			while(x != 0) {
+			while (x != 0) {
 				if(n >= d) {
 					n -= d;
 					answer |= x;
@@ -402,6 +381,9 @@ private:
 			remainder = n;
 		}
 	}
+
+	base_type lo;
+	base_type hi;
 
 	static const unsigned int NBITS = (sizeof(base_type) + sizeof(base_type))
 		* std::numeric_limits<unsigned char>::digits;
