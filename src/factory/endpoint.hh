@@ -108,13 +108,13 @@ namespace factory {
 	union IPv6_addr {
 
 		typedef uint16_t Field;
-		typedef struct ::in6_addr In__addr6;
+		typedef struct ::in6_addr Addr;
 
 		constexpr IPv6_addr(): addr{} {}
 		constexpr IPv6_addr(const struct ::sockaddr_in6& a): in_addr6(a.sin6_addr) {}
 		constexpr IPv6_addr(const struct ::in6_addr& a): in_addr6(a) {}
 
-		operator const In__addr6&() const { return in_addr6; }
+		operator const Addr&() const { return in_addr6; }
 
 		bool operator<(const IPv6_addr& rhs) const {
 			return std::lexicographical_compare(begin(), end(), rhs.begin(), rhs.end());
@@ -131,23 +131,26 @@ namespace factory {
 		bool operator !() const { return !operator bool(); }
 
 		friend std::ostream& operator<<(std::ostream& out, const IPv6_addr& rhs) {
-			typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
-			typedef IPv6_addr::Field Field;
-			std::ios_base::fmtflags oldf = out.flags();
-			out << std::hex;
-			std::ostream_iterator<Field> it(out, ":");
-			std::copy(rhs.begin(), rhs.end()-1, it);
-			out << *(rhs.end()-1);
-			out.flags(oldf);
+			std::ostream::sentry s(out);
+			if (s) {
+				typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
+				typedef IPv6_addr::Field Field;
+				std::ios_base::fmtflags oldf = out.setf(std::ios::hex);
+				std::ostream_iterator<Field> it(out, ":");
+				std::copy(rhs.begin(), rhs.end()-1, it);
+				out << *(rhs.end()-1);
+				out.flags(oldf);
+			}
 			return out;
 		}
 
 		friend std::istream& operator>>(std::istream& in, IPv6_addr& rhs) {
+			std::istream::sentry s(in);
+			if (!s) { return in; }
 			using namespace components;
 			typedef std::remove_reference<decltype(rhs)>::type IPv6_addr;
 			typedef IPv6_addr::Field Field;
-			std::ios_base::fmtflags oldf = in.flags();
-			in >> std::hex;
+			std::ios_base::fmtflags oldf = in.setf(std::ios::hex);
 			int field_no = 0;
 			int zeros_field = -1;
 			std::for_each(rhs.begin(), rhs.end(), [&field_no,&in,&zeros_field,&rhs] (Field& field) {
@@ -206,7 +209,7 @@ namespace factory {
 		int num_fields() { return sizeof(addr) / sizeof(Field); }
 
 		Field addr[8];
-		In__addr6 in_addr6;
+		Addr in_addr6;
 	};
 
 	union Endpoint {
@@ -255,36 +258,42 @@ namespace factory {
 		constexpr bool operator !() const { return !operator bool(); }
 
 		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
-			using namespace components;
-			if (rhs.family() == AF_INET6) {
-				out << Left_br() << rhs.addr6() << Right_br()
-					<< Colon() << to_host_format<Port>(rhs.port6());
-			} else {
-				out << rhs.addr4() << Colon() << to_host_format<Port>(rhs.port4());
+			std::ostream::sentry s(out);
+			if (s) {
+				using namespace components;
+				if (rhs.family() == AF_INET6) {
+					out << Left_br() << rhs.addr6() << Right_br()
+						<< Colon() << to_host_format<Port>(rhs.port6());
+				} else {
+					out << rhs.addr4() << Colon() << to_host_format<Port>(rhs.port4());
+				}
 			}
 			return out;
 		}
 
 		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
-			using namespace components;
-			IPv4_addr host;
-			Port port;
-			std::ios_base::fmtflags oldf = in.flags();
-			in >> std::ws >> std::noskipws;
-			std::streampos oldg = in.tellg();
-			if (in >> host >> Colon() >> port) {
-				rhs.addr4(host, port);
-				std::clog << "Reading host = " << host << std::endl;
-			} else {
-				in.clear();
-				in.seekg(oldg);
-				IPv6_addr host6;
-				if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
-					rhs.addr6(host6, port);
-					std::clog << "Reading host = " << host6 << std::endl;
+			std::istream::sentry s(in);
+			if (s) {
+				using namespace components;
+				IPv4_addr host;
+				Port port;
+				std::ios_base::fmtflags oldf = in.flags();
+				in >> std::noskipws;
+				std::streampos oldg = in.tellg();
+				if (in >> host >> Colon() >> port) {
+					rhs.addr4(host, port);
+					std::clog << "Reading host = " << host << std::endl;
+				} else {
+					in.clear();
+					in.seekg(oldg);
+					IPv6_addr host6;
+					if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
+						rhs.addr6(host6, port);
+						std::clog << "Reading host = " << host6 << std::endl;
+					}
 				}
+				in.flags(oldf);
 			}
-			in.flags(oldf);
 			return in;
 		}
 
