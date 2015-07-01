@@ -46,5 +46,4 @@ namespace factory {
 		return system_time - clock_skew();
 	}
 
-
 }

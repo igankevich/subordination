@@ -280,4 +280,29 @@ namespace factory {
 		return out;
 	}
 
+	namespace components {
+
+		struct Auto_set_terminate_handler {
+			Auto_set_terminate_handler() { std::set_terminate(error_printing_handler); }
+		private:
+			[[noreturn]]
+			static void error_printing_handler() noexcept {
+				std::exception_ptr ptr = std::current_exception();
+				if (ptr) {
+					try {
+						std::rethrow_exception(ptr);
+					} catch (Error& err) {
+						std::cerr << Error_message(err, __FILE__, __LINE__, __func__);
+					} catch (std::exception& err) {
+						std::cerr << String_message(err, __FILE__, __LINE__, __func__);
+					} catch (...) {
+						std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
+					}
+				}
+				std::abort();
+			}
+		} __factory_auto_set_terminate_handler;
+
+	}
+
 }
