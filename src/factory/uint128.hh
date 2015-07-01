@@ -40,7 +40,11 @@ struct uint128 {
 		from_string(sz.begin(), sz.end());
 	}
 
-	uint128 &operator=(const uint128 &other) {
+	uint128(const char* sz): lo(0), hi(0) {
+		from_string(sz, sz + std::strlen(sz));
+	}
+
+	uint128& operator=(const uint128& other) {
 		if (&other != this) {
 			lo = other.lo;
 			hi = other.hi;
@@ -53,10 +57,10 @@ struct uint128 {
 	constexpr bool operator<(const uint128 &o) const { return (hi == o.hi) ? lo < o.lo : hi < o.hi; }
 
 	// derived comparison operators
-	constexpr bool operator!=(const uint128& y) { return !operator==(y); }
-	constexpr bool operator> (const uint128& y) { return y < *this; }
-	constexpr bool operator<=(const uint128& y) { return !(y < *this); }
-	constexpr bool operator>=(const uint128& y) { return !operator<(y); }
+	constexpr bool operator!=(const uint128& y) const { return !operator==(y); }
+	constexpr bool operator> (const uint128& y) const { return y < *this; }
+	constexpr bool operator<=(const uint128& y) const { return !(y < *this); }
+	constexpr bool operator>=(const uint128& y) const { return !operator<(y); }
 
 	// unary operators
     constexpr explicit operator bool() const { return hi != 0 || lo != 0; }
@@ -245,47 +249,65 @@ struct uint128 {
 	uint128 operator>>(const uint128& rhs) const { return uint128(*this) >>= rhs; }
 
 	constexpr int to_integer() const { return static_cast<int>(lo); }
-	constexpr base_type to_base_type() const { return lo; }
 
-    std::string to_string(unsigned int radix = 10) const {
-    	if (*this == 0) {
-			return "0";
+	friend std::ostream &operator<<(std::ostream& out, const uint128& n) {
+		std::ostream::sentry s(out);
+		if (s) {
+			int radix = uint128::get_radix(out);
+	    	if (n == 0) { return out << '0'; }
+			// at worst it will be NBITS digits (base 2) so make our buffer
+			// that plus room for null terminator
+	    	char buf[NBITS + 1];
+			buf[sizeof(buf) - 1] = '\0';
+	
+	    	uint128 ii(n);
+	    	int i = NBITS - 1;
+	
+	    	while (ii != 0 && i) {
+				uint128 remainder;
+				divide(ii, uint128(radix), ii, remainder);
+	        	buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
+	    	}
+	
+	    	out << buf + i;
 		}
-
-    	if (radix < 2 || radix > 37) {
-			return "(invalid radix)";
-		}
-
-		// at worst it will be NBITS digits (base 2) so make our buffer
-		// that plus room for null terminator
-    	char buf[NBITS + 1];
-		buf[sizeof(buf) - 1] = '\0';
-
-    	uint128 ii(*this);
-    	int i = NBITS - 1;
-
-    	while (ii != 0 && i) {
-			uint128 remainder;
-			divide(ii, uint128(radix), ii, remainder);
-        	buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
-    	}
-
-    	return &buf[i];
-	}
-
-	friend std::ostream &operator<<(std::ostream &o, const uint128 &n) {
-		switch(o.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
-			case std::ios_base::hex: o << n.to_string(16); break;
-			case std::ios_base::dec: o << n.to_string(10); break;
-			case std::ios_base::oct: o << n.to_string(8); break;
-			default: o << n.to_string(); break;
-		}
-		return o;
+		return out;
 	}
 
 	friend std::istream& operator>>(std::istream& in, uint128& rhs) {
-		std::istream_iterator<char> it(in), eos;
-		rhs.from_string(it, eos);
+		std::istream::sentry s(in);
+		if (s) {
+			unsigned int radix = uint128::get_radix(in);
+			char ch;
+			while (in >> ch) {
+				unsigned int n = radix;
+				switch (radix) {
+					case 16: {
+						ch = std::tolower(ch);
+						if (ch >= 'a' && ch <= 'f') {
+							n = ch - 'a' + 10;
+						}
+					} break;
+					case 8:	
+						if (ch >= '0' && ch <= '7') {
+							n = ch - '0';
+						}
+						break;
+					case 10:
+					default:
+						if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
+						}
+						break;
+				}
+				if (n == radix) {
+					break;
+				}
+
+				rhs *= radix;
+				rhs += n;
+			}
+		}
 		return in;
 	}
 
@@ -373,6 +395,15 @@ private:
 		}
 	}
 
+	static int get_radix(std::ios_base& str) {
+		switch (str.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
+			case std::ios_base::hex: return 16;
+			case std::ios_base::oct: return 8;
+			case std::ios_base::dec:
+			default: return 10;
+		}
+	}
+
 	base_type lo;
 	base_type hi;
 
@@ -384,18 +415,15 @@ typedef uint128 uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
 }
-
-// convinience macro
-#define UINT128_C(s) uint128_t(#s)
 #endif
 
 // attempt to simulate useful behaviour for __uint128_t
 #ifdef HAVE___UINT128_T
 namespace std {
 	template<> struct is_integral<__uint128_t> {
-		constexpr static const bool value = true;
+		static const bool value = true;
 	};
-	int get_radix(std::ostream& out) {
+	int uint128_get_radix(std::ostream& out) {
 		switch(out.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
 			case std::ios_base::hex: return 16;
 			case std::ios_base::oct: return 8;
@@ -406,9 +434,10 @@ namespace std {
 	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
 		static const unsigned int NBITS = sizeof(__uint128_t)
 			* std::numeric_limits<unsigned char>::digits;
-		static constexpr const char SYMBOLS[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-		int radix = get_radix(o);
-    	if (rhs == 0) { o << "0"; }
+		std::ostream::sentry s(o);
+		if (!s) { return o; }
+		int radix = uint128_get_radix(o);
+    	if (rhs == 0) { o << '0'; }
     	else if (radix < 2 || radix > 37) { o << "(invalid radix)"; }
 		else {
 			// at worst it will be NBITS digits (base 2) so make our buffer
@@ -423,7 +452,7 @@ namespace std {
 				__uint128_t res = ii/radix;
 				__uint128_t remainder = ii%radix;
 				ii = res;
-        		buf[--i] = SYMBOLS[remainder];
+        		buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder];
     		}
 
 			o << buf + i;

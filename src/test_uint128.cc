@@ -36,6 +36,20 @@ void check_write(T rhs, const char* expected_result) {
 	}
 }
 
+template<class T>
+void check_read(const char* str, T expected_result) {
+	T result;
+	std::stringstream s;
+	s << str;
+	s >> result;
+	if (result != expected_result) {
+		std::stringstream msg;
+		msg << "Read failed for '" << str << "': '"
+			<< result << "' (read) /= '" << expected_result << "' (expected).";
+		throw std::runtime_error(msg.str());
+	}
+}
+
 void test_uint128() {
 	// check different numbers
 	check_op(uint128(0), "0");
@@ -55,6 +69,8 @@ void test_uint128() {
 	// check arithmetic operations
 	check_op(uint128(1)+1, "2");
 	check_op(uint128("18446744073709551615")+1, "18446744073709551616");
+	// check io
+	check_read("123", uint128("123"));
 }
 
 #ifdef HAVE___UINT128_T
