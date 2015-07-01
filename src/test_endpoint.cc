@@ -7,7 +7,7 @@ struct Test_endpoint {
 
 	Test_endpoint():
 		generator(static_cast<std::default_random_engine::result_type>(current_time_nano())),
-		distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max()),
+		distribution(std::numeric_limits<T>::min(), std::numeric_limits<T>::max()),
 		dice(std::bind(distribution, generator))
 	{}
 
@@ -229,15 +229,26 @@ private:
 };
 
 struct App {
+	void test_ipv4() {
+		Test_endpoint<uint32_t> test;
+		test.test_single();
+		test.test_multiple();
+		test.test_variations_ipv4();
+		test.test_operators();
+		test.test_io();
+	}
+	void test_ipv6() {
+		Test_endpoint<__uint128_t> test;
+		test.test_single();
+		test.test_multiple();
+		test.test_variations_ipv6();
+		test.test_operators();
+		test.test_io();
+	}
 	int run(int, char**) {
 		try {
-			Test_endpoint<uint32_t> test;
-			test.test_single();
-			test.test_multiple();
-			test.test_variations_ipv4();
-			test.test_variations_ipv6();
-			test.test_operators();
-			test.test_io();
+			test_ipv4();
+			test_ipv6();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

@@ -22,11 +22,19 @@
 typedef __uint128_t uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
+	template<>
+	struct is_integral<uint128_t> {
+		constexpr static const bool value = true;
+	};
 }
 #elif defined(HAVE___INT128) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
 typedef unsigned __int128 uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
+	template<>
+	struct is_integral<uint128_t> {
+		constexpr static const bool value = true;
+	};
 }
 #else
 struct uint128 {
