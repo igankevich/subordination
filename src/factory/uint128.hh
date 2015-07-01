@@ -22,19 +22,6 @@
 typedef __uint128_t uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
-	template<>
-	struct is_integral<uint128_t> {
-		constexpr static const bool value = true;
-	};
-}
-#elif defined(HAVE___INT128) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
-typedef unsigned __int128 uint128_t;
-namespace std {
-	typedef ::uint128_t uint128_t;
-	template<>
-	struct is_integral<uint128_t> {
-		constexpr static const bool value = true;
-	};
 }
 #else
 struct uint128 {
@@ -278,7 +265,6 @@ struct uint128 {
     	int i = NBITS - 1;
 
     	while (ii != 0 && i) {
-
 			uint128 remainder;
 			divide(ii, uint128(radix), ii, remainder);
         	buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
@@ -401,4 +387,48 @@ namespace std {
 
 // convinience macro
 #define UINT128_C(s) uint128_t(#s)
+#endif
+
+// attempt to simulate useful behaviour for __uint128_t
+#ifdef HAVE___UINT128_T
+namespace std {
+	template<> struct is_integral<__uint128_t> {
+		constexpr static const bool value = true;
+	};
+	int get_radix(std::ostream& out) {
+		switch(out.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
+			case std::ios_base::hex: return 16;
+			case std::ios_base::oct: return 8;
+			case std::ios_base::dec:
+			default: return 10;
+		}
+	}
+	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
+		static const unsigned int NBITS = sizeof(__uint128_t)
+			* std::numeric_limits<unsigned char>::digits;
+		static constexpr const char SYMBOLS[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+		int radix = get_radix(o);
+    	if (rhs == 0) { o << "0"; }
+    	else if (radix < 2 || radix > 37) { o << "(invalid radix)"; }
+		else {
+			// at worst it will be NBITS digits (base 2) so make our buffer
+			// that plus room for null terminator
+    		char buf[NBITS + 1];
+			buf[sizeof(buf) - 1] = '\0';
+
+    		__uint128_t ii = rhs;
+    		int i = NBITS - 1;
+
+    		while (ii != 0 && i) {
+				__uint128_t res = ii/radix;
+				__uint128_t remainder = ii%radix;
+				ii = res;
+        		buf[--i] = SYMBOLS[remainder];
+    		}
+
+			o << buf + i;
+		}
+		return o;
+	}
+}
 #endif

@@ -35,7 +35,7 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_CHECK_TYPES([ptrdiff_t])
-AC_CHECK_TYPES([__int128, __int128_t, __uint128_t])
+AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
 AC_TYPE_PID_T
 AX_CXX_11
 AX_CXX_11_THREAD

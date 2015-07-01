@@ -22,6 +22,20 @@ void check_op(I x, const char* y) {
 	}
 }
 
+template<class T>
+void check_write(T rhs, const char* expected_result) {
+	std::stringstream str;
+	str << rhs;
+	std::string result = str.str();
+	if (result != expected_result) {
+		std::stringstream msg;
+		msg << "Write failed: result='" << result
+			<< "', expected result='" << expected_result
+			<< "'.";
+		throw std::runtime_error(msg.str());
+	}
+}
+
 void test_uint128() {
 	// check different numbers
 	check_op(uint128(0), "0");
@@ -43,10 +57,19 @@ void test_uint128() {
 	check_op(uint128("18446744073709551615")+1, "18446744073709551616");
 }
 
+#ifdef HAVE___UINT128_T
+void test___uint128_t() {
+	check_write(__uint128_t(123), "123");
+}
+#else
+void test___uint128_t() {}
+#endif
+
 struct App {
 	int run(int, char**) {
 		try {
 			test_uint128();
+			test___uint128_t();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
