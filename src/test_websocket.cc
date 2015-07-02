@@ -8,8 +8,8 @@ using namespace factory;
 Endpoint server_endpoint("127.0.0.1", 10002);
 Endpoint client_endpoint("127.0.0.2", 10002);
 
-//const std::vector<size_t> POWERS = {1,2,3,4,16,17};
-const std::vector<size_t> POWERS = {17};
+const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+//const std::vector<size_t> POWERS = {17};
 const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 

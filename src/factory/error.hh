@@ -149,8 +149,8 @@ namespace factory {
 		virtual const char* prefix() const { return "Error"; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Error& rhs) {
-			out << "What:          " << rhs.prefix() << ". " << rhs.what()
-				<< "\nOrigin:        " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']';
+			out << "What:       " << rhs.prefix() << ". " << rhs.what()
+				<< "\nOrigin:     " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']';
 			return out;
 		}
 
@@ -208,10 +208,10 @@ namespace factory {
 				"%FT%T%z", std::localtime(&now_time));
 			out << "---------- ERROR ----------"
 				<< '\n' << rhs._error
-				<< "\nCaught at:     " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
-				<< "\nDate:          " << formatted_time
-				<< "\nBuild version: " << REPO_VERSION
-				<< "\nBuild date:    " << REPO_DATE
+				<< "\nCaught at:  " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
+				<< "\nDate:       " << formatted_time
+				<< "\nBuild hash: " << REPO_VERSION
+				<< "\nBuild date: " << REPO_DATE
 				<< "\n---------------------------"
 				<< std::endl;
 			return out;
@@ -299,8 +299,20 @@ namespace factory {
 						std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__);
 					}
 				}
+				print_stack_trace();
 				std::abort();
 			}
+
+#if defined(HAVE_DECL_BACKTRACE) && defined(HAVE_DECL_BACKTRACE_SYMBOLS_FD)
+			static void print_stack_trace() noexcept {
+				static const size_t STACK_TRACE_SIZE = 64;
+				void* stack[STACK_TRACE_SIZE];
+				size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
+				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
+			}
+#else
+			static void print_stack_trace() {}
+#endif
 		} __factory_auto_set_terminate_handler;
 
 	}

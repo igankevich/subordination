@@ -360,7 +360,7 @@ namespace factory {
 
 //		Buffer<Byte> _buffer;
 
-		static const Size DEFAULT_BUFFER_SIZE = (1 << 20) - 0;
+		static const Size DEFAULT_BUFFER_SIZE = (1 << 16) - 0;
 	};
 
 	template<class T>

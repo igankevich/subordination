@@ -61,7 +61,9 @@
 	#include <arpa/inet.h>
 	#include <poll.h>
 	#include <ifaddrs.h>
-	#include <execinfo.h>
+	#ifdef HAVE_EXECINFO_H
+		#include <execinfo.h>
+	#endif
 	
 	// Base system
 	#include "uint128.hh"
