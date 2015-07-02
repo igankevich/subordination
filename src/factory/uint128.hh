@@ -54,10 +54,12 @@ struct uint128 {
 
 	// comparison operators
 	constexpr bool operator==(const uint128 &o) const { return hi == o.hi && lo == o.lo; }
+	constexpr bool operator==(unsigned int rhs) const { return hi == 0 && lo == rhs; }
 	constexpr bool operator<(const uint128 &o) const { return (hi == o.hi) ? lo < o.lo : hi < o.hi; }
 
 	// derived comparison operators
 	constexpr bool operator!=(const uint128& y) const { return !operator==(y); }
+	constexpr bool operator!=(unsigned int rhs) const { return !operator==(rhs); }
 	constexpr bool operator> (const uint128& y) const { return y < *this; }
 	constexpr bool operator<=(const uint128& y) const { return !(y < *this); }
 	constexpr bool operator>=(const uint128& y) const { return !operator<(y); }
@@ -126,10 +128,9 @@ struct uint128 {
     		hi = 0;
 
     		for (unsigned int i=0; i<NBITS; ++i) {
-        		if ((t & 1) != 0) {
+        		if (t & 1) {
             		*this += (a << i);
 				}
-
         		t >>= 1;
     		}
 		}
@@ -277,6 +278,7 @@ struct uint128 {
 	friend std::istream& operator>>(std::istream& in, uint128& rhs) {
 		std::istream::sentry s(in);
 		if (s) {
+			rhs = 0;
 			unsigned int radix = uint128::get_radix(in);
 			char ch;
 			while (in >> ch) {
@@ -286,6 +288,8 @@ struct uint128 {
 						ch = std::tolower(ch);
 						if (ch >= 'a' && ch <= 'f') {
 							n = ch - 'a' + 10;
+						} else if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
 						}
 					} break;
 					case 8:	
@@ -333,14 +337,8 @@ private:
 
 		while (first != last) {
 			unsigned int n;
-			const char ch = *first;
-			if (ch >= 'A' && ch <= 'Z') {
-				if (ch - 'A' + 10 < radix) {
-					n = ch - 'A' + 10;
-				} else {
-					break;
-				}
-			} else if (ch >= 'a' && ch <= 'z') {
+			const char ch = std::tolower(*first);
+			if (ch >= 'a' && ch <= 'z') {
 				if (ch - 'a' + 10 < radix) {
 					n = ch - 'a' + 10;
 				} else {
@@ -395,7 +393,7 @@ private:
 		}
 	}
 
-	static int get_radix(std::ios_base& str) {
+	static int get_radix(const std::ios_base& str) {
 		switch (str.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
 			case std::ios_base::hex: return 16;
 			case std::ios_base::oct: return 8;
@@ -417,19 +415,16 @@ namespace std {
 }
 #endif
 
-// attempt to simulate useful behaviour for __uint128_t
+// Attempt to simulate useful behaviour for __uint128_t
+// (input/output operators, static type information.)
 #ifdef HAVE___UINT128_T
 namespace std {
 	template<> struct is_integral<__uint128_t> {
 		static const bool value = true;
 	};
-	int uint128_get_radix(std::ostream& out) {
-		switch(out.flags() & (std::ios_base::hex | std::ios_base::dec | std::ios_base::oct)) {
-			case std::ios_base::hex: return 16;
-			case std::ios_base::oct: return 8;
-			case std::ios_base::dec:
-			default: return 10;
-		}
+	int uint128_get_radix(const std::ios_base& out) {
+		return out.flags() & std::ios_base::hex ? 16 :
+			out.flags() & std::ios_base::oct ? 8 : 10;
 	}
 	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
 		static const unsigned int NBITS = sizeof(__uint128_t)
@@ -437,8 +432,7 @@ namespace std {
 		std::ostream::sentry s(o);
 		if (!s) { return o; }
 		int radix = uint128_get_radix(o);
-    	if (rhs == 0) { o << '0'; }
-    	else if (radix < 2 || radix > 37) { o << "(invalid radix)"; }
+		if (rhs == 0) { o << '0'; }
 		else {
 			// at worst it will be NBITS digits (base 2) so make our buffer
 			// that plus room for null terminator
@@ -458,6 +452,46 @@ namespace std {
 			o << buf + i;
 		}
 		return o;
+	}
+
+	std::istream& operator>>(std::istream& in, __uint128_t& rhs) {
+		std::istream::sentry s(in);
+		if (s) {
+			rhs = 0;
+			unsigned int radix = uint128_get_radix(in);
+			char ch;
+			while (in >> ch) {
+				unsigned int n = radix;
+				switch (radix) {
+					case 16: {
+						ch = std::tolower(ch);
+						if (ch >= 'a' && ch <= 'f') {
+							n = ch - 'a' + 10;
+						} else if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
+						}
+					} break;
+					case 8:	
+						if (ch >= '0' && ch <= '7') {
+							n = ch - '0';
+						}
+						break;
+					case 10:
+					default:
+						if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
+						}
+						break;
+				}
+				if (n == radix) {
+					break;
+				}
+
+				rhs *= radix;
+				rhs += n;
+			}
+		}
+		return in;
 	}
 }
 #endif

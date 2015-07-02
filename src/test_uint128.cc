@@ -23,8 +23,9 @@ void check_op(I x, const char* y) {
 }
 
 template<class T>
-void check_write(T rhs, const char* expected_result) {
+void check_write(T rhs, const char* expected_result, std::ios_base& ( *pf )(std::ios_base&) = nullptr) {
 	std::stringstream str;
+	if (pf) { str << pf; }
 	str << rhs;
 	std::string result = str.str();
 	if (result != expected_result) {
@@ -37,16 +38,30 @@ void check_write(T rhs, const char* expected_result) {
 }
 
 template<class T>
-void check_read(const char* str, T expected_result) {
+void check_read(const char* str, T expected_result, std::ios_base& ( *pf )(std::ios_base&) = nullptr) {
 	T result;
 	std::stringstream s;
 	s << str;
+	if (pf) s >> pf;
 	s >> result;
 	if (result != expected_result) {
 		std::stringstream msg;
 		msg << "Read failed for '" << str << "': '"
 			<< result << "' (read) /= '" << expected_result << "' (expected).";
 		throw std::runtime_error(msg.str());
+	}
+}
+
+template<class E, class F>
+void check_exception(F func) {
+	bool caught = false;
+	try {
+		func();
+	} catch (E& err) {
+		caught = true;
+	}
+	if (!caught) {
+		throw std::runtime_error("Expected exception was not caught.");
 	}
 }
 
@@ -66,16 +81,52 @@ void test_uint128() {
 	check_op(uint128("170141183460469231731687303715884105727"), "170141183460469231731687303715884105727");
 	check_op(uint128("340282366920938463463374607431768211455"), "340282366920938463463374607431768211455");
 	check_op(uint128("0xffffffffffffffffffffffffffffffff"), "340282366920938463463374607431768211455");
+	check_op(uint128("0x0123456789abcdef"), "81985529216486895");
+	check_write(uint128("0x123456789abcdef"), "123456789abcdef", std::hex);
+	check_write(uint128("0123"), "123", std::oct);
 	// check arithmetic operations
 	check_op(uint128(1)+1, "2");
 	check_op(uint128("18446744073709551615")+1, "18446744073709551616");
-	// check io
+	check_op(uint128("18446744073709551615")*uint128("1000"), "18446744073709551615000");
+	check_op(uint128("18446744073709551615")*uint128("0"), "0");
+	check_op(uint128("18446744073709551615")*uint128("1"), "18446744073709551615");
+	check_op(uint128("18446744073709551615")%uint128("1000"), "615");
+	check_op(uint128("18446744073709551615")/uint128("1000"), "18446744073709551");
+	check_op(uint128("18446744073709551615")-uint128("1000"), "18446744073709550615");
+	// check logical operations
+	check_op(uint128("18446744073709551615")&uint128("123456789"), "123456789");
+	check_op(uint128("18446744073709551615")|uint128("123456789"), "18446744073709551615");
+	check_op(uint128("18446744073709551615")^uint128("123456789"), "18446744073586094826");
+	check_write(uint128("0xffffffffffffff")<<uint128("8"), "ffffffffffffff00", std::hex);
+	check_write(uint128("0xffffffffffffff")>>uint128("8"), "ffffffffffff", std::hex);
+	check_write(uint128("0xffffffffffffff")>>uint128("129"), "0", std::hex);
+	check_write(uint128("0xffffffffffffff")<<uint128("129"), "0", std::hex);
+	check_write(uint128("0xffffffffffffff")>>uint128("100"), "0", std::hex);
+	check_write(uint128("0xffffffffffffff")<<uint128("100"), "fffffff0000000000000000000000000", std::hex);
+	// check I/O
+	check_write(uint128("123"), "123");
+	check_write(uint128("0x123456789abcdef"), "123456789abcdef", std::hex);
+	check_write(uint128("0123"), "123", std::oct);
 	check_read("123", uint128("123"));
+	check_read("123", uint128("0123"), std::oct);
+	check_read("123456789abcdef", uint128("0x123456789abcdef"), std::hex);
+	check_read("ffffffff", uint128("0xffffffff"), std::hex);
+	check_read("abcdef", uint128("0xabcdef"), std::hex);
+	// common errors
+	check_exception<std::logic_error>([] () { uint128("1")/uint128("0"); });
 }
 
 #ifdef HAVE___UINT128_T
 void test___uint128_t() {
 	check_write(__uint128_t(123), "123");
+	check_write(__uint128_t(0x123456789abcdef), "123456789abcdef", std::hex);
+	check_write(__uint128_t(0123), "123", std::oct);
+	check_read("123", __uint128_t(123));
+	check_read("123", __uint128_t(0123), std::oct);
+	check_read("123456789abcdef", __uint128_t(0x123456789abcdef), std::hex);
+	check_read("ffffffff", __uint128_t(0xffffffff), std::hex);
+	check_read("abcdef", __uint128_t(0xabcdef), std::hex);
+	check_read("AbCdeF1234", __uint128_t(0xabcdef1234), std::hex);
 }
 #else
 void test___uint128_t() {}

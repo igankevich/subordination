@@ -535,13 +535,18 @@ namespace factory {
 
 		void mask(Mask rhs) {
 			using namespace constants;
-			switch (hdr.len) {
-				case LEN16_TAG: hdr.extlen2 = rhs; break;
-				case LEN64_TAG: hdr.mask = rhs; break;
-				default: {
-					Bytes<Mask> tmp = rhs;
-					std::copy(tmp.begin(), tmp.end(), rawhdr + BASE_SIZE);
-					break;
+			if (rhs == 0) {
+				hdr.maskbit = 0;
+			} else {
+				hdr.maskbit = 1;
+				switch (hdr.len) {
+					case LEN16_TAG: hdr.extlen2 = rhs; break;
+					case LEN64_TAG: hdr.mask = rhs; break;
+					default: {
+						Bytes<Mask> tmp = rhs;
+						std::copy(tmp.begin(), tmp.end(), rawhdr + BASE_SIZE);
+						break;
+					}
 				}
 			}
 		}
