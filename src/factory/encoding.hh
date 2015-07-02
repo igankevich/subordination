@@ -7,7 +7,7 @@ namespace factory {
 	}
 
 	constexpr size_t base64_max_decoded_size(size_t len) {
-		return len == 0 ? 0 : ((len / 4) * 3);
+		return len / 4u * 3u;
 	}
 	
 	template<class It, class Res>
@@ -20,10 +20,9 @@ namespace factory {
 			"base64_encode() works for sequences of 1-byte sized types.");
 	
 		typedef typename std::remove_reference<decltype(*result)>::type char_type;
-		using std::numeric_limits;
 	
 		const size_t binlen = static_cast<size_t>(last - first);
-		if (binlen > (numeric_limits<size_t>::max() / 4u) * 3u) {
+		if (binlen > base64_max_decoded_size(std::numeric_limits<size_t>::max())) {
 			throw std::length_error("Converting too large a string to base64.");
 		}
 	
@@ -476,15 +475,11 @@ namespace factory {
 			return opcode() == Opcode::BINARY_FRAME;
 		}
 		constexpr bool has_valid_opcode() const { return hdr.opcode >= 0x0 && hdr.opcode <= 0xf; }
+
 		constexpr size_t extlen_size() const {
 			using namespace constants;
 			return hdr.len == LEN16_TAG ? sizeof(Len16) :
 				hdr.len == LEN64_TAG ? sizeof(Len64) : 0;
-//			switch (hdr.len) {
-//				case LEN16_TAG: return sizeof(Len16);
-//				case LEN64_TAG: return sizeof(Len64);
-//				default: return 0;
-//			}
 		}
 
 		Len64 payload_size() const {
@@ -584,7 +579,8 @@ namespace factory {
 				<< "extlen64=" << Bytes<Len64>(rhs.hdr.extlen3) << ','
 				<< "mask64=" << Bytes<Mask>(rhs.hdr.mask) << ','
 				<< "mask=" << rhs.mask() << ','
-				<< "size=" << rhs.payload_size();
+				<< "payload_size=" << rhs.payload_size() << ','
+				<< "header_size=" << rhs.header_size();
 		}
 	};
 

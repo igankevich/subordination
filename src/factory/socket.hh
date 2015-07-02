@@ -306,9 +306,9 @@ namespace factory {
 						&opcode);
 					Logger<Level::WEBSOCKET>() << "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
-						<< recv_buffer << std::endl;
+						<< std::setw(40) << recv_buffer << std::endl;
 					Logger<Level::WEBSOCKET>() << "mid buffer "
-						<< mid_buffer << std::endl;
+						<< std::setw(40) << mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
@@ -534,7 +534,7 @@ namespace factory {
 		LBuffer<char> recv_buffer;
 		LBuffer<char> mid_buffer;
 
-		static const size_t BUFFER_SIZE = 1024;
+		static const size_t BUFFER_SIZE = 1024*16;
 		static const size_t MAX_HEADERS = 20;
 		static const size_t ACCEPT_HEADER_LENGTH = 29;
 		static const size_t WEBSOCKET_KEY_BASE64_LENGTH = 24;

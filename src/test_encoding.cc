@@ -24,7 +24,7 @@ void test_base64_size() {
 }
 
 template<class T>
-void test_base64() {
+void test_base64(bool spoil=false) {
 
 	std::default_random_engine generator;
 	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
@@ -36,15 +36,31 @@ void test_base64() {
 		string text(k, '_');
 		string encoded(base64_encoded_size(k), '_');
 		string decoded(base64_max_decoded_size(encoded.size()), '_');
-		for (T& ch : text) ch = dice();
+		std::generate(text.begin(), text.end(), dice);
 		base64_encode(text.begin(), text.end(), encoded.begin());
-		size_t decoded_size = base64_decode(encoded.begin(), encoded.end(), decoded.begin());
-		decoded = decoded.substr(0, decoded_size);
-		if (decoded != text) {
-			std::stringstream msg;
-			msg << "Source and decoded strings do not match.\n";
-			msg << text << "\n/=\n" << decoded << std::endl;
-			throw std::runtime_error(msg.str());
+		size_t decoded_size;
+		bool ok = false;
+		if (spoil && !encoded.empty()) {
+			size_t pos = encoded.size()/2u;
+			encoded[pos] = 128;
+			try {
+				decoded_size = base64_decode(encoded.begin(), encoded.end(), decoded.begin());
+			} catch (std::invalid_argument& err) {
+				ok = true;
+			}
+		} else {
+			decoded_size = base64_decode(encoded.begin(), encoded.end(), decoded.begin());
+			ok = true;
+			decoded = decoded.substr(0, decoded_size);
+			if (decoded != text) {
+				std::stringstream msg;
+				msg << "Source and decoded strings do not match.\n";
+				msg << text << "\n/=\n" << decoded << std::endl;
+				throw std::runtime_error(msg.str());
+			}
+		}
+		if (!ok) {
+			throw std::runtime_error("Invalid string decoded by decode_base64()");
 		}
 	}
 }
@@ -87,7 +103,7 @@ void test_sha1(const std::string& input, const std::string& expected_output) {
 	validate_sha1_output(input, output, expected_output);
 }
 
-void test_sha1_2() {
+void test_sha1_big_input() {
 	static const std::string expected_output = "34aa973c d4c4daa4 f61eeb2b dbad2731 6534016f";
 	SHA1 sha1;
 	std::string a = "aaaaaaaaaa";
@@ -113,8 +129,10 @@ struct App {
 			test_base64_size();
 			test_base64<char>();
 			test_base64<unsigned char>();
+			test_base64<char>(true);
+			test_base64<unsigned char>(true);
 			test_sha1();
-			test_sha1_2();
+			test_sha1_big_input();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

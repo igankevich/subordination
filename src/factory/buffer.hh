@@ -160,6 +160,7 @@ namespace factory {
 		Size global_write_pos() const { return _global_write_pos; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Buffer& rhs) {
+			std::ios_base::fmtflags oldf = out.flags();
 			out << std::hex << std::setfill('0');
 			switch (rhs._chunks.size()) {
 				case 0: break;
@@ -195,7 +196,7 @@ namespace factory {
 					}
 				}
 			}
-			out << std::dec << std::setfill(' ');
+			out.setf(oldf);
 			return out;
 		}
 	
@@ -359,7 +360,7 @@ namespace factory {
 
 //		Buffer<Byte> _buffer;
 
-		static const Size DEFAULT_BUFFER_SIZE = 128;
+		static const Size DEFAULT_BUFFER_SIZE = (1 << 16) - 1;
 	};
 
 	template<class T>
@@ -473,9 +474,14 @@ namespace factory {
 
 		friend std::ostream& operator<<(std::ostream& out, const LBuffer<T>& rhs) {
 			out << std::hex << std::setfill('0');
-			std::for_each(rhs.begin(), rhs.end(), [&out] (T x) {
+			size_t max_elems = out.width() / 2;
+			auto last = std::min(rhs.begin() + max_elems, rhs.end());
+			std::for_each(rhs.begin(), last, [&out] (T x) {
 				out << std::setw(2) << to_binary(x);
 			});
+			if (last != rhs.end()) {
+				out << "...(truncated)";
+			}
 			return out;
 		}
 
@@ -546,5 +552,18 @@ namespace factory {
 		Container& container;
 		value_type* ptr;
 	};
+
+	
+//	struct Trim {
+//		constexpr explicit Trim() {}
+//		constexpr explicit Trim(int a): amount(a) {}
+//		friend std::ostream& operator<<(std::ostream& out, Trim rhs) {
+//			const static int index = out.xalloc();
+//			out.iword(index) = rhs.amount;
+//			return out;		
+//		}
+//	private:
+//		int amount = 80;
+//	};
 
 }

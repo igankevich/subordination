@@ -8,9 +8,10 @@ using namespace factory;
 Endpoint server_endpoint("127.0.0.1", 10002);
 Endpoint client_endpoint("127.0.0.2", 10002);
 
-const uint32_t NUM_SIZES = 13;
-const uint32_t NUM_KERNELS = 7;
-const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
+//const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+const std::vector<size_t> POWERS = {17};
+const uint32_t NUM_KERNELS = 1;
+const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 
 std::atomic<uint32_t> shutdown_counter(0);
 
@@ -131,13 +132,15 @@ struct Main: public Kernel {
 	Main(uint32_t s): _sleep(s) {}
 
 	void act() {
-		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-			upstream(the_server(), new Sender(i, _sleep));
+		for (uint32_t i=0; i<POWERS.size(); ++i) {
+			size_t sz = 1 << POWERS[i];
+			upstream(the_server(), new Sender(sz, _sleep));
+		}
 	}
 
 	void react(Kernel*) {
 		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
-		if (++_num_returned == NUM_SIZES) {
+		if (++_num_returned == POWERS.size()) {
 			commit(the_server());
 		}
 	}
