@@ -307,8 +307,8 @@ namespace factory {
 					Logger<Level::WEBSOCKET>() << "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
 						<< std::setw(40) << recv_buffer << std::endl;
-					Logger<Level::WEBSOCKET>() << "mid buffer "
-						<< std::setw(40) << mid_buffer << std::endl;
+//					Logger<Level::WEBSOCKET>() << "mid buffer "
+//						<< std::setw(40) << mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
@@ -519,7 +519,11 @@ namespace factory {
 		}
 
 		bool flush() {
+			size_t old_size = send_buffer.size();
 			send_buffer.flush(Socket(_socket));
+			Logger<Level::WEBSOCKET>() << "send buffer"
+				<< "(" << old_size - send_buffer.size() << ") "
+				<< std::endl;
 			return send_buffer.empty();
 		}
 

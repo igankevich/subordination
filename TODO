@@ -30,4 +30,4 @@ Remove factory_stop() and other global functions.
 Make Buffer and LBuffer a subclass of std::streambuf.
 Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
-Web socket does not work for payloads >=65536 bytes.
+'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.

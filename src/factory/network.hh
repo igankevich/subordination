@@ -113,15 +113,18 @@ namespace factory {
 
 	template<class T, class B>
 	std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
-		out << std::hex << std::setfill('0');
-		std::ostream_iterator<unsigned int> it(out, " ");
-		std::for_each(rhs.begin(), rhs.end(), [&out] (char ch) {
-			out << (unsigned int)(unsigned char)ch << ' ';
-		});
-//		std::copy(rhs.begin(), rhs.end(), it);
-		out << std::dec << std::setfill(' ');
+		std::ostream::sentry s(out);
+		if (s) {
+			std::ostream::fmtflags oldf = out.flags();
+			out << std::hex << std::setfill('0');
+			std::ostream_iterator<unsigned int> it(out, " ");
+			std::for_each(rhs.begin(), rhs.end(), [&out] (char ch) {
+				out << std::setw(2)
+					<< (unsigned int)(unsigned char)ch << ' ';
+			});
+			out.setf(oldf);
+		}
 		return out;
-//		return out << static_cast<const T&>(rhs);
 	}
 
 	template<class T, class B>

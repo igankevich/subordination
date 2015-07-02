@@ -48,8 +48,6 @@ struct Test_socket: public Mobile<Test_socket> {
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
 	void act() {
-		Logger<Level::COMPONENT> log;
-		log << "kernel count = " << shutdown_counter << std::endl;
 		commit(ext_server());
 	}
 
@@ -90,8 +88,6 @@ struct Sender: public Identifiable<Kernel> {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(ext_server(), new Test_socket(_input));
 			++shutdown_counter;
-			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
-			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 

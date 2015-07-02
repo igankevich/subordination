@@ -5,7 +5,7 @@ namespace factory {
 		template<class Kernel, class Stream, class Type>
 		struct Kernel_packet {
 
-			enum State {
+			enum struct State {
 				READING_SIZE,
 				READING_PACKET,
 				COMPLETE
@@ -32,38 +32,45 @@ namespace factory {
 				auto new_pos = out.write_pos();
 				auto new_size = out.size();
 				auto packet_sz = new_size - old_size;
-				Logger<Level::COMPONENT>() << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
+//				Logger<Level::COMPONENT>() << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
 				out.write_pos(old_pos);
 				out << packet_sz;
 				out.write_pos(new_pos);
+				Logger<Level::COMPONENT>() << "send "
+					<< packet_sz - sizeof(packet_sz)
+					<< " byte(s)"
+					<< std::endl;
 			}
 
 			bool read(Stream& in, Callback callback) {
-				if (_state == READING_SIZE && sizeof(packet_size) <= in.size()) {
+				if (_state == State::READING_SIZE && sizeof(packet_size) <= in.size()) {
 					in >> packet_size;
-					_state = READING_PACKET;
+					_state = State::READING_PACKET;
 				}
-				Logger<Level::COMPONENT>()<< "Bytes received = "
-					<< in.size()
-					<< '/'
-					<< packet_size - sizeof(packet_size)
-					<< std::endl;
-				if (_state == READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
+				if (_state == State::READING_PACKET) {
+					Logger<Level::COMPONENT>() << "recv "
+						<< in.size()
+						<< '/'
+						<< packet_size - sizeof(packet_size)
+						<< " byte(s)"
+						<< std::endl;
+				}
+				if (_state == State::READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
 					Type::types().read_and_send_object(in, callback);
-					_state = COMPLETE;
+					_state = State::COMPLETE;
 				}
 				return finished();
 			}
 
-			bool finished() const { return _state == COMPLETE; }
+			constexpr bool finished() const { return _state == State::COMPLETE; }
 
 			void reset_reading_state() {
-				_state = READING_SIZE;
+				_state = State::READING_SIZE;
 				packet_size = 0;
 			}
 
 		private:
-			State _state = READING_SIZE;
+			State _state = State::READING_SIZE;
 			Size packet_size = 0;
 		};
 
