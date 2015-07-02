@@ -37,13 +37,17 @@ AC_TYPE_UINT64_T
 AC_CHECK_TYPES([ptrdiff_t])
 AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
 AC_TYPE_PID_T
-AX_CXX_11
-AX_CXX_11_THREAD
-AX_STACK_TRACE
+AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
+AX_PTHREAD([
+	LIBS="$PTHREAD_LIBS $LIBS"
+	CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+	CC="$PTHREAD_CC"
+])
+FACTORY_STACK_TRACE
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
 
-AS_IF([test "x$enable_warnings" = "xyes"], [AX_CXX_WARNINGS])
+AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 
 # Checks for library functions.
 AC_FUNC_FORK
@@ -67,7 +71,7 @@ DX_PS_FEATURE(OFF)
 DX_INIT_DOXYGEN(factory)
 
 # Clean ALL files
-AX_CLEAN_ALL
+FACTORY_CLEAN_ALL
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
