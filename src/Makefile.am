@@ -27,7 +27,6 @@ TESTS = \
 	test_endpoint \
 	test_encoding \
 	test_timer \
-	test_swap \
 	test_uint128
 
 check_PROGRAMS = \
@@ -42,7 +41,6 @@ check_PROGRAMS = \
 	test_websocket \
 	test_shmem \
 	test_timer \
-	test_swap \
 	test_uint128
 
 
@@ -56,7 +54,6 @@ test_spinlock_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_endpoint_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_encoding_CPPFLAGS   = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_marshaling_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
-test_swap_CPPFLAGS       = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 factory_time_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 #test_shmem_CPPFLAGS      = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_uint128_CPPFLAGS     = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM

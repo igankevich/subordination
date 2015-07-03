@@ -45,6 +45,11 @@ namespace factory {
 		std::reverse(n.begin(), n.end());
 		return n;
 	}
+
+	// compile-time unit tests for byte swapping
+	static_assert(byte_swap<uint16_t>(UINT16_C(0xABCD)) == UINT16_C(0xCDAB), "byte swap failed for u16");
+	static_assert(byte_swap<uint32_t>(UINT32_C(0xABCDDCBA)) == UINT32_C(0xBADCCDAB), "byte swap failed for u32");
+	static_assert(byte_swap<uint64_t>(UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB), "byte swap failed for u64");
 	/// @}
 
 	constexpr bool is_network_byte_order() {
@@ -130,6 +135,25 @@ namespace factory {
 	template<class T, class B>
 	std::istream& operator>>(std::istream& in, Bytes<T,B>& rhs) {
 		return in >> static_cast<T&>(rhs);
+	}
+
+	namespace components {
+		struct Auto_check_endiannes {
+			Auto_check_endiannes() {
+				union Endian {
+					constexpr Endian() {}
+					uint32_t i = UINT32_C(1);
+					uint8_t b[4];
+				};
+				Endian endian;
+				if ((is_network_byte_order() && endian.b[0] != 0)
+					|| (!is_network_byte_order() && endian.b[0] != 1))
+				{
+					throw Error("endiannes was not correctly determined at compile time",
+						__FILE__, __LINE__, __func__);
+				}
+			}
+		} __factory_auto_check_endiannes;
 	}
 
 }
