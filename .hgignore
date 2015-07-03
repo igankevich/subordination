@@ -42,9 +42,11 @@ src/*.html
 src/*.xml
 doxygen-doc/*
 src/version.hh
+*-coverage.info
 
 syntax: regexp
 (^|/)Makefile.in$
 (^|/)Makefile$
 (^|/)\.deps
 (^|/)nohup.out
+

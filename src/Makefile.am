@@ -2,6 +2,17 @@ include $(top_srcdir)/am/gcov.am
 include $(top_srcdir)/am/valgrind.am
 include $(top_srcdir)/am/version.am
 
+AM_CXXFLAGS = \
+	$(PTHREAD_CFLAGS) \
+	$(CODE_COVERAGE_CFLAGS) \
+	$(MORE_CXXFLAGS)
+
+AM_LDFLAGS = \
+	$(PTHREAD_LIBS) \
+	$(CODE_COVERAGE_LDFLAGS)
+
+CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
+
 #-Wstack-protector -fstack-protector -- security concerns
 #-Wpadded                            -- detects padding
 #-fmudflapth                         -- pointer range check
@@ -9,7 +20,6 @@ include $(top_srcdir)/am/version.am
 #-Wunsafe-loop-optimizations         -- false positive for Process:execute
 #-Waggregate-return                  -- detects return of structs and unions
 #-Wabi                               -- probably not needed
-
 
 REPO_VERSION = $(top_srcdir)/bin/repo-version
 AM_DEFAULT_SOURCE_EXT = .cc

@@ -10,6 +10,7 @@ DONE [289:619c7dbe9fcc] Add handshake states to WebSocket class.
 DONE [297:67e9297e83d0] Add IPv6 support through 'struct sockaddr_storage'.
 DONE [297:67e9297e83d0] Replace inet_ntop, inet_pton with C++ analogs, possibly with IPv6 support.
 DONE [] Add runtime check for endiannes.
+DONE [] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 
@@ -31,5 +32,4 @@ Remove factory_stop() and other global functions.
 Make Buffer and LBuffer a subclass of std::streambuf.
 Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
-'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 Reduce amount of debug information in logs.
