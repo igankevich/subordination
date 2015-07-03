@@ -27,7 +27,7 @@ struct Test_socket: public Mobile<Test_socket> {
 //			Shutdown* s = new Shutdown(true);
 //			s->after(std::chrono::milliseconds(5000));
 //			timer_server()->send(s);
-			__factory.stop(true);
+			__factory.stop_now();
 //			*(reinterpret_cast<volatile int*>(0)) = 1;
 		}
 //		commit(remote_server());

@@ -13,6 +13,8 @@ AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
 AC_ARG_ENABLE([perftests],
 	AS_HELP_STRING([--enable-perf-tests], [perform tests to choose the most efficient routines for locking, polling etc.]))
+AC_ARG_ENABLE([secureflags],
+	AS_HELP_STRING([--enable-secureflags], [enable all known compiler security flags]))
 
 # Checks for programs.
 AC_LANG([C++])
@@ -44,8 +46,7 @@ AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
 
 # compiler's security flags
-FACTORY_SECURE_BINARY
-
+AS_IF([test "x$enable_secureflags" = "xyes"], [FACTORY_SECURE_BINARY])
 AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 
 # Checks for library functions.
