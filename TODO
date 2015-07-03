@@ -9,9 +9,9 @@ DONE [286:2ecc671dd024] Add Valgrind memory tests.
 DONE [289:619c7dbe9fcc] Add handshake states to WebSocket class.
 DONE [297:67e9297e83d0] Add IPv6 support through 'struct sockaddr_storage'.
 DONE [297:67e9297e83d0] Replace inet_ntop, inet_pton with C++ analogs, possibly with IPv6 support.
-DONE [] Add runtime check for endiannes.
-DONE [] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
-DONE [] Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
+DONE [319:0659552874b2] Add runtime check for endiannes.
+DONE [320:8bbef1f9628a] Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
+DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 
 ??? [needs more testing] Make Factory::stop() reliable.
 
