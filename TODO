@@ -32,3 +32,4 @@ Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 Reduce amount of debug information in logs.
+Add runtime check for endiannes.
