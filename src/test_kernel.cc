@@ -6,6 +6,7 @@ std::atomic<uint32_t> kernel_count(0);
 struct Sender: public Kernel {
 
 	Sender() { kernel_count++; }
+	virtual ~Sender() { kernel_count--; }
 
 	void act() {
 		throw Error("act() is called, but it should not",
@@ -14,6 +15,9 @@ struct Sender: public Kernel {
 };
 
 struct Main: public Kernel {
+
+	Main() { kernel_count++; }
+	virtual ~Main() { kernel_count--; }
 
 	void act() {
 		for (uint32_t i=0; i<10; ++i)
