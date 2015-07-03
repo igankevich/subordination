@@ -35,6 +35,7 @@
 	#include <unordered_map>
 	#include <map>
 	#include <set>
+	#include <bitset>
 	
 	// Standard portable types
 	#include <cinttypes>

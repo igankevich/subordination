@@ -8,6 +8,11 @@ namespace factory {
 			typedef std::chrono::steady_clock Clock;
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
+			typedef std::bitset<1> Flags;
+			
+			enum struct Flag {
+				DELETED = 0
+			};
 
 			constexpr Basic_kernel() {}
 			virtual ~Basic_kernel() {}
@@ -23,9 +28,16 @@ namespace factory {
 			void after(Duration delay) { _at = Clock::now() + delay; }
 			bool timed() const { return _at != Time_point(Duration::zero()); }
 
+			// flags
+			Flags flags() const { return _flags; }
+			void setf(Flag f) { _flags.set(static_cast<size_t>(f)); }
+			void unsetf(Flag f) { _flags.reset(static_cast<size_t>(f)); }
+			bool isset(Flag f) const { return _flags.test(static_cast<size_t>(f)); }
+
 		private:
 			Result _result = Result::UNDEFINED;
 			Time_point _at = Time_point(Duration::zero());
+			Flags _flags = 0;
 		};
 
 		template<class K>
