@@ -9,8 +9,8 @@ struct Sender: public Kernel {
 	virtual ~Sender() { kernel_count--; }
 
 	void act() {
-		throw Error("act() is called, but it should not",
-			__FILE__, __LINE__, __func__);
+//		throw Error("act() is called, but it should not",
+//			__FILE__, __LINE__, __func__);
 	}
 };
 
@@ -37,6 +37,7 @@ struct App {
 		int retval = 0;
 		try {
 			the_server()->add_cpu(0);
+			the_server()->add_cpu(1);
 			the_server()->send(new Main);
 			__factory.start();
 			__factory.wait();

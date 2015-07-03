@@ -307,6 +307,7 @@ namespace factory {
 					}
 				}
 				print_stack_trace();
+				factory_stop(true);
 				std::abort();
 			}
 
@@ -321,6 +322,35 @@ namespace factory {
 			static void print_stack_trace() {}
 #endif
 		} __factory_auto_set_terminate_handler;
+
+		template<class It, class Delim>
+		struct Intersperse {
+			typedef typename std::remove_const<It>::type Iter;
+			Intersperse(It st, It en, Delim d):
+				first(st), last(en), delim(d) {}
+			friend std::ostream& operator<<(std::ostream& out, const Intersperse<It,Delim>& rhs) {
+				std::ostream::sentry s(out);
+				if (s && rhs.first != rhs.last) {
+					Iter first = rhs.first;
+					Iter end = rhs.last;
+					--end;
+					while (first != end) {
+						out << *first << rhs.delim;
+						++first;
+					}
+					out << *end;
+				}
+				return out;
+			}
+		private:
+			Iter first, last;
+			Delim delim;
+		};
+
+		template<class It, class Delim>
+		Intersperse<It,Delim> intersperse(It st, It en, Delim d) {
+			return Intersperse<It,Delim>(st, en, d);
+		}
 
 	}
 

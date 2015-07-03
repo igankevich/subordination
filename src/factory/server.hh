@@ -78,12 +78,13 @@ namespace factory {
 
 	namespace components {
 
-		template<class T>
-		void delete_object(T* ob) { delete ob; }
+		std::mutex __kernel_delete_mutex;
+		std::condition_variable __kernel_semaphore;
+		std::atomic<int> __num_rservers(0);
 
 		struct Resident {
 
-			Resident(): _stopped(false) {}
+			Resident() {}
 			virtual ~Resident() {}
 
 			bool stopped() const { return _stopped; }
@@ -98,7 +99,7 @@ namespace factory {
 			void stop_impl() {}
 
 		private:
-			volatile bool _stopped;
+			volatile bool _stopped = false;
 		};
 
 		template<class Sub, class Super>
@@ -121,6 +122,7 @@ namespace factory {
 
 			Server() {}
 			Server(const This&) = delete;
+			Server(This&&) = delete;
 			virtual ~Server() {}
 
 			void operator=(This&) = delete;
@@ -131,24 +133,22 @@ namespace factory {
 
 			typedef Sub_server Srv;
 			typedef Iserver<Server, Sub_server> This;
+
+			Iserver() {}
+			Iserver(const This&) = delete;
+			Iserver(This&& rhs):
+				_upstream(std::move(rhs._upstream)) {}
 		
-			void add(Srv* srv) { _upstream.push_back(srv); }
+			void add(Srv&& srv) {
+				_upstream.emplace_back(srv);
+			}
 
 			void add_cpu(size_t cpu) {
-				Sub_server* srv = new Sub_server;
-				srv->affinity(cpu);
-				_upstream.push_back(srv);
+				Sub_server srv;
+				srv.affinity(cpu);
+				_upstream.emplace_back(std::move(srv));
 			}
 
-			Iserver(): _upstream() {}
-		
-			virtual ~Iserver() {
-				std::for_each(
-					_upstream.begin(),
-					_upstream.end(),
-					delete_object<Srv>);
-			}
-		
 			void wait_impl() {
 				Logger<Level::SERVER>() << "Iserver::wait()" << std::endl;
 				std::for_each(
@@ -166,16 +166,8 @@ namespace factory {
 			}
 		
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				out << "iserver {";
-				std::ostream_iterator<Srv*> out_it(out, ", ");
-				if (rhs._upstream.size() > 1) {
-					std::copy(rhs._upstream.begin(), rhs._upstream.end()-1, out_it);
-				}
-				if (rhs._upstream.size() > 0) {
-					out << rhs._upstream[rhs._upstream.size()-1];
-				}
-				out << '}';
-				return out;
+				return out << intersperse(rhs._upstream.begin(),
+					rhs._upstream.end(), ',');
 			}
 			
 			void start() {
@@ -187,7 +179,7 @@ namespace factory {
 			}
 		
 		protected:
-			std::vector<Srv*> _upstream;
+			std::vector<Srv> _upstream;
 		};
 
 		template<template<class A> class Pool, class Server>
@@ -205,16 +197,21 @@ namespace factory {
 				_semaphore()
 			{}
 
+			Rserver(This&& rhs):
+				_pool(std::move(rhs._pool)),
+				_cpu(rhs._cpu),
+				_thread(std::move(rhs._thread)),
+				_mutex(),
+				_semaphore()
+			{}
+
+			This& operator=(const This&) = delete;
+
 			virtual ~Rserver() {
-				// recursively collect kernels to the sack
-				// and delete them all at once
-				std::vector<Kernel*> sack;
-				while (!_pool.empty()) {
-					_pool.front()->mark_as_deleted(std::back_inserter(sack));
-					_pool.pop();
-				}
-				std::for_each(sack.begin(), sack.end(),
-					delete_object<Kernel>);
+				// ensure that kernels inserted without starting
+				// a server are deleted
+				std::vector<std::unique_ptr<Kernel>> sack;
+				delete_all_kernels(std::back_inserter(sack));
 			}
 
 			void add() {}
@@ -255,6 +252,7 @@ namespace factory {
 		protected:
 
 			void serve() {
+				++__num_rservers;
 				thread_affinity(_cpu);
 				while (!this->stopped()) {
 					if (!_pool.empty()) {
@@ -268,6 +266,22 @@ namespace factory {
 						wait_for_a_kernel();
 					}
 				}
+				// Recursively collect kernel pointers to the sack
+				// and delete them all at once. Collection process
+				// is fully serial to prevent multiple deletions
+				// and access to unitialised values.
+				std::unique_lock<std::mutex> lock(__kernel_delete_mutex);
+				std::vector<std::unique_ptr<Kernel>> sack;
+				delete_all_kernels(std::back_inserter(sack));
+				// simple barrier for all threads participating in deletion
+				if (--__num_rservers <= 0) {
+					__kernel_semaphore.notify_all();
+				}
+				__kernel_semaphore.wait(lock, [] () {
+					return __num_rservers <= 0;
+				});
+				// destructors of scoped variables
+				// will destroy all kernels automatically
 			}
 
 		private:
@@ -277,6 +291,14 @@ namespace factory {
 				_semaphore.wait(lock, [this] {
 					return !_pool.empty() || this->stopped();
 				});
+			}
+
+			template<class It>
+			void delete_all_kernels(It it) {
+				while (!_pool.empty()) {
+					_pool.front()->mark_as_deleted(it);
+					_pool.pop();
+				}
 			}
 
 			Pool<Kernel*> _pool;

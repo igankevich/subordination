@@ -35,7 +35,7 @@ namespace factory {
 						size_t n = Server::_upstream.size();
 						if (n > 0) {
 							size_t i = _cursor = (_cursor + 1) % n;
-							Server::_upstream[i]->send(kernel);
+							Server::_upstream[i].send(kernel);
 						} else {
 							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
 							delete kernel;
@@ -44,7 +44,7 @@ namespace factory {
 						size_t n = Server::_upstream.size();
 						if (n > 0) {
 							size_t i = kernel->hash() * PRIME % n;
-							Server::_upstream[i]->send(kernel);
+							Server::_upstream[i].send(kernel);
 						} else {
 							std::cerr << "FATAL. Deleting kernel because there are no upstream servers." << std::endl;
 							delete kernel;

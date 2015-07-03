@@ -318,7 +318,7 @@ namespace factory {
 					if (this->_parent) {
 						this->_parent->mark_as_deleted(result);
 					}
-					*result = this;
+					*result = std::unique_ptr<This>(this);
 					++result;
 				}
 			}

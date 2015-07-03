@@ -10,8 +10,12 @@ namespace factory {
 		bool try_lock() noexcept { return !_flag.test_and_set(std::memory_order_acquire); }
 
 		constexpr Spin_mutex() {}
+
+		// disallow copy & move operations
 		Spin_mutex(const Spin_mutex&) = delete;
+		Spin_mutex(Spin_mutex&&) = delete;
 		Spin_mutex& operator=(const Spin_mutex&) = delete;
+		Spin_mutex& operator=(Spin_mutex&&) = delete;
 
 	private:
 		std::atomic_flag _flag = ATOMIC_FLAG_INIT;
