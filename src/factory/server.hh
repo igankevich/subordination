@@ -206,12 +206,15 @@ namespace factory {
 			{}
 
 			virtual ~Rserver() {
-				std::unique_lock<std::mutex> lock(_mutex);
+				// recursively collect kernels to the sack
+				// and delete them all at once
+				std::vector<Kernel*> sack;
 				while (!_pool.empty()) {
-					Kernel* kernel = _pool.front();
+					_pool.front()->mark_as_deleted(std::back_inserter(sack));
 					_pool.pop();
-					delete kernel;
 				}
+				std::for_each(sack.begin(), sack.end(),
+					delete_object<Kernel>);
 			}
 
 			void add() {}
@@ -443,7 +446,7 @@ namespace factory {
 			class Repository_stack,
 			class Shutdown
 		>
-		struct Basic_factory {
+		struct Basic_factory: public Stoppable {
 
 			Basic_factory():
 				_local_server(),
@@ -464,19 +467,19 @@ namespace factory {
 				_timer_server.start();
 			}
 
-			void stop(bool now=false) {
-				if (now) {
-					_local_server.stop();
-					_remote_server.stop();
-					_ext_server.stop();
-					_timer_server.stop();
-				} else {
-					_remote_server.send(new Shutdown);
-					_ext_server.send(new Shutdown);
-					Shutdown* s = new Shutdown(true);
-					s->after(std::chrono::milliseconds(500));
-					_timer_server.send(s);
-				}
+			void stop_now() {
+				_local_server.stop();
+				_remote_server.stop();
+				_ext_server.stop();
+				_timer_server.stop();
+			}
+
+			void stop() {
+				_remote_server.send(new Shutdown);
+				_ext_server.send(new Shutdown);
+				Shutdown* s = new Shutdown(true);
+				s->after(std::chrono::milliseconds(500));
+				_timer_server.send(s);
 			}
 
 			void wait() {

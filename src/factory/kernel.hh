@@ -3,6 +3,10 @@ namespace factory {
 
 	namespace components {
 
+		struct Stoppable {
+			virtual void stop() = 0;
+		};
+
 		struct Basic_kernel {
 
 			typedef std::chrono::steady_clock Clock;
@@ -152,6 +156,7 @@ namespace factory {
 
 			typedef Principal<A> This;
 			typedef Kernel_ref<This> Ref;
+			typedef Basic_kernel::Flag Flag;
 
 			constexpr Principal(): _parent(nullptr), _principal(nullptr) {}
 			virtual ~Principal() {}
@@ -220,7 +225,7 @@ namespace factory {
 
 			virtual const Type<This>* type() const { return nullptr; }
 
-			void run_act() {
+			void run_act(Stoppable& whole_factory) {
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
@@ -304,6 +309,18 @@ namespace factory {
 				this->principal(_parent);
 				this->result(res);
 				srv->send(this);
+			}
+
+			template<class It>
+			void mark_as_deleted(It result) {
+				if (!this->isset(Flag::DELETED)) {
+					this->setf(Flag::DELETED);
+					if (this->_parent) {
+						this->_parent->mark_as_deleted(result);
+					}
+					*result = this;
+					++result;
+				}
 			}
 
 		private:

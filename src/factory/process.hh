@@ -5,8 +5,9 @@ namespace factory {
 	/// Fast mutex for scheduling strategies.
 	struct Spin_mutex {
 
-		void lock() { while (_flag.test_and_set(std::memory_order_acquire)); }
-		void unlock() { _flag.clear(std::memory_order_release); }
+		void lock() noexcept { while (_flag.test_and_set(std::memory_order_acquire)); }
+		void unlock() noexcept { _flag.clear(std::memory_order_release); }
+		bool try_lock() noexcept { return !_flag.test_and_set(std::memory_order_acquire); }
 
 		constexpr Spin_mutex() {}
 		Spin_mutex(const Spin_mutex&) = delete;

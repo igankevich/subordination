@@ -258,8 +258,8 @@ struct uint128 {
 	    	if (n == 0) { return out << '0'; }
 			// at worst it will be NBITS digits (base 2) so make our buffer
 			// that plus room for null terminator
-	    	char buf[NBITS + 1];
-			buf[sizeof(buf) - 1] = '\0';
+	    	char buf[NBITS + 1] = {};
+//			buf[sizeof(buf) - 1] = '\0';
 	
 	    	uint128 ii(n);
 	    	int i = NBITS - 1;
@@ -436,8 +436,7 @@ namespace std {
 		else {
 			// at worst it will be NBITS digits (base 2) so make our buffer
 			// that plus room for null terminator
-    		char buf[NBITS + 1];
-			buf[sizeof(buf) - 1] = '\0';
+    		char buf[NBITS + 1] = {};
 
     		__uint128_t ii = rhs;
     		int i = NBITS - 1;

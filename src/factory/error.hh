@@ -28,6 +28,8 @@ namespace factory {
 		return out;
 	}
 
+	Spin_mutex __logger_mutex;
+
 	template<Level lvl=Level::KERNEL>
 	struct Logger {
 
@@ -43,6 +45,7 @@ namespace factory {
 	
 		template<class T>
 		Logger& operator<<(const T& rhs) {
+			std::lock_guard<Spin_mutex> lock(__logger_mutex);
 			_buf << rhs;
 			return *this;
 		}
@@ -50,7 +53,10 @@ namespace factory {
 		Logger& operator<<(std::ostream& ( *pf )(std::ostream&)) {
 			_buf << pf;
 			if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
-				std::cout << _buf.str() << std::flush;
+				{
+					std::lock_guard<Spin_mutex> lock(__logger_mutex);
+					std::cout << _buf.str() << std::flush;
+				}
 				_buf.str("");
 				_buf.clear();
 				next_record();
@@ -149,9 +155,10 @@ namespace factory {
 		virtual const char* prefix() const { return "Error"; }
 
 		friend std::ostream& operator<<(std::ostream& out, const Error& rhs) {
-			out << "What:       " << rhs.prefix() << ". " << rhs.what()
-				<< "\nOrigin:     " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']';
-			return out;
+			return out
+				<< "What:       " << rhs.what()
+				<< "\nOrigin:     " << rhs._function
+				<< '[' << rhs._file << ':' << rhs._line << ']';
 		}
 
 	private:

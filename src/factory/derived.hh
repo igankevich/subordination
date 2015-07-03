@@ -25,7 +25,13 @@ namespace factory {
 
 	namespace components {
 
-		void factory_stop(bool force) { __factory.stop(force); }
+		void factory_stop(bool force) {
+			if (force) {
+				__factory.stop_now();
+			} else {
+				__factory.stop();
+			}
+		}
 
 		template<class K>
 		void factory_send(K* kernel) { the_server()->send(kernel); }
