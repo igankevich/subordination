@@ -43,6 +43,9 @@ FACTORY_STACK_TRACE
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
 
+# compiler's security flags
+FACTORY_SECURE_BINARY
+
 AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 
 # Checks for library functions.

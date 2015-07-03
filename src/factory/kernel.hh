@@ -225,7 +225,7 @@ namespace factory {
 
 			virtual const Type<This>* type() const { return nullptr; }
 
-			void run_act(Stoppable& whole_factory) {
+			void run_act() {
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
