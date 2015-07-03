@@ -41,6 +41,7 @@
 	#include <cstring>
 	#include <cstdlib>
 	#include <csignal>
+	#include <cstddef>
 	
 	// C++ multi-threading
 	#include <thread>
