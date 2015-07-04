@@ -102,8 +102,8 @@ struct Sender: public Identifiable<Kernel> {
 		for (size_t i=0; i<_input.size(); ++i) {
 			if (_input[i] != output[i]) {
 				std::stringstream msg;
-				msg << "test_websocket. Input and output does not match: ";
-				msg << _input[i] << " != " << output[i];
+				msg << "test_websocket. Input and output does not match:\n";
+				msg << Bytes<Datum>(_input[i]) << "\n!=\n" << Bytes<Datum>(output[i]);
 				throw std::runtime_error(msg.str());
 			}
 		}
