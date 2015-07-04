@@ -12,6 +12,7 @@ DONE [297:67e9297e83d0] Replace inet_ntop, inet_pton with C++ analogs, possibly 
 DONE [319:0659552874b2] Add runtime check for endiannes.
 DONE [320:8bbef1f9628a] Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
+DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 
 ??? [needs more testing] Make Factory::stop() reliable.
 
@@ -19,7 +20,6 @@ NOT NEEDED [complicates current API] Specialise Bytes class for fixed size array
 
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
-Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 Implement thread affinity through pthread library with fall back to native OS calls.
 Remove stale connections from Socket_server.
 Remove stale peers from Peers.

@@ -82,12 +82,12 @@
 	#include "poller.hh"
 	#include "type.hh"
 	//#include "resource.hh"
+	#include "process.hh"
 	#include "kernel.hh"
 	#include "repository.hh"
 	#include "server.hh"
 	#include "socket_server.hh"
 	#include "discovery.hh"
-	#include "process.hh"
 	#include "strategy.hh"
 	
 	// Configuration

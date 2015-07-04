@@ -283,10 +283,6 @@ namespace factory {
 
 			void affinity(int cpu) { _cpu = cpu; }
 
-			friend std::ostream& operator<<(std::ostream& out, const This* rhs) {
-				return operator<<(out, *rhs);
-			}
-
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}

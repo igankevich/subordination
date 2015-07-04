@@ -239,10 +239,6 @@ namespace factory {
 				_thread = std::thread([this] { this->serve(); });
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const This* rhs) {
-				return operator<<(out, *rhs);
-			}
-
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "rserver " << rhs._cpu;
 			}
@@ -365,12 +361,8 @@ namespace factory {
 				_thread = std::thread([this] { this->serve(); });
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const This* rhs) {
-				return operator<<(out, *rhs);
-			}
-
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << "rserver " << rhs._cpu;
+				return out << "tserver " << rhs._cpu;
 			}
 
 			void affinity(size_t cpu) { _cpu = cpu; }
@@ -520,43 +512,19 @@ namespace factory {
 		private:
 
 			void init_signal_handlers() {
-				struct ::sigaction action{};
-				action.sa_handler = emergency_shutdown;
 				_ptr_for_sighandler = this;
-				::sigaction(SIGTERM, &action, 0);
-				::sigaction(SIGINT, &action, 0);
-				ignore_sigpipe();
-				stack_trace_on_segv();
-			}
-
-			void ignore_sigpipe() const noexcept {
-				struct ::sigaction action{};
-				action.sa_handler = SIG_IGN;
-				::sigaction(SIGPIPE, &action, 0);
-			}
-
+				Action shutdown(emergency_shutdown);
+				this_process::bind_signal(SIGTERM, shutdown);
+				this_process::bind_signal(SIGINT, shutdown);
+				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
 #ifndef FACTORY_NO_STACK_TRACE
-			void stack_trace_on_segv() const noexcept {
-				struct ::sigaction action{};
-				action.sa_handler = print_stack_trace;
-				::sigaction(SIGSEGV, &action, 0);
-			}
-
-			static void print_stack_trace(int) {
-				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
-//				static const size_t STACK_TRACE_SIZE = 64;
-//				void* stack[STACK_TRACE_SIZE];
-//				size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
-//				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
-//				std::abort();
-			}
-#else
-			void stack_trace_on_segv() {}
+				this_process::bind_signal(SIGSEGV, Action(print_stack_trace));
 #endif
+			}
 
 			static void emergency_shutdown(int sig) noexcept {
 				Basic_factory* factory = _ptr_for_sighandler;
-				factory->stop();
+				if (factory) { factory->stop(); }
 				static int num_calls = 0;
 				static const int MAX_CALLS = 3;
 				num_calls++;
@@ -565,6 +533,10 @@ namespace factory {
 					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
 					std::abort();
 				}
+			}
+
+			static void print_stack_trace(int) {
+				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
 			}
 
 			Local_server _local_server;

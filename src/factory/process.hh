@@ -65,6 +65,14 @@ namespace factory {
 		};
 	}
 
+	typedef struct ::sigaction Basic_action;
+
+	struct Action: public Basic_action {
+		explicit Action(void (*func)(int)) noexcept {
+			this->sa_handler = func;
+		}
+	};
+
 	namespace this_process {
 
 		// TODO: setenv() is known to cause memory leaks
@@ -82,11 +90,11 @@ namespace factory {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			Logger<Level::COMPONENT> log;
-			log << "Executing ";
-			std::ostream_iterator<char*> it(log.ostream(), " ");
-			std::copy(argv, argv + argc, it);
 			return check("execve()", ::execve(argv[0], argv, ::environ));
+		}
+
+		void bind_signal(int signum, const Action& action) {
+			check("sigaction()", ::sigaction(signum, &action, 0));
 		}
 
 	}
@@ -138,7 +146,6 @@ namespace factory {
 		constexpr Process_id id() const { return _child_pid; }
 
 	private:
-
 		Process_id _child_pid = 0;
 	};
 
