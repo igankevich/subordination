@@ -35,3 +35,4 @@ Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
 Reduce amount of debug information in logs.
 Create log server to minimise lock contention when writing to log.
+Log markup for terminal.

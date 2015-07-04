@@ -431,7 +431,7 @@ namespace factory {
 			uint32_t extlen2;
 			uint8_t          : 0;
 			uint64_t footer; /// extlen3 (16) + mask (32) + padding (16)
-		} hdr;
+		} hdr = {};
 		unsigned char rawhdr[sizeof(hdr)];
 
 		// check if header fields are aligned properly
@@ -439,8 +439,6 @@ namespace factory {
 		static_assert(offsetof(decltype(hdr), extlen2) == 4, "bad offset of hdr.extlen2");
 		static_assert(offsetof(decltype(hdr), footer)  == 8, "bad offset of hdr.footer");
 		static_assert(sizeof(hdr) == 16, "bad websocket frame header size");
-
-		constexpr Web_socket_frame(): hdr{0} {}
 
 		template<class It>
 		std::pair<It,It> decode(It first, It last) {

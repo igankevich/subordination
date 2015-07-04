@@ -23,8 +23,8 @@ struct Datum {
 		x(0), y(0), z(0),
 		u(0), v(0), w(0)
 	{
-		rnd(x); rnd(y); rnd(z);
-		rnd(u); rnd(static_cast<float&>(v)); rnd(static_cast<double&>(w));
+		rnd(x); rnd(y); rnd(static_cast<float&>(z));
+		rnd(static_cast<double&>(u)); rnd(v); rnd(w);
 	}
 
 	constexpr Datum(const Datum& rhs):
@@ -69,11 +69,11 @@ struct Datum {
 	}
 
 private:
-	int64_t u;
-	int32_t z;
-	Bytes<float> v;
-	Bytes<double> w;
-	int16_t y;
-	int8_t x;
-	uint64_t : 40;
+	int64_t x;
+	int32_t y;
+	Bytes<float> z;
+	Bytes<double> u;
+	int16_t v;
+	int8_t w;
+	char padding[5] = {};
 };

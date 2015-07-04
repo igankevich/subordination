@@ -8,12 +8,10 @@ using namespace factory;
 Endpoint server_endpoint("127.0.0.1", 10002);
 Endpoint client_endpoint("127.0.0.2", 10002);
 
-const std::vector<size_t> POWERS = {1,2,3,4,16,17};
-//const std::vector<size_t> POWERS = {17};
+//const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
-
-std::atomic<uint32_t> shutdown_counter(0);
 
 struct Test_web_socket: public Mobile<Test_web_socket> {
 
@@ -78,16 +76,11 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 
-	Sender(uint32_t n, uint32_t s):
-		_vector_size(n),
-		_input(_vector_size),
-		_sleep(s) {}
+	explicit Sender(uint32_t n): _input(n) {}
 
 	void act() {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(ext_server(), new Test_socket(_input));
-			++shutdown_counter;
 		}
 	}
 
@@ -97,14 +90,17 @@ struct Sender: public Identifiable<Kernel> {
 		std::vector<Datum> output = test_kernel->data();
 
 		if (_input.size() != output.size())
-			throw std::runtime_error("test_websocket. Input and output size does not match.");
+			throw Error("input and output size does not match",
+				__FILE__, __LINE__, __func__);
 
 		for (size_t i=0; i<_input.size(); ++i) {
 			if (_input[i] != output[i]) {
 				std::stringstream msg;
-				msg << "test_websocket. Input and output does not match:\n";
-				msg << Bytes<Datum>(_input[i]) << "\n!=\n" << Bytes<Datum>(output[i]);
-				throw std::runtime_error(msg.str());
+				msg << "input and output does not match at i="
+					<< i << ",size=" << _input.size() << ":\n"
+					<< Bytes<Datum>(_input[i]) << "\n!=\n"
+					<< Bytes<Datum>(output[i]);
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
 
@@ -117,7 +113,6 @@ struct Sender: public Identifiable<Kernel> {
 private:
 
 	uint32_t _num_returned = 0;
-	uint32_t _vector_size;
 
 	std::vector<Datum> _input;
 	uint32_t _sleep = 0;
@@ -125,12 +120,10 @@ private:
 
 struct Main: public Kernel {
 
-	Main(uint32_t s): _sleep(s) {}
-
 	void act() {
 		for (uint32_t i=0; i<POWERS.size(); ++i) {
 			size_t sz = 1 << POWERS[i];
-			upstream(the_server(), new Sender(sz, _sleep));
+			upstream(the_server(), new Sender(sz));
 		}
 	}
 
@@ -143,7 +136,6 @@ struct Main: public Kernel {
 
 private:
 	uint32_t _num_returned = 0;
-	uint32_t _sleep = 0;
 };
 
 uint32_t sleep_time() {
@@ -159,29 +151,22 @@ struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 1) {
-			uint32_t sleep = sleep_time();
 			Process_group procs;
-			procs.add([&argv, sleep] () {
+			procs.add([&argv] () {
 				this_process::env("START_ID", 1000);
-				return this_process::execute(argv[0], 'x', sleep);
+				return this_process::execute(argv[0], 'x');
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv, sleep] () {
+			procs.add([&argv] () {
 				this_process::env("START_ID", 2000);
-				return this_process::execute(argv[0], 'y', sleep);
+				return this_process::execute(argv[0], 'y');
 			});
 			retval = procs.wait();
 		} else {
 			try {
-				if (argc != 3)
+				if (argc != 2)
 					throw std::runtime_error("Wrong number of arguments.");
-				uint32_t sleep = 0;
-				{
-					std::stringstream s;
-					s << argv[2];
-					s >> sleep;
-				}
 				the_server()->add_cpu(0);
 				if (argv[1][0] == 'x') {
 					ext_server()->socket(server_endpoint);
@@ -192,7 +177,7 @@ struct App {
 					ext_server()->socket(client_endpoint);
 					ext_server()->peer(server_endpoint);
 					__factory.start();
-					the_server()->send(new Main(sleep));
+					the_server()->send(new Main);
 					__factory.wait();
 				}
 			} catch (std::exception& e) {
