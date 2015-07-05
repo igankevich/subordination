@@ -17,10 +17,10 @@ DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constru
 ??? [needs more testing] Make Factory::stop() reliable.
 
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
+NOT NEEDED [OS will do better] Implement thread affinity through pthread library with fall back to native OS calls.
 
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
-Implement thread affinity through pthread library with fall back to native OS calls.
 Remove stale connections from Socket_server.
 Remove stale peers from Peers.
 Limit number of peers to reduce number of persistent connections.

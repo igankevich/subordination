@@ -41,6 +41,7 @@ AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
 AC_TYPE_PID_T
 AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AX_PTHREAD
+FACTORY_PTHREAD_AFFINITY
 FACTORY_STACK_TRACE
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)

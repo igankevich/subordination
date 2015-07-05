@@ -1,78 +1,68 @@
-#ifdef __linux__
-// Locking thread to a single CPU.
+namespace factory {
+	namespace components {
+		size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
+#if defined(FACTORY_DISABLE_CPU_BINDING)
+		void thread_affinity(size_t) {}
+#elif defined(HAVE_DECL_PTHREAD_SETAFFINITY_NP)
+#include <pthread.h>
+		struct CPU {
+			typedef ::cpu_set_t Set;
+
+			CPU(size_t cpu) {
+				size_t num_cpus = total_cpus();
+				cpuset = CPU_ALLOC(num_cpus);
+				_size = CPU_ALLOC_SIZE(num_cpus);
+				CPU_ZERO_S(size(), cpuset);
+				CPU_SET_S(cpu%num_cpus, size(), cpuset);
+			}
+
+			~CPU() { CPU_FREE(cpuset); }
+
+			size_t size() const { return _size; }
+			Set* set() { return cpuset; }
+
+		private:
+			Set* cpuset;
+			size_t _size;
+		};
+		void thread_affinity(size_t c) {
+			CPU cpu(c);
+			check("pthread_setaffinity_np()",
+				::pthread_setaffinity_np(::pthread_self(),
+				cpu.size(), cpu.set()));
+		}
+#elif defined(__linux__)
 #include <sched.h>
-// Getting number of CPUs.
-#include <unistd.h>
-namespace {
-	size_t total_cpus() { return static_cast<size_t>(::sysconf(_SC_NPROCESSORS_ONLN)); }
-//	int thread_affinity() { return ::sched_getcpu(); }
-#ifdef FACTORY_DISABLE_CPU_BINDING
-	void thread_affinity(size_t) {}
-#else
-	void thread_affinity(size_t cpu) {
-		size_t num_cpus = total_cpus();
-		::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
-		size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
-		CPU_ZERO_S(cpuset_size, cpuset);
-		CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
-		::sched_setaffinity(0, cpuset_size, cpuset);
-		CPU_FREE(cpuset);
-	}
-#endif
-}
+		void thread_affinity(size_t cpu) {
+			size_t num_cpus = total_cpus();
+			::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
+			size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
+			CPU_ZERO_S(cpuset_size, cpuset);
+			CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
+			::sched_setaffinity(0, cpuset_size, cpuset);
+			CPU_FREE(cpuset);
+		}
 #endif
 
 #ifdef __sun__
 #include <sys/processor.h>
-// Getting number of CPUs.
-#include <unistd.h>
 namespace {
 	void thread_affinity(size_t) {
 //		int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 //		processor_bind(P_LWPID, P_MYID, cpu_id%num_cpus, NULL);
 	}
-//	int thread_affinity() {
-//		processorid_t id;
-//		processor_bind(P_LWPID, P_MYID, PBIND_QUERY, &id);
-//		return id;
-//	}
-	size_t total_cpus() { return static_cast<size_t>(::sysconf(_SC_NPROCESSORS_ONLN)); }
 }
 #endif
 
-namespace {
-
-//	int total_threads() {
-//		const char* threads = ::getenv("NUM_THREADS");
-//		int t = total_cpus();
-//		if (threads != NULL) {
-//			std::stringstream tmp;
-//			tmp << threads;
-//			if (!(tmp >> t) || t < 0 || t > total_cpus()) {
-//				t = total_cpus();
-//				Logger<Level::SERVER>() << "Bad NUM_THREADS value: " << threads << std::endl;
-//			}
-//		}
-////		Logger<Level::SERVER>() << "threads = " <<  t << std::endl;
-//		return t;
-//	}
-//
-//	int total_vthreads() {
-//		const char* threads = ::getenv("NUM_VTHREADS");
-//		int t = 1;
-//		if (threads != NULL) {
-//			std::stringstream tmp;
-//			tmp << threads;
-//			if (!(tmp >> t) || t < 0) {
-//				t = 1;
-//				Logger<Level::SERVER>() << "Bad NUM_VTHREADS value: " << threads << std::endl;
-//			}
-//		}
-//		return t;
-//	}
-
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#include <sys/param.h>
+#if defined(BSD)
+#include <sys/cpuset.h>
+// todo	
+#endif
+#endif
+	}
 }
-
 
 namespace factory {
 
