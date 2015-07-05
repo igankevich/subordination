@@ -571,12 +571,13 @@ namespace factory {
 				}
 				if (event.is_writing() && !event.is_closing()) {
 					Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					_socket.flush();
 					_ostream.flush<Server_socket&>(_socket);
 					if (_ostream.empty()) {
 						Logger<Level::HANDLER>() << "Flushed." << std::endl;
 						_ostream.reset();
-					} else {
+					}
+					if (!_ostream.empty() || !_socket.empty()) {
 						overflow = true;
 					}
 				}

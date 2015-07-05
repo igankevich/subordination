@@ -155,6 +155,10 @@ namespace factory {
 				<< ']';
 		}
 
+		// TODO: remove this ``boilerplate''
+		constexpr bool empty() const { return true; }
+		constexpr bool flush() const { return true; }
+
 	private:
 
 		static int check_connect(const char* func, int ret) {
@@ -282,9 +286,8 @@ namespace factory {
 				handshake();
 			} else {
 				websocket_encode(buf, buf + size, std::back_inserter(send_buffer));
-				if (this->flush()) {
-					ret = size;
-				}
+				this->flush();
+				ret = size;
 			}
 			return ret;
 		}
@@ -319,6 +322,17 @@ namespace factory {
 				}
 			}
 			return bytes_read;
+		}
+
+		bool empty() const { return send_buffer.empty(); }
+
+		bool flush() {
+			size_t old_size = send_buffer.size();
+			send_buffer.flush(Socket(_socket));
+			Logger<Level::WEBSOCKET>() << "send buffer"
+				<< "(" << old_size - send_buffer.size() << ") "
+				<< std::endl;
+			return send_buffer.empty();
 		}
 
 	private:
@@ -516,15 +530,6 @@ namespace factory {
 			send_buffer.write(buf.data(), buf.size());
 			state = State::WRITING_HANDSHAKE;
 			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
-		}
-
-		bool flush() {
-			size_t old_size = send_buffer.size();
-			send_buffer.flush(Socket(_socket));
-			Logger<Level::WEBSOCKET>() << "send buffer"
-				<< "(" << old_size - send_buffer.size() << ") "
-				<< std::endl;
-			return send_buffer.empty();
 		}
 
 		void fill() { recv_buffer.fill(Socket(_socket)); }
