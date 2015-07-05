@@ -3,62 +3,60 @@ namespace factory {
 		size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
 #if defined(FACTORY_DISABLE_CPU_BINDING)
 		void thread_affinity(size_t) {}
-#elif defined(HAVE_DECL_PTHREAD_SETAFFINITY_NP)
+#else
+#if defined(HAVE_CPU_SET_T)
+	#if defined(HAVE_SCHED_H)
+	#include <sched.h>
+	#elif defined(HAVE_SYS_CPUSET_H)
+	#include <sys/cpuset.h>
+	#endif
+	struct CPU {
+		typedef ::cpu_set_t Set;
+
+		CPU(size_t cpu) {
+			size_t num_cpus = total_cpus();
+			cpuset = CPU_ALLOC(num_cpus);
+			_size = CPU_ALLOC_SIZE(num_cpus);
+			CPU_ZERO_S(size(), cpuset);
+			CPU_SET_S(cpu%num_cpus, size(), cpuset);
+		}
+
+		~CPU() { CPU_FREE(cpuset); }
+
+		size_t size() const { return _size; }
+		Set* set() { return cpuset; }
+
+	private:
+		Set* cpuset;
+		size_t _size;
+	};
+#endif
+#if defined(HAVE_DECL_PTHREAD_SETAFFINITY_NP)
 #include <pthread.h>
-		struct CPU {
-			typedef ::cpu_set_t Set;
-
-			CPU(size_t cpu) {
-				size_t num_cpus = total_cpus();
-				cpuset = CPU_ALLOC(num_cpus);
-				_size = CPU_ALLOC_SIZE(num_cpus);
-				CPU_ZERO_S(size(), cpuset);
-				CPU_SET_S(cpu%num_cpus, size(), cpuset);
-			}
-
-			~CPU() { CPU_FREE(cpuset); }
-
-			size_t size() const { return _size; }
-			Set* set() { return cpuset; }
-
-		private:
-			Set* cpuset;
-			size_t _size;
-		};
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
 			check("pthread_setaffinity_np()",
 				::pthread_setaffinity_np(::pthread_self(),
 				cpu.size(), cpu.set()));
 		}
-#elif defined(__linux__)
-#include <sched.h>
-		void thread_affinity(size_t cpu) {
-			size_t num_cpus = total_cpus();
-			::cpu_set_t* cpuset = CPU_ALLOC(num_cpus);
-			size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
-			CPU_ZERO_S(cpuset_size, cpuset);
-			CPU_SET_S(cpu%num_cpus, cpuset_size, cpuset);
-			::sched_setaffinity(0, cpuset_size, cpuset);
-			CPU_FREE(cpuset);
+#elif defined(HAVE_SCHED_H)
+		void thread_affinity(size_t c) {
+			CPU cpu(c);
+			check("sched_setaffinity()",
+				::sched_setaffinity(0, cpu.size(), cpu.set()));
 		}
-#endif
-
-#ifdef __sun__
+#elif defined(HAVE_SYS_PROCESSOR_H)
 #include <sys/processor.h>
-namespace {
-	void thread_affinity(size_t) {
-//		int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-//		processor_bind(P_LWPID, P_MYID, cpu_id%num_cpus, NULL);
-	}
-}
-#endif
-
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
-#include <sys/param.h>
-#if defined(BSD)
-#include <sys/cpuset.h>
-// todo	
+		void thread_affinity(size_t) {
+			::processor_bind(P_LWPID, P_MYID, cpu_id%total_cpus(), 0);
+		}
+#elif defined(HAVE_SYS_CPUSET_H)
+		void thread_affinity(size_t c) {
+			CPU cpu(c);
+			check("cpuset_setaffinity()",
+				::cpuset_setaffinity(CPU_LEVEL_WHICH,
+				CPU_WHICH_TID, -1, cpu.size(), cpu.set());
+		}
 #endif
 #endif
 	}
