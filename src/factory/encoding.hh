@@ -597,7 +597,7 @@ namespace factory {
 	}
 	
 	template<class It, class Res>
-	void websocket_encode(It first, It last, Res result) noexcept {
+	void websocket_encode(It first, It last, Res result) {
 		static_assert(sizeof(std::random_device::result_type)
 			>= sizeof(Web_socket_frame::Mask), "Bad RNG return type");
 		size_t input_size = last - first;
@@ -613,7 +613,7 @@ namespace factory {
 	}
 
 	template<class It, class Res>
-	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) noexcept {
+	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
 		Web_socket_frame frame;
 		std::pair<It,It> payload = frame.decode(first, last);
 		if (payload.first == first) return 0;

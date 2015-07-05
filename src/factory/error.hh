@@ -313,9 +313,8 @@ namespace factory {
 
 #if defined(HAVE_DECL_BACKTRACE) && defined(HAVE_DECL_BACKTRACE_SYMBOLS_FD)
 			static void print_stack_trace() noexcept {
-				static const size_t STACK_TRACE_SIZE = 64;
-				void* stack[STACK_TRACE_SIZE];
-				size_t num_entries = ::backtrace(stack, STACK_TRACE_SIZE);
+				void* stack[64];
+				auto num_entries = ::backtrace(stack, 64);
 				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
 			}
 #else
