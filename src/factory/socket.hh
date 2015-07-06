@@ -552,4 +552,66 @@ namespace factory {
 		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 	};
 
+	template<class T>
+	struct basic_fdbuf: public std::basic_streambuf<T> {
+
+		using typename std::basic_streambuf<T>::int_type;
+		using typename std::basic_streambuf<T>::traits_type;
+		using typename std::basic_streambuf<T>::char_type;
+		typedef int fd_type;
+
+		explicit basic_fdbuf(fd_type fd, std::size_t bufsize=512, std::size_t nputback=1):
+			_fd(fd),
+			_nputback(nputback),
+			_buffer(std::max(bufsize, nputback) + nputback)
+		{
+			char_type* end = &_buffer.back();
+			this->setg(end, end, end);
+		}
+
+		basic_fdbuf(basic_fdbuf&& rhs):
+			_fd(rhs._fd),
+			_nputback(rhs._nputback),
+			_buffer(std::move(rhs._buffer))
+			{}
+
+		int_type underflow() {
+			if (this->gptr() != this->egptr()) {
+				return traits_type::to_int_type(*this->gptr());
+			}
+			char_type* base = &_buffer.front();
+			char_type* start = base;
+			if (this->eback() == base && _nputback != 0) {
+				traits_type::move(base, this->egptr() - _nputback, _nputback);
+				start += _nputback;
+			}
+			ssize_t n = ::read(_fd, start, _buffer.size() - (start - base));
+			std::clog << "Reading fd=" << _fd
+				<< ",n=" << n << std::endl;
+			if (n <= 0) {
+				return traits_type::eof();
+			}
+			this->setg(base, start, start + n);
+			return traits_type::to_int_type(*this->gptr());
+		}
+
+		basic_fdbuf& operator=(basic_fdbuf&) = delete;
+		basic_fdbuf(basic_fdbuf&) = delete;
+
+	private:
+		fd_type _fd;
+		std::size_t _nputback;
+		std::vector<char_type> _buffer;
+	};
+
+	template<class T>
+	struct basic_fd_istream: public std::istream {
+		typedef typename basic_fdbuf<T>::fd_type fd_type;
+		explicit basic_fd_istream(fd_type fd): std::istream(new basic_fdbuf<T>(fd)) {}
+		~basic_fd_istream() { delete this->rdbuf(); }
+	};
+
+	typedef basic_fdbuf<char> fdbuf;
+	typedef basic_fd_istream<char> fd_istream;
+
 }

@@ -19,20 +19,21 @@ DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constru
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 NOT NEEDED [OS will do better] Implement thread affinity through pthread library with fall back to native OS calls.
 
+Make Buffer and LBuffer a subclass of std::streambuf.
+Replace std::mutex with Spin_mutex in server queues.
+Handle cases when a machine has multiple IP addresses.
+
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
-Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Remove stale connections from Socket_server.
 Remove stale peers from Peers.
 Limit number of peers to reduce number of persistent connections.
 Manually align structures.
 Add macros to generate code for parallel and distributed framework versions.
-Add support for provenance.
-Replace std::mutex with Spin_mutex in server queues.
-Handle cases when a machine has multiple IP addresses.
 Remove factory_stop() and other global functions.
-Make Buffer and LBuffer a subclass of std::streambuf.
 Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
 Reduce amount of debug information in logs.
 Create log server to minimise lock contention when writing to log.
+Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Log markup for terminal.
+Add support for provenance.

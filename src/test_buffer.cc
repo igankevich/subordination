@@ -1,4 +1,5 @@
 #include <factory/factory.hh>
+#include "test.hh"
 
 using namespace factory;
 
@@ -22,30 +23,60 @@ void test_buffer() {
 			B<T> buf(chunk_size);
 			if (!buf.empty()) {
 				std::stringstream msg;
-				msg << std::string(__func__) + ". B is not empty before write. ";
+				msg << "buffer is not empty before write: size=";
 				msg << buf.size();
-				throw std::runtime_error(msg.str());
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 			buf.write(&input[0], size);
 			if (buf.size() != input.size()) {
 				std::stringstream msg;
-				msg << std::string(__func__) + ". B size is not equal to input size. ";
+				msg << "buffer size is not equal to input size: ";
 				msg << buf.size() << " != " << input.size();
-				throw std::runtime_error(msg.str());
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 			std::vector<T> output(size);
 			buf.read(&output[0], size);
 			if (!buf.empty()) {
 				std::stringstream msg;
-				msg << std::string(__func__) + ". B is not empty after read. ";
+				msg << "buffer is not empty after read: size=";
 				msg << buf.size();
-				throw std::runtime_error(msg.str());
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
-			for (size_t j=0; j<size; ++j)
-				if (input[j] != output[j])
-					throw std::runtime_error(std::string(__func__) + ". Input and output does not match.");
+			for (size_t j=0; j<size; ++j) {
+				if (input[j] != output[j]) {
+					std::stringstream msg;
+					msg << "input and output does not match:\n'"
+						<< input[j] << "'\n!=\n'" << output[j] << "'";
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+			}
 		}
 	}
+}
+
+template<class T>
+void test_socket_buf() {
+	std::string filename = "/tmp/"
+		+ test::random_string<T>(16, 'a', 'z')
+		+ ".factory";
+	for (size_t k=1; k<=133; ++k) {
+		// fill file with random contents
+		std::string expected_contents = test::random_string<T>(k, 'a', 'z');
+		std::ofstream(filename) << expected_contents;
+		int fd = check("open()", ::open(filename.c_str(), O_RDONLY));
+		factory::fd_istream in(fd);
+		std::stringstream contents;
+		contents << in.rdbuf();
+		std::string result = contents.str();
+		if (result != expected_contents) {
+			std::stringstream msg;
+			msg << "input and output does not match:\n'"
+				<< expected_contents << "'\n!=\n'" << result << "'";
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
+		check("close()", ::close(fd));
+	}
+	check("remove()", std::remove(filename.c_str()));
 }
 
 struct App {
@@ -55,6 +86,7 @@ struct App {
 			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
+			test_socket_buf<char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
