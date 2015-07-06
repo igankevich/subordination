@@ -62,8 +62,11 @@ void test_socket_buf() {
 	for (size_t k=1; k<=133; ++k) {
 		// fill file with random contents
 		std::string expected_contents = test::random_string<T>(k, 'a', 'z');
-		std::ofstream(filename) << expected_contents;
-		int fd = check("open()", ::open(filename.c_str(), O_RDONLY));
+//		std::ofstream(filename) << expected_contents;
+		int fd = check("open()", ::open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR));
+		factory::fd_ostream(fd) << expected_contents;
+		check("close()", ::close(fd));
+		fd = check("open()", ::open(filename.c_str(), O_RDONLY));
 		factory::fd_istream in(fd);
 		std::stringstream contents;
 		contents << in.rdbuf();

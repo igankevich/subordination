@@ -560,32 +560,37 @@ namespace factory {
 		using typename std::basic_streambuf<T>::char_type;
 		typedef int fd_type;
 
-		explicit basic_fdbuf(fd_type fd, std::size_t bufsize=512, std::size_t nputback=1):
+		explicit basic_fdbuf(fd_type fd, std::size_t gbufsize, std::size_t pbufsize, std::size_t nputback=1):
 			_fd(fd),
 			_nputback(nputback),
-			_buffer(std::max(bufsize, nputback) + nputback)
+			_gbuf(std::max(gbufsize, nputback) + nputback),
+			_pbuf(pbufsize)
 		{
-			char_type* end = &_buffer.back();
+			char_type* end = &_gbuf.back();
 			this->setg(end, end, end);
+			this->setp(&_pbuf.front(), &_pbuf.back());
 		}
 
 		basic_fdbuf(basic_fdbuf&& rhs):
 			_fd(rhs._fd),
 			_nputback(rhs._nputback),
-			_buffer(std::move(rhs._buffer))
+			_gbuf(std::move(rhs._gbuf)),
+			_pbuf(std::move(rhs._pbuf))
 			{}
+
+		virtual ~basic_fdbuf() {
+			// TODO: for now full sync is not guaranteed for non-blocking I/O
+			// as it may result in infinite loop
+			this->sync();
+		}
 
 		int_type underflow() {
 			if (this->gptr() != this->egptr()) {
 				return traits_type::to_int_type(*this->gptr());
 			}
-			char_type* base = &_buffer.front();
-			char_type* start = base;
-			if (this->eback() == base && _nputback != 0) {
-				traits_type::move(base, this->egptr() - _nputback, _nputback);
-				start += _nputback;
-			}
-			ssize_t n = ::read(_fd, start, _buffer.size() - (start - base));
+			char_type* base = &_gbuf.front();
+			char_type* start = this->initputbackbuf(base);
+			ssize_t n = ::read(_fd, start, _gbuf.size() - (start - base));
 			std::clog << "Reading fd=" << _fd
 				<< ",n=" << n << std::endl;
 			if (n <= 0) {
@@ -595,23 +600,183 @@ namespace factory {
 			return traits_type::to_int_type(*this->gptr());
 		}
 
+		int_type overflow(int_type c = traits_type::eof()) {
+			if (c != traits_type::eof() && this->pptr() != this->epptr()) {
+				*this->pptr() = c;
+				this->pbump(1);
+			}
+			if (this->pptr() == this->epptr()) {
+				return this->sync() == -1
+					? traits_type::eof()
+					: traits_type::to_int_type(c);
+			}
+			return traits_type::eof();
+		}
+
+		int_type sync() {
+			if (this->pptr() == this->pbase()) return -1;
+			ssize_t n = ::write(this->_fd, this->pbase(), this->pptr() - this->pbase());
+			if (n <= 0) {
+				return traits_type::eof();
+			}
+			this->pbump(-n);
+			std::clog << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
+			return n >= 0 ? 0 : -1;
+		}
+
 		basic_fdbuf& operator=(basic_fdbuf&) = delete;
 		basic_fdbuf(basic_fdbuf&) = delete;
 
-	private:
+	protected:
+
+		char_type* initputbackbuf(char_type* base) {
+			char_type* start = base;
+			if (this->eback() == base && this->_nputback != 0) {
+				traits_type::move(base, this->egptr() - this->_nputback, this->_nputback);
+				start += this->_nputback;
+			}
+			return start;
+		}
+
 		fd_type _fd;
 		std::size_t _nputback;
-		std::vector<char_type> _buffer;
+		std::vector<char_type> _gbuf;
+		std::vector<char_type> _pbuf;
+	};
+
+	template<class T>
+	struct basic_websocketbuf: public basic_fdbuf<T> {
+
+		using typename std::basic_streambuf<T>::int_type;
+		using typename std::basic_streambuf<T>::traits_type;
+		using typename std::basic_streambuf<T>::char_type;
+		using typename basic_fdbuf<T>::fd_type;
+
+		enum struct State {
+			INITIAL_STATE,
+			PARSING_HTTP_METHOD,
+			PARSING_HTTP_STATUS,
+			PARSING_HEADERS,
+			PARSING_ERROR,
+			PARSING_SUCCESS,
+			REPLYING_TO_HANDSHAKE,
+			HANDSHAKE_SUCCESS,
+			STARTING_HANDSHAKE,
+			WRITING_HANDSHAKE,
+			READING_FRAME,
+			READING_PAYLOAD
+		};
+
+		enum struct Role { SERVER, CLIENT };
+		
+		explicit basic_websocketbuf(fd_type fd, std::size_t bufsize=512, std::size_t nputback=1):
+			basic_fdbuf<T>(fd, bufsize, bufsize, nputback) {}
+
+		basic_websocketbuf(basic_websocketbuf&& rhs):
+			basic_fdbuf<T>(std::move(rhs)),
+			_state(rhs._state),
+			_role(rhs._role),
+			_frame(rhs._frame),
+			_nread(rhs._nread)
+			{}
+
+		int_type underflow() {
+			if (this->gptr() != this->egptr()) {
+				return traits_type::to_int_type(*this->gptr());
+			}
+			char_type* base = &this->_gbuf.front();
+			char_type* start = this->initputbackbuf(base);
+			// initialise ``server'' role
+			initserver();
+			// perform handshake if any
+//			handshake();
+			if (this->state() != State::HANDSHAKE_SUCCESS) {
+				return traits_type::eof();
+			}
+			// fill buffer from fd
+			ssize_t n = ::read(this->_fd, start, this->_gbuf.size() - (start - base));
+			std::clog << "Reading fd=" << this->_fd << ",n=" << n << std::endl;
+			if (n <= 0) {
+				return traits_type::eof();
+			}
+			this->setg(base, start, start + n);
+			// read frame header
+			if (this->state() == State::READING_FRAME) {
+				size_t hdrsz = _frame.decode_header(this->gptr(), this->egptr());
+				if (hdrsz > 0) {
+					this->_nread = 0;
+					this->gbump(hdrsz);
+					this->sets(State::READING_PAYLOAD);
+					if (_frame.opcode() == Opcode::CONN_CLOSE) {
+						Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
+						check("close()", ::close(this->_fd));
+					}
+					// TODO: validate frame
+				}
+			}
+			// read payload
+			if (this->state() == State::READING_PAYLOAD) {
+				if (this->gptr() == this->egptr()) {
+					return traits_type::eof();
+				}
+				if (this->_nread == _frame.payload_size()) {
+					this->sets(State::READING_FRAME);
+					return this->underflow();
+				}
+				char_type ch = _frame.getpayloadc(this->gptr(), this->_nread);
+				this->gbump(1);
+				++this->_nread;
+				return traits_type::to_int_type(ch);
+			}
+			return traits_type::eof();
+		}
+
+		basic_websocketbuf& operator=(basic_websocketbuf&) = delete;
+		basic_websocketbuf(basic_websocketbuf&) = delete;
+
+	private:
+
+		void sets(State rhs) { _state = rhs; }
+		State state() const { return _state; }
+		void setrole(Role rhs) { _role = rhs; }
+		State role() const { return _role; }
+
+		void initserver() {
+			if (this->state() == State::INITIAL_STATE) {
+				this->sets(State::PARSING_HTTP_METHOD);
+				this->setrole(Role::SERVER);
+			}
+		}
+
+		State _state = State::INITIAL_STATE;
+		Role _role = Role::SERVER;
+		Web_socket_frame _frame = {};
+		std::size_t _nread = 0;
 	};
 
 	template<class T>
 	struct basic_fd_istream: public std::istream {
 		typedef typename basic_fdbuf<T>::fd_type fd_type;
-		explicit basic_fd_istream(fd_type fd): std::istream(new basic_fdbuf<T>(fd)) {}
-		~basic_fd_istream() { delete this->rdbuf(); }
+		explicit basic_fd_istream(fd_type fd): std::istream(new basic_fdbuf<T>(fd, 512, 0)) {}
+		virtual ~basic_fd_istream() { delete this->rdbuf(); }
+	};
+
+	template<class T>
+	struct basic_fd_ostream: public std::ostream {
+		typedef typename basic_fdbuf<T>::fd_type fd_type;
+		explicit basic_fd_ostream(fd_type fd): std::ostream(new basic_fdbuf<T>(fd, 0, 512)) {}
+		virtual ~basic_fd_ostream() { delete this->rdbuf(); }
+	};
+
+	template<class T>
+	struct basic_fd_iostream: public std::iostream {
+		typedef typename basic_fdbuf<T>::fd_type fd_type;
+		explicit basic_fd_iostream(fd_type fd): std::iostream(new basic_fdbuf<T>(fd, 512, 512)) {}
+		virtual ~basic_fd_iostream() { delete this->rdbuf(); }
 	};
 
 	typedef basic_fdbuf<char> fdbuf;
 	typedef basic_fd_istream<char> fd_istream;
+	typedef basic_fd_ostream<char> fd_ostream;
 
 }

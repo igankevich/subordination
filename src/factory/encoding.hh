@@ -461,6 +461,23 @@ namespace factory {
 			return std::make_pair(first + hdrsz, first + hdrsz + payload_sz);
 		}
 
+		template<class It>
+		size_t decode_header(It first, It last) {
+			// read first two bytes of a frame
+			size_t input_size = last - first;
+			if (input_size < constants::BASE_SIZE)
+				return 0;
+			std::copy(first, first + constants::BASE_SIZE, rawhdr);
+			// keep reading until the end of the header
+			size_t hdrsz = header_size();
+			if (input_size < hdrsz) return 0;
+			if (hdrsz > constants::BASE_SIZE) {
+				std::copy(first + constants::BASE_SIZE,
+					first + hdrsz, rawhdr + constants::BASE_SIZE);
+			}
+			return hdrsz;
+		}
+
 		template<class Res>
 		void encode(Res result) const {
 			std::copy(rawhdr, rawhdr + header_size(), result);
@@ -564,6 +581,18 @@ namespace factory {
 				);
 			} else {
 				std::copy(first, last, result);
+			}
+		}
+
+		template<class It, class Res>
+		char getpayloadc(It first, size_t nread) const {
+			using namespace constants;
+			if (is_masked()) {
+				Bytes<Mask> m = mask();
+				size_t i = 0;
+				return *first ^ m[nread%4];
+			} else {
+				return *first;
 			}
 		}
 
