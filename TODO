@@ -37,3 +37,5 @@ Create log server to minimise lock contention when writing to log.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Log markup for terminal.
 Add support for provenance.
+Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
+Increase fdbuf size to fit whole Kernel object (based on xsgetn() buffer size).
