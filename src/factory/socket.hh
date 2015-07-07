@@ -558,6 +558,8 @@ namespace factory {
 		using typename std::basic_streambuf<T>::int_type;
 		using typename std::basic_streambuf<T>::traits_type;
 		using typename std::basic_streambuf<T>::char_type;
+		typedef std::ios_base::openmode openmode;
+		typedef std::ios_base::seekdir seekdir;
 		typedef int fd_type;
 
 		explicit basic_fdbuf(fd_type fd, std::size_t gbufsize, std::size_t pbufsize, std::size_t nputback=1):
@@ -566,9 +568,10 @@ namespace factory {
 			_gbuf(std::max(gbufsize, nputback) + nputback),
 			_pbuf(pbufsize)
 		{
-			char_type* end = &_gbuf.back();
+			char_type* end = &_gbuf.front() + _gbuf.size();
 			this->setg(end, end, end);
-			this->setp(&_pbuf.front(), &_pbuf.back());
+			char_type* beg = &this->_pbuf.front();
+			this->setp(beg, beg + this->_pbuf.size());
 		}
 
 		basic_fdbuf(basic_fdbuf&& rhs):
@@ -601,14 +604,19 @@ namespace factory {
 		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
-			if (c != traits_type::eof() && this->pptr() != this->epptr()) {
-				*this->pptr() = c;
-				this->pbump(1);
-			}
-			if (this->pptr() == this->epptr()) {
-				return this->sync() == -1
-					? traits_type::eof()
-					: traits_type::to_int_type(c);
+			if (c != traits_type::eof()) {
+				if (this->pptr() == this->epptr()) {
+					if (this->sync() == -1) {
+						return traits_type::eof();
+					}
+				}
+				if (this->pptr() != this->epptr()) {
+					*this->pptr() = c;
+					this->pbump(1);
+					return traits_type::to_int_type(c);
+				}
+			} else {
+				this->sync();
 			}
 			return traits_type::eof();
 		}
@@ -617,15 +625,92 @@ namespace factory {
 			if (this->pptr() == this->pbase()) return -1;
 			ssize_t n = ::write(this->_fd, this->pbase(), this->pptr() - this->pbase());
 			if (n <= 0) {
-				return traits_type::eof();
+				return -1;
 			}
 			this->pbump(-n);
 			std::clog << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
 			return n >= 0 ? 0 : -1;
 		}
 
+		std::streampos seekoff(std::streamoff off, seekdir way,
+			openmode which = std::ios_base::in | std::ios_base::out)
+		{
+			if (way & std::ios_base::beg) {
+				return this->seekpos(off, which);
+			}
+			if (way & std::ios_base::cur) {
+				std::streampos pos = which & std::ios_base::in
+					? static_cast<std::streampos>(this->gptr() - this->eback())
+					: static_cast<std::streampos>(this->pptr() - this->pbase());
+				return off == 0 ? pos 
+					: this->seekpos(pos + off, which);
+			}
+			if (way & std::ios_base::end) {
+				std::streampos pos = which & std::ios_base::in
+					? static_cast<std::streampos>(this->egptr() - this->eback())
+					: static_cast<std::streampos>(this->epptr() - this->pbase());
+				return this->seekpos(pos + off, which);
+			}
+			return std::streampos(std::streamoff(-1));
+		}
+
+		std::streampos seekpos(std::streampos pos, openmode mode = std::ios_base::in | std::ios_base::out) {
+			if (mode & std::ios_base::in) {
+				std::size_t size = this->_gbuf.size();
+				char_type* old_end = this->egptr();
+				// go back if the buffer allows it
+				if (pos >= 0 && pos < size) {
+					char_type* beg = this->eback();
+					char_type* end = this->egptr();
+					char_type* xgptr = beg+pos;
+					if (xgptr < end) {
+						this->setg(beg, xgptr, end);
+					} else {
+						ssize_t n = ::read(this->_fd, end, xgptr-end+1);
+						this->setg(beg, end+n, end+n+1);
+					}
+				}
+				// enlarge buffer
+				if (pos >= size) {
+					std::size_t new_size = calc_size(pos);
+					if (new_size != size) {
+						std::ptrdiff_t off = this->gptr() - this->eback();
+						std::ptrdiff_t n = this->egptr() - this->gptr();
+						this->_gbuf.resize(new_size);
+						std::clog << "Resize gbuf size="
+							<< this->_gbuf.size() << std::endl;
+						char_type* base = &this->_gbuf.front();
+						this->setg(base, base + off, base + n);
+						// fill the buffer
+						ssize_t m = ::read(_fd, base + n,
+							static_cast<std::ptrdiff_t>(pos) - n + 1);
+						std::clog << "Reading fd=" << _fd
+							<< ",n=" << m << std::endl;
+						if (m > 0) {
+							this->setg(base, base + off, base + n + m);
+						}
+					}
+				}
+				// always return current position
+				return static_cast<std::streampos>(this->gptr() - this->eback());
+			}
+			return std::streampos(std::streamoff(-1));
+		}
+
 		basic_fdbuf& operator=(basic_fdbuf&) = delete;
 		basic_fdbuf(basic_fdbuf&) = delete;
+	
+	private:
+		std::size_t calc_size(std::streampos pos) {
+			std::size_t base_size = this->_gbuf.size();
+			std::size_t target_size = pos;
+			while (base_size < target_size
+				&& base_size <= std::numeric_limits<std::size_t>::max()/2)
+			{
+				base_size *= 2;
+			}
+			return base_size;
+		}
 
 	protected:
 

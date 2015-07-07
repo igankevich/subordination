@@ -144,8 +144,7 @@ namespace factory {
 					constexpr Endian() {}
 					uint32_t i = UINT32_C(1);
 					uint8_t b[4];
-				};
-				Endian endian;
+				} endian;
 				if ((is_network_byte_order() && endian.b[0] != 0)
 					|| (!is_network_byte_order() && endian.b[0] != 1))
 				{

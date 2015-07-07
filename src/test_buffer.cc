@@ -59,7 +59,8 @@ void test_socket_buf() {
 	std::string filename = "/tmp/"
 		+ test::random_string<T>(16, 'a', 'z')
 		+ ".factory";
-	for (size_t k=1; k<=133; ++k) {
+	const size_t MAX_K = 1 << 20;
+	for (size_t k=1; k<=MAX_K; k<<=1) {
 		// fill file with random contents
 		std::string expected_contents = test::random_string<T>(k, 'a', 'z');
 //		std::ofstream(filename) << expected_contents;
@@ -68,9 +69,11 @@ void test_socket_buf() {
 		check("close()", ::close(fd));
 		fd = check("open()", ::open(filename.c_str(), O_RDONLY));
 		factory::fd_istream in(fd);
+		test::equal(in.tellg(), 0);
 		std::stringstream contents;
 		contents << in.rdbuf();
 		std::string result = contents.str();
+//		test::equal(in.tellg(), result.size());
 		if (result != expected_contents) {
 			std::stringstream msg;
 			msg << "input and output does not match:\n'"
