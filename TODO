@@ -39,3 +39,4 @@ Log markup for terminal.
 Add support for provenance.
 Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
 Increase fdbuf size to fit whole Kernel object (use seekg and tellg to fill internal buffer).
+Filter out chars <= 31 and != \r\n on std::cout stream.

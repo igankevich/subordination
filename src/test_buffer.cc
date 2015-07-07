@@ -63,24 +63,33 @@ void test_socket_buf() {
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		// fill file with random contents
 		std::string expected_contents = test::random_string<T>(k, 'a', 'z');
-//		std::ofstream(filename) << expected_contents;
-		int fd = check("open()", ::open(filename.c_str(), O_RDWR | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR));
-		factory::fd_ostream(fd) << expected_contents;
-		check("close()", ::close(fd));
-		fd = check("open()", ::open(filename.c_str(), O_RDONLY));
-		factory::fd_istream in(fd);
-		test::equal(in.tellg(), 0);
-		std::stringstream contents;
-		contents << in.rdbuf();
-		std::string result = contents.str();
-//		test::equal(in.tellg(), result.size());
-		if (result != expected_contents) {
-			std::stringstream msg;
-			msg << "input and output does not match:\n'"
-				<< expected_contents << "'\n!=\n'" << result << "'";
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		{
+			std::clog << "Checking overflow()" << std::endl;
+			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			factory::fd_ostream(file.fd()) << expected_contents;
 		}
-		check("close()", ::close(fd));
+		{
+			std::clog << "Checking underflow()" << std::endl;
+			File file(filename, O_RDONLY);
+			factory::fd_istream in(file.fd());
+			std::stringstream contents;
+			contents << in.rdbuf();
+			std::string result = contents.str();
+			if (result != expected_contents) {
+				std::stringstream msg;
+				msg << "input and output does not match:\n'"
+					<< expected_contents << "'\n!=\n'" << result << "'";
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
+		}
+		{
+			std::clog << "Checking seekpos()" << std::endl;
+			File file(filename, O_RDONLY);
+			factory::fd_istream in(file.fd());
+			test::equal(in.tellg(), 0);
+			in.seekg(k, std::ios_base::beg);
+			test::equal(in.tellg(), k);
+		}
 	}
 	check("remove()", std::remove(filename.c_str()));
 }

@@ -635,17 +635,20 @@ namespace factory {
 		std::streampos seekoff(std::streamoff off, seekdir way,
 			openmode which = std::ios_base::in | std::ios_base::out)
 		{
-			if (way & std::ios_base::beg) {
+			if (way == std::ios_base::beg) {
+				std::clog << "seekoff way=beg,off=" << off << std::endl;
 				return this->seekpos(off, which);
 			}
-			if (way & std::ios_base::cur) {
+			if (way == std::ios_base::cur) {
+				std::clog << "seekoff way=cur,off=" << off << std::endl;
 				std::streampos pos = which & std::ios_base::in
 					? static_cast<std::streampos>(this->gptr() - this->eback())
 					: static_cast<std::streampos>(this->pptr() - this->pbase());
 				return off == 0 ? pos 
 					: this->seekpos(pos + off, which);
 			}
-			if (way & std::ios_base::end) {
+			if (way == std::ios_base::end) {
+				std::clog << "seekoff way=end,off=" << off << std::endl;
 				std::streampos pos = which & std::ios_base::in
 					? static_cast<std::streampos>(this->egptr() - this->eback())
 					: static_cast<std::streampos>(this->epptr() - this->pbase());
@@ -654,24 +657,30 @@ namespace factory {
 			return std::streampos(std::streamoff(-1));
 		}
 
-		std::streampos seekpos(std::streampos pos, openmode mode = std::ios_base::in | std::ios_base::out) {
+		std::streampos seekpos(std::streampos pos,
+			openmode mode = std::ios_base::in | std::ios_base::out)
+		{
+			std::clog << "seekpos " << pos << std::endl;
 			if (mode & std::ios_base::in) {
 				std::size_t size = this->_gbuf.size();
 				char_type* old_end = this->egptr();
 				// go back if the buffer allows it
-				if (pos >= 0 && pos < size) {
+				if (pos >= 0 && pos <= size) {
+					if (this->gptr() == this->egptr()) {
+						this->underflow();
+					}
 					char_type* beg = this->eback();
 					char_type* end = this->egptr();
 					char_type* xgptr = beg+pos;
-					if (xgptr < end) {
+					if (xgptr <= end) {
 						this->setg(beg, xgptr, end);
 					} else {
-						ssize_t n = ::read(this->_fd, end, xgptr-end+1);
-						this->setg(beg, end+n, end+n+1);
+						ssize_t n = ::read(this->_fd, end, xgptr-end);
+						this->setg(beg, end+n, end+n);
 					}
 				}
 				// enlarge buffer
-				if (pos >= size) {
+				if (pos > size) {
 					std::size_t new_size = calc_size(pos);
 					if (new_size != size) {
 						std::ptrdiff_t off = this->gptr() - this->eback();
@@ -683,11 +692,11 @@ namespace factory {
 						this->setg(base, base + off, base + n);
 						// fill the buffer
 						ssize_t m = ::read(_fd, base + n,
-							static_cast<std::ptrdiff_t>(pos) - n + 1);
+							static_cast<std::ptrdiff_t>(pos) - n);
 						std::clog << "Reading fd=" << _fd
 							<< ",n=" << m << std::endl;
 						if (m > 0) {
-							this->setg(base, base + off, base + n + m);
+							this->setg(base, base + pos, base + pos);
 						}
 					}
 				}
