@@ -23,3 +23,11 @@ namespace test {
 		}
 	}
 }
+
+namespace std {
+	std::ostream& operator<<(std::ostream& out, const std::basic_string<unsigned char>& rhs) {
+		std::ostream_iterator<char> it(out, "");
+		std::copy(rhs.begin(), rhs.end(), it);
+		return out;
+	}
+}

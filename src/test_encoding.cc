@@ -1,28 +1,7 @@
 #include <factory/factory.hh>
+#include "test.hh"
 
 using namespace factory;
-
-template<class T>
-std::basic_string<T> random_string(size_t size) {
-	static std::uniform_int_distribution<T> dist(
-		std::numeric_limits<T>::min(),
-		std::numeric_limits<T>::max());
-	static std::default_random_engine generator(
-		std::chrono::high_resolution_clock::now().time_since_epoch().count()
-	);
-	auto gen = std::bind(dist, generator);
-	std::basic_string<T> ret(size, '_');
-	std::generate(ret.begin(), ret.end(), gen);
-	return ret;
-}
-
-namespace std {
-	std::ostream& operator<<(std::ostream& out, const std::basic_string<unsigned char>& rhs) {
-		std::ostream_iterator<char> it(out, "");
-		std::copy(rhs.begin(), rhs.end(), it);
-		return out;
-	}
-}
 
 void test_base64_size() {
 	for (size_t k=0; k<=100; ++k) {
@@ -43,7 +22,7 @@ void test_base64(bool spoil=false) {
 	typedef std::basic_string<T> string;
 
 	for (size_t k=0; k<=100; ++k) {
-		string text = random_string<T>(k);
+		string text = test::random_string<T>(k);
 		string encoded(base64_encoded_size(k), '_');
 		string decoded(base64_max_decoded_size(encoded.size()), '_');
 		base64_encode(text.begin(), text.end(), encoded.begin());
@@ -135,7 +114,7 @@ void test_sha1() {
 void test_web_socket() {
 	std::vector<std::string> inputs = {""};
 	for (int i=0; i<20; ++i) {
-		std::string str = random_string<char>(1 << i);
+		std::string str = test::random_string<char>(1 << i);
 		inputs.push_back(str);
 	}
 	std::for_each(inputs.begin(), inputs.end(),

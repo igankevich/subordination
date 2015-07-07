@@ -621,7 +621,7 @@ namespace factory {
 			return traits_type::eof();
 		}
 
-		int_type sync() {
+		int sync() {
 			if (this->pptr() == this->pbase()) return -1;
 			ssize_t n = ::write(this->_fd, this->pbase(), this->pptr() - this->pbase());
 			if (n <= 0) {
@@ -849,23 +849,23 @@ namespace factory {
 	};
 
 	template<class T>
-	struct basic_fd_istream: public std::istream {
+	struct basic_fd_istream: public std::basic_istream<T> {
 		typedef typename basic_fdbuf<T>::fd_type fd_type;
-		explicit basic_fd_istream(fd_type fd): std::istream(new basic_fdbuf<T>(fd, 512, 0)) {}
+		explicit basic_fd_istream(fd_type fd): std::basic_istream<T>(new basic_fdbuf<T>(fd, 512, 0)) {}
 		virtual ~basic_fd_istream() { delete this->rdbuf(); }
 	};
 
 	template<class T>
-	struct basic_fd_ostream: public std::ostream {
+	struct basic_fd_ostream: public std::basic_ostream<T> {
 		typedef typename basic_fdbuf<T>::fd_type fd_type;
-		explicit basic_fd_ostream(fd_type fd): std::ostream(new basic_fdbuf<T>(fd, 0, 512)) {}
+		explicit basic_fd_ostream(fd_type fd): std::basic_ostream<T>(new basic_fdbuf<T>(fd, 0, 512)) {}
 		virtual ~basic_fd_ostream() { delete this->rdbuf(); }
 	};
 
 	template<class T>
-	struct basic_fd_iostream: public std::iostream {
+	struct basic_fd_iostream: public std::basic_iostream<T> {
 		typedef typename basic_fdbuf<T>::fd_type fd_type;
-		explicit basic_fd_iostream(fd_type fd): std::iostream(new basic_fdbuf<T>(fd, 512, 512)) {}
+		explicit basic_fd_iostream(fd_type fd): std::basic_iostream<T>(new basic_fdbuf<T>(fd, 512, 512)) {}
 		virtual ~basic_fd_iostream() { delete this->rdbuf(); }
 	};
 

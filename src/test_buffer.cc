@@ -56,25 +56,26 @@ void test_buffer() {
 
 template<class T>
 void test_socket_buf() {
-	std::string filename = "/tmp/"
-		+ test::random_string<T>(16, 'a', 'z')
-		+ ".factory";
+	std::basic_string<T> filename = reinterpret_cast<const T*>("/tmp/");
+	filename += test::random_string<T>(16, 'a', 'z');
+	filename += reinterpret_cast<const T*>(".factory");
+	const char* nm = reinterpret_cast<const char*>(filename.c_str());
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		// fill file with random contents
-		std::string expected_contents = test::random_string<T>(k, 'a', 'z');
+		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
-			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::fd_ostream(file.fd()) << expected_contents;
+			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			factory::basic_fd_ostream<T>(file.fd()) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
-			File file(filename, O_RDONLY);
-			factory::fd_istream in(file.fd());
-			std::stringstream contents;
+			File file(nm, O_RDONLY);
+			factory::basic_fd_istream<T> in(file.fd());
+			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
-			std::string result = contents.str();
+			std::basic_string<T> result = contents.str();
 			if (result != expected_contents) {
 				std::stringstream msg;
 				msg << "input and output does not match:\n'"
@@ -84,14 +85,16 @@ void test_socket_buf() {
 		}
 		{
 			std::clog << "Checking seekpos()" << std::endl;
-			File file(filename, O_RDONLY);
-			factory::fd_istream in(file.fd());
+			File file(nm, O_RDONLY);
+			factory::basic_fd_istream<T> in(file.fd());
 			test::equal(in.tellg(), 0);
 			in.seekg(k, std::ios_base::beg);
 			test::equal(in.tellg(), k);
+			in.seekg(0, std::ios_base::beg);
+			test::equal(in.tellg(), 0);
 		}
 	}
-	check("remove()", std::remove(filename.c_str()));
+	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
 }
 
 struct App {
@@ -102,6 +105,7 @@ struct App {
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
 			test_socket_buf<char>();
+			test_socket_buf<unsigned char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
