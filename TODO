@@ -15,9 +15,12 @@ DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override i
 DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 
 ??? [needs more testing] Make Factory::stop() reliable.
+??? [needs perf tests] Filter out chars <= 31 and != \r\n on std::cout stream.
+??? [needs testing on real socket] Increase fdbuf size to fit whole Kernel object (use seekg and tellg to fill internal buffer).
 
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 NOT NEEDED [OS will do better] Implement thread affinity through pthread library with fall back to native OS calls.
+NOT NEEDED [it is not safe] Log markup for terminal.
 
 Make Buffer and LBuffer a subclass of std::streambuf.
 Replace std::mutex with Spin_mutex in server queues.
@@ -35,8 +38,5 @@ User defined literals for uint128 and for class metadata.
 Reduce amount of debug information in logs.
 Create log server to minimise lock contention when writing to log.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
-Log markup for terminal.
 Add support for provenance.
 Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
-Increase fdbuf size to fit whole Kernel object (use seekg and tellg to fill internal buffer).
-Filter out chars <= 31 and != \r\n on std::cout stream.
