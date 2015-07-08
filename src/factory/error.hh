@@ -45,7 +45,7 @@ namespace factory {
 	
 		template<class T>
 		Logger& operator<<(const T& rhs) {
-//			std::lock_guard<Spin_mutex> lock(__logger_mutex);
+			std::lock_guard<Spin_mutex> lock(__logger_mutex);
 			_buf << rhs;
 			return *this;
 		}
@@ -54,7 +54,7 @@ namespace factory {
 			_buf << pf;
 			if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
 				{
-//					std::lock_guard<Spin_mutex> lock(__logger_mutex);
+					std::lock_guard<Spin_mutex> lock(__logger_mutex);
 					std::cout << _buf.str() << std::flush;
 				}
 				_buf.str("");
