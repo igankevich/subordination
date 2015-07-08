@@ -54,6 +54,13 @@ AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 AC_FUNC_FORK
 AC_CHECK_FUNCS([socket setenv strerror])
 
+AX_HAVE_POLL(
+	[AX_CONFIG_FEATURE_ENABLE(poll)],
+	[AX_CONFIG_FEATURE_DISABLE(poll)])
+AX_CONFIG_FEATURE(
+	[poll], [This platform supports poll(2)],
+	[HAVE_POLL], [This platform supports poll(2).])
+
 # Code coverage, memory leaks and threading errors automated tests.
 AX_CODE_COVERAGE
 AX_VALGRIND_CHECK
