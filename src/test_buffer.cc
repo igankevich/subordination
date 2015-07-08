@@ -97,6 +97,29 @@ void test_socket_buf() {
 	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
 }
 
+template<class T>
+void test_filter_buffer() {
+	using namespace factory::components;
+	const size_t MAX_K = 1 << 20;
+	for (size_t k=1; k<=MAX_K; k<<=1) {
+		std::basic_string<T> contents = test::random_string<T>(k, 0, 31);
+		std::basic_stringstream<T> out;
+		std::basic_streambuf<T>* orig = out.rdbuf();
+		static_cast<std::basic_ostream<T>&>(out).rdbuf(new Filter_buf<T>(orig));
+		out << contents;
+		std::basic_string<T> result = out.str();
+		std::size_t cnt = std::count_if(result.begin(), result.end(), [] (T ch) {
+			return ch != '\r' && ch != '\n';
+		});
+		if (cnt > 0) {
+			std::stringstream msg;
+			msg << "output stream is not properly filtered: rdbuf='"
+				<< out.rdbuf() << '\'';
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
+	}
+}
+
 struct App {
 	int run(int, char**) {
 		try {
@@ -106,6 +129,8 @@ struct App {
 			test_buffer<unsigned char, LBuffer>();
 			test_socket_buf<char>();
 			test_socket_buf<unsigned char>();
+			test_filter_buffer<char>();
+			test_filter_buffer<unsigned char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
