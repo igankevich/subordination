@@ -623,7 +623,7 @@ namespace factory {
 
 		int_type underflow() {
 			if (this->gptr() != this->egptr()) {
-				return traits_type::to_int_type(*this->gptr());
+				return traits_type::not_eof(*this->gptr());
 			}
 			char_type* base = &this->_gbuf.front();
 			ssize_t n = this->_fd.read(base, this->_gbuf.size());
@@ -632,7 +632,7 @@ namespace factory {
 				return traits_type::eof();
 			}
 			this->setg(base, base, base + n);
-			return traits_type::to_int_type(*this->gptr());
+			return traits_type::not_eof(*this->gptr());
 		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
@@ -645,7 +645,7 @@ namespace factory {
 				if (this->pptr() != this->epptr()) {
 					*this->pptr() = c;
 					this->pbump(1);
-					return traits_type::to_int_type(c);
+					return traits_type::not_eof(c);
 				}
 			} else {
 				this->sync();
@@ -654,7 +654,8 @@ namespace factory {
 		}
 
 		int sync() {
-			if (this->pptr() == this->pbase()) return -1;
+			std::clog << "Sync" << std::endl;
+			if (this->pptr() == this->pbase()) return 0;
 			ssize_t n = this->_fd.write(this->pbase(), this->pptr() - this->pbase());
 			if (n <= 0) {
 				return -1;

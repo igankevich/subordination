@@ -103,6 +103,14 @@ void test_fdbuf() {
 			in.seekp(0, std::ios_base::beg);
 			test::equal(in.tellp(), 0);
 		}
+		{
+			std::clog << "Checking flush()" << std::endl;
+			File file(nm, O_WRONLY);
+			factory::basic_fd_ostream<T,Fd> out(file.fd());
+			test::equal(out.eof(), false);
+			out.flush();
+			test::equal(out.tellp(), 0);
+		}
 	}
 	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
 }
