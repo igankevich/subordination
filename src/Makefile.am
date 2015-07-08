@@ -1,15 +1,18 @@
 include $(top_srcdir)/am/gcov.am
+include $(top_srcdir)/am/gprof.am
 include $(top_srcdir)/am/valgrind.am
 include $(top_srcdir)/am/version.am
 
 AM_CXXFLAGS = \
 	$(PTHREAD_CFLAGS) \
 	$(CODE_COVERAGE_CFLAGS) \
+	$(PERF_TESTING_CFLAGS) \
 	$(MORE_CXXFLAGS)
 
 AM_LDFLAGS = \
 	$(PTHREAD_LIBS) \
 	$(BACKTRACE_LDFLAGS) \
+	$(PERF_TESTING_LDFLAGS) \
 	$(CODE_COVERAGE_LDFLAGS)
 
 CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"

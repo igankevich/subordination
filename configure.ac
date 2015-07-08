@@ -11,8 +11,6 @@ AM_INIT_AUTOMAKE([-Wall])
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
-AC_ARG_ENABLE([perftests],
-	AS_HELP_STRING([--enable-perf-tests], [perform tests to choose the most efficient routines for locking, polling etc.]))
 AC_ARG_ENABLE([secureflags],
 	AS_HELP_STRING([--enable-secureflags], [enable all known compiler security flags]))
 
@@ -64,6 +62,7 @@ AX_CONFIG_FEATURE(
 # Code coverage, memory leaks and threading errors automated tests.
 AX_CODE_COVERAGE
 AX_VALGRIND_CHECK
+FACTORY_PROFILING
 
 # Documentation.
 DX_DOXYGEN_FEATURE(ON)
