@@ -53,11 +53,12 @@ namespace factory {
 			std::basic_streambuf<T>* _orig;
 		};
 
+		// TODO: it does not work :(
 		struct Auto_filter_bad_chars_on_cout_and_cerr {
-			Auto_filter_bad_chars_on_cout_and_cerr() {
-				this->filter(std::cout);
-				this->filter(std::cerr);
-			}
+//			Auto_filter_bad_chars_on_cout_and_cerr() {
+//				this->filter(std::cout);
+//				this->filter(std::cerr);
+//			}
 		private:
 			void filter(std::ostream& str) {
 				std::streambuf* orig = str.rdbuf();

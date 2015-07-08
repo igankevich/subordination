@@ -1,5 +1,4 @@
-#include "factory/factory.hh"
-#include <random>
+#include <factory/factory.hh>
 
 using namespace factory;
 
@@ -177,6 +176,7 @@ struct App {
 					ext_server()->socket(client_endpoint);
 					ext_server()->peer(server_endpoint);
 					__factory.start();
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
 					the_server()->send(new Main);
 					__factory.wait();
 				}

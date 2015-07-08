@@ -40,3 +40,5 @@ Create log server to minimise lock contention when writing to log.
 Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Add support for provenance.
 Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
+Add common header to source files.
+Add license.

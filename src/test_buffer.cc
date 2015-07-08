@@ -54,8 +54,8 @@ void test_buffer() {
 	}
 }
 
-template<class T>
-void test_socket_buf() {
+template<class T, class Fd=int>
+void test_fdbuf() {
 	std::basic_string<T> filename = reinterpret_cast<const T*>("/tmp/");
 	filename += test::random_string<T>(16, 'a', 'z');
 	filename += reinterpret_cast<const T*>(".factory");
@@ -67,12 +67,12 @@ void test_socket_buf() {
 		{
 			std::clog << "Checking overflow()" << std::endl;
 			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::basic_fd_ostream<T>(file.fd()) << expected_contents;
+			factory::basic_fd_ostream<T,Fd>(file.fd()) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
 			File file(nm, O_RDONLY);
-			factory::basic_fd_istream<T> in(file.fd());
+			factory::basic_fd_istream<T,Fd> in(file.fd());
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -86,7 +86,7 @@ void test_socket_buf() {
 		{
 			std::clog << "Checking seekpos()" << std::endl;
 			File file(nm, O_RDONLY);
-			factory::basic_fd_istream<T> in(file.fd());
+			factory::basic_fd_istream<T,Fd> in(file.fd());
 			test::equal(in.tellg(), 0);
 			in.seekg(k, std::ios_base::beg);
 			test::equal(in.tellg(), k);
@@ -98,7 +98,7 @@ void test_socket_buf() {
 }
 
 template<class T>
-void test_filter_buffer() {
+void test_filterbuf() {
 	using namespace factory::components;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
@@ -127,10 +127,11 @@ struct App {
 			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
-			test_socket_buf<char>();
-			test_socket_buf<unsigned char>();
-			test_filter_buffer<char>();
-			test_filter_buffer<unsigned char>();
+			test_fdbuf<char, int>();
+			test_fdbuf<unsigned char, int>();
+			test_fdbuf<char, Socket>();
+			test_filterbuf<char>();
+			test_filterbuf<unsigned char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
