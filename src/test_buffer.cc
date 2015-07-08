@@ -84,7 +84,7 @@ void test_fdbuf() {
 			}
 		}
 		{
-			std::clog << "Checking seekpos()" << std::endl;
+			std::clog << "Checking seekg()" << std::endl;
 			File file(nm, O_RDONLY);
 			factory::basic_fd_istream<T,Fd> in(file.fd());
 			test::equal(in.tellg(), 0);
@@ -92,6 +92,16 @@ void test_fdbuf() {
 			test::equal(in.tellg(), k);
 			in.seekg(0, std::ios_base::beg);
 			test::equal(in.tellg(), 0);
+		}
+		{
+			std::clog << "Checking seekp()" << std::endl;
+			File file(nm, O_WRONLY);
+			factory::basic_fd_ostream<T,Fd> in(file.fd());
+			test::equal(in.tellp(), 0);
+			in.seekp(k, std::ios_base::beg);
+			test::equal(in.tellp(), k);
+			in.seekp(0, std::ios_base::beg);
+			test::equal(in.tellp(), 0);
 		}
 	}
 	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));

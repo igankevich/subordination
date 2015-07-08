@@ -459,7 +459,6 @@ namespace factory {
 
 			typedef Remote_Rserver<Kernel, Pool, Type, Server_socket> This;
 			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
-			typedef typename Foreign_stream::Pos Pos;
 
 			Remote_Rserver(Socket sock, Endpoint endpoint):
 				_socket(sock),
@@ -468,7 +467,8 @@ namespace factory {
 				_ostream(),
 				_ipacket(),
 				_buffer(),
-				_parent(nullptr) {}
+				_parent(nullptr)
+				{}
 
 			Remote_Rserver(const Remote_Rserver&) = delete;
 			Remote_Rserver& operator=(const Remote_Rserver&) = delete;
