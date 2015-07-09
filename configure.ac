@@ -39,8 +39,6 @@ AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
 AC_TYPE_PID_T
 AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AX_PTHREAD
-FACTORY_THREAD_AFFINITY
-FACTORY_BACKTRACE
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
 
@@ -58,6 +56,8 @@ AX_HAVE_POLL(
 AX_CONFIG_FEATURE(
 	[poll], [This platform supports poll(2)],
 	[HAVE_POLL], [This platform supports poll(2).])
+FACTORY_THREAD_AFFINITY
+AX_EXECINFO
 
 # Code coverage, memory leaks and threading errors automated tests.
 AX_CODE_COVERAGE

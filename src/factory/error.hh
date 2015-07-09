@@ -307,10 +307,11 @@ namespace factory {
 				std::abort();
 			}
 
-#if defined(HAVE_DECL_BACKTRACE) && defined(HAVE_DECL_BACKTRACE_SYMBOLS_FD)
+#if defined(HAVE_BACKTRACE)
 			static void print_stack_trace() noexcept {
-				void* stack[64];
-				auto num_entries = ::backtrace(stack, 64);
+				static const backtrace_size_t MAX_ENTRIES = 64;
+				void* stack[MAX_ENTRIES];
+				backtrace_size_t num_entries = ::backtrace(stack, MAX_ENTRIES);
 				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
 			}
 #else
