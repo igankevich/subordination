@@ -5,7 +5,7 @@ AC_DEFUN([FACTORY_PROFILING],[
 	  [_FACTORY_PERF_PROFILING_GPROF_PROG_WITH=$with_gprof],
 	  [_FACTORY_PERF_PROFILING_GPROF_PROG_WITH=gprof])
 
-	AC_MSG_CHECKING([whether to build for performance testing])
+	AC_MSG_CHECKING([whether to enable Gprof on the unit tests])
 	AC_ARG_ENABLE([perf-testing],
 	  AS_HELP_STRING([--enable-perf-testing],
 	  [Whether to enable performance tests]),,

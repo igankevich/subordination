@@ -42,7 +42,8 @@ TESTS = \
 	test_encoding \
 	test_timer \
 	test_uint128 \
-	test_kernel
+	test_kernel \
+	cppcheck
 
 check_PROGRAMS = \
 	test_buffer \

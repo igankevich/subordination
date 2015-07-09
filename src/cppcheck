@@ -4,4 +4,7 @@ cppcheck \
 	--enable=all \
 	--std=posix \
 	--std=c++11 \
+	--force \
+	-I/usr/include \
+	--error-exitcode=1 \
 	$@ *.cc
