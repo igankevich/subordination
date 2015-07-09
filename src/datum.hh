@@ -62,6 +62,12 @@ struct Datum {
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
+	friend std::istream& operator>>(std::istream& in, Datum& rhs) {
+		return in
+			>> rhs.x >> rhs.y >> rhs.z
+			>> rhs.u >> rhs.v >> rhs.w;
+	}
+
 	constexpr static size_t real_size() {
 		return
 			sizeof(x) + sizeof(y) + sizeof(z) +

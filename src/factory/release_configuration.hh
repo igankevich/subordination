@@ -30,16 +30,16 @@ namespace factory {
 			using Iserver = factory::components::Iserver<Base, Sub>;
 
 		template<class K>
-			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type, factory::Server_socket>;
+			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::Server_socket>;
 
 		template<class K>
-			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, Type, factory::Web_socket>;
+			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::Web_socket>;
 
 		template<class K>
-			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Type, Pool>;
+			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Pool>;
 
 		template<class K>
-			using Web_socket_server = factory::components::Socket_server<Server<K>, Web_socket_remote_Rserver<Kernel>, Kernel, Type, Pool>;
+			using Web_socket_server = factory::components::Socket_server<Server<K>, Web_socket_remote_Rserver<Kernel>, Kernel, Pool>;
 
 //		template<class K>
 //			using Web_socket_server = factory::components::Web_socket_server<Server<K>, Type>;

@@ -2,7 +2,7 @@ namespace factory {
 
 	namespace components {
 
-		template<class Kernel, class Stream, class Type>
+		template<class Kernel>
 		struct Kernel_packet {
 
 			enum struct State {
@@ -11,73 +11,76 @@ namespace factory {
 				COMPLETE
 			};
 
-//			typedef decltype(out.size()) Size;
-			typedef typename Stream::Size Size;
-			typedef typename Type::Callback Callback;
+			typedef uint32_t Packet_size;
 
-			void write(Stream& out, Kernel* kernel) {
+			template<class Out>
+			void write(Out& out, Kernel& kernel) {
+				typedef typename Out::pos_type pos_type;
 
-				const Type* type = kernel->type();
+				const Type<Kernel>* type = kernel.type();
 				if (type == nullptr) {
 					std::stringstream msg;
-					msg << "Can not find type for kernel " << kernel->id();
+					msg << "Can not find type for kernel " << kernel.id();
 					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 
-				auto old_pos = out.write_pos();
-				Size old_size = out.size();
-				out << Size(0);
+				pos_type old_pos = out.tellp();
+				this->setsize(0);
+				out << this->packetsize();
 				out << type->id();
-				kernel->write(out);
-				auto new_pos = out.write_pos();
-				auto new_size = out.size();
-				auto packet_sz = new_size - old_size;
-//				Logger<Level::COMPONENT>() << "Packet size = " << packet_sz - sizeof(packet_sz) << std::endl;
-				out.write_pos(old_pos);
-				out << packet_sz;
-				out.write_pos(new_pos);
+				kernel.write(out);
+				pos_type new_pos = out.tellp();
+				this->setsize(new_pos - old_pos);
+				out.seekp(old_pos);
+				out << this->packetsize();
+				out.seekp(new_pos);
 				Logger<Level::COMPONENT>() << "send "
-					<< packet_sz - sizeof(packet_sz)
+					<< this->payloadsize()
 					<< " byte(s)"
 					<< std::endl;
 			}
 
-			bool read(Stream& in, Callback callback) {
-				if (_state == State::READING_SIZE && sizeof(packet_size) <= in.size()) {
-					in >> packet_size;
-					_state = State::READING_PACKET;
+			template<class In, class F>
+			bool read(In& in, F callback) {
+				if (this->rdstate() == State::READING_SIZE && sizeof(this->packetsize()) <= in.size()) {
+					in >> this->_packetsize;
+					this->sets(State::READING_PACKET);
 				}
-				if (_state == State::READING_PACKET) {
+				if (this->rdstate() == State::READING_PACKET) {
 					Logger<Level::COMPONENT>() << "recv "
 						<< in.size()
 						<< '/'
-						<< packet_size - sizeof(packet_size)
+						<< this->payloadsize()
 						<< " byte(s)"
 						<< std::endl;
 				}
-				if (_state == State::READING_PACKET && packet_size - sizeof(packet_size) <= in.size()) {
-					Type::types().read_and_send_object(in, callback);
-					_state = State::COMPLETE;
+				if (this->rdstate() == State::READING_PACKET && this->payloadsize() <= in.size()) {
+					Type<Kernel>::types().read_and_send_object(in, callback);
+					this->sets(State::COMPLETE);
 				}
-				return finished();
+				return this->rdstate() == State::COMPLETE;
 			}
 
-			constexpr bool finished() const { return _state == State::COMPLETE; }
-
 			void reset_reading_state() {
-				_state = State::READING_SIZE;
-				packet_size = 0;
+				this->sets(State::READING_SIZE);
+				this->setsize(0);
 			}
 
 		private:
+			void sets(State rhs) { this->_state = rhs; }
+			constexpr State rdstate() const { return this->_state; }
+			constexpr Packet_size packetsize() const { return this->_packetsize; }
+			void setsize(Packet_size rhs) { this->_packetsize = rhs; }
+			constexpr Packet_size payloadsize() const { return this->_packetsize - sizeof(this->_packetsize); }
+
 			State _state = State::READING_SIZE;
-			Size packet_size = 0;
+			Packet_size _packetsize = 0;
 		};
 
-		template<class Server, class Remote_server, class Kernel, class Type, template<class X> class Pool>
-		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Type, Pool>, Server> {
+		template<class Server, class Remote_server, class Kernel, template<class X> class Pool>
+		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Pool>, Server> {
 			
-			typedef Socket_server<Server, Remote_server, Kernel, Type, Pool> This;
+			typedef Socket_server<Server, Remote_server, Kernel, Pool> This;
 
 			Socket_server():
 				_poller(),
@@ -454,11 +457,11 @@ namespace factory {
 			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
 		};
 
-		template<class Kernel, template<class X> class Pool, class Type, class Server_socket>
+		template<class Kernel, template<class X> class Pool, class Server_socket>
 		struct Remote_Rserver {
 
-			typedef Remote_Rserver<Kernel, Pool, Type, Server_socket> This;
-			typedef Kernel_packet<Kernel, Foreign_stream, Type> Packet;
+			typedef Remote_Rserver<Kernel, Pool, Server_socket> This;
+			typedef Kernel_packet<Kernel> Packet;
 
 			Remote_Rserver(Socket sock, Endpoint endpoint):
 				_socket(sock),
@@ -524,7 +527,7 @@ namespace factory {
 				}
 				Logger<Level::COMPONENT>() << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
-				packet.write(_ostream, kernel);
+				packet.write(_ostream, *kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
 					Logger<Level::COMPONENT>() << "Delete kernel " << *kernel << std::endl;
 					delete kernel;

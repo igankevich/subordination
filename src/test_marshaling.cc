@@ -21,11 +21,36 @@ void test_marshaling() {
 			throw std::runtime_error("Input and output does not match.");
 }
 
+struct Thing: public Mobile<Thing> {
+	static void init_type(Type* t) {
+		t->id(123);
+		t->name("Thing");
+	}
+	void write(std::ostream& out) const {
+		out << _data;
+	}
+	void read(std::istream& in) {
+		in >> _data;
+	}
+private:
+	Datum _data;
+};
+
+void test_kernel_packet() {
+//	using namespace factory::components;
+//	typedef Kernel_packet<Thing> Packet;
+//	Packet packet;
+//	Thing t1;
+//	std::stringstream buf;
+//	packet.write(buf, t1);
+}
+
 struct App {
 
 	int run(int, char**) {
 		try {
 			test_marshaling();
+			test_kernel_packet();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

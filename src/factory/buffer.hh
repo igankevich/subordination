@@ -5,6 +5,20 @@ namespace factory {
 		static const uint32_t MIN_CHUNK_SIZE = 1;
 	}
 
+	struct Tuple_pos: public std::tuple<uint32_t,uint32_t,uint32_t> {
+		Tuple_pos(uint32_t x, uint32_t y, uint32_t z):
+			std::tuple<uint32_t,uint32_t,uint32_t>(x, y, z) {}
+		operator uint32_t() const { return std::get<2>(*this); }
+	};
+
+	Tuple_pos operator-(const Tuple_pos& lhs, const Tuple_pos& rhs) {
+		return Tuple_pos(
+			std::get<0>(lhs) - std::get<0>(rhs),
+			std::get<1>(lhs) - std::get<1>(rhs),
+			std::get<2>(lhs) - std::get<2>(rhs)
+		);
+	}
+
 	template<class T>
 	struct Buffer {
 
@@ -12,6 +26,7 @@ namespace factory {
 		typedef uint32_t Pos;
 		typedef uint32_t Nbytes;
 		typedef T Value;
+		typedef Tuple_pos pos_type;
 
 		explicit Buffer(Size base_size = constants::CHUNK_SIZE):
 			_chunk_size(std::max(base_size, constants::MIN_CHUNK_SIZE)),
@@ -148,11 +163,11 @@ namespace factory {
 
 		Size size() const { return _global_write_pos - _global_read_pos; }
 
-		std::tuple<Size,Size,Size> write_pos() const {
-			return std::make_tuple(_chunk_write_pos, _write_pos, _global_write_pos);
+		Tuple_pos tellp() const {
+			return Tuple_pos(_chunk_write_pos, _write_pos, _global_write_pos);
 		}
 
-		void write_pos(std::tuple<Size,Size,Size> rhs) {
+		void seekp(Tuple_pos rhs) {
 			std::tie(_chunk_write_pos, _write_pos, _global_write_pos) = rhs;
 		}
 

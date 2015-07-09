@@ -28,7 +28,7 @@ namespace factory {
 			typedef std::function<void(K*)> Callback;
 	
 			constexpr Type():
-				_id(),
+				_id(0),
 				_name(),
 				construct(),
 				read_object(),
@@ -50,6 +50,9 @@ namespace factory {
 
 			constexpr const char* name() const { return _name.c_str(); }
 			void name(const char* n) { _name = n; }
+
+			constexpr explicit operator bool() const { return this->_id != 0; }
+			constexpr bool operator !() const { return this->_id == 0; }
 
 			friend std::ostream& operator<<(std::ostream& out, const Type<K>& rhs) {
 				return out << rhs.name() << '(' << rhs.id() << ')';

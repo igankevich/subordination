@@ -43,3 +43,4 @@ Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
 Add common header to source files.
 Add license.
 Filter environment variables on startup (whitelist).
+Minimise the use of bare pointers.
