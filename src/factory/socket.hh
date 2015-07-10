@@ -627,13 +627,31 @@ namespace factory {
 			if (this->gptr() != this->egptr()) {
 				return traits_type::not_eof(*this->gptr());
 			}
-			char_type* base = &this->_gbuf.front();
-			ssize_t n = this->_fd.read(base, this->_gbuf.size());
-			std::clog << "Reading fd=" << _fd << ",n=" << n << std::endl;
-			if (n <= 0) {
-				return traits_type::eof();
+			if (this->eback() == this->gptr()) {
+				char_type* base = &this->_gbuf.front();
+				ssize_t n = this->_fd.read(base, this->_gbuf.size());
+				std::clog << "Reading fd=" << _fd << ",n=" << n << std::endl;
+				if (n <= 0) {
+					return traits_type::eof();
+				}
+				this->setg(base, base, base + n);
+			} else {
+				this->growgbuf(this->_gbuf.size() * 2);
+				ssize_t n = 0;
+				pos_type old_pos = this->gptr() - this->eback();
+				pos_type pos = this->egptr() - this->eback();
+				while ((n = this->_fd.read(this->eback() + pos, this->_gbuf.size() - pos)) > 0) {
+					pos += n;
+					if (pos == this->_gbuf.size()) {
+						this->growgbuf(this->_gbuf.size() * 2);
+					}
+				}
+				if (pos == old_pos) {
+					return traits_type::eof();
+				}
+				char_type* base = this->eback();
+				this->setg(base, base + old_pos, base + pos);
 			}
-			this->setg(base, base, base + n);
 			return traits_type::not_eof(*this->gptr());
 		}
 
@@ -699,34 +717,12 @@ namespace factory {
 		{
 			std::clog << "seekpos " << pos << std::endl;
 			if (mode & std::ios_base::in) {
-				std::size_t size = this->_gbuf.size();
-				char_type* old_end = this->egptr();
-				// go back if the buffer allows it
+				std::size_t size = this->egptr() - this->eback();
 				if (pos >= 0 && pos <= size) {
-					if (this->gptr() == this->egptr()) {
-						this->underflow();
-					}
 					char_type* beg = this->eback();
 					char_type* end = this->egptr();
 					char_type* xgptr = beg+pos;
-					if (xgptr <= end) {
-						this->setg(beg, xgptr, end);
-					} else {
-						ssize_t n = this->_fd.read(end, xgptr-end);
-						char_type* xend = std::min(end+n, xgptr);
-						this->setg(beg, xend, xend);
-					}
-				}
-				// enlarge buffer
-				if (pos > size) {
-					std::size_t new_size = calc_size(pos, this->_gbuf.size());
-					if (new_size != size) {
-						pos_type oldpos = static_cast<off_type>(this->gptr() - this->eback());
-						this->growgbuf(new_size);
-						this->gbump(this->egptr() - this->gptr());
-						this->underflow();
-						this->gbump(std::min(pos-oldpos, static_cast<off_type>(this->egptr() - this->gptr())));
-					}
+					this->setg(beg, xgptr, end);
 				}
 				// always return current position
 				return static_cast<pos_type>(this->gptr() - this->eback());
@@ -768,8 +764,10 @@ namespace factory {
 
 	protected:
 
-		void growgbuf(std::size_t new_size) {
+		void growgbuf(std::size_t target_size) {
+			if (target_size <= this->_gbuf.size()) return;
 			std::size_t size = this->_gbuf.size();
+			std::size_t new_size = calc_size(target_size, size);
 			std::ptrdiff_t off = this->gptr() - this->eback();
 			std::ptrdiff_t n = this->egptr() - this->eback();
 			this->_gbuf.resize(new_size);
@@ -845,7 +843,7 @@ namespace factory {
 					size.to_host_format();
 					this->sets(State::READING_PAYLOAD);
 					this->_size = size;
-					std::clog << "underflow(): "
+					std::clog << "READING_SIZE: "
 						<< "pbase=" << (void*)this->pbase()
 						<< ", eback=" << (void*)this->eback()
 						<< ", gptr=" << (void*)this->gptr()
@@ -856,7 +854,8 @@ namespace factory {
 				}
 			}
 			if (this->_state == State::READING_PAYLOAD) {
-				size_type count = this->egptr() - this->gptr();
+				pos_type off = this->seekoff(0, std::ios_base::end, std::ios_base::in);
+				size_type count = off - this->_start;
 				std::clog << "READING_PAYLOAD: "
 					<< ", eback=" << (void*)this->eback()
 					<< ", gptr=" << (void*)this->gptr()
@@ -867,6 +866,8 @@ namespace factory {
 					char_type* pos = this->eback() + this->_start;
 					this->setg(this->eback(), pos, pos + this->_size);
 					this->sets(State::READING_PAYLOAD_2);
+				} else {
+					this->setg(this->eback(), this->egptr(), this->egptr());
 				}
 			}
 			if (this->_state == State::READING_PAYLOAD_2) {

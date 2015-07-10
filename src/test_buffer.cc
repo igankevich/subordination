@@ -83,26 +83,26 @@ void test_fdbuf() {
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
-		{
-			std::clog << "Checking seekg()" << std::endl;
-			File file(nm, O_RDONLY);
-			factory::basic_fd_istream<T,Fd> in(file.fd());
-			test::equal(in.tellg(), 0);
-			in.seekg(k, std::ios_base::beg);
-			test::equal(in.tellg(), k);
-			in.seekg(0, std::ios_base::beg);
-			test::equal(in.tellg(), 0);
-		}
-		{
-			std::clog << "Checking seekp()" << std::endl;
-			File file(nm, O_WRONLY);
-			factory::basic_fd_ostream<T,Fd> in(file.fd());
-			test::equal(in.tellp(), 0);
-			in.seekp(k, std::ios_base::beg);
-			test::equal(in.tellp(), k);
-			in.seekp(0, std::ios_base::beg);
-			test::equal(in.tellp(), 0);
-		}
+//		{
+//			std::clog << "Checking seekg()" << std::endl;
+//			File file(nm, O_RDONLY);
+//			factory::basic_fd_istream<T,Fd> in(file.fd());
+//			test::equal(in.tellg(), 0);
+//			in.seekg(k, std::ios_base::beg);
+//			test::equal(in.tellg(), k);
+//			in.seekg(0, std::ios_base::beg);
+//			test::equal(in.tellg(), 0);
+//		}
+//		{
+//			std::clog << "Checking seekp()" << std::endl;
+//			File file(nm, O_WRONLY);
+//			factory::basic_fd_ostream<T,Fd> in(file.fd());
+//			test::equal(in.tellp(), 0);
+//			in.seekp(k, std::ios_base::beg);
+//			test::equal(in.tellp(), k);
+//			in.seekp(0, std::ios_base::beg);
+//			test::equal(in.tellp(), 0);
+//		}
 		{
 			std::clog << "Checking flush()" << std::endl;
 			File file(nm, O_WRONLY);
@@ -147,7 +147,7 @@ void test_kernelbuf() {
 	const char* nm = reinterpret_cast<const char*>(filename.c_str());
 	typedef basic_ikernelbuf<basic_fdbuf<T,Fd>> ikernelbuf;
 	typedef basic_okernelbuf<basic_fdbuf<T,Fd>> okernelbuf;
-	const size_t MAX_K = 1 << 8;
+	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
@@ -164,10 +164,14 @@ void test_kernelbuf() {
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
 			in.read(&result[0], k);
-			std::clog << "Result: "
-				<< "tellg=" << in.tellg()
-				<< ", size=" << result.size()
-				<< ", result='" << Binary<std::basic_string<T>>(result) << '\'' << std::endl;
+			if (in.gcount() < k) {
+				in.clear();
+				in.read(&result[0], k);
+			}
+//			std::clog << "Result: "
+//				<< "tellg=" << in.tellg()
+//				<< ", size=" << result.size()
+//				<< ", result='" << Binary<std::basic_string<T>>(result) << '\'' << std::endl;
 			if (result != contents) {
 				std::stringstream msg;
 				msg << "input and output does not match:\n'"
