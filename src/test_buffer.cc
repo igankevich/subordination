@@ -138,6 +138,46 @@ void test_filterbuf() {
 	}
 }
 
+template<class T, class Fd=int>
+void test_kernelbuf() {
+	std::clog << "Checking kernelbuf" << std::endl;
+	std::basic_string<T> filename = reinterpret_cast<const T*>("/tmp/");
+	filename += test::random_string<T>(16, 'a', 'z');
+	filename += reinterpret_cast<const T*>(".factory");
+	const char* nm = reinterpret_cast<const char*>(filename.c_str());
+//	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
+	typedef basic_kernelbuf<basic_fdbuf<T,Fd>> kernelbuf;
+	const size_t MAX_K = 1 << 0;
+	for (size_t k=1; k<=MAX_K; k<<=1) {
+		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
+		{
+			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			kernelbuf buf;
+			buf.setfd(file.fd());
+			std::basic_ostream<T> out(&buf);
+			out << contents << std::flush;
+		}
+		{
+			File file(nm, O_RDONLY);
+			kernelbuf buf;
+			buf.setfd(file.fd());
+			std::basic_istream<T> in(&buf);
+			std::basic_string<T> result;
+			in >> result;
+			std::clog << "Result: "
+				<< "tellg=" << in.tellg()
+				<< ", size=" << result.size()
+				<< ", result='" << Binary<std::basic_string<T>>(result) << '\'' << std::endl;
+		}
+//		out >> result;
+//		std::clog << "Result: tellp=" << out.tellp()
+//			<< ", tellg=" << out.tellg()
+//			<< ", size=" << result.size()
+//			<< ", result='" << Binary<std::basic_string<T>>(result) << '\'' << std::endl;
+//		static_cast<std::basic_ostream<T>&>(out).rdbuf(old_buf);
+	}
+}
+
 struct App {
 	int run(int, char**) {
 		try {
@@ -150,6 +190,7 @@ struct App {
 			test_fdbuf<char, Socket>();
 			test_filterbuf<char>();
 			test_filterbuf<unsigned char>();
+			test_kernelbuf<char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

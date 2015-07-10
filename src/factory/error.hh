@@ -137,11 +137,11 @@ namespace factory {
 
 	struct Error: public std::runtime_error {
 
-		Error(const std::string& msg, const char* file, const int line, const char* function):
+		Error(const std::string& msg, const char* file, const int line, const char* function) noexcept:
 			std::runtime_error(msg), _file(file), _line(line), _function(function)
 		{}
 
-		Error(const Error& rhs):
+		Error(const Error& rhs) noexcept:
 			std::runtime_error(rhs), _file(rhs._file), _line(rhs._line), _function(rhs._function) {}
 
 		Error& operator=(const Error&) = delete;

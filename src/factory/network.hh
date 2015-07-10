@@ -137,6 +137,27 @@ namespace factory {
 		return in >> static_cast<T&>(rhs);
 	}
 
+	template<class T>
+	struct Binary {
+		explicit Binary(const T& v): val(v) {}
+		friend std::ostream& operator<<(std::ostream& out, const Binary& rhs) {
+			std::ostream::sentry s(out);
+			if (s) {
+				std::ostream::fmtflags oldf = out.flags();
+				out << std::hex << std::setfill('0');
+				std::ostream_iterator<unsigned int> it(out, " ");
+				std::for_each(rhs.val.begin(), rhs.val.end(), [&out] (char ch) {
+					out << std::setw(2)
+						<< (unsigned int)(unsigned char)ch << ' ';
+				});
+				out.setf(oldf);
+			}
+			return out;
+		}
+	private:
+		const T& val;
+	};
+
 	namespace components {
 		struct Auto_check_endiannes {
 			Auto_check_endiannes() {

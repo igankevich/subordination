@@ -598,7 +598,9 @@ namespace factory {
 		typedef std::ios_base::seekdir seekdir;
 		typedef Fd fd_type;
 
-		explicit basic_fdbuf(fd_type fd, std::size_t gbufsize, std::size_t pbufsize):
+		basic_fdbuf(): basic_fdbuf(-1, 512, 512) {}
+
+		basic_fdbuf(fd_type fd, std::size_t gbufsize, std::size_t pbufsize):
 			_fd(fd),
 			_gbuf(gbufsize),
 			_pbuf(pbufsize)
@@ -638,9 +640,10 @@ namespace factory {
 		int_type overflow(int_type c = traits_type::eof()) {
 			if (c != traits_type::eof()) {
 				if (this->pptr() == this->epptr()) {
-					if (this->sync() == -1) {
-						this->growpbuf(this->_pbuf.size() * 2);
-					}
+					this->growpbuf(this->_pbuf.size() * 2);
+				// TODO: do we need sync???
+//					if (this->sync() == -1) {
+//					}
 				}
 				if (this->pptr() != this->epptr()) {
 					*this->pptr() = c;
@@ -648,7 +651,8 @@ namespace factory {
 					return traits_type::not_eof(c);
 				}
 			} else {
-				this->sync();
+				// TODO: do we need sync???
+//				this->sync();
 			}
 			return traits_type::eof();
 		}
@@ -737,8 +741,7 @@ namespace factory {
 				// enlarge buffer
 				if (pos > size) {
 					std::clog << "GROW: pos=" << pos << std::endl;
-					std::size_t new_size = calc_size(pos, this->_pbuf.size());
-					this->growpbuf(new_size);
+					this->growpbuf(pos);
 					this->pbump(this->epptr() - this->pptr());
 				}
 				// always return current position
@@ -746,6 +749,8 @@ namespace factory {
 			}
 			return pos_type(off_type(-1));
 		}
+
+		void setfd(fd_type rhs) { this->_fd = rhs; }
 
 		basic_fdbuf& operator=(basic_fdbuf&) = delete;
 		basic_fdbuf(basic_fdbuf&) = delete;
@@ -774,8 +779,10 @@ namespace factory {
 			this->setg(base, base + off, base + n);
 		}
 
-		void growpbuf(std::size_t new_size) {
+		void growpbuf(std::size_t target_size) {
+			if (target_size <= this->_pbuf.size()) return;
 			std::size_t size = this->_pbuf.size();
+			std::size_t new_size = calc_size(target_size, size);
 			std::ptrdiff_t off = this->pptr() - this->pbase();
 			std::ptrdiff_t n = this->epptr() - this->pbase();
 			this->_pbuf.resize(new_size);
@@ -785,9 +792,118 @@ namespace factory {
 			this->pbump(off);
 		}
 
+		std::size_t pbufsize() const { return this->_pbuf.size(); }
+
 		fd_wrapper<fd_type> _fd;
 		std::vector<char_type> _gbuf;
 		std::vector<char_type> _pbuf;
+	};
+
+	template<class Base>
+	struct basic_kernelbuf: public Base {
+
+		using typename Base::int_type;
+		using typename Base::traits_type;
+		using typename Base::char_type;
+		using typename Base::pos_type;
+		using typename Base::off_type;
+		typedef std::ios_base::openmode openmode;
+		typedef std::ios_base::seekdir seekdir;
+		typedef uint32_t size_type;
+
+		enum struct State {
+			READING_SIZE,
+			READING_PAYLOAD
+		};
+
+		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
+			"bad base class for basic_kernelbuf");
+
+		basic_kernelbuf() {
+			this->begin_packet();
+			std::clog << "basic_kernelbuf(): "
+				<< "pbase=" << (void*)this->pbase()
+				<< ", pptr=" << (void*)this->pptr()
+				<< ", eback=" << (void*)this->eback()
+				<< ", gptr=" << (void*)this->gptr()
+				<< ", egptr=" << (void*)this->egptr()
+				<< std::endl;
+		}
+
+		virtual ~basic_kernelbuf() {
+			this->end_packet();
+			this->Base::sync();
+		}
+
+		int sync() {
+			this->end_packet();
+			int ret = this->Base::sync();
+			this->begin_packet();
+			return ret;
+		}
+
+		int_type underflow() {
+			std::clog << "underflow(): "
+				<< "pbase=" << (void*)this->pbase()
+				<< ", pptr=" << (void*)this->pptr()
+				<< ", eback=" << (void*)this->eback()
+				<< ", gptr=" << (void*)this->gptr()
+				<< ", egptr=" << (void*)this->egptr()
+				<< std::endl;
+			int_type ret = this->Base::underflow();
+			size_type count = this->egptr() - this->gptr();
+			if (this->_state == State::READING_SIZE) {
+				if (count >= sizeof(size_type)) {
+					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+					Bytes<size_type> size(this->gptr(), this->gptr() + sizeof(size_type));
+//					this->gbump(sizeof(size_type));
+					size.to_host_format();
+					this->_state = State::READING_PAYLOAD;
+					std::clog << "underflow(): "
+						<< "pbase=" << (void*)this->pbase()
+						<< ", eback=" << (void*)this->eback()
+						<< ", gptr=" << (void*)this->gptr()
+						<< ", egptr=" << (void*)this->egptr()
+						<< ", size=" << size
+						<< std::endl;
+				}
+			}
+			return traits_type::eof();
+		}
+
+	private:
+
+		void begin_packet() {
+			std::clog << "begin_packet()" << std::endl;
+			this->setbeg(this->seekoff(0, std::ios_base::cur, std::ios_base::out));
+			this->putsize(0);
+		}
+
+		void end_packet() {
+			std::clog << "end_packet()" << std::endl;
+			pos_type end = this->seekoff(0, std::ios_base::cur, std::ios_base::out);
+			size_type s = end - this->_begin;
+			if (s == sizeof(size_type)) {
+				this->pbump(-static_cast<std::make_signed<size_type>::type>(s));
+			} else {
+				this->seekpos(this->_begin, std::ios_base::out);
+				this->putsize(s);
+				this->seekpos(end, std::ios_base::out);
+			}
+		}
+
+		void putsize(size_type s) {
+			Bytes<size_type> pckt_size(s);
+			pckt_size.to_network_format();
+			this->xsputn(pckt_size.begin(), pckt_size.size());
+		}
+
+		void setbeg(pos_type rhs) { this->_begin = rhs; }
+
+		pos_type _begin = 0;
+		size_type _size = 0;
+		pos_type _start = 0;
+		State _state = State::READING_SIZE;
 	};
 
 //	template<class T>
