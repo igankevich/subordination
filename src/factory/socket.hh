@@ -734,12 +734,12 @@ namespace factory {
 					std::clog << "BUMP = " << pos-off << std::endl;
 					this->pbump(pos-off);
 				}
-				// enlarge buffer
-				if (pos > size) {
-					std::clog << "GROW: pos=" << pos << std::endl;
-					this->growpbuf(pos);
-					this->pbump(this->epptr() - this->pptr());
-				}
+//				// enlarge buffer
+//				if (pos > size) {
+//					std::clog << "GROW: pos=" << pos << std::endl;
+//					this->growpbuf(pos);
+//					this->pbump(this->epptr() - this->pptr());
+//				}
 				// always return current position
 				return static_cast<pos_type>(this->pptr() - this->pbase());
 			}
