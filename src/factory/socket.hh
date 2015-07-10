@@ -625,7 +625,7 @@ namespace factory {
 
 		int_type underflow() {
 			if (this->gptr() != this->egptr()) {
-				return traits_type::not_eof(*this->gptr());
+				return traits_type::to_int_type(*this->gptr());
 			}
 			if (this->eback() == this->gptr()) {
 				char_type* base = &this->_gbuf.front();
@@ -826,7 +826,7 @@ namespace factory {
 		}
 
 		int_type underflow() {
-			std::clog << "underflow(): "
+			std::clog << "underflow():       "
 				<< "pbase=" << (void*)this->pbase()
 				<< ", pptr=" << (void*)this->pptr()
 				<< ", eback=" << (void*)this->eback()
@@ -834,29 +834,13 @@ namespace factory {
 				<< ", egptr=" << (void*)this->egptr()
 				<< std::endl;
 			int_type ret = this->Base::underflow();
-			if (this->_state == State::READING_SIZE) {
-				size_type count = this->egptr() - this->gptr();
-				if (count >= sizeof(size_type)) {
-					Bytes<size_type> size(this->gptr(), this->gptr() + sizeof(size_type));
-					this->gbump(sizeof(size_type));
-					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
-					size.to_host_format();
-					this->sets(State::READING_PAYLOAD);
-					this->_size = size;
-					std::clog << "READING_SIZE: "
-						<< "pbase=" << (void*)this->pbase()
-						<< ", eback=" << (void*)this->eback()
-						<< ", gptr=" << (void*)this->gptr()
-						<< ", egptr=" << (void*)this->egptr()
-						<< ", size=" << size
-						<< ", start=" << this->_start
-						<< std::endl;
-				}
-			}
+			this->read_kernel_size();
 			if (this->_state == State::READING_PAYLOAD) {
 				pos_type off = this->seekoff(0, std::ios_base::end, std::ios_base::in);
 				size_type count = off - this->_start;
-				std::clog << "READING_PAYLOAD: "
+				std::clog << "READING_PAYLOAD:   "
+					<< "pbase=" << (void*)this->pbase()
+					<< ", pptr=" << (void*)this->pptr()
 					<< ", eback=" << (void*)this->eback()
 					<< ", gptr=" << (void*)this->gptr()
 					<< ", egptr=" << (void*)this->egptr()
@@ -873,6 +857,8 @@ namespace factory {
 			if (this->_state == State::READING_PAYLOAD_2) {
 				int_type c = *this->gptr();
 				std::clog << "READING_PAYLOAD_2: "
+					<< "pbase=" << (void*)this->pbase()
+					<< ", pptr=" << (void*)this->pptr()
 					<< ", eback=" << (void*)this->eback()
 					<< ", gptr=" << (void*)this->gptr()
 					<< ", egptr=" << (void*)this->egptr()
@@ -887,9 +873,49 @@ namespace factory {
 			return traits_type::eof();
 		}
 
+		std::streamsize xsgetn(char_type* s, std::streamsize n) {
+			this->read_kernel_size();
+			std::clog << "xsgetn()           "
+				<< "pbase=" << (void*)this->pbase()
+				<< ", pptr=" << (void*)this->pptr()
+				<< ", eback=" << (void*)this->eback()
+				<< ", gptr=" << (void*)this->gptr()
+				<< ", egptr=" << (void*)this->egptr()
+				<< std::endl;
+			return this->Base::xsgetn(s, n);
+		}
+
 	private:
 
+		bool read_kernel_size() {
+			bool ret = true;
+			if (this->state() == State::READING_SIZE) {
+				size_type count = this->egptr() - this->gptr();
+				if (count >= sizeof(size_type)) {
+					Bytes<size_type> size(this->gptr(), this->gptr() + sizeof(size_type));
+					this->gbump(sizeof(size_type));
+					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+					size.to_host_format();
+					this->sets(State::READING_PAYLOAD);
+					this->_size = size;
+					std::clog << "READING_SIZE:      "
+						<< "pbase=" << (void*)this->pbase()
+						<< ", pptr=" << (void*)this->pptr()
+						<< ", eback=" << (void*)this->eback()
+						<< ", gptr=" << (void*)this->gptr()
+						<< ", egptr=" << (void*)this->egptr()
+						<< ", size=" << size
+						<< ", start=" << this->_start
+						<< std::endl;
+				} else {
+					ret = false;
+				}
+			}
+			return ret;
+		}
+
 		void sets(State rhs) { this->_state = rhs; }
+		State state() const { return this->_state; }
 
 		size_type _size = 0;
 		pos_type _start = 0;
@@ -925,9 +951,16 @@ namespace factory {
 	private:
 
 		void begin_packet() {
-			std::clog << "begin_packet()" << std::endl;
+//			std::clog << "begin_packet()" << std::endl;
 			this->setbeg(this->seekoff(0, std::ios_base::cur, std::ios_base::out));
 			this->putsize(0);
+			std::clog << "begin_packet()     "
+				<< "pbase=" << (void*)this->pbase()
+				<< ", pptr=" << (void*)this->pptr()
+				<< ", eback=" << (void*)this->eback()
+				<< ", gptr=" << (void*)this->gptr()
+				<< ", egptr=" << (void*)this->egptr()
+				<< std::endl;
 		}
 
 		void end_packet() {

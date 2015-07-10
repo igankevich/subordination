@@ -195,9 +195,11 @@ void test_kernelbuf_with_stringstream() {
 		std::basic_streambuf<T>* orig = out.rdbuf();
 		kernelbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
-		out << contents;
-		std::basic_string<T> result;
-		out >> result;
+		out.write(contents.data(), contents.size());
+		out << std::flush;
+		std::basic_string<T> result(contents.size(), '_');
+		out.seekg(0, std::ios_base::beg);
+		out.read(&result[0], result.size());
 		if (result != contents) {
 			std::stringstream msg;
 			msg << "input and output does not match:\n'"
@@ -221,7 +223,7 @@ struct App {
 			test_filterbuf<char>();
 			test_filterbuf<unsigned char>();
 			test_kernelbuf<char>();
-//			test_kernelbuf_with_stringstream<char>();
+			test_kernelbuf_with_stringstream<char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
