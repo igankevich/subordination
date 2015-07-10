@@ -1,7 +1,7 @@
 namespace factory {
 	namespace components {
 		size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
-#if defined(FACTORY_DISABLE_CPU_BINDING)
+#if defined(FACTORY_NO_CPU_BINDING)
 		void thread_affinity(size_t) {}
 #else
 #if defined(HAVE_CPU_SET_T)
@@ -505,7 +505,7 @@ namespace factory {
 				this_process::bind_signal(SIGTERM, shutdown);
 				this_process::bind_signal(SIGINT, shutdown);
 				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
-#ifndef FACTORY_NO_STACK_TRACE
+#ifndef FACTORY_NO_BACKTRACE
 				this_process::bind_signal(SIGSEGV, Action(print_stack_trace));
 #endif
 			}

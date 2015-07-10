@@ -15,6 +15,8 @@ AM_LDFLAGS = \
 	$(PERF_TESTING_LDFLAGS) \
 	$(CODE_COVERAGE_LDFLAGS)
 
+AM_DEFAULT_SOURCE_EXT = .cc
+
 CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
 
 #-Wstack-protector -fstack-protector -- security concerns
@@ -26,7 +28,6 @@ CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
 #-Wabi                               -- probably not needed
 
 REPO_VERSION = $(top_srcdir)/bin/repo-version
-AM_DEFAULT_SOURCE_EXT = .cc
 
 bin_PROGRAMS = \
 	factory_time
@@ -62,8 +63,8 @@ check_PROGRAMS = \
 
 
 # disable stack trace for tests where a child process must fail
-test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
-test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_STACK_TRACE
+test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
+test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 
 # disable Factory global objects, where they are not needed, to reduce build time
 test_buffer_CPPFLAGS     = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
@@ -75,4 +76,4 @@ factory_time_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 #test_shmem_CPPFLAGS      = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 test_uint128_CPPFLAGS     = $(AM_CPPFLAGS) -DFACTORY_NO_DERIVED_SYSTEM
 
-test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_DISABLE_CPU_BINDING
+test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING
