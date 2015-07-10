@@ -800,27 +800,24 @@ namespace factory {
 	};
 
 	template<class Base>
-	struct basic_kernelbuf: public Base {
+	struct basic_ikernelbuf: public virtual Base {
 
 		using typename Base::int_type;
 		using typename Base::traits_type;
 		using typename Base::char_type;
 		using typename Base::pos_type;
-		using typename Base::off_type;
-		typedef std::ios_base::openmode openmode;
-		typedef std::ios_base::seekdir seekdir;
 		typedef uint32_t size_type;
 
 		enum struct State {
 			READING_SIZE,
-			READING_PAYLOAD
+			READING_PAYLOAD,
+			READING_PAYLOAD_2
 		};
 
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
-			"bad base class for basic_kernelbuf");
+			"bad base class for ibasic_kernelbuf");
 
-		basic_kernelbuf() {
-			this->begin_packet();
+		basic_ikernelbuf() {
 			std::clog << "basic_kernelbuf(): "
 				<< "pbase=" << (void*)this->pbase()
 				<< ", pptr=" << (void*)this->pptr()
@@ -828,18 +825,6 @@ namespace factory {
 				<< ", gptr=" << (void*)this->gptr()
 				<< ", egptr=" << (void*)this->egptr()
 				<< std::endl;
-		}
-
-		virtual ~basic_kernelbuf() {
-			this->end_packet();
-			this->Base::sync();
-		}
-
-		int sync() {
-			this->end_packet();
-			int ret = this->Base::sync();
-			this->begin_packet();
-			return ret;
 		}
 
 		int_type underflow() {
@@ -851,24 +836,89 @@ namespace factory {
 				<< ", egptr=" << (void*)this->egptr()
 				<< std::endl;
 			int_type ret = this->Base::underflow();
-			size_type count = this->egptr() - this->gptr();
 			if (this->_state == State::READING_SIZE) {
+				size_type count = this->egptr() - this->gptr();
 				if (count >= sizeof(size_type)) {
-					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
 					Bytes<size_type> size(this->gptr(), this->gptr() + sizeof(size_type));
-//					this->gbump(sizeof(size_type));
+					this->gbump(sizeof(size_type));
+					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
 					size.to_host_format();
-					this->_state = State::READING_PAYLOAD;
+					this->sets(State::READING_PAYLOAD);
+					this->_size = size;
 					std::clog << "underflow(): "
 						<< "pbase=" << (void*)this->pbase()
 						<< ", eback=" << (void*)this->eback()
 						<< ", gptr=" << (void*)this->gptr()
 						<< ", egptr=" << (void*)this->egptr()
 						<< ", size=" << size
+						<< ", start=" << this->_start
 						<< std::endl;
 				}
 			}
+			if (this->_state == State::READING_PAYLOAD) {
+				size_type count = this->egptr() - this->gptr();
+				std::clog << "READING_PAYLOAD: "
+					<< ", eback=" << (void*)this->eback()
+					<< ", gptr=" << (void*)this->gptr()
+					<< ", egptr=" << (void*)this->egptr()
+					<< ", count=" << count
+					<< std::endl;
+				if (count + sizeof(size_type) >= this->_size) {
+					char_type* pos = this->eback() + this->_start;
+					this->setg(this->eback(), pos, pos + this->_size);
+					this->sets(State::READING_PAYLOAD_2);
+				}
+			}
+			if (this->_state == State::READING_PAYLOAD_2) {
+				int_type c = *this->gptr();
+				std::clog << "READING_PAYLOAD_2: "
+					<< ", eback=" << (void*)this->eback()
+					<< ", gptr=" << (void*)this->gptr()
+					<< ", egptr=" << (void*)this->egptr()
+					<< ", c=" << c
+					<< std::endl;
+				pos_type off = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+				if (off+pos_type(1) - this->_start == this->_size - sizeof(size_type)) {
+					this->sets(State::READING_SIZE);
+				}
+				return c;
+			}
 			return traits_type::eof();
+		}
+
+	private:
+
+		void sets(State rhs) { this->_state = rhs; }
+
+		size_type _size = 0;
+		pos_type _start = 0;
+		State _state = State::READING_SIZE;
+	};
+
+	template<class Base>
+	struct basic_okernelbuf: public virtual Base {
+
+		using typename Base::int_type;
+		using typename Base::traits_type;
+		using typename Base::char_type;
+		using typename Base::pos_type;
+		typedef uint32_t size_type;
+
+		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
+			"bad base class for basic_okernelbuf");
+
+		basic_okernelbuf() { this->begin_packet(); }
+
+		virtual ~basic_okernelbuf() {
+			this->end_packet();
+			this->Base::sync();
+		}
+
+		int sync() {
+			this->end_packet();
+			int ret = this->Base::sync();
+			this->begin_packet();
+			return ret;
 		}
 
 	private:
@@ -901,9 +951,13 @@ namespace factory {
 		void setbeg(pos_type rhs) { this->_begin = rhs; }
 
 		pos_type _begin = 0;
-		size_type _size = 0;
-		pos_type _start = 0;
-		State _state = State::READING_SIZE;
+	};
+
+	template<class Base>
+	struct basic_kernelbuf:
+		public basic_okernelbuf<Base>,
+		public basic_ikernelbuf<Base>
+	{
 	};
 
 //	template<class T>

@@ -145,7 +145,6 @@ namespace factory {
 			if (s) {
 				std::ostream::fmtflags oldf = out.flags();
 				out << std::hex << std::setfill('0');
-				std::ostream_iterator<unsigned int> it(out, " ");
 				std::for_each(rhs.val.begin(), rhs.val.end(), [&out] (char ch) {
 					out << std::setw(2)
 						<< (unsigned int)(unsigned char)ch << ' ';
