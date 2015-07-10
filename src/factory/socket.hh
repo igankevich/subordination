@@ -1335,15 +1335,15 @@ namespace factory {
 //	};
 
 	template<class T, class Fd=int>
-	struct basic_fd_istream: public std::basic_istream<T> {
-		explicit basic_fd_istream(Fd fd): std::basic_istream<T>(new basic_fdbuf<T,Fd>(fd, 512, 0)) {}
-		virtual ~basic_fd_istream() { delete this->rdbuf(); }
+	struct basic_ifdstream: public std::basic_istream<T> {
+		explicit basic_ifdstream(Fd fd): std::basic_istream<T>(new basic_fdbuf<T,Fd>(fd, 512, 0)) {}
+		virtual ~basic_ifdstream() { delete this->rdbuf(); }
 	};
 
 	template<class T, class Fd=int>
-	struct basic_fd_ostream: public std::basic_ostream<T> {
-		explicit basic_fd_ostream(Fd fd): std::basic_ostream<T>(new basic_fdbuf<T,Fd>(fd, 0, 512)) {}
-		virtual ~basic_fd_ostream() { delete this->rdbuf(); }
+	struct basic_ofdstream: public std::basic_ostream<T> {
+		explicit basic_ofdstream(Fd fd): std::basic_ostream<T>(new basic_fdbuf<T,Fd>(fd, 0, 512)) {}
+		virtual ~basic_ofdstream() { delete this->rdbuf(); }
 	};
 
 	template<class T, class Fd=int>
@@ -1353,7 +1353,7 @@ namespace factory {
 	};
 
 	typedef basic_fdbuf<char> fdbuf;
-	typedef basic_fd_istream<char> fd_istream;
-	typedef basic_fd_ostream<char> fd_ostream;
+	typedef basic_ifdstream<char> ifdstream;
+	typedef basic_ofdstream<char> ofdstream;
 
 }

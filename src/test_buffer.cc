@@ -67,12 +67,12 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking overflow()" << std::endl;
 			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::basic_fd_ostream<T,Fd>(file.fd()) << expected_contents;
+			factory::basic_ofdstream<T,Fd>(file.fd()) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
 			File file(nm, O_RDONLY);
-			factory::basic_fd_istream<T,Fd> in(file.fd());
+			factory::basic_ifdstream<T,Fd> in(file.fd());
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -86,7 +86,7 @@ void test_fdbuf() {
 //		{
 //			std::clog << "Checking seekg()" << std::endl;
 //			File file(nm, O_RDONLY);
-//			factory::basic_fd_istream<T,Fd> in(file.fd());
+//			factory::basic_ifdstream<T,Fd> in(file.fd());
 //			test::equal(in.tellg(), 0);
 //			in.seekg(k, std::ios_base::beg);
 //			test::equal(in.tellg(), k);
@@ -96,7 +96,7 @@ void test_fdbuf() {
 //		{
 //			std::clog << "Checking seekp()" << std::endl;
 //			File file(nm, O_WRONLY);
-//			factory::basic_fd_ostream<T,Fd> in(file.fd());
+//			factory::basic_ofdstream<T,Fd> in(file.fd());
 //			test::equal(in.tellp(), 0);
 //			in.seekp(k, std::ios_base::beg);
 //			test::equal(in.tellp(), k);
@@ -106,7 +106,7 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking flush()" << std::endl;
 			File file(nm, O_WRONLY);
-			factory::basic_fd_ostream<T,Fd> out(file.fd());
+			factory::basic_ofdstream<T,Fd> out(file.fd());
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);
@@ -183,6 +183,31 @@ void test_kernelbuf() {
 	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
 }
 
+template<class T>
+void test_kernelbuf_with_stringstream() {
+	typedef basic_ikernelbuf<std::basic_stringbuf<T>> ikernelbuf;
+	typedef basic_okernelbuf<std::basic_stringbuf<T>> okernelbuf;
+	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
+	const size_t MAX_K = 1 << 0;
+	for (size_t k=1; k<=MAX_K; k<<=1) {
+		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
+		std::basic_stringstream<T> out;
+		std::basic_streambuf<T>* orig = out.rdbuf();
+		kernelbuf buf;
+		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
+		out << contents;
+		std::basic_string<T> result;
+		out >> result;
+		if (result != contents) {
+			std::stringstream msg;
+			msg << "input and output does not match:\n'"
+				<< contents << "'\n!=\n'" << result << "'";
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
+		static_cast<std::basic_ostream<T>&>(out).rdbuf(orig);
+	}
+}
+
 struct App {
 	int run(int, char**) {
 		try {
@@ -196,6 +221,7 @@ struct App {
 			test_filterbuf<char>();
 			test_filterbuf<unsigned char>();
 			test_kernelbuf<char>();
+//			test_kernelbuf_with_stringstream<char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
