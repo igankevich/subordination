@@ -808,49 +808,20 @@ namespace factory {
 
 		enum struct State {
 			READING_SIZE,
-			READING_PAYLOAD,
-			READING_PAYLOAD_2
+			BUFFERING_PAYLOAD,
+			READING_PAYLOAD
 		};
 
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 			"bad base class for ibasic_kernelbuf");
 
-		basic_ikernelbuf() {
-			std::clog << "basic_kernelbuf(): "
-				<< "pbase=" << (void*)this->pbase()
-				<< ", pptr=" << (void*)this->pptr()
-				<< ", eback=" << (void*)this->eback()
-				<< ", gptr=" << (void*)this->gptr()
-				<< ", egptr=" << (void*)this->egptr()
-				<< std::endl;
-		}
-
 		int_type underflow() {
-			std::clog << "underflow():       "
-				<< "pbase=" << (void*)this->pbase()
-				<< ", pptr=" << (void*)this->pptr()
-				<< ", eback=" << (void*)this->eback()
-				<< ", gptr=" << (void*)this->gptr()
-				<< ", egptr=" << (void*)this->egptr()
-				<< std::endl;
 			int_type ret = this->Base::underflow();
-			this->read_kernel_size();
+			this->read_kernel_packetsize();
+			this->buffer_payload();
 			this->read_payload();
-			if (this->_state == State::READING_PAYLOAD_2) {
-				int_type c = *this->gptr();
-				std::clog << "READING_PAYLOAD_2: "
-					<< "pbase=" << (void*)this->pbase()
-					<< ", pptr=" << (void*)this->pptr()
-					<< ", eback=" << (void*)this->eback()
-					<< ", gptr=" << (void*)this->gptr()
-					<< ", egptr=" << (void*)this->egptr()
-					<< ", c=" << c
-					<< std::endl;
-				pos_type off = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
-				if (off+pos_type(1) - this->_start == this->_size - sizeof(size_type)) {
-					this->sets(State::READING_SIZE);
-				}
-				return c;
+			if (this->_state == State::READING_PAYLOAD) {
+				return *this->gptr();
 			}
 			return traits_type::eof();
 		}
@@ -859,10 +830,10 @@ namespace factory {
 			if (this->egptr() == this->gptr()) {
 				this->Base::underflow();
 			}
-			if (!this->read_kernel_size()) {
+			if (!this->read_kernel_packetsize()) {
 				return std::streamsize(0);
 			}
-			if (!this->read_payload()) {
+			if (!this->buffer_payload()) {
 				return std::streamsize(0);
 			}
 			return this->Base::xsgetn(s, n);
@@ -870,18 +841,34 @@ namespace factory {
 
 	private:
 
-		bool read_kernel_size() {
+		bool read_kernel_packetsize() {
 			bool ret = true;
 			if (this->state() == State::READING_SIZE) {
 				size_type count = this->egptr() - this->gptr();
-				if (count >= sizeof(size_type)) {
-					Bytes<size_type> size(this->gptr(), this->gptr() + sizeof(size_type));
-					this->gbump(sizeof(size_type));
-					this->_start = this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+				if (count >= this->hdrsize()) {
+					Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
 					size.to_host_format();
-					this->sets(State::READING_PAYLOAD);
-					this->_size = size;
+					this->gbump(this->hdrsize());
+					this->setpos(this->readoff());
+					this->setsize(size);
+					this->sets(State::BUFFERING_PAYLOAD);
 				} else {
+					ret = false;
+				}
+			}
+			this->dumpstate(ret);
+			return ret;
+		}
+
+		bool buffer_payload() {
+			bool ret = true;
+			if (this->_state == State::BUFFERING_PAYLOAD) {
+				if (this->readend() - this->packetpos() >= this->payloadsize()) {
+					char_type* pos = this->eback() + this->packetpos();
+					this->setg(this->eback(), pos, pos + this->packetsize());
+					this->sets(State::READING_PAYLOAD);
+				} else {
+					this->setg(this->eback(), this->egptr(), this->egptr());
 					ret = false;
 				}
 			}
@@ -892,18 +879,12 @@ namespace factory {
 		bool read_payload() {
 			bool ret = true;
 			if (this->_state == State::READING_PAYLOAD) {
-				pos_type off = this->seekoff(0, std::ios_base::end, std::ios_base::in);
-				size_type count = off - this->_start;
-				if (count + sizeof(size_type) >= this->_size) {
-					char_type* pos = this->eback() + this->_start;
-					this->setg(this->eback(), pos, pos + this->_size);
-					this->sets(State::READING_PAYLOAD_2);
-				} else {
-					this->setg(this->eback(), this->egptr(), this->egptr());
-					ret = false;
+				this->dumpstate(ret);
+				pos_type off = this->readoff() + pos_type(1);
+				if (off - this->packetpos() == this->payloadsize()) {
+					this->sets(State::READING_SIZE);
 				}
 			}
-			this->dumpstate(ret);
 			return ret;
 		}
 
@@ -914,8 +895,8 @@ namespace factory {
 				<< ", eback=" << (void*)this->eback()
 				<< ", gptr=" << (void*)this->gptr()
 				<< ", egptr=" << (void*)this->egptr()
-				<< ", size=" << this->_size
-				<< ", start=" << this->_start
+				<< ", size=" << this->packetsize()
+				<< ", start=" << this->packetpos()
 				<< ", ret=" << ret
 				<< std::endl;
 		}
@@ -923,8 +904,8 @@ namespace factory {
 		friend std::ostream& operator<<(std::ostream& out, State rhs) {
 			switch (rhs) {
 				case State::READING_SIZE: out << "READING_SIZE"; break;
+				case State::BUFFERING_PAYLOAD: out << "BUFFERING_PAYLOAD"; break;
 				case State::READING_PAYLOAD: out << "READING_PAYLOAD"; break;
-				case State::READING_PAYLOAD_2: out << "READING_PAYLOAD_2"; break;
 				default: break;
 			}
 			return out;
@@ -932,9 +913,22 @@ namespace factory {
 
 		void sets(State rhs) { this->_state = rhs; }
 		State state() const { return this->_state; }
+		pos_type readoff() {
+			return this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+		}
+		pos_type readend() {
+			return this->seekoff(0, std::ios_base::end, std::ios_base::in);
+		}
+		void setsize(size_type rhs) { this->_packetsize = rhs; }
+		size_type packetsize() const { return this->_packetsize; }
+		size_type payloadsize() const { return this->_packetsize - this->hdrsize(); }
+		static constexpr
+		size_type hdrsize() { return sizeof(_packetsize); }
+		pos_type packetpos() const { return this->_packetpos; }
+		void setpos(pos_type rhs) { this->_packetpos = rhs; }
 
-		size_type _size = 0;
-		pos_type _start = 0;
+		size_type _packetsize = 0;
+		pos_type _packetpos = 0;
 		State _state = State::READING_SIZE;
 	};
 
@@ -967,8 +961,7 @@ namespace factory {
 	private:
 
 		void begin_packet() {
-//			std::clog << "begin_packet()" << std::endl;
-			this->setbeg(this->seekoff(0, std::ios_base::cur, std::ios_base::out));
+			this->setbeg(this->writepos());
 			this->putsize(0);
 			std::clog << "begin_packet()     "
 				<< "pbase=" << (void*)this->pbase()
@@ -981,7 +974,7 @@ namespace factory {
 
 		void end_packet() {
 			std::clog << "end_packet()" << std::endl;
-			pos_type end = this->seekoff(0, std::ios_base::cur, std::ios_base::out);
+			pos_type end = this->writepos();
 			size_type s = end - this->_begin;
 			if (s == sizeof(size_type)) {
 				this->pbump(-static_cast<std::make_signed<size_type>::type>(s));
@@ -995,10 +988,13 @@ namespace factory {
 		void putsize(size_type s) {
 			Bytes<size_type> pckt_size(s);
 			pckt_size.to_network_format();
-			this->xsputn(pckt_size.begin(), pckt_size.size());
+			this->Base::xsputn(pckt_size.begin(), pckt_size.size());
 		}
 
 		void setbeg(pos_type rhs) { this->_begin = rhs; }
+		pos_type writepos() {
+			return this->seekoff(0, std::ios_base::cur, std::ios_base::out);
+		}
 
 		pos_type _begin = 0;
 	};
