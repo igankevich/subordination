@@ -227,12 +227,12 @@ void test_kernelbuf_withvector() {
 			input[j] = dice();
 
 		kstream str;
-//		if (str.tellp() != 0) {
-//			std::stringstream msg;
-//			msg << "buffer is not empty before write: tellp=";
-//			msg << str.tellp();
-//			throw Error(msg.str(), __FILE__, __LINE__, __func__);
-//		}
+		if (str.tellp() != 0) {
+			std::stringstream msg;
+			msg << "buffer is not empty before write: tellp=";
+			msg << str.tellp();
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
 		str.write(&input[0], size);
 		str.flush();
 		std::vector<T> output(size);

@@ -941,21 +941,43 @@ namespace factory {
 		using typename Base::pos_type;
 		typedef uint32_t size_type;
 
+		enum struct State {
+			WRITING_SIZE,
+			WRITING_PAYLOAD
+		};
+
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 			"bad base class for basic_okernelbuf");
 
-		basic_okernelbuf() { this->begin_packet(); }
+		basic_okernelbuf() {
+			std::clog << "basic_okernelbuf()" << std::endl;
+//			this->begin_packet();
+		}
 
 		virtual ~basic_okernelbuf() {
 			this->end_packet();
-			this->Base::sync();
+//			this->end_packet();
+//			this->Base::sync();
 		}
 
 		int sync() {
 			this->end_packet();
 			int ret = this->Base::sync();
-			this->begin_packet();
+//			this->begin_packet();
 			return ret;
+		}
+
+		int_type overflow(int_type c) {
+			std::clog << "overflow()" << std::endl;
+			return this->Base::overflow(c);
+		}
+
+		std::streamsize xsputn(const char_type* s, std::streamsize n) {
+			if (this->state() == State::WRITING_SIZE) {
+				this->begin_packet();
+			}
+			std::clog << "xsputn()" << std::endl;
+			return this->Base::xsputn(s, n);
 		}
 
 	private:
@@ -963,6 +985,7 @@ namespace factory {
 		void begin_packet() {
 			this->setbeg(this->writepos());
 			this->putsize(0);
+			this->sets(State::WRITING_PAYLOAD);
 			std::clog << "begin_packet()     "
 				<< "pbase=" << (void*)this->pbase()
 				<< ", pptr=" << (void*)this->pptr()
@@ -983,6 +1006,7 @@ namespace factory {
 				this->putsize(s);
 				this->seekpos(end, std::ios_base::out);
 			}
+			this->sets(State::WRITING_SIZE);
 		}
 
 		void putsize(size_type s) {
@@ -996,7 +1020,11 @@ namespace factory {
 			return this->seekoff(0, std::ios_base::cur, std::ios_base::out);
 		}
 
+		void sets(State rhs) { this->_state = rhs; }
+		State state() const { return this->_state; }
+
 		pos_type _begin = 0;
+		State _state = State::WRITING_SIZE;
 	};
 
 	template<class Base>
