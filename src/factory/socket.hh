@@ -835,25 +835,7 @@ namespace factory {
 				<< std::endl;
 			int_type ret = this->Base::underflow();
 			this->read_kernel_size();
-			if (this->_state == State::READING_PAYLOAD) {
-				pos_type off = this->seekoff(0, std::ios_base::end, std::ios_base::in);
-				size_type count = off - this->_start;
-				std::clog << "READING_PAYLOAD:   "
-					<< "pbase=" << (void*)this->pbase()
-					<< ", pptr=" << (void*)this->pptr()
-					<< ", eback=" << (void*)this->eback()
-					<< ", gptr=" << (void*)this->gptr()
-					<< ", egptr=" << (void*)this->egptr()
-					<< ", count=" << count
-					<< std::endl;
-				if (count + sizeof(size_type) >= this->_size) {
-					char_type* pos = this->eback() + this->_start;
-					this->setg(this->eback(), pos, pos + this->_size);
-					this->sets(State::READING_PAYLOAD_2);
-				} else {
-					this->setg(this->eback(), this->egptr(), this->egptr());
-				}
-			}
+			this->read_payload();
 			if (this->_state == State::READING_PAYLOAD_2) {
 				int_type c = *this->gptr();
 				std::clog << "READING_PAYLOAD_2: "
@@ -874,14 +856,15 @@ namespace factory {
 		}
 
 		std::streamsize xsgetn(char_type* s, std::streamsize n) {
-			this->read_kernel_size();
-			std::clog << "xsgetn()           "
-				<< "pbase=" << (void*)this->pbase()
-				<< ", pptr=" << (void*)this->pptr()
-				<< ", eback=" << (void*)this->eback()
-				<< ", gptr=" << (void*)this->gptr()
-				<< ", egptr=" << (void*)this->egptr()
-				<< std::endl;
+			if (this->egptr() == this->gptr()) {
+				this->Base::underflow();
+			}
+			if (!this->read_kernel_size()) {
+				return std::streamsize(0);
+			}
+			if (!this->read_payload()) {
+				return std::streamsize(0);
+			}
 			return this->Base::xsgetn(s, n);
 		}
 
@@ -898,20 +881,53 @@ namespace factory {
 					size.to_host_format();
 					this->sets(State::READING_PAYLOAD);
 					this->_size = size;
-					std::clog << "READING_SIZE:      "
-						<< "pbase=" << (void*)this->pbase()
-						<< ", pptr=" << (void*)this->pptr()
-						<< ", eback=" << (void*)this->eback()
-						<< ", gptr=" << (void*)this->gptr()
-						<< ", egptr=" << (void*)this->egptr()
-						<< ", size=" << size
-						<< ", start=" << this->_start
-						<< std::endl;
 				} else {
 					ret = false;
 				}
 			}
+			this->dumpstate(ret);
 			return ret;
+		}
+
+		bool read_payload() {
+			bool ret = true;
+			if (this->_state == State::READING_PAYLOAD) {
+				pos_type off = this->seekoff(0, std::ios_base::end, std::ios_base::in);
+				size_type count = off - this->_start;
+				if (count + sizeof(size_type) >= this->_size) {
+					char_type* pos = this->eback() + this->_start;
+					this->setg(this->eback(), pos, pos + this->_size);
+					this->sets(State::READING_PAYLOAD_2);
+				} else {
+					this->setg(this->eback(), this->egptr(), this->egptr());
+					ret = false;
+				}
+			}
+			this->dumpstate(ret);
+			return ret;
+		}
+
+		void dumpstate(bool ret) {
+			std::clog << std::setw(20) << std::left << this->state()
+				<< "pbase=" << (void*)this->pbase()
+				<< ", pptr=" << (void*)this->pptr()
+				<< ", eback=" << (void*)this->eback()
+				<< ", gptr=" << (void*)this->gptr()
+				<< ", egptr=" << (void*)this->egptr()
+				<< ", size=" << this->_size
+				<< ", start=" << this->_start
+				<< ", ret=" << ret
+				<< std::endl;
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, State rhs) {
+			switch (rhs) {
+				case State::READING_SIZE: out << "READING_SIZE"; break;
+				case State::READING_PAYLOAD: out << "READING_PAYLOAD"; break;
+				case State::READING_PAYLOAD_2: out << "READING_PAYLOAD_2"; break;
+				default: break;
+			}
+			return out;
 		}
 
 		void sets(State rhs) { this->_state = rhs; }
