@@ -949,64 +949,58 @@ namespace factory {
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 			"bad base class for basic_okernelbuf");
 
-		basic_okernelbuf() {
-			std::clog << "basic_okernelbuf()" << std::endl;
-//			this->begin_packet();
-		}
-
-		virtual ~basic_okernelbuf() {
-			this->end_packet();
-//			this->end_packet();
-//			this->Base::sync();
-		}
+		basic_okernelbuf() = default;
+		virtual ~basic_okernelbuf() { this->end_packet(); }
 
 		int sync() {
 			this->end_packet();
-			int ret = this->Base::sync();
-//			this->begin_packet();
-			return ret;
+			return this->Base::sync();
 		}
 
 		int_type overflow(int_type c) {
 			std::clog << "overflow()" << std::endl;
-			return this->Base::overflow(c);
+			int_type ret = this->Base::overflow(c);
+			this->begin_packet();
+			return ret;
 		}
 
 		std::streamsize xsputn(const char_type* s, std::streamsize n) {
-			if (this->state() == State::WRITING_SIZE) {
-				this->begin_packet();
-			}
 			std::clog << "xsputn()" << std::endl;
+			this->begin_packet();
 			return this->Base::xsputn(s, n);
 		}
 
 	private:
 
 		void begin_packet() {
-			this->setbeg(this->writepos());
-			this->putsize(0);
-			this->sets(State::WRITING_PAYLOAD);
-			std::clog << "begin_packet()     "
-				<< "pbase=" << (void*)this->pbase()
-				<< ", pptr=" << (void*)this->pptr()
-				<< ", eback=" << (void*)this->eback()
-				<< ", gptr=" << (void*)this->gptr()
-				<< ", egptr=" << (void*)this->egptr()
-				<< std::endl;
+			if (this->state() == State::WRITING_SIZE) {
+				this->sets(State::WRITING_PAYLOAD);
+				this->setbeg(this->writepos());
+				this->putsize(0);
+				std::clog << "begin_packet()     "
+					<< "pbase=" << (void*)this->pbase()
+					<< ", pptr=" << (void*)this->pptr()
+					<< ", eback=" << (void*)this->eback()
+					<< ", gptr=" << (void*)this->gptr()
+					<< ", egptr=" << (void*)this->egptr()
+					<< std::endl;
+			}
 		}
 
 		void end_packet() {
-			std::clog << "end_packet()" << std::endl;
-			pos_type end = this->writepos();
-			size_type s = end - this->_begin;
-			if (s == sizeof(size_type)) {
-				this->pbump(-static_cast<std::make_signed<size_type>::type>(s));
-			} else {
-				this->seekpos(this->_begin, std::ios_base::out);
-				this->putsize(s);
-				this->seekpos(end, std::ios_base::out);
+			if (this->state() == State::WRITING_PAYLOAD) {
+				std::clog << "end_packet()" << std::endl;
+				pos_type end = this->writepos();
+				size_type s = end - this->_begin;
+				if (s == sizeof(size_type)) {
+					this->pbump(-static_cast<std::make_signed<size_type>::type>(s));
+				} else {
+					this->seekpos(this->_begin, std::ios_base::out);
+					this->putsize(s);
+					this->seekpos(end, std::ios_base::out);
+				}
+				this->sets(State::WRITING_SIZE);
 			}
-			this->sets(State::WRITING_SIZE);
 		}
 
 		void putsize(size_type s) {
