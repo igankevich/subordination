@@ -1397,6 +1397,15 @@ namespace factory {
 		virtual ~basic_fd_iostream() { delete this->rdbuf(); }
 	};
 
+	template<class Base>
+	struct basic_kstream: public std::basic_iostream<typename Base::char_type> {
+		typedef basic_kernelbuf<Base> kernelbuf;
+		basic_kstream() { this->_oldbuf = this->rdbuf(new kernelbuf); }
+		virtual ~basic_kstream() { delete this->_oldbuf; }
+	private:
+		std::basic_streambuf<typename Base::char_type>* _oldbuf = nullptr;
+	};
+
 	typedef basic_fdbuf<char> fdbuf;
 	typedef basic_ifdstream<char> ifdstream;
 	typedef basic_ofdstream<char> ofdstream;

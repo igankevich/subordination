@@ -56,22 +56,21 @@ void test_buffer() {
 
 template<class T, class Fd=int>
 void test_fdbuf() {
-	std::basic_string<T> filename = reinterpret_cast<const T*>("/tmp/");
-	filename += test::random_string<T>(16, 'a', 'z');
-	filename += reinterpret_cast<const T*>(".factory");
-	const char* nm = reinterpret_cast<const char*>(filename.c_str());
+	std::string filename = "/tmp/"
+		+ test::random_string<char>(16, 'a', 'z')
+		+ ".factory";
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		// fill file with random contents
 		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
-			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
 			factory::basic_ofdstream<T,Fd>(file.fd()) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
-			File file(nm, O_RDONLY);
+			File file(filename, O_RDONLY);
 			factory::basic_ifdstream<T,Fd> in(file.fd());
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
@@ -105,14 +104,14 @@ void test_fdbuf() {
 //		}
 		{
 			std::clog << "Checking flush()" << std::endl;
-			File file(nm, O_WRONLY);
+			File file(filename, O_WRONLY);
 			factory::basic_ofdstream<T,Fd> out(file.fd());
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);
 		}
 	}
-	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
+	check("remove()", std::remove(filename.c_str()));
 }
 
 template<class T>
@@ -141,24 +140,23 @@ void test_filterbuf() {
 template<class T, class Fd=int>
 void test_kernelbuf() {
 	std::clog << "Checking kernelbuf" << std::endl;
-	std::basic_string<T> filename = reinterpret_cast<const T*>("/tmp/");
-	filename += test::random_string<T>(16, 'a', 'z');
-	filename += reinterpret_cast<const T*>(".factory");
-	const char* nm = reinterpret_cast<const char*>(filename.c_str());
+	std::string filename = "/tmp/"
+		+ test::random_string<char>(16, 'a', 'z')
+		+ ".factory";
 	typedef basic_ikernelbuf<basic_fdbuf<T,Fd>> ikernelbuf;
 	typedef basic_okernelbuf<basic_fdbuf<T,Fd>> okernelbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
-			File file(nm, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
 			okernelbuf buf;
 			buf.setfd(file.fd());
 			std::basic_ostream<T> out(&buf);
 			out << contents << std::flush;
 		}
 		{
-			File file(nm, O_RDONLY);
+			File file(filename, O_RDONLY);
 			ikernelbuf buf;
 			buf.setfd(file.fd());
 			std::basic_istream<T> in(&buf);
@@ -180,7 +178,7 @@ void test_kernelbuf() {
 			}
 		}
 	}
-	check("remove()", std::remove(reinterpret_cast<const char*>(filename.c_str())));
+	check("remove()", std::remove(filename.c_str()));
 }
 
 template<class T>
@@ -188,7 +186,7 @@ void test_kernelbuf_with_stringstream() {
 	typedef basic_ikernelbuf<std::basic_stringbuf<T>> ikernelbuf;
 	typedef basic_okernelbuf<std::basic_stringbuf<T>> okernelbuf;
 	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
-	const size_t MAX_K = 1 << 0;
+	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		std::basic_stringstream<T> out;
@@ -196,9 +194,8 @@ void test_kernelbuf_with_stringstream() {
 		kernelbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
 		out.write(contents.data(), contents.size());
-		out << std::flush;
+		out.flush();
 		std::basic_string<T> result(contents.size(), '_');
-		out.seekg(0, std::ios_base::beg);
 		out.read(&result[0], result.size());
 		if (result != contents) {
 			std::stringstream msg;
@@ -207,6 +204,53 @@ void test_kernelbuf_with_stringstream() {
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(orig);
+	}
+}
+
+template<class T>
+void test_kernelbuf_withvector() {
+
+	std::default_random_engine generator;
+	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
+	auto dice = std::bind(distribution, generator);
+
+	typedef std::size_t I;
+	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
+	typedef basic_kstream<std::basic_stringbuf<T>> kstream;
+
+	const I MAX_SIZE_POWER = 12;
+
+	for (I k=1; k<=133; ++k) {
+		I size = I(1) << 10;
+		std::vector<T> input(size);
+		for (size_t j=0; j<size; ++j)
+			input[j] = dice();
+
+		kstream str;
+//		if (str.tellp() != 0) {
+//			std::stringstream msg;
+//			msg << "buffer is not empty before write: tellp=";
+//			msg << str.tellp();
+//			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//		}
+		str.write(&input[0], size);
+		str.flush();
+		std::vector<T> output(size);
+		str.read(&output[0], size);
+//		if (!buf.empty()) {
+//			std::stringstream msg;
+//			msg << "buffer is not empty after read: size=";
+//			msg << buf.size();
+//			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//		}
+		for (size_t j=0; j<size; ++j) {
+			if (input[j] != output[j]) {
+				std::stringstream msg;
+				msg << "input and output does not match:\n'"
+					<< input[j] << "'\n!=\n'" << output[j] << "'";
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
+		}
 	}
 }
 
@@ -224,6 +268,7 @@ struct App {
 			test_filterbuf<unsigned char>();
 			test_kernelbuf<char>();
 			test_kernelbuf_with_stringstream<char>();
+			test_kernelbuf_withvector<char>();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
