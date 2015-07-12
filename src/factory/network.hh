@@ -40,9 +40,15 @@ namespace factory {
 			((n & UINT64_C(0x00000000000000ff)) << 56);
 #endif
 	}
+	/// TODO: rewrite with compile-time user-defined literarals (as in the code above).
 	template<>
-	std::array<uint8_t,16> byte_swap(std::array<uint8_t,16> n) {
-		std::reverse(n.begin(), n.end());
+	uint128_t byte_swap(uint128_t n) {
+		union {
+			uint128_t x;
+			unsigned char y[sizeof(uint128_t)];
+		} tmp;
+		tmp.x = n;
+		std::reverse(tmp.y, tmp.y + sizeof(tmp.y));
 		return n;
 	}
 
@@ -52,9 +58,16 @@ namespace factory {
 	static_assert(byte_swap<uint64_t>(UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB), "byte swap failed for u64");
 	/// @}
 
+#if defined(WORDS_BIGENDIAN)
+	constexpr bool is_network_byte_order() { return true; }
+#else
+	constexpr bool is_network_byte_order() { return false; }
+#endif
+/*
 	constexpr bool is_network_byte_order() {
 		return __BYTE_ORDER == __BIG_ENDIAN;
 	}
+*/
 
 	template<class T>
 	constexpr T to_network_format(T n) {
@@ -70,7 +83,7 @@ namespace factory {
 	template<> struct Integral<2> { typedef uint16_t type; };
 	template<> struct Integral<4> { typedef uint32_t type; };
 	template<> struct Integral<8> { typedef uint64_t type; };
-	template<> struct Integral<16> { typedef std::array<uint8_t,16> type; };
+	template<> struct Integral<16> { typedef uint128_t type; };
 
 	template<class T, class Byte=char>
 	union Bytes {

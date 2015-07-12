@@ -454,7 +454,8 @@ namespace factory {
 			int _stop_iterations = 0;
 
 			static const int MAX_STOP_ITERATIONS = 13;
-			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
+//			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
+			static const int DEFAULT_EVENTS = POLLIN;
 		};
 
 		template<class Kernel, template<class X> class Pool, class Server_socket>

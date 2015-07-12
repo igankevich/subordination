@@ -31,7 +31,7 @@ namespace factory {
 		size_t _size;
 	};
 #endif
-#if defined(HAVE_DECL_PTHREAD_SETAFFINITY_NP)
+#if HAVE_DECL_PTHREAD_SETAFFINITY_NP
 #include <pthread.h>
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
@@ -39,24 +39,27 @@ namespace factory {
 				::pthread_setaffinity_np(::pthread_self(),
 				cpu.size(), cpu.set()));
 		}
-#elif defined(HAVE_SCHED_H)
+#elif HAVE_DECL_SCHED_SETAFFINITY
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
 			check("sched_setaffinity()",
 				::sched_setaffinity(0, cpu.size(), cpu.set()));
 		}
-#elif defined(HAVE_SYS_PROCESSOR_H)
+#elif HAVE_SYS_PROCESSOR_H
 #include <sys/processor.h>
 		void thread_affinity(size_t) {
 			::processor_bind(P_LWPID, P_MYID, cpu_id%total_cpus(), 0);
 		}
-#elif defined(HAVE_SYS_CPUSET_H)
+#elif HAVE_SYS_CPUSET_H
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
 			check("cpuset_setaffinity()",
 				::cpuset_setaffinity(CPU_LEVEL_WHICH,
 				CPU_WHICH_TID, -1, cpu.size(), cpu.set());
 		}
+#else
+// no cpu binding
+		void thread_affinity(size_t) {}
 #endif
 #endif
 	}

@@ -9,7 +9,7 @@ namespace factory {
 		void unlock() noexcept { _flag.clear(std::memory_order_release); }
 		bool try_lock() noexcept { return !_flag.test_and_set(std::memory_order_acquire); }
 
-		constexpr Spin_mutex() {}
+		Spin_mutex() = default;
 
 		// disallow copy & move operations
 		Spin_mutex(const Spin_mutex&) = delete;
@@ -90,7 +90,7 @@ namespace factory {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			return check("execve()", ::execve(argv[0], argv, ::environ));
+			return check("execve()", ::execv(argv[0], argv));
 		}
 
 		void bind_signal(int signum, const Action& action) {

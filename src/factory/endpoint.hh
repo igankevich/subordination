@@ -230,7 +230,7 @@ namespace factory {
 		constexpr Endpoint(const Addr6& rhs): _addr6(rhs) {}
 		constexpr Endpoint(const Addr& rhs): _sockaddr(rhs) {}
 
-		constexpr bool operator<(const Endpoint& rhs) const {
+		bool operator<(const Endpoint& rhs) const {
 			return family() == AF_INET
 				? std::make_tuple(family(), addr4(), port4()) <
 				std::make_tuple(rhs.family(), rhs.addr4(), rhs.port4())

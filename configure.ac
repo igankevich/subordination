@@ -22,6 +22,12 @@ AC_PROG_CXX
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
+AC_CHECK_DECLS([SOCK_NONBLOCK], [],
+	[AC_DEFINE(AS_TR_CPP(SOCK_NONBLOCK),0,[no value])],
+	[[#include <sys/socket.h>]])
+AC_CHECK_DECLS([SOCK_CLOEXEC], [],
+	[AC_DEFINE(AS_TR_CPP(SOCK_CLOEXEC),0,[no value])],
+	[[#include <sys/socket.h>]])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_INT8_T
@@ -41,6 +47,7 @@ AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AX_PTHREAD
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
+AC_C_BIGENDIAN
 
 # compiler's security flags
 AS_IF([test "x$enable_secureflags" = "xyes"], [FACTORY_SECURE_BINARY])

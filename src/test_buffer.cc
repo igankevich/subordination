@@ -262,10 +262,10 @@ struct App {
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
 			test_fdbuf<char, int>();
-			test_fdbuf<unsigned char, int>();
+//			test_fdbuf<unsigned char, int>();
 			test_fdbuf<char, Socket>();
 			test_filterbuf<char>();
-			test_filterbuf<unsigned char>();
+//			test_filterbuf<unsigned char>();
 			test_kernelbuf<char>();
 			test_kernelbuf_with_stringstream<char>();
 			test_kernelbuf_withvector<char>();

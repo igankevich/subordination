@@ -20,8 +20,7 @@ namespace factory {
 		bool is_reading() const { return (events() & POLLIN) != 0; }
 		bool is_writing() const { return (events() & POLLOUT) != 0; }
 		bool is_closing() const {
-			return (events() & POLLRDHUP) != 0
-				|| (events() & POLLHUP) != 0;
+			return (events() & POLLHUP) != 0;
 		}
 		bool is_error() const {
 			return (events() & POLLERR) != 0
@@ -85,7 +84,7 @@ namespace factory {
 	
 		template<class Callback>
 		void run(Callback callback) {
-			add(Event(POLLIN | POLLRDHUP, _mgmt_pipe.read_end()));
+			add(Event(POLLIN, _mgmt_pipe.read_end()));
 			while (!stopped()) this->wait(callback);
 		}
 

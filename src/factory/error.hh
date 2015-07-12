@@ -252,7 +252,7 @@ namespace factory {
 	template<class K>
 	struct No_principal_found {
 		constexpr explicit No_principal_found(K* k): _kernel(k) {}
-		constexpr K* kernel() { return _kernel; }
+		K* kernel() { return _kernel; }
 	private:
 		K* _kernel;
 	};

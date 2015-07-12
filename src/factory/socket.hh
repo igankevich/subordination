@@ -15,6 +15,9 @@ namespace factory {
 		void create_socket_if_necessary() {
 			if (!this->is_valid()) {
 				check("socket()", this->_socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
+#if !HAVE_DECL_SOCK_NONBLOCK
+				this->flags(O_NONBLOCK|O_CLOEXEC);
+#endif
 			}
 		}
 
@@ -731,8 +734,7 @@ namespace factory {
 				std::size_t size = this->_pbuf.size();
 				if (pos >= 0 && pos <= size) {
 					std::ptrdiff_t off = this->pptr() - this->pbase();
-					std::clog << "BUMP = " << pos-off << std::endl;
-					this->pbump(pos-off);
+					this->pbump(static_cast<std::ptrdiff_t>(pos)-off);
 				}
 //				// enlarge buffer
 //				if (pos > size) {
@@ -1422,10 +1424,8 @@ namespace factory {
 	template<class Base>
 	struct basic_kstream: public std::basic_iostream<typename Base::char_type> {
 		typedef basic_kernelbuf<Base> kernelbuf;
-		basic_kstream() { this->_oldbuf = this->rdbuf(new kernelbuf); }
-		virtual ~basic_kstream() { delete this->_oldbuf; }
-	private:
-		std::basic_streambuf<typename Base::char_type>* _oldbuf = nullptr;
+		typedef typename Base::char_type char_type;
+		basic_kstream(): std::basic_iostream<char_type>(new kernelbuf) {}
 	};
 
 	typedef basic_fdbuf<char> fdbuf;

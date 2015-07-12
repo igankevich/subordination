@@ -18,7 +18,7 @@ namespace factory {
 				DELETED = 0
 			};
 
-			constexpr Basic_kernel() {}
+			Basic_kernel() {}
 			virtual ~Basic_kernel() {}
 
 			virtual void act() {}
