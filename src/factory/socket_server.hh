@@ -40,8 +40,8 @@ namespace factory {
 					<< std::endl;
 			}
 
-			template<class In, class F>
-			bool read(In& in, F callback) {
+			template<class In, class F, class G>
+			bool read(In& in, F callback, G callback2) {
 				if (this->rdstate() == State::READING_SIZE && sizeof(this->packetsize()) <= in.size()) {
 					in >> this->_packetsize;
 					this->sets(State::READING_PACKET);
@@ -55,7 +55,7 @@ namespace factory {
 						<< std::endl;
 				}
 				if (this->rdstate() == State::READING_PACKET && this->payloadsize() <= in.size()) {
-					Type<Kernel>::types().read_and_send_object(in, callback);
+					Type<Kernel>::types().read_and_send_object(in, callback, callback2);
 					this->sets(State::COMPLETE);
 				}
 				return this->rdstate() == State::COMPLETE;
@@ -310,7 +310,7 @@ namespace factory {
 				}
 				Remote_server* s = r->second;
 				Logger<Level::SERVER>() << "Removing server " << *s << std::endl;
-				s->recover_kernels();
+				s->recover_kernels(this->parent());
 				// subordinate servers are not present in upstream
 				if (!s->parent()) {
 					_upstream.erase(s->vaddr());
@@ -321,18 +321,20 @@ namespace factory {
 	
 
 			void process_event(Remote_server* server, Event event) {
-				server->handle_event(event, [this, &event, server] (bool overflow) {
-					if (overflow) {
-						_poller[event.fd()]->writing();
-						// Failed kernels are sent to parent,
-						// so we need to fire write event.
-						if (server->parent() != nullptr) {
-							_poller[server->parent()->fd()]->writing();
+				server->handle_event(event, this->parent(),
+					[this, &event, server] (bool overflow) {
+						if (overflow) {
+							_poller[event.fd()]->writing();
+							// Failed kernels are sent to parent,
+							// so we need to fire write event.
+							if (server->parent() != nullptr) {
+								_poller[server->parent()->fd()]->writing();
+							}
+						} else {
+							_poller[event.fd()]->events(DEFAULT_EVENTS);
 						}
-					} else {
-						_poller[event.fd()]->events(DEFAULT_EVENTS);
 					}
-				});
+				);
 			}
 
 			void flush_kernels() {
@@ -492,9 +494,9 @@ namespace factory {
 				}
 			}
 
-			void recover_kernels() {
+			void recover_kernels(Server<Kernel>* parent_server) {
 
-				read_kernels();
+				read_kernels(parent_server);
 //				clear_kernel_buffer(_ostream.global_read_pos());
 
 				Logger<Level::HANDLER>()
@@ -504,7 +506,7 @@ namespace factory {
 				
 				// recover kernels written to output buffer
 				while (!_buffer.empty()) {
-					recover_kernel(_buffer.front());
+					recover_kernel(_buffer.front(), parent_server);
 					_buffer.pop_front();
 				}
 			}
@@ -540,7 +542,7 @@ namespace factory {
 			}
 
 			template<class F>
-			void handle_event(Event event, F on_overflow) {
+			void handle_event(Event event, Server<Kernel>* parent_server, F on_overflow) {
 				bool overflow = false;
 				if (event.is_reading()) {
 					_istream.fill<Server_socket&>(_socket);
@@ -554,6 +556,8 @@ namespace factory {
 								if (k->moves_downstream()) {
 									clear_kernel_buffer(k);
 								}
+							}, [parent_server] (Kernel* k) {
+								parent_server->send(k);
 							});
 						} catch (No_principal_found<Kernel>& err) {
 							Logger<Level::HANDLER>() << "No principal found for "
@@ -615,11 +619,11 @@ namespace factory {
 
 		private:
 
-			static void recover_kernel(Kernel* k) {
+			void recover_kernel(Kernel* k, Server<Kernel>* parent_server) {
 				k->from(k->to());
 				k->result(Result::ENDPOINT_NOT_CONNECTED);
 				k->principal(k->parent());
-				factory_send(k);
+				parent_server->send(k);
 			}
 
 			void clear_kernel_buffer(Kernel* k) {
@@ -636,10 +640,10 @@ namespace factory {
 				}
 			}
 			
-			void read_kernels() {
+			void read_kernels(Server<Kernel>* parent_server) {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				handle_event(Event(POLLIN, _socket), [](bool) {});
+				handle_event(Event(POLLIN, _socket), parent_server, [](bool) {});
 			}
 
 			Server_socket _socket;

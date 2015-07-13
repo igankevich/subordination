@@ -3,12 +3,7 @@ namespace factory {
 	struct Null {};
 
 	namespace components {
-
 		void factory_stop(bool force=false);
-
-		template<class K>
-		void factory_send(K*);
-
 		void factory_server_addr(std::ostream&);
 	}
 

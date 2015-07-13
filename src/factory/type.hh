@@ -62,6 +62,7 @@ namespace factory {
 			public:
 	
 				typedef Type<K> T;
+				typedef typename Type<K>::Callback Callback;
 
 				Types(): _types_by_id() {}
 	
@@ -92,7 +93,8 @@ namespace factory {
 					return object;
 				}
 
-				void read_and_send_object(Foreign_stream& packet, typename T::Callback callback) const {
+				void read_and_send_object(Foreign_stream& packet,
+					Callback callback, Callback onsuccess) const {
 					Type_id id;
 					packet >> id;
 					const T* type = lookup(id);
@@ -102,7 +104,7 @@ namespace factory {
 						throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
 					}
 					try {
-						type->read_and_send(packet, callback);
+						type->read_and_send(packet, callback, onsuccess);
 					} catch (std::bad_alloc& err) {
 						std::stringstream msg;
 						msg << "Allocation error. Demarshalled kernel was prevented"
@@ -224,7 +226,7 @@ namespace factory {
 			std::function<K* ()> construct;
 			std::function<void (Foreign_stream& in, K* rhs)> read_object;
 			std::function<void (Foreign_stream& out, K* rhs)> write_object;
-			std::function<void (Foreign_stream& in, Callback callback)> read_and_send;
+			std::function<void (Foreign_stream& in, Callback callback, Callback)> read_and_send;
 		};
 
 		template<class Sub, class Type, class K, class Base=K>
@@ -234,11 +236,12 @@ namespace factory {
 
 		private:
 			struct Init: public Type {
+				using typename Type::Callback;
 				Init() {
 					this->construct = [] { return new Sub; };
 					this->read_object = [] (Foreign_stream& in, K* rhs) { rhs->read(in); };
 					this->write_object = [] (Foreign_stream& out, K* rhs) { rhs->write(out); };
-					this->read_and_send = [] (Foreign_stream& in, typename Type::Callback callback) {
+					this->read_and_send = [] (Foreign_stream& in, Callback callback, Callback call2) {
 						Sub* k = new Sub;
 						k->read(in);
 						callback(k);
@@ -250,7 +253,7 @@ namespace factory {
 							}
 							k->principal(p);
 						}
-						factory_send(k);
+						call2(k);
 					};
 
 //					this->type_id(typeid(Sub));

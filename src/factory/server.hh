@@ -111,12 +111,16 @@ namespace factory {
 			typedef Server<K> This;
 			typedef K Kernel;
 
-			Server() {}
-			Server(const This&) = delete;
-			Server(This&&) = delete;
+			Server() = default;
 			virtual ~Server() {}
-
 			void operator=(This&) = delete;
+
+			virtual void send(Kernel*) = 0;
+			This* parent() const { return this->_parent; }
+			void setparent(This* rhs) { this->_parent = rhs; }
+
+		private:
+			This* _parent = nullptr;
 		};
 
 		template<class Server, class Sub_server>
@@ -127,16 +131,22 @@ namespace factory {
 
 			Iserver() {}
 			Iserver(const This&) = delete;
-			Iserver(This&& rhs):
-				_upstream(std::move(rhs._upstream)) {}
+			Iserver(This&& rhs): _upstream(std::move(rhs._upstream)) {
+				std::for_each(
+					_upstream.begin(),
+					_upstream.end(),
+					std::bind(std::mem_fn(&Srv::setparent), this));
+			}
 		
 			void add(Srv&& srv) {
+				srv.setparent(this);
 				_upstream.emplace_back(srv);
 			}
 
 			void add_cpu(size_t cpu) {
 				Sub_server srv;
 				srv.affinity(cpu);
+				srv.setparent(this);
 				_upstream.emplace_back(std::move(srv));
 			}
 
@@ -368,14 +378,13 @@ namespace factory {
 						Kernel* kernel = _pool.top();
 						bool run = true;
 						if (kernel->at() > Kernel::Clock::now() && kernel->timed()) {
-							using namespace std::chrono;
 							run = _semaphore.wait_until(lock, kernel->at(),
 								[this] { return this->stopped(); });
 						}
 						if (run) {
 							_pool.pop();
 							lock.unlock();
-							factory_send(kernel);
+							this->parent()->send(kernel);
 						}
 					} else {
 						wait_for_a_kernel();
@@ -451,7 +460,9 @@ namespace factory {
 			class Repository_stack,
 			class Shutdown
 		>
-		struct Basic_factory: public Stoppable {
+		struct Basic_factory: public Stoppable, public Server<typename Local_server::Kernel> {
+
+			typedef typename Local_server::Kernel Kernel;
 
 			Basic_factory():
 				_local_server(),
@@ -460,6 +471,7 @@ namespace factory {
 				_timer_server(),
 				_repository()
 			{
+				init_parents();
 				init_signal_handlers();
 			}
 
@@ -494,6 +506,8 @@ namespace factory {
 				_timer_server.wait();
 			}
 
+			void send(Kernel* k) { this->_local_server.send(k); }
+
 			Local_server* local_server() { return &_local_server; }
 			Remote_server* remote_server() { return &_remote_server; }
 			External_server* ext_server() { return &_ext_server; }
@@ -501,6 +515,13 @@ namespace factory {
 			Repository_stack* repository() { return &_repository; }
 
 		private:
+
+			void init_parents() {
+				this->_local_server.setparent(this);
+				this->_remote_server.setparent(this);
+				this->_ext_server.setparent(this);
+				this->_timer_server.setparent(this);
+			}
 
 			void init_signal_handlers() {
 				_ptr_for_sighandler = this;

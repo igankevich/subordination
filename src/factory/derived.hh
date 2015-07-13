@@ -4,9 +4,6 @@ namespace factory {
 
 		void factory_stop(bool) {}
 
-		template<class K>
-		void factory_send(K*) {}
-
 		void factory_server_addr(std::ostream& out) {
 			out << "0.0.0.0";
 		}
@@ -32,9 +29,6 @@ namespace factory {
 				__factory.stop();
 			}
 		}
-
-		template<class K>
-		void factory_send(K* kernel) { the_server()->send(kernel); }
 
 		void factory_server_addr(std::ostream& out) {
 			out << remote_server()->server_addr();
