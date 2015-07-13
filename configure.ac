@@ -28,6 +28,9 @@ AC_CHECK_DECLS([SOCK_NONBLOCK], [],
 AC_CHECK_DECLS([SOCK_CLOEXEC], [],
 	[AC_DEFINE(AS_TR_CPP(SOCK_CLOEXEC),0,[no value])],
 	[[#include <sys/socket.h>]])
+AC_CHECK_DECLS([POLLRDHUP], [],
+	[AC_DEFINE(AS_TR_CPP(POLLRDHUP),0,[no value])],
+	[[#include <poll.h>]])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_INT8_T

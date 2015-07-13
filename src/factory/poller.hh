@@ -5,41 +5,47 @@ namespace factory {
 	struct Event: public Basic_event {
 
 		typedef decltype(Basic_event::events) Evs;
+		typedef int fd_type;
 
 		constexpr Event(): Basic_event{-1,0,0} {}
 		constexpr explicit Event(int f): Basic_event{f,0,0} {}
-		constexpr Event(Evs e, int f): Basic_event{f, e, 0} {}
+		constexpr Event(Evs e, int f): Basic_event{f,e,0} {}
 
-		Evs events() const { return Basic_event::revents; }
-		void events(Evs rhs) { Basic_event::events = rhs; }
+		constexpr Evs events() const { return this->Basic_event::revents; }
+		void events(Evs rhs) { this->Basic_event::events = rhs; }
 
-		void fd(int rhs) { Basic_event::fd = rhs; }
-		int fd() const { return Basic_event::fd; }
-		bool bad_fd() const { return fd() <= 0; } 
+		void fd(fd_type rhs) { this->Basic_event::fd = rhs; }
+		constexpr fd_type fd() const { return this->Basic_event::fd; }
+		constexpr bool bad_fd() const { return this->fd() < 0; } 
 
-		bool is_reading() const { return (events() & POLLIN) != 0; }
-		bool is_writing() const { return (events() & POLLOUT) != 0; }
-		bool is_closing() const {
-			return (events() & POLLHUP) != 0;
+		constexpr bool is_reading() const { return (this->events() & POLLIN) != 0; }
+		constexpr bool is_writing() const { return (this->events() & POLLOUT) != 0; }
+		constexpr bool is_closing() const {
+			return (this->events() & (POLLHUP | POLLRDHUP)) != 0;
 		}
-		bool is_error() const {
-			return (events() & POLLERR) != 0
-				|| (events() & POLLNVAL) != 0;
+		constexpr bool is_error() const {
+			return (this->events() & (POLLERR | POLLNVAL)) != 0;
 		}
 
-		void no_reading() { Basic_event::revents &= ~POLLIN; }
+		void no_reading() { this->Basic_event::revents &= ~POLLIN; }
 		void writing() {
-			Basic_event::events |= POLLOUT;
-			Basic_event::revents |= POLLOUT;
+			this->Basic_event::events |= POLLOUT;
+			this->Basic_event::revents |= POLLOUT;
 		}
 		void reading() {
-			Basic_event::events |= POLLIN;
-			Basic_event::revents |= POLLIN;
+			this->Basic_event::events |= POLLIN;
+			this->Basic_event::revents |= POLLIN;
 		}
 
-		bool operator==(const Event& rhs) const { return fd() == rhs.fd(); }
-		bool operator!=(const Event& rhs) const { return fd() != rhs.fd(); }
-		bool operator< (const Event& rhs) const { return fd() <  rhs.fd(); }
+		void setev(Evs rhs) { this->Basic_event::revents |= rhs; }
+		ssize_t probe() const {
+			char c;
+			return ::recv(this->fd(), &c, 1, MSG_PEEK);
+		}
+
+		constexpr bool operator==(const Event& rhs) const { return this->fd() == rhs.fd(); }
+		constexpr bool operator!=(const Event& rhs) const { return this->fd() != rhs.fd(); }
+		constexpr bool operator< (const Event& rhs) const { return this->fd() <  rhs.fd(); }
 
 		friend std::ostream& operator<<(std::ostream& out, const Event& rhs) {
 			return out
@@ -158,6 +164,11 @@ namespace factory {
 					--nfds;
 					continue;
 				}
+#if !HAVE_DECL_POLLRDHUP
+				if (e.probe() == 0) {
+					e.setev(POLLHUP);
+				}
+#endif
 				if (e.events() == 0) continue;
 				if (e.fd() == _mgmt_pipe.read_end()) {
 					if (e.is_closing()) {

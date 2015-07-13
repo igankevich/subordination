@@ -56,6 +56,7 @@ void test_buffer() {
 
 template<class T, class Fd=int>
 void test_fdbuf() {
+	typedef std::char_traits<T> Tr;
 	std::string filename = "/tmp/"
 		+ test::random_string<char>(16, 'a', 'z')
 		+ ".factory";
@@ -66,12 +67,12 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking overflow()" << std::endl;
 			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::basic_ofdstream<T,Fd>(file.fd()) << expected_contents;
+			factory::basic_ofdstream<T,Tr,Fd>(file.fd()) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
 			File file(filename, O_RDONLY);
-			factory::basic_ifdstream<T,Fd> in(file.fd());
+			factory::basic_ifdstream<T,Tr,Fd> in(file.fd());
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -105,7 +106,7 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking flush()" << std::endl;
 			File file(filename, O_WRONLY);
-			factory::basic_ofdstream<T,Fd> out(file.fd());
+			factory::basic_ofdstream<T,Tr,Fd> out(file.fd());
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);

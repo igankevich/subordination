@@ -1403,33 +1403,51 @@ namespace factory {
 //		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 //	};
 
-	template<class T, class Fd=int>
-	struct basic_ifdstream: public std::basic_istream<T> {
-		explicit basic_ifdstream(Fd fd): std::basic_istream<T>(new basic_fdbuf<T,Fd>(fd, 512, 0)) {}
-		virtual ~basic_ifdstream() { delete this->rdbuf(); }
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+	struct basic_ifdstream: public std::basic_istream<Ch> {
+		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+		typedef std::basic_istream<Ch,Tr> istream_type;
+		explicit basic_ifdstream(Fd fd): istream_type(),
+			_fdbuf(fd, 512, 0) { this->init(&this->_fdbuf); }
+	private:
+		fdbuf_type _fdbuf;
 	};
 
-	template<class T, class Fd=int>
-	struct basic_ofdstream: public std::basic_ostream<T> {
-		explicit basic_ofdstream(Fd fd): std::basic_ostream<T>(new basic_fdbuf<T,Fd>(fd, 0, 512)) {}
-		virtual ~basic_ofdstream() { delete this->rdbuf(); }
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+	struct basic_ofdstream: public std::basic_ostream<Ch> {
+		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+		typedef std::basic_ostream<Ch,Tr> ostream_type;
+		explicit basic_ofdstream(Fd fd): ostream_type(),
+			_fdbuf(fd, 0, 512) { this->init(&this->_fdbuf); }
+	private:
+		fdbuf_type _fdbuf;
 	};
 
-	template<class T, class Fd=int>
-	struct basic_fd_iostream: public std::basic_iostream<T> {
-		explicit basic_fd_iostream(Fd fd): std::basic_iostream<T>(new basic_fdbuf<T,Fd>(fd, 512, 512)) {}
-		virtual ~basic_fd_iostream() { delete this->rdbuf(); }
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+	struct basic_fdstream: public std::basic_iostream<Ch> {
+		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+		typedef std::basic_iostream<Ch,Tr> iostream_type;
+		explicit basic_fdstream(Fd fd): iostream_type(),
+			_fdbuf(fd, 512, 512) { this->init(&this->_fdbuf); }
+	private:
+		fdbuf_type _fdbuf;
 	};
 
 	template<class Base>
-	struct basic_kstream: public std::basic_iostream<typename Base::char_type> {
-		typedef basic_kernelbuf<Base> kernelbuf;
-		typedef typename Base::char_type char_type;
-		basic_kstream(): std::basic_iostream<char_type>(new kernelbuf) {}
+	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
+		typedef basic_kernelbuf<Base> kernelbuf_type;
+		typedef typename Base::char_type Ch;
+		typedef typename Base::traits_type Tr;
+		typedef std::basic_iostream<Ch,Tr> iostream_type;
+		basic_kstream(): iostream_type(), _kernelbuf()
+			{ this->init(&this->_kernelbuf); }
+	private:
+		kernelbuf_type _kernelbuf;
 	};
 
 	typedef basic_fdbuf<char> fdbuf;
 	typedef basic_ifdstream<char> ifdstream;
 	typedef basic_ofdstream<char> ofdstream;
+	typedef basic_kstream<char> kstream;
 
 }

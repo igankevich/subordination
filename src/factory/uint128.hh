@@ -29,10 +29,10 @@ struct uint128 {
 	typedef uint64_t base_type;
 
 	// constructors for all basic types
-	constexpr uint128(): lo(0), hi(0) {}
+	uint128() = default;
+	uint128(const uint128& rhs) = default;
 	constexpr uint128(int value): lo(static_cast<base_type>(value)), hi(0) {}
 	constexpr uint128(unsigned int value): lo(static_cast<base_type>(value)), hi(0) {}
-	constexpr uint128(const uint128 &value): lo(value.lo), hi(value.hi) {}
 	constexpr uint128(base_type value): lo(value), hi(0) {}
 	constexpr uint128(base_type l, base_type h): lo(l), hi(h) {}
 
