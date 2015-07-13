@@ -60,8 +60,9 @@ namespace factory {
 			if (this->is_valid()) {
 				Logger<Level::COMPONENT>() << "Closing socket " << this->_socket << std::endl;
 				::shutdown(this->_socket, SHUT_RDWR);
-				::close(this->_socket);
-//				check("close()", ::close(this->_socket));
+//				::close(this->_socket);
+				// TODO: check this on discovery test
+				check("close()", ::close(this->_socket));
 			}
 			_socket = INVALID_SOCKET;
 		}
@@ -1478,6 +1479,9 @@ namespace factory {
 		explicit Packing_stream(streambuf_type* str): iostream_type() {
 			this->init(str);
 		}
+		Packing_stream(Packing_stream&& rhs): iostream_type(std::move(rhs)) {}
+		Packing_stream(const Packing_stream&) = delete;
+		Packing_stream() = delete;
 
 		Packing_stream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
 		Packing_stream& operator<<(char rhs) { return write(rhs); }

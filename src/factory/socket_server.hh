@@ -466,10 +466,12 @@ namespace factory {
 			typedef Kernel_packet<Kernel> Packet;
 			typedef char Ch;
 			typedef basic_kernelbuf<basic_fdbuf<Ch,Server_socket>> Kernelbuf;
+			typedef Packing_stream<char> Stream;
 
 			Remote_Rserver(Socket sock, Endpoint endpoint):
 				_vaddr(endpoint),
 				_kernelbuf(),
+				_stream(&this->_kernelbuf),
 				_istream(),
 				_ostream(),
 				_ipacket(),
@@ -485,6 +487,7 @@ namespace factory {
 			Remote_Rserver(Remote_Rserver&& rhs):
 				_vaddr(rhs._vaddr),
 				_kernelbuf(std::move(rhs._kernelbuf)),
+				_stream(std::move(rhs._stream)),
 				_istream(std::move(rhs._istream)),
 				_ostream(std::move(rhs._ostream)),
 				_ipacket(rhs._ipacket),
@@ -653,6 +656,7 @@ namespace factory {
 
 			Endpoint _vaddr;
 			Kernelbuf _kernelbuf;
+			Stream _stream;
 			Foreign_stream _istream;
 			Foreign_stream _ostream;
 			Packet _ipacket;
