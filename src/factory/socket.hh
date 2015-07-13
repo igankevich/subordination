@@ -184,7 +184,7 @@ namespace factory {
 
 	struct Server_socket: public Socket {
 		constexpr Server_socket() {}
-		explicit Server_socket(const Socket& rhs): Socket(rhs) {}
+		explicit Server_socket(Socket rhs): Socket(rhs) {}
 		explicit Server_socket(const Endpoint& endp) {
 			this->bind(endp);
 			this->listen();
@@ -192,7 +192,7 @@ namespace factory {
 		Server_socket(Server_socket&& rhs): Socket(static_cast<Socket&&>(rhs)) {}
 		~Server_socket() { this->close(); }
 
-		Server_socket& operator=(const Socket& rhs) {
+		Server_socket& operator=(Socket rhs) {
 			Socket::operator=(rhs);
 			return *this;
 		}
@@ -285,7 +285,8 @@ namespace factory {
 			return *this;
 		}
 
-		uint32_t write(const char* buf, size_t size) {
+		uint32_t write(const void* buf2, size_t size) {
+			const char* buf = static_cast<const char*>(buf2);
 			uint32_t ret = 0;
 			if (state != State::HANDSHAKE_SUCCESS) {
 				if (state == State::INITIAL_STATE) {
@@ -301,7 +302,8 @@ namespace factory {
 			return ret;
 		}
 
-		uint32_t read(char* buf, size_t size) {
+		uint32_t read(void* buf2, size_t size) {
+			char* buf = static_cast<char*>(buf2);
 			uint32_t bytes_read = 0;
 			if (state != State::HANDSHAKE_SUCCESS) {
 				if (state == State::INITIAL_STATE) {
@@ -563,14 +565,22 @@ namespace factory {
 
 	template<class Fd>
 	struct fd_wrapper {
-		fd_wrapper(Fd f): _fd(f) {}
+		fd_wrapper(int f): _fd(f) {}
+		fd_wrapper() = delete;
+		fd_wrapper(fd_wrapper&& rhs): _fd(std::move(rhs._fd)) {}
 		ssize_t read(void* buf, std::size_t n) {
 			return this->_fd.read(buf, n);
 		}
 		ssize_t write(const void* buf, std::size_t n) {
 			return this->_fd.write(buf, n);
 		}
-		operator Fd() const { return this->_fd; }
+		fd_wrapper& operator=(int fd) {
+			this->_fd = fd;
+			return *this;
+		}
+//		operator int() const { return this->_fd; }
+		operator const Fd&() const { return this->_fd; }
+		operator Fd&() { return this->_fd; }
 	private:
 		Fd _fd;
 	};
@@ -603,7 +613,7 @@ namespace factory {
 
 		basic_fdbuf(): basic_fdbuf(-1, 512, 512) {}
 
-		basic_fdbuf(fd_type fd, std::size_t gbufsize, std::size_t pbufsize):
+		basic_fdbuf(int fd, std::size_t gbufsize, std::size_t pbufsize):
 			_fd(fd),
 			_gbuf(gbufsize),
 			_pbuf(pbufsize)
@@ -615,7 +625,7 @@ namespace factory {
 		}
 
 		basic_fdbuf(basic_fdbuf&& rhs):
-			_fd(rhs._fd),
+			_fd(std::move(rhs._fd)),
 			_gbuf(std::move(rhs._gbuf)),
 			_pbuf(std::move(rhs._pbuf))
 			{}
@@ -748,7 +758,9 @@ namespace factory {
 			return pos_type(off_type(-1));
 		}
 
-		void setfd(fd_type rhs) { this->_fd = rhs; }
+		void setfd(int rhs) { this->_fd = rhs; }
+		const fd_type& fd() const { return this->_fd; }
+		fd_type& fd() { return this->_fd; }
 
 		basic_fdbuf& operator=(basic_fdbuf&) = delete;
 		basic_fdbuf(basic_fdbuf&) = delete;
@@ -813,6 +825,10 @@ namespace factory {
 			BUFFERING_PAYLOAD,
 			READING_PAYLOAD
 		};
+
+		basic_ikernelbuf() = default;
+		basic_ikernelbuf(basic_ikernelbuf&&) = default;
+		basic_ikernelbuf(const basic_ikernelbuf&) = delete;
 
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 			"bad base class for ibasic_kernelbuf");
@@ -953,6 +969,8 @@ namespace factory {
 			"bad base class for basic_okernelbuf");
 
 		basic_okernelbuf() = default;
+		basic_okernelbuf(const basic_okernelbuf&) = delete;
+		basic_okernelbuf(basic_okernelbuf&&) = default;
 		virtual ~basic_okernelbuf() { this->end_packet(); }
 
 		int sync() {
@@ -1450,5 +1468,120 @@ namespace factory {
 	typedef basic_ifdstream<char> ifdstream;
 	typedef basic_ofdstream<char> ofdstream;
 	typedef basic_kstream<char> kstream;
+
+	template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
+	struct Packing_stream: public std::basic_iostream<Ch,Tr> {
+
+		typedef std::basic_iostream<Ch,Tr> iostream_type;
+		typedef std::basic_streambuf<Ch,Tr> streambuf_type;
+
+		explicit Packing_stream(streambuf_type* str): iostream_type() {
+			this->init(str);
+		}
+
+		Packing_stream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
+		Packing_stream& operator<<(char rhs) { return write(rhs); }
+		Packing_stream& operator<<(int8_t rhs)  { return write(rhs); }
+		Packing_stream& operator<<(int16_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(int32_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(int64_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(uint8_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(uint16_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(uint32_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(uint64_t rhs) { return write(rhs); }
+		Packing_stream& operator<<(float rhs) { return write(rhs); }
+		Packing_stream& operator<<(double rhs) { return write(rhs); }
+//		Packing_stream& operator<<(long double rhs) { return write(rhs); }
+		Packing_stream& operator<<(const std::string& rhs) { return write(rhs); }
+
+		Packing_stream& operator>>(bool& rhs) {
+			char c = 0; read(c); rhs = c == 1; return *this;
+		}
+		Packing_stream& operator>>(char& rhs) { return read(rhs); }
+		Packing_stream& operator>>(int8_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(int16_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(int32_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(int64_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(uint8_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(uint16_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(uint32_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(uint64_t& rhs) { return read(rhs); }
+		Packing_stream& operator>>(float& rhs) { return read(rhs); }
+		Packing_stream& operator>>(double& rhs) { return read(rhs); }
+//		Packing_stream& operator>>(long double& rhs) { return read(rhs); }
+		Packing_stream& operator>>(std::string& rhs) { return read(rhs); }
+
+	private:
+
+//		template<class T>
+//		static void debug(std::ostream& out, T val) {
+//			int n = sizeof val;
+//			unsigned char* p = reinterpret_cast<unsigned char*>(&val);
+//			for (int i=0; i<n; ++i) {
+//				out << std::setw(2) << (unsigned int)p[i];
+//			}
+//		}
+
+		template<class T>
+		Packing_stream& write(T rhs) {
+#ifndef IGNORE_ISO_IEC559
+			static_assert(std::is_integral<T>::value
+				|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559), 
+				"This system does not support ISO IEC 559"
+	            " floating point representation for either float, double or long double"
+	            " types, i.e. there is no portable way of"
+	            " transmitting floating point numbers over the network"
+	            " without precision loss. If all computers in the network do not"
+	            " conform to this standard but represent floating point"
+	            " numbers exactly in the same way, you can ignore this assertion"
+	            " by defining IGNORE_ISO_IEC559.");
+#endif
+			Bytes<T> val = rhs;
+			val.to_network_format();
+//			std::clog << "Converted from " << std::hex << std::setfill('0');
+//			debug(std::clog, rhs);
+//			std::clog << " to ";
+//			debug(std::clog, val.val);
+//			std::clog << std::dec << std::endl;
+			this->write(val, sizeof(rhs));
+			return *this;
+		}
+
+		Packing_stream& write(const std::string& rhs) {
+			Size length = static_cast<Size>(rhs.size());
+//			std::clog << "Writing string of length = " << length << std::endl;
+			write(length);
+			this->write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
+			return *this;
+		}
+
+		template<class T>
+		Packing_stream& read(T& rhs) {
+			Bytes<T> val;
+			this->read(val, sizeof(rhs));
+			val.to_host_format();
+			rhs = val;
+//			std::clog << "Converted from " << std::hex << std::setfill('0');
+//			debug(std::clog, val);
+//			std::clog << " to ";
+//			debug(std::clog, rhs);
+//			std::clog << std::dec << std::endl;
+			return *this;
+		}
+
+		Packing_stream& read(std::string& rhs) {
+			Size length;
+			read(length);
+			std::string::value_type* bytes = new std::string::value_type[length];
+//			std::clog << "Reading string of length = " << length << std::endl;
+			this->read(reinterpret_cast<Byte*>(bytes), length);
+			rhs.assign(bytes, bytes + length);
+			delete[] bytes;
+			return *this;
+		}
+
+	};
+
+	typedef Packing_stream<char> packstream;
 
 }

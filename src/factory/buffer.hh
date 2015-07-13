@@ -552,17 +552,5 @@ namespace factory {
 		value_type* ptr;
 	};
 
-	
-//	struct Trim {
-//		constexpr explicit Trim() {}
-//		constexpr explicit Trim(int a): amount(a) {}
-//		friend std::ostream& operator<<(std::ostream& out, Trim rhs) {
-//			const static int index = out.xalloc();
-//			out.iword(index) = rhs.amount;
-//			return out;		
-//		}
-//	private:
-//		int amount = 80;
-//	};
 
 }

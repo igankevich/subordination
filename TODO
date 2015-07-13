@@ -13,6 +13,7 @@ DONE [319:0659552874b2] Add runtime check for endiannes.
 DONE [320:8bbef1f9628a] Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
+DONE [] Remove factory_stop() and other global functions. Now multiple factory instances, and custom factory instances are possible.
 
 ??? [needs more testing] Make Factory::stop() reliable.
 ??? [needs perf tests] Filter out chars <= 31 and != \r\n on std::cout stream.
@@ -32,7 +33,6 @@ Remove stale peers from Peers.
 Limit number of peers to reduce number of persistent connections.
 Manually align structures.
 Add macros to generate code for parallel and distributed framework versions.
-Remove factory_stop() and other global functions.
 Test web socket and socket with random input to cover parsing and other errors.
 User defined literals for uint128 and for class metadata.
 Reduce amount of debug information in logs.

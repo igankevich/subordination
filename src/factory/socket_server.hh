@@ -256,7 +256,7 @@ namespace factory {
 				}
 				Remote_server* s = res->second;
 				_upstream.erase(res);
-				_servers.erase(s->socket());
+				_servers.erase(s->fd());
 				delete s;
 			}
 
@@ -464,23 +464,27 @@ namespace factory {
 
 			typedef Remote_Rserver<Kernel, Pool, Server_socket> This;
 			typedef Kernel_packet<Kernel> Packet;
+			typedef char Ch;
+			typedef basic_kernelbuf<basic_fdbuf<Ch,Server_socket>> Kernelbuf;
 
 			Remote_Rserver(Socket sock, Endpoint endpoint):
-				_socket(sock),
 				_vaddr(endpoint),
+				_kernelbuf(),
 				_istream(),
 				_ostream(),
 				_ipacket(),
 				_buffer(),
 				_parent(nullptr)
-				{}
+			{
+				this->_kernelbuf.setfd(sock);
+			}
 
 			Remote_Rserver(const Remote_Rserver&) = delete;
 			Remote_Rserver& operator=(const Remote_Rserver&) = delete;
 
 			Remote_Rserver(Remote_Rserver&& rhs):
-				_socket(std::move(rhs._socket)),
 				_vaddr(rhs._vaddr),
+				_kernelbuf(std::move(rhs._kernelbuf)),
 				_istream(std::move(rhs._istream)),
 				_ostream(std::move(rhs._ostream)),
 				_ipacket(rhs._ipacket),
@@ -538,14 +542,14 @@ namespace factory {
 
 			bool valid() const {
 //				TODO: It is probably too slow to check error on every event.
-				return _socket.error() == 0;
+				return this->socket().error() == 0;
 			}
 
 			template<class F>
 			void handle_event(Event event, Server<Kernel>* parent_server, F on_overflow) {
 				bool overflow = false;
 				if (event.is_reading()) {
-					_istream.fill<Server_socket&>(_socket);
+					_istream.fill<Server_socket&>(this->socket());
 					bool state_is_ok = true;
 					while (state_is_ok && !_istream.empty()) {
 						Logger<Level::HANDLER>() << "Recv " << _istream << std::endl;
@@ -578,26 +582,27 @@ namespace factory {
 				}
 				if (event.is_writing() && !event.is_closing()) {
 					Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
-					_socket.flush();
-					_ostream.flush<Server_socket&>(_socket);
+					this->socket().flush();
+					_ostream.flush<Server_socket&>(this->socket());
 					if (_ostream.empty()) {
 						Logger<Level::HANDLER>() << "Flushed." << std::endl;
 						_ostream.reset();
 					}
-					if (!_ostream.empty() || !_socket.empty()) {
+					if (!_ostream.empty() || !this->socket().empty()) {
 						overflow = true;
 					}
 				}
 				on_overflow(overflow);
 			}
 
-			int fd() const { return _socket; }
-			Socket socket() const { return _socket; }
+			int fd() const { return this->socket(); }
+			const Server_socket& socket() const { return this->_kernelbuf.fd(); }
+			Server_socket& socket() { return this->_kernelbuf.fd(); }
 			void socket(Socket rhs) {
-				_istream.fill<Server_socket&>(_socket);
-				_socket = rhs;
+				_istream.fill<Server_socket&>(this->socket());
+				this->_kernelbuf.setfd(rhs);
 			}
-			Endpoint bind_addr() const { return _socket.bind_addr(); }
+			Endpoint bind_addr() const { return this->socket().bind_addr(); }
 			Endpoint vaddr() const { return _vaddr; }
 			void vaddr(Endpoint rhs) { _vaddr = rhs; }
 
@@ -643,11 +648,11 @@ namespace factory {
 			void read_kernels(Server<Kernel>* parent_server) {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				handle_event(Event(POLLIN, _socket), parent_server, [](bool) {});
+				handle_event(Event(POLLIN, this->fd()), parent_server, [](bool) {});
 			}
 
-			Server_socket _socket;
 			Endpoint _vaddr;
+			Kernelbuf _kernelbuf;
 			Foreign_stream _istream;
 			Foreign_stream _ostream;
 			Packet _ipacket;
