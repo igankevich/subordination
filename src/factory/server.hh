@@ -82,7 +82,8 @@ namespace factory {
 			void stopped(bool b) { _stopped = b; }
 
 			void wait() {}
-			void stop() { stopped(true); }
+			virtual void stop() { stopped(true); }
+			virtual void stop_now() {}
 			void start() {}
 
 		protected:
@@ -438,7 +439,7 @@ namespace factory {
 				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
 				bool f = this->force;
 				delete this;
-				components::factory_stop(f);
+				components::stop_all_factories(f);
 			}
 //			void react() {}
 			void write_impl(Foreign_stream&) {}
@@ -451,7 +452,55 @@ namespace factory {
 			bool force = false;
 		};
 
-		
+		struct All_factories {
+			typedef Resident F;
+			All_factories() {
+				init_signal_handlers();
+			}
+			void add(F* f) {
+				this->_factories.push_back(f);
+				Logger<Level::SERVER>() << "add factory: size=" << _factories.size() << std::endl;
+			}
+			void stop_all(bool now=false) {
+				Logger<Level::SERVER>() << "stop all: size=" << _factories.size() << std::endl;
+				std::for_each(_factories.begin(), _factories.end(),
+					[now] (F* rhs) { now ? rhs->stop_now() : rhs->stop(); });
+			}
+
+		private:
+			void init_signal_handlers() {
+				Action shutdown(emergency_shutdown);
+				this_process::bind_signal(SIGTERM, shutdown);
+				this_process::bind_signal(SIGINT, shutdown);
+				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
+#ifndef FACTORY_NO_BACKTRACE
+				this_process::bind_signal(SIGSEGV, Action(print_backtrace));
+#endif
+			}
+
+			static void emergency_shutdown(int sig) noexcept {
+				stop_all_factories();
+				static int num_calls = 0;
+				static const int MAX_CALLS = 3;
+				num_calls++;
+				std::clog << "Ctrl-C shutdown." << std::endl;
+				if (num_calls >= MAX_CALLS) {
+					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
+					std::abort();
+				}
+			}
+
+			static void print_backtrace(int) {
+				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
+			}
+
+			std::vector<F*> _factories;
+		} __all_factories;
+
+		void stop_all_factories(bool now) {
+			__all_factories.stop_all(now);
+		}
+
 		template<
 			class Local_server,
 			class Remote_server,
@@ -460,7 +509,7 @@ namespace factory {
 			class Repository_stack,
 			class Shutdown
 		>
-		struct Basic_factory: public Stoppable, public Server<typename Local_server::Kernel> {
+		struct Basic_factory: public Server<typename Local_server::Kernel> {
 
 			typedef typename Local_server::Kernel Kernel;
 
@@ -472,7 +521,7 @@ namespace factory {
 				_repository()
 			{
 				init_parents();
-				init_signal_handlers();
+				__all_factories.add(this);
 			}
 
 			virtual ~Basic_factory() {}
@@ -523,45 +572,12 @@ namespace factory {
 				this->_timer_server.setparent(this);
 			}
 
-			void init_signal_handlers() {
-				_ptr_for_sighandler = this;
-				Action shutdown(emergency_shutdown);
-				this_process::bind_signal(SIGTERM, shutdown);
-				this_process::bind_signal(SIGINT, shutdown);
-				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
-#ifndef FACTORY_NO_BACKTRACE
-				this_process::bind_signal(SIGSEGV, Action(print_stack_trace));
-#endif
-			}
-
-			static void emergency_shutdown(int sig) noexcept {
-				Basic_factory* factory = _ptr_for_sighandler;
-				if (factory) { factory->stop(); }
-				static int num_calls = 0;
-				static const int MAX_CALLS = 3;
-				num_calls++;
-				std::clog << "Ctrl-C shutdown." << std::endl;
-				if (num_calls >= MAX_CALLS) {
-					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
-					std::abort();
-				}
-			}
-
-			static void print_stack_trace(int) {
-				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
-			}
-
 			Local_server _local_server;
 			Remote_server _remote_server;
 			External_server _ext_server;
 			Timer_server _timer_server;
 			Repository_stack _repository;
-
-			static Basic_factory* _ptr_for_sighandler;
 		};
-
-		template<class A, class B, class C, class D, class E, class F>
-		Basic_factory<A,B,C,D,E,F>* Basic_factory<A,B,C,D,E,F>::_ptr_for_sighandler = nullptr;
 
 	}
 

@@ -3,10 +3,6 @@ namespace factory {
 
 	namespace components {
 
-		struct Stoppable {
-			virtual void stop() = 0;
-		};
-
 		struct Basic_kernel {
 
 			typedef std::chrono::steady_clock Clock;
@@ -249,7 +245,7 @@ namespace factory {
 							if (!_parent) {
 								delete this;
 								Logger<Level::KERNEL>() << "SHUTDOWN" << std::endl;
-								factory_stop();
+								components::stop_all_factories();
 							}
 						} else {
 							Logger<Level::KERNEL>() << "Principal is not null" << std::endl;

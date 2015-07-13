@@ -3,8 +3,8 @@ namespace factory {
 	struct Null {};
 
 	namespace components {
-		void factory_stop(bool force=false);
 		void factory_server_addr(std::ostream&);
+		void stop_all_factories(bool now=false);
 	}
 
 //	typedef std::int64_t Time;

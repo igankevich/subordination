@@ -303,7 +303,7 @@ namespace factory {
 					std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
 				}
 				print_stack_trace();
-				factory_stop(true);
+				stop_all_factories(true);
 				std::abort();
 			}
 

@@ -2,8 +2,6 @@
 namespace factory {
 	namespace components {
 
-		void factory_stop(bool) {}
-
 		void factory_server_addr(std::ostream& out) {
 			out << "0.0.0.0";
 		}
@@ -21,14 +19,6 @@ namespace factory {
 	Repository_stack* repository() { return __factory.repository(); }
 
 	namespace components {
-
-		void factory_stop(bool force) {
-			if (force) {
-				__factory.stop_now();
-			} else {
-				__factory.stop();
-			}
-		}
 
 		void factory_server_addr(std::ostream& out) {
 			out << remote_server()->server_addr();
