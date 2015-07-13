@@ -3,7 +3,20 @@ namespace factory {
 	struct Socket {
 
 		typedef int Flag;
-		typedef int Option;
+		typedef int opt_type;
+
+		enum Flag1: Flag {
+			Non_block = O_NONBLOCK
+		};
+
+		enum Flag2: Flag {
+			Close_on_exec = FD_CLOEXEC
+		};
+
+		enum Option: opt_type {
+			Reuse_addr = SO_REUSEADDR,
+			Keep_alive = SO_KEEPALIVE
+		};
 
 		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
 
@@ -16,14 +29,15 @@ namespace factory {
 			if (!this->is_valid()) {
 				check("socket()", this->_socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
 #if !HAVE_DECL_SOCK_NONBLOCK
-				this->flags(O_NONBLOCK|O_CLOEXEC);
+				this->setf(Non_block);
+				this->setf(Close_on_exec);
 #endif
 			}
 		}
 
 		void bind(Endpoint e) {
 			this->create_socket_if_necessary();
-			this->options(SO_REUSEADDR);
+			this->setopt(Reuse_addr);
 			check("bind()", ::bind(this->_socket, e.sockaddr(), e.sockaddrlen()));
 			Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 		}
@@ -50,8 +64,8 @@ namespace factory {
 			Endpoint addr;
 			Endpoint::Sock_len len = sizeof(Endpoint);
 			Socket socket = check("accept()", ::accept(this->_socket, addr.sockaddr(), &len));
-			socket.flags(O_NONBLOCK);
-			socket.flags2(FD_CLOEXEC);
+			socket.setf(Non_block);
+			socket.setf(Close_on_exec);
 			Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
 			return std::make_pair(socket, addr);
 		}
@@ -59,7 +73,7 @@ namespace factory {
 		void close() {
 			if (this->is_valid()) {
 				Logger<Level::COMPONENT>() << "Closing socket " << this->_socket << std::endl;
-				::shutdown(this->_socket, SHUT_RDWR);
+				check("shutdown()", ::shutdown(this->_socket, SHUT_RDWR));
 //				::close(this->_socket);
 				// TODO: check this on discovery test
 				check("close()", ::close(this->_socket));
@@ -73,14 +87,14 @@ namespace factory {
 			}
 		}
 
-		void flags2(Flag f) { ::fcntl(this->_socket, F_SETFD, this->flags2() | f); }
-		Flag flags2() const { return ::fcntl(this->_socket, F_GETFD); }
-		void flags(Flag f) { ::fcntl(this->_socket, F_SETFL, this->flags() | f); }
-		Flag flags() const { return ::fcntl(this->_socket, F_GETFL); }
+		Flag flags() const { return check("fcntl()", ::fcntl(this->_socket, F_GETFL)); }
+		Flag flags2() const { return check("fcntl()", ::fcntl(this->_socket, F_GETFD)); }
+		void setf(Flag1 f) { check("fcntl()", ::fcntl(this->_socket, F_SETFL, this->flags() | f)); }
+		void setf(Flag2 f) { check("fcntl()", ::fcntl(this->_socket, F_SETFD, this->flags2() | f)); }
 
-		void options(Option option) {
+		void setopt(Option opt) {
 			int one = 1;
-			check("setsockopt()", ::setsockopt(this->_socket, SOL_SOCKET, option, &one, sizeof(one)));
+			check("setsockopt()", ::setsockopt(this->_socket, SOL_SOCKET, opt, &one, sizeof(one)));
 		}
 
 		int error() const {
@@ -179,6 +193,8 @@ namespace factory {
 		int _socket;
 		static const int INVALID_SOCKET = -1;
 	};
+
+	typedef Socket Filedesk;
 
 }
 namespace factory {
@@ -1479,7 +1495,7 @@ namespace factory {
 		explicit Packing_stream(streambuf_type* str): iostream_type() {
 			this->init(str);
 		}
-		Packing_stream(Packing_stream&& rhs): iostream_type(std::move(rhs)) {}
+		Packing_stream(Packing_stream&& rhs): iostream_type(rhs.rdbuf()) {}
 		Packing_stream(const Packing_stream&) = delete;
 		Packing_stream() = delete;
 

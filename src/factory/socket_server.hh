@@ -108,7 +108,7 @@ namespace factory {
 						event.no_reading();
 					}
 					Logger<Level::SERVER>()
-						<< "Event " << event.fd() << ' ' << event << std::endl;
+						<< "Event " << event << std::endl;
 					if (event.fd() == _poller.notification_pipe()) {
 						Logger<Level::SERVER>() << "Notification " << event << std::endl;
 						process_kernels();
@@ -123,7 +123,6 @@ namespace factory {
 							if (res == _upstream.end()) {
 								Remote_server* s = peer(sock, addr, vaddr, DEFAULT_EVENTS);
 								Logger<Level::SERVER>()
-									<< server_addr() << ": "
 									<< "connected peer " << s->vaddr() << std::endl;
 							} else {
 								Remote_server* s = res->second;
@@ -134,8 +133,7 @@ namespace factory {
 									<< std::endl;
 								if (addr.port() < s->bind_addr().port()) {
 									Logger<Level::SERVER> log;
-									log << server_addr() << ": "
-										<< "not replacing peer " << *s
+									log << "not replacing peer " << *s
 										<< std::endl;
 									// create temporary subordinate server
 									// to read kernels until the socket
@@ -151,15 +149,14 @@ namespace factory {
 									debug("not replacing upstream");
 								} else {
 									Logger<Level::SERVER> log;
-									log << server_addr() << ": "
-										<< "replacing peer " << *s;
+									log << "replacing peer " << *s;
 									_poller.ignore(s->fd());
 									_servers.erase(s->fd());
 									Remote_server* new_s = new Remote_server(std::move(*s));
 									new_s->socket(sock);
 									_servers[sock] = new_s;
 									_upstream[vaddr] = new_s;
-									Event ev(DEFAULT_EVENTS | POLLOUT, sock);
+									Event ev(DEFAULT_EVENTS | Event::Out, sock);
 									ev.reading();
 									ev.writing();
 									_poller.add(ev);
@@ -181,7 +178,7 @@ namespace factory {
 							if (res == _servers.end()) {
 								debug("qqq");
 								std::stringstream msg;
-								msg << this_process::id() << ' ' << server_addr() << ' ';
+								msg << this_process::id() << ' ' << this->server_addr() << ' ';
 								msg << " can not find server to process event: fd=" << event.fd();
 								Logger<Level::SERVER>() << msg.str() << std::endl;
 								throw Error(msg.str(), __FILE__, __LINE__, __func__);
@@ -290,7 +287,7 @@ namespace factory {
 				return out << "sserver " << rhs._cpu;
 			}
 
-			Endpoint server_addr() const { return _socket.bind_addr(); }
+			Endpoint server_addr() const { return this->_socket.bind_addr(); }
 		
 		private:
 
@@ -340,7 +337,7 @@ namespace factory {
 			void flush_kernels() {
 				for (auto pair : _upstream) {
 					Remote_server* server = pair.second;
-					process_event(server, Event(POLLOUT, server->fd()));
+					process_event(server, Event(Event::Out, server->fd()));
 				}
 			}
 
@@ -359,17 +356,15 @@ namespace factory {
 					pool_is_empty = _pool.empty();
 					lock.unlock();
 
-					if (server_addr() && k->to() == server_addr()) {
+					if (this->server_addr() && k->to() == this->server_addr()) {
 						std::ostringstream msg;
 						msg << "Kernel is sent to local node. From="
-							<< server_addr() << ", to=" << k->to();
+							<< this->server_addr() << ", to=" << k->to();
 						throw Error(msg.str(), __FILE__, __LINE__, __func__);
 					}
 
 					if (k->moves_everywhere()) {
-						Logger<Level::SERVER>()
-							<< server_addr() << ' '
-							<< "broadcast kernel" << std::endl;
+						Logger<Level::SERVER>() << "broadcast kernel" << std::endl;
 						for (auto pair : _upstream) {
 							Remote_server* s = pair.second;
 							s->send(k);
@@ -392,7 +387,7 @@ namespace factory {
 						}
 						auto result = _upstream.find(k->to());
 						if (result == _upstream.end()) {
-							Remote_server* handler = peer(k->to(), DEFAULT_EVENTS | POLLOUT);
+							Remote_server* handler = peer(k->to(), DEFAULT_EVENTS | Event::Out);
 							handler->send(k);
 						} else {
 							result->second->send(k);
@@ -404,28 +399,25 @@ namespace factory {
 
 			void debug(const char* msg = "") {
 				Logger<Level::SERVER> log;
-				log << _socket.bind_addr() << ' ';
 				log << msg << " upstream ";
 				for (auto p : _upstream) {
 					log << *p.second << ',';
 				}
 				log << std::endl;
-				log << _socket.bind_addr() << ' ';
 				log << msg << " servers ";
 				for (auto p : _servers) {
 					log << p.first << " => ";
 					log << *p.second << ',';
 				}
 				log << std::endl;
-				log << _socket.bind_addr() << ' ';
 				log << msg << " events ";
 				log << _poller;
 				log << std::endl;
 			}
 
-			Remote_server* peer(Endpoint addr, Event::Evs events) {
+			Remote_server* peer(Endpoint addr, Event::legacy_event events) {
 				// bind to server address with ephemeral port
-				Endpoint srv_addr = server_addr();
+				Endpoint srv_addr = this->server_addr();
 				srv_addr.port(0);
 				Socket sock;
 				sock.bind(srv_addr);
@@ -433,7 +425,7 @@ namespace factory {
 				return peer(sock, sock.bind_addr(), addr, events);
 			}
 
-			Remote_server* peer(Socket sock, Endpoint addr, Endpoint vaddr, Event::Evs events) {
+			Remote_server* peer(Socket sock, Endpoint addr, Endpoint vaddr, Event::legacy_event events) {
 				Remote_server* s = new Remote_server(sock, addr);
 				s->vaddr(vaddr);
 				_upstream[vaddr] = s;
@@ -456,7 +448,7 @@ namespace factory {
 			int _stop_iterations = 0;
 
 			static const int MAX_STOP_ITERATIONS = 13;
-			static const int DEFAULT_EVENTS = POLLRDHUP | POLLIN;
+			static const Event::legacy_event DEFAULT_EVENTS = Event::Hup | Event::In;
 		};
 
 		template<class Kernel, template<class X> class Pool, class Server_socket>
@@ -568,7 +560,7 @@ namespace factory {
 							});
 						} catch (No_principal_found<Kernel>& err) {
 							Logger<Level::HANDLER>() << "No principal found for "
-								<< int(err.kernel()->result()) << std::endl;
+								<< err.kernel()->result() << std::endl;
 							Kernel* k = err.kernel();
 							k->principal(k->parent());
 							if (_parent != nullptr) {
@@ -651,7 +643,7 @@ namespace factory {
 			void read_kernels(Server<Kernel>* parent_server) {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				handle_event(Event(POLLIN, this->fd()), parent_server, [](bool) {});
+				handle_event(Event(Event::In, this->fd()), parent_server, [](bool) {});
 			}
 
 			Endpoint _vaddr;
