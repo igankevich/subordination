@@ -93,6 +93,7 @@ namespace factory {
 		typedef typename std::decay<Int>::type Retval;
 
 		constexpr Bytes(): val{} {}
+		constexpr Bytes(const Bytes& rhs): val(rhs.val) {}
 		constexpr Bytes(T v): val(v) {}
 		template<class It>
 		Bytes(It first, It last) { std::copy(first, last, bytes); }
@@ -128,6 +129,9 @@ namespace factory {
 		static_assert(sizeof(decltype(val)) == sizeof(decltype(i)),
 			"Bad size of integral type.");
 	};
+
+	template<class T>
+	constexpr Bytes<T> make_bytes(T rhs) { return Bytes<T>(rhs); }
 
 	template<class T, class B>
 	std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {

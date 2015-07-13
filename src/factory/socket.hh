@@ -822,7 +822,7 @@ namespace factory {
 			this->read_kernel_packetsize();
 			this->buffer_payload();
 			this->read_payload();
-			if (this->_state == State::READING_PAYLOAD) {
+			if (this->_rstate == State::READING_PAYLOAD) {
 				return *this->gptr();
 			}
 			return traits_type::eof();
@@ -838,6 +838,7 @@ namespace factory {
 			if (!this->buffer_payload()) {
 				return std::streamsize(0);
 			}
+			this->read_payload();
 			return this->Base::xsgetn(s, n);
 		}
 
@@ -864,7 +865,7 @@ namespace factory {
 
 		bool buffer_payload() {
 			bool ret = true;
-			if (this->_state == State::BUFFERING_PAYLOAD) {
+			if (this->_rstate == State::BUFFERING_PAYLOAD) {
 				if (this->readend() - this->packetpos() >= this->payloadsize()) {
 					char_type* pos = this->eback() + this->packetpos();
 					this->setg(this->eback(), pos, pos + this->packetsize());
@@ -880,7 +881,7 @@ namespace factory {
 
 		bool read_payload() {
 			bool ret = true;
-			if (this->_state == State::READING_PAYLOAD) {
+			if (this->_rstate == State::READING_PAYLOAD) {
 				this->dumpstate(ret);
 				pos_type off = this->readoff() + pos_type(1);
 				if (off - this->packetpos() == this->payloadsize()) {
@@ -913,8 +914,8 @@ namespace factory {
 			return out;
 		}
 
-		void sets(State rhs) { this->_state = rhs; }
-		State state() const { return this->_state; }
+		void sets(State rhs) { this->_rstate = rhs; }
+		State state() const { return this->_rstate; }
 		pos_type readoff() {
 			return this->seekoff(0, std::ios_base::cur, std::ios_base::in);
 		}
@@ -931,7 +932,7 @@ namespace factory {
 
 		size_type _packetsize = 0;
 		pos_type _packetpos = 0;
-		State _state = State::READING_SIZE;
+		State _rstate = State::READING_SIZE;
 	};
 
 	template<class Base>
@@ -991,7 +992,6 @@ namespace factory {
 
 		void end_packet() {
 			if (this->state() == State::WRITING_PAYLOAD) {
-				std::clog << "end_packet()" << std::endl;
 				pos_type end = this->writepos();
 				size_type s = end - this->_begin;
 				if (s == sizeof(size_type)) {
@@ -1001,6 +1001,7 @@ namespace factory {
 					this->putsize(s);
 					this->seekpos(end, std::ios_base::out);
 				}
+				std::clog << "end_packet(): size=" << s << std::endl;
 				this->sets(State::WRITING_SIZE);
 			}
 		}

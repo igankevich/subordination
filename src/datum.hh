@@ -44,28 +44,36 @@ struct Datum {
 			u != rhs.u || v != rhs.v || w != rhs.w;
 	}
 
-	friend Foreign_stream& operator<<(Foreign_stream& out, const Datum& rhs) {
+	friend factory::Foreign_stream& operator<<(factory::Foreign_stream& out, const Datum& rhs) {
 		return out
 			<< rhs.x << rhs.y << rhs.z
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	friend Foreign_stream& operator>>(Foreign_stream& in, Datum& rhs) {
+	friend factory::Foreign_stream& operator>>(factory::Foreign_stream& in, Datum& rhs) {
 		return in
 			>> rhs.x >> rhs.y >> rhs.z
 			>> rhs.u >> rhs.v >> rhs.w;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const Datum& rhs) {
-		return out
-			<< rhs.x << rhs.y << rhs.z
-			<< rhs.u << rhs.v << rhs.w;
+		out.write(reinterpret_cast<const char*>(&rhs.x), sizeof(rhs.x));
+		out.write(reinterpret_cast<const char*>(&rhs.y), sizeof(rhs.y));
+		out.write(reinterpret_cast<const char*>(&rhs.z), sizeof(rhs.z));
+		out.write(reinterpret_cast<const char*>(&rhs.u), sizeof(rhs.u));
+		out.write(reinterpret_cast<const char*>(&rhs.v), sizeof(rhs.v));
+		out.write(reinterpret_cast<const char*>(&rhs.w), sizeof(rhs.w));
+		return out;
 	}
 
 	friend std::istream& operator>>(std::istream& in, Datum& rhs) {
-		return in
-			>> rhs.x >> rhs.y >> rhs.z
-			>> rhs.u >> rhs.v >> rhs.w;
+		in.read(reinterpret_cast<char*>(&rhs.x), sizeof(rhs.x));
+		in.read(reinterpret_cast<char*>(&rhs.y), sizeof(rhs.y));
+		in.read(reinterpret_cast<char*>(&rhs.z), sizeof(rhs.z));
+		in.read(reinterpret_cast<char*>(&rhs.u), sizeof(rhs.u));
+		in.read(reinterpret_cast<char*>(&rhs.v), sizeof(rhs.v));
+		in.read(reinterpret_cast<char*>(&rhs.w), sizeof(rhs.w));
+		return in;
 	}
 
 	constexpr static size_t real_size() {
@@ -77,8 +85,8 @@ struct Datum {
 private:
 	int64_t x;
 	int32_t y;
-	Bytes<float> z;
-	Bytes<double> u;
+	factory::Bytes<float> z;
+	factory::Bytes<double> u;
 	int16_t v;
 	int8_t w;
 	char padding[5] = {};

@@ -1,5 +1,6 @@
 #include <factory/factory.hh>
 #include "test.hh"
+#include "datum.hh"
 
 using namespace factory;
 
@@ -220,37 +221,45 @@ void test_kernelbuf_withvector() {
 	typedef basic_kstream<std::basic_stringbuf<T>> kstream;
 
 	const I MAX_SIZE_POWER = 12;
+	std::clog << "test_kernelbuf_withvector()" << std::endl;
 
-	for (I k=1; k<=133; ++k) {
-		I size = I(1) << 10;
-		std::vector<T> input(size);
-		for (size_t j=0; j<size; ++j)
-			input[j] = dice();
-
+	for (I k=0; k<=10; ++k) {
+		I size = I(1) << k;
+		std::vector<Datum> input(size);
 		kstream str;
 		if (str.tellp() != 0) {
 			std::stringstream msg;
-			msg << "buffer is not empty before write: tellp=";
+			msg << "input buffer is not empty before write: tellp=";
 			msg << str.tellp();
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
-		str.write(&input[0], size);
-		str.flush();
-		std::vector<T> output(size);
-		str.read(&output[0], size);
-//		if (!buf.empty()) {
-//			std::stringstream msg;
-//			msg << "buffer is not empty after read: size=";
-//			msg << buf.size();
-//			throw Error(msg.str(), __FILE__, __LINE__, __func__);
-//		}
-		for (size_t j=0; j<size; ++j) {
-			if (input[j] != output[j]) {
-				std::stringstream msg;
-				msg << "input and output does not match:\n'"
-					<< input[j] << "'\n!=\n'" << output[j] << "'";
-				throw Error(msg.str(), __FILE__, __LINE__, __func__);
-			}
+		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
+			str << rhs << std::flush;
+		});
+		if (str.tellg() != 0) {
+			std::stringstream msg;
+			msg << "output buffer is not empty before read: tellg=";
+			msg << str.tellg();
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
+		std::vector<Datum> output(size);
+		std::for_each(output.begin(), output.end(), [&str] (Datum& rhs) {
+			str >> rhs;
+		});
+		if (str.tellg() != str.tellp()) {
+			std::stringstream msg;
+			msg << "read and write positions does not match after read: tellp=";
+			msg << str.tellp();
+			msg << ", tellg=" << str.tellg();
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+		}
+		auto pair = std::mismatch(input.begin(), input.end(), output.begin());
+		if (pair.first != input.end()) {
+			auto pos = pair.first - input.begin();
+			std::stringstream msg;
+			msg << "input and output does not match at i=" << pos << ":\n'"
+				<< make_bytes(*pair.first) << "'\n!=\n'" << make_bytes(*pair.second) << "'";
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 	}
 }
