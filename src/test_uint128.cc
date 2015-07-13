@@ -1,5 +1,5 @@
 #define FACTORY_FORCE_CUSTOM_UINT128
-#include <factory/factory.hh>
+#include <factory/factory_base.hh>
 
 using namespace factory;
 

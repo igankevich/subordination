@@ -76,7 +76,7 @@ namespace factory {
 
 		void next_record() {
 			_buf << now() << SEP;
-			components::factory_server_addr(_buf);
+			components::print_all_endpoints(_buf);
 			_buf << SEP;
 			_buf << this_process::id() << SEP;
 			_buf << _tag << SEP;

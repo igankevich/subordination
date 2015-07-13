@@ -84,6 +84,8 @@ namespace factory {
 			void wait() {}
 			virtual void stop() { stopped(true); }
 			virtual void stop_now() {}
+			// TODO: boilerplate :(
+			virtual Endpoint addr() const { return Endpoint(); }
 			void start() {}
 
 		protected:
@@ -466,6 +468,20 @@ namespace factory {
 				std::for_each(_factories.begin(), _factories.end(),
 					[now] (F* rhs) { now ? rhs->stop_now() : rhs->stop(); });
 			}
+			void print_all_endpoints(std::ostream& out) const {
+				std::vector<Endpoint> addrs;
+				std::for_each(this->_factories.begin(), this->_factories.end(),
+					[&addrs] (const F* rhs) {
+						Endpoint a = rhs->addr();
+						if (a) { addrs.push_back(a); }
+					}
+				);
+				if (addrs.empty()) {
+					out << Endpoint();
+				} else {
+					out << intersperse(addrs.begin(), addrs.end(), ',');
+				}
+			}
 
 		private:
 			void init_signal_handlers() {
@@ -499,6 +515,10 @@ namespace factory {
 
 		void stop_all_factories(bool now) {
 			__all_factories.stop_all(now);
+		}
+
+		void print_all_endpoints(std::ostream& out) {
+			__all_factories.print_all_endpoints(out);
 		}
 
 		template<
@@ -562,6 +582,8 @@ namespace factory {
 			External_server* ext_server() { return &_ext_server; }
 			Timer_server* timer_server() { return &_timer_server; }
 			Repository_stack* repository() { return &_repository; }
+
+			Endpoint addr() const { return _remote_server.server_addr(); }
 
 		private:
 

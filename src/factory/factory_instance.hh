@@ -1,13 +1,3 @@
-#ifdef FACTORY_NO_DERIVED_SYSTEM
-namespace factory {
-	namespace components {
-
-		void factory_server_addr(std::ostream& out) {
-			out << "0.0.0.0";
-		}
-	}
-}
-#else
 namespace factory {
 
 	Factory __factory;
@@ -18,12 +8,4 @@ namespace factory {
 	Timer_server* timer_server() { return __factory.timer_server(); }
 	Repository_stack* repository() { return __factory.repository(); }
 
-	namespace components {
-
-		void factory_server_addr(std::ostream& out) {
-			out << remote_server()->server_addr();
-		}
-	}
-
 }
-#endif

@@ -1,4 +1,4 @@
-#include <factory/factory.hh>
+#include <factory/factory_base.hh>
 
 
 using namespace factory;
