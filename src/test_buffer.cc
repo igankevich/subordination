@@ -155,7 +155,7 @@ void test_kernelbuf() {
 			okernelbuf buf;
 			buf.setfd(file.fd());
 			std::basic_ostream<T> out(&buf);
-			out << contents << std::flush << std::flush;
+			out << contents;
 		}
 		{
 			File file(filename, O_RDONLY);
@@ -196,8 +196,7 @@ void test_kernelbuf_with_stringstream() {
 		kernelbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
 		out.write(contents.data(), contents.size());
-		out.flush();
-		out.flush();
+		out << end_packet << std::flush;
 		std::basic_string<T> result(contents.size(), '_');
 		out.read(&result[0], result.size());
 		if (result != contents) {
@@ -235,7 +234,7 @@ void test_kernelbuf_withvector() {
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
-			str << rhs << std::flush << std::flush;
+			str << rhs << end_packet;
 		});
 		if (str.tellg() != 0) {
 			std::stringstream msg;
@@ -267,7 +266,7 @@ void test_kernelbuf_withvector() {
 
 struct App {
 	int run(int, char**) {
-		try {
+//		try {
 			test_buffer<char, Buffer>();
 			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
@@ -280,10 +279,10 @@ struct App {
 			test_kernelbuf<char>();
 			test_kernelbuf_with_stringstream<char>();
 			test_kernelbuf_withvector<char>();
-		} catch (std::exception& e) {
-			std::cerr << e.what() << std::endl;
-			return 1;
-		}
+//		} catch (std::exception& e) {
+//			std::cerr << e.what() << std::endl;
+//			return 1;
+//		}
 		return 0;
 	}
 };

@@ -1635,4 +1635,10 @@ namespace factory {
 
 	typedef Packing_stream<char> packstream;
 
+	std::ostream& end_packet(std::ostream& out) {
+		out.flush();
+		out.clear();
+		return out;
+	}
+
 }

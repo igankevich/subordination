@@ -104,6 +104,8 @@ namespace factory {
 		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Pool>, Server> {
 			
 			typedef Socket_server<Server, Remote_server, Kernel, Pool> This;
+			typedef std::map<Endpoint, Remote_server*> upstream_type;
+			typedef std::unordered_map<int, Remote_server*> servers_type;
 
 			Socket_server():
 				_poller(),
@@ -125,7 +127,7 @@ namespace factory {
 			}
 
 			void serve() {
-				process_kernels();
+				this->process_kernels();
 				_poller.run([this] (Event event) {
 					if (_poller.stopping()) {
 						event.no_reading();
@@ -420,22 +422,35 @@ namespace factory {
 				}
 			}
 
-			void debug(const char* msg = "") {
-				Logger<Level::SERVER> log;
-				log << msg << " upstream ";
-				for (auto p : _upstream) {
-					log << *p.second << ',';
+			template<class M>
+			struct Print_values {
+				typedef M map_type;
+				typedef typename map_type::key_type key_type;
+				typedef typename map_type::value_type value_type;
+				Print_values(const M& m): map(m) {}
+				friend std::ostream& operator<<(std::ostream& out, const Print_values& rhs) {
+					out << '{';
+					intersperse_iterator<Remote_server> it(out, ",");
+					std::transform(rhs.map.begin(), rhs.map.end(), it,
+						[] (const value_type& pair) -> const Remote_server& {
+							return *pair.second;
+						}
+					);
+					out << '}';
+					return out;
 				}
-				log << std::endl;
-				log << msg << " servers ";
-				intersperse_iterator<Remote_server> it(log.ostream(), ",");
-				std::transform(this->_servers.begin(), this->_servers.end(), it,
-					[] (const std::pair<int, const Remote_server*>& rhs) -> const Remote_server& {
-						return *rhs.second;
-					}
-				);
-				log << std::endl;
-				log << msg << " events " << _poller << std::endl;
+			private:
+				const M& map;
+			};
+
+			template<class M>
+			Print_values<M> print_values(const M& m) { return Print_values<M>(m); }
+
+			void debug(const char* msg = "") {
+				Logger<Level::SERVER>()
+					<< msg << " upstream " << print_values(this->_upstream) << std::endl
+					<< msg << " servers " << print_values(this->_servers) << std::endl
+					<< msg << " events " << this->_poller << std::endl;
 			}
 
 			Remote_server* peer(Endpoint addr, Event::legacy_event events) {
@@ -459,8 +474,8 @@ namespace factory {
 
 			Poller _poller;
 			Server_socket _socket;
-			std::map<Endpoint, Remote_server*> _upstream;
-			std::unordered_map<int, Remote_server*> _servers;
+			upstream_type _upstream;
+			servers_type _servers;
 			Pool<Kernel*> _pool;
 
 			// multi-threading
@@ -488,7 +503,6 @@ namespace factory {
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
 				_istream(),
-				_ostream(),
 				_ipacket(),
 				_buffer(),
 				_parent(nullptr)
@@ -504,7 +518,6 @@ namespace factory {
 				_kernelbuf(std::move(rhs._kernelbuf)),
 				_stream(std::move(rhs._stream)),
 				_istream(std::move(rhs._istream)),
-				_ostream(std::move(rhs._ostream)),
 				_ipacket(rhs._ipacket),
 				_buffer(std::move(rhs._buffer)) ,
 				_parent(rhs._parent) {}
@@ -670,7 +683,6 @@ namespace factory {
 			Kernelbuf _kernelbuf;
 			Stream _stream;
 			Foreign_stream _istream;
-			Foreign_stream _ostream;
 			Packet _ipacket;
 			std::deque<Kernel*> _buffer;
 

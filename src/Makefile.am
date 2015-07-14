@@ -51,7 +51,6 @@ check_PROGRAMS = \
 	test_marshaling \
 	test_socket \
 	test_offline \
-	test_discovery \
 	test_spinlock \
 	test_endpoint \
 	test_encoding \
