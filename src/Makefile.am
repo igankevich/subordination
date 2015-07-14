@@ -1,6 +1,7 @@
 include $(top_srcdir)/am/gcov.am
 include $(top_srcdir)/am/gprof.am
 include $(top_srcdir)/am/valgrind.am
+include $(top_srcdir)/am/cppcheck.am
 include $(top_srcdir)/am/version.am
 
 AM_CXXFLAGS = \
@@ -43,8 +44,7 @@ TESTS = \
 	test_encoding \
 	test_timer \
 	test_uint128 \
-	test_kernel \
-	cppcheck
+	test_kernel
 
 check_PROGRAMS = \
 	test_buffer \
