@@ -5,14 +5,6 @@ namespace factory {
 		template<class Kernel>
 		struct Kernel_packet {
 
-			enum struct State {
-				READING_SIZE,
-				READING_PACKET,
-				COMPLETE
-			};
-
-			typedef uint32_t Packet_size;
-
 			void write(packstream& out, Kernel& kernel) {
 				typedef packstream::pos_type pos_type;
 				pos_type old_pos = out.tellp();
@@ -32,87 +24,16 @@ namespace factory {
 				Type<Kernel>::types().read_and_send_object(in, callback, callback2);
 			}
 
-//			template<class Out>
-//			void write(Out& out, Kernel& kernel) {
-//				typedef typename Out::pos_type pos_type;
-//
-//				const Type<Kernel>* type = kernel.type();
-//				if (type == nullptr) {
-//					std::stringstream msg;
-//					msg << "Can not find type for kernel " << kernel.id();
-//					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-//				}
-//
-//				pos_type old_pos = out.tellp();
-//				this->setsize(0);
-//				out << this->packetsize();
-//				out << type->id();
-//				kernel.write(out);
-//				pos_type new_pos = out.tellp();
-//				this->setsize(new_pos - old_pos);
-//				out.seekp(old_pos);
-//				out << this->packetsize();
-//				out.seekp(new_pos);
-//				Logger<Level::COMPONENT>() << "send "
-//					<< this->payloadsize()
-//					<< " byte(s)"
-//					<< std::endl;
-//			}
-
-//			template<class In, class F, class G>
-//			bool read(In& in, F callback, G callback2) {
-//				if (this->rdstate() == State::READING_SIZE && sizeof(this->packetsize()) <= in.size()) {
-//					in >> this->_packetsize;
-//					this->sets(State::READING_PACKET);
-//				}
-//				if (this->rdstate() == State::READING_PACKET) {
-//					Logger<Level::COMPONENT>() << "recv "
-//						<< in.size()
-//						<< '/'
-//						<< this->payloadsize()
-//						<< " byte(s)"
-//						<< std::endl;
-//				}
-//				if (this->rdstate() == State::READING_PACKET && this->payloadsize() <= in.size()) {
-//					Type<Kernel>::types().read_and_send_object(in, callback, callback2);
-//					this->sets(State::COMPLETE);
-//				}
-//				return this->rdstate() == State::COMPLETE;
-//			}
-
-			void reset_reading_state() {
-				this->sets(State::READING_SIZE);
-				this->setsize(0);
-			}
-
-		private:
-			void sets(State rhs) { this->_state = rhs; }
-			constexpr State rdstate() const { return this->_state; }
-			constexpr Packet_size packetsize() const { return this->_packetsize; }
-			void setsize(Packet_size rhs) { this->_packetsize = rhs; }
-			constexpr Packet_size payloadsize() const { return this->_packetsize - sizeof(this->_packetsize); }
-
-			State _state = State::READING_SIZE;
-			Packet_size _packetsize = 0;
 		};
 
 		template<class Server, class Remote_server, class Kernel, template<class X> class Pool>
 		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Pool>, Server> {
 			
-			typedef Socket_server<Server, Remote_server, Kernel, Pool> This;
+			typedef Socket_server<Server, Remote_server, Kernel, Pool> this_type;
 			typedef std::map<Endpoint, Remote_server*> upstream_type;
 			typedef std::unordered_map<int, Remote_server*> servers_type;
 
-			Socket_server():
-				_poller(),
-				_socket(),
-				_upstream(),
-				_servers(),
-				_pool(),
-				_cpu(0),
-				_thread(),
-				_mutex()
-			{}
+			Socket_server() = default;
 
 			~Socket_server() {
 				std::for_each(_upstream.begin(), _upstream.end(),
@@ -251,9 +172,9 @@ namespace factory {
 //						__FILE__, __LINE__, __func__);
 //				}
 				std::unique_lock<std::mutex> lock(_mutex);
-				_pool.push(kernel);
+				this->_pool.push(kernel);
 				lock.unlock();
-				_poller.notify();
+				this->_poller.notify();
 			}
 
 			void peer(Endpoint addr) {
@@ -261,7 +182,7 @@ namespace factory {
 //					throw Error("Can not add upstream server when socket server is running.",
 //						__FILE__, __LINE__, __func__);
 //				}
-				peer(addr, DEFAULT_EVENTS);
+				this->peer(addr, DEFAULT_EVENTS);
 			}
 
 			void erase(Endpoint addr) {
@@ -279,32 +200,32 @@ namespace factory {
 			}
 
 			void socket(Endpoint addr) {
-				_socket.bind(addr);
-				_socket.listen();
-				_poller.add(Event(DEFAULT_EVENTS, _socket));
+				this->_socket.bind(addr);
+				this->_socket.listen();
+				this->_poller.add(Event(DEFAULT_EVENTS, this->_socket));
 			}
 
 			void start() {
 				Logger<Level::SERVER>() << "Socket_server::start()" << std::endl;
-				_thread = std::thread([this] { this->serve(); });
+				this->_thread = std::thread(&this_type::serve, this);
 			}
 	
 			void stop_impl() {
 				Logger<Level::SERVER>() << "Socket_server::stop_impl()" << std::endl;
-				_poller.notify_stopping();
+				this->_poller.notify_stopping();
 			}
 
 			void wait_impl() {
 				Logger<Level::SERVER>() << "Socket_server::wait_impl()" << std::endl;
-				if (_thread.joinable()) {
-					_thread.join();
+				if (this->_thread.joinable()) {
+					this->_thread.join();
 				}
 				Logger<Level::SERVER>() << "Socket_server::wait_impl() end" << std::endl;
 			}
 
 			void affinity(int cpu) { _cpu = cpu; }
 
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+			friend std::ostream& operator<<(std::ostream& out, const this_type& rhs) {
 				return out << "sserver " << rhs._cpu;
 			}
 
@@ -475,7 +396,7 @@ namespace factory {
 			Pool<Kernel*> _pool;
 
 			// multi-threading
-			int _cpu;
+			int _cpu = 0;
 			std::thread _thread;
 			std::mutex _mutex;
 
@@ -488,7 +409,7 @@ namespace factory {
 		template<class Kernel, template<class X> class Pool, class Server_socket>
 		struct Remote_Rserver {
 
-			typedef Remote_Rserver<Kernel, Pool, Server_socket> This;
+			typedef Remote_Rserver<Kernel, Pool, Server_socket> this_type;
 			typedef Kernel_packet<Kernel> Packet;
 			typedef char Ch;
 			typedef basic_kernelbuf<basic_fdbuf<Ch,Server_socket>> Kernelbuf;
@@ -556,7 +477,6 @@ namespace factory {
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				Packet packet;
-				this->_stream.clear();
 				packet.write(_stream, *kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
 					Logger<Level::COMPONENT>() << "Delete kernel " << *kernel << std::endl;
@@ -571,12 +491,11 @@ namespace factory {
 
 			template<class F>
 			void handle_event(Event event, Server<Kernel>* parent_server, F on_overflow) {
-				this->_stream.clear();
 				bool overflow = false;
 				if (event.is_reading()) {
 					Logger<Level::COMPONENT>() << "recv rdstate="
 						<< debug_stream(_stream) << ",event=" << event << std::endl;
-					while (!this->_stream.eof()) {
+					while (this->_stream) {
 						try {
 							_ipacket.read(this->_stream, [this] (Kernel* k) {
 								k->from(_vaddr);
@@ -585,7 +504,7 @@ namespace factory {
 									<< ",rdstate=" << debug_stream(this->_stream)
 									<< std::endl;
 								if (k->moves_downstream()) {
-									clear_kernel_buffer(k);
+									this->clear_kernel_buffer(k);
 								}
 							}, [parent_server] (Kernel* k) {
 								parent_server->send(k);
@@ -603,7 +522,7 @@ namespace factory {
 							overflow = true;
 						}
 					}
-					this->_stream.clear(std::ios_base::eofbit);
+					this->_stream.clear();
 				}
 				if (event.is_writing() && !event.is_closing()) {
 					Logger<Level::HANDLER>() << "Send rdstate=" << debug_stream(this->_stream) << std::endl;
@@ -634,10 +553,10 @@ namespace factory {
 
 			bool empty() const { return this->_buffer.empty(); }
 
-			This* parent() const { return this->_parent; }
-			void parent(This* rhs) { this->_parent = rhs; }
+			this_type* parent() const { return this->_parent; }
+			void parent(this_type* rhs) { this->_parent = rhs; }
 
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+			friend std::ostream& operator<<(std::ostream& out, const this_type& rhs) {
 				return out << "{vaddr="
 					<< rhs.vaddr() << ",sock="
 					<< rhs.socket() << ",kernels="
@@ -680,7 +599,7 @@ namespace factory {
 			Packet _ipacket;
 			std::deque<Kernel*> _buffer;
 
-			This* _parent;
+			this_type* _parent;
 		};
 
 	}

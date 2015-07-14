@@ -636,7 +636,7 @@ namespace factory {
 			_gbuf(gbufsize),
 			_pbuf(pbufsize)
 		{
-			char_type* end = &_gbuf.front() + _gbuf.size();
+			char_type* end = &_gbuf.front();
 			this->setg(end, end, end);
 			char_type* beg = &this->_pbuf.front();
 			this->setp(beg, beg + this->_pbuf.size());
@@ -658,16 +658,17 @@ namespace factory {
 			if (this->gptr() != this->egptr()) {
 				return traits_type::to_int_type(*this->gptr());
 			}
-			if (this->eback() == this->gptr()) {
-				char_type* base = &this->_gbuf.front();
-				ssize_t n = this->_fd.read(base, this->_gbuf.size());
-				Logger<Level::COMPONENT>() << "Reading fd=" << _fd << ",n=" << n << std::endl;
-				if (n <= 0) {
-					return traits_type::eof();
-				}
-				this->setg(base, base, base + n);
-			} else {
-				this->growgbuf(this->_gbuf.size() * 2);
+//			if (this->eback() == this->gptr()) {
+//				char_type* base = &this->_gbuf.front();
+//				ssize_t n = this->_fd.read(base, this->_gbuf.size());
+//				Logger<Level::IO>() << "Reading fd=" << _fd << ",n=" << n << std::endl;
+//				if (n <= 0) {
+//					return traits_type::eof();
+//				}
+//				this->setg(base, base, base + n);
+//			} else
+			{
+//				this->growgbuf(this->_gbuf.size() * 2);
 				ssize_t n = 0;
 				pos_type old_pos = this->gptr() - this->eback();
 				pos_type pos = this->egptr() - this->eback();
@@ -683,7 +684,7 @@ namespace factory {
 				char_type* base = this->eback();
 				this->setg(base, base + old_pos, base + pos);
 			}
-			return traits_type::not_eof(*this->gptr());
+			return traits_type::to_int_type(*this->gptr());
 		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
@@ -697,7 +698,7 @@ namespace factory {
 				if (this->pptr() != this->epptr()) {
 					*this->pptr() = c;
 					this->pbump(1);
-					return traits_type::not_eof(c);
+					return traits_type::to_int_type(c);
 				}
 			} else {
 				// TODO: do we need sync???
@@ -707,14 +708,14 @@ namespace factory {
 		}
 
 		int sync() {
-			Logger<Level::COMPONENT>() << "Sync" << std::endl;
+			Logger<Level::IO>() << "Sync" << std::endl;
 			if (this->pptr() == this->pbase()) return 0;
 			ssize_t n = this->_fd.write(this->pbase(), this->pptr() - this->pbase());
 			if (n <= 0) {
 				return -1;
 			}
 			this->pbump(-n);
-			Logger<Level::COMPONENT>() << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
+			Logger<Level::IO>() << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
 			return this->pptr() == this->pbase() ? 0 : -1;
 		}
 
@@ -722,11 +723,11 @@ namespace factory {
 			openmode which = std::ios_base::in | std::ios_base::out)
 		{
 			if (way == std::ios_base::beg) {
-				Logger<Level::COMPONENT>() << "seekoff way=beg,off=" << off << std::endl;
+				Logger<Level::IO>() << "seekoff way=beg,off=" << off << std::endl;
 				return this->seekpos(off, which);
 			}
 			if (way == std::ios_base::cur) {
-				Logger<Level::COMPONENT>() << "seekoff way=cur,off=" << off << std::endl;
+				Logger<Level::IO>() << "seekoff way=cur,off=" << off << std::endl;
 				pos_type pos = which & std::ios_base::in
 					? static_cast<pos_type>(this->gptr() - this->eback())
 					: static_cast<pos_type>(this->pptr() - this->pbase());
@@ -734,7 +735,7 @@ namespace factory {
 					: this->seekpos(pos + off, which);
 			}
 			if (way == std::ios_base::end) {
-				Logger<Level::COMPONENT>() << "seekoff way=end,off=" << off << std::endl;
+				Logger<Level::IO>() << "seekoff way=end,off=" << off << std::endl;
 				pos_type pos = which & std::ios_base::in
 					? static_cast<pos_type>(this->egptr() - this->eback())
 					: static_cast<pos_type>(this->epptr() - this->pbase());
@@ -746,7 +747,7 @@ namespace factory {
 		pos_type seekpos(pos_type pos,
 			openmode mode = std::ios_base::in | std::ios_base::out)
 		{
-			Logger<Level::COMPONENT>() << "seekpos " << pos << std::endl;
+			Logger<Level::IO>() << "seekpos " << pos << std::endl;
 			if (mode & std::ios_base::in) {
 				std::size_t size = this->egptr() - this->eback();
 				if (pos >= 0 && pos <= size) {
@@ -766,7 +767,7 @@ namespace factory {
 				}
 //				// enlarge buffer
 //				if (pos > size) {
-//					Logger<Level::COMPONENT>() << "GROW: pos=" << pos << std::endl;
+//					Logger<Level::IO>() << "GROW: pos=" << pos << std::endl;
 //					this->growpbuf(pos);
 //					this->pbump(this->epptr() - this->pptr());
 //				}
@@ -803,7 +804,7 @@ namespace factory {
 			std::ptrdiff_t off = this->gptr() - this->eback();
 			std::ptrdiff_t n = this->egptr() - this->eback();
 			this->_gbuf.resize(new_size);
-			Logger<Level::COMPONENT>() << "Resize gbuf size="
+			Logger<Level::IO>() << "Resize gbuf size="
 				<< this->_gbuf.size() << std::endl;
 			char_type* base = &this->_gbuf.front();
 			this->setg(base, base + off, base + n);
@@ -816,7 +817,7 @@ namespace factory {
 			std::ptrdiff_t off = this->pptr() - this->pbase();
 			std::ptrdiff_t n = this->epptr() - this->pbase();
 			this->_pbuf.resize(new_size);
-			Logger<Level::COMPONENT>() << "Resize pbuf size=" << new_size << std::endl;
+			Logger<Level::IO>() << "Resize pbuf size=" << new_size << std::endl;
 			char_type* base = &this->_pbuf.front();
 			this->setp(base, base + new_size);
 			this->pbump(off);
@@ -853,10 +854,8 @@ namespace factory {
 
 		int_type underflow() {
 			int_type ret = this->Base::underflow();
-			this->read_kernel_packetsize();
-			this->buffer_payload();
-			this->read_payload();
-			if (this->_rstate == State::READING_PAYLOAD) {
+			this->update_state();
+			if (this->_rstate == State::READING_PAYLOAD && this->egptr() != this->gptr()) {
 				return *this->gptr();
 			}
 			return traits_type::eof();
@@ -866,75 +865,76 @@ namespace factory {
 			if (this->egptr() == this->gptr()) {
 				this->Base::underflow();
 			}
-			if (!this->read_kernel_packetsize()) {
+			this->update_state();
+			if (this->egptr() == this->gptr() || this->state() != State::READING_PAYLOAD) {
 				return std::streamsize(0);
 			}
-			if (!this->buffer_payload()) {
-				return std::streamsize(0);
-			}
-			this->read_payload();
 			return this->Base::xsgetn(s, n);
 		}
 
 	private:
 
-		bool read_kernel_packetsize() {
-			bool ret = true;
-			if (this->state() == State::READING_SIZE) {
-				size_type count = this->egptr() - this->gptr();
-				if (count >= this->hdrsize()) {
-					Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
-					size.to_host_format();
-					this->gbump(this->hdrsize());
-					this->setpos(this->readoff());
-					this->setsize(size);
-					this->sets(State::BUFFERING_PAYLOAD);
-				} else {
-					ret = false;
-				}
+		void update_state() {
+			this->dumpstate();
+			State old_state = this->state();
+			switch (this->state()) {
+				case State::READING_SIZE: this->read_kernel_packetsize(); break;
+				case State::BUFFERING_PAYLOAD: this->buffer_payload(); break;
+				case State::READING_PAYLOAD: this->read_payload(); break;
 			}
-			this->dumpstate(ret);
-			return ret;
+			if (old_state != this->state()) {
+				this->update_state();
+			}
 		}
 
-		bool buffer_payload() {
-			bool ret = true;
-			if (this->_rstate == State::BUFFERING_PAYLOAD) {
-				if (this->readend() - this->packetpos() >= this->payloadsize()) {
-					char_type* pos = this->eback() + this->packetpos();
-					this->setg(this->eback(), pos, pos + this->packetsize());
-					this->sets(State::READING_PAYLOAD);
-				} else {
-					this->setg(this->eback(), this->egptr(), this->egptr());
-					ret = false;
-				}
+		void read_kernel_packetsize() {
+			size_type count = this->egptr() - this->gptr();
+			if (count >= this->hdrsize()) {
+				Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
+				size.to_host_format();
+				this->gbump(this->hdrsize());
+				this->setpos(this->readoff());
+				this->setsize(size);
+				this->dumpstate();
+				this->sets(State::BUFFERING_PAYLOAD);
 			}
-			this->dumpstate(ret);
-			return ret;
 		}
 
-		bool read_payload() {
-			bool ret = true;
-			if (this->_rstate == State::READING_PAYLOAD) {
-				this->dumpstate(ret);
-				pos_type off = this->readoff() + pos_type(1);
-				if (off - this->packetpos() == this->payloadsize()) {
-					this->sets(State::READING_SIZE);
-				}
+		void buffer_payload() {
+			pos_type endpos = this->egptr() - this->eback();
+			if (this->_oldendpos < endpos) {
+				this->_oldendpos = endpos;
 			}
-			return ret;
+			if (this->readend() - this->packetpos() >= this->payloadsize()) {
+				char_type* pos = this->eback() + this->packetpos();
+				this->setg(this->eback(), pos, pos + this->payloadsize());
+				this->sets(State::READING_PAYLOAD);
+			} else {
+				this->setg(this->eback(), this->egptr(), this->egptr());
+			}
 		}
 
-		void dumpstate(bool ret) {
-			Logger<Level::COMPONENT>() << std::setw(20) << std::left << this->state()
-				<< "pbase=" << (void*)this->pbase()
-				<< ",pptr=" << (void*)this->pptr()
-				<< ",eback=" << (void*)this->eback()
+		void read_payload() {
+			pos_type off = this->readoff();
+			if (off - this->packetpos() == this->payloadsize()) {
+				pos_type endpos = this->egptr() - this->eback();
+				if (this->_oldendpos > endpos) {
+					this->setg(this->eback(), this->gptr(), this->eback() + this->_oldendpos);
+				}
+				this->_oldendpos = 0;
+				this->sets(State::READING_SIZE);
+			}
+		}
+
+		void dumpstate() {
+			Logger<Level::IO>() << std::setw(20) << std::left << this->state()
+				<< "pptr=" << this->pptr() - this->pbase()
+				<< ",epptr=" << this->epptr() - this->pbase()
 				<< ",gptr=" << this->gptr() - this->eback()
 				<< ",egptr=" << this->egptr() - this->eback()
 				<< ",size=" << this->packetsize()
 				<< ",start=" << this->packetpos()
-				<< ",ret=" << ret
+				<< ",oldpos=" << this->_oldendpos
 				<< std::endl;
 		}
 
@@ -949,7 +949,7 @@ namespace factory {
 		}
 
 		void sets(State rhs) {
-			Logger<Level::COMPONENT>() << "oldstate=" << this->_rstate
+			Logger<Level::IO>() << "oldstate=" << this->_rstate
 				<< ",newstate=" << rhs << std::endl;
 			this->_rstate = rhs;
 		}
@@ -958,7 +958,8 @@ namespace factory {
 			return this->seekoff(0, std::ios_base::cur, std::ios_base::in);
 		}
 		pos_type readend() {
-			return this->seekoff(0, std::ios_base::end, std::ios_base::in);
+			return this->egptr() - this->eback();
+//			return this->seekoff(0, std::ios_base::end, std::ios_base::in);
 		}
 		void setsize(size_type rhs) { this->_packetsize = rhs; }
 		size_type packetsize() const { return this->_packetsize; }
@@ -970,6 +971,7 @@ namespace factory {
 
 		size_type _packetsize = 0;
 		pos_type _packetpos = 0;
+		pos_type _oldendpos = 0;
 		State _rstate = State::READING_SIZE;
 	};
 
@@ -1003,14 +1005,14 @@ namespace factory {
 		}
 
 		int_type overflow(int_type c) {
-			Logger<Level::COMPONENT>() << "overflow()" << std::endl;
+			Logger<Level::IO>() << "overflow()" << std::endl;
 			int_type ret = this->Base::overflow(c);
 			this->begin_packet();
 			return ret;
 		}
 
 		std::streamsize xsputn(const char_type* s, std::streamsize n) {
-			Logger<Level::COMPONENT>() << "xsputn()" << std::endl;
+			Logger<Level::IO>() << "xsputn()" << std::endl;
 			this->begin_packet();
 			return this->Base::xsputn(s, n);
 		}
@@ -1025,7 +1027,7 @@ namespace factory {
 				this->sets(State::WRITING_PAYLOAD);
 				this->setbeg(this->writepos());
 				this->putsize(0);
-				Logger<Level::COMPONENT>() << "begin_packet()     "
+				Logger<Level::IO>() << "begin_packet()     "
 					<< "pbase=" << (void*)this->pbase()
 					<< ", pptr=" << (void*)this->pptr()
 					<< ", eback=" << (void*)this->eback()
@@ -1046,7 +1048,7 @@ namespace factory {
 					this->putsize(s);
 					this->seekpos(end, std::ios_base::out);
 				}
-				Logger<Level::COMPONENT>() << "end_packet(): size=" << s << std::endl;
+				Logger<Level::IO>() << "end_packet(): size=" << s << std::endl;
 				this->sets(State::FINALISING);
 			}
 		}
@@ -1054,7 +1056,7 @@ namespace factory {
 		int finalise() {
 			int ret = -1;
 			if (this->state() == State::FINALISING) {
-				Logger<Level::COMPONENT>() << "finalise()" << std::endl;
+				Logger<Level::IO>() << "finalise()" << std::endl;
 				ret = this->Base::sync();
 				if (ret == 0) {
 					this->sets(State::WRITING_SIZE);
@@ -1075,7 +1077,7 @@ namespace factory {
 		}
 
 		void sets(State rhs) {
-			Logger<Level::COMPONENT>() << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
+			Logger<Level::IO>() << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
 			this->_state = rhs;
 		}
 		State state() const { return this->_state; }
@@ -1593,18 +1595,18 @@ namespace factory {
 #endif
 			Bytes<T> val = rhs;
 			val.to_network_format();
-//			Logger<Level::COMPONENT>() << "Converted from " << std::hex << std::setfill('0');
-//			debug(Logger<Level::COMPONENT>(), rhs);
-//			Logger<Level::COMPONENT>() << " to ";
-//			debug(Logger<Level::COMPONENT>(), val.val);
-//			Logger<Level::COMPONENT>() << std::dec << std::endl;
+//			Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
+//			debug(Logger<Level::IO>(), rhs);
+//			Logger<Level::IO>() << " to ";
+//			debug(Logger<Level::IO>(), val.val);
+//			Logger<Level::IO>() << std::dec << std::endl;
 			this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
 			return *this;
 		}
 
 		Packing_stream& write(const std::string& rhs) {
 			Size length = static_cast<Size>(rhs.size());
-//			Logger<Level::COMPONENT>() << "Writing string of length = " << length << std::endl;
+//			Logger<Level::IO>() << "Writing string of length = " << length << std::endl;
 			write(length);
 			this->iostream_type::write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
 			return *this;
@@ -1616,11 +1618,11 @@ namespace factory {
 			this->iostream_type::read(static_cast<Ch*>(val), sizeof(rhs));
 			val.to_host_format();
 			rhs = val;
-//			Logger<Level::COMPONENT>() << "Converted from " << std::hex << std::setfill('0');
-//			debug(Logger<Level::COMPONENT>(), val);
-//			Logger<Level::COMPONENT>() << " to ";
-//			debug(Logger<Level::COMPONENT>(), rhs);
-//			Logger<Level::COMPONENT>() << std::dec << std::endl;
+//			Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
+//			debug(Logger<Level::IO>(), val);
+//			Logger<Level::IO>() << " to ";
+//			debug(Logger<Level::IO>(), rhs);
+//			Logger<Level::IO>() << std::dec << std::endl;
 			return *this;
 		}
 
@@ -1628,7 +1630,7 @@ namespace factory {
 			Size length;
 			read(length);
 			std::string::value_type* bytes = new std::string::value_type[length];
-//			Logger<Level::COMPONENT>() << "Reading string of length = " << length << std::endl;
+//			Logger<Level::IO>() << "Reading string of length = " << length << std::endl;
 			this->iostream_type::read(reinterpret_cast<Byte*>(bytes), length);
 			rhs.assign(bytes, bytes + length);
 			delete[] bytes;

@@ -9,7 +9,8 @@ namespace factory {
 		DISCOVERY,
 		GRAPH,
 		WEBSOCKET,
-		TEST
+		TEST,
+		IO
 	};
 
 	std::ostream& operator<<(std::ostream& out, const Level rhs) {
@@ -23,6 +24,7 @@ namespace factory {
 			case Level::GRAPH     : out << "grph";    break;
 			case Level::WEBSOCKET : out << "wbsckt";  break;
 			case Level::TEST      : out << "tst";     break;
+			case Level::IO        : out << "io";     break;
 			default               : out << "unknwn";  break;
 		}
 		return out;

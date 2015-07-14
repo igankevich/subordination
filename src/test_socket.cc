@@ -8,7 +8,7 @@ Endpoint server_endpoint("127.0.0.1", 10000);
 Endpoint client_endpoint("127.0.0.2", 10000);
 
 const uint32_t NUM_SIZES = 1;
-const uint32_t NUM_KERNELS = 1;
+const uint32_t NUM_KERNELS = 2;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
