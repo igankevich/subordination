@@ -446,6 +446,8 @@ namespace factory {
 //			void react() {}
 			void write_impl(Foreign_stream&) {}
 			void read_impl(Foreign_stream&) {}
+			void write_impl(packstream&) {}
+			void read_impl(packstream&) {}
 			static void init_type(Type* t) {
 				t->id(123);
 				t->name("Shutdown");

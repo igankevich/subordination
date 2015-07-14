@@ -13,32 +13,55 @@ namespace factory {
 
 			typedef uint32_t Packet_size;
 
-			template<class Out>
-			void write(Out& out, Kernel& kernel) {
-				typedef typename Out::pos_type pos_type;
-
+			void write(packstream& out, Kernel& kernel) {
+//				typedef std::ostream::pos_type pos_type;
+				typedef int pos_type;
 				const Type<Kernel>* type = kernel.type();
 				if (type == nullptr) {
 					std::stringstream msg;
 					msg << "Can not find type for kernel " << kernel.id();
 					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
-
 				pos_type old_pos = out.tellp();
-				this->setsize(0);
-				out << this->packetsize();
 				out << type->id();
 				kernel.write(out);
 				pos_type new_pos = out.tellp();
-				this->setsize(new_pos - old_pos);
-				out.seekp(old_pos);
-				out << this->packetsize();
-				out.seekp(new_pos);
+				out.flush();
+				out.clear();
 				Logger<Level::COMPONENT>() << "send "
-					<< this->payloadsize()
-					<< " byte(s)"
+					<< old_pos << ':' << new_pos
+					<< " byte(s), stream="
+					<< debug_stream(out)
+					<< ",krnl=" << kernel
 					<< std::endl;
 			}
+
+//			template<class Out>
+//			void write(Out& out, Kernel& kernel) {
+//				typedef typename Out::pos_type pos_type;
+//
+//				const Type<Kernel>* type = kernel.type();
+//				if (type == nullptr) {
+//					std::stringstream msg;
+//					msg << "Can not find type for kernel " << kernel.id();
+//					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+//				}
+//
+//				pos_type old_pos = out.tellp();
+//				this->setsize(0);
+//				out << this->packetsize();
+//				out << type->id();
+//				kernel.write(out);
+//				pos_type new_pos = out.tellp();
+//				this->setsize(new_pos - old_pos);
+//				out.seekp(old_pos);
+//				out << this->packetsize();
+//				out.seekp(new_pos);
+//				Logger<Level::COMPONENT>() << "send "
+//					<< this->payloadsize()
+//					<< " byte(s)"
+//					<< std::endl;
+//			}
 
 			template<class In, class F, class G>
 			bool read(In& in, F callback, G callback2) {
@@ -512,7 +535,7 @@ namespace factory {
 			void send(Kernel* kernel) {
 				Logger<Level::HANDLER>() << "Remote_Rserver::send()" << std::endl;
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
-					Logger<Level::HANDLER>() << "poll send error " << _ostream << std::endl;
+					Logger<Level::HANDLER>() << "poll send error: tellp=" << _stream.tellp() << std::endl;
 				}
 				bool erase_kernel = true;
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
@@ -525,9 +548,8 @@ namespace factory {
 					erase_kernel = false;
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				}
-				Logger<Level::COMPONENT>() << "Sent kernel " << *kernel << std::endl;
 				Packet packet;
-				packet.write(_ostream, *kernel);
+				packet.write(_stream, *kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
 					Logger<Level::COMPONENT>() << "Delete kernel " << *kernel << std::endl;
 					delete kernel;
@@ -574,16 +596,17 @@ namespace factory {
 						}
 					}
 				}
+					Logger<Level::HANDLER>() << "Send rdstate2=" << debug_stream(this->_stream) << std::endl;
 				if (event.is_writing() && !event.is_closing()) {
-					Logger<Level::HANDLER>() << "Send " << _ostream << std::endl;
+					Logger<Level::HANDLER>() << "Send rdstate=" << debug_stream(this->_stream) << std::endl;
+					this->_stream.flush();
 					this->socket().flush();
-					_ostream.flush<Server_socket&>(this->socket());
-					if (_ostream.empty()) {
+					if (this->_stream) {
 						Logger<Level::HANDLER>() << "Flushed." << std::endl;
-						_ostream.reset();
 					}
-					if (!_ostream.empty() || !this->socket().empty()) {
+					if (!this->_stream || !this->socket().empty()) {
 						overflow = true;
+						this->_stream.clear();
 					}
 				}
 				on_overflow(overflow);

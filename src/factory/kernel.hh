@@ -145,6 +145,16 @@ namespace factory {
 				static_cast<Sub*>(this)->Sub::write_impl(out);
 			}
 
+			void read(packstream& in) {
+				Super::read(in);
+				static_cast<Sub*>(this)->Sub::read_impl(in);
+			}
+
+			void write(packstream& out) {
+				Super::write(out);
+				static_cast<Sub*>(this)->Sub::write_impl(out);
+			}
+
 		};
 
 		template<class A>
@@ -202,6 +212,34 @@ namespace factory {
 			}
 
 			void write_impl(Foreign_stream& out) {
+				out << (!_parent ? ROOT_ID : _parent->id());
+				out << (!_principal ? ROOT_ID : _principal->id());
+			}
+
+			void read_impl(packstream& in) {
+				if (_parent) {
+					std::stringstream s;
+					s << "Parent is not null while reading from the data stream. Parent=";
+					s << _parent;
+					throw Error(s.str(), __FILE__, __LINE__, __func__);
+				}
+				Id parent_id;
+				in >> parent_id;
+				Logger<Level::KERNEL>() << "READING PARENT " << parent_id << std::endl;
+				if (parent_id != ROOT_ID) {
+					_parent = parent_id;
+				}
+				if (_principal.ptr() != nullptr) {
+					throw Error("Principal kernel is not null while reading from the data stream.",
+						__FILE__, __LINE__, __func__);
+				}
+				Id principal_id;
+				in >> principal_id;
+				Logger<Level::KERNEL>() << "READING PRINCIPAL " << principal_id << std::endl;
+				_principal = principal_id;
+			}
+
+			void write_impl(packstream& out) {
 				out << (!_parent ? ROOT_ID : _parent->id());
 				out << (!_principal ? ROOT_ID : _principal->id());
 			}
@@ -266,17 +304,18 @@ namespace factory {
 			}
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << '('
-					<< (rhs.moves_upstream()   ? 'U' : ' ')
-					<< (rhs.moves_downstream() ? 'D' : ' ') 
-					<< (rhs.moves_somewhere()  ? 'S' : ' ') 
-					<< (rhs.moves_everywhere()  ? 'B' : ' ') 
-					<< ','
-					<< rhs.id() << ','
-					<< rhs.from() << ','
-					<< rhs.to() << ','
+				return out << '{'
+					<< (rhs.moves_upstream()   ? 'u' : '-')
+					<< (rhs.moves_downstream() ? 'd' : '-') 
+					<< (rhs.moves_somewhere()  ? 's' : '-') 
+					<< (rhs.moves_everywhere()  ? 'b' : '-') 
+					<< ",tp=" << (rhs.type() ? rhs.type()->id() : 0)
+					<< ",id="
+					<< rhs.id() << ",src="
+					<< rhs.from() << ",dst="
+					<< rhs.to() << ",rslt="
 					<< rhs.result()
-					<< ')';
+					<< '}';
 			}
 		
 		public:
@@ -341,7 +380,24 @@ namespace factory {
 
 			virtual void write(Foreign_stream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
-//				static_assert(sizeof(uint16_t)== sizeof(Result), "Result has bad type.");
+				Raw_result r = static_cast<Raw_result>(this->result());
+				Logger<Level::KERNEL>() << "Writing result = " << r << std::endl;
+				out << r;
+				Logger<Level::KERNEL>() << "Writing id = " << _id << std::endl;
+				out << _id;
+			}
+
+			virtual void read(packstream& in) { 
+				typedef std::underlying_type<Result>::type Raw_result;
+				Raw_result r;
+				in >> r;
+				this->result(static_cast<Result>(r));
+				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
+				in >> _id;
+			}
+
+			virtual void write(packstream& out) {
+				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
 				Logger<Level::KERNEL>() << "Writing result = " << r << std::endl;
 				out << r;
@@ -351,6 +407,8 @@ namespace factory {
 
 			virtual void read_impl(Foreign_stream&) {}
 			virtual void write_impl(Foreign_stream&) {}
+			virtual void read_impl(packstream&) {}
+			virtual void write_impl(packstream&) {}
 
 			constexpr Id id() const { return _id; }
 			void id(Id rhs) { _id = rhs; }

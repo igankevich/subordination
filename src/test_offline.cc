@@ -47,6 +47,20 @@ struct Test_socket: public Mobile<Test_socket> {
 			in >> _data[i];
 	}
 
+	void write_impl(packstream& out) {
+		out << uint32_t(_data.size());
+		for (size_t i=0; i<_data.size(); ++i)
+			out << _data[i];
+	}
+
+	void read_impl(packstream& in) {
+		uint32_t sz;
+		in >> sz;
+		_data.resize(sz);
+		for (size_t i=0; i<_data.size(); ++i)
+			in >> _data[i];
+	}
+
 	std::vector<Datum> data() const { return _data; }
 
 	static void init_type(Type* t) {

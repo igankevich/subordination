@@ -7,8 +7,8 @@ using namespace factory;
 Endpoint server_endpoint("127.0.0.1", 10000);
 Endpoint client_endpoint("127.0.0.2", 10000);
 
-const uint32_t NUM_SIZES = 1;
-const uint32_t NUM_KERNELS = 1;
+const uint32_t NUM_SIZES = 7;
+const uint32_t NUM_KERNELS = 13;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
@@ -29,6 +29,20 @@ struct Test_socket: public Mobile<Test_socket> {
 	void act() {
 		Logger<Level::COMPONENT> log;
 		commit(remote_server());
+	}
+
+	void write_impl(packstream& out) {
+		out << uint32_t(_data.size());
+		for (size_t i=0; i<_data.size(); ++i)
+			out << _data[i];
+	}
+
+	void read_impl(packstream& in) {
+		uint32_t sz;
+		in >> sz;
+		_data.resize(sz);
+		for (size_t i=0; i<_data.size(); ++i)
+			in >> _data[i];
 	}
 
 	void write_impl(Foreign_stream& out) {

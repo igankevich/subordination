@@ -993,8 +993,9 @@ namespace factory {
 		virtual ~basic_okernelbuf() { this->end_packet(); }
 
 		int sync() {
+			int ret = this->finalise();
 			this->end_packet();
-			return this->finalise();
+			return ret;
 		}
 
 		int_type overflow(int_type c) {
@@ -1013,6 +1014,9 @@ namespace factory {
 	private:
 
 		void begin_packet() {
+			if (this->state() == State::FINALISING) {
+				this->sets(State::WRITING_SIZE);
+			}
 			if (this->state() == State::WRITING_SIZE) {
 				this->sets(State::WRITING_PAYLOAD);
 				this->setbeg(this->writepos());
@@ -1044,8 +1048,9 @@ namespace factory {
 		}
 
 		int finalise() {
-			int ret = 0;
+			int ret = -1;
 			if (this->state() == State::FINALISING) {
+				std::clog << "finalise()" << std::endl;
 				ret = this->Base::sync();
 				if (ret == 0) {
 					this->sets(State::WRITING_SIZE);
@@ -1065,8 +1070,21 @@ namespace factory {
 			return this->seekoff(0, std::ios_base::cur, std::ios_base::out);
 		}
 
-		void sets(State rhs) { this->_state = rhs; }
+		void sets(State rhs) {
+			std::clog << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
+			this->_state = rhs;
+		}
 		State state() const { return this->_state; }
+
+		friend std::ostream& operator<<(std::ostream& out, State rhs) {
+			switch (rhs) {
+				case State::WRITING_SIZE: out << "WRITING_SIZE"; break;
+				case State::WRITING_PAYLOAD: out << "WRITING_PAYLOAD"; break;
+				case State::FINALISING: out << "FINALISING"; break;
+				default: break;
+			}
+			return out;
+		}
 
 		pos_type _begin = 0;
 		State _state = State::WRITING_SIZE;
@@ -1576,7 +1594,7 @@ namespace factory {
 //			std::clog << " to ";
 //			debug(std::clog, val.val);
 //			std::clog << std::dec << std::endl;
-			this->write(val, sizeof(rhs));
+			this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
 			return *this;
 		}
 
@@ -1584,14 +1602,14 @@ namespace factory {
 			Size length = static_cast<Size>(rhs.size());
 //			std::clog << "Writing string of length = " << length << std::endl;
 			write(length);
-			this->write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
+			this->iostream_type::write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
 			return *this;
 		}
 
 		template<class T>
 		Packing_stream& read(T& rhs) {
 			Bytes<T> val;
-			this->read(val, sizeof(rhs));
+			this->iostream_type::read(static_cast<Ch*>(val), sizeof(rhs));
 			val.to_host_format();
 			rhs = val;
 //			std::clog << "Converted from " << std::hex << std::setfill('0');
@@ -1607,7 +1625,7 @@ namespace factory {
 			read(length);
 			std::string::value_type* bytes = new std::string::value_type[length];
 //			std::clog << "Reading string of length = " << length << std::endl;
-			this->read(reinterpret_cast<Byte*>(bytes), length);
+			this->iostream_type::read(reinterpret_cast<Byte*>(bytes), length);
 			rhs.assign(bytes, bytes + length);
 			delete[] bytes;
 			return *this;

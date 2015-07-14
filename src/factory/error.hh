@@ -380,6 +380,23 @@ namespace factory {
 			This& operator++(int) { return *this; }
 		};
 
+		struct debug_stream {
+			explicit debug_stream(std::ios& s): str(&s) {}
+			friend std::ostream& operator<<(std::ostream& out, const debug_stream& rhs) {
+				std::ostream::sentry s(out);
+				if (s) {
+					out
+						<< (rhs.str->good() ? 'g' : '-')
+						<< (rhs.str->bad()  ? 'b' : '-')
+						<< (rhs.str->fail() ? 'f' : '-')
+						<< (rhs.str->eof()  ? 'e' : '-');
+				}
+				return out;
+			}
+		private:
+			std::ios* str;
+		};
+			
 	}
 
 }
