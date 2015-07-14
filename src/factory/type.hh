@@ -31,8 +31,6 @@ namespace factory {
 				_id(0),
 				_name(),
 				construct(),
-				read_object(),
-				write_object(),
 				read_and_send()
 			{}
 	
@@ -40,8 +38,6 @@ namespace factory {
 				_id(rhs._id),
 				_name(rhs._name),
 				construct(rhs.construct),
-				read_object(rhs.read_object),
-				write_object(rhs.write_object),
 				read_and_send(rhs.read_and_send)
 			{}
 
@@ -71,10 +67,11 @@ namespace factory {
 					return result == _types_by_id.end() ? nullptr : result->second; 
 				}
 
-				void read_and_send_object(Foreign_stream& packet,
+				void read_and_send_object(packstream& packet,
 					Callback callback, Callback onsuccess) const {
 					Type_id id;
 					packet >> id;
+					if (!packet) return;
 					const T* type = lookup(id);
 					if (type == nullptr) {
 						std::stringstream msg;
@@ -213,9 +210,7 @@ namespace factory {
 
 		protected:
 			std::function<K* ()> construct;
-			std::function<void (Foreign_stream& in, K* rhs)> read_object;
-			std::function<void (Foreign_stream& out, K* rhs)> write_object;
-			std::function<void (Foreign_stream& in, Callback callback, Callback)> read_and_send;
+			std::function<void (packstream& in, Callback callback, Callback)> read_and_send;
 		};
 
 		template<class Sub, class Type, class K, class Base=K>
@@ -228,21 +223,22 @@ namespace factory {
 				using typename Type::Callback;
 				Init() {
 					this->construct = [] { return new Sub; };
-					this->read_object = [] (Foreign_stream& in, K* rhs) { rhs->read(in); };
-					this->write_object = [] (Foreign_stream& out, K* rhs) { rhs->write(out); };
-					this->read_and_send = [] (Foreign_stream& in, Callback callback, Callback call2) {
+					this->read_and_send = [] (packstream& in, Callback callback, Callback call2) {
 						Sub* k = new Sub;
 						k->read(in);
-						callback(k);
-						if (k->principal()) {
-							K* p = Type::instances().lookup(k->principal()->id());
-							if (p == nullptr) {
-								k->result(Result::NO_PRINCIPAL_FOUND);
-								throw No_principal_found<K>(k);
+//						if (in) {
+							//TODO: always true
+							callback(k);
+							if (k->principal()) {
+								K* p = Type::instances().lookup(k->principal()->id());
+								if (p == nullptr) {
+									k->result(Result::NO_PRINCIPAL_FOUND);
+									throw No_principal_found<K>(k);
+								}
+								k->principal(p);
 							}
-							k->principal(p);
-						}
-						call2(k);
+							call2(k);
+//						}
 					};
 
 //					this->type_id(typeid(Sub));

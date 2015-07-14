@@ -17,14 +17,19 @@ namespace factory {
 				typedef packstream::pos_type pos_type;
 				pos_type old_pos = out.tellp();
 				Type<Kernel>::types().write_object(kernel, out);
-				out << end_packet;
 				pos_type new_pos = out.tellp();
+				out << end_packet;
 				Logger<Level::COMPONENT>() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="
 					<< debug_stream(out)
 					<< ",krnl=" << kernel
 					<< std::endl;
+			}
+
+			template<class F, class G>
+			void read(packstream& in, F callback, G callback2) {
+				Type<Kernel>::types().read_and_send_object(in, callback, callback2);
 			}
 
 //			template<class Out>
@@ -54,26 +59,26 @@ namespace factory {
 //					<< std::endl;
 //			}
 
-			template<class In, class F, class G>
-			bool read(In& in, F callback, G callback2) {
-				if (this->rdstate() == State::READING_SIZE && sizeof(this->packetsize()) <= in.size()) {
-					in >> this->_packetsize;
-					this->sets(State::READING_PACKET);
-				}
-				if (this->rdstate() == State::READING_PACKET) {
-					Logger<Level::COMPONENT>() << "recv "
-						<< in.size()
-						<< '/'
-						<< this->payloadsize()
-						<< " byte(s)"
-						<< std::endl;
-				}
-				if (this->rdstate() == State::READING_PACKET && this->payloadsize() <= in.size()) {
-					Type<Kernel>::types().read_and_send_object(in, callback, callback2);
-					this->sets(State::COMPLETE);
-				}
-				return this->rdstate() == State::COMPLETE;
-			}
+//			template<class In, class F, class G>
+//			bool read(In& in, F callback, G callback2) {
+//				if (this->rdstate() == State::READING_SIZE && sizeof(this->packetsize()) <= in.size()) {
+//					in >> this->_packetsize;
+//					this->sets(State::READING_PACKET);
+//				}
+//				if (this->rdstate() == State::READING_PACKET) {
+//					Logger<Level::COMPONENT>() << "recv "
+//						<< in.size()
+//						<< '/'
+//						<< this->payloadsize()
+//						<< " byte(s)"
+//						<< std::endl;
+//				}
+//				if (this->rdstate() == State::READING_PACKET && this->payloadsize() <= in.size()) {
+//					Type<Kernel>::types().read_and_send_object(in, callback, callback2);
+//					this->sets(State::COMPLETE);
+//				}
+//				return this->rdstate() == State::COMPLETE;
+//			}
 
 			void reset_reading_state() {
 				this->sets(State::READING_SIZE);
@@ -493,7 +498,6 @@ namespace factory {
 				_vaddr(endpoint),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
-				_istream(),
 				_ipacket(),
 				_buffer(),
 				_parent(nullptr)
@@ -508,7 +512,6 @@ namespace factory {
 				_vaddr(rhs._vaddr),
 				_kernelbuf(std::move(rhs._kernelbuf)),
 				_stream(std::move(rhs._stream)),
-				_istream(std::move(rhs._istream)),
 				_ipacket(rhs._ipacket),
 				_buffer(std::move(rhs._buffer)) ,
 				_parent(rhs._parent) {}
@@ -553,6 +556,7 @@ namespace factory {
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				Packet packet;
+				this->_stream.clear();
 				packet.write(_stream, *kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
 					Logger<Level::COMPONENT>() << "Delete kernel " << *kernel << std::endl;
@@ -567,16 +571,19 @@ namespace factory {
 
 			template<class F>
 			void handle_event(Event event, Server<Kernel>* parent_server, F on_overflow) {
+				this->_stream.clear();
 				bool overflow = false;
 				if (event.is_reading()) {
-					_istream.fill<Server_socket&>(this->socket());
-					bool state_is_ok = true;
-					while (state_is_ok && !_istream.empty()) {
-						Logger<Level::HANDLER>() << "Recv " << _istream << std::endl;
+					Logger<Level::COMPONENT>() << "recv rdstate="
+						<< debug_stream(_stream) << ",event=" << event << std::endl;
+					while (!this->_stream.eof()) {
 						try {
-							state_is_ok = _ipacket.read(_istream, [this] (Kernel* k) {
+							_ipacket.read(this->_stream, [this] (Kernel* k) {
 								k->from(_vaddr);
-								Logger<Level::COMPONENT>() << "Received kernel " << *k << std::endl;
+								Logger<Level::COMPONENT>()
+									<< "recv kernel=" << *k
+									<< ",rdstate=" << debug_stream(this->_stream)
+									<< std::endl;
 								if (k->moves_downstream()) {
 									clear_kernel_buffer(k);
 								}
@@ -595,18 +602,15 @@ namespace factory {
 							}
 							overflow = true;
 						}
-						if (state_is_ok) {
-							_ipacket.reset_reading_state();
-						}
 					}
+					this->_stream.clear(std::ios_base::eofbit);
 				}
-					Logger<Level::HANDLER>() << "Send rdstate2=" << debug_stream(this->_stream) << std::endl;
 				if (event.is_writing() && !event.is_closing()) {
 					Logger<Level::HANDLER>() << "Send rdstate=" << debug_stream(this->_stream) << std::endl;
 					this->_stream.flush();
 					this->socket().flush();
 					if (this->_stream) {
-						Logger<Level::HANDLER>() << "Flushed." << std::endl;
+						Logger<Level::COMPONENT>() << "Flushed." << std::endl;
 					}
 					if (!this->_stream || !this->socket().empty()) {
 						overflow = true;
@@ -620,7 +624,8 @@ namespace factory {
 			const Server_socket& socket() const { return this->_kernelbuf.fd(); }
 			Server_socket& socket() { return this->_kernelbuf.fd(); }
 			void socket(Socket rhs) {
-				_istream.fill<Server_socket&>(this->socket());
+				this->_stream >> underflow;
+				this->_stream.clear();
 				this->_kernelbuf.setfd(rhs);
 			}
 			Endpoint bind_addr() const { return this->socket().bind_addr(); }
@@ -636,9 +641,8 @@ namespace factory {
 				return out << "{vaddr="
 					<< rhs.vaddr() << ",sock="
 					<< rhs.socket() << ",kernels="
-					<< rhs._buffer.size() << ",tellg="
-					<< rhs._istream.size() << ",tellp="
-					<< const_cast<This&>(rhs)._stream.tellp() << '}';
+					<< rhs._buffer.size() << ",str="
+					<< debug_stream(rhs._stream) << '}';
 			}
 
 		private:
@@ -673,7 +677,6 @@ namespace factory {
 			Endpoint _vaddr;
 			Kernelbuf _kernelbuf;
 			Stream _stream;
-			Foreign_stream _istream;
 			Packet _ipacket;
 			std::deque<Kernel*> _buffer;
 

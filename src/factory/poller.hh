@@ -32,7 +32,7 @@ namespace factory {
 			constexpr legacy_event events() const { return this->Basic_event::revents; }
 			void events(legacy_event rhs) { this->Basic_event::events = rhs; }
 
-			void fd(fd_type rhs) { this->Basic_event::fd = rhs; }
+			void disable() { this->Basic_event::fd = -1; }
 			constexpr fd_type fd() const { return this->Basic_event::fd; }
 			constexpr bool bad_fd() const { return this->fd() < 0; } 
 
@@ -135,7 +135,7 @@ namespace factory {
 				auto pos = std::find(_events.begin(), _events.end(), Event(fd));
 				if (pos != _events.end()) {
 					Logger<Level::COMPONENT>() << "ignoring fd=" << pos->fd() << std::endl;
-					pos->fd(-1);
+					pos->disable();
 				}
 			}
 

@@ -381,20 +381,20 @@ namespace factory {
 		};
 
 		struct debug_stream {
-			explicit debug_stream(std::ios& s): str(&s) {}
+			explicit debug_stream(const std::ios& s): str(s) {}
 			friend std::ostream& operator<<(std::ostream& out, const debug_stream& rhs) {
 				std::ostream::sentry s(out);
 				if (s) {
 					out
-						<< (rhs.str->good() ? 'g' : '-')
-						<< (rhs.str->bad()  ? 'b' : '-')
-						<< (rhs.str->fail() ? 'f' : '-')
-						<< (rhs.str->eof()  ? 'e' : '-');
+						<< (rhs.str.good() ? 'g' : '-')
+						<< (rhs.str.bad()  ? 'b' : '-')
+						<< (rhs.str.fail() ? 'f' : '-')
+						<< (rhs.str.eof()  ? 'e' : '-');
 				}
 				return out;
 			}
 		private:
-			std::ios* str;
+			const std::ios& str;
 		};
 			
 	}
