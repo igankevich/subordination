@@ -853,7 +853,6 @@ namespace factory {
 
 		int_type underflow() {
 			int_type ret = this->Base::underflow();
-			this->read_payload();
 			this->read_kernel_packetsize();
 			this->buffer_payload();
 			this->read_payload();
@@ -873,9 +872,7 @@ namespace factory {
 			if (!this->buffer_payload()) {
 				return std::streamsize(0);
 			}
-			if (!this->read_payload()) {
-				return std::streamsize(0);
-			}
+			this->read_payload();
 			return this->Base::xsgetn(s, n);
 		}
 
@@ -886,7 +883,6 @@ namespace factory {
 			if (this->state() == State::READING_SIZE) {
 				size_type count = this->egptr() - this->gptr();
 				if (count >= this->hdrsize()) {
-					this->dumpstate(ret);
 					Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
 					size.to_host_format();
 					this->gbump(this->hdrsize());
@@ -895,9 +891,9 @@ namespace factory {
 					this->sets(State::BUFFERING_PAYLOAD);
 				} else {
 					ret = false;
-					this->dumpstate(ret);
 				}
 			}
+			this->dumpstate(ret);
 			return ret;
 		}
 
@@ -921,10 +917,9 @@ namespace factory {
 			bool ret = true;
 			if (this->_rstate == State::READING_PAYLOAD) {
 				this->dumpstate(ret);
-				pos_type off = this->readoff();
+				pos_type off = this->readoff() + pos_type(1);
 				if (off - this->packetpos() == this->payloadsize()) {
 					this->sets(State::READING_SIZE);
-					ret = false;
 				}
 			}
 			return ret;
@@ -932,13 +927,13 @@ namespace factory {
 
 		void dumpstate(bool ret) {
 			Logger<Level::COMPONENT>() << std::setw(20) << std::left << this->state()
-				<< "pptr=" << this->pptr() - this->pbase()
-				<< ",epptr=" << this->epptr() - this->pbase()
+				<< "pbase=" << (void*)this->pbase()
+				<< ",pptr=" << (void*)this->pptr()
+				<< ",eback=" << (void*)this->eback()
 				<< ",gptr=" << this->gptr() - this->eback()
 				<< ",egptr=" << this->egptr() - this->eback()
 				<< ",size=" << this->packetsize()
 				<< ",start=" << this->packetpos()
-				<< ",readoff=" << this->readoff()
 				<< ",ret=" << ret
 				<< std::endl;
 		}
