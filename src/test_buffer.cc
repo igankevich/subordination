@@ -155,7 +155,7 @@ void test_kernelbuf() {
 			okernelbuf buf;
 			buf.setfd(file.fd());
 			std::basic_ostream<T> out(&buf);
-			out << contents << std::flush;
+			out << contents << std::flush << std::flush;
 		}
 		{
 			File file(filename, O_RDONLY);
@@ -197,6 +197,7 @@ void test_kernelbuf_with_stringstream() {
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
 		out.write(contents.data(), contents.size());
 		out.flush();
+		out.flush();
 		std::basic_string<T> result(contents.size(), '_');
 		out.read(&result[0], result.size());
 		if (result != contents) {
@@ -234,7 +235,7 @@ void test_kernelbuf_withvector() {
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
-			str << rhs << std::flush;
+			str << rhs << std::flush << std::flush;
 		});
 		if (str.tellg() != 0) {
 			std::stringstream msg;

@@ -348,6 +348,38 @@ namespace factory {
 			return Intersperse<It,Delim>(st, en, d);
 		}
 
+
+		template <class T, class Ch=char, class Tr=std::char_traits<Ch>>
+		class intersperse_iterator:
+			public std::iterator<std::output_iterator_tag, void, void, void, void>
+		{
+			typedef intersperse_iterator<T,Ch,Tr> This;
+			std::basic_ostream<Ch,Tr>* ostr;
+			const Ch* delim;
+			bool first = true;
+		
+		public:
+			typedef Ch char_type;
+			typedef Tr traits_type;
+			typedef std::basic_ostream<Ch,Tr> ostream_type;
+
+			intersperse_iterator(ostream_type& s, const Ch* delimiter=0):
+				ostr(&s), delim(delimiter) {}
+			intersperse_iterator(const intersperse_iterator<T,Ch,Tr>& x) = default;
+			~intersperse_iterator() = default;
+		
+			This& operator=(const T& value) {
+				if (delim != 0 && !first) *ostr << delim;
+				*ostr << value;
+				if (first) { first = false; }
+				return *this;
+			}
+		
+			This& operator*() { return *this; }
+			This& operator++() { return *this; }
+			This& operator++(int) { return *this; }
+		};
+
 	}
 
 }

@@ -63,6 +63,7 @@ check_PROGRAMS = \
 
 
 # disable stack trace for tests where a child process must fail
+test_socket_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING

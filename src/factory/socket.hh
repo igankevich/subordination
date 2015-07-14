@@ -73,9 +73,10 @@ namespace factory {
 		void close() {
 			if (this->is_valid()) {
 				Logger<Level::COMPONENT>() << "Closing socket " << this->_socket << std::endl;
-				check("shutdown()", ::shutdown(this->_socket, SHUT_RDWR));
-//				::close(this->_socket);
+//				check("shutdown()", ::shutdown(this->_socket, SHUT_RDWR));
 				// TODO: check this on discovery test
+				// TODO: shutdown does not work with ``check''
+				::shutdown(this->_socket, SHUT_RDWR);
 				check("close()", ::close(this->_socket));
 			}
 			_socket = INVALID_SOCKET;
@@ -174,9 +175,9 @@ namespace factory {
 		}
 
 		friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
-			return out << '[' << rhs._socket << ','
-				<< (rhs.error() == 0 ? " " : ::strerror(errno))
-				<< ']';
+			return out << "{fd=" << rhs._socket << ",st="
+				<< (rhs.error() == 0 ? "ok" : ::strerror(errno))
+				<< '}';
 		}
 
 		// TODO: remove this ``boilerplate''
@@ -714,7 +715,7 @@ namespace factory {
 			}
 			this->pbump(-n);
 			std::clog << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
-			return n >= 0 ? 0 : -1;
+			return this->pptr() == this->pbase() ? 0 : -1;
 		}
 
 		pos_type seekoff(off_type off, seekdir way,
@@ -979,7 +980,8 @@ namespace factory {
 
 		enum struct State {
 			WRITING_SIZE,
-			WRITING_PAYLOAD
+			WRITING_PAYLOAD,
+			FINALISING
 		};
 
 		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
@@ -992,7 +994,7 @@ namespace factory {
 
 		int sync() {
 			this->end_packet();
-			return this->Base::sync();
+			return this->finalise();
 		}
 
 		int_type overflow(int_type c) {
@@ -1037,8 +1039,19 @@ namespace factory {
 					this->seekpos(end, std::ios_base::out);
 				}
 				std::clog << "end_packet(): size=" << s << std::endl;
-				this->sets(State::WRITING_SIZE);
+				this->sets(State::FINALISING);
 			}
+		}
+
+		int finalise() {
+			int ret = 0;
+			if (this->state() == State::FINALISING) {
+				ret = this->Base::sync();
+				if (ret == 0) {
+					this->sets(State::WRITING_SIZE);
+				}
+			}
+			return ret;
 		}
 
 		void putsize(size_type s) {

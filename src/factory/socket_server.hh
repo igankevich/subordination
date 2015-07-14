@@ -405,14 +405,14 @@ namespace factory {
 				}
 				log << std::endl;
 				log << msg << " servers ";
-				for (auto p : _servers) {
-					log << p.first << " => ";
-					log << *p.second << ',';
-				}
+				intersperse_iterator<Remote_server> it(log.ostream(), ",");
+				std::transform(this->_servers.begin(), this->_servers.end(), it,
+					[] (const std::pair<int, const Remote_server*>& rhs) -> const Remote_server& {
+						return *rhs.second;
+					}
+				);
 				log << std::endl;
-				log << msg << " events ";
-				log << _poller;
-				log << std::endl;
+				log << msg << " events " << _poller << std::endl;
 			}
 
 			Remote_server* peer(Endpoint addr, Event::legacy_event events) {
@@ -496,7 +496,6 @@ namespace factory {
 			void recover_kernels(Server<Kernel>* parent_server) {
 
 				read_kernels(parent_server);
-//				clear_kernel_buffer(_ostream.global_read_pos());
 
 				Logger<Level::HANDLER>()
 					<< "Kernels left: "
@@ -607,14 +606,12 @@ namespace factory {
 			void parent(This* rhs) { _parent = rhs; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << '('
-//					<< rhs.bind_addr() << " <--> "
-					<< rhs.vaddr() << ','
-					<< rhs.fd() << ','
-					<< rhs.socket() << ' '
-					<< rhs._buffer.size() << ','
-					<< rhs._istream.size() << ','
-					<< rhs._ostream.size() << ')';
+				return out << "{vaddr="
+					<< rhs.vaddr() << ",sock="
+					<< rhs.socket() << ",kernels="
+					<< rhs._buffer.size() << ",tellg="
+					<< rhs._istream.size() << ",tellp="
+					<< const_cast<This&>(rhs)._stream.tellp() << '}';
 			}
 
 		private:
