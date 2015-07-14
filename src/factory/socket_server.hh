@@ -14,17 +14,9 @@ namespace factory {
 			typedef uint32_t Packet_size;
 
 			void write(packstream& out, Kernel& kernel) {
-//				typedef std::ostream::pos_type pos_type;
-				typedef int pos_type;
-				const Type<Kernel>* type = kernel.type();
-				if (type == nullptr) {
-					std::stringstream msg;
-					msg << "Can not find type for kernel " << kernel.id();
-					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-				}
+				typedef packstream::pos_type pos_type;
 				pos_type old_pos = out.tellp();
-				out << type->id();
-				kernel.write(out);
+				Type<Kernel>::types().write_object(kernel, out);
 				out << end_packet;
 				pos_type new_pos = out.tellp();
 				Logger<Level::COMPONENT>() << "send bytes="
@@ -635,10 +627,10 @@ namespace factory {
 			Endpoint vaddr() const { return _vaddr; }
 			void vaddr(Endpoint rhs) { _vaddr = rhs; }
 
-			bool empty() const { return _buffer.empty(); }
+			bool empty() const { return this->_buffer.empty(); }
 
-			This* parent() const { return _parent; }
-			void parent(This* rhs) { _parent = rhs; }
+			This* parent() const { return this->_parent; }
+			void parent(This* rhs) { this->_parent = rhs; }
 
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
 				return out << "{vaddr="
@@ -665,7 +657,7 @@ namespace factory {
 				if (pos != _buffer.end()) {
 					Logger<Level::COMPONENT>() << "Kernel erased " << k->id() << std::endl;
 					delete *pos;
-					_buffer.erase(pos);
+					this->_buffer.erase(pos);
 					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {
 					Logger<Level::COMPONENT>() << "Kernel not found " << k->id() << std::endl;
