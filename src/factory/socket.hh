@@ -1635,10 +1635,21 @@ namespace factory {
 
 	typedef Packing_stream<char> packstream;
 
-	std::ostream& end_packet(std::ostream& out) {
-		out.flush();
-		out.clear();
-		return out;
-	}
+//	std::ostream& end_packet(std::ostream& out) {
+//		out.rdbuf()->pubsync();
+//		return out;
+//	}
+//
+//	std::ios& end_packet(std::ios& os) {
+//		os.rdbuf()->pubsync();
+//		return os;
+//	}
+
+	struct End_packet {
+		friend std::ostream& operator<<(std::ostream& out, End_packet) {
+			out.rdbuf()->pubsync();
+			return out;
+		}
+	} end_packet;
 
 }

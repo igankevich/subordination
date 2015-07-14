@@ -26,14 +26,16 @@ namespace factory {
 				out << type->id();
 				kernel.write(out);
 				pos_type new_pos = out.tellp();
-				out.flush();
-				out.clear();
 				Logger<Level::COMPONENT>() << "send "
 					<< old_pos << ':' << new_pos
 					<< " byte(s), stream="
 					<< debug_stream(out)
 					<< ",krnl=" << kernel
 					<< std::endl;
+//				out.rdbuf()->pubsync();
+				out << end_packet;
+//				out.flush();
+//				out.clear();
 			}
 
 //			template<class Out>
