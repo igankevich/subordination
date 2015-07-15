@@ -26,6 +26,8 @@ namespace factory {
 			/// A portable type id
 			typedef int16_t Type_id;
 			typedef std::function<void(K*)> Callback;
+			typedef K kernel_type;
+			typedef Type<K> this_type;
 	
 			constexpr Type():
 				_id(0),
@@ -54,11 +56,46 @@ namespace factory {
 				return out << rhs.name() << '(' << rhs.id() << ')';
 			}
 
+			static
+			void write_object(kernel_type& kernel, packstream& out) {
+				const Type<K>* type = kernel.type();
+				if (type == nullptr) {
+					std::stringstream msg;
+					msg << "Can not find type for kernel id=" << kernel.id();
+					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				out << type->id();
+				kernel.write(out);
+			}
+
+			static
+			void read_object(packstream& packet,
+				Callback after_read, Callback send_object)
+			{
+				Type_id id;
+				packet >> id;
+				if (!packet) return;
+				const this_type* type = this_type::types().lookup(id);
+				if (type == nullptr) {
+					std::stringstream msg;
+					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				try {
+					type->read_and_send(packet, after_read, send_object);
+				} catch (std::bad_alloc& err) {
+					std::stringstream msg;
+					msg << "Allocation error. Demarshalled kernel was prevented"
+						" from allocating too much memory. " << err.what();
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+			}
+	
+
 			class Types {
 			public:
 	
 				typedef Type<K> T;
-				typedef typename Type<K>::Callback Callback;
 
 				Types(): _types_by_id() {}
 	
@@ -67,38 +104,6 @@ namespace factory {
 					return result == _types_by_id.end() ? nullptr : result->second; 
 				}
 
-				void read_and_send_object(packstream& packet,
-					Callback callback, Callback onsuccess) const {
-					Type_id id;
-					packet >> id;
-					if (!packet) return;
-					const T* type = lookup(id);
-					if (type == nullptr) {
-						std::stringstream msg;
-						msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
-						throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-					try {
-						type->read_and_send(packet, callback, onsuccess);
-					} catch (std::bad_alloc& err) {
-						std::stringstream msg;
-						msg << "Allocation error. Demarshalled kernel was prevented"
-							" from allocating too much memory. " << err.what();
-						throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-				}
-
-				void write_object(K& kernel, packstream& out) {
-					const Type<K>* type = kernel.type();
-					if (type == nullptr) {
-						std::stringstream msg;
-						msg << "Can not find type for kernel id=" << kernel.id();
-						throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-					out << type->id();
-					kernel.write(out);
-				}
-	
 				void register_type(T* type) {
 					const T* existing_type = lookup(type->id());
 					if (existing_type != nullptr) {

@@ -28,35 +28,26 @@ namespace factory {
 			constexpr Event(): Basic_event{-1,0,0} {}
 			constexpr explicit Event(fd_type f): Basic_event{f,0,0} {}
 			constexpr Event(legacy_event e, fd_type f): Basic_event{f,e,0} {}
+			constexpr Event(fd_type f, legacy_event ev, legacy_event rev):
+				Basic_event{f,ev,rev} {}
 
-			constexpr legacy_event events() const { return this->Basic_event::revents; }
-			void events(legacy_event rhs) { this->Basic_event::events = rhs; }
+			constexpr legacy_event revents() const { return this->Basic_event::revents; }
 
 			void disable() { this->Basic_event::fd = -1; }
 			constexpr fd_type fd() const { return this->Basic_event::fd; }
 			constexpr bool bad_fd() const { return this->fd() < 0; } 
 
-			constexpr bool is_reading() const { return (this->events() & In) != 0; }
-			constexpr bool is_writing() const { return (this->events() & Out) != 0; }
-			constexpr bool is_closing() const { return (this->events() & Hup) != 0; }
-			constexpr bool is_error() const { return (this->events() & Err) != 0; }
-			constexpr bool bad_event() const { return (this->events() & (Hup | Err)) != 0; }
-
-			// TODO: replace with set/unset ev/rev
-			void no_reading() { this->Basic_event::revents &= ~In; }
-			void writing() {
-				this->Basic_event::events |= Out;
-				this->Basic_event::revents |= Out;
-			}
-			void reading() {
-				this->Basic_event::events |= In;
-				this->Basic_event::revents |= In;
-			}
+			constexpr bool in() const { return (this->revents() & In) != 0; }
+			constexpr bool out() const { return (this->revents() & Out) != 0; }
+			constexpr bool hup() const { return (this->revents() & Hup) != 0; }
+			constexpr bool err() const { return (this->revents() & Err) != 0; }
+			constexpr bool bad() const { return (this->revents() & (Hup | Err)) != 0; }
 
 			void setev(event_type rhs) { this->Basic_event::events |= rhs; }
 			void unsetev(event_type rhs) { this->Basic_event::events &= ~rhs; }
 			void setrev(event_type rhs) { this->Basic_event::revents |= rhs; }
 			void unsetrev(event_type rhs) { this->Basic_event::revents &= ~rhs; }
+			void setall(event_type rhs) { this->setev(rhs); this->setrev(rhs); }
 
 			ssize_t probe() const {
 				char c;
@@ -70,10 +61,10 @@ namespace factory {
 
 			friend std::ostream& operator<<(std::ostream& out, const Event& rhs) {
 				return out << "{fd=" << rhs.fd() << ",ev="
-					<< (rhs.is_reading() ? 'r' : '-')
-					<< (rhs.is_writing() ? 'w' : '-')
-					<< (rhs.is_closing() ? 'c' : '-')
-					<< (rhs.is_error() ? 'e' : '-')
+					<< (rhs.in() ? 'r' : '-')
+					<< (rhs.out() ? 'w' : '-')
+					<< (rhs.hup() ? 'c' : '-')
+					<< (rhs.err() ? 'e' : '-')
 					<< '}';
 			}
 
@@ -81,26 +72,66 @@ namespace factory {
 
 		static_assert(sizeof(Event) == sizeof(Basic_event),
 			"The size of Event does not match the size of ``struct pollfd''.");
+
+		struct Pipe {
+
+			Pipe() {
+				check(::pipe(this->_fds), __FILE__, __LINE__, __func__);
+				int flags = check(::fcntl(this->read_end(), F_GETFL), __FILE__, __LINE__, __func__);
+				check(::fcntl(this->read_end(), F_SETFL, flags | O_NONBLOCK), __FILE__, __LINE__, __func__);
+				check(::fcntl(this->read_end(), F_SETFD, FD_CLOEXEC), __FILE__, __LINE__, __func__);
+			}
+
+			Pipe(Pipe&& rhs): _fds{rhs._fds[0], rhs._fds[1]} {
+				rhs._fds[0] = -1;
+				rhs._fds[1] = -1;
+			}
+
+			~Pipe() {
+				if (this->_fds[0] >= 0) {
+					check(::close(this->_fds[0]), __FILE__, __LINE__, __func__);
+				}
+				if (this->_fds[1] >= 0) {
+					check(::close(this->_fds[1]), __FILE__, __LINE__, __func__);
+				}
+			}
+
+			int read_end() const { return this->_fds[0]; }
+			int write_end() const { return this->_fds[1]; }
+
+		private:
+			int _fds[2];
+		};
 		
 		struct Poller {
 
 			enum note_type: char { Notify = '!' };
 			typedef std::vector<Event> events_type;
+			typedef Pipe pipe_type;
+			typedef int fd_type;
 
 			Poller() = default;
+			~Poller() = default;
+			Poller(const Poller&) = delete;
+			Poller& operator=(const Poller&) = delete;
+			Poller(Poller&& rhs):
+				_pipe(std::move(rhs._pipe)),
+				_events(std::move(rhs._events)),
+				_stopped(rhs._stopped)
+				{}
 		
 			void notify(note_type c = Notify) {
-				check("write()", ::write(this->_mgmt_pipe.write_end(), &c, 
+				check("write()", ::write(this->_pipe.write_end(), &c, 
 					sizeof(std::underlying_type<note_type>::type)));
 			}
 		
 			template<class Callback>
 			void run(Callback callback) {
-				this->add(Event(Event::In, this->_mgmt_pipe.read_end()));
+				this->add(Event(Event::In, this->_pipe.read_end()));
 				while (!this->stopped()) this->wait(callback);
 			}
 
-			int pipe() const { return this->_mgmt_pipe.read_end(); }
+			fd_type pipe() const { return this->_pipe.read_end(); }
 			bool stopped() const { return this->_stopped; }
 
 			void stop() {
@@ -113,12 +144,12 @@ namespace factory {
 				this->_events.push_back(rhs);
 			}
 
-			Event* operator[](int fd) {
+			Event* operator[](fd_type fd) {
 				events_type::iterator pos = this->find(Event(fd)); 
 				return pos == this->_events.end() ? nullptr : &*pos;
 			}
 
-			void ignore(int fd) {
+			void disable(fd_type fd) {
 				events_type::iterator pos = this->find(Event(fd)); 
 				if (pos != this->_events.end()) {
 					Logger<Level::COMPONENT>() << "ignoring fd=" << pos->fd() << std::endl;
@@ -173,21 +204,21 @@ namespace factory {
 				this->remove_fds_if(std::mem_fn(&Event::bad_fd));
 
 				std::for_each(this->_events.begin(), this->_events.end(),
-					[this,&callback] (Event& e) {
-						this->check_pollrdhup(e);
-						if (e.events() != 0) {
-							if (e.fd() == _mgmt_pipe.read_end()) {
-								if (e.is_reading()) {
+					[this,&callback] (Event& ev) {
+						this->check_pollrdhup(ev);
+						if (ev.revents() != 0) {
+							if (ev.fd() == _pipe.read_end()) {
+								if (ev.in()) {
 									this->consume_notify();
-									callback(e);
+									callback(ev);
 								}
 							} else {
-								callback(e);
+								callback(ev);
 							}
 						}
 					}
 				);
-				this->remove_fds_if(std::mem_fn(&Event::bad_event));
+				this->remove_fds_if(std::mem_fn(&Event::bad));
 			}
 
 			friend std::ostream& operator<<(std::ostream& out, const Poller& rhs) {
@@ -201,27 +232,7 @@ namespace factory {
 				return out;
 			}
 		
-			struct Pipe {
-
-				Pipe() {
-					check(::pipe(this->_fds), __FILE__, __LINE__, __func__);
-					int flags = check(::fcntl(this->read_end(), F_GETFL), __FILE__, __LINE__, __func__);
-					check(::fcntl(this->read_end(), F_SETFL, flags | O_NONBLOCK), __FILE__, __LINE__, __func__);
-					check(::fcntl(this->read_end(), F_SETFD, FD_CLOEXEC), __FILE__, __LINE__, __func__);
-				}
-
-				~Pipe() {
-					check(::close(this->_fds[0]), __FILE__, __LINE__, __func__);
-					check(::close(this->_fds[1]), __FILE__, __LINE__, __func__);
-				}
-
-				int read_end() const { return this->_fds[0]; }
-				int write_end() const { return this->_fds[1]; }
-
-			private:
-				int _fds[2];
-			} _mgmt_pipe;
-		
+			pipe_type _pipe;
 			events_type _events;
 			bool _stopped = false;
 		};

@@ -1005,14 +1005,12 @@ namespace factory {
 		}
 
 		int_type overflow(int_type c) {
-			Logger<Level::IO>() << "overflow()" << std::endl;
 			int_type ret = this->Base::overflow(c);
 			this->begin_packet();
 			return ret;
 		}
 
 		std::streamsize xsputn(const char_type* s, std::streamsize n) {
-			Logger<Level::IO>() << "xsputn()" << std::endl;
 			this->begin_packet();
 			return this->Base::xsputn(s, n);
 		}

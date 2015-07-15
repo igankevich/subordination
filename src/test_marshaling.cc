@@ -36,21 +36,11 @@ private:
 	Datum _data;
 };
 
-void test_kernel_packet() {
-//	using namespace factory::components;
-//	typedef Kernel_packet<Thing> Packet;
-//	Packet packet;
-//	Thing t1;
-//	std::stringstream buf;
-//	packet.write(buf, t1);
-}
-
 struct App {
 
 	int run(int, char**) {
 		try {
 			test_marshaling();
-			test_kernel_packet();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

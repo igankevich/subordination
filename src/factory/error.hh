@@ -226,6 +226,7 @@ namespace factory {
 			out << "---------- ERROR ----------"
 				<< '\n' << rhs._error
 				<< "\nCaught at:  " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
+				<< "\nProcess ID: " << this_process::id()
 				<< "\nDate:       " << formatted_time
 				<< "\nBuild hash: " << REPO_VERSION
 				<< "\nBuild date: " << REPO_DATE
