@@ -103,12 +103,19 @@ namespace factory {
 			int _fds[2];
 		};
 		
+		template<class H, class D=std::default_delete<H>>
 		struct Poller {
 
 			enum note_type: char { Notify = '!' };
-			typedef std::vector<Event> events_type;
+			enum timeout_type: int { Infinite = -1 };
 			typedef Pipe pipe_type;
 			typedef int fd_type;
+			typedef Event event_type;
+			typedef std::unique_ptr<H,D> handler_type;
+			typedef std::vector<event_type> events_type;
+			typedef std::vector<handler_type> handlers_type;
+			typedef events_type::size_type size_type;
+			typedef H* ptr_type;
 
 			Poller() = default;
 			~Poller() = default;
@@ -117,17 +124,18 @@ namespace factory {
 			Poller(Poller&& rhs):
 				_pipe(std::move(rhs._pipe)),
 				_events(std::move(rhs._events)),
+				_handlers(std::move(rhs._handlers)),
 				_stopped(rhs._stopped)
 				{}
 		
 			void notify(note_type c = Notify) {
-				check("write()", ::write(this->_pipe.write_end(), &c, 
-					sizeof(std::underlying_type<note_type>::type)));
+				check("write()", ::write(this->_pipe.write_end(),
+					&c, sizeof(note_type)));
 			}
 		
 			template<class Callback>
 			void run(Callback callback) {
-				this->add(Event(Event::In, this->_pipe.read_end()));
+				this->add(Event(Event::In, this->_pipe.read_end()), nullptr);
 				while (!this->stopped()) this->wait(callback);
 			}
 
@@ -138,11 +146,23 @@ namespace factory {
 				Logger<Level::COMPONENT>() << "Poller::stop()" << std::endl;
 				this->_stopped = true;
 			}
-		
-			void add(Event rhs) {
-				Logger<Level::COMPONENT>() << "Poller::add " << rhs << std::endl;
-				this->_events.push_back(rhs);
+
+			void clear() {
+				this->_events.clear();
+				this->_handlers.clear();
 			}
+
+			void add(event_type ev, ptr_type ptr, D deleter) {
+				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
+				this->_events.push_back(ev);
+				this->_handlers.emplace_back(std::move(handler_type(ptr, deleter)));
+			}
+		
+//			void add(event_type ev, handler_type&& h) {
+//				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
+//				this->_events.push_back(ev);
+//				this->_handlers.emplace_back(std::move(h));
+//			}
 
 			Event* operator[](fd_type fd) {
 				events_type::iterator pos = this->find(Event(fd)); 
@@ -158,6 +178,12 @@ namespace factory {
 			}
 
 		private:
+
+			void add(event_type ev, ptr_type ptr) {
+				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
+				this->_events.push_back(ev);
+				this->_handlers.emplace_back(std::move(handler_type(ptr)));
+			}
 
 			events_type::iterator find(const Event& ev) {
 				return std::find(this->_events.begin(),
@@ -177,10 +203,16 @@ namespace factory {
 
 			template<class Pred>
 			void remove_fds_if(Pred pred) {
-				events_type::iterator fixed_end = this->_events.end();
-				events_type::iterator it = std::remove_if(this->_events.begin(),
-					fixed_end, pred);
+				typedef events_type::iterator It1;
+				typedef typename handlers_type::iterator It2;
+				It1 fixed_beg = this->_events.begin();
+				It1 fixed_end = this->_events.end();
+				It2 fixed_beg2 = this->_handlers.begin();
+				It2 fixed_end2 = this->_handlers.end();
+				It1 it = std::remove_if(fixed_beg, fixed_end, pred);
+				It2 it2 = fixed_beg2 + std::distance(fixed_beg, it);
 				this->_events.erase(it, fixed_end);
+				this->_handlers.erase(it2, fixed_end2);
 			}
 
 			void check_pollrdhup(Event& e) {
@@ -198,24 +230,31 @@ namespace factory {
 					Logger<Level::COMPONENT>() << "poll(): size="
 						<< this->_events.size() << std::endl;
 					check_poll("poll()", ::poll(this->_events.data(),
-						this->_events.size(), -1));
+						this->_events.size(), Infinite));
 				} while (errno == EINTR);
 
 				this->remove_fds_if(std::mem_fn(&Event::bad_fd));
 
+				size_type i = 0;
 				std::for_each(this->_events.begin(), this->_events.end(),
-					[this,&callback] (Event& ev) {
+					[this,&callback,&i] (Event& ev) {
+						handler_type& h = this->_handlers[i];
 						this->check_pollrdhup(ev);
-						if (ev.revents() != 0) {
+						if (!ev.bad_fd()) {
 							if (ev.fd() == _pipe.read_end()) {
 								if (ev.in()) {
 									this->consume_notify();
 									callback(ev);
 								}
 							} else {
-								callback(ev);
+								if (h) {
+									h->operator()(ev);
+								} else {
+									callback(ev);
+								}
 							}
 						}
+						++i;
 					}
 				);
 				this->remove_fds_if(std::mem_fn(&Event::bad));
@@ -234,6 +273,7 @@ namespace factory {
 		
 			pipe_type _pipe;
 			events_type _events;
+			handlers_type _handlers;
 			bool _stopped = false;
 		};
 

@@ -4,23 +4,38 @@ namespace factory {
 
 		template<class Server, class Remote_server, class Kernel, template<class X> class Pool>
 		struct Socket_server: public Server_link<Socket_server<Server, Remote_server, Kernel, Pool>, Server> {
-			
+
+			typedef Remote_server server_type;
 			typedef Socket_server<Server, Remote_server, Kernel, Pool> this_type;
 			typedef std::map<Endpoint, Remote_server*> upstream_type;
-			typedef std::unordered_map<int, Remote_server*> servers_type;
 			typedef std::mutex mutex_type;
 			typedef std::thread thread_type;
-			typedef Remote_server server_type;
+
+			struct server_deleter {
+				server_deleter(): _this(nullptr) {}
+				explicit server_deleter(this_type* t): _this(t) {}
+				void operator()(server_type* ptr) {
+					if (_this) {
+						auto it = _this->_upstream.find(ptr->vaddr());
+						if (it != _this->_upstream.end()) {
+							_this->_upstream.erase(it);
+						}
+						Logger<Level::SERVER>() << "Removing server " << *ptr << std::endl;
+						ptr->recover_kernels(_this->parent());
+//						// subordinate servers are not present in upstream
+//						if (!ptr->parent()) {
+//							_this->_upstream.erase(ptr->vaddr());
+//						}
+					}
+					delete ptr;
+				}
+				this_type* _this;
+			};
+
+			typedef Poller<server_type, server_deleter> poller_type;
 
 			Socket_server() = default;
-
-			~Socket_server() {
-				std::for_each(_upstream.begin(), _upstream.end(),
-					[] (const std::pair<const Endpoint, server_type*>& rhs) {
-						delete rhs.second;
-					}
-				);
-			}
+			virtual ~Socket_server() = default;
 
 			void serve() {
 				this->process_kernels();
@@ -39,12 +54,14 @@ namespace factory {
 							this->accept_connection();
 						}
 					} else {
-						this->process_event(event);
+//						this->process_event(event);
 					}
 					if (stopping) {
 						this->try_to_stop_gracefully();
 					}
 				});
+				// prevent double free or corruption
+				this->_poller.clear();
 			}
 
 			void accept_connection() {
@@ -72,11 +89,10 @@ namespace factory {
 						// create temporary subordinate server
 						// to read kernels until the socket
 						// is closed from the other end
-						server_type* new_s = new server_type(sock, addr);
+						server_type* new_s = new server_type(sock, addr, this->parent());
 						new_s->vaddr(vaddr);
 						new_s->parent(s);
-						_servers[sock] = new_s;
-						_poller.add(Event(DEFAULT_EVENTS, sock));
+						_poller.add(Event(DEFAULT_EVENTS, sock), new_s, server_deleter(this));
 //						sock.unsetrev(Event::In);
 //						s->fill_from(sock);
 //						sock.close();
@@ -85,49 +101,47 @@ namespace factory {
 						Logger<Level::SERVER> log;
 						log << "replacing peer " << *s;
 						_poller.disable(s->fd());
-						_servers.erase(s->fd());
 						server_type* new_s = new server_type(std::move(*s));
 						new_s->socket(sock);
-						_servers[sock] = new_s;
 						_upstream[vaddr] = new_s;
 						
-						this->_poller.add(Event(sock, ALL_EVENTS, ALL_EVENTS));
+						this->_poller.add(Event(sock, ALL_EVENTS, ALL_EVENTS), new_s, server_deleter(this));
 //						erase(s->bind_addr());
 //						peer(sock, addr, vaddr, DEFAULT_EVENTS);
 						log << " with " << *new_s << std::endl;
 						debug("replacing upstream");
-						delete s;
+//						delete s;
 					}
 				}
 			}
 
-			void process_event(Event& event) {
-				bool erasing = false;
-				if (event.err()) {
-					Logger<Level::SERVER>() << "Invalid socket" << std::endl;
-					erasing = true;
-				} else {
-					auto res = this->_servers.find(event.fd());
-					if (res == this->_servers.end()) {
-						std::stringstream msg;
-						msg << this->server_addr()
-							<< " can not find server to process event: fd="
-							<< event.fd();
-						throw Error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-					server_type* s = res->second;
-					if (!s->valid()) {
-						Logger<Level::SERVER>() << "Invalid socket" << std::endl;
-						erasing = true;
-					} else {
-						s->handle_event(event, this->parent());
-						erasing = event.bad();
-					}
-				}
-				if (erasing) {
-					this->erase(event.fd());
-				}
-			}
+//			void process_event(Event& event) {
+//				bool erasing = false;
+//				if (event.err()) {
+//					Logger<Level::SERVER>() << "bad socket" << std::endl;
+//					erasing = true;
+//				} else {
+//					auto res = this->_servers.find(event.fd());
+//					if (res == this->_servers.end()) {
+//						std::stringstream msg;
+//						msg << this->server_addr()
+//							<< " can not find server to process event: fd="
+//							<< event.fd();
+//						throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//					}
+//					server_type* s = res->second;
+//					if (!s->valid()) {
+//						Logger<Level::SERVER>() << "bad socket" << std::endl;
+//						erasing = true;
+//					} else {
+//						s->handle_event(event, this->parent());
+//						erasing = event.bad();
+//					}
+//				}
+//				if (erasing) {
+//					this->erase(event.fd());
+//				}
+//			}
 
 			void try_to_stop_gracefully() {
 				this->process_kernels();
@@ -171,24 +185,23 @@ namespace factory {
 				this->peer(addr, DEFAULT_EVENTS);
 			}
 
-			void erase(Endpoint addr) {
-				Logger<Level::SERVER>() << "Removing " << addr << std::endl;
-				auto res = _upstream.find(addr);
-				if (res == _upstream.end()) {
-					std::stringstream msg;
-					msg << "Can not find server to erase: " << addr;
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-				server_type* s = res->second;
-				_upstream.erase(res);
-				_servers.erase(s->fd());
-				delete s;
-			}
+//			void erase(Endpoint addr) {
+//				Logger<Level::SERVER>() << "Removing " << addr << std::endl;
+//				auto res = _upstream.find(addr);
+//				if (res == _upstream.end()) {
+//					std::stringstream msg;
+//					msg << "Can not find server to erase: " << addr;
+//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//				}
+//				server_type* s = res->second;
+//				_upstream.erase(res);
+//				delete s;
+//			}
 
 			void socket(Endpoint addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
-				this->_poller.add(Event(DEFAULT_EVENTS, this->_socket));
+				this->_poller.add(Event(DEFAULT_EVENTS, this->_socket), nullptr, server_deleter(this));
 			}
 
 			void start() {
@@ -226,24 +239,23 @@ namespace factory {
 				return vaddr;
 			}
 
-			void erase(int fd) {
-				auto r = _servers.find(fd);
-				if (r == _servers.end()) {
-					return;
-//					std::stringstream msg;
-//					msg << "Can not find server to erase: fd=" << fd;
-//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-				server_type* s = r->second;
-				Logger<Level::SERVER>() << "Removing server " << *s << std::endl;
-				s->recover_kernels(this->parent());
-				// subordinate servers are not present in upstream
-				if (!s->parent()) {
-					_upstream.erase(s->vaddr());
-				}
-				_servers.erase(fd);
-				delete s;
-			}
+//			void erase(int fd) {
+//				auto r = _servers.find(fd);
+//				if (r == _servers.end()) {
+//					return;
+////					std::stringstream msg;
+////					msg << "Can not find server to erase: fd=" << fd;
+////					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//				}
+//				server_type* s = r->second;
+//				Logger<Level::SERVER>() << "Removing server " << *s << std::endl;
+//				s->recover_kernels(this->parent());
+//				// subordinate servers are not present in upstream
+//				if (!s->parent()) {
+//					_upstream.erase(s->vaddr());
+//				}
+//				delete s;
+//			}
 	
 			void flush_kernels() {
 				for (auto pair : _upstream) {
@@ -336,7 +348,6 @@ namespace factory {
 			void debug(const char* msg = "") {
 				Logger<Level::SERVER>()
 					<< msg << " upstream " << print_values(this->_upstream) << std::endl
-					<< msg << " servers " << print_values(this->_servers) << std::endl
 					<< msg << " events " << this->_poller << std::endl;
 			}
 
@@ -351,19 +362,17 @@ namespace factory {
 			}
 
 			server_type* peer(Socket sock, Endpoint addr, Endpoint vaddr, Event::legacy_event events) {
-				server_type* s = new server_type(sock, addr);
+				server_type* s = new server_type(sock, addr, this->parent());
 				s->vaddr(vaddr);
 				_upstream[vaddr] = s;
-				_servers[sock] = s;
-				_poller.add(Event(events, sock));
+				_poller.add(Event(events, sock), s, server_deleter(this));
 				return s;
 			}
 
-			Poller _poller;
+			poller_type _poller;
 			Server_socket _socket;
-			upstream_type _upstream;
-			servers_type _servers;
 			Pool<Kernel*> _pool;
+			upstream_type _upstream;
 
 			// multi-threading
 			int _cpu = 0;
@@ -386,12 +395,13 @@ namespace factory {
 			typedef basic_kernelbuf<basic_fdbuf<Ch,Server_socket>> Kernelbuf;
 			typedef Packing_stream<char> Stream;
 
-			Remote_Rserver(Socket sock, Endpoint endpoint):
+			Remote_Rserver(Socket sock, Endpoint endpoint, Server<Kernel>* fac):
 				_vaddr(endpoint),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
 				_buffer(),
-				_parent(nullptr)
+				_parent(nullptr),
+				_factory(fac)
 			{
 				this->_kernelbuf.setfd(sock);
 			}
@@ -404,7 +414,9 @@ namespace factory {
 				_kernelbuf(std::move(rhs._kernelbuf)),
 				_stream(std::move(rhs._stream)),
 				_buffer(std::move(rhs._buffer)) ,
-				_parent(rhs._parent) {}
+				_parent(rhs._parent),
+				_factory(rhs._factory)
+				{}
 
 			virtual ~Remote_Rserver() {
 				while (!_buffer.empty()) {
@@ -455,6 +467,14 @@ namespace factory {
 			bool valid() const {
 //				TODO: It is probably too slow to check error on every event.
 				return this->socket().error() == 0;
+			}
+
+			void operator()(Event& event) {
+				if (this->valid()) {
+					this->handle_event(event, this->_factory);
+				} else {
+					event.setrev(Event::Hup);
+				}
 			}
 
 			void handle_event(Event& event, Server<Kernel>* parent_server) {
@@ -599,6 +619,7 @@ namespace factory {
 			std::deque<Kernel*> _buffer;
 
 			this_type* _parent;
+			Server<Kernel>* _factory;
 		};
 
 	}
