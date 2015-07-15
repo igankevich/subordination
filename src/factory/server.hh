@@ -444,8 +444,6 @@ namespace factory {
 				components::stop_all_factories(f);
 			}
 //			void react() {}
-			void write_impl(Foreign_stream&) {}
-			void read_impl(Foreign_stream&) {}
 			void write_impl(packstream&) {}
 			void read_impl(packstream&) {}
 			static void init_type(Type* t) {

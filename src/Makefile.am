@@ -44,7 +44,8 @@ TESTS = \
 	test_encoding \
 	test_timer \
 	test_uint128 \
-	test_kernel
+	test_kernel \
+	test_discovery
 
 check_PROGRAMS = \
 	test_buffer \
@@ -58,7 +59,8 @@ check_PROGRAMS = \
 	test_shmem \
 	test_timer \
 	test_uint128 \
-	test_kernel
+	test_kernel \
+	test_discovery
 
 
 # disable stack trace for tests where a child process must fail

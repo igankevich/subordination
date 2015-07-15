@@ -267,8 +267,8 @@ void test_kernelbuf_withvector() {
 struct App {
 	int run(int, char**) {
 //		try {
-			test_buffer<char, Buffer>();
-			test_buffer<unsigned char, Buffer>();
+//			test_buffer<char, Buffer>();
+//			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
 			test_fdbuf<char, int>();

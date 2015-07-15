@@ -334,13 +334,13 @@ struct Peers {
 	}
 
 	void debug() {
-//		Logger<Level::DISCOVERY> log;
-//		log << "Principal = " << _principal << ", subordinates = ";
-//		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
-//		std::copy(_subordinates.begin(), _subordinates.end(), it);
-//		log << " peers = ";
-//		write(log.ostream(), ", ");
-//		log << std::endl;
+		Logger<Level::DISCOVERY> log;
+		log << "Principal = " << _principal << ", subordinates = ";
+		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
+		std::copy(_subordinates.begin(), _subordinates.end(), it);
+		log << " peers = ";
+		write(log.ostream(), ", ");
+		log << std::endl;
 	}
 
 private:
@@ -361,7 +361,7 @@ struct Profiler: public Mobile<Profiler> {
 		commit(remote_server());
 	}
 
-	void write_impl(Foreign_stream& out) {
+	void write_impl(packstream& out) {
 		if (_state == 0) {
 			_time = current_time_nano();
 		}
@@ -372,7 +372,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 	}
 
-	void read_impl(Foreign_stream& in) {
+	void read_impl(packstream& in) {
 		in >> _state >> _time;
 		if (_state == 1) {
 			_time = current_time_nano() - _time;
@@ -420,8 +420,8 @@ struct Ping: public Mobile<Ping> {
 
 	void act() { commit(remote_server()); }
 
-	void write_impl(Foreign_stream&) { }
-	void read_impl(Foreign_stream&) { }
+	void write_impl(packstream&) { }
+	void read_impl(packstream&) { }
 
 	static void init_type(Type* t) {
 		t->id(7);
@@ -432,7 +432,8 @@ struct Scanner: public Identifiable<Kernel> {
 
 	explicit Scanner(Endpoint addr, Endpoint st_addr):
 		_source(addr),
-		_scan_addr(st_addr ? st_addr : start_addr(all_peers)),
+		_oldaddr(st_addr),
+		_scan_addr(),
 		_servers(create_servers(all_peers)),
 		_discovered_node()
 		{}
@@ -442,7 +443,14 @@ struct Scanner: public Identifiable<Kernel> {
 //			Logger<Level::DISCOVERY>() << "There are no servers to scan." << std::endl;
 			commit(the_server(), Result::USER_ERROR);
 		} else {
-			_scan_addr = next_scan_addr();
+			if (!_scan_addr) {
+				if (_oldaddr) {
+					_scan_addr = _oldaddr;
+					_scan_addr = next_scan_addr();
+				} else {
+					_scan_addr = start_addr(all_peers);
+				}
+			}
 			try_to_connect(_scan_addr);
 		}
 	}
@@ -507,6 +515,7 @@ private:
 	}
 
 	Endpoint _source;
+	Endpoint _oldaddr;
 	Endpoint _scan_addr;
 	std::vector<Endpoint> _servers;
 	Endpoint _discovered_node;
@@ -603,12 +612,12 @@ struct Negotiator: public Mobile<Negotiator> {
 		remote_server()->send(this);
 	}
 	
-	void write_impl(Foreign_stream& out) {
+	void write_impl(packstream& out) {
 		// TODO: if moves_upstream
 		out << _old_principal << _new_principal << _stop;
 	}
 
-	void read_impl(Foreign_stream& in) {
+	void read_impl(packstream& in) {
 		in >> _old_principal >> _new_principal >> _stop;
 	}
 
@@ -696,9 +705,14 @@ struct Master_discoverer: public Identifiable<Kernel> {
 //			std::this_thread::sleep_for(amount);
 //			prog_start = current_time_nano();
 //		}
-		exiter = std::thread([] () { 
-			std::this_thread::sleep_for(std::chrono::seconds(30));
-			std::exit(0);
+		exiter = std::thread([this] () { 
+			std::this_thread::sleep_for(std::chrono::seconds(10));
+			Logger<Level::DISCOVERY>() << "Hail the new king! addr="
+				<< _peers.this_addr()
+				<< ",peers=" << this->_peers
+				<< ",npeers=" << all_peers.size() << std::endl;
+			_peers.debug();
+			__factory.stop();
 		});
 		Logger<Level::GRAPH>()
 			<< "startTime.push("
@@ -764,7 +778,6 @@ struct Master_discoverer: public Identifiable<Kernel> {
 private:
 
 	void run_scan(Endpoint old_addr = Endpoint()) {
-//		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		_scanner = new Scanner(_peers.this_addr(), old_addr);
 		if (!old_addr) {
 			_peers.add_peer(_scanner->scan_addr());
@@ -951,7 +964,7 @@ struct App {
 				the_server()->add_cpu(0);
 				remote_server()->socket(bind_addr);
 				__factory.start();
-				Time start_delay = this_process::getenv("START_DELAY", Time(0));
+				Time start_delay = this_process::getenv("START_DELAY", Time(bind_addr == Endpoint("127.0.0.1", 10000) ? 0 : 2));
 				Master_discoverer* master = new Master_discoverer(bind_addr);
 				master->after(std::chrono::seconds(start_delay));
 //				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));

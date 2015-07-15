@@ -9,7 +9,8 @@ void test_marshaling() {
 	std::vector<Datum> input(size);
 	std::vector<Datum> output(size);
 
-	Foreign_stream stream;
+	std::stringbuf buf;
+	packstream stream(&buf);
 	for (size_t i=0; i<input.size(); ++i)
 		stream << input[i];
 

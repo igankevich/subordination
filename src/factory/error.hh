@@ -319,7 +319,8 @@ namespace factory {
 						std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
 					}
 				} else {
-					std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
+					std::cerr << String_message("terminate called without an active exception",
+						__FILE__, __LINE__, __func__) << std::endl;
 				}
 				print_stack_trace();
 				stop_all_factories(true);

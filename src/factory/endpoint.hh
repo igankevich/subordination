@@ -1,12 +1,12 @@
-#ifdef FACTORY_FOREIGN_STREAM
+#ifdef FACTORY_PACKSTREAM
 namespace factory {
 	// TODO: this is not portable (now it is even less portable than it used to be...)
-	Foreign_stream& operator<<(Foreign_stream& out, const Endpoint& rhs) {
+	packstream& operator<<(packstream& out, const Endpoint& rhs) {
 		Bytes<Endpoint> tmp = rhs;
 		out.write(tmp.begin(), tmp.size());
 		return out;
 	}
-	Foreign_stream& operator>>(Foreign_stream& in, Endpoint& rhs) {
+	packstream& operator>>(packstream& in, Endpoint& rhs) {
 		Bytes<Endpoint> tmp;
 		in.read(tmp.begin(), tmp.size());
 		rhs = tmp;

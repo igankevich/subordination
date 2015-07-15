@@ -22,14 +22,6 @@ struct Test_web_socket: public Mobile<Test_web_socket> {
 		commit(ext_server());
 	}
 
-	void write_impl(Foreign_stream& out) {
-		out << _data;
-	}
-
-	void read_impl(Foreign_stream& in) {
-		in >> _data;
-	}
-
 	void write_impl(packstream& out) {
 		out << _data;
 	}
@@ -54,20 +46,6 @@ struct Test_socket: public Mobile<Test_socket> {
 
 	void act() {
 		commit(ext_server());
-	}
-
-	void write_impl(Foreign_stream& out) {
-		out << uint32_t(_data.size());
-		for (size_t i=0; i<_data.size(); ++i)
-			out << _data[i];
-	}
-
-	void read_impl(Foreign_stream& in) {
-		uint32_t sz;
-		in >> sz;
-		_data.resize(sz);
-		for (size_t i=0; i<_data.size(); ++i)
-			in >> _data[i];
 	}
 
 	void write_impl(packstream& out) {

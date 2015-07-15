@@ -1521,11 +1521,14 @@ namespace factory {
 	typedef basic_ofdstream<char> ofdstream;
 	typedef basic_kstream<char> kstream;
 
+	#define FACTORY_PACKSTREAM
 	template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
 	struct Packing_stream: public std::basic_iostream<Ch,Tr> {
 
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
 		typedef std::basic_streambuf<Ch,Tr> streambuf_type;
+		typedef Ch char_type;
+		typedef Packing_stream<Ch,Tr,Size> this_type;
 
 		explicit Packing_stream(streambuf_type* str): iostream_type() {
 			this->init(str);
@@ -1548,6 +1551,10 @@ namespace factory {
 		Packing_stream& operator<<(double rhs) { return write(rhs); }
 //		Packing_stream& operator<<(long double rhs) { return write(rhs); }
 		Packing_stream& operator<<(const std::string& rhs) { return write(rhs); }
+		template<class T>
+		Packing_stream& operator<<(const Bytes<T>& rhs) {
+			return this->write(rhs.begin(), rhs.size());
+		}
 
 		Packing_stream& operator>>(bool& rhs) {
 			char c = 0; read(c); rhs = c == 1; return *this;
@@ -1565,6 +1572,20 @@ namespace factory {
 		Packing_stream& operator>>(double& rhs) { return read(rhs); }
 //		Packing_stream& operator>>(long double& rhs) { return read(rhs); }
 		Packing_stream& operator>>(std::string& rhs) { return read(rhs); }
+		template<class T>
+		Packing_stream& operator>>(Bytes<T>& rhs) {
+			return this->read(rhs.begin(), rhs.size());
+		}
+
+		this_type& write(const Ch* buf, std::streamsize n) {
+			this->rdbuf()->sputn(buf, n);
+			return *this;
+		}
+
+		this_type& read(Ch* buf, std::streamsize n) {
+			this->rdbuf()->sgetn(buf, n);
+			return *this;
+		}
 
 	private:
 
@@ -1606,7 +1627,7 @@ namespace factory {
 			Size length = static_cast<Size>(rhs.size());
 //			Logger<Level::IO>() << "Writing string of length = " << length << std::endl;
 			write(length);
-			this->iostream_type::write(reinterpret_cast<const Byte*>(rhs.c_str()), length);
+			this->iostream_type::write(reinterpret_cast<const char_type*>(rhs.c_str()), length);
 			return *this;
 		}
 
@@ -1629,7 +1650,7 @@ namespace factory {
 			read(length);
 			std::string::value_type* bytes = new std::string::value_type[length];
 //			Logger<Level::IO>() << "Reading string of length = " << length << std::endl;
-			this->iostream_type::read(reinterpret_cast<Byte*>(bytes), length);
+			this->iostream_type::read(reinterpret_cast<char_type*>(bytes), length);
 			rhs.assign(bytes, bytes + length);
 			delete[] bytes;
 			return *this;

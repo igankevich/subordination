@@ -164,7 +164,8 @@ struct Test_endpoint {
 		std::generate(addrs.begin(), addrs.end(), [this] () { return random_addr(); });
 
 		// write
-		Foreign_stream os;
+		std::stringbuf buf;
+		packstream os(&buf);
 		std::for_each(addrs.begin(), addrs.end(), [&os] (const Endpoint& rhs) {
 			os << rhs;
 		});
