@@ -46,12 +46,13 @@ namespace factory {
 			void serve() {
 				this->process_kernels();
 				_poller.run([this] (Event event) {
-					if (_poller.stopping()) {
+					bool stopping = this->_stopping;
+					if (stopping) {
 						event.no_reading();
 					}
 					Logger<Level::SERVER>()
 						<< "Event " << event << std::endl;
-					if (event.fd() == _poller.notification_pipe()) {
+					if (event.fd() == _poller.pipe()) {
 						Logger<Level::SERVER>() << "Notification " << event << std::endl;
 						process_kernels();
 					} else if (event.fd() == _socket.fd()) {
@@ -138,15 +139,14 @@ namespace factory {
 							erase(event.fd());
 						}
 					}
-//					if (_poller.stopping()) {
-//					}
-					if (_poller.stopping()) {
+					if (stopping) {
 						process_kernels();
 						flush_kernels();
 						++_stop_iterations;
 						if (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS) {
 							debug("stopping");
 							_poller.stop();
+							this->_stopping = false;
 						} else {
 							debug("not stopping");
 						}
@@ -165,6 +165,8 @@ namespace factory {
 					return rhs.second->empty();
 				});
 			}
+
+			bool stopping() const { return this->_stopping; }
 
 			void send(Kernel* kernel) {
 //				if (this->stopped()) {
@@ -212,7 +214,8 @@ namespace factory {
 	
 			void stop_impl() {
 				Logger<Level::SERVER>() << "Socket_server::stop_impl()" << std::endl;
-				this->_poller.notify_stopping();
+				this->_stopping = true;
+				this->_poller.notify();
 			}
 
 			void wait_impl() {
@@ -400,6 +403,7 @@ namespace factory {
 			std::thread _thread;
 			std::mutex _mutex;
 
+			volatile bool _stopping = false;
 			int _stop_iterations = 0;
 
 			static const int MAX_STOP_ITERATIONS = 13;

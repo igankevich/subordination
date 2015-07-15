@@ -129,15 +129,11 @@ namespace factory {
 ////	template<> struct Logger<Level::GRAPH    >: public No_logger {};
 //	template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
 
-	template<class Ret>
-	Ret check(const char* func, Ret ret, Ret bad=Ret(-1)) {
-		if (ret == bad) {
-			throw std::system_error(std::error_code(errno, std::system_category()), func);
-		}
-		return ret;
-	}
-
 	struct Error: public std::runtime_error {
+
+		Error(const std::runtime_error& err, const char* file, const int line, const char* function) noexcept:
+			std::runtime_error(err), _file(file), _line(line), _function(function)
+		{}
 
 		Error(const std::string& msg, const char* file, const int line, const char* function) noexcept:
 			std::runtime_error(msg), _file(file), _line(line), _function(function)
@@ -162,6 +158,24 @@ namespace factory {
 		const int   _line;
 		const char* _function;
 	};
+
+	template<class Ret>
+	Ret check(const char* func, Ret ret, Ret bad=Ret(-1)) {
+		if (ret == bad) {
+			throw std::system_error(std::error_code(errno, std::system_category()), func);
+		}
+		return ret;
+	}
+
+	template<class Ret>
+	Ret check(Ret ret, const char* file, const int line, const char* func, Ret bad=Ret(-1)) {
+		if (ret == bad) {
+			throw Error(std::system_error(std::error_code(errno,
+				std::system_category()), func),
+				file, line, func);
+		}
+		return ret;
+	}
 
 	struct Connection_error: public Error {
 		Connection_error(const std::string& msg, const char* file, const int line, const char* function):
@@ -288,8 +302,10 @@ namespace factory {
 		struct Auto_set_terminate_handler {
 			Auto_set_terminate_handler() { std::set_terminate(error_printing_handler); }
 		private:
-			[[noreturn]]
 			static void error_printing_handler() noexcept {
+				static volatile bool called = false;
+				if (called) { return; }
+				called = true;
 				std::exception_ptr ptr = std::current_exception();
 				if (ptr) {
 					try {
