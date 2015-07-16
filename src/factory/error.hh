@@ -443,7 +443,77 @@ namespace factory {
 
 		template<class M>
 		Print_values<M> print_values(const M& m) { return Print_values<M>(m); }
-			
+
+		template<class It1, class It2>
+		struct paired_iterator: public std::iterator<
+			typename std::iterator_traits<It1>::iterator_category,
+			std::tuple<typename std::iterator_traits<It1>::value_type,typename std::iterator_traits<It2>::value_type>,
+			std::ptrdiff_t,
+			std::tuple<typename std::iterator_traits<It1>::value_type*,typename std::iterator_traits<It2>::value_type*>,
+			std::tuple<typename std::iterator_traits<It1>::value_type&&,typename std::iterator_traits<It2>::value_type&&>
+			>
+		{
+			typedef paired_iterator<It1,It2> this_type;
+			typedef typename std::iterator_traits<this_type>::reference reference;
+			typedef typename std::iterator_traits<this_type>::pointer pointer;
+			typedef typename std::iterator_traits<this_type>::difference_type difference_type;
+			typedef const reference const_reference;
+			typedef const pointer const_pointer;
+
+			typedef typename std::iterator_traits<It1>::value_type&& reference1;
+			typedef typename std::iterator_traits<It2>::value_type&& reference2;
+			typedef const reference1 const_reference1;
+			typedef const reference2 const_reference2;
+
+			constexpr paired_iterator(It1 x, It2 y): iter1(x), iter2(y) {}
+			paired_iterator(const paired_iterator& rhs) = default;
+
+			constexpr bool operator==(const this_type& rhs) const { return iter1 == rhs.iter1; }
+			constexpr bool operator!=(const this_type& rhs) const { return !this->operator==(rhs); }
+
+			const_reference operator*() const { return std::tuple<const_reference1,const_reference2>(*iter1,*iter2); }
+			reference operator*() { return std::tuple<reference1,reference2>(std::move(*iter1),std::move(*iter2)); }
+			const_pointer operator->() const { return std::make_tuple(iter1.operator->(),iter2.operator->()); }
+			pointer operator->() { return std::make_tuple(iter1.operator->(),iter2.operator->()); }
+			this_type& operator++() { ++iter1; ++iter2; return *this; }
+			this_type operator++(int) { this_type tmp(*this); ++iter1; ++iter2; return tmp; }
+			difference_type operator-(const this_type& rhs) const {
+				return std::distance(rhs.iter1, iter1);
+			}
+			this_type operator+(difference_type rhs) const {
+				return this_type(std::advance(iter1, rhs), std::advance(iter2, rhs));
+			}
+			It1 first() { return iter1; }
+			It2 second() { return iter2; }
+
+		private:
+			It1 iter1;
+			It2 iter2;
+		};
+
+		template<class It1, class It2>
+		paired_iterator<It1,It2> make_paired(It1 it1, It2 it2) {
+			return paired_iterator<It1,It2>(it1, it2);
+		}
+
+		template<size_t No, class F>
+		struct Apply_to {
+			constexpr explicit Apply_to(F&& f): func(f) {}
+			template<class Arg>
+			auto operator()(const Arg& rhs) ->
+				typename std::result_of<F&(decltype(std::get<No>(rhs)))>::type
+			{
+				return func(std::get<No>(rhs));
+			}
+		private:
+			F&& func;
+		};
+
+		template<size_t No, class F>
+		constexpr Apply_to<No,F> apply_to(F&& f) {
+			return Apply_to<No,F>(f);
+		}
+		
 	}
 
 }

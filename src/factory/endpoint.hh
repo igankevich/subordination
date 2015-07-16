@@ -229,6 +229,8 @@ namespace factory {
 		constexpr Endpoint(const Addr4& rhs): _addr4(rhs) {}
 		constexpr Endpoint(const Addr6& rhs): _addr6(rhs) {}
 		constexpr Endpoint(const Addr& rhs): _sockaddr(rhs) {}
+		Endpoint(const Endpoint& rhs, Port p):
+			Endpoint(rhs) { port(p); }
 
 		bool operator<(const Endpoint& rhs) const {
 			return family() == AF_INET

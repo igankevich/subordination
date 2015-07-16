@@ -202,18 +202,29 @@ namespace factory {
 				It1 fixed_end = this->_events.end();
 				It2 fixed_beg2 = this->_handlers.begin();
 				It2 fixed_end2 = this->_handlers.end();
+//				typedef typename decltype(beg3)::reference reference;
+				auto result = std::remove_if(make_paired(fixed_beg, fixed_beg2),
+					make_paired(fixed_end, fixed_end2), apply_to<0>(pred));
+//				auto result = std::remove_if(beg3, end3,
+//					[pred] (reference rhs) {
+//						return pred(std::get<0>(rhs));
+//					}
+//				);
+				this->_events.erase(result.first(), fixed_end);
+				this->_handlers.erase(result.second(), fixed_end2);
+
 //				Logger<Level::COMPONENT>()
 //					<< "all events when erasing: "
 //					<< *this << std::endl;
-				size_type i = 0;
-				It2 it2 = std::remove_if(fixed_beg2, fixed_end2,
-					[pred,this,&i](handler_type& h) {
-						bool ret =  pred(this->_events[i]);
-						++i;
-						return ret;
-					}
-				);
-				It1 it = std::remove_if(fixed_beg, fixed_end, pred);
+//				size_type i = 0;
+//				It2 it2 = std::remove_if(fixed_beg2, fixed_end2,
+//					[pred,this,&i](handler_type& h) {
+//						bool ret =  pred(this->_events[i]);
+//						++i;
+//						return ret;
+//					}
+//				);
+//				It1 it = std::remove_if(fixed_beg, fixed_end, pred);
 //				std::for_each(it, fixed_end, [] (event_type& ev) {
 //					Logger<Level::COMPONENT>()
 //						<< "erasing event "
@@ -226,8 +237,8 @@ namespace factory {
 //							<< *ptr << std::endl;
 //					}
 //				});
-				this->_events.erase(it, fixed_end);
-				this->_handlers.erase(it2, fixed_end2);
+//				this->_events.erase(it, fixed_end);
+//				this->_handlers.erase(it2, fixed_end2);
 			}
 
 			void check_pollrdhup(Event& e) {
