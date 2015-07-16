@@ -123,6 +123,7 @@ namespace factory {
 //	template<> struct Logger<Level::KERNEL   >: public No_logger {};
 //	template<> struct Logger<Level::SERVER   >: public No_logger {};
 	template<> struct Logger<Level::HANDLER  >: public No_logger {};
+	template<> struct Logger<Level::IO       >: public No_logger {};
 //	template<> struct Logger<Level::COMPONENT>: public No_logger {};
 //	template<> struct Logger<Level::STRATEGY >: public No_logger {};
 //	template<> struct Logger<Level::DISCOVERY>: public No_logger {};
@@ -416,6 +417,32 @@ namespace factory {
 		private:
 			const std::ios& str;
 		};
+
+
+		template<class M>
+		struct Print_values {
+			typedef M map_type;
+			typedef typename map_type::key_type key_type;
+			typedef typename map_type::value_type value_type;
+			Print_values(const M& m): map(m) {}
+			friend std::ostream& operator<<(std::ostream& out, const Print_values& rhs) {
+				out << '{';
+				typedef decltype(*rhs.map.begin()->second) ret_type;
+				intersperse_iterator<ret_type> it(out, ",");
+				std::transform(rhs.map.begin(), rhs.map.end(), it,
+					[] (const value_type& pair) -> const ret_type& {
+						return *pair.second;
+					}
+				);
+				out << '}';
+				return out;
+			}
+		private:
+			const M& map;
+		};
+
+		template<class M>
+		Print_values<M> print_values(const M& m) { return Print_values<M>(m); }
 			
 	}
 

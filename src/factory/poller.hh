@@ -13,7 +13,9 @@ namespace factory {
 				In = POLLIN,
 				Out = POLLOUT,
 				Hup = POLLHUP | POLLRDHUP,
-				Err = POLLERR | POLLNVAL
+				Err = POLLERR | POLLNVAL,
+				Inout = POLLIN | POLLOUT,
+				Def = POLLRDHUP
 			};
 
 			friend
@@ -21,15 +23,24 @@ namespace factory {
 				return static_cast<legacy_event>(lhs) | static_cast<legacy_event>(rhs);
 			}
 			friend
+			constexpr legacy_event operator|(legacy_event lhs, event_type rhs) {
+				return lhs | static_cast<legacy_event>(rhs);
+			}
+			friend
+			constexpr legacy_event operator|(event_type lhs, legacy_event rhs) {
+				return static_cast<legacy_event>(lhs) | rhs;
+			}
+			friend
 			constexpr legacy_event operator&(legacy_event lhs, event_type rhs) {
 				return lhs & static_cast<legacy_event>(rhs);
 			}
+			friend
+			constexpr legacy_event operator&(event_type lhs, legacy_event rhs) {
+				return static_cast<legacy_event>(lhs) & rhs;
+			}
 
-			constexpr Event(): Basic_event{-1,0,0} {}
-			constexpr explicit Event(fd_type f): Basic_event{f,0,0} {}
-			constexpr Event(legacy_event e, fd_type f): Basic_event{f,e,0} {}
-			constexpr Event(fd_type f, legacy_event ev, legacy_event rev):
-				Basic_event{f,ev,rev} {}
+			constexpr explicit Event(fd_type f=-1, legacy_event ev=0, legacy_event rev=0):
+				Basic_event{f,ev|Def,rev} {}
 
 			constexpr legacy_event revents() const { return this->Basic_event::revents; }
 
@@ -77,9 +88,9 @@ namespace factory {
 
 			Pipe() {
 				check(::pipe(this->_fds), __FILE__, __LINE__, __func__);
-				int flags = check(::fcntl(this->read_end(), F_GETFL), __FILE__, __LINE__, __func__);
-				check(::fcntl(this->read_end(), F_SETFL, flags | O_NONBLOCK), __FILE__, __LINE__, __func__);
-				check(::fcntl(this->read_end(), F_SETFD, FD_CLOEXEC), __FILE__, __LINE__, __func__);
+				int flags = check(::fcntl(this->in(), F_GETFL), __FILE__, __LINE__, __func__);
+				check(::fcntl(this->in(), F_SETFL, flags | O_NONBLOCK), __FILE__, __LINE__, __func__);
+				check(::fcntl(this->in(), F_SETFD, FD_CLOEXEC), __FILE__, __LINE__, __func__);
 			}
 
 			Pipe(Pipe&& rhs): _fds{rhs._fds[0], rhs._fds[1]} {
@@ -96,8 +107,8 @@ namespace factory {
 				}
 			}
 
-			int read_end() const { return this->_fds[0]; }
-			int write_end() const { return this->_fds[1]; }
+			int in() const { return this->_fds[0]; }
+			int out() const { return this->_fds[1]; }
 
 		private:
 			int _fds[2];
@@ -117,7 +128,7 @@ namespace factory {
 			typedef events_type::size_type size_type;
 			typedef H* ptr_type;
 
-			Poller() = default;
+			Poller() { this->add(Event(this->_pipe.in(), Event::In), nullptr); }
 			~Poller() = default;
 			Poller(const Poller&) = delete;
 			Poller& operator=(const Poller&) = delete;
@@ -129,17 +140,16 @@ namespace factory {
 				{}
 		
 			void notify(note_type c = Notify) {
-				check("write()", ::write(this->_pipe.write_end(),
+				check("write()", ::write(this->_pipe.out(),
 					&c, sizeof(note_type)));
 			}
 		
 			template<class Callback>
 			void run(Callback callback) {
-				this->add(Event(Event::In, this->_pipe.read_end()), nullptr);
 				while (!this->stopped()) this->wait(callback);
 			}
 
-			fd_type pipe() const { return this->_pipe.read_end(); }
+			fd_type pipe_in() const { return this->_pipe.in(); }
 			bool stopped() const { return this->_stopped; }
 
 			void stop() {
@@ -152,25 +162,14 @@ namespace factory {
 				this->_handlers.clear();
 			}
 
-			void add(event_type ev, ptr_type ptr, D deleter) {
+			void add(event_type ev, ptr_type ptr, D deleter = D()) {
 				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
 				this->_events.push_back(ev);
 				this->_handlers.emplace_back(std::move(handler_type(ptr, deleter)));
 			}
 		
-//			void add(event_type ev, handler_type&& h) {
-//				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
-//				this->_events.push_back(ev);
-//				this->_handlers.emplace_back(std::move(h));
-//			}
-
-			Event* operator[](fd_type fd) {
-				events_type::iterator pos = this->find(Event(fd)); 
-				return pos == this->_events.end() ? nullptr : &*pos;
-			}
-
 			void disable(fd_type fd) {
-				events_type::iterator pos = this->find(Event(fd)); 
+				events_type::iterator pos = this->find(Event{fd}); 
 				if (pos != this->_events.end()) {
 					Logger<Level::COMPONENT>() << "ignoring fd=" << pos->fd() << std::endl;
 					pos->disable();
@@ -178,12 +177,6 @@ namespace factory {
 			}
 
 		private:
-
-			void add(event_type ev, ptr_type ptr) {
-				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
-				this->_events.push_back(ev);
-				this->_handlers.emplace_back(std::move(handler_type(ptr)));
-			}
 
 			events_type::iterator find(const Event& ev) {
 				return std::find(this->_events.begin(),
@@ -194,7 +187,7 @@ namespace factory {
 				const size_t n = 20;
 				char tmp[n];
 				ssize_t c;
-				while ((c = ::read(this->pipe(), tmp, n)) != -1);
+				while ((c = ::read(this->pipe_in(), tmp, n)) != -1);
 			}
 
 			static int check_poll(const char* func, int ret) {
@@ -209,8 +202,30 @@ namespace factory {
 				It1 fixed_end = this->_events.end();
 				It2 fixed_beg2 = this->_handlers.begin();
 				It2 fixed_end2 = this->_handlers.end();
+//				Logger<Level::COMPONENT>()
+//					<< "all events when erasing: "
+//					<< *this << std::endl;
+				size_type i = 0;
+				It2 it2 = std::remove_if(fixed_beg2, fixed_end2,
+					[pred,this,&i](handler_type& h) {
+						bool ret =  pred(this->_events[i]);
+						++i;
+						return ret;
+					}
+				);
 				It1 it = std::remove_if(fixed_beg, fixed_end, pred);
-				It2 it2 = fixed_beg2 + std::distance(fixed_beg, it);
+//				std::for_each(it, fixed_end, [] (event_type& ev) {
+//					Logger<Level::COMPONENT>()
+//						<< "erasing event "
+//						<< ev << std::endl;
+//				});
+//				std::for_each(it2, fixed_end2, [] (const handler_type& ptr) {
+//					if (ptr) {
+//						Logger<Level::COMPONENT>()
+//							<< "erasing server "
+//							<< *ptr << std::endl;
+//					}
+//				});
 				this->_events.erase(it, fixed_end);
 				this->_handlers.erase(it2, fixed_end2);
 			}
@@ -222,11 +237,25 @@ namespace factory {
 				}
 			#endif
 			}
+
+			void check_dirty() {
+				size_type i = 0;
+				std::for_each(this->_events.begin(), this->_events.end(),
+					[this,&i] (Event& ev) {
+						handler_type& h = this->_handlers[i];
+						if (h && h->dirty()) {
+							ev.setev(Event::Out);
+						}
+						++i;
+					}
+				);
+			}
 		
 			template<class Callback>
 			void wait(Callback callback) {
 
 				do {
+					check_dirty();
 					Logger<Level::COMPONENT>() << "poll(): size="
 						<< this->_events.size() << std::endl;
 					check_poll("poll()", ::poll(this->_events.data(),
@@ -239,9 +268,12 @@ namespace factory {
 				std::for_each(this->_events.begin(), this->_events.end(),
 					[this,&callback,&i] (Event& ev) {
 						handler_type& h = this->_handlers[i];
+						if (h && h->dirty()) {
+							ev.setrev(Event::Out);
+						}
 						this->check_pollrdhup(ev);
 						if (!ev.bad_fd()) {
-							if (ev.fd() == _pipe.read_end()) {
+							if (ev.fd() == this->_pipe.in()) {
 								if (ev.in()) {
 									this->consume_notify();
 									callback(ev);
@@ -274,7 +306,7 @@ namespace factory {
 			pipe_type _pipe;
 			events_type _events;
 			handlers_type _handlers;
-			bool _stopped = false;
+			volatile bool _stopped = false;
 		};
 
 	}

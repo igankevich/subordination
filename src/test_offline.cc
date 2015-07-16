@@ -119,13 +119,13 @@ struct App {
 			Process_group procs;
 			procs.add([&argv] () {
 				this_process::env("START_ID", 1000);
-				return this_process::execute(argv[0], 'x');
+				return this_process::execute(argv[0], 's');
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () {
 				this_process::env("START_ID", 2000);
-				return this_process::execute(argv[0], 'y');
+				return this_process::execute(argv[0], 'c');
 			});
 			int ret = procs.wait();
 			retval = ret == SIGSEGV ? 0 : ret;
@@ -134,13 +134,13 @@ struct App {
 				if (argc != 2)
 					throw std::runtime_error("Wrong number of arguments.");
 				the_server()->add_cpu(0);
-				if (argv[1][0] == 'x') {
+				if (argv[1][0] == 's') {
 					the_server()->add_cpu(1);
 					remote_server()->socket(server_endpoint);
 					__factory.start();
 					__factory.wait();
 				}
-				if (argv[1][0] == 'y') {
+				if (argv[1][0] == 'c') {
 					remote_server()->socket(client_endpoint);
 					remote_server()->peer(server_endpoint);
 					__factory.start();
