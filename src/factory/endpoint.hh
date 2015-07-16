@@ -234,10 +234,10 @@ namespace factory {
 
 		bool operator<(const Endpoint& rhs) const {
 			return family() == AF_INET
-				? std::make_tuple(family(), addr4(), port4()) <
-				std::make_tuple(rhs.family(), rhs.addr4(), rhs.port4())
-				: std::make_tuple(family(), addr6(), port6()) <
-				std::make_tuple(rhs.family(), rhs.addr6(), rhs.port6());
+				? std::make_tuple(family(), addr4(), port4())
+				< std::make_tuple(rhs.family(), rhs.addr4(), rhs.port4())
+				: std::make_tuple(family(), addr6(), port6())
+				< std::make_tuple(rhs.family(), rhs.addr6(), rhs.port6());
 		}
 
 		constexpr bool operator==(const Endpoint& rhs) const {
@@ -316,8 +316,9 @@ namespace factory {
 
 	private:
 
+		template<class Q>
 		constexpr static
-		uint32_t position_helper(uint32_t a, uint32_t netmask) {
+		Q position_helper(Q a, Q netmask) {
 			return a - (a & netmask);
 		}
 
