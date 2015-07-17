@@ -178,6 +178,13 @@ namespace factory {
 		return ret;
 	}
 
+	typedef std::decay<decltype(errno)>::type errno_type;
+
+	template<errno_type ignored_errno>
+	int check_if_not(int ret, const char* file, const int line, const char* func, int bad=-1) {
+		return errno == ignored_errno ? 0 : check<int>(ret, file, line, func, bad);
+	}
+
 	struct Connection_error: public Error {
 		Connection_error(const std::string& msg, const char* file, const int line, const char* function):
 			Error(msg, file, line, function) {}

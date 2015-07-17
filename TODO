@@ -46,3 +46,4 @@ Filter environment variables on startup (whitelist).
 Minimise the use of bare pointers.
 Implement generic state machine for use in kernelbuf and websocketbuf.
 Make locks mutable.
+Close all Socket in destructor (use rvalue references).

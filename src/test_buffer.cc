@@ -3,6 +3,8 @@
 #include "datum.hh"
 
 using namespace factory;
+using factory::components::Socket;
+using factory::components::File;
 
 template<class T, template<class X> class B>
 void test_buffer() {
@@ -55,7 +57,7 @@ void test_buffer() {
 	}
 }
 
-template<class T, class Fd=int>
+template<class T, class Fd>
 void test_fdbuf() {
 	typedef std::char_traits<T> Tr;
 	std::string filename = "/tmp/"
@@ -68,12 +70,12 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking overflow()" << std::endl;
 			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::basic_ofdstream<T,Tr,Fd>(file.fd()) << expected_contents;
+			factory::basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
 			File file(filename, O_RDONLY);
-			factory::basic_ifdstream<T,Tr,Fd> in(file.fd());
+			factory::basic_ifdstream<T,Tr,Fd> in(std::move(file));
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -84,30 +86,10 @@ void test_fdbuf() {
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}
-//		{
-//			std::clog << "Checking seekg()" << std::endl;
-//			File file(nm, O_RDONLY);
-//			factory::basic_ifdstream<T,Fd> in(file.fd());
-//			test::equal(in.tellg(), 0);
-//			in.seekg(k, std::ios_base::beg);
-//			test::equal(in.tellg(), k);
-//			in.seekg(0, std::ios_base::beg);
-//			test::equal(in.tellg(), 0);
-//		}
-//		{
-//			std::clog << "Checking seekp()" << std::endl;
-//			File file(nm, O_WRONLY);
-//			factory::basic_ofdstream<T,Fd> in(file.fd());
-//			test::equal(in.tellp(), 0);
-//			in.seekp(k, std::ios_base::beg);
-//			test::equal(in.tellp(), k);
-//			in.seekp(0, std::ios_base::beg);
-//			test::equal(in.tellp(), 0);
-//		}
 		{
 			std::clog << "Checking flush()" << std::endl;
 			File file(filename, O_WRONLY);
-			factory::basic_ofdstream<T,Tr,Fd> out(file.fd());
+			factory::basic_ofdstream<T,Tr,Fd> out(std::move(file));
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);
@@ -271,9 +253,9 @@ struct App {
 //			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
-			test_fdbuf<char, int>();
+			test_fdbuf<char, File>();
 //			test_fdbuf<unsigned char, int>();
-			test_fdbuf<char, Socket>();
+//			test_fdbuf<char, Socket>();
 			test_filterbuf<char>();
 //			test_filterbuf<unsigned char>();
 			test_kernelbuf<char>();

@@ -308,6 +308,7 @@ namespace factory {
 		}
 
 		Addr* sockaddr() { return &_sockaddr; }
+		Addr* sockaddr() const { return const_cast<Addr*>(&_sockaddr); }
 		constexpr Sock_len sockaddrlen() const {
 			return family() == AF_INET6 ? sizeof(Addr6) : sizeof(Addr4);
 		}

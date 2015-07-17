@@ -10,7 +10,7 @@ namespace factory {
 			typedef std::map<Endpoint, Remote_server*> upstream_type;
 			typedef std::mutex mutex_type;
 			typedef std::thread thread_type;
-			typedef Server_socket socket_type;
+			typedef Socket socket_type;
 			typedef Pool<Kernel*> pool_type;
 
 			struct server_deleter {
@@ -59,13 +59,16 @@ namespace factory {
 			}
 
 			void accept_connection() {
-				auto pair = this->_socket.accept();
-				Socket sock = pair.first;
-				Endpoint addr = pair.second;
+				Endpoint addr;
+				socket_type sock;
+				this->_socket.accept(sock, addr);
 				Endpoint vaddr = virtual_addr(addr);
-				auto res = _upstream.find(vaddr);
-				if (res == _upstream.end()) {
-					this->add_connected_server(sock, vaddr, Event::In);
+				Logger<Level::SERVER>()
+					<< "after accept: socket="
+					<< sock << std::endl;
+				auto res = this->_upstream.find(vaddr);
+				if (res == this->_upstream.end()) {
+					this->add_connected_server(std::move(sock), vaddr, Event::In);
 					Logger<Level::SERVER>()
 						<< "connected peer "
 						<< vaddr << std::endl;
@@ -83,12 +86,8 @@ namespace factory {
 						// create temporary subordinate server
 						// to read kernels until the socket
 						// is closed from the other end
-						server_type* new_s = new server_type(sock, addr);
-						this->link_server(s, new_s, Event{sock, Event::In});
-//						new_s->setparent(this);
-//						new_s->setvaddr(vaddr);
-//						new_s->link(s);
-//						this->_poller.add(Event{sock, Event::In}, new_s, server_deleter(this));
+						server_type* new_s = new server_type(std::move(sock), addr);
+						this->link_server(s, new_s, Event{new_s->fd(), Event::In});
 						debug("not replacing upstream");
 					} else {
 						Logger<Level::SERVER> log;
@@ -96,13 +95,16 @@ namespace factory {
 						this->_poller.disable(s->fd());
 						server_type* new_s = new server_type(std::move(*s));
 						new_s->setparent(this);
-						new_s->socket(sock);
+						new_s->socket(std::move(sock));
 						this->_upstream[vaddr] = new_s;
-						this->_poller.add(Event{sock, Event::Inout, Event::Inout}, new_s, server_deleter(this));
+						this->_poller.add(Event{new_s->fd(), Event::Inout, Event::Inout}, new_s, server_deleter(this));
 						log << " with " << *new_s << std::endl;
 						debug("replacing upstream");
 					}
 				}
+				Logger<Level::SERVER>()
+					<< "after add: socket="
+					<< sock << std::endl;
 			}
 
 			void try_to_stop_gracefully() {
@@ -147,10 +149,10 @@ namespace factory {
 				this->connect_to_server(addr, Event::In);
 			}
 
-			void socket(Endpoint addr) {
+			void socket(const Endpoint& addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
-				this->_poller.add(Event{this->_socket, Event::In}, nullptr, server_deleter(this));
+				this->_poller.add(Event{this->_socket.fd(), Event::In}, nullptr, server_deleter(this));
 			}
 
 			void start() {
@@ -262,20 +264,21 @@ namespace factory {
 				// bind to server address with ephemeral port
 				Endpoint srv_addr = this->server_addr();
 				srv_addr.port(0);
-				Socket sock;
+				socket_type sock;
 				sock.bind(srv_addr);
 				sock.connect(addr);
-				return this->add_connected_server(sock, addr, events);
+				return this->add_connected_server(std::move(sock), addr, events);
 			}
 
-			server_type* add_connected_server(Socket sock, Endpoint vaddr,
+			server_type* add_connected_server(socket_type&& sock, Endpoint vaddr,
 				Event::legacy_event events,
 				Event::legacy_event revents=0)
 			{
-				server_type* s = new server_type(sock, vaddr);
+				socket_type::fd_type fd = sock.fd();
+				server_type* s = new server_type(std::move(sock), vaddr);
 				s->setparent(this);
 				this->_upstream[vaddr] = s;
-				this->_poller.add(Event{sock.fd(), events, revents}, s, server_deleter(this));
+				this->_poller.add(Event{fd, events, revents}, s, server_deleter(this));
 				return s;
 			}
 
@@ -314,7 +317,7 @@ namespace factory {
 			typedef Kernel kernel_type;
 			typedef std::deque<Kernel*> pool_type;
 
-			Remote_Rserver(Socket sock, Endpoint vaddr):
+			Remote_Rserver(Socket&& sock, Endpoint vaddr):
 				_vaddr(vaddr),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
@@ -322,7 +325,7 @@ namespace factory {
 				_link(nullptr),
 				_dirty(false)
 			{
-				this->_kernelbuf.setfd(sock);
+				this->_kernelbuf.setfd(socket_type(std::move(sock)));
 			}
 
 			Remote_Rserver(const Remote_Rserver&) = delete;
@@ -438,13 +441,13 @@ namespace factory {
 			}
 
 			bool dirty() const { return this->_dirty; }
-			int fd() const { return this->socket(); }
+			int fd() const { return this->socket().fd(); }
 			const socket_type& socket() const { return this->_kernelbuf.fd(); }
 			socket_type& socket() { return this->_kernelbuf.fd(); }
-			void socket(Socket rhs) {
+			void socket(Socket&& rhs) {
 				this->_stream >> underflow;
 				this->_stream.clear();
-				this->_kernelbuf.setfd(rhs);
+				this->_kernelbuf.setfd(socket_type(std::move(rhs)));
 			}
 			Endpoint bind_addr() const { return this->socket().bind_addr(); }
 			const Endpoint& vaddr() const { return this->_vaddr; }

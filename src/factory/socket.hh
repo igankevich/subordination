@@ -1,241 +1,256 @@
 namespace factory {
 
-	struct Socket {
+	namespace components {
 
-		typedef int Flag;
-		typedef int opt_type;
+		struct Socket {
 
-		enum Flag1: Flag {
-			Non_block = O_NONBLOCK
-		};
+			typedef int fd_type;
+			typedef int flag_type;
+			typedef int opt_type;
 
-		enum Flag2: Flag {
-			Close_on_exec = FD_CLOEXEC
-		};
+			enum Flag: flag_type {
+				Non_block = O_NONBLOCK
+			};
 
-		enum Option: opt_type {
-			Reuse_addr = SO_REUSEADDR,
-			Keep_alive = SO_KEEPALIVE
-		};
+			enum fd_flag: flag_type {
+				Close_on_exec = FD_CLOEXEC
+			};
 
-		static const int DEFAULT_FLAGS = SOCK_NONBLOCK | SOCK_CLOEXEC;
+			enum Option: opt_type {
+				Reuse_addr = SO_REUSEADDR,
+				Keep_alive = SO_KEEPALIVE
+			};
 
-		constexpr Socket() noexcept: _socket(0) {}
-		constexpr Socket(int socket) noexcept: _socket(socket) {}
-		constexpr Socket(const Socket& rhs) noexcept: _socket(rhs._socket) {}
-		Socket(Socket&& rhs) noexcept: _socket(rhs._socket) { rhs._socket = INVALID_SOCKET; }
+			static const flag_type DEFAULT_FLAGS = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
+			static const fd_type BADFD = -1;
 
-		void create_socket_if_necessary() {
-			if (!this->is_valid()) {
-				check("socket()", this->_socket = ::socket(AF_INET, SOCK_STREAM | DEFAULT_FLAGS, 0));
-#if !HAVE_DECL_SOCK_NONBLOCK
-				this->setf(Non_block);
-				this->setf(Close_on_exec);
-#endif
+			constexpr Socket() noexcept: _fd(BADFD) {}
+			constexpr explicit Socket(fd_type socket) noexcept: _fd(socket) {}
+			explicit Socket(Socket&& rhs) noexcept: _fd(rhs._fd) { rhs._fd = BADFD; }
+			/// Bind on @bind_addr and listen.
+			explicit Socket(const Endpoint& bind_addr): _fd(BADFD) {
+				this->bind(bind_addr);
+				this->listen();
 			}
-		}
+			/// Bind on @bind_addr and connect to a server on @conn_addr.
+			Socket(const Endpoint& bind_addr, const Endpoint& conn_addr): _fd(BADFD) {
+				this->bind(bind_addr);
+				this->connect(conn_addr);
+			}
+			~Socket() { this->close(); }
+			Socket& operator=(Socket&& rhs) {
+				this->close();
+				this->_fd = rhs._fd;
+				rhs._fd = BADFD;
+				return *this;
+			}
 
-		void bind(Endpoint e) {
-			this->create_socket_if_necessary();
-			this->setopt(Reuse_addr);
-			check("bind()", ::bind(this->_socket, e.sockaddr(), e.sockaddrlen()));
-			Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
-		}
-		
-		void listen() {
-			check("listen()", ::listen(this->_socket, SOMAXCONN));
-			Logger<Level::COMPONENT>() << "Listening on " << this->name() << std::endl;
-		}
+			void create_socket_if_necessary() {
+				if (!this->is_valid()) {
+					this->_fd =
+						check(::socket(AF_INET, DEFAULT_FLAGS, 0),
+						__FILE__, __LINE__, __func__);
+					this->set_mandatory_flags();
+				}
+			}
 
-		void connect(Endpoint e) {
-			try {
+			void bind(const Endpoint& e) {
 				this->create_socket_if_necessary();
-				this->check_connect("connect()", ::connect(this->_socket, e.sockaddr(), e.sockaddrlen()));
-				Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
-			} catch (std::system_error& err) {
-				Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
-				std::stringstream msg;
-				msg << err.what() << ". Endpoint=" << e;
-				throw Connection_error(msg.str(), __FILE__, __LINE__, __func__);
+				this->setopt(Reuse_addr);
+				check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
+					__FILE__, __LINE__, __func__);
+				Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 			}
-		}
-
-		std::pair<Socket, Endpoint> accept() {
-			Endpoint addr;
-			Endpoint::Sock_len len = sizeof(Endpoint);
-			Socket socket = check("accept()", ::accept(this->_socket, addr.sockaddr(), &len));
-			socket.setf(Non_block);
-			socket.setf(Close_on_exec);
-			Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
-			return std::make_pair(socket, addr);
-		}
-
-		void close() {
-			if (this->is_valid()) {
-				Logger<Level::COMPONENT>() << "Closing socket " << this->_socket << std::endl;
-//				check("shutdown()", ::shutdown(this->_socket, SHUT_RDWR));
-				// TODO: check this on discovery test
-				// TODO: shutdown does not work with ``check''
-				::shutdown(this->_socket, SHUT_RDWR);
-				check("close()", ::close(this->_socket));
+			
+			void listen() {
+				check(::listen(this->_fd, SOMAXCONN),
+					__FILE__, __LINE__, __func__);
+				Logger<Level::COMPONENT>() << "Listening on " << this->name() << std::endl;
 			}
-			_socket = INVALID_SOCKET;
-		}
 
-		void no_reading() {
-			if (this->is_valid()) {
-				check("no_reading()", ::shutdown(this->_socket, SHUT_RD));
+			void connect(const Endpoint& e) {
+				try {
+					this->create_socket_if_necessary();
+					check_if_not<EINPROGRESS>(::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
+						__FILE__, __LINE__, __func__);
+					Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
+				} catch (std::system_error& err) {
+					Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
+					std::stringstream msg;
+					msg << err.what() << ". Endpoint=" << e;
+					throw Connection_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
 			}
-		}
 
-		Flag flags() const { return check("fcntl()", ::fcntl(this->_socket, F_GETFL)); }
-		Flag flags2() const { return check("fcntl()", ::fcntl(this->_socket, F_GETFD)); }
-		void setf(Flag1 f) { check("fcntl()", ::fcntl(this->_socket, F_SETFL, this->flags() | f)); }
-		void setf(Flag2 f) { check("fcntl()", ::fcntl(this->_socket, F_SETFD, this->flags2() | f)); }
+			void accept(Socket& socket, Endpoint& addr) {
+				Endpoint::Sock_len len = sizeof(Endpoint);
+				socket = Socket(check(::accept(this->_fd, addr.sockaddr(), &len),
+					__FILE__, __LINE__, __func__));
+				socket.setf(Non_block);
+				socket.setf(Close_on_exec);
+				Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
+			}
 
-		void setopt(Option opt) {
-			int one = 1;
-			check("setsockopt()", ::setsockopt(this->_socket, SOL_SOCKET, opt, &one, sizeof(one)));
-		}
+			void close() {
+				if (this->is_valid()) {
+					Logger<Level::COMPONENT>()
+						<< "Closing socket "
+						<< this->_fd << std::endl;
+					check_if_not<ENOTCONN>(::shutdown(this->_fd, SHUT_RDWR),
+						__FILE__, __LINE__, __func__);
+					check(::close(this->_fd), __FILE__,
+						__LINE__, __func__);
+					this->_fd = BADFD;
+				}
+			}
 
-		int error() const {
-			int ret = 0;
-			int opt = 0;
-			if (!this->is_valid()) {
-				ret = -1;
-			} else {
-				Endpoint::Sock_len sz = sizeof(ret);
-				int e = ::getsockopt(this->_socket, SOL_SOCKET, SO_ERROR, &opt, &sz);
-				if (errno == ENOTSOCK) {
+			flag_type flags() const {
+				return check(::fcntl(this->_fd, F_GETFL),
+					__FILE__, __LINE__, __func__);
+			}
+			flag_type fd_flags() const {
+				return check(::fcntl(this->_fd, F_GETFD),
+					__FILE__, __LINE__, __func__);
+			}
+			void setf(Flag f) {
+				check(::fcntl(this->_fd, F_SETFL, this->flags() | f),
+					__FILE__, __LINE__, __func__);
+			}
+			void setf(fd_flag f) {
+				check(::fcntl(this->_fd, F_SETFD, this->fd_flags() | f),
+					__FILE__, __LINE__, __func__);
+			}
+
+			void setopt(Option opt) {
+				int one = 1;
+				check(::setsockopt(this->_fd,
+					SOL_SOCKET, opt, &one, sizeof(one)),
+					__FILE__, __LINE__, __func__);
+			}
+
+			int error() const {
+				int ret = 0;
+				int opt = 0;
+				if (!this->is_valid()) {
+					ret = -1;
+				} else {
+					Endpoint::Sock_len sz = sizeof(opt);
+					check_if_not<ENOTSOCK>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
+						__FILE__, __LINE__, __func__);
+				}
+				// ignore EAGAIN since it is common 'error' in asynchronous programming
+				if (opt == EAGAIN || opt == EINPROGRESS) {
 					ret = 0;
 				} else {
-					check("getsockopt()", e);
-				}
-			}
-			// ignore EAGAIN since it is common 'error' in asynchronous programming
-			if (opt == EAGAIN || opt == EINPROGRESS) {
-				ret = 0;
-			} else {
-				// If one connects to localhost to a different port and the service is offline
-				// then socket's local port can be chosen to be the same as the port of the service.
-				// If this happens the socket connects to itself and sends and replies to
-				// its own messages (at least on Linux). This conditional solves the issue.
-				try {
-					if (ret == 0 && this->name() == this->peer_name()) {
+					// If one connects to localhost to a different port and the service is offline
+					// then socket's local port can be chosen to be the same as the port of the service.
+					// If this happens the socket connects to itself and sends and replies to
+					// its own messages (at least on Linux). This conditional solves the issue.
+					try {
+						if (ret == 0 && this->name() == this->peer_name()) {
+							ret = -1;
+						}
+					} catch (std::system_error& err) {
 						ret = -1;
 					}
-				} catch (std::system_error& err) {
-					ret = -1;
+				}
+				return ret;
+			}
+
+			Endpoint bind_addr() const {
+				Endpoint addr;
+				Endpoint::Sock_len len = sizeof(Endpoint);
+				int ret = ::getsockname(this->_fd, addr.sockaddr(), &len);
+				return ret == -1 ? Endpoint() : addr;
+			}
+
+			Endpoint name() const {
+				Endpoint addr;
+				Endpoint::Sock_len len = sizeof(Endpoint);
+				check(::getsockname(this->_fd, addr.sockaddr(), &len),
+					__FILE__, __LINE__, __func__);
+				return addr;
+			}
+
+			Endpoint peer_name() const {
+				Endpoint addr;
+				Endpoint::Sock_len len = sizeof(Endpoint);
+				check(::getpeername(this->_fd, addr.sockaddr(), &len),
+					__FILE__, __LINE__, __func__);
+				return addr;
+			}
+
+			uint32_t read(void* buf, size_t size) {
+				ssize_t ret = ::read(this->_fd, buf, size);
+				return ret == -1 ? 0 : static_cast<uint32_t>(ret);
+			}
+
+			uint32_t write(const void* buf, size_t size) {
+				ssize_t ret = ::write(this->_fd, buf, size);
+//				ssize_t ret = ::send(_fd, buf, size, MSG_NOSIGNAL);
+				return ret == -1 ? 0 : static_cast<uint32_t>(ret);
+			}
+
+			fd_type fd() const noexcept { return this->_fd; }
+			bool operator==(const Socket& rhs) const noexcept {
+				return this->_fd == rhs._fd;
+			}
+			bool is_valid() const { return this->_fd >= 0; }
+
+			friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
+				return out << "{fd=" << rhs._fd << ",st="
+					<< (rhs.error() == 0 ? "ok" : ::strerror(errno))
+					<< '}';
+			}
+
+			// TODO: remove this ``boilerplate''
+			bool empty() const { return true; }
+			bool flush() const { return true; }
+
+		private:
+
+			inline
+			void set_mandatory_flags() {
+			#if !HAVE_DECL_SOCK_NONBLOCK
+				this->setf(Non_block);
+				this->setf(Close_on_exec);
+			#endif
+			}
+
+		protected:
+			fd_type _fd;
+		};
+
+		typedef Socket Filedesc;
+
+		struct File: public Socket {
+			constexpr File() {}
+			explicit File(File&& rhs): Socket(std::move(rhs)) {}
+			explicit File(const std::string& filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR):
+				File(filename.c_str(), flags, mode) {}
+			explicit File(const char* filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR) {
+				this->_fd = check("open()", ::open(filename, flags, mode));
+			}
+			~File() {
+				if (*this) {
+					check("close()", ::close(this->_fd));
+					this->_fd = BADFD;
 				}
 			}
-			return ret;
-		}
+			explicit operator bool() const { return this->_fd >= 0; }
+			bool operator !() const { return this->_fd < 0; }
+		};
 
-		Endpoint bind_addr() const {
-			Endpoint addr;
-			Endpoint::Sock_len len = sizeof(Endpoint);
-			int ret = ::getsockname(this->_socket, addr.sockaddr(), &len);
-			return ret == -1 ? Endpoint() : addr;
-		}
+		/*
+		 * WebSocket lib with support for "wss://" encryption.
+		 * Copyright 2010 Joel Martin
+		 * Licensed under LGPL version 3 (see docs/LICENSE.LGPL-3)
+		 *
+		 * You can make a cert/key with openssl using:
+		 * openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
+		 * as taken from http://docs.python.org/dev/library/ssl.html#certificates
+		 */
 
-		Endpoint name() const {
-			Endpoint addr;
-			Endpoint::Sock_len len = sizeof(Endpoint);
-			check("getsockname()", ::getsockname(this->_socket, addr.sockaddr(), &len));
-			return addr;
-		}
-
-		Endpoint peer_name() const {
-			Endpoint addr;
-			Endpoint::Sock_len len = sizeof(Endpoint);
-			check("getpeername()", ::getpeername(this->_socket, addr.sockaddr(), &len));
-			return addr;
-		}
-
-		uint32_t read(void* buf, size_t size) {
-			ssize_t ret = ::read(this->_socket, buf, size);
-			return ret == -1 ? 0 : static_cast<uint32_t>(ret);
-		}
-
-		uint32_t write(const void* buf, size_t size) {
-			ssize_t ret = ::write(this->_socket, buf, size);
-//			ssize_t ret = ::send(_socket, buf, size, MSG_NOSIGNAL);
-			return ret == -1 ? 0 : static_cast<uint32_t>(ret);
-		}
-
-		constexpr int fd() const noexcept { return this->_socket; }
-		constexpr operator int() const noexcept { return this->_socket; }
-		constexpr bool operator==(const Socket& rhs) const noexcept { return this->_socket == rhs._socket; }
-		constexpr bool is_valid() const { return this->_socket > 0; }
-
-		Socket& operator=(const Socket& rhs) {
-			this->close();
-			this->_socket = rhs._socket;
-			return *this;
-		}
-
-		friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
-			return out << "{fd=" << rhs._socket << ",st="
-				<< (rhs.error() == 0 ? "ok" : ::strerror(errno))
-				<< '}';
-		}
-
-		// TODO: remove this ``boilerplate''
-		constexpr bool empty() const { return true; }
-		constexpr bool flush() const { return true; }
-
-	private:
-
-		static int check_connect(const char* func, int ret) {
-			return (errno == EINPROGRESS) ? ret : check(func, ret);
-		}
-
-	protected:
-		int _socket;
-		static const int INVALID_SOCKET = -1;
-	};
-
-	typedef Socket Filedesk;
-
-}
-namespace factory {
-
-	struct Server_socket: public Socket {
-		constexpr Server_socket() {}
-		explicit Server_socket(Socket rhs): Socket(rhs) {}
-		explicit Server_socket(const Endpoint& endp) {
-			this->bind(endp);
-			this->listen();
-		}
-		Server_socket(const Endpoint& bind_addr, const Endpoint& conn_addr) {
-			this->bind(bind_addr);
-			this->connect(conn_addr);
-		}
-		Server_socket(Server_socket&& rhs): Socket(static_cast<Socket&&>(rhs)) {}
-		~Server_socket() { this->close(); }
-
-		Server_socket& operator=(Socket rhs) {
-			Socket::operator=(rhs);
-			return *this;
-		}
-		Server_socket& operator=(Server_socket&& rhs) {
-			Socket::operator=(static_cast<Socket&&>(rhs));
-			return *this;
-		}
-	};
-
-}
-/*
- * WebSocket lib with support for "wss://" encryption.
- * Copyright 2010 Joel Martin
- * Licensed under LGPL version 3 (see docs/LICENSE.LGPL-3)
- *
- * You can make a cert/key with openssl using:
- * openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
- * as taken from http://docs.python.org/dev/library/ssl.html#certificates
- */
-
-namespace factory {
 
 	struct HTTP_headers {
 	
@@ -267,6 +282,8 @@ namespace factory {
 	
 	struct Web_socket: public Socket {
 
+		using Socket::fd_type;
+
 		enum struct State {
 			INITIAL_STATE,
 			PARSING_HTTP_METHOD,
@@ -290,7 +307,35 @@ namespace factory {
 			mid_buffer(BUFFER_SIZE)
 			{}
 
-		explicit Web_socket(const Socket& rhs):
+//		explicit Web_socket(fd_type fd):
+//			Socket(fd),
+//			_http_headers(),
+//			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
+//			send_buffer(BUFFER_SIZE),
+//			recv_buffer(BUFFER_SIZE),
+//			mid_buffer(BUFFER_SIZE)
+//			{}
+
+		// TODO: move all fields
+		explicit Web_socket(Web_socket&& rhs):
+			Socket(std::move(rhs)),
+			_http_headers(),
+			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
+			send_buffer(BUFFER_SIZE),
+			recv_buffer(BUFFER_SIZE),
+			mid_buffer(BUFFER_SIZE)
+			{}
+
+		explicit Web_socket(Socket&& rhs):
+			Socket(std::move(rhs)),
+			_http_headers(),
+			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
+			send_buffer(BUFFER_SIZE),
+			recv_buffer(BUFFER_SIZE),
+			mid_buffer(BUFFER_SIZE)
+			{}
+
+		explicit Web_socket(fd_type rhs):
 			Socket(rhs),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
@@ -299,12 +344,26 @@ namespace factory {
 			mid_buffer(BUFFER_SIZE)
 			{}
 
+//		explicit Web_socket(const Socket& rhs):
+//			Socket(rhs),
+//			_http_headers(),
+//			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
+//			send_buffer(BUFFER_SIZE),
+//			recv_buffer(BUFFER_SIZE),
+//			mid_buffer(BUFFER_SIZE)
+//			{}
+
 		virtual ~Web_socket() { this->close(); }
 
-		Web_socket& operator=(const Socket& rhs) {
-			Socket::operator=(rhs);
+		Web_socket& operator=(Web_socket&& rhs) {
+			Socket::operator=(std::move(rhs));
 			return *this;
 		}
+
+//		Web_socket& operator=(const Socket& rhs) {
+//			Socket::operator=(rhs);
+//			return *this;
+//		}
 
 		uint32_t write(const void* buf2, size_t size) {
 			const char* buf = static_cast<const char*>(buf2);
@@ -360,7 +419,7 @@ namespace factory {
 
 		bool flush() {
 			size_t old_size = send_buffer.size();
-			send_buffer.flush(Socket(_socket));
+			send_buffer.flush<Socket&>(*this);
 			Logger<Level::WEBSOCKET>() << "send buffer"
 				<< "(" << old_size - send_buffer.size() << ") "
 				<< std::endl;
@@ -564,7 +623,7 @@ namespace factory {
 			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
 		}
 
-		void fill() { recv_buffer.fill(Socket(_socket)); }
+		void fill() { recv_buffer.fill<Socket&>(*this); }
 
 		State state = State::INITIAL_STATE;
 		Role role = Role::SERVER;
@@ -583,10 +642,11 @@ namespace factory {
 		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
 		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 	};
+	}
 
 	template<class Fd>
 	struct fd_wrapper {
-		fd_wrapper(int f): _fd(f) {}
+		fd_wrapper(Fd&& f): _fd(std::move(f)) {}
 		fd_wrapper() = delete;
 		fd_wrapper(fd_wrapper&& rhs): _fd(std::move(rhs._fd)) {}
 		ssize_t read(void* buf, std::size_t n) {
@@ -599,10 +659,10 @@ namespace factory {
 			this->_fd = std::move(fd);
 			return *this;
 		}
-		fd_wrapper& operator=(int fd) {
-			this->_fd = fd;
-			return *this;
-		}
+//		fd_wrapper& operator=(int fd) {
+//			this->_fd = fd;
+//			return *this;
+//		}
 //		operator int() const { return this->_fd; }
 		operator const Fd&() const { return this->_fd; }
 		operator Fd&() { return this->_fd; }
@@ -636,10 +696,14 @@ namespace factory {
 		typedef std::ios_base::seekdir seekdir;
 		typedef Fd fd_type;
 
-		basic_fdbuf(): basic_fdbuf(-1, 512, 512) {}
+		static fd_type&& badfd() {
+			return std::move(std::is_same<fd_type,int>::value ? fd_type(-1) : fd_type());
+		}
 
-		basic_fdbuf(int fd, std::size_t gbufsize, std::size_t pbufsize):
-			_fd(fd),
+		basic_fdbuf(): basic_fdbuf(std::move(badfd()), 512, 512) {}
+
+		basic_fdbuf(fd_type&& fd, std::size_t gbufsize, std::size_t pbufsize):
+			_fd(std::move(fd)),
 			_gbuf(gbufsize),
 			_pbuf(pbufsize)
 		{
@@ -784,8 +848,8 @@ namespace factory {
 			return pos_type(off_type(-1));
 		}
 
-		void setfd(int rhs) { this->_fd = rhs; }
-//		void setfd(fd_type&& rhs) { this->_fd = std::move(rhs); }
+//		void setfd(int rhs) { this->_fd = rhs; }
+		void setfd(fd_type&& rhs) { this->_fd = std::move(rhs); }
 		const fd_type& fd() const { return this->_fd; }
 		fd_type& fd() { return this->_fd; }
 
@@ -1486,8 +1550,8 @@ namespace factory {
 	struct basic_ifdstream: public std::basic_istream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_istream<Ch,Tr> istream_type;
-		explicit basic_ifdstream(Fd fd): istream_type(),
-			_fdbuf(fd, 512, 0) { this->init(&this->_fdbuf); }
+		explicit basic_ifdstream(Fd&& fd): istream_type(),
+			_fdbuf(std::move(fd), 512, 0) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
 	};
@@ -1496,8 +1560,8 @@ namespace factory {
 	struct basic_ofdstream: public std::basic_ostream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_ostream<Ch,Tr> ostream_type;
-		explicit basic_ofdstream(Fd fd): ostream_type(),
-			_fdbuf(fd, 0, 512) { this->init(&this->_fdbuf); }
+		explicit basic_ofdstream(Fd&& fd): ostream_type(),
+			_fdbuf(std::move(fd), 0, 512) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
 	};
@@ -1506,8 +1570,8 @@ namespace factory {
 	struct basic_fdstream: public std::basic_iostream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		explicit basic_fdstream(Fd fd): iostream_type(),
-			_fdbuf(fd, 512, 512) { this->init(&this->_fdbuf); }
+		explicit basic_fdstream(Fd&& fd): iostream_type(),
+			_fdbuf(std::move(fd), 512, 512) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
 	};

@@ -300,26 +300,5 @@ namespace factory {
 		::sem_t* _sem;
 	};
 
-	struct File {
-		static const int BAD_FD = -1;
-		constexpr File() {}
-		explicit File(const std::string& filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR):
-			File(filename.c_str(), flags, mode) {}
-		explicit File(const char* filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR) {
-			_fd = check("open()", ::open(filename, flags, mode));
-		}
-		~File() {
-			if (*this) {
-				check("close()", ::close(this->_fd));
-			}
-		}
-		explicit operator bool() const { return this->_fd != BAD_FD; }
-		bool operator !() const { return this->_fd == BAD_FD; }
-		int fd() const { return this->_fd; }
-
-	private:
-		int _fd = BAD_FD;
-	};
-
 }
 #endif
