@@ -218,6 +218,10 @@ namespace factory {
 			Socket::operator=(rhs);
 			return *this;
 		}
+		Server_socket& operator=(Server_socket&& rhs) {
+			Socket::operator=(static_cast<Socket&&>(rhs));
+			return *this;
+		}
 	};
 
 }
@@ -591,6 +595,10 @@ namespace factory {
 		ssize_t write(const void* buf, std::size_t n) {
 			return this->_fd.write(buf, n);
 		}
+		fd_wrapper& operator=(Fd&& fd) {
+			this->_fd = std::move(fd);
+			return *this;
+		}
 		fd_wrapper& operator=(int fd) {
 			this->_fd = fd;
 			return *this;
@@ -777,6 +785,7 @@ namespace factory {
 		}
 
 		void setfd(int rhs) { this->_fd = rhs; }
+//		void setfd(fd_type&& rhs) { this->_fd = std::move(rhs); }
 		const fd_type& fd() const { return this->_fd; }
 		fd_type& fd() { return this->_fd; }
 
