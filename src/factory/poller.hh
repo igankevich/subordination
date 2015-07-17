@@ -190,10 +190,6 @@ namespace factory {
 				while ((c = ::read(this->pipe_in(), tmp, n)) != -1);
 			}
 
-			static int check_poll(const char* func, int ret) {
-				return (errno == EINTR) ? ret : check(func, ret);
-			}
-
 			template<class Pred>
 			void remove_fds_if(Pred pred) {
 				typedef events_type::iterator It1;
@@ -269,8 +265,9 @@ namespace factory {
 					check_dirty();
 					Logger<Level::COMPONENT>() << "poll(): size="
 						<< this->_events.size() << std::endl;
-					check_poll("poll()", ::poll(this->_events.data(),
-						this->_events.size(), Infinite));
+					check_if_not<EINTR>(::poll(this->_events.data(),
+						this->_events.size(), Infinite),
+						__FILE__, __LINE__, __func__);
 				} while (errno == EINTR);
 
 				this->remove_fds_if(std::mem_fn(&Event::bad_fd));
