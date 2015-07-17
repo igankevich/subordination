@@ -18,16 +18,13 @@ namespace factory {
 				explicit server_deleter(this_type* t): _this(t) {}
 				void operator()(server_type* ptr) {
 					if (_this) {
-						auto it = _this->_upstream.find(ptr->vaddr());
-						if (it != _this->_upstream.end()) {
-							_this->_upstream.erase(it);
+						// remove from the mapping if it is not linked
+						// with other subordinate server
+						if (!ptr->link()) {
+							_this->_upstream.erase(ptr->vaddr());
 						}
 						Logger<Level::SERVER>() << "Removing server " << *ptr << std::endl;
-						ptr->recover_kernels(_this->parent());
-//						// subordinate servers are not present in upstream
-//						if (!ptr->parent()) {
-//							_this->_upstream.erase(ptr->vaddr());
-//						}
+						ptr->recover_kernels();
 					}
 					delete ptr;
 				}
@@ -66,12 +63,12 @@ namespace factory {
 				Socket sock = pair.first;
 				Endpoint addr = pair.second;
 				Endpoint vaddr = virtual_addr(addr);
-//				Endpoint vaddr = addr;
 				auto res = _upstream.find(vaddr);
 				if (res == _upstream.end()) {
-					server_type* s = peer(sock, addr, vaddr, Event::In);
+					this->add_connected_server(sock, vaddr, Event::In);
 					Logger<Level::SERVER>()
-						<< "connected peer " << s->vaddr() << std::endl;
+						<< "connected peer "
+						<< vaddr << std::endl;
 				} else {
 					server_type* s = res->second;
 					Logger<Level::SERVER>()
@@ -80,34 +77,30 @@ namespace factory {
 						<< s->bind_addr().port()
 						<< std::endl;
 					if (addr.port() < s->bind_addr().port()) {
-						Logger<Level::SERVER> log;
-						log << "not replacing peer " << *s
+						Logger<Level::SERVER>()
+							<< "not replacing peer " << *s
 							<< std::endl;
 						// create temporary subordinate server
 						// to read kernels until the socket
 						// is closed from the other end
-						server_type* new_s = new server_type(sock, addr, this->parent());
-						new_s->vaddr(vaddr);
-						new_s->parent(s);
-						this->_poller.add(Event{sock, Event::In}, new_s, server_deleter(this));
-//						sock.unsetrev(Event::In);
-//						s->fill_from(sock);
-//						sock.close();
+						server_type* new_s = new server_type(sock, addr);
+						this->link_server(s, new_s, Event{sock, Event::In});
+//						new_s->setparent(this);
+//						new_s->setvaddr(vaddr);
+//						new_s->link(s);
+//						this->_poller.add(Event{sock, Event::In}, new_s, server_deleter(this));
 						debug("not replacing upstream");
 					} else {
 						Logger<Level::SERVER> log;
 						log << "replacing peer " << *s;
-						_poller.disable(s->fd());
+						this->_poller.disable(s->fd());
 						server_type* new_s = new server_type(std::move(*s));
+						new_s->setparent(this);
 						new_s->socket(sock);
-						_upstream[vaddr] = new_s;
-						
+						this->_upstream[vaddr] = new_s;
 						this->_poller.add(Event{sock, Event::Inout, Event::Inout}, new_s, server_deleter(this));
-//						erase(s->bind_addr());
-//						peer(sock, addr, vaddr, Event::In);
 						log << " with " << *new_s << std::endl;
 						debug("replacing upstream");
-//						delete s;
 					}
 				}
 			}
@@ -151,7 +144,7 @@ namespace factory {
 //					throw Error("Can not add upstream server when socket server is running.",
 //						__FILE__, __LINE__, __func__);
 //				}
-				this->peer(addr, Event::In);
+				this->connect_to_server(addr, Event::In);
 			}
 
 			void socket(Endpoint addr) {
@@ -226,10 +219,8 @@ namespace factory {
 
 					if (k->moves_everywhere()) {
 						Logger<Level::SERVER>() << "broadcast kernel" << std::endl;
-						for (auto pair : _upstream) {
-							server_type* s = pair.second;
-							s->send(k);
-//							_poller[s->fd()]->setall(Event::Out);
+						for (const auto& pair : _upstream) {
+							pair.second->send(k);
 						}
 						// delete broadcast kernel
 						delete k;
@@ -240,22 +231,25 @@ namespace factory {
 						// TODO: round robin
 						auto result = _upstream.begin();
 						result->second->send(k);
-//						_poller[result->second->fd()]->setall(Event::Out);
 					} else {
 						// create endpoint if necessary, and send kernel
 						if (!k->to()) {
 							k->to(k->from());
 						}
-						auto result = _upstream.find(k->to());
-						if (result == _upstream.end()) {
-							server_type* handler = peer(k->to(), Event::Inout);
-							handler->send(k);
-						} else {
-							result->second->send(k);
-//							_poller[result->second->fd()]->setall(Event::Out);
-						}
+						this->find_or_create_peer(k->to(), Event::Inout)->send(k);
 					}
 				}
+			}
+
+			server_type* find_or_create_peer(const Endpoint& addr, Event::legacy_event ev) {
+				server_type* ret;
+				auto result = _upstream.find(addr);
+				if (result == _upstream.end()) {
+					ret = this->connect_to_server(addr, ev);
+				} else {
+					ret = result->second;
+				}
+				return ret;
 			}
 
 			void debug(const char* msg = "") {
@@ -264,22 +258,32 @@ namespace factory {
 					<< msg << " events " << this->_poller << std::endl;
 			}
 
-			server_type* peer(Endpoint addr, Event::legacy_event events) {
+			server_type* connect_to_server(Endpoint addr, Event::legacy_event events) {
 				// bind to server address with ephemeral port
 				Endpoint srv_addr = this->server_addr();
 				srv_addr.port(0);
 				Socket sock;
 				sock.bind(srv_addr);
 				sock.connect(addr);
-				return peer(sock, sock.bind_addr(), addr, events);
+				return this->add_connected_server(sock, addr, events);
 			}
 
-			server_type* peer(Socket sock, Endpoint addr, Endpoint vaddr, Event::legacy_event events) {
-				server_type* s = new server_type(sock, addr, this->parent());
-				s->vaddr(vaddr);
-				_upstream[vaddr] = s;
-				_poller.add(Event{sock, events}, s, server_deleter(this));
+			server_type* add_connected_server(Socket sock, Endpoint vaddr,
+				Event::legacy_event events,
+				Event::legacy_event revents=0)
+			{
+				server_type* s = new server_type(sock, vaddr);
+				s->setparent(this);
+				this->_upstream[vaddr] = s;
+				this->_poller.add(Event{sock.fd(), events, revents}, s, server_deleter(this));
 				return s;
+			}
+
+			void link_server(server_type* par, server_type* sub, Event ev) {
+				sub->setparent(this);
+				sub->setvaddr(par->vaddr());
+				sub->link(par);
+				this->_poller.add(ev, sub, server_deleter(this));
 			}
 
 			poller_type _poller;
@@ -298,21 +302,24 @@ namespace factory {
 			static const int MAX_STOP_ITERATIONS = 13;
 		};
 
-		template<class Kernel, template<class X> class Pool, class Server_socket>
-		struct Remote_Rserver {
+		template<class Kernel, template<class X> class Pool, class Sock>
+		struct Remote_Rserver: public Server<Kernel> {
 
-			typedef Remote_Rserver<Kernel, Pool, Server_socket> this_type;
+			typedef Remote_Rserver<Kernel, Pool, Sock> this_type;
 			typedef char Ch;
-			typedef basic_kernelbuf<basic_fdbuf<Ch,Server_socket>> Kernelbuf;
-			typedef Packing_stream<char> Stream;
+			typedef basic_kernelbuf<basic_fdbuf<Ch,Sock>> Kernelbuf;
+			typedef Packing_stream<Ch> stream_type;
+			typedef Server<Kernel> server_type;
+			typedef Sock socket_type;
+			typedef Kernel kernel_type;
+			typedef std::deque<Kernel*> pool_type;
 
-			Remote_Rserver(Socket sock, Endpoint endpoint, Server<Kernel>* fac):
-				_vaddr(endpoint),
+			Remote_Rserver(Socket sock, Endpoint vaddr):
+				_vaddr(vaddr),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
 				_buffer(),
-				_parent(nullptr),
-				_factory(fac),
+				_link(nullptr),
 				_dirty(false)
 			{
 				this->_kernelbuf.setfd(sock);
@@ -326,8 +333,7 @@ namespace factory {
 				_kernelbuf(std::move(rhs._kernelbuf)),
 				_stream(std::move(rhs._stream)),
 				_buffer(std::move(rhs._buffer)) ,
-				_parent(rhs._parent),
-				_factory(rhs._factory),
+				_link(rhs._link),
 				_dirty(rhs._dirty)
 				{}
 
@@ -339,9 +345,9 @@ namespace factory {
 				}
 			}
 
-			void recover_kernels(Server<Kernel>* parent_server) {
+			void recover_kernels() {
 
-				read_kernels(parent_server);
+				this->read_kernels();
 
 				Logger<Level::HANDLER>()
 					<< "Kernels left: "
@@ -349,13 +355,13 @@ namespace factory {
 					<< std::endl;
 				
 				// recover kernels written to output buffer
-				while (!_buffer.empty()) {
-					recover_kernel(_buffer.front(), parent_server);
-					_buffer.pop_front();
+				while (!this->_buffer.empty()) {
+					this->recover_kernel(this->_buffer.front(), this->root());
+					this->_buffer.pop_front();
 				}
 			}
 
-			void send(Kernel* kernel) {
+			void send(kernel_type* kernel) {
 				Logger<Level::HANDLER>() << "Remote_Rserver::send()" << std::endl;
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					Logger<Level::HANDLER>() << "poll send error: tellp=" << _stream.tellp() << std::endl;
@@ -386,25 +392,25 @@ namespace factory {
 
 			void operator()(Event& event) {
 				if (this->valid()) {
-					this->handle_event(event, this->_factory);
+					this->handle_event(event);
 				} else {
 					event.setrev(Event::Hup);
 				}
 			}
 
 			void simulate(Event event) {
-				this->handle_event(event, this->_factory);
+				this->handle_event(event);
 			}
 
-			void handle_event(Event& event, Server<Kernel>* parent_server) {
+			void handle_event(Event& event) {
 				bool overflow = false;
 				if (event.in()) {
 					Logger<Level::COMPONENT>() << "recv rdstate="
 						<< debug_stream(_stream) << ",event=" << event << std::endl;
 					while (this->_stream) {
 						try {
-							this->read_and_send_kernel(parent_server);
-						} catch (No_principal_found<Kernel>& err) {
+							this->read_and_send_kernel();
+						} catch (No_principal_found<kernel_type>& err) {
 							this->return_kernel(err.kernel());
 							overflow = true;
 						}
@@ -425,11 +431,6 @@ namespace factory {
 				}
 				if (overflow) {
 					event.setev(Event::Out);
-//					// Failed kernels are sent to parent,
-//					// so we need to fire write event.
-//					if (this->parent() != nullptr) {
-//						_poller[server->parent()->fd()]->setall(Event::Out);
-//					}
 				} else {
 					event.unsetev(Event::Out);
 					this->_dirty = false;
@@ -438,21 +439,21 @@ namespace factory {
 
 			bool dirty() const { return this->_dirty; }
 			int fd() const { return this->socket(); }
-			const Server_socket& socket() const { return this->_kernelbuf.fd(); }
-			Server_socket& socket() { return this->_kernelbuf.fd(); }
+			const socket_type& socket() const { return this->_kernelbuf.fd(); }
+			socket_type& socket() { return this->_kernelbuf.fd(); }
 			void socket(Socket rhs) {
 				this->_stream >> underflow;
 				this->_stream.clear();
 				this->_kernelbuf.setfd(rhs);
 			}
 			Endpoint bind_addr() const { return this->socket().bind_addr(); }
-			Endpoint vaddr() const { return _vaddr; }
-			void vaddr(Endpoint rhs) { _vaddr = rhs; }
+			const Endpoint& vaddr() const { return this->_vaddr; }
+			void setvaddr(const Endpoint& rhs) { this->_vaddr = rhs; }
 
 			bool empty() const { return this->_buffer.empty(); }
 
-			this_type* parent() const { return this->_parent; }
-			void parent(this_type* rhs) { this->_parent = rhs; }
+			this_type* link() const { return this->_link; }
+			void link(this_type* rhs) { this->_link = rhs; }
 
 			friend std::ostream& operator<<(std::ostream& out, const this_type& rhs) {
 				return out << "{vaddr="
@@ -464,8 +465,8 @@ namespace factory {
 
 		private:
 
-			void read_and_send_kernel(Server<Kernel>* parent_server) {
-				Type<Kernel>::read_object(this->_stream, [this] (Kernel* k) {
+			void read_and_send_kernel() {
+				Type<kernel_type>::read_object(this->_stream, [this] (kernel_type* k) {
 					k->from(_vaddr);
 					Logger<Level::COMPONENT>()
 						<< "recv kernel=" << *k
@@ -474,28 +475,28 @@ namespace factory {
 					if (k->moves_downstream()) {
 						this->clear_kernel_buffer(k);
 					}
-				}, [parent_server] (Kernel* k) {
-					parent_server->send(k);
+				}, [this] (kernel_type* k) {
+					this->root()->send(k);
 				});
 			}
 
-			void return_kernel(Kernel* k) {
-				Logger<Level::HANDLER>() << "No principal found for "
+			void return_kernel(kernel_type* k) {
+				Logger<Level::HANDLER>()
+					<< "No principal found for "
 					<< *k << std::endl;
 				k->principal(k->parent());
-				this->send(k);
-				// TODO: strange logic
-//				if (this->parent() != nullptr) {
-//					this->parent()->send(k);
+				// TODO : not safe with bare pointer
+//				if (this->link()) {
+//					this->link()->send(k);
 //				} else {
-//				this->send(k);
+					this->send(k);
 //				}
 			}
 
-			void write_kernel(Kernel& kernel) {
+			void write_kernel(kernel_type& kernel) {
 				typedef packstream::pos_type pos_type;
 				pos_type old_pos = this->_stream.tellp();
-				Type<Kernel>::write_object(kernel, this->_stream);
+				Type<kernel_type>::write_object(kernel, this->_stream);
 				pos_type new_pos = this->_stream.tellp();
 				this->_stream << end_packet;
 				Logger<Level::COMPONENT>() << "send bytes="
@@ -506,15 +507,15 @@ namespace factory {
 					<< std::endl;
 			}
 
-			void recover_kernel(Kernel* k, Server<Kernel>* parent_server) {
+			void recover_kernel(kernel_type* k, server_type* root) {
 				k->from(k->to());
 				k->result(Result::ENDPOINT_NOT_CONNECTED);
 				k->principal(k->parent());
-				parent_server->send(k);
+				root->send(k);
 			}
 
-			void clear_kernel_buffer(Kernel* k) {
-				auto pos = std::find_if(_buffer.begin(), _buffer.end(), [k] (Kernel* rhs) {
+			void clear_kernel_buffer(kernel_type* k) {
+				auto pos = std::find_if(_buffer.begin(), _buffer.end(), [k] (kernel_type* rhs) {
 					return *rhs == *k;
 				});
 				if (pos != _buffer.end()) {
@@ -527,20 +528,18 @@ namespace factory {
 				}
 			}
 			
-			void read_kernels(Server<Kernel>* parent_server) {
+			void read_kernels() {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				Event ev{this->fd(), Event::In};
-				handle_event(ev, parent_server);
+				this->simulate(Event{this->fd(), Event::In});
 			}
 
 			Endpoint _vaddr;
 			Kernelbuf _kernelbuf;
-			Stream _stream;
-			std::deque<Kernel*> _buffer;
+			stream_type _stream;
+			pool_type _buffer;
 
-			this_type* _parent;
-			Server<Kernel>* _factory;
+			this_type* _link;
 			volatile bool _dirty = false;
 		};
 

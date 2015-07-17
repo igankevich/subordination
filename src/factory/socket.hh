@@ -207,6 +207,10 @@ namespace factory {
 			this->bind(endp);
 			this->listen();
 		}
+		Server_socket(const Endpoint& bind_addr, const Endpoint& conn_addr) {
+			this->bind(bind_addr);
+			this->connect(conn_addr);
+		}
 		Server_socket(Server_socket&& rhs): Socket(static_cast<Socket&&>(rhs)) {}
 		~Server_socket() { this->close(); }
 
@@ -214,11 +218,6 @@ namespace factory {
 			Socket::operator=(rhs);
 			return *this;
 		}
-	};
-
-	struct Client_socket: public Socket {
-		Client_socket(Endpoint endpoint) { this->connect(endpoint); }
-		virtual ~Client_socket() { this->close(); }
 	};
 
 }

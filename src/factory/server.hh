@@ -121,6 +121,7 @@ namespace factory {
 			virtual void send(Kernel*) = 0;
 			This* parent() const { return this->_parent; }
 			void setparent(This* rhs) { this->_parent = rhs; }
+			This* root() { return this->_parent ? this->_parent->root() : this; }
 
 		private:
 			This* _parent = nullptr;
