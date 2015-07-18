@@ -202,56 +202,96 @@ namespace factory {
 
 	struct Shared_memory {
 	
-		typedef unsigned char Byte;
-		typedef uint8_t Sequence_num;
+		typedef uint8_t proj_id_type;
+		typedef ::key_t key_type;
+		typedef size_t size_type;
+		typedef int perms_type;
+		typedef int id_type;
+		typedef int shmid_type;
+		typedef void* addr_type;
 	
-		Shared_memory(int id, size_t sz, Sequence_num num = PROJ_ID, int perms = DEFAULT_SHMEM_PERMS):
-			_addr(nullptr), _id(id), _size(sz), _shmid(0), _owner(true)
-		{
-			_path = filename(id);
-			{ std::ofstream out(_path); }
-			::key_t key = check("ftok()", ::ftok(_path.c_str(), num));
-			_shmid = check("shmget()", ::shmget(key, size(), perms | IPC_CREAT));
-			_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
-		}
+		Shared_memory(id_type id, size_type sz, proj_id_type num = PROJ_ID, perms_type perms = DEFAULT_SHMEM_PERMS):
+			_id(id), _size(sz),
+			_shmid(this->createshmem(this->genkey(num), perms)),
+			_addr(this->attach()), _owner(true)
+		{ this->fillshmem(); }
 	
-		explicit Shared_memory(int id, Sequence_num num = PROJ_ID):
-			_id(id), _size(0), _shmid(0), _path()
-		{
-			_path = filename(id);
-			{ std::filebuf out; out.open(_path, std::ios_base::out); }
-			::key_t key = check("ftok()", ::ftok(_path.c_str(), num));
-			_shmid = check("shmget()", ::shmget(key, 0, 0));
-			_addr = static_cast<Byte*>(check("shmat()", ::shmat(_shmid, 0, 0)));
-			load_size();
-		}
+		explicit Shared_memory(id_type id, proj_id_type num = PROJ_ID):
+			_id(id), _size(0),
+			_shmid(this->getshmem(this->genkey(num))),
+			_addr(this->attach())
+		{ this->_size = load_size(); }
 	
 		~Shared_memory() {
-			check("shmdt()", ::shmdt(_addr));
-			if (is_owner()) {
-				check("shmctl()", ::shmctl(_shmid, IPC_RMID, 0));
-				check("remove()", ::remove(_path.c_str()));
+			this->detach();
+			if (this->is_owner()) {
+				this->rmshmem();
 			}
 		}
 	
 		Shared_memory(const Shared_memory&) = delete;
 		Shared_memory& operator=(const Shared_memory&) = delete;
 	
-		unsigned char* ptr() { return _addr; }
-		const unsigned char* ptr() const { return _addr; }
-		size_t size() const { return _size; }
-		bool is_owner() const { return _owner; }
+		addr_type ptr() { return this->_addr; }
+		const addr_type ptr() const { return this->_addr; }
+		size_type size() const { return this->_size; }
+		bool is_owner() const { return this->_owner; }
 	
 	private:
-	
-		void load_size() {
+
+		void fillshmem() {
+			typedef char char_type;
+			std::fill_n(static_cast<char_type*>(this->ptr()),
+				this->size(), char_type(0));
+		}
+
+		key_type genkey(proj_id_type num) const {
+			std::string path = filename(this->_id);
+			{ std::filebuf out; out.open(path, std::ios_base::out); }
+			return check(::ftok(path.c_str(), num),
+				__FILE__, __LINE__, __func__);
+		}
+
+		shmid_type createshmem(key_type key, perms_type perms) const {
+			return check(::shmget(key, this->size(), perms | IPC_CREAT),
+				__FILE__, __LINE__, __func__);
+		}
+
+		shmid_type getshmem(key_type key) const {
+			return check(::shmget(key, 0, 0),
+				__FILE__, __LINE__, __func__);
+		}
+
+		addr_type attach() const {
+			return check(::shmat(this->_shmid, 0, 0),
+				__FILE__, __LINE__, __func__);
+		}
+
+		void detach() {
+			if (this->_addr) {
+				check(::shmdt(this->_addr),
+					__FILE__, __LINE__, __func__);
+			}
+		}
+
+		void rmshmem() {
+			check(::shmctl(_shmid, IPC_RMID, 0),
+				__FILE__, __LINE__, __func__);
+			std::string path = this->filename(this->_id);
+			check(::remove(path.c_str()),
+				__FILE__, __LINE__, __func__);
+		}
+
+		size_type load_size() {
 			::shmid_ds stat;
-			check("shmctl()", ::shmctl(_shmid, IPC_STAT, &stat));
-			_size = stat.shm_segsz;
+			check(::shmctl(_shmid, IPC_STAT, &stat),
+				__FILE__, __LINE__, __func__);
+			return stat.shm_segsz;
 		}
 		
-		std::string filename(int id) const {
-			std::stringstream path;
+		static
+		std::string filename(id_type id) {
+			std::ostringstream path;
 			path << "/var/tmp";
 			path << "/factory.";
 			path << id;
@@ -260,21 +300,19 @@ namespace factory {
 		}
 	
 		friend std::ostream& operator<<(std::ostream& out, const Shared_memory& rhs) {
-			return out << "addr = " << reinterpret_cast<const void*>(rhs.ptr())
+			return out << "addr = " << rhs.ptr()
 				<< ", size = " << rhs.size()
-				<< ", owner = " << rhs.is_owner()
-				<< ", path = " << rhs._path;
+				<< ", owner = " << rhs.is_owner();
 		}
 	
-		Byte* _addr;
-		int _id = 0;
-		size_t _size = 0;
-		int _shmid = 0;
-		std::string _path;
+		id_type _id = 0;
+		size_type _size = 0;
+		shmid_type _shmid = 0;
+		addr_type _addr = nullptr;
 		bool _owner = false;
 	
-		static const int DEFAULT_SHMEM_PERMS = 0666;
-		static const uint8_t PROJ_ID = 0;
+		static const perms_type DEFAULT_SHMEM_PERMS = 0666;
+		static const proj_id_type PROJ_ID = 'Q';
 	};
 
 	struct Semaphore {
