@@ -200,49 +200,97 @@ namespace factory {
 		std::stringstream cmdline;
 	};
 
-	struct Shared_memory {
+	template<class T>
+	struct shared_mem {
 	
 		typedef uint8_t proj_id_type;
 		typedef ::key_t key_type;
 		typedef size_t size_type;
-		typedef int perms_type;
+		typedef unsigned short perms_type;
 		typedef int id_type;
 		typedef int shmid_type;
 		typedef void* addr_type;
+		typedef T value_type;
 	
-		Shared_memory(id_type id, size_type sz, proj_id_type num = PROJ_ID, perms_type perms = DEFAULT_SHMEM_PERMS):
-			_id(id), _size(sz),
-			_shmid(this->createshmem(this->genkey(num), perms)),
+		shared_mem(id_type id, size_type sz, proj_id_type num, perms_type perms = DEFAULT_SHMEM_PERMS):
+			_id(id), _size(sz), _key(this->genkey(num)),
+			_shmid(this->createshmem(perms)),
 			_addr(this->attach()), _owner(true)
-		{ this->fillshmem(); }
+		{
+			this->fillshmem();
+			Logger<Level::SHMEM>()
+				<< "shared_mem server: "
+				<< "shmem=" << *this
+				<< std::endl;
+		}
 	
-		explicit Shared_memory(id_type id, proj_id_type num = PROJ_ID):
-			_id(id), _size(0),
-			_shmid(this->getshmem(this->genkey(num))),
+		explicit shared_mem(id_type id, proj_id_type num):
+			_id(id), _size(0), _key(this->genkey(num)),
+			_shmid(this->getshmem()),
 			_addr(this->attach())
-		{ this->_size = load_size(); }
+		{
+			this->_size = this->load_size();
+			Logger<Level::SHMEM>()
+				<< "shared_mem client: "
+				<< "shmem=" << *this
+				<< std::endl;
+		}
 	
-		~Shared_memory() {
+		~shared_mem() {
 			this->detach();
 			if (this->is_owner()) {
 				this->rmshmem();
+				this->rmfile();
 			}
 		}
 	
-		Shared_memory(const Shared_memory&) = delete;
-		Shared_memory& operator=(const Shared_memory&) = delete;
+		shared_mem(const shared_mem&) = delete;
+		shared_mem& operator=(const shared_mem&) = delete;
 	
 		addr_type ptr() { return this->_addr; }
 		const addr_type ptr() const { return this->_addr; }
 		size_type size() const { return this->_size; }
 		bool is_owner() const { return this->_owner; }
+
+		value_type* begin() { return static_cast<value_type*>(this->_addr); }
+		value_type* end() { return static_cast<value_type*>(this->_addr) + this->_size; }
 	
+		const value_type* begin() const { return static_cast<value_type*>(this->_addr); }
+		const value_type* end() const { return static_cast<value_type*>(this->_addr) + this->_size; }
+
+		void resize(size_type new_size) {
+			if (new_size > this->_size) {
+				this->detach();
+				if (this->is_owner()) {
+					this->rmshmem();
+				}
+				this->_size = new_size;
+				this->_shmid = this->createshmem(this->getperms());
+				this->attach();
+			}
+		}
+
+		void sync() {
+			shmid_type newid = this->getshmem();
+			if (newid != this->_shmid) {
+				Logger<Level::SHMEM>()
+					<< "detach/attach sync"
+					<< std::endl;
+				this->detach();
+				if (this->is_owner()) {
+					this->rmshmem();
+				}
+				this->_shmid = newid;
+				this->attach();
+			}
+			this->_size = this->load_size();
+		}
+
 	private:
 
 		void fillshmem() {
-			typedef char char_type;
-			std::fill_n(static_cast<char_type*>(this->ptr()),
-				this->size(), char_type(0));
+			std::fill_n(this->begin(),
+				this->size(), value_type());
 		}
 
 		key_type genkey(proj_id_type num) const {
@@ -252,13 +300,14 @@ namespace factory {
 				__FILE__, __LINE__, __func__);
 		}
 
-		shmid_type createshmem(key_type key, perms_type perms) const {
-			return check(::shmget(key, this->size(), perms | IPC_CREAT),
+		shmid_type createshmem(perms_type perms) const {
+			return check(::shmget(this->_key,
+				this->size(), perms | IPC_CREAT),
 				__FILE__, __LINE__, __func__);
 		}
 
-		shmid_type getshmem(key_type key) const {
-			return check(::shmget(key, 0, 0),
+		shmid_type getshmem() const {
+			return check(::shmget(this->_key, 0, 0),
 				__FILE__, __LINE__, __func__);
 		}
 
@@ -275,9 +324,16 @@ namespace factory {
 		}
 
 		void rmshmem() {
-			check(::shmctl(_shmid, IPC_RMID, 0),
+			check(::shmctl(this->_shmid, IPC_RMID, 0),
 				__FILE__, __LINE__, __func__);
+		}
+
+		void rmfile() {
 			std::string path = this->filename(this->_id);
+			Logger<Level::SHMEM>()
+				<< "rmfile path=" << path
+				<< ",shmem=" << *this
+				<< std::endl;
 			check(::remove(path.c_str()),
 				__FILE__, __LINE__, __func__);
 		}
@@ -287,6 +343,13 @@ namespace factory {
 			check(::shmctl(_shmid, IPC_STAT, &stat),
 				__FILE__, __LINE__, __func__);
 			return stat.shm_segsz;
+		}
+
+		perms_type getperms() {
+			::shmid_ds stat;
+			check(::shmctl(_shmid, IPC_STAT, &stat),
+				__FILE__, __LINE__, __func__);
+			return stat.shm_perm.mode;
 		}
 		
 		static
@@ -299,20 +362,23 @@ namespace factory {
 			return path.str();
 		}
 	
-		friend std::ostream& operator<<(std::ostream& out, const Shared_memory& rhs) {
-			return out << "addr = " << rhs.ptr()
-				<< ", size = " << rhs.size()
-				<< ", owner = " << rhs.is_owner();
+		friend std::ostream& operator<<(std::ostream& out, const shared_mem& rhs) {
+			return out << "{addr=" << rhs.ptr()
+				<< ",size=" << rhs.size()
+				<< ",owner=" << rhs.is_owner()
+				<< ",key=" << rhs._key
+				<< ",shmid=" << rhs._shmid
+				<< '}';
 		}
 	
 		id_type _id = 0;
 		size_type _size = 0;
+		key_type _key = 0;
 		shmid_type _shmid = 0;
 		addr_type _addr = nullptr;
 		bool _owner = false;
 	
 		static const perms_type DEFAULT_SHMEM_PERMS = 0666;
-		static const proj_id_type PROJ_ID = 'Q';
 	};
 
 	struct Semaphore {

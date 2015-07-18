@@ -24,7 +24,7 @@ namespace test {
 	}
 
 	template<class Container1, class Container2>
-	void compare(Container1 cnt1, Container2 cnt2) {
+	void compare(const Container1& cnt1, const Container2& cnt2) {
 		using namespace factory;
 		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
 		if (pair.first != cnt1.end()) {
@@ -34,6 +34,25 @@ namespace test {
 				<< make_bytes(*pair.first) << "'\n!=\n'" << make_bytes(*pair.second) << "'";
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
+	}
+
+	typedef std::chrono::nanoseconds::rep Time;
+	
+	Time time_seed() {
+		return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	}
+
+	template<class T>
+	T randomval() {
+		typedef typename
+			std::conditional<std::is_floating_point<T>::value,
+				std::uniform_real_distribution<T>,
+					std::uniform_int_distribution<T>>::type
+						Distribution;
+		typedef std::default_random_engine::result_type Res_type;
+		static std::default_random_engine generator(static_cast<Res_type>(time_seed()));
+		static Distribution distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
+		return distribution(generator);
 	}
 
 }
