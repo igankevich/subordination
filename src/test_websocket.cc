@@ -5,7 +5,7 @@ using namespace factory;
 #include "datum.hh"
 
 Endpoint server_endpoint("127.0.0.1", 10002);
-Endpoint client_endpoint("127.0.0.2", 10002);
+Endpoint client_endpoint("127.0.0.1", 20002);
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
 const std::vector<size_t> POWERS = {16,17};
@@ -138,11 +138,7 @@ private:
 };
 
 uint32_t sleep_time() {
-	uint32_t t = 0;
-	std::stringstream s;
-	s << ::getenv("SLEEP_TIME");
-	s >> t;
-	return t;
+	return this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 

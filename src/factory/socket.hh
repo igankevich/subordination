@@ -697,7 +697,8 @@ namespace factory {
 		typedef Fd fd_type;
 
 		static fd_type&& badfd() {
-			return std::move(std::is_same<fd_type,int>::value ? fd_type(-1) : fd_type());
+//			return std::move(std::is_same<fd_type,int>::value ? fd_type(-1) : fd_type());
+			return std::move(fd_type());
 		}
 
 		basic_fdbuf(): basic_fdbuf(std::move(badfd()), 512, 512) {}

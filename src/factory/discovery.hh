@@ -143,6 +143,7 @@ namespace factory {
 		return sorted_ranges;
 	}
 
+/*
 	Endpoint random_endpoint(const std::vector<Address_range>& addrs, Port port) {
 
 		typedef typename Address_range::Int I;
@@ -204,5 +205,6 @@ namespace factory {
 	
 		return ret;
 	}
+*/
 
 }
