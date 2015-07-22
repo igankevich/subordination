@@ -224,7 +224,7 @@ namespace factory {
 		typedef Socket Filedesc;
 
 		struct File: public Socket {
-			constexpr File() {}
+			File() {}
 			explicit File(File&& rhs): Socket(std::move(rhs)) {}
 			explicit File(const std::string& filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR):
 				File(filename.c_str(), flags, mode) {}
@@ -1550,7 +1550,7 @@ namespace factory {
 	struct basic_ifdstream: public std::basic_istream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_istream<Ch,Tr> istream_type;
-		explicit basic_ifdstream(Fd&& fd): istream_type(),
+		explicit basic_ifdstream(Fd&& fd): istream_type(nullptr),
 			_fdbuf(std::move(fd), 512, 0) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
@@ -1560,7 +1560,7 @@ namespace factory {
 	struct basic_ofdstream: public std::basic_ostream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_ostream<Ch,Tr> ostream_type;
-		explicit basic_ofdstream(Fd&& fd): ostream_type(),
+		explicit basic_ofdstream(Fd&& fd): ostream_type(nullptr),
 			_fdbuf(std::move(fd), 0, 512) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
@@ -1570,7 +1570,7 @@ namespace factory {
 	struct basic_fdstream: public std::basic_iostream<Ch> {
 		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		explicit basic_fdstream(Fd&& fd): iostream_type(),
+		explicit basic_fdstream(Fd&& fd): iostream_type(nullptr),
 			_fdbuf(std::move(fd), 512, 512) { this->init(&this->_fdbuf); }
 	private:
 		fdbuf_type _fdbuf;
@@ -1582,7 +1582,7 @@ namespace factory {
 		typedef typename Base::char_type Ch;
 		typedef typename Base::traits_type Tr;
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		basic_kstream(): iostream_type(), _kernelbuf()
+		basic_kstream(): iostream_type(nullptr), _kernelbuf()
 			{ this->init(&this->_kernelbuf); }
 	private:
 		kernelbuf_type _kernelbuf;
@@ -1602,8 +1602,8 @@ namespace factory {
 		typedef Ch char_type;
 		typedef Packing_stream<Ch,Tr,Size> this_type;
 
-		explicit Packing_stream(streambuf_type* str): iostream_type() {
-			this->init(str);
+		explicit Packing_stream(streambuf_type* str): iostream_type(str) {
+//			this->init(str);
 		}
 		Packing_stream(Packing_stream&& rhs): iostream_type(rhs.rdbuf()) {}
 		Packing_stream(const Packing_stream&) = delete;
