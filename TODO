@@ -47,3 +47,4 @@ Minimise the use of bare pointers.
 Implement generic state machine for use in kernelbuf and websocketbuf.
 Make locks mutable.
 Close all Socket in destructor (use rvalue references).
+Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.
