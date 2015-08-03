@@ -149,6 +149,7 @@ namespace std {
 #endif
 namespace factory {
 	Underflow underflow;
+	End_packet end_packet;
 }
 
 namespace factory {

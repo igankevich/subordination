@@ -150,7 +150,7 @@ namespace factory {
 						if (ret == 0 && this->name() == this->peer_name()) {
 							ret = -1;
 						}
-					} catch (std::system_error& err) {
+					} catch (...) {
 						ret = -1;
 					}
 				}
@@ -1733,18 +1733,12 @@ namespace factory {
 
 	typedef Packing_stream<char> packstream;
 
-	inline
-	std::ostream& end_packet(std::ostream& out) {
-		out.rdbuf()->pubsync();
-		return out;
-	}
-
-//	struct End_packet {
-//		friend std::ostream& operator<<(std::ostream& out, End_packet) {
-//			out.rdbuf()->pubsync();
-//			return out;
-//		}
-//	} end_packet;
+	struct End_packet {
+		friend std::ostream& operator<<(std::ostream& out, End_packet) {
+			out.rdbuf()->pubsync();
+			return out;
+		}
+	};
 
 	struct Underflow {
 		friend std::istream& operator>>(std::istream& in, Underflow) {
@@ -1757,6 +1751,7 @@ namespace factory {
 		}
 	};
 
+	extern End_packet end_packet;
 	extern Underflow underflow;
 
 }
