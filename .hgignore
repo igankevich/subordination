@@ -3,6 +3,7 @@ syntax: glob
 *.o
 *.a
 *.la
+*.lo
 *.so
 *.swp
 *.swo
@@ -46,9 +47,17 @@ src/test_poller
 src/factory_time
 src/*.html
 src/*.xml
+src/.libs
 doxygen-doc/*
 src/version.hh
 *-coverage.info
+libtool
+ltmain.sh
+m4/libtool.m4
+m4/ltoptions.m4
+m4/ltsugar.m4
+m4/ltversion.m4
+m4/lt~obsolete.m4
 
 syntax: regexp
 (^|/)Makefile.in$

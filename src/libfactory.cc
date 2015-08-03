@@ -45,7 +45,10 @@ namespace factory {
 		} __factory_auto_check_endiannes;
 
 		struct Auto_set_terminate_handler {
-			Auto_set_terminate_handler() { std::set_terminate(error_printing_handler); }
+			Auto_set_terminate_handler() {
+				std::cout << "Auto_set_terminate_handler" << std::endl;
+				std::set_terminate(error_printing_handler);
+			}
 		private:
 			static void error_printing_handler() noexcept {
 				static volatile bool called = false;

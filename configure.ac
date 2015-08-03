@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([Factory], [0.1], [Ivan Gankevich <igankevich@yandex.com>])
+AC_INIT([Factory], [0.2], [Ivan Gankevich <igankevich@yandex.com>])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
@@ -8,8 +8,10 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall])
 #AM_SILENT_RULES([yes])
 
-AC_PROG_RANLIB
+# libtool
 AM_PROG_AR
+LT_INIT
+AC_SUBST([LIBTOOL_DEPS])
 
 # Check for arguments.
 AC_ARG_ENABLE([warnings],

@@ -16,7 +16,7 @@ AM_LDFLAGS = \
 	$(PERF_TESTING_LDFLAGS) \
 	$(CODE_COVERAGE_LDFLAGS)
 
-LDADD = libfactory.a
+LDADD = libfactory.la
 
 AM_DEFAULT_SOURCE_EXT = .cc
 
@@ -35,8 +35,8 @@ REPO_VERSION = $(top_srcdir)/bin/repo-version
 bin_PROGRAMS = \
 	factory_time
 
-lib_LIBRARIES = \
-	libfactory.a
+lib_LTLIBRARIES = \
+	libfactory.la
 
 TESTS = \
 	test_buffer \
@@ -75,3 +75,6 @@ check_PROGRAMS = \
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING
+
+libtool: $(LIBTOOL_DEPS)
+	$(SHELL) $(top_srcdir)/config.status libtool

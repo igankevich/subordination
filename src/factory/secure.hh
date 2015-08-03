@@ -41,6 +41,5 @@ namespace factory {
 			std::basic_streambuf<T>* _orig;
 		};
 
-
 	}
 }

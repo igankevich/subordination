@@ -1,7 +1,4 @@
-#include <iostream>
-#include <iomanip>
-#include <chrono>
-#include <factory/factory_base.hh>
+#include <factory/factory.hh>
 
 using namespace factory;
 
