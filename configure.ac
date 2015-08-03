@@ -8,6 +8,9 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall])
 #AM_SILENT_RULES([yes])
 
+AC_PROG_RANLIB
+AM_PROG_AR
+
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))

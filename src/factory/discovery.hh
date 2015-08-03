@@ -1,12 +1,14 @@
 namespace factory {
 
 	template<class I>
+	inline
 	I log2(I x) {
 		I n = 0;
 		while (x >>= 1) n++;
 		return n;
 	}
 
+	inline
 	uint32_t log(uint32_t x, uint32_t p = 1) {
 		uint32_t n = 0;
 		while (x >>= p) n++;
@@ -74,74 +76,7 @@ namespace factory {
 		unsigned char _bytes[sizeof(_addr)];
 	};
 	
-	std::vector<Address_range> discover_neighbours() {
-	
-		struct ::ifaddrs* ifaddr;
-		check("getifaddrs()", ::getifaddrs(&ifaddr));
-	
-		std::set<Address_range> ranges;
-	
-		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-
-			if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
-				// ignore non-internet networks
-				continue;
-			}
-
-			Endpoint addr(*ifa->ifa_addr);
-			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
-				// ignore localhost and non-IPv4 addresses
-				continue;
-			}
-
-			Endpoint netmask(*ifa->ifa_netmask);
-			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
-				// ignore wide-area networks
-				continue;
-			}
-	
-			uint32_t addr_long = addr.address();
-			uint32_t mask_long = netmask.address();
-	
-			uint32_t start = (addr_long & mask_long) + 1;
-			uint32_t end = (addr_long & mask_long) + (~mask_long);
-	
-			ranges.insert(Address_range(start, addr_long));
-			ranges.insert(Address_range(addr_long+1, end));
-		}
-	
-		// combine overlaping ranges
-		std::vector<Address_range> sorted_ranges;
-		Address_range prev_range;
-		std::for_each(ranges.cbegin(), ranges.cend(),
-			[&sorted_ranges, &prev_range](const Address_range& range)
-		{
-			if (prev_range.empty()) {
-				prev_range = range;
-			} else {
-				if (prev_range.overlaps(range)) {
-					prev_range += range;
-				} else {
-					sorted_ranges.push_back(prev_range);
-					prev_range = range;
-				}
-			}
-		});
-	
-		if (!prev_range.empty()) {
-			sorted_ranges.push_back(prev_range);
-		}
-	
-		std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
-			[] (const Address_range& range)
-		{
-			std::clog << Address(range.start()) << '-' << Address(range.end()) << '\n';
-		});
-	
-		::freeifaddrs(ifaddr);
-	
-		return sorted_ranges;
-	}
+	std::vector<Address_range> discover_neighbours();
 
 /*
 	Endpoint random_endpoint(const std::vector<Address_range>& addrs, Port port) {

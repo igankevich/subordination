@@ -14,6 +14,7 @@ namespace factory {
 		SHMEM
 	};
 
+	inline
 	std::ostream& operator<<(std::ostream& out, const Level rhs) {
 		switch (rhs) {
 			case Level::KERNEL    : out << "krnl";    break;
@@ -32,7 +33,7 @@ namespace factory {
 		return out;
 	}
 
-	Spin_mutex __logger_mutex;
+	extern Spin_mutex __logger_mutex;
 
 	template<Level lvl=Level::KERNEL>
 	struct Logger {
@@ -294,6 +295,7 @@ namespace factory {
 		FATAL_ERROR = 7
 	};
 
+	inline
 	std::ostream& operator<<(std::ostream& out, Result rhs) {
 		switch (rhs) {
 			case Result::SUCCESS: out << "SUCCESS"; break;
@@ -309,45 +311,6 @@ namespace factory {
 	}
 
 	namespace components {
-
-		struct Auto_set_terminate_handler {
-			Auto_set_terminate_handler() { std::set_terminate(error_printing_handler); }
-		private:
-			static void error_printing_handler() noexcept {
-				static volatile bool called = false;
-				if (called) { return; }
-				called = true;
-				std::exception_ptr ptr = std::current_exception();
-				if (ptr) {
-					try {
-						std::rethrow_exception(ptr);
-					} catch (Error& err) {
-						std::cerr << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
-					} catch (std::exception& err) {
-						std::cerr << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
-					} catch (...) {
-						std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
-					}
-				} else {
-					std::cerr << String_message("terminate called without an active exception",
-						__FILE__, __LINE__, __func__) << std::endl;
-				}
-				print_stack_trace();
-				stop_all_factories(true);
-				std::abort();
-			}
-
-#if defined(HAVE_BACKTRACE)
-			static void print_stack_trace() noexcept {
-				static const backtrace_size_t MAX_ENTRIES = 64;
-				void* stack[MAX_ENTRIES];
-				backtrace_size_t num_entries = ::backtrace(stack, MAX_ENTRIES);
-				::backtrace_symbols_fd(stack, num_entries, STDERR_FILENO);
-			}
-#else
-			static void print_stack_trace() {}
-#endif
-		} __factory_auto_set_terminate_handler;
 
 		template<class It, class Delim>
 		struct Intersperse {

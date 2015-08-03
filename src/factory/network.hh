@@ -42,6 +42,7 @@ namespace factory {
 	}
 	/// TODO: rewrite with compile-time user-defined literarals (as in the code above).
 	template<>
+	inline
 	uint128_t byte_swap(uint128_t n) {
 		union {
 			uint128_t x;
@@ -173,23 +174,5 @@ namespace factory {
 	private:
 		const T& val;
 	};
-
-	namespace components {
-		struct Auto_check_endiannes {
-			Auto_check_endiannes() {
-				union Endian {
-					constexpr Endian() {}
-					uint32_t i = UINT32_C(1);
-					uint8_t b[4];
-				} endian;
-				if ((is_network_byte_order() && endian.b[0] != 0)
-					|| (!is_network_byte_order() && endian.b[0] != 1))
-				{
-					throw Error("endiannes was not correctly determined at compile time",
-						__FILE__, __LINE__, __func__);
-				}
-			}
-		} __factory_auto_check_endiannes;
-	}
 
 }

@@ -622,7 +622,7 @@ namespace factory {
 	};
 
 	namespace components {
-		std::random_device rng;
+		extern std::random_device rng;
 	}
 	
 	template<class It, class Res>

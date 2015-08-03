@@ -1,67 +1,7 @@
 namespace factory {
 	namespace components {
-		size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
-#if defined(FACTORY_NO_CPU_BINDING)
-		void thread_affinity(size_t) {}
-#else
-#if defined(HAVE_CPU_SET_T)
-	#if defined(HAVE_SCHED_H)
-	#include <sched.h>
-	#elif defined(HAVE_SYS_CPUSET_H)
-	#include <sys/cpuset.h>
-	#endif
-	struct CPU {
-		typedef ::cpu_set_t Set;
-
-		CPU(size_t cpu) {
-			size_t num_cpus = total_cpus();
-			cpuset = CPU_ALLOC(num_cpus);
-			_size = CPU_ALLOC_SIZE(num_cpus);
-			CPU_ZERO_S(size(), cpuset);
-			CPU_SET_S(cpu%num_cpus, size(), cpuset);
-		}
-
-		~CPU() { CPU_FREE(cpuset); }
-
-		size_t size() const { return _size; }
-		Set* set() { return cpuset; }
-
-	private:
-		Set* cpuset;
-		size_t _size;
-	};
-#endif
-#if HAVE_DECL_PTHREAD_SETAFFINITY_NP
-#include <pthread.h>
-		void thread_affinity(size_t c) {
-			CPU cpu(c);
-			check("pthread_setaffinity_np()",
-				::pthread_setaffinity_np(::pthread_self(),
-				cpu.size(), cpu.set()));
-		}
-#elif HAVE_DECL_SCHED_SETAFFINITY
-		void thread_affinity(size_t c) {
-			CPU cpu(c);
-			check("sched_setaffinity()",
-				::sched_setaffinity(0, cpu.size(), cpu.set()));
-		}
-#elif HAVE_SYS_PROCESSOR_H
-#include <sys/processor.h>
-		void thread_affinity(size_t) {
-			::processor_bind(P_LWPID, P_MYID, cpu_id%total_cpus(), 0);
-		}
-#elif HAVE_SYS_CPUSET_H
-		void thread_affinity(size_t c) {
-			CPU cpu(c);
-			check("cpuset_setaffinity()",
-				::cpuset_setaffinity(CPU_LEVEL_WHICH,
-				CPU_WHICH_TID, -1, cpu.size(), cpu.set());
-		}
-#else
-// no cpu binding
-		void thread_affinity(size_t) {}
-#endif
-#endif
+		inline size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
+		void thread_affinity(size_t);
 	}
 }
 
@@ -69,9 +9,9 @@ namespace factory {
 
 	namespace components {
 
-		std::mutex __kernel_delete_mutex;
-		std::condition_variable __kernel_semaphore;
-		std::atomic<int> __num_rservers(0);
+		extern std::mutex __kernel_delete_mutex;
+		void register_server();
+		void global_barrier(std::unique_lock<std::mutex>&);
 
 		struct Resident {
 
@@ -253,7 +193,7 @@ namespace factory {
 		protected:
 
 			void serve() {
-				++__num_rservers;
+				register_server();
 				thread_affinity(_cpu);
 				while (!this->stopped()) {
 					if (!_pool.empty()) {
@@ -275,12 +215,7 @@ namespace factory {
 				std::vector<std::unique_ptr<Kernel>> sack;
 				delete_all_kernels(std::back_inserter(sack));
 				// simple barrier for all threads participating in deletion
-				if (--__num_rservers <= 0) {
-					__kernel_semaphore.notify_all();
-				}
-				__kernel_semaphore.wait(lock, [] () {
-					return __num_rservers <= 0;
-				});
+				global_barrier(lock);
 				// destructors of scoped variables
 				// will destroy all kernels automatically
 			}
@@ -455,72 +390,10 @@ namespace factory {
 			bool force = false;
 		};
 
-		struct All_factories {
-			typedef Resident F;
-			All_factories() {
-				init_signal_handlers();
-			}
-			void add(F* f) {
-				this->_factories.push_back(f);
-				Logger<Level::SERVER>() << "add factory: size=" << _factories.size() << std::endl;
-			}
-			void stop_all(bool now=false) {
-				Logger<Level::SERVER>() << "stop all: size=" << _factories.size() << std::endl;
-				std::for_each(_factories.begin(), _factories.end(),
-					[now] (F* rhs) { now ? rhs->stop_now() : rhs->stop(); });
-			}
-			void print_all_endpoints(std::ostream& out) const {
-				std::vector<Endpoint> addrs;
-				std::for_each(this->_factories.begin(), this->_factories.end(),
-					[&addrs] (const F* rhs) {
-						Endpoint a = rhs->addr();
-						if (a) { addrs.push_back(a); }
-					}
-				);
-				if (addrs.empty()) {
-					out << Endpoint();
-				} else {
-					out << intersperse(addrs.begin(), addrs.end(), ',');
-				}
-			}
 
-		private:
-			void init_signal_handlers() {
-				Action shutdown(emergency_shutdown);
-				this_process::bind_signal(SIGTERM, shutdown);
-				this_process::bind_signal(SIGINT, shutdown);
-				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
-#ifndef FACTORY_NO_BACKTRACE
-				this_process::bind_signal(SIGSEGV, Action(print_backtrace));
-#endif
-			}
-
-			static void emergency_shutdown(int sig) noexcept {
-				stop_all_factories();
-				static int num_calls = 0;
-				static const int MAX_CALLS = 3;
-				num_calls++;
-				std::clog << "Ctrl-C shutdown." << std::endl;
-				if (num_calls >= MAX_CALLS) {
-					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
-					std::abort();
-				}
-			}
-
-			static void print_backtrace(int) {
-				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
-			}
-
-			std::vector<F*> _factories;
-		} __all_factories;
-
-		void stop_all_factories(bool now) {
-			__all_factories.stop_all(now);
-		}
-
-		void print_all_endpoints(std::ostream& out) {
-			__all_factories.print_all_endpoints(out);
-		}
+		void stop_all_factories(bool now);
+		void print_all_endpoints(std::ostream& out);
+		void register_factory(Resident* factory);
 
 		template<
 			class Local_server,
@@ -542,7 +415,7 @@ namespace factory {
 				_repository()
 			{
 				init_parents();
-				__all_factories.add(this);
+				register_factory(this);
 			}
 
 			virtual ~Basic_factory() {}

@@ -1,11 +1,13 @@
 #ifdef FACTORY_PACKSTREAM
 namespace factory {
 	// TODO: this is not portable (now it is even less portable than it used to be...)
+	inline
 	packstream& operator<<(packstream& out, const Endpoint& rhs) {
 		Bytes<Endpoint> tmp = rhs;
 		out.write(tmp.begin(), tmp.size());
 		return out;
 	}
+	inline
 	packstream& operator>>(packstream& in, Endpoint& rhs) {
 		Bytes<Endpoint> tmp;
 		in.read(tmp.begin(), tmp.size());

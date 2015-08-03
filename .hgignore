@@ -24,6 +24,7 @@ install-sh
 missing
 stamp-h1
 test-driver
+ar-lib
 src/test_buffer
 src/test_marshaling
 src/test_socket

@@ -268,21 +268,8 @@ namespace factory {
 		template<class Sub, class Type, class K, class Base>
 		const typename Type_init<Sub, Type, K, Base>::Init Type_init<Sub, Type, K, Base>::_type;
 
-		Id factory_start_id() {
-			constexpr static const Id DEFAULT_START_ID = 1000;
-			Id i = this_process::getenv("START_ID", DEFAULT_START_ID);
-			if (i == ROOT_ID) {
-				i = DEFAULT_START_ID;
-				Logger<Level::COMPONENT>() << "Bad START_ID value: " << ROOT_ID << std::endl;
-			}
-			Logger<Level::COMPONENT>() << "START_ID = " << i << std::endl;
-			return i;
-		}
-
-		Id factory_generate_id() {
-			static std::atomic<Id> counter(factory_start_id());
-			return counter++;
-		}
+		Id factory_start_id();
+		Id factory_generate_id();
 
 		template<class K, class Type>
 		class Identifiable: public K {

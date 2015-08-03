@@ -1,6 +1,7 @@
 namespace factory {
 
 	/// Base 2 logarithm. Works for positive x only.
+	inline
 	int log2(std::int64_t x) {
 		if (x < 0) {
 			std::stringstream tmp;
@@ -13,6 +14,7 @@ namespace factory {
 	}
 	
 	/// Two to the power of n. Works for positive n only.
+	inline
 	std::int64_t pow2(int n) { return INTMAX_C(1) << n; }
 
 	namespace components {

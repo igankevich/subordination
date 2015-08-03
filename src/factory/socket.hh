@@ -1733,12 +1733,18 @@ namespace factory {
 
 	typedef Packing_stream<char> packstream;
 
-	struct End_packet {
-		friend std::ostream& operator<<(std::ostream& out, End_packet) {
-			out.rdbuf()->pubsync();
-			return out;
-		}
-	} end_packet;
+	inline
+	std::ostream& end_packet(std::ostream& out) {
+		out.rdbuf()->pubsync();
+		return out;
+	}
+
+//	struct End_packet {
+//		friend std::ostream& operator<<(std::ostream& out, End_packet) {
+//			out.rdbuf()->pubsync();
+//			return out;
+//		}
+//	} end_packet;
 
 	struct Underflow {
 		friend std::istream& operator>>(std::istream& in, Underflow) {
@@ -1749,6 +1755,8 @@ namespace factory {
 			in.rdbuf()->pubseekpos(old_pos);
 			return in;
 		}
-	} underflow;
+	};
+
+	extern Underflow underflow;
 
 }

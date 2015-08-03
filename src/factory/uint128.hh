@@ -422,75 +422,12 @@ namespace std {
 	template<> struct is_integral<__uint128_t> {
 		static const bool value = true;
 	};
+	inline
 	int uint128_get_radix(const std::ios_base& out) {
 		return out.flags() & std::ios_base::hex ? 16 :
 			out.flags() & std::ios_base::oct ? 8 : 10;
 	}
-	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
-		static const unsigned int NBITS = sizeof(__uint128_t)
-			* std::numeric_limits<unsigned char>::digits;
-		std::ostream::sentry s(o);
-		if (!s) { return o; }
-		int radix = uint128_get_radix(o);
-		if (rhs == 0) { o << '0'; }
-		else {
-			// at worst it will be NBITS digits (base 2) so make our buffer
-			// that plus room for null terminator
-    		char buf[NBITS + 1] = {};
-
-    		__uint128_t ii = rhs;
-    		int i = NBITS - 1;
-
-    		while (ii != 0 && i) {
-				__uint128_t res = ii/radix;
-				__uint128_t remainder = ii%radix;
-				ii = res;
-        		buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder];
-    		}
-
-			o << buf + i;
-		}
-		return o;
-	}
-
-	std::istream& operator>>(std::istream& in, __uint128_t& rhs) {
-		std::istream::sentry s(in);
-		if (s) {
-			rhs = 0;
-			unsigned int radix = uint128_get_radix(in);
-			char ch;
-			while (in >> ch) {
-				unsigned int n = radix;
-				switch (radix) {
-					case 16: {
-						ch = std::tolower(ch);
-						if (ch >= 'a' && ch <= 'f') {
-							n = ch - 'a' + 10;
-						} else if (ch >= '0' && ch <= '9') {
-							n = ch - '0';
-						}
-					} break;
-					case 8:	
-						if (ch >= '0' && ch <= '7') {
-							n = ch - '0';
-						}
-						break;
-					case 10:
-					default:
-						if (ch >= '0' && ch <= '9') {
-							n = ch - '0';
-						}
-						break;
-				}
-				if (n == radix) {
-					break;
-				}
-
-				rhs *= radix;
-				rhs += n;
-			}
-		}
-		return in;
-	}
+	std::ostream& operator<<(std::ostream& o, __uint128_t rhs);
+	std::istream& operator>>(std::istream& in, __uint128_t& rhs);
 }
 #endif

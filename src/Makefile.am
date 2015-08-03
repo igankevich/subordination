@@ -33,6 +33,9 @@ REPO_VERSION = $(top_srcdir)/bin/repo-version
 bin_PROGRAMS = \
 	factory_time
 
+lib_LIBRARIES = \
+	libfactory.a
+
 TESTS = \
 	test_buffer \
 	test_marshaling \
@@ -67,6 +70,7 @@ check_PROGRAMS = \
 
 # disable stack trace for tests where a child process must fail
 #test_socket_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
+test_socket_LDADD        = -lfactory -L.
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING

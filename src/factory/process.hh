@@ -25,8 +25,8 @@ namespace factory {
 
 	namespace this_process {
 
-		Process_id id() { return ::getpid(); }
-		Process_id parent_id() { return ::getppid(); }
+		inline Process_id id() { return ::getpid(); }
+		inline Process_id parent_id() { return ::getppid(); }
 
 		template<class T>
 		T getenv(const char* key, T dflt) {
@@ -93,6 +93,7 @@ namespace factory {
 			return check("execve()", ::execv(argv[0], argv));
 		}
 
+		inline
 		void bind_signal(int signum, const Action& action) {
 			check("sigaction()", ::sigaction(signum, &action, 0));
 		}
