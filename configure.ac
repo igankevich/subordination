@@ -56,6 +56,7 @@ AX_PTHREAD
 AX_GCC_BUILTIN(__builtin_bswap64)
 AX_GCC_BUILTIN(__builtin_bswap32)
 AC_C_BIGENDIAN
+AX_CXX_GCC_ABI_DEMANGLE
 
 # compiler's security flags
 AS_IF([test "x$enable_secureflags" = "xyes"], [FACTORY_SECURE_BINARY])

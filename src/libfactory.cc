@@ -1,4 +1,10 @@
 #include <factory/factory.hh>
+#if HAVE_GCC_ABI_DEMANGLE
+	#include <cxxabi.h>
+#endif
+#if HAVE_EXECINFO_H
+	#include <execinfo.h>
+#endif
 
 namespace factory {
 	namespace components {
@@ -54,12 +60,14 @@ namespace factory {
 				static volatile bool called = false;
 				if (called) { return; }
 				called = true;
+				bool print_backtrace = true;
 				std::exception_ptr ptr = std::current_exception();
 				if (ptr) {
 					try {
 						std::rethrow_exception(ptr);
 					} catch (Error& err) {
 						std::cerr << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						print_backtrace = false;
 					} catch (std::exception& err) {
 						std::cerr << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
 					} catch (...) {
@@ -69,7 +77,9 @@ namespace factory {
 					std::cerr << String_message("terminate called without an active exception",
 						__FILE__, __LINE__, __func__) << std::endl;
 				}
-				print_stack_trace();
+				if (print_backtrace) {
+					print_stack_trace();
+				}
 				stop_all_factories(true);
 				std::abort();
 			}
@@ -85,6 +95,52 @@ namespace factory {
 			static void print_stack_trace() {}
 #endif
 		} __factory_auto_set_terminate_handler;
+
+	}
+	Backtrace::Backtrace() {
+	#if HAVE_BACKTRACE
+		void* stack[MAX_ENTRIES];
+		this->num_entries = ::backtrace(stack, MAX_ENTRIES);
+		this->symbols = ::backtrace_symbols(stack, this->num_entries);
+	#endif
+	}
+	std::ostream& operator<<(std::ostream& out, const Backtrace& rhs) {
+	#if HAVE_BACKTRACE
+		if (rhs.num_entries <= 1) {
+			out << "<no entries>\n";
+		} else {
+			std::for_each(rhs.symbols+1, rhs.symbols + rhs.num_entries,
+				[&out](const char* line) {
+				#if HAVE_GCC_ABI_DEMANGLE
+					std::string tmp = line;
+					std::size_t beg = tmp.find('(');
+					std::size_t end = tmp.find('+', beg == std::string::npos ? 0 : beg+1);
+					if (beg != std::string::npos && end != std::string::npos) {
+						tmp[end] = '\0';
+						int status = 0;
+						char* ret = abi::__cxa_demangle(&tmp[beg+1], 0, 0, &status);
+						if (status == 0) {
+							tmp[beg] = '\0';
+							out << &tmp[0]
+								<< '(' << ret
+								<< line + end << '\n';
+							::free(ret);
+						} else {
+							out << line << '\n';
+						}
+					} else {
+						out << line << '\n';
+					}
+				#else
+					out << line << '\n';
+				#endif
+				}
+			);
+		}
+	#else
+		out << "<backtrace is disabled>\n";
+	#endif
+		return out;
 	}
 }
 

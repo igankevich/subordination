@@ -14,23 +14,20 @@ namespace factory {
 		SHMEM
 	};
 
-	inline
-	std::ostream& operator<<(std::ostream& out, const Level rhs) {
-		switch (rhs) {
-			case Level::KERNEL    : out << "krnl";    break;
-			case Level::SERVER    : out << "srvr";    break;
-			case Level::HANDLER   : out << "handler"; break;
-			case Level::COMPONENT : out << "cmpnt";   break;
-			case Level::STRATEGY  : out << "strat";   break;
-			case Level::DISCOVERY : out << "dscvr";   break;
-			case Level::GRAPH     : out << "grph";    break;
-			case Level::WEBSOCKET : out << "wbsckt";  break;
-			case Level::TEST      : out << "tst";     break;
-			case Level::IO        : out << "io";      break;
-			case Level::SHMEM     : out << "shm";     break;
-			default               : out << "unknwn";  break;
-		}
-		return out;
+	constexpr const char* to_string(Level rhs) {
+		return
+			rhs == Level::KERNEL    ? "krnl"    : 
+			rhs == Level::SERVER    ? "srvr"    : 
+			rhs == Level::HANDLER   ? "handler" : 
+			rhs == Level::COMPONENT ? "cmpnt"   : 
+			rhs == Level::STRATEGY  ? "strat"   : 
+			rhs == Level::DISCOVERY ? "dscvr"   : 
+			rhs == Level::GRAPH     ? "grph"    : 
+			rhs == Level::WEBSOCKET ? "wbsckt"  : 
+			rhs == Level::TEST      ? "tst"     : 
+			rhs == Level::IO        ? "io"      : 
+			rhs == Level::SHMEM     ? "shm"     : 
+			"unknwn";
 	}
 
 	extern Spin_mutex __logger_mutex;
@@ -38,10 +35,7 @@ namespace factory {
 	template<Level lvl=Level::KERNEL>
 	struct Logger {
 
-		Logger():
-			_buf(),
-			_tag(lvl)
-		{
+		Logger(): _buf() {
 			next_record();
 		}
 
@@ -84,11 +78,10 @@ namespace factory {
 			components::print_all_endpoints(_buf);
 			_buf << SEP;
 			_buf << this_process::id() << SEP;
-			_buf << _tag << SEP;
+			_buf << to_string(lvl) << SEP;
 		}
 
 		std::stringstream _buf;
-		Level _tag;
 		
 		static const char SEP = ' ';
 	};
@@ -133,6 +126,20 @@ namespace factory {
 ////	template<> struct Logger<Level::GRAPH    >: public No_logger {};
 //	template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
 
+	struct Backtrace {
+		Backtrace();
+		~Backtrace() { ::free(this->symbols); }
+		Backtrace(const Backtrace&) = delete;
+		Backtrace& operator=(const Backtrace&) = delete;
+
+		friend std::ostream& operator<<(std::ostream& out, const Backtrace& rhs);
+
+	private:
+		backtrace_size_t num_entries = 0;
+		char** symbols = nullptr;
+		static const backtrace_size_t MAX_ENTRIES = 64;
+	};
+
 	struct Error: public std::runtime_error {
 
 		Error(const std::runtime_error& err, const char* file, const int line, const char* function) noexcept:
@@ -154,13 +161,15 @@ namespace factory {
 			return out
 				<< "What:       " << rhs.what()
 				<< "\nOrigin:     " << rhs._function
-				<< '[' << rhs._file << ':' << rhs._line << ']';
+				<< '[' << rhs._file << ':' << rhs._line << ']'
+				<< "\nBacktrace:\n" << rhs._backtrace;
 		}
 
 	private:
 		const char* _file;
 		const int   _line;
 		const char* _function;
+		Backtrace _backtrace;
 	};
 
 	template<class Ret>
@@ -235,9 +244,9 @@ namespace factory {
 			std::strftime(formatted_time, sizeof(formatted_time),
 				"%FT%T%z", std::localtime(&now_time));
 			out << "---------- ERROR ----------"
-				<< '\n' << rhs._error
 				<< "\nCaught at:  " << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
-				<< "\nProcess ID: " << this_process::id()
+				<< '\n' << rhs._error
+				<< "Process ID: " << this_process::id()
 				<< "\nDate:       " << formatted_time
 				<< "\nBuild hash: " << REPO_VERSION
 				<< "\nBuild date: " << REPO_DATE
