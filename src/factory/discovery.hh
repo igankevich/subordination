@@ -104,7 +104,9 @@ namespace factory {
 		I addr = addrs[i].start() + m;
 		return Endpoint(addr, port);
 	}
+	*/
 
+	inline
 	uint32_t get_bind_address() {
 
 		uint32_t ret = 0;
@@ -140,6 +142,5 @@ namespace factory {
 	
 		return ret;
 	}
-*/
 
 }

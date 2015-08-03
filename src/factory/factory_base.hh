@@ -72,7 +72,7 @@
 	#include "base.hh"
 	#include "process.hh"
 	#include "error.hh"
-//	#include "secure.hh"
+	#include "secure.hh"
 	#include "network.hh"
 	#include "encoding.hh"
 	#include "endpoint.hh"
