@@ -348,10 +348,32 @@ namespace factory {
 			std::condition_variable _semaphore;
 		};
 
+		struct Application {
+			explicit Application(const std::string& exec, Port p):
+				_execpath(exec), _port(p), _proc() {}
+			const std::string& execpath() const { return this->_execpath; }
+
+			void execute() {
+				this->_proc = Process([this] () {
+					return this_process::execute(this->_execpath);
+				});
+			}
+
+			bool operator<(const Application& rhs) const {
+				return this->_port < rhs._port;
+			}
+
+		private:
+			std::string _execpath;
+			Port _port;
+			Process _proc;
+		};
+
 //		template<template<class A> class Pool, class Server>
 //		struct App_server: public Server_link<App_server<Pool, Server>, Server> {
 //
 //			typedef typename Server::Kernel Kernel;
+//			typedef std::map<Port, Application> map_type;
 //			
 //			void send(Kernel* k) {
 //			}
@@ -361,7 +383,7 @@ namespace factory {
 //			void wait_impl() { _procs.wait(); }
 //
 //		private:
-//			Process_group _procs;
+//			map_type _apps;
 //		};
 
 	}

@@ -1,3 +1,6 @@
+#ifndef FACTORY_FACTORY_BASE_HH
+#define FACTORY_FACTORY_BASE_HH
+
 // autoconf defines
 #ifdef HAVE_CONFIG_H
 	#include <config.h>
@@ -12,7 +15,7 @@
 #define _GLIBCXX_SYNCHRONIZATION_HAPPENS_AFTER(A)  ANNOTATE_HAPPENS_AFTER(A)
 #endif
 
-#if __cplusplus < 2011L
+#if __cplusplus < 201103L
 	#error Factory requires C++11 compiler.
 #else
 	// STL
@@ -94,3 +97,4 @@
 	// Configuration
 	#include "release_configuration.hh"
 #endif
+#endif // FACTORY_FACTORY_BASE_HH

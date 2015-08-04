@@ -163,6 +163,21 @@ namespace factory {
 			return ret;
 		}
 
+		template<class F>
+		void wait(F callback) {
+			int status = 0;
+			int pid = check_if_not<EINTR>(::wait(&status),
+				__FILE__, __LINE__, __func__);
+			auto result = std::find(_procs.begin(), _procs.end(),
+				[pid] (Process p) {
+					return p.id() == pid;
+				}
+			);
+			if (result != _procs.end()) {
+				callback(*result, status);
+			}
+		}
+
 		void stop() {
 			for (Process& p : _procs)
 				p.stop();
@@ -185,7 +200,7 @@ namespace factory {
 	struct Command_line {
 
 		Command_line(int argc, char* argv[]): cmdline() {
-			std::ostream_iterator<char*> it(cmdline, " ");
+			std::ostream_iterator<char*> it(cmdline, "\n");
 			std::copy(argv + 1, argv + argc, it);
 		}
 
