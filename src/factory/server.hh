@@ -348,44 +348,6 @@ namespace factory {
 			std::condition_variable _semaphore;
 		};
 
-		struct Application {
-			explicit Application(const std::string& exec, Port p):
-				_execpath(exec), _port(p), _proc() {}
-			const std::string& execpath() const { return this->_execpath; }
-
-			void execute() {
-				this->_proc = Process([this] () {
-					return this_process::execute(this->_execpath);
-				});
-			}
-
-			bool operator<(const Application& rhs) const {
-				return this->_port < rhs._port;
-			}
-
-		private:
-			std::string _execpath;
-			Port _port;
-			Process _proc;
-		};
-
-//		template<template<class A> class Pool, class Server>
-//		struct App_server: public Server_link<App_server<Pool, Server>, Server> {
-//
-//			typedef typename Server::Kernel Kernel;
-//			typedef std::map<Port, Application> map_type;
-//			
-//			void send(Kernel* k) {
-//			}
-//
-//			void stop_impl() { _procs.stop(); }
-//
-//			void wait_impl() { _procs.wait(); }
-//
-//		private:
-//			map_type _apps;
-//		};
-
 	}
 }
 namespace factory {
@@ -422,6 +384,7 @@ namespace factory {
 			class Remote_server,
 			class External_server,
 			class Timer_server,
+			class App_server,
 			class Repository_stack,
 			class Shutdown
 		>
@@ -434,6 +397,7 @@ namespace factory {
 				_remote_server(),
 				_ext_server(),
 				_timer_server(),
+				_app_server(),
 				_repository()
 			{
 				init_parents();
@@ -447,6 +411,7 @@ namespace factory {
 				_remote_server.start();
 				_ext_server.start();
 				_timer_server.start();
+				_app_server.start();
 			}
 
 			void stop_now() {
@@ -454,11 +419,13 @@ namespace factory {
 				_remote_server.stop();
 				_ext_server.stop();
 				_timer_server.stop();
+				_app_server.stop();
 			}
 
 			void stop() {
 				_remote_server.send(new Shutdown);
 				_ext_server.send(new Shutdown);
+				_app_server.send(new Shutdown);
 				Shutdown* s = new Shutdown(true);
 				s->after(std::chrono::milliseconds(500));
 				_timer_server.send(s);
@@ -469,6 +436,7 @@ namespace factory {
 				_remote_server.wait();
 				_ext_server.wait();
 				_timer_server.wait();
+				_app_server.wait();
 			}
 
 			void send(Kernel* k) { this->_local_server.send(k); }
@@ -477,6 +445,7 @@ namespace factory {
 			Remote_server* remote_server() { return &_remote_server; }
 			External_server* ext_server() { return &_ext_server; }
 			Timer_server* timer_server() { return &_timer_server; }
+			App_server* app_server() { return &_app_server; }
 			Repository_stack* repository() { return &_repository; }
 
 			Endpoint addr() const { return _remote_server.server_addr(); }
@@ -488,12 +457,14 @@ namespace factory {
 				this->_remote_server.setparent(this);
 				this->_ext_server.setparent(this);
 				this->_timer_server.setparent(this);
+				this->_app_server.setparent(this);
 			}
 
 			Local_server _local_server;
 			Remote_server _remote_server;
 			External_server _ext_server;
 			Timer_server _timer_server;
+			App_server _app_server;
 			Repository_stack _repository;
 		};
 

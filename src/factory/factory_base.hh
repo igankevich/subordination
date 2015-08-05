@@ -91,6 +91,7 @@
 	#include "repository.hh"
 	#include "server.hh"
 	#include "socket_server.hh"
+	#include "app_server.hh"
 	#include "discovery.hh"
 	#include "strategy.hh"
 	

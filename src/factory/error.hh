@@ -11,7 +11,8 @@ namespace factory {
 		WEBSOCKET,
 		TEST,
 		IO,
-		SHMEM
+		SHMEM,
+		APP
 	};
 
 	constexpr const char* to_string(Level rhs) {
@@ -27,6 +28,7 @@ namespace factory {
 			rhs == Level::TEST      ? "tst"     : 
 			rhs == Level::IO        ? "io"      : 
 			rhs == Level::SHMEM     ? "shm"     : 
+			rhs == Level::APP       ? "app"     : 
 			"unknwn";
 	}
 

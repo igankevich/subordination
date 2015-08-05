@@ -168,7 +168,7 @@ namespace factory {
 			int status = 0;
 			int pid = check_if_not<EINTR>(::wait(&status),
 				__FILE__, __LINE__, __func__);
-			auto result = std::find(_procs.begin(), _procs.end(),
+			auto result = std::find_if(_procs.begin(), _procs.end(),
 				[pid] (Process p) {
 					return p.id() == pid;
 				}
