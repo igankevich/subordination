@@ -58,7 +58,7 @@ namespace factory {
 
 			static
 			void write_object(kernel_type& kernel, packstream& out) {
-				const Type<K>* type = kernel.type();
+				const this_type* type = kernel.type();
 				if (type == nullptr) {
 					std::stringstream msg;
 					msg << "Can not find type for kernel id=" << kernel.id();
@@ -97,27 +97,27 @@ namespace factory {
 	
 				typedef Type<K> T;
 
-				Types(): _types_by_id() {}
+				Types() = default;
 	
 				const T* lookup(Type_id type_name) const {
-					auto result = _types_by_id.find(type_name);
-					return result == _types_by_id.end() ? nullptr : result->second; 
+					auto result = this->_types.find(type_name);
+					return result == this->_types.end() ? nullptr : result->second; 
 				}
 
 				void register_type(T* type) {
-					const T* existing_type = lookup(type->id());
+					const T* existing_type = this->lookup(type->id());
 					if (existing_type != nullptr) {
 						std::stringstream msg;
 						msg << "'" << *type << "' and '" << *existing_type
 							<< "' have the same type identifiers.";
 						throw Error(msg.str(), __FILE__, __LINE__, __func__);
 					}
-					_types_by_id[type->id()] = type;
+					this->_types[type->id()] = type;
 				}
 		
 				friend std::ostream& operator<<(std::ostream& out, const Types& rhs) {
 					std::ostream_iterator<Entry> it(out, "\n");
-					std::copy(rhs._types_by_id.cbegin(), rhs._types_by_id.cend(), it);
+					std::copy(rhs._types.cbegin(), rhs._types.cend(), it);
 					return out;
 				}
 		
@@ -138,7 +138,7 @@ namespace factory {
 					T* _type;
 				};
 
-				std::unordered_map<Type_id, T*> _types_by_id;
+				std::unordered_map<Type_id, T*> _types;
 			};
 
 			class Instances {
@@ -233,6 +233,7 @@ namespace factory {
 						k->read(in);
 //						if (in) {
 							//TODO: always true
+							// TODO: there should be only one callback
 							callback(k);
 							if (k->principal()) {
 								K* p = Type::instances().lookup(k->principal()->id());
@@ -287,6 +288,7 @@ namespace factory {
 				this->id(factory_generate_id());
 				Type::instances().register_instance(this);
 			}
+			// TODO: call free_instance() in destructor ???
 
 		};
 	

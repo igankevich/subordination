@@ -228,7 +228,7 @@ namespace factory {
 		typedef ::key_t key_type;
 		typedef size_t size_type;
 		typedef unsigned short perms_type;
-		typedef int id_type;
+		typedef uint64_t id_type;
 		typedef int shmid_type;
 		typedef void* addr_type;
 		typedef T value_type;
@@ -245,7 +245,7 @@ namespace factory {
 				<< std::endl;
 		}
 	
-		explicit shared_mem(id_type id, proj_id_type num):
+		shared_mem(id_type id, proj_id_type num):
 			_id(id), _size(0), _key(this->genkey(num)),
 			_shmid(this->getshmem()),
 			_addr(this->attach())
@@ -268,7 +268,8 @@ namespace factory {
 			rhs._addr = nullptr;
 			rhs._owner = false;
 		}
-			
+
+		shared_mem() = default;
 	
 		~shared_mem() {
 			this->detach();
@@ -318,6 +319,33 @@ namespace factory {
 				this->attach();
 			}
 			this->_size = this->load_size();
+		}
+
+		void create(id_type id, size_type sz, proj_id_type num, perms_type perms = DEFAULT_SHMEM_PERMS) {
+			this->_id = id;
+			this->_size = sz;
+			this->_key = this->genkey(num);
+			this->_shmid = this->createshmem(perms);
+			this->_addr = this->attach();
+			this->_owner = true;
+			this->fillshmem();
+			Logger<Level::SHMEM>()
+				<< "shared_mem server: "
+				<< "shmem=" << *this
+				<< std::endl;
+		}
+
+		void attach(id_type id, proj_id_type num) {
+			this->_id = id;
+			this->_size = 0;
+			this->_key = this->genkey(num);
+			this->_shmid = this->getshmem();
+			this->_addr = this->attach();
+			this->_size = this->load_size();
+			Logger<Level::SHMEM>()
+				<< "shared_mem client: "
+				<< "shmem=" << *this
+				<< std::endl;
 		}
 
 	private:
@@ -391,7 +419,7 @@ namespace factory {
 			std::ostringstream path;
 			path << "/var/tmp";
 			path << "/factory.";
-			path << id;
+			path << std::hex << id;
 			path << ".shmem";
 			return path.str();
 		}
@@ -438,21 +466,21 @@ namespace factory {
 		::sem_t* _sem;
 	};
 
-	template<class T>
-	struct basic_shmembuf: public std::basic_streambuf<T> {
+	template<class Ch, class Tr=std::char_traits<Ch>>
+	struct basic_shmembuf: public std::basic_streambuf<Ch,Tr> {
 
-		using typename std::basic_streambuf<T>::int_type;
-		using typename std::basic_streambuf<T>::traits_type;
-		using typename std::basic_streambuf<T>::char_type;
-		using typename std::basic_streambuf<T>::pos_type;
-		using typename std::basic_streambuf<T>::off_type;
+		using typename std::basic_streambuf<Ch,Tr>::int_type;
+		using typename std::basic_streambuf<Ch,Tr>::traits_type;
+		using typename std::basic_streambuf<Ch,Tr>::char_type;
+		using typename std::basic_streambuf<Ch,Tr>::pos_type;
+		using typename std::basic_streambuf<Ch,Tr>::off_type;
 		typedef std::ios_base::openmode openmode;
 		typedef std::ios_base::seekdir seekdir;
 		typedef typename shared_mem<char_type>::size_type size_type;
 		typedef typename shared_mem<char_type>::id_type id_type;
 		typedef Spin_mutex mutex_type;
 		typedef std::lock_guard<mutex_type> lock_type;
-		typedef typename shared_mem<T>::proj_id_type proj_id_type;
+		typedef typename shared_mem<Ch>::proj_id_type proj_id_type;
 
 		explicit basic_shmembuf(id_type id):
 			_sharedmem(id, 512, BUFFER_PROJID),
@@ -465,7 +493,7 @@ namespace factory {
 			this->debug("basic_shmembuf()");
 		}
 
-		explicit basic_shmembuf(id_type id, int):
+		basic_shmembuf(id_type id, int):
 			_sharedmem(id, BUFFER_PROJID),
 			_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
 		{
@@ -480,7 +508,27 @@ namespace factory {
 			_sharedpart(rhs._sharedpart)
 			{}
 
+		basic_shmembuf() = default;
 		~basic_shmembuf() = default;
+
+		void create(id_type id) {
+			this->_sharedmem.create(id, 512, BUFFER_PROJID);
+			this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
+			this->_sharedpart->size = this->_sharedmem.size();
+			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
+			this->setg(ptr, ptr, ptr);
+			this->setp(ptr, this->_sharedmem.end());
+			this->debug("basic_shmembuf::create()");
+		}
+		
+		void attach(id_type id) {
+			this->_sharedmem.attach(id, BUFFER_PROJID),
+			this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
+			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
+			this->setg(ptr, ptr, ptr);
+			this->setp(ptr, this->_sharedmem.end());
+			this->debug("basic_shmembuf::attach()");
+		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
 			lock_type lock(this->_sharedpart->mtx);
@@ -599,10 +647,36 @@ namespace factory {
 			mutex_type mtx;
 			pos_type goff;
 			pos_type poff;
-		} *_sharedpart;
+		} *_sharedpart = nullptr;
 
 		static const proj_id_type HEADER_PROJID = 'h';
 		static const proj_id_type BUFFER_PROJID = 'b';
+	};
+
+	template<class Ch, class Tr=std::char_traits<Ch>>
+	struct basic_ikernelshmembuf: public basic_ikernelbuf<basic_shmembuf<Ch,Tr>> {
+		typedef basic_ikernelbuf<basic_shmembuf<Ch,Tr>> base_type;
+		typedef typename base_type::id_type id_type;
+		basic_ikernelshmembuf() = default;
+		explicit basic_ikernelshmembuf(id_type id) {
+			this->base_type::create(id);
+		}
+		basic_ikernelshmembuf(id_type id, int unused) {
+			this->base_type::attach(id);
+		}
+	};
+
+	template<class Ch, class Tr=std::char_traits<Ch>>
+	struct basic_okernelshmembuf: public basic_okernelbuf<basic_shmembuf<Ch,Tr>> {
+		typedef basic_okernelbuf<basic_shmembuf<Ch,Tr>> base_type;
+		typedef typename base_type::id_type id_type;
+		basic_okernelshmembuf() = default;
+		explicit basic_okernelshmembuf(id_type id) {
+			this->base_type::create(id);
+		}
+		basic_okernelshmembuf(id_type id, int unused) {
+			this->base_type::attach(id);
+		}
 	};
 
 }

@@ -315,6 +315,7 @@ namespace factory {
 			typedef Server<Kernel> server_type;
 			typedef Sock socket_type;
 			typedef Kernel kernel_type;
+			typedef typename Kernel::app_type app_type;
 			typedef std::deque<Kernel*> pool_type;
 
 			Remote_Rserver(Socket&& sock, Endpoint vaddr):
@@ -469,8 +470,12 @@ namespace factory {
 		private:
 
 			void read_and_send_kernel() {
-				Type<kernel_type>::read_object(this->_stream, [this] (kernel_type* k) {
+				app_type app;
+				this->_stream >> app;
+				if (!this->_stream) return;
+				Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
 					k->from(_vaddr);
+					k->setapp(app);
 					Logger<Level::COMPONENT>()
 						<< "recv kernel=" << *k
 						<< ",rdstate=" << debug_stream(this->_stream)
@@ -499,6 +504,7 @@ namespace factory {
 			void write_kernel(kernel_type& kernel) {
 				typedef packstream::pos_type pos_type;
 				pos_type old_pos = this->_stream.tellp();
+				this->_stream << kernel.app();
 				Type<kernel_type>::write_object(kernel, this->_stream);
 				pos_type new_pos = this->_stream.tellp();
 				this->_stream << end_packet;

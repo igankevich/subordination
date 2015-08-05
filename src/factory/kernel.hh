@@ -330,10 +330,14 @@ namespace factory {
 			typedef uint16_t id_type;
 			typedef std::string path_type;
 
-			Application(): _execpath(), _id(0) {}
+			static const id_type ROOT = 0;
+
+			Application(): _execpath(), _id(ROOT) {}
 
 			explicit Application(const path_type& exec, id_type id):
 				_execpath(exec), _id(id) {}
+
+			id_type id() const { return this->_id; }
 
 			Process execute() const {
 				return Process([this] () {
@@ -359,7 +363,7 @@ namespace factory {
 		template<class K>
 		struct Mobile: public K {
 
-			typedef Application::id_type appid_type;
+			typedef Application::id_type app_type;
 		
 			constexpr Mobile(): _src(), _dst() {}
 
@@ -370,7 +374,6 @@ namespace factory {
 				this->result(static_cast<Result>(r));
 				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
 				in >> _id;
-				in >> _appid;
 			}
 
 			virtual void write(packstream& out) {
@@ -380,8 +383,8 @@ namespace factory {
 					<< "writing kernel " 
 					"id=" << this->_id
 					<< ",rslt=" << this->result()
-					<< ",app=" << this->_appid << std::endl;
-				out << r << this->_id << this->_appid;
+					<< ",app=" << this->_app << std::endl;
+				out << r << this->_id;
 			}
 
 			virtual void read_impl(packstream&) {}
@@ -401,14 +404,14 @@ namespace factory {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 
-			constexpr appid_type app() const { return this->_appid; } 
-			void setapp(appid_type rhs) { this->_appid = rhs; }
+			constexpr app_type app() const { return this->_app; } 
+			void setapp(app_type rhs) { this->_app = rhs; }
 
 		private:
 			Id _id = ROOT_ID;
 			Endpoint _src;
 			Endpoint _dst;
-			Application::id_type _appid = 0;
+			Application::id_type _app = 0;
 		};
 
 	}

@@ -906,6 +906,7 @@ namespace factory {
 	template<class Base>
 	struct basic_ikernelbuf: public virtual Base {
 
+		typedef Base base_type;
 		using typename Base::int_type;
 		using typename Base::traits_type;
 		using typename Base::char_type;
@@ -944,6 +945,9 @@ namespace factory {
 			}
 			return this->Base::xsgetn(s, n);
 		}
+
+		pos_type packetpos() const { return this->_packetpos; }
+		size_type packetsize() const { return this->_packetsize; }
 
 	private:
 
@@ -1035,11 +1039,9 @@ namespace factory {
 //			return this->seekoff(0, std::ios_base::end, std::ios_base::in);
 		}
 		void setsize(size_type rhs) { this->_packetsize = rhs; }
-		size_type packetsize() const { return this->_packetsize; }
 		size_type payloadsize() const { return this->_packetsize - this->hdrsize(); }
 		static constexpr
 		size_type hdrsize() { return sizeof(_packetsize); }
-		pos_type packetpos() const { return this->_packetpos; }
 		void setpos(pos_type rhs) { this->_packetpos = rhs; }
 
 		size_type _packetsize = 0;
@@ -1086,6 +1088,12 @@ namespace factory {
 		std::streamsize xsputn(const char_type* s, std::streamsize n) {
 			this->begin_packet();
 			return this->Base::xsputn(s, n);
+		}
+
+		template<class X>
+		void append_packet(basic_ikernelbuf<X>& rhs) {
+			this->Base::xsputn(rhs->packetpos(), rhs->packetsize());
+			rhs->gbump(rhs->packetsize());
 		}
 
 	private:
@@ -1167,10 +1175,10 @@ namespace factory {
 		State _state = State::WRITING_SIZE;
 	};
 
-	template<class Base>
+	template<class Base1, class Base2=Base1>
 	struct basic_kernelbuf:
-		public basic_okernelbuf<Base>,
-		public basic_ikernelbuf<Base>
+		public basic_okernelbuf<Base1>,
+		public basic_ikernelbuf<Base2>
 	{
 	};
 

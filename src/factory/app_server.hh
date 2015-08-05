@@ -7,18 +7,17 @@ namespace factory {
 			typedef App_Rserver<Server> this_type;
 			typedef typename Server::Kernel kernel_type;
 			typedef Process process_type;
-			typedef Application app_type;
-			typedef basic_shmembuf<char> buf_type;
-			typedef typename buf_type::id_type buf_id_type;
+			typedef basic_ikernelshmembuf<char> ibuf_type;
+			typedef basic_okernelshmembuf<char> obuf_type;
+			typedef typename ibuf_type::id_type buf_id_type;
 
-			explicit App_Rserver(const app_type& app):
-				_app(app), _proc(app.execute()),
+			explicit App_Rserver(Process proc):
+				_proc(proc),
 				_ibuf(generate_id_for_parent(0)),
 				_obuf(generate_id_for_parent(1))
 				{}
 
 			App_Rserver(App_Rserver&& rhs):
-				_app(rhs._app),
 				_proc(rhs._proc),
 				_ibuf(std::move(rhs._ibuf)),
 				_obuf(std::move(rhs._obuf))
@@ -30,35 +29,35 @@ namespace factory {
 
 		private:
 
-			buf_id_type generate_id_for_parent(int c=0) const {
-				return this->_proc.id() * 65536 * 10
-					+ this_process::id() * 10 + c;
+			buf_id_type generate_id_for_parent(int c) const {
+				return this->_proc.id() * 65536 * 2
+					+ this_process::id() * 2 + c;
 			}
 
-			app_type _app;
 			process_type _proc;
-			buf_type _ibuf;
-			buf_type _obuf;
+			ibuf_type _ibuf;
+			obuf_type _obuf;
 		};
 
 		template<class Server>
 		struct App_Iserver: public Server_link<App_Iserver<Server>, Server> {
 
 			typedef typename Server::Kernel Kernel;
+			typedef Application app_type;
 			typedef App_Rserver<Server> rserver_type;
-			typedef typename rserver_type::app_type app_type;
-			typedef std::map<app_type, rserver_type> map_type;
+			typedef typename app_type::id_type key_type;
+			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
 
 			void add(const app_type& app) {
-				if (this->_apps.count(app) > 0) {
+				if (this->_apps.count(app.id()) > 0) {
 					throw Error("trying to add an existing app",
 						__FILE__, __LINE__, __func__);
 				}
 				Logger<Level::APP>() << "starting app="
 					<< app << std::endl;
 				std::unique_lock<std::mutex> lock(this->_mutex);
-				this->_apps.emplace(app, rserver_type(app));
+				this->_apps.emplace(app.id(), rserver_type(app.execute()));
 			}
 			
 			void send(Kernel* k) {
