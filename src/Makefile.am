@@ -51,7 +51,8 @@ TESTS = \
 	test_uint128 \
 	test_kernel \
 	test_discovery \
-	test_poller
+	test_poller \
+	test_appserver
 
 check_PROGRAMS = \
 	test_buffer \
@@ -67,7 +68,8 @@ check_PROGRAMS = \
 	test_uint128 \
 	test_kernel \
 	test_discovery \
-	test_poller
+	test_poller \
+	test_appserver
 
 
 # disable stack trace for tests where a child process must fail

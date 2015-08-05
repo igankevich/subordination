@@ -44,6 +44,7 @@ src/test_swap
 src/test_uint128
 src/test_kernel
 src/test_poller
+src/test_appserver
 src/factory_time
 src/*.html
 src/*.xml

@@ -325,8 +325,41 @@ namespace factory {
 			Kernel_ref<This> _principal;
 		};
 
+		struct Application {
+
+			typedef uint16_t id_type;
+			typedef std::string path_type;
+
+			Application(): _execpath(), _id(0) {}
+
+			explicit Application(const path_type& exec, id_type id):
+				_execpath(exec), _id(id) {}
+
+			Process execute() const {
+				return Process([this] () {
+					return this_process::execute(this->_execpath);
+				});
+			}
+
+			bool operator<(const Application& rhs) const {
+				return this->_id < rhs._id;
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const Application& rhs) {
+				return out
+					<< "{exec=" << rhs._execpath
+					<< ",id=" << rhs._id << '}';
+			}
+
+		private:
+			path_type _execpath;
+			id_type _id;
+		};
+
 		template<class K>
 		struct Mobile: public K {
+
+			typedef Application::id_type appid_type;
 		
 			constexpr Mobile(): _src(), _dst() {}
 
@@ -337,15 +370,18 @@ namespace factory {
 				this->result(static_cast<Result>(r));
 				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
 				in >> _id;
+				in >> _appid;
 			}
 
 			virtual void write(packstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
-				Logger<Level::KERNEL>() << "Writing result = " << r << std::endl;
-				out << r;
-				Logger<Level::KERNEL>() << "Writing id = " << _id << std::endl;
-				out << _id;
+				Logger<Level::KERNEL>()
+					<< "writing kernel " 
+					"id=" << this->_id
+					<< ",rslt=" << this->result()
+					<< ",app=" << this->_appid << std::endl;
+				out << r << this->_id << this->_appid;
 			}
 
 			virtual void read_impl(packstream&) {}
@@ -365,10 +401,14 @@ namespace factory {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 
+			constexpr appid_type app() const { return this->_appid; } 
+			void setapp(appid_type rhs) { this->_appid = rhs; }
+
 		private:
 			Id _id = ROOT_ID;
 			Endpoint _src;
 			Endpoint _dst;
+			Application::id_type _appid = 0;
 		};
 
 	}

@@ -88,6 +88,7 @@ namespace factory {
 		typedef Web_socket_server<Kernel> External_server;
 
 		typedef factory::components::Shutdown<Mobile, Type> Shutdown;
+		typedef factory::components::Application Application;
 
 		typedef factory::components::Basic_factory<
 			Local_server,

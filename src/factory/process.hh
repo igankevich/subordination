@@ -146,6 +146,11 @@ namespace factory {
 
 		constexpr Process_id id() const { return _child_pid; }
 
+		static Process_id wait(int* status) {
+			return check_if_not<EINTR>(::wait(status),
+				__FILE__, __LINE__, __func__);
+		}
+
 	private:
 		Process_id _child_pid = 0;
 	};
@@ -251,6 +256,19 @@ namespace factory {
 				<< "shmem=" << *this
 				<< std::endl;
 		}
+
+		shared_mem(shared_mem&& rhs):
+			_id(rhs._id),
+			_size(rhs._size),
+			_key(rhs._key),
+			_shmid(rhs._shmid),
+			_addr(rhs._addr),
+			_owner(rhs._owner)
+		{
+			rhs._addr = nullptr;
+			rhs._owner = false;
+		}
+			
 	
 		~shared_mem() {
 			this->detach();
@@ -418,6 +436,173 @@ namespace factory {
 	
 	private:
 		::sem_t* _sem;
+	};
+
+	template<class T>
+	struct basic_shmembuf: public std::basic_streambuf<T> {
+
+		using typename std::basic_streambuf<T>::int_type;
+		using typename std::basic_streambuf<T>::traits_type;
+		using typename std::basic_streambuf<T>::char_type;
+		using typename std::basic_streambuf<T>::pos_type;
+		using typename std::basic_streambuf<T>::off_type;
+		typedef std::ios_base::openmode openmode;
+		typedef std::ios_base::seekdir seekdir;
+		typedef typename shared_mem<char_type>::size_type size_type;
+		typedef typename shared_mem<char_type>::id_type id_type;
+		typedef Spin_mutex mutex_type;
+		typedef std::lock_guard<mutex_type> lock_type;
+		typedef typename shared_mem<T>::proj_id_type proj_id_type;
+
+		explicit basic_shmembuf(id_type id):
+			_sharedmem(id, 512, BUFFER_PROJID),
+			_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
+		{
+			this->_sharedpart->size = this->_sharedmem.size();
+			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
+			this->setg(ptr, ptr, ptr);
+			this->setp(ptr, this->_sharedmem.end());
+			this->debug("basic_shmembuf()");
+		}
+
+		explicit basic_shmembuf(id_type id, int):
+			_sharedmem(id, BUFFER_PROJID),
+			_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
+		{
+			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
+			this->setg(ptr, ptr, ptr);
+			this->setp(ptr, this->_sharedmem.end());
+			this->debug("basic_shmembuf(int)");
+		} 
+
+		basic_shmembuf(basic_shmembuf&& rhs):
+			_sharedmem(std::move(rhs._sharedmem)),
+			_sharedpart(rhs._sharedpart)
+			{}
+
+		~basic_shmembuf() = default;
+
+		int_type overflow(int_type c = traits_type::eof()) {
+			lock_type lock(this->_sharedpart->mtx);
+			this->sync_sharedmem();
+			int_type ret;
+			if (c != traits_type::eof()) {
+				this->grow_sharedmem();
+				*this->pptr() = c;
+				this->pbump(1);
+				this->setg(this->eback(), this->gptr(), this->egptr()+1);
+				this->writeoffs();
+				ret = traits_type::to_int_type(c);
+			} else {
+				ret = traits_type::eof();
+			}
+			return ret;
+		}
+
+		int_type underflow() {
+			lock_type lock(this->_sharedpart->mtx);
+			return this->gptr() == this->egptr()
+				? traits_type::eof()
+				: traits_type::to_int_type(*this->gptr());
+		}
+
+		int_type uflow() {
+			this->sync_sharedmem();
+			if (this->underflow() == traits_type::eof()) return traits_type::eof();
+			int_type c = traits_type::to_int_type(*this->gptr());
+			this->gbump(1);
+			this->writeoffs();
+			return c;
+		}
+
+		std::streamsize xsputn(const char_type* s, std::streamsize n) {
+			if (this->epptr() == this->pptr()) {
+				this->overflow();
+			}
+			this->sync_sharedmem();
+			std::streamsize avail = static_cast<std::streamsize>(this->epptr() - this->pptr());
+			std::streamsize m = std::min(n, avail);
+			traits_type::copy(this->pptr(), s, m);
+			this->pbump(m);
+			this->writeoffs();
+		}
+
+	private:
+
+		void debug(const char* msg) {
+			Logger<Level::SHMEM>()
+				<< msg << ": size1="
+				<< this->_sharedpart->size
+				<< ",goff=" << this->_sharedpart->goff
+				<< ",poff=" << this->_sharedpart->poff
+				<< ",shmem="
+				<< this->_sharedmem
+				<< std::endl;
+		}
+
+		void grow_sharedmem() {
+			this->_sharedmem.resize(this->_sharedmem.size()
+				* size_type(2));
+			this->_sharedpart->size = this->_sharedmem.size();
+			this->updatebufs();
+		}
+		
+		void sync_sharedmem() {
+			// update shared memory size
+			if (this->bad_size()) {
+				this->_sharedmem.sync();
+//				this->_sharedpart->size = this->_sharedmem.size();
+			}
+			this->debug("sync_sharedmem");
+			if (this->bad_size()) {
+				throw Error("bad shared_mem size",
+					__FILE__, __LINE__, __func__);
+			}
+			this->readoffs();
+		}
+		
+		bool bad_size() const {
+			return this->_sharedpart->size
+				!= this->_sharedmem.size();
+		}
+		
+		void updatebufs() {
+			std::ptrdiff_t poff = this->pptr() - this->pbase();
+			std::ptrdiff_t goff = this->gptr() - this->eback();
+			char_type* base = this->_sharedmem.begin() + sizeof(shmem_header);
+			char_type* end = this->_sharedmem.end();
+			this->setp(base, end);
+			this->pbump(poff);
+			this->setg(base, base + goff, base + poff);
+		}
+
+		void writeoffs() {
+			this->_sharedpart->goff = static_cast<pos_type>(this->gptr() - this->eback());
+			this->_sharedpart->poff = static_cast<pos_type>(this->pptr() - this->pbase());
+			this->debug("writeoffs");
+		}
+
+		void readoffs() {
+			pos_type goff = this->_sharedpart->goff;
+			pos_type poff = this->_sharedpart->poff;
+			char_type* base = this->_sharedmem.begin() + sizeof(shmem_header);
+			char_type* end = this->_sharedmem.end();
+			this->setp(base, end);
+			this->pbump(poff);
+			this->setg(base, base + goff, base + poff);
+			this->debug("readoffs");
+		}
+
+		shared_mem<char_type> _sharedmem;
+		struct shmem_header {
+			size_type size;
+			mutex_type mtx;
+			pos_type goff;
+			pos_type poff;
+		} *_sharedpart;
+
+		static const proj_id_type HEADER_PROJID = 'h';
+		static const proj_id_type BUFFER_PROJID = 'b';
 	};
 
 }
