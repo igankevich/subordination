@@ -448,6 +448,8 @@ namespace factory {
 
 		typedef ::sem_t sem_type;
 
+		Semaphore() = default;
+
 		explicit Semaphore(const std::string& name, bool owner=true):
 			_name(name),
 			_owner(owner),
@@ -473,6 +475,12 @@ namespace factory {
 			}
 		}
 
+		void open(const std::string& name, bool owner=true) {
+			this->_name = name;
+			this->_owner = owner;
+			this->_sem = this->open_sem();
+		}
+
 		void wait() {
 			check(::sem_wait(this->_sem),
 				__FILE__, __LINE__, __func__);
@@ -490,12 +498,12 @@ namespace factory {
 
 		sem_type* open_sem() {
 			return check("sem_open()", ::sem_open(this->_name.c_str(),
-				this->_owner ? (O_CREAT | O_EXCL) : 0), SEM_FAILED);
+				this->_owner ? (O_CREAT | O_EXCL) : 0, 0666, 0), SEM_FAILED);
 		}
 
 		std::string _name;
 		bool _owner = false;
-		sem_type* _sem;
+		sem_type* _sem = nullptr;
 	};
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
@@ -532,6 +540,7 @@ namespace factory {
 			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, this->_sharedmem.end());
+			this->sync_sharedmem();
 			this->debug("basic_shmembuf(int)");
 		} 
 
@@ -559,6 +568,7 @@ namespace factory {
 			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, this->_sharedmem.end());
+			this->sync_sharedmem();
 			this->debug("basic_shmembuf::attach()");
 		}
 
@@ -608,7 +618,10 @@ namespace factory {
 		}
 
 		mutex_type& mutex() { return this->_sharedpart->mtx; }
-		void lock() { this->mutex().lock(); }
+		void lock() {
+			this->mutex().lock();
+			this->sync_sharedmem();
+		}
 		void unlock() { this->mutex().unlock(); }
 
 	private:

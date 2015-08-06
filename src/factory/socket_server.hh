@@ -474,7 +474,7 @@ namespace factory {
 				this->_stream >> app;
 				if (!this->_stream) return;
 				if (app != Application::ROOT) {
-					factory::components::forward_to_app(app, this->_kernelbuf, this->_stream);
+					factory::components::forward_to_app(app, this->_vaddr, this->_kernelbuf);
 				} else {
 					Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
 						k->from(_vaddr);

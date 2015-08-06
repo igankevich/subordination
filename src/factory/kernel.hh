@@ -341,6 +341,7 @@ namespace factory {
 
 			Process execute() const {
 				return Process([this] () {
+					this_process::env("APP_ID", this->_id);
 					return this_process::execute(this->_execpath);
 				});
 			}

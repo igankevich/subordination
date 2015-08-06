@@ -946,12 +946,17 @@ namespace factory {
 			return this->Base::xsgetn(s, n);
 		}
 
-		template<class X> friend class basic_okernelbuf;
+//		template<class X> friend class basic_okernelbuf;
+		template<class X> friend void append_payload(std::streambuf& buf, basic_ikernelbuf<X>& kbuf);
 
 	private:
 
 		pos_type packetpos() const { return this->_packetpos; }
+		pos_type payloadpos() const { return this->_packetpos + static_cast<pos_type>(this->hdrsize()); }
 		size_type packetsize() const { return this->_packetsize; }
+		size_type bytes_left_until_the_end_of_the_packet() const {
+			return this->_packetsize - (this->gptr() - (this->eback() + this->payloadpos()));
+		}
 
 		void update_state() {
 			this->dumpstate();
@@ -1052,6 +1057,14 @@ namespace factory {
 		State _rstate = State::READING_SIZE;
 	};
 
+	template<class X>
+	void append_payload(std::streambuf& buf, basic_ikernelbuf<X>& rhs) {
+		typedef typename basic_ikernelbuf<X>::size_type size_type;
+		const size_type n = rhs.bytes_left_until_the_end_of_the_packet();
+		buf.sputn(rhs.gptr(), n);
+		rhs.gbump(n);
+	}
+
 	template<class Base>
 	struct basic_okernelbuf: public virtual Base {
 
@@ -1092,11 +1105,11 @@ namespace factory {
 			return this->Base::xsputn(s, n);
 		}
 
-		template<class X>
-		void append_packet(basic_ikernelbuf<X>& rhs) {
-			this->Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
-			rhs.gbump(rhs.packetsize());
-		}
+//		template<class X>
+//		void append_packet(basic_ikernelbuf<X>& rhs) {
+//			this->Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
+//			rhs.gbump(rhs.packetsize());
+//		}
 
 	private:
 

@@ -82,7 +82,8 @@ namespace factory {
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 
 		typedef factory::components::Tserver<Server<Kernel>> Timer_server;
-		typedef factory::components::App_Iserver<Server<Kernel>> App_server;
+		typedef factory::components::Sub_Iserver<Server<Kernel>> App_server;
+		typedef factory::components::Principal_server<Server<Kernel>> Principal_server;
 
 		typedef Socket_server<Kernel> Remote_server;
 		typedef Web_socket_server<Kernel> External_server;
@@ -96,6 +97,7 @@ namespace factory {
 			External_server,
 			Timer_server,
 			App_server,
+			Principal_server,
 			Repository_stack,
 			Shutdown>
 			Factory;

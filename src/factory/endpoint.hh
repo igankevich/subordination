@@ -4,6 +4,7 @@ namespace factory {
 	inline
 	packstream& operator<<(packstream& out, const Endpoint& rhs) {
 		Bytes<Endpoint> tmp = rhs;
+//		out << tmp;
 		out.write(tmp.begin(), tmp.size());
 		return out;
 	}

@@ -7,12 +7,13 @@ namespace factory {
 	inline External_server* ext_server() { return __factory.ext_server(); }
 	inline Timer_server* timer_server() { return __factory.timer_server(); }
 	inline App_server* app_server() { return __factory.app_server(); }
+	inline Principal_server* principal_server() { return __factory.principal_server(); }
 	inline Repository_stack* repository() { return __factory.repository(); }
 
 	namespace components {
-		template<class App, class Buf, class Stream>
-		void forward_to_app(App app, Buf& buf, Stream& str) {
-			app_server()->forward(app, buf, str);
+		template<class App, class Endp, class Buf>
+		void forward_to_app(App app, const Endp& from, Buf& buf) {
+			app_server()->forward(app, from, buf);
 		}
 	}
 

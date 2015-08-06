@@ -120,7 +120,7 @@ namespace factory {
 		constexpr const T& value() const { return val; }
 		T& value() { return val; }
 
-		constexpr size_t size() const { return sizeof(bytes); }
+		constexpr size_t size() const { return sizeof(T); }
 
 	private:
 		T val;

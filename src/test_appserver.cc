@@ -27,8 +27,8 @@ struct Test_socket: public Mobile<Test_socket> {
 	}
 
 	void act() {
-		Logger<Level::COMPONENT> log;
-		commit(remote_server());
+		Logger<Level::TEST>() << "Test_socket::act(): It works!" << std::endl;
+//		commit(remote_server());
 	}
 
 	void write_impl(packstream& out) {
@@ -116,13 +116,19 @@ private:
 	uint32_t _sleep = 0;
 };
 
+const Application::id_type MY_APP_ID = 123;
 struct Main: public Kernel {
 
-	Main(uint32_t s): _sleep(s) {}
+	Main(uint32_t s=0): _sleep(s) {}
 
 	void act() {
-		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-			upstream(the_server(), new Sender(i, _sleep));
+		Test_socket* kernel = new Test_socket;
+		kernel->from(server_endpoint);
+		kernel->setapp(MY_APP_ID);
+		kernel->parent(this);
+		app_server()->send(kernel);
+//		for (uint32_t i=1; i<=NUM_SIZES; ++i)
+//			upstream(the_server(), new Sender(i, _sleep));
 	}
 
 	void react(Kernel*) {
@@ -143,59 +149,29 @@ uint32_t sleep_time() {
 }
 
 
+
 struct App {
 	int run(int argc, char* argv[]) {
-		int retval = 0;
-		if (argc <= 1) {
-			
+		Application::id_type app = this_process::getenv("APP_ID", 0);
+		if (app == MY_APP_ID) {
+			Logger<Level::TEST>() << "I am an application no. " << app << "!" << std::endl;
 			the_server()->add_cpu(0);
-			app_server()->add(Application("/bin/hostname", 100));
-			app_server()->add(Application("/bin/hostnameqqq", 200));
+			__factory.setrole(Factory::Role::Subordinate);
 			__factory.start();
+			sleep(3);
 			__factory.stop();
 			__factory.wait();
-//			uint32_t sleep = sleep_time();
-//			Process_group procs;
-//			procs.add([&argv, sleep] () {
-//				this_process::env("START_ID", 1000);
-//				return this_process::execute(argv[0], 'x', sleep);
-//			});
-//			// wait for master to start
-//			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//			procs.add([&argv, sleep] () {
-//				this_process::env("START_ID", 2000);
-//				return this_process::execute(argv[0], 'y', sleep);
-//			});
-//			retval = procs.wait();
 		} else {
-			try {
-				if (argc != 3)
-					throw std::runtime_error("Wrong number of arguments.");
-				uint32_t sleep = 0;
-				{
-					std::stringstream s;
-					s << argv[2];
-					s >> sleep;
-				}
-				the_server()->add_cpu(0);
-				if (argv[1][0] == 'x') {
-					remote_server()->socket(server_endpoint);
-					__factory.start();
-					__factory.wait();
-				}
-				if (argv[1][0] == 'y') {
-					remote_server()->socket(client_endpoint);
-					remote_server()->peer(server_endpoint);
-					__factory.start();
-					the_server()->send(new Main(sleep));
-					__factory.wait();
-				}
-			} catch (std::exception& e) {
-				std::cerr << e.what() << std::endl;
-				retval = 1;
-			}
+			the_server()->add_cpu(0);
+			app_server()->add(Application(argv[0], MY_APP_ID));
+			__factory.setrole(Factory::Role::Principal);
+			__factory.start();
+			the_server()->send(new Main);
+			sleep(3);
+			__factory.stop();
+			__factory.wait();
 		}
-		return retval;
+		return 0;
 	}
 };
 

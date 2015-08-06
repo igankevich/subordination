@@ -385,12 +385,17 @@ namespace factory {
 			class External_server,
 			class Timer_server,
 			class App_server,
+			class Principal_server,
 			class Repository_stack,
 			class Shutdown
 		>
 		struct Basic_factory: public Server<typename Local_server::Kernel> {
 
 			typedef typename Local_server::Kernel Kernel;
+			enum struct Role {
+				Principal,
+				Subordinate
+			};
 
 			Basic_factory():
 				_local_server(),
@@ -398,6 +403,7 @@ namespace factory {
 				_ext_server(),
 				_timer_server(),
 				_app_server(),
+				_principal_server(),
 				_repository()
 			{
 				init_parents();
@@ -412,6 +418,9 @@ namespace factory {
 				_ext_server.start();
 				_timer_server.start();
 				_app_server.start();
+				if (_role == Role::Subordinate) {
+					_principal_server.start();
+				}
 			}
 
 			void stop_now() {
@@ -420,12 +429,18 @@ namespace factory {
 				_ext_server.stop();
 				_timer_server.stop();
 				_app_server.stop();
+				if (_role == Role::Subordinate) {
+					_principal_server.stop();
+				}
 			}
 
 			void stop() {
 				_remote_server.send(new Shutdown);
 				_ext_server.send(new Shutdown);
 				_app_server.send(new Shutdown);
+				if (_role == Role::Subordinate) {
+					_principal_server.send(new Shutdown);
+				}
 				Shutdown* s = new Shutdown(true);
 				s->after(std::chrono::milliseconds(500));
 				_timer_server.send(s);
@@ -437,6 +452,9 @@ namespace factory {
 				_ext_server.wait();
 				_timer_server.wait();
 				_app_server.wait();
+				if (_role == Role::Subordinate) {
+					_principal_server.wait();
+				}
 			}
 
 			void send(Kernel* k) { this->_local_server.send(k); }
@@ -446,9 +464,12 @@ namespace factory {
 			External_server* ext_server() { return &_ext_server; }
 			Timer_server* timer_server() { return &_timer_server; }
 			App_server* app_server() { return &_app_server; }
+			Principal_server* principal_server() { return &_principal_server; }
 			Repository_stack* repository() { return &_repository; }
 
 			Endpoint addr() const { return _remote_server.server_addr(); }
+
+			void setrole(Role rhs) { this->_role = rhs; }
 
 		private:
 
@@ -458,6 +479,7 @@ namespace factory {
 				this->_ext_server.setparent(this);
 				this->_timer_server.setparent(this);
 				this->_app_server.setparent(this);
+				this->_principal_server.setparent(this);
 			}
 
 			Local_server _local_server;
@@ -465,7 +487,9 @@ namespace factory {
 			External_server _ext_server;
 			Timer_server _timer_server;
 			App_server _app_server;
+			Principal_server _principal_server;
 			Repository_stack _repository;
+			Role _role = Role::Principal;
 		};
 
 	}
