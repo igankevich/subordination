@@ -1,6 +1,110 @@
 namespace factory {
 	namespace components {
 
+		inline
+		shared_mem<char>::id_type
+		generate_shmem_id(Process_id child, Process_id parent, int stream_no) {
+			static const int MAX_PID = 65536;
+			static const int MAX_STREAMS = 10;
+			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
+		}
+
+		inline
+		std::string
+		generate_sem_name(Process_id child, Process_id parent) {
+			std::ostringstream str;
+			str << "/factory-" << parent << '-' << child;
+			return str.str();
+		}
+
+		template<class Server>
+		struct Root_server: public Server_link<Root_server<Server>, Server> {
+
+			typedef Root_server<Server> this_type;
+			typedef typename Server::Kernel kernel_type;
+			typedef Process process_type;
+			typedef basic_ikernelshmembuf<char> ibuf_type;
+			typedef basic_okernelshmembuf<char> obuf_type;
+			typedef Packing_stream<char> stream_type;
+			typedef std::lock_guard<ibuf_type> ilock_type;
+			typedef std::lock_guard<obuf_type> olock_type;
+			typedef Semaphore sem_type;
+			typedef Application::id_type app_type;
+
+			Root_server():
+				_ibuf(generate_shmem_id(this_process::id(), this_process::parent_id(), 0)),
+				_obuf(generate_shmem_id(this_process::id(), this_process::parent_id(), 1)),
+				_istream(&this->_ibuf),
+				_ostream(&this->_obuf),
+				_isem(generate_sem_name(this_process::id(), this_process::parent_id())),
+				_thread()
+				{}
+
+			Root_server(Root_server&& rhs):
+				_ibuf(std::move(rhs._ibuf)),
+				_obuf(std::move(rhs._obuf)),
+				_istream(std::move(rhs._istream)),
+				_ostream(std::move(rhs._ostream)),
+				_isem(std::move(rhs._isem)),
+				_thread(std::move(rhs._thread))
+				{}
+
+			void start() {
+				this->_thread = std::thread(std::mem_fn(&this_type::serve))
+			}
+
+			void stop_impl() { this->_isem.notify_one(); }
+
+			void wait_impl() {
+				if (this->_thread.joinable()) {
+					this->_thread.join();
+				}
+			}
+
+			void send(kernel_type* k) {
+				olock_type lock(this->_obuf);
+				this->_ostream << k->app();
+				Type<kernel_type>::write_object(*k, this->_ostream);
+				this->_ostream << end_packet;
+				this->_osem.notify_one();
+			}
+
+		private:
+
+			void serve() {
+				while (!this->stopped()) {
+					this->read_and_send_kernel();
+					this->_isem.wait();
+				}
+			}
+
+			void read_and_send_kernel() {
+				ilock_type lock(this->_ibuf);
+				app_type app;
+				this->_istream >> app;
+				if (!this->_istream) return;
+				Type<kernel_type>::read_object(this->_istream, [this,app] (kernel_type* k) {
+					k->from(_vaddr);
+					k->setapp(app);
+					Logger<Level::COMPONENT>()
+						<< "recv kernel=" << *k
+						<< ",rdstate=" << debug_istream(this->_istream)
+						<< std::endl;
+				}, [this] (kernel_type* k) {
+					this->root()->send(k);
+				});
+				this->_istream.clear();
+			}
+
+			ibuf_type _ibuf;
+			obuf_type _obuf;
+			stream_type _istream;
+			stream_type _ostream;
+			sem_type _isem;
+			sem_type _osem;
+			std::thread _thread;
+		};
+
 		template<class Server>
 		struct App_Rserver: public Server_link<App_Rserver<Server>, Server> {
 
@@ -9,12 +113,13 @@ namespace factory {
 			typedef Process process_type;
 			typedef basic_ikernelshmembuf<char> ibuf_type;
 			typedef basic_okernelshmembuf<char> obuf_type;
-			typedef typename ibuf_type::id_type buf_id_type;
+			typedef std::lock_guard<ibuf_type> ilock_type;
+			typedef std::lock_guard<obuf_type> olock_type;
 
-			explicit App_Rserver(Process proc):
+			explicit App_Rserver(process_type proc):
 				_proc(proc),
-				_ibuf(generate_id_for_parent(0)),
-				_obuf(generate_id_for_parent(1))
+				_ibuf(generate_shmem_id(this->_proc.id(), this_process::id(), 0)),
+				_obuf(generate_shmem_id(this->_proc.id(), this_process::id(), 1))
 				{}
 
 			App_Rserver(App_Rserver&& rhs):
@@ -27,13 +132,13 @@ namespace factory {
 
 			void send(kernel_type* k) {}
 
-		private:
-
-			buf_id_type generate_id_for_parent(int c) const {
-				return this->_proc.id() * 65536 * 2
-					+ this_process::id() * 2 + c;
+			template<class X>
+			void forward(basic_ikernelbuf<X>& buf, packstream& str) {
+				olock_type lock(this->_obuf);
+				this->_obuf.append_packet(buf);
 			}
 
+		private:
 			process_type _proc;
 			ibuf_type _ibuf;
 			obuf_type _obuf;
@@ -61,6 +166,15 @@ namespace factory {
 			}
 			
 			void send(Kernel* k) {
+			}
+
+			template<class X>
+			void forward(key_type app, basic_ikernelbuf<X>& buf, packstream& str) {
+				typename map_type::iterator result = this->_apps.find(app);
+				if (result == this->_apps.end()) {
+					throw Error("bad app id", __FILE__, __LINE__, __func__);
+				}
+				result->second.forward(buf, str);
 			}
 
 			void stop_impl() {

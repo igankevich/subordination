@@ -25,8 +25,8 @@ namespace factory {
 
 	namespace this_process {
 
-		inline Process_id id() { return ::getpid(); }
-		inline Process_id parent_id() { return ::getppid(); }
+		inline Process_id id() noexcept { return ::getpid(); }
+		inline Process_id parent_id() noexcept { return ::getppid(); }
 
 		template<class T>
 		T getenv(const char* key, T dflt) {
@@ -90,7 +90,8 @@ namespace factory {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			return check("execve()", ::execv(argv[0], argv));
+			return check(::execv(argv[0], argv), 
+				__FILE__, __LINE__, __func__);
 		}
 
 		inline
@@ -445,25 +446,56 @@ namespace factory {
 
 	struct Semaphore {
 
-		explicit Semaphore(const std::string& name): Semaphore(name.c_str()) {}
-		explicit Semaphore(const char* name) {
-			_sem = check("sem_open()", ::sem_open(name, O_CREAT, 0666, 0), SEM_FAILED);
+		typedef ::sem_t sem_type;
+
+		explicit Semaphore(const std::string& name, bool owner=true):
+			_name(name),
+			_owner(owner),
+			_sem(this->open_sem())
+			{}
+
+		Semaphore(Semaphore&& rhs):
+			_name(std::move(rhs._name)),
+			_owner(rhs._owner),
+			_sem(rhs._sem)
+		{
+			rhs._sem = nullptr;
 		}
-		~Semaphore() { check("sem_close()", ::sem_close(_sem)); }
+
+		~Semaphore() {
+			if (this->_sem) {
+				check(::sem_close(this->_sem),
+					__FILE__, __LINE__, __func__);
+				if (this->_owner) {
+					check(::sem_unlink(this->_name.c_str()),
+						__FILE__, __LINE__, __func__);
+				}
+			}
+		}
 
 		void wait() {
-			std::cout << "sem = " << _sem << std::endl;
-			check("sem_wait()", ::sem_wait(_sem));
+			check(::sem_wait(this->_sem),
+				__FILE__, __LINE__, __func__);
 		}
-		void notify_one() { check("sem_post()", ::sem_post(_sem)); }
-		void lock() { this->wait(); }
-		void unlock() { this->notify_one(); }
+
+		void notify_one() {
+			check(::sem_post(this->_sem),
+				__FILE__, __LINE__, __func__);
+		}
 	
 		Semaphore& operator=(const Semaphore&) = delete;
 		Semaphore(const Semaphore&) = delete;
 	
 	private:
-		::sem_t* _sem;
+
+		sem_type* open_sem() {
+			return check("sem_open()", ::sem_open(this->_name.c_str(),
+				this->_owner ? (O_CREAT | O_EXCL) : 0), SEM_FAILED);
+		}
+
+		std::string _name;
+		bool _owner = false;
+		sem_type* _sem;
 	};
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
@@ -479,7 +511,7 @@ namespace factory {
 		typedef typename shared_mem<char_type>::size_type size_type;
 		typedef typename shared_mem<char_type>::id_type id_type;
 		typedef Spin_mutex mutex_type;
-		typedef std::lock_guard<mutex_type> lock_type;
+//		typedef std::lock_guard<mutex_type> lock_type;
 		typedef typename shared_mem<Ch>::proj_id_type proj_id_type;
 
 		explicit basic_shmembuf(id_type id):
@@ -531,7 +563,7 @@ namespace factory {
 		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
-			lock_type lock(this->_sharedpart->mtx);
+//			lock_type lock(this->_sharedpart->mtx);
 			this->sync_sharedmem();
 			int_type ret;
 			if (c != traits_type::eof()) {
@@ -548,7 +580,7 @@ namespace factory {
 		}
 
 		int_type underflow() {
-			lock_type lock(this->_sharedpart->mtx);
+//			lock_type lock(this->_sharedpart->mtx);
 			return this->gptr() == this->egptr()
 				? traits_type::eof()
 				: traits_type::to_int_type(*this->gptr());
@@ -574,6 +606,10 @@ namespace factory {
 			this->pbump(m);
 			this->writeoffs();
 		}
+
+		mutex_type& mutex() { return this->_sharedpart->mtx; }
+		void lock() { this->mutex().lock(); }
+		void unlock() { this->mutex().unlock(); }
 
 	private:
 

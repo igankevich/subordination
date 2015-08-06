@@ -473,19 +473,23 @@ namespace factory {
 				app_type app;
 				this->_stream >> app;
 				if (!this->_stream) return;
-				Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
-					k->from(_vaddr);
-					k->setapp(app);
-					Logger<Level::COMPONENT>()
-						<< "recv kernel=" << *k
-						<< ",rdstate=" << debug_stream(this->_stream)
-						<< std::endl;
-					if (k->moves_downstream()) {
-						this->clear_kernel_buffer(k);
-					}
-				}, [this] (kernel_type* k) {
-					this->root()->send(k);
-				});
+				if (app != Application::ROOT) {
+					factory::components::forward_to_app(app, this->_kernelbuf, this->_stream);
+				} else {
+					Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
+						k->from(_vaddr);
+						k->setapp(app);
+						Logger<Level::COMPONENT>()
+							<< "recv kernel=" << *k
+							<< ",rdstate=" << debug_stream(this->_stream)
+							<< std::endl;
+						if (k->moves_downstream()) {
+							this->clear_kernel_buffer(k);
+						}
+					}, [this] (kernel_type* k) {
+						this->root()->send(k);
+					});
+				}
 			}
 
 			void return_kernel(kernel_type* k) {
@@ -555,4 +559,3 @@ namespace factory {
 	}
 
 }
-

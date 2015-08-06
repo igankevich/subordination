@@ -946,10 +946,12 @@ namespace factory {
 			return this->Base::xsgetn(s, n);
 		}
 
-		pos_type packetpos() const { return this->_packetpos; }
-		size_type packetsize() const { return this->_packetsize; }
+		template<class X> friend class basic_okernelbuf;
 
 	private:
+
+		pos_type packetpos() const { return this->_packetpos; }
+		size_type packetsize() const { return this->_packetsize; }
 
 		void update_state() {
 			this->dumpstate();
@@ -1092,8 +1094,8 @@ namespace factory {
 
 		template<class X>
 		void append_packet(basic_ikernelbuf<X>& rhs) {
-			this->Base::xsputn(rhs->packetpos(), rhs->packetsize());
-			rhs->gbump(rhs->packetsize());
+			this->Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
+			rhs.gbump(rhs.packetsize());
 		}
 
 	private:

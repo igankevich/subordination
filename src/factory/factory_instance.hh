@@ -9,4 +9,11 @@ namespace factory {
 	inline App_server* app_server() { return __factory.app_server(); }
 	inline Repository_stack* repository() { return __factory.repository(); }
 
+	namespace components {
+		template<class App, class Buf, class Stream>
+		void forward_to_app(App app, Buf& buf, Stream& str) {
+			app_server()->forward(app, buf, str);
+		}
+	}
+
 }
