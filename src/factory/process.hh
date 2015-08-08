@@ -535,7 +535,7 @@ namespace factory {
 
 		basic_shmembuf(id_type id, int):
 			_sharedmem(id, BUFFER_PROJID),
-			_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
+			_sharedpart(reinterpret_cast<shmem_header*>(this->_sharedmem.ptr()))
 		{
 			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
@@ -559,12 +559,14 @@ namespace factory {
 			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, this->_sharedmem.end());
+			this->writeoffs();
 			this->debug("basic_shmembuf::create()");
 		}
 		
 		void attach(id_type id) {
 			this->_sharedmem.attach(id, BUFFER_PROJID),
-			this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
+//			this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
+			this->_sharedpart = reinterpret_cast<shmem_header*>(this->_sharedmem.ptr());
 			char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, this->_sharedmem.end());
@@ -573,15 +575,14 @@ namespace factory {
 		}
 
 		int_type overflow(int_type c = traits_type::eof()) {
-//			lock_type lock(this->_sharedpart->mtx);
-			this->sync_sharedmem();
+//			this->sync_sharedmem();
 			int_type ret;
 			if (c != traits_type::eof()) {
 				this->grow_sharedmem();
 				*this->pptr() = c;
 				this->pbump(1);
 				this->setg(this->eback(), this->gptr(), this->egptr()+1);
-				this->writeoffs();
+//				this->writeoffs();
 				ret = traits_type::to_int_type(c);
 			} else {
 				ret = traits_type::eof();
@@ -590,41 +591,47 @@ namespace factory {
 		}
 
 		int_type underflow() {
-//			lock_type lock(this->_sharedpart->mtx);
 			return this->gptr() == this->egptr()
 				? traits_type::eof()
 				: traits_type::to_int_type(*this->gptr());
 		}
 
 		int_type uflow() {
-			this->sync_sharedmem();
+//			this->sync_sharedmem();
 			if (this->underflow() == traits_type::eof()) return traits_type::eof();
 			int_type c = traits_type::to_int_type(*this->gptr());
 			this->gbump(1);
-			this->writeoffs();
+//			this->writeoffs();
 			return c;
 		}
 
-		std::streamsize xsputn(const char_type* s, std::streamsize n) {
+		std::streamsize xsputn(const char_type* s, std::streamsize n) override {
+			this->debug("xsputn");
 			if (this->epptr() == this->pptr()) {
 				this->overflow();
 			}
-			this->sync_sharedmem();
+//			this->sync_sharedmem();
 			std::streamsize avail = static_cast<std::streamsize>(this->epptr() - this->pptr());
 			std::streamsize m = std::min(n, avail);
 			traits_type::copy(this->pptr(), s, m);
 			this->pbump(m);
-			this->writeoffs();
+//			this->writeoffs();
 		}
 
-		mutex_type& mutex() { return this->_sharedpart->mtx; }
 		void lock() {
 			this->mutex().lock();
 			this->sync_sharedmem();
+			this->debug("lock");
 		}
-		void unlock() { this->mutex().unlock(); }
+		void unlock() {
+			this->writeoffs();
+			this->mutex().unlock();
+			this->debug("unlock");
+		}
 
 	private:
+
+		mutex_type& mutex() { return this->_sharedpart->mtx; }
 
 		void debug(const char* msg) {
 			Logger<Level::SHMEM>()
@@ -692,10 +699,10 @@ namespace factory {
 
 		shared_mem<char_type> _sharedmem;
 		struct shmem_header {
-			size_type size;
+			size_type size = 0;
 			mutex_type mtx;
-			pos_type goff;
-			pos_type poff;
+			pos_type goff = 0;
+			pos_type poff = 0;
 		} *_sharedpart = nullptr;
 
 		static const proj_id_type HEADER_PROJID = 'h';

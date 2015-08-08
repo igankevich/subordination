@@ -3,10 +3,7 @@ namespace factory {
 	// TODO: this is not portable (now it is even less portable than it used to be...)
 	inline
 	packstream& operator<<(packstream& out, const Endpoint& rhs) {
-		Bytes<Endpoint> tmp = rhs;
-//		out << tmp;
-		out.write(tmp.begin(), tmp.size());
-		return out;
+		return out << make_bytes(rhs);
 	}
 	inline
 	packstream& operator>>(packstream& in, Endpoint& rhs) {
@@ -14,6 +11,19 @@ namespace factory {
 		in.read(tmp.begin(), tmp.size());
 		rhs = tmp;
 		return in;
+	}
+	inline
+	std::streambuf& operator<<(std::streambuf& buf, const Endpoint& rhs) {
+		Bytes<Endpoint> bytes = rhs;
+		buf.sputn(bytes.begin(), bytes.size());
+		return buf;
+	}
+	inline
+	std::streambuf& operator>>(std::streambuf& buf, Endpoint& rhs) {
+		Bytes<Endpoint> bytes;
+		buf.sgetn(bytes.begin(), bytes.size());
+		rhs = bytes;
+		return buf;
 	}
 }
 #else

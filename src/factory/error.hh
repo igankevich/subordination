@@ -1,6 +1,6 @@
 namespace factory {
 
-	enum struct Level: uint8_t {
+	enum struct Level {
 		KERNEL,
 		SERVER,
 		HANDLER,
@@ -38,7 +38,7 @@ namespace factory {
 	struct Logger {
 
 		Logger(): _buf() {
-			next_record();
+//			next_record();
 		}
 
 		Logger(const Logger&) = delete;
@@ -56,11 +56,12 @@ namespace factory {
 			if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
 				{
 					std::lock_guard<Spin_mutex> lock(__logger_mutex);
+					next_record();
 					std::cout << _buf.str() << std::flush;
 				}
 				_buf.str("");
 				_buf.clear();
-				next_record();
+//				next_record();
 			}
 			return *this;
 		}

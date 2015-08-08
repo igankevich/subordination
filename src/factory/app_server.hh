@@ -54,6 +54,7 @@ namespace factory {
 				{}
 
 			void start() {
+				Logger<Level::SERVER>() << "Principal_server::start()" << std::endl;
 				this->_ibuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 0));
 				this->_obuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 1));
 				this->_isem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'i'), false);
@@ -82,13 +83,14 @@ namespace factory {
 
 			void serve() {
 				while (!this->stopped()) {
-					this->read_and_send_kernel();
 					this->_isem.wait();
+					this->read_and_send_kernel();
 				}
 			}
 
 			void read_and_send_kernel() {
 				ilock_type lock(this->_ibuf);
+				this->_istream.rdbuf(&this->_ibuf);
 				Endpoint src;
 				this->_istream >> src;
 				Logger<Level::APP>() << "read_and_send_kernel(): src=" << src
@@ -155,16 +157,22 @@ namespace factory {
 			process_type proc() const { return this->_proc; }
 
 			void send(kernel_type* k) {
-				olock_type lock(this->_obuf);
-				Logger<Level::APP>() << "send kernel " << *k << std::endl;
+//				olock_type lock(this->_obuf);
+				this->_obuf.lock();
+				// TODO: full-featured ostream is not needed here
+				this->_ostream.rdbuf(&this->_obuf);
+				Logger<Level::APP>() << "write from " << k->from() << std::endl;
 				this->_ostream << k->from();
+				Logger<Level::APP>() << "send kernel " << *k << std::endl;
 				Type<kernel_type>::write_object(*k, this->_ostream);
+				this->_obuf.unlock();
 				this->_osem.notify_one();
 			}
 
 			template<class X>
 			void forward(basic_ikernelbuf<X>& buf, const Endpoint& from) {
 				olock_type lock(this->_obuf);
+				this->_ostream.rdbuf(&this->_obuf);
 				this->_ostream << from;
 				append_payload(this->_obuf, buf);
 				this->_osem.notify_one();

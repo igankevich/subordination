@@ -32,12 +32,14 @@ struct Test_socket: public Mobile<Test_socket> {
 	}
 
 	void write_impl(packstream& out) {
+		Logger<Level::TEST>() << "Test_socket::write_impl()" << std::endl;
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
 	}
 
 	void read_impl(packstream& in) {
+		Logger<Level::TEST>() << "Test_socket::read_impl()" << std::endl;
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);

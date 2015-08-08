@@ -27,10 +27,14 @@ void test_shmembuf() {
 	shmembuf buf2(this_process::id(), 0);
 	std::vector<T> input(20);
 	std::generate(input.begin(), input.end(), test::randomval<T>);
+	buf1.lock();
 	buf1.sputn(&input.front(), input.size());
+	buf1.unlock();
 	Logger<Level::TEST>() << "test_shmembuf() middle" << std::endl;
 	std::vector<T> output(input.size());
+	buf2.lock();
 	buf2.sgetn(&output.front(), output.size());
+	buf2.unlock();
 	test::compare(input, output);
 }
 
