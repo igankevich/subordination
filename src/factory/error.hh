@@ -1,21 +1,43 @@
 namespace factory {
 
 	enum struct Level {
-		KERNEL,
-		SERVER,
-		HANDLER,
-		COMPONENT,
-		STRATEGY,
-		DISCOVERY,
-		GRAPH,
-		WEBSOCKET,
-		TEST,
-		IO,
-		SHMEM,
-		APP
+		KERNEL = 1,
+		SERVER = 2,
+		HANDLER = 3,
+		COMPONENT = 4,
+		STRATEGY = 5,
+		DISCOVERY = 6,
+		GRAPH = 7,
+		WEBSOCKET = 8,
+		TEST = 9,
+		IO = 10,
+		SHMEM = 11,
+		APP = 12
 	};
 
-	constexpr const char* to_string(Level rhs) {
+/*
+	std::ostream& operator<<(std::ostream& out, const Level rhs) {
+		switch (rhs) {
+			case Level::KERNEL    : out << "krnl";    break;
+			case Level::SERVER    : out << "srvr";    break;
+			case Level::HANDLER   : out << "handler"; break;
+			case Level::COMPONENT : out << "cmpnt";   break;
+			case Level::STRATEGY  : out << "strat";   break;
+			case Level::DISCOVERY : out << "dscvr";   break;
+			case Level::GRAPH     : out << "grph";    break;
+			case Level::WEBSOCKET : out << "wbsckt";  break;
+			case Level::TEST      : out << "tst";     break;
+			case Level::IO        : out << "io";      break;
+			case Level::SHMEM     : out << "shm";     break;
+			case Level::APP       : out << "app";     break;
+			default               : out << "unknwn";  break;
+		}
+		return out;
+	}
+*/
+
+	constexpr
+	const char* to_string(Level rhs) {
 		return
 			rhs == Level::KERNEL    ? "krnl"    : 
 			rhs == Level::SERVER    ? "srvr"    : 
@@ -33,12 +55,13 @@ namespace factory {
 	}
 
 	extern Spin_mutex __logger_mutex;
+//	static Time start_time = current_time_nano();
 
 	template<Level lvl=Level::KERNEL>
 	struct Logger {
 
 		Logger(): _buf() {
-//			next_record();
+			next_record();
 		}
 
 		Logger(const Logger&) = delete;
@@ -56,12 +79,12 @@ namespace factory {
 			if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
 				{
 					std::lock_guard<Spin_mutex> lock(__logger_mutex);
-					next_record();
+//					next_record();
 					std::cout << _buf.str() << std::flush;
 				}
 				_buf.str("");
 				_buf.clear();
-//				next_record();
+				next_record();
 			}
 			return *this;
 		}
@@ -71,9 +94,8 @@ namespace factory {
 	private:
 		
 		static Time now() {
-			using namespace std::chrono;
-			static Time start_time = current_time_nano();
-			return current_time_nano() - start_time;
+//			using namespace std::chrono;
+			return current_time_nano();// - start_time;
 		}
 
 		void next_record() {
@@ -81,6 +103,7 @@ namespace factory {
 			components::print_all_endpoints(_buf);
 			_buf << SEP;
 			_buf << this_process::id() << SEP;
+			_buf << std::this_thread::get_id() << SEP;
 			_buf << to_string(lvl) << SEP;
 		}
 

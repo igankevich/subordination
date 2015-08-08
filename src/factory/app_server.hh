@@ -123,11 +123,11 @@ namespace factory {
 			app_type _app;
 		};
 
-		template<class Server>
-		struct Sub_Rserver: public Server_link<Sub_Rserver<Server>, Server> {
+		template<class Kernel>
+		struct Sub_Rserver: public Server<Kernel> {
 
-			typedef Sub_Rserver<Server> this_type;
-			typedef typename Server::Kernel kernel_type;
+			typedef Sub_Rserver<Kernel> this_type;
+			typedef Kernel kernel_type;
 			typedef Process process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
@@ -157,15 +157,14 @@ namespace factory {
 			process_type proc() const { return this->_proc; }
 
 			void send(kernel_type* k) {
-//				olock_type lock(this->_obuf);
-				this->_obuf.lock();
+				olock_type lock(this->_obuf);
+				stream_type os(&this->_obuf);
 				// TODO: full-featured ostream is not needed here
-				this->_ostream.rdbuf(&this->_obuf);
+//				this->_ostream.rdbuf(&this->_obuf);
 				Logger<Level::APP>() << "write from " << k->from() << std::endl;
-				this->_ostream << k->from();
+				os << k->from();
 				Logger<Level::APP>() << "send kernel " << *k << std::endl;
-				Type<kernel_type>::write_object(*k, this->_ostream);
-				this->_obuf.unlock();
+				Type<kernel_type>::write_object(*k, os);
 				this->_osem.notify_one();
 			}
 
@@ -188,11 +187,11 @@ namespace factory {
 		};
 
 		template<class Server>
-		struct Sub_Iserver: public Server_link<Sub_Iserver<Server>, Server> {
+		struct Sub_Iserver: public Server {
 
 			typedef typename Server::Kernel Kernel;
 			typedef Application app_type;
-			typedef Sub_Rserver<Server> rserver_type;
+			typedef Sub_Rserver<Kernel> rserver_type;
 			typedef typename app_type::id_type key_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;

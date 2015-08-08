@@ -639,6 +639,7 @@ namespace factory {
 				<< this->_sharedpart->size
 				<< ",goff=" << this->_sharedpart->goff
 				<< ",poff=" << this->_sharedpart->poff
+				<< ",pptr=" << static_cast<std::ptrdiff_t>(this->pptr() - this->pbase())
 				<< ",shmem="
 				<< this->_sharedmem
 				<< std::endl;

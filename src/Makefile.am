@@ -16,7 +16,7 @@ AM_LDFLAGS = \
 	$(PERF_TESTING_LDFLAGS) \
 	$(CODE_COVERAGE_LDFLAGS)
 
-LDADD = libfactory.la
+#LDADD = libfactory.la
 
 AM_DEFAULT_SOURCE_EXT = .cc
 
@@ -35,8 +35,8 @@ REPO_VERSION = $(top_srcdir)/bin/repo-version
 bin_PROGRAMS = \
 	factory_time
 
-lib_LTLIBRARIES = \
-	libfactory.la
+#lib_LTLIBRARIES = \
+#	libfactory.la
 
 TESTS = \
 	test_buffer \
@@ -72,6 +72,7 @@ check_PROGRAMS = \
 	test_appserver
 
 
+#test_appserver_SOURCES = test_appserver.cc libfactory.cc
 # disable stack trace for tests where a child process must fail
 #test_socket_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
 test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE

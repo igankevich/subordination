@@ -1715,7 +1715,8 @@ namespace factory {
 //			Logger<Level::IO>() << " to ";
 //			debug(Logger<Level::IO>(), val.val);
 //			Logger<Level::IO>() << std::dec << std::endl;
-			this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
+//			this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
+			this->operator<<(val);
 			return *this;
 		}
 
