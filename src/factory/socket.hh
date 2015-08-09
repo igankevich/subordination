@@ -1674,12 +1674,12 @@ namespace factory {
 		}
 
 		this_type& write(const Ch* buf, std::streamsize n) {
-			this->rdbuf()->sputn(buf, n);
+			this->iostream_type::write(buf, n);
 			return *this;
 		}
 
 		this_type& read(Ch* buf, std::streamsize n) {
-			this->rdbuf()->sgetn(buf, n);
+			this->iostream_type::read(buf, n);
 			return *this;
 		}
 

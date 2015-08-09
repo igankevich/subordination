@@ -55,8 +55,8 @@ namespace factory {
 
 			void start() {
 				Logger<Level::SERVER>() << "Principal_server::start()" << std::endl;
-				this->_ibuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 0));
-				this->_obuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 1));
+				this->_ibuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 1));
+				this->_obuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 0));
 				this->_isem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'i'), false);
 				this->_osem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'o'), false);
 				this->_thread = std::thread(std::mem_fn(&this_type::serve), this);
@@ -83,20 +83,21 @@ namespace factory {
 
 			void serve() {
 				while (!this->stopped()) {
-					this->_isem.wait();
 					this->read_and_send_kernel();
+					this->_isem.wait();
 				}
 			}
 
 			void read_and_send_kernel() {
 				ilock_type lock(this->_ibuf);
+				this->_istream.clear();
 				this->_istream.rdbuf(&this->_ibuf);
 				Endpoint src;
 				this->_istream >> src;
 				Logger<Level::APP>() << "read_and_send_kernel(): src=" << src
 					<< ",rdstate=" << debug_stream(this->_istream)
 					<< std::endl;
-//				if (!this->_istream) return;
+				if (!this->_istream) return;
 				Type<kernel_type>::read_object(this->_istream, [this,&src] (kernel_type* k) {
 					k->from(src);
 					Logger<Level::APP>()
@@ -110,7 +111,6 @@ namespace factory {
 						<< std::endl;
 					this->root()->send(k);
 				});
-				this->_istream.clear();
 			}
 
 			ibuf_type _ibuf;

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-inputfile=$(mktemp)
+prefix="split-logs"
+inputfile=$(mktemp -t $prefix)
 
 # merge all logs
 while test -n "$*"; do

@@ -607,15 +607,18 @@ namespace factory {
 
 		std::streamsize xsputn(const char_type* s, std::streamsize n) override {
 			this->debug("xsputn");
-			if (this->epptr() == this->pptr()) {
-				this->overflow();
+			std::streamsize nwritten = 0;
+			while (nwritten != n) {
+				if (this->epptr() == this->pptr()) {
+					this->overflow();
+				}
+				std::streamsize avail = static_cast<std::streamsize>(this->epptr() - this->pptr());
+				std::streamsize m = std::min(n, avail);
+				traits_type::copy(this->pptr(), s, m);
+				nwritten += m;
+				this->pbump(m);
 			}
-//			this->sync_sharedmem();
-			std::streamsize avail = static_cast<std::streamsize>(this->epptr() - this->pptr());
-			std::streamsize m = std::min(n, avail);
-			traits_type::copy(this->pptr(), s, m);
-			this->pbump(m);
-//			this->writeoffs();
+			return nwritten;
 		}
 
 		void lock() {

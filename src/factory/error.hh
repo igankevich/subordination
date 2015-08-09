@@ -469,8 +469,6 @@ namespace factory {
 
 			typedef typename std::iterator_traits<It1>::value_type&& reference1;
 			typedef typename std::iterator_traits<It2>::value_type&& reference2;
-			typedef const reference1 const_reference1;
-			typedef const reference2 const_reference2;
 
 			constexpr paired_iterator(It1 x, It2 y): iter1(x), iter2(y) {}
 			paired_iterator(const paired_iterator& rhs) = default;
@@ -478,7 +476,7 @@ namespace factory {
 			constexpr bool operator==(const this_type& rhs) const { return iter1 == rhs.iter1; }
 			constexpr bool operator!=(const this_type& rhs) const { return !this->operator==(rhs); }
 
-			const_reference operator*() const { return std::tuple<const_reference1,const_reference2>(*iter1,*iter2); }
+			const_reference operator*() const { return std::tuple<reference1,reference2>(*iter1,*iter2); }
 			reference operator*() { return std::tuple<reference1,reference2>(std::move(*iter1),std::move(*iter2)); }
 			const_pointer operator->() const { return std::make_tuple(iter1.operator->(),iter2.operator->()); }
 			pointer operator->() { return std::make_tuple(iter1.operator->(),iter2.operator->()); }

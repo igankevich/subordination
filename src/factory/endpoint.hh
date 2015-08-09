@@ -316,6 +316,14 @@ namespace factory {
 		constexpr Port port() const { return to_host_format<Port>(_addr4.sin_port); }
 		void port(Port rhs) { _addr4.sin_port = to_network_format<Port>(rhs); }
 
+	private:
+		template<class Q>
+		constexpr static
+		Q position_helper(Q a, Q netmask) {
+			return a - (a & netmask);
+		}
+
+	public:
 		constexpr uint32_t position(uint32_t netmask) const {
 			return position_helper(address(), netmask);
 		}
@@ -329,12 +337,6 @@ namespace factory {
 		constexpr Family family() const { return storage.ss_family; }
 
 	private:
-
-		template<class Q>
-		constexpr static
-		Q position_helper(Q a, Q netmask) {
-			return a - (a & netmask);
-		}
 
 		constexpr IPv4_addr addr4() const { return _addr4.sin_addr; }
 		constexpr Port port4() const { return _addr4.sin_port; }
