@@ -224,11 +224,8 @@ namespace factory {
 			iterator begin() const { return iterator(this->_addrs); }
 			static constexpr iterator end() { return iterator(); }
 
-			bool empty() const { return this->_addrs->ifa_next == nullptr; }
-			size_type size() const {
-				return std::count_if(this->begin(), this->end(),
-					[] (const value_type&) { return true; });
-			}
+			bool empty() const { return this->begin() == this->end(); }
+			size_type size() const { return std::distance(this->begin(), this->end()); }
 
 		private:
 			ifaddrs_type* _addrs = nullptr;

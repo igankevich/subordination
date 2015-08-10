@@ -126,14 +126,24 @@ namespace factory {
 					std::string tmp = line;
 					std::size_t beg = tmp.find('(');
 					std::size_t end = tmp.find('+', beg == std::string::npos ? 0 : beg+1);
-					if (beg != std::string::npos && end != std::string::npos) {
+					if (beg == std::string::npos && end != std::string::npos) {
+						// try BSD-like backtrace
+						if (end > 1 && tmp[end-1] == ' ') {
+							beg = tmp.rfind(' ', end-2);
+							--end;
+						}
+					}
+					if (beg != std::string::npos
+						&& end != std::string::npos
+						&& beg < end)
+					{
 						tmp[end] = '\0';
 					#if HAVE_GCC_ABI_DEMANGLE
 						int status = 0;
 						char* ret = abi::__cxa_demangle(&tmp[beg+1], 0, 0, &status);
 					#else
 						int status = -1;
-						char* ret == nullptr;
+						char* ret = nullptr;
 					#endif
 						if (status == 0) {
 							tmp = ret;
