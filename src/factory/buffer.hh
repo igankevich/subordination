@@ -1,194 +1,197 @@
 namespace factory {
 
-	template<class T>
-	struct LBuffer {
-		
-		typedef T value_type;
-		typedef size_t Size;
+	namespace components {
 
-		explicit LBuffer(size_t base_size): _data(base_size) {}
+		template<class T>
+		struct LBuffer {
+			
+			typedef T value_type;
+			typedef size_t Size;
 
-		void push_back(const T byte) {
-			if (write_pos + 1 == buffer_size()) { double_size(); }
-			_data[write_pos] = byte;
-			++write_pos;
-		}
+			explicit LBuffer(size_t base_size): _data(base_size) {}
 
-		const T& front() const { return _data[read_pos]; }
-		T& front() { return _data[read_pos]; }
-
-		void pop_front() {
-			if (!empty()) {
-				advance_read_pos(1);
+			void push_back(const T byte) {
+				if (write_pos + 1 == buffer_size()) { double_size(); }
+				_data[write_pos] = byte;
+				++write_pos;
 			}
-		}
 
-		size_t write(const T* buf, size_t sz) {
-			while (write_pos + sz >= buffer_size()) { double_size(); }
-			std::copy(buf, buf + sz, &_data[write_pos]);
-			write_pos += sz;
-			return sz;
-		}
+			const T& front() const { return _data[read_pos]; }
+			T& front() { return _data[read_pos]; }
 
-		size_t read(T* buf, size_t sz) {
-			size_t min_sz = std::min(sz, size()); 
-			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
-			advance_read_pos(min_sz);
-			return min_sz;
-		}
-
-		size_t skip(size_t n) {
-			size_t min_n = std::min(n, size()); 
-			advance_read_pos(min_n);
-			return min_n;
-		}
-
-		size_t readsome(T* buf, size_t sz) {
-			size_t min_sz = std::min(sz, size()); 
-			std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
-			return min_sz;
-		}
-
-		size_t ignore(size_t nbytes) {
-			size_t min_sz = std::min(nbytes, size()); 
-			advance_read_pos(min_sz);
-			return min_sz;
-		}
-
-		void reset() {
-			read_pos = 0;
-			write_pos = 0;
-		}
-
-		bool empty() const { return size() == 0; }
-		size_t size() const { return write_pos - read_pos; }
-		size_t buffer_size() const { return _data.size(); }
-		size_t write_size() const { return buffer_size() - write_pos; }
-
-		T* write_begin() { return &_data[write_pos]; }
-		T* write_end() { return &_data[buffer_size()]; }
-
-		T* read_begin() { return &_data[read_pos]; }
-		T* read_end() { return &_data[write_pos]; }
-
-		T* begin() { return read_begin(); }
-		T* end() { return read_end(); }
-
-		const T* begin() const { return &_data[read_pos]; }
-		const T* end() const { return &_data[write_pos]; }
-
-		template<class S>
-		size_t flush(S sink) {
-			size_t bytes_written;
-			size_t total = read_pos;
-			while ((bytes_written = sink.write(read_begin(), write_pos-read_pos)) > 0) {
-				read_pos += bytes_written;
-				Logger<Level::COMPONENT>() << "bytes written = " << bytes_written << std::endl;
-			}
-			total = read_pos - total;
-			Logger<Level::COMPONENT>()
-				<< "readpos = " << read_pos
-				<< ", writepos = " << write_pos
-				<< std::endl;
-			if (read_pos == write_pos) {
-				reset();
-			}
-			return total;
-		}
-
-		template<class S>
-		size_t fill(S source) {
-			size_t bytes_read;
-			size_t old_pos = write_pos;
-			while ((bytes_read = source.read(write_begin(), write_size())) > 0) {
-				write_pos += bytes_read;
-				if (write_pos == buffer_size()) {
-					double_size();
+			void pop_front() {
+				if (!empty()) {
+					advance_read_pos(1);
 				}
 			}
-			return write_pos - old_pos;
-		}
 
-		friend std::ostream& operator<<(std::ostream& out, const LBuffer<T>& rhs) {
-			out << std::hex << std::setfill('0');
-			size_t max_elems = out.width() / 2;
-			auto last = std::min(rhs.begin() + max_elems, rhs.end());
-			std::for_each(rhs.begin(), last, [&out] (T x) {
-				out << std::setw(2) << to_binary(x);
-			});
-			if (last != rhs.end()) {
-				out << "...(truncated)";
+			size_t write(const T* buf, size_t sz) {
+				while (write_pos + sz >= buffer_size()) { double_size(); }
+				std::copy(buf, buf + sz, &_data[write_pos]);
+				write_pos += sz;
+				return sz;
 			}
-			return out;
-		}
 
-	private:
-		static unsigned int to_binary(T x) {
-			return static_cast<unsigned int>(static_cast<unsigned char>(x));
-		}
-
-		void advance_read_pos(size_t amount) {
-			read_pos += amount;
-			if (read_pos == write_pos) {
-				reset();
+			size_t read(T* buf, size_t sz) {
+				size_t min_sz = std::min(sz, size()); 
+				std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
+				advance_read_pos(min_sz);
+				return min_sz;
 			}
-		}
 
-		void double_size() { _data.resize(buffer_size()*2u); }
+			size_t skip(size_t n) {
+				size_t min_n = std::min(n, size()); 
+				advance_read_pos(min_n);
+				return min_n;
+			}
 
-		std::vector<T> _data;
-		size_t write_pos = 0;
-		size_t read_pos = 0;
-	};
+			size_t readsome(T* buf, size_t sz) {
+				size_t min_sz = std::min(sz, size()); 
+				std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
+				return min_sz;
+			}
 
-	template<class Container>
-	class front_pop_iterator:
-	    public std::iterator<std::input_iterator_tag, typename Container::value_type>
-	{
-	public:
-		typedef Container container_type;
-		typedef typename Container::value_type value_type;
-		typedef typename Container::value_type iterator;
+			size_t ignore(size_t nbytes) {
+				size_t min_sz = std::min(nbytes, size()); 
+				advance_read_pos(min_sz);
+				return min_sz;
+			}
 
-		explicit front_pop_iterator(Container& x):
-			container(&x), ptr(x.begin()) {}
-		front_pop_iterator(Container& x, iterator it):
-			container(&x), ptr(it) {}
-		front_pop_iterator(front_pop_iterator& rhs):
-			container(rhs.container), ptr(rhs.ptr) {}
+			void reset() {
+				read_pos = 0;
+				write_pos = 0;
+			}
 
-		std::ptrdiff_t operator-(const front_pop_iterator<Container>& rhs) {
-			return ptr - rhs.ptr;
-		}
-		front_pop_iterator<Container> operator+(std::ptrdiff_t rhs) const {
-			return front_pop_iterator<Container>(container,
-				std::advance(container.begin(), rhs));
-		}
-		bool operator==(const front_pop_iterator<Container>& rhs) const {
-			return ptr == rhs.ptr;
-		}
-		bool operator!=(const front_pop_iterator<Container>& rhs) const {
-			return ptr != rhs.ptr;
-		}
+			bool empty() const { return size() == 0; }
+			size_t size() const { return write_pos - read_pos; }
+			size_t buffer_size() const { return _data.size(); }
+			size_t write_size() const { return buffer_size() - write_pos; }
 
-		const value_type& operator*() const { return *ptr; }
-		const value_type* operator->() const { return ptr; }
-		front_pop_iterator<Container>& operator++ () {
-			ptr = container.front();
-			container.pop_front();
-			return *this;
-		}
+			T* write_begin() { return &_data[write_pos]; }
+			T* write_end() { return &_data[buffer_size()]; }
 
-		front_pop_iterator<Container> operator++ (int) {
-			front_pop_iterator<Container> tmp = *this;
-			++*this;
-			return tmp;
-		}
+			T* read_begin() { return &_data[read_pos]; }
+			T* read_end() { return &_data[write_pos]; }
 
-	protected:
-		Container& container;
-		value_type* ptr;
-	};
+			T* begin() { return read_begin(); }
+			T* end() { return read_end(); }
 
+			const T* begin() const { return &_data[read_pos]; }
+			const T* end() const { return &_data[write_pos]; }
+
+			template<class S>
+			size_t flush(S sink) {
+				size_t bytes_written;
+				size_t total = read_pos;
+				while ((bytes_written = sink.write(read_begin(), write_pos-read_pos)) > 0) {
+					read_pos += bytes_written;
+					Logger<Level::COMPONENT>() << "bytes written = " << bytes_written << std::endl;
+				}
+				total = read_pos - total;
+				Logger<Level::COMPONENT>()
+					<< "readpos = " << read_pos
+					<< ", writepos = " << write_pos
+					<< std::endl;
+				if (read_pos == write_pos) {
+					reset();
+				}
+				return total;
+			}
+
+			template<class S>
+			size_t fill(S source) {
+				size_t bytes_read;
+				size_t old_pos = write_pos;
+				while ((bytes_read = source.read(write_begin(), write_size())) > 0) {
+					write_pos += bytes_read;
+					if (write_pos == buffer_size()) {
+						double_size();
+					}
+				}
+				return write_pos - old_pos;
+			}
+
+			friend std::ostream& operator<<(std::ostream& out, const LBuffer<T>& rhs) {
+				out << std::hex << std::setfill('0');
+				size_t max_elems = out.width() / 2;
+				auto last = std::min(rhs.begin() + max_elems, rhs.end());
+				std::for_each(rhs.begin(), last, [&out] (T x) {
+					out << std::setw(2) << to_binary(x);
+				});
+				if (last != rhs.end()) {
+					out << "...(truncated)";
+				}
+				return out;
+			}
+
+		private:
+			static unsigned int to_binary(T x) {
+				return static_cast<unsigned int>(static_cast<unsigned char>(x));
+			}
+
+			void advance_read_pos(size_t amount) {
+				read_pos += amount;
+				if (read_pos == write_pos) {
+					reset();
+				}
+			}
+
+			void double_size() { _data.resize(buffer_size()*2u); }
+
+			std::vector<T> _data;
+			size_t write_pos = 0;
+			size_t read_pos = 0;
+		};
+
+		template<class Container>
+		class front_pop_iterator:
+		    public std::iterator<std::input_iterator_tag, typename Container::value_type>
+		{
+		public:
+			typedef Container container_type;
+			typedef typename Container::value_type value_type;
+			typedef typename Container::value_type iterator;
+
+			explicit front_pop_iterator(Container& x):
+				container(&x), ptr(x.begin()) {}
+			front_pop_iterator(Container& x, iterator it):
+				container(&x), ptr(it) {}
+			front_pop_iterator(front_pop_iterator& rhs):
+				container(rhs.container), ptr(rhs.ptr) {}
+
+			std::ptrdiff_t operator-(const front_pop_iterator<Container>& rhs) {
+				return ptr - rhs.ptr;
+			}
+			front_pop_iterator<Container> operator+(std::ptrdiff_t rhs) const {
+				return front_pop_iterator<Container>(container,
+					std::advance(container.begin(), rhs));
+			}
+			bool operator==(const front_pop_iterator<Container>& rhs) const {
+				return ptr == rhs.ptr;
+			}
+			bool operator!=(const front_pop_iterator<Container>& rhs) const {
+				return ptr != rhs.ptr;
+			}
+
+			const value_type& operator*() const { return *ptr; }
+			const value_type* operator->() const { return ptr; }
+			front_pop_iterator<Container>& operator++ () {
+				ptr = container.front();
+				container.pop_front();
+				return *this;
+			}
+
+			front_pop_iterator<Container> operator++ (int) {
+				front_pop_iterator<Container> tmp = *this;
+				++*this;
+				return tmp;
+			}
+
+		protected:
+			Container& container;
+			value_type* ptr;
+		};
+
+	}
 
 }

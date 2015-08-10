@@ -140,8 +140,9 @@ namespace factory {
 				{}
 		
 			void notify(note_type c = Notify) {
-				check("write()", ::write(this->_pipe.out(),
-					&c, sizeof(note_type)));
+				check(::write(this->_pipe.out(),
+					&c, sizeof(note_type)),
+					__FILE__, __LINE__, __func__);
 			}
 		
 			template<class Callback>
@@ -265,7 +266,7 @@ namespace factory {
 					check_dirty();
 					Logger<Level::COMPONENT>() << "poll(): size="
 						<< this->_events.size() << std::endl;
-					check_if_not<EINTR>(::poll(this->_events.data(),
+					check_if_not<std::errc::interrupted>(::poll(this->_events.data(),
 						this->_events.size(), Infinite),
 						__FILE__, __LINE__, __func__);
 				} while (errno == EINTR);

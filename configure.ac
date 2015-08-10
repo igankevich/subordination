@@ -64,7 +64,7 @@ AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([socket setenv strerror])
+AC_CHECK_FUNCS([socket setenv])
 
 AX_HAVE_POLL(
 	[AX_CONFIG_FEATURE_ENABLE(poll)],

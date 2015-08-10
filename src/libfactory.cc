@@ -15,9 +15,11 @@ namespace factory {
 				const int MAX_ITER = 3;
 				int fd = 0;
 				for (int i=0; i<MAX_ITER && fd<=2; ++i) {
-					fd = check("open()", ::open("/dev/null", O_RDWR));
+					fd = check(::open("/dev/null", O_RDWR),
+						__FILE__, __LINE__, __func__);
 					if (fd > 2) {
-						check("close()", ::close(fd));
+						check(::close(fd),
+							__FILE__, __LINE__, __func__);
 					}
 				}
 			}
@@ -52,8 +54,8 @@ namespace factory {
 
 		struct Auto_set_terminate_handler {
 			Auto_set_terminate_handler() {
-				std::cout << "Auto_set_terminate_handler" << std::endl;
-				std::set_terminate(error_printing_handler);
+				Auto_set_terminate_handler::_old_handler
+					= std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
 			}
 		private:
 			static void error_printing_handler() noexcept {
@@ -66,21 +68,24 @@ namespace factory {
 					try {
 						std::rethrow_exception(ptr);
 					} catch (Error& err) {
-						std::cerr << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						Logger<Level::ERR>() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
 						print_backtrace = false;
 					} catch (std::exception& err) {
-						std::cerr << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						Logger<Level::ERR>() << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
 					} catch (...) {
-						std::cerr << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
+						Logger<Level::ERR>() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
 					}
 				} else {
-					std::cerr << String_message("terminate called without an active exception",
+					Logger<Level::ERR>() << String_message("terminate called without an active exception",
 						__FILE__, __LINE__, __func__) << std::endl;
 				}
 				if (print_backtrace) {
 					print_stack_trace();
 				}
 				stop_all_factories(true);
+				if (Auto_set_terminate_handler::_old_handler) {
+					Auto_set_terminate_handler::_old_handler();
+				}
 				std::abort();
 			}
 
@@ -94,9 +99,14 @@ namespace factory {
 #else
 			static void print_stack_trace() {}
 #endif
+		private:
+			static std::terminate_handler _old_handler;
 		} __factory_auto_set_terminate_handler;
 
+		std::terminate_handler Auto_set_terminate_handler::_old_handler = nullptr;
+
 	}
+	namespace components {
 	Backtrace::Backtrace() {
 	#if HAVE_BACKTRACE
 		void* stack[MAX_ENTRIES];
@@ -109,38 +119,49 @@ namespace factory {
 		if (rhs.num_entries <= 1) {
 			out << "<no entries>\n";
 		} else {
-			std::for_each(rhs.symbols+1, rhs.symbols + rhs.num_entries,
+			out << '[';
+			std::vector<std::string> callstack(rhs.num_entries-1);
+			std::transform(rhs.symbols+1, rhs.symbols + rhs.num_entries, callstack.begin(),
 				[&out](const char* line) {
-				#if HAVE_GCC_ABI_DEMANGLE
 					std::string tmp = line;
 					std::size_t beg = tmp.find('(');
 					std::size_t end = tmp.find('+', beg == std::string::npos ? 0 : beg+1);
 					if (beg != std::string::npos && end != std::string::npos) {
 						tmp[end] = '\0';
+					#if HAVE_GCC_ABI_DEMANGLE
 						int status = 0;
 						char* ret = abi::__cxa_demangle(&tmp[beg+1], 0, 0, &status);
+					#else
+						int status = -1;
+						char* ret == nullptr;
+					#endif
 						if (status == 0) {
-							tmp[beg] = '\0';
-							out << &tmp[0]
-								<< '(' << ret
-								<< line + end << '\n';
+							tmp = ret;
+//							tmp[beg] = '\0';
+//							out << ret << ',';
+//							out << &tmp[0]
+//								<< '(' << ret
+//								<< line + end << '\n';
 							::free(ret);
 						} else {
-							out << line << '\n';
+							return tmp.substr(beg+1, end-beg-1);
+//							tmp = &tmp[beg+1];
 						}
 					} else {
-						out << line << '\n';
+//						out << line << ',';
 					}
-				#else
-					out << line << '\n';
-				#endif
+					return tmp;
 				}
 			);
+			components::intersperse_iterator<std::string> it(out, ",");
+			std::copy(callstack.begin(), callstack.end(), it);
+			out << ']';
 		}
 	#else
 		out << "<backtrace is disabled>\n";
 	#endif
 		return out;
+	}
 	}
 }
 
@@ -171,7 +192,8 @@ namespace factory {
 				if (addrs.empty()) {
 					out << Endpoint();
 				} else {
-					out << intersperse(addrs.begin(), addrs.end(), ',');
+					intersperse_iterator<Endpoint> it(out, ",");
+					std::copy(addrs.begin(), addrs.end(), it);
 				}
 			}
 
@@ -290,8 +312,10 @@ namespace std {
 }
 #endif
 namespace factory {
-	Underflow underflow;
-	End_packet end_packet;
+	namespace components {
+		Underflow underflow;
+		End_packet end_packet;
+	}
 }
 
 namespace factory {
@@ -330,15 +354,15 @@ namespace factory {
 #include <pthread.h>
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
-			check("pthread_setaffinity_np()",
-				::pthread_setaffinity_np(::pthread_self(),
-				cpu.size(), cpu.set()));
+			check(::pthread_setaffinity_np(::pthread_self(),
+				cpu.size(), cpu.set()),
+				__FILE__, __LINE__, __func__);
 		}
 #elif HAVE_DECL_SCHED_SETAFFINITY
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
-			check("sched_setaffinity()",
-				::sched_setaffinity(0, cpu.size(), cpu.set()));
+			check(::sched_setaffinity(0, cpu.size(), cpu.set()),
+				__FILE__, __LINE__, __func__);
 		}
 #elif HAVE_SYS_PROCESSOR_H
 #include <sys/processor.h>
@@ -348,9 +372,9 @@ namespace factory {
 #elif HAVE_SYS_CPUSET_H
 		void thread_affinity(size_t c) {
 			CPU cpu(c);
-			check("cpuset_setaffinity()",
-				::cpuset_setaffinity(CPU_LEVEL_WHICH,
-				CPU_WHICH_TID, -1, cpu.size(), cpu.set());
+			check(::cpuset_setaffinity(CPU_LEVEL_WHICH,
+				CPU_WHICH_TID, -1, cpu.size(), cpu.set(),
+				__FILE__, __LINE__, __func__));
 		}
 #else
 // no cpu binding
@@ -380,75 +404,76 @@ namespace factory {
 			static std::atomic<Id> counter(factory_start_id());
 			return counter++;
 		}
-	}
-	Spin_mutex __logger_mutex;
-	std::vector<Address_range> discover_neighbours() {
+		Spin_mutex __logger_mutex;
+		std::vector<Address_range> discover_neighbours() {
+		
+			struct ::ifaddrs* ifaddr;
+			check(::getifaddrs(&ifaddr),
+				__FILE__, __LINE__, __func__);
+		
+			std::set<Address_range> ranges;
+		
+			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 	
-		struct ::ifaddrs* ifaddr;
-		check("getifaddrs()", ::getifaddrs(&ifaddr));
-	
-		std::set<Address_range> ranges;
-	
-		for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-
-			if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
-				// ignore non-internet networks
-				continue;
-			}
-
-			Endpoint addr(*ifa->ifa_addr);
-			if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
-				// ignore localhost and non-IPv4 addresses
-				continue;
-			}
-
-			Endpoint netmask(*ifa->ifa_netmask);
-			if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
-				// ignore wide-area networks
-				continue;
-			}
-	
-			uint32_t addr_long = addr.address();
-			uint32_t mask_long = netmask.address();
-	
-			uint32_t start = (addr_long & mask_long) + 1;
-			uint32_t end = (addr_long & mask_long) + (~mask_long);
-	
-			ranges.insert(Address_range(start, addr_long));
-			ranges.insert(Address_range(addr_long+1, end));
-		}
-	
-		// combine overlaping ranges
-		std::vector<Address_range> sorted_ranges;
-		Address_range prev_range;
-		std::for_each(ranges.cbegin(), ranges.cend(),
-			[&sorted_ranges, &prev_range](const Address_range& range)
-		{
-			if (prev_range.empty()) {
-				prev_range = range;
-			} else {
-				if (prev_range.overlaps(range)) {
-					prev_range += range;
-				} else {
-					sorted_ranges.push_back(prev_range);
-					prev_range = range;
+				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+					// ignore non-internet networks
+					continue;
 				}
+	
+				Endpoint addr(*ifa->ifa_addr);
+				if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
+					// ignore localhost and non-IPv4 addresses
+					continue;
+				}
+	
+				Endpoint netmask(*ifa->ifa_netmask);
+				if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
+					// ignore wide-area networks
+					continue;
+				}
+		
+				uint32_t addr_long = addr.address();
+				uint32_t mask_long = netmask.address();
+		
+				uint32_t start = (addr_long & mask_long) + 1;
+				uint32_t end = (addr_long & mask_long) + (~mask_long);
+		
+				ranges.insert(Address_range(start, addr_long));
+				ranges.insert(Address_range(addr_long+1, end));
 			}
-		});
-	
-		if (!prev_range.empty()) {
-			sorted_ranges.push_back(prev_range);
+		
+			// combine overlaping ranges
+			std::vector<Address_range> sorted_ranges;
+			Address_range prev_range;
+			std::for_each(ranges.cbegin(), ranges.cend(),
+				[&sorted_ranges, &prev_range](const Address_range& range)
+			{
+				if (prev_range.empty()) {
+					prev_range = range;
+				} else {
+					if (prev_range.overlaps(range)) {
+						prev_range += range;
+					} else {
+						sorted_ranges.push_back(prev_range);
+						prev_range = range;
+					}
+				}
+			});
+		
+			if (!prev_range.empty()) {
+				sorted_ranges.push_back(prev_range);
+			}
+		
+			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
+				[] (const Address_range& range)
+			{
+				std::clog << Address(range.start()) << '-' << Address(range.end()) << '\n';
+			});
+		
+			::freeifaddrs(ifaddr);
+		
+			return sorted_ranges;
 		}
-	
-		std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
-			[] (const Address_range& range)
-		{
-			std::clog << Address(range.start()) << '-' << Address(range.end()) << '\n';
-		});
-	
-		::freeifaddrs(ifaddr);
-	
-		return sorted_ranges;
 	}
 }
 

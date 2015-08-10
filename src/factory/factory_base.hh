@@ -71,6 +71,7 @@
 	#endif
 	
 	// Base system
+	#include "stdext.hh"
 	#include "uint128.hh"
 	#include "base.hh"
 	#include "process.hh"

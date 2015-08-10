@@ -245,7 +245,7 @@ namespace factory {
 							if (!_parent) {
 								delete this;
 								Logger<Level::KERNEL>() << "SHUTDOWN" << std::endl;
-								components::stop_all_factories();
+								stop_all_factories();
 							}
 						} else {
 							Logger<Level::KERNEL>() << "Principal is not null" << std::endl;

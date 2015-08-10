@@ -361,7 +361,7 @@ namespace factory {
 				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
 				bool f = this->force;
 				delete this;
-				components::stop_all_factories(f);
+				stop_all_factories(f);
 			}
 //			void react() {}
 			void write_impl(packstream&) {}

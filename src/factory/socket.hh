@@ -71,7 +71,7 @@ namespace factory {
 			void connect(const Endpoint& e) {
 				try {
 					this->create_socket_if_necessary();
-					check_if_not<EINPROGRESS>(::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
+					check_if_not<std::errc::operation_in_progress>(::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
 						__FILE__, __LINE__, __func__);
 					Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
 				} catch (std::system_error& err) {
@@ -96,7 +96,7 @@ namespace factory {
 					Logger<Level::COMPONENT>()
 						<< "Closing socket "
 						<< this->_fd << std::endl;
-					check_if_not<ENOTCONN>(::shutdown(this->_fd, SHUT_RDWR),
+					check_if_not<std::errc::not_connected>(::shutdown(this->_fd, SHUT_RDWR),
 						__FILE__, __LINE__, __func__);
 					check(::close(this->_fd), __FILE__,
 						__LINE__, __func__);
@@ -135,7 +135,7 @@ namespace factory {
 					ret = -1;
 				} else {
 					Endpoint::Sock_len sz = sizeof(opt);
-					check_if_not<ENOTSOCK>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
+					check_if_not<std::errc::not_a_socket>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
 						__FILE__, __LINE__, __func__);
 				}
 				// ignore EAGAIN since it is common 'error' in asynchronous programming
@@ -199,7 +199,7 @@ namespace factory {
 
 			friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
 				return out << "{fd=" << rhs._fd << ",st="
-					<< (rhs.error() == 0 ? "ok" : ::strerror(errno))
+					<< (rhs.error() == 0 ? "ok" : std::error_code(errno, std::generic_category()).message())
 					<< '}';
 			}
 
@@ -229,11 +229,13 @@ namespace factory {
 			explicit File(const std::string& filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR):
 				File(filename.c_str(), flags, mode) {}
 			explicit File(const char* filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR) {
-				this->_fd = check("open()", ::open(filename, flags, mode));
+				this->_fd = check(::open(filename, flags, mode),
+					__FILE__, __LINE__, __func__);
 			}
 			~File() {
 				if (*this) {
-					check("close()", ::close(this->_fd));
+					check(::close(this->_fd),
+						__FILE__, __LINE__, __func__);
 					this->_fd = BADFD;
 				}
 			}
@@ -642,7 +644,6 @@ namespace factory {
 		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
 		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 	};
-	}
 
 	template<class Fd>
 	struct fd_wrapper {
@@ -1570,192 +1571,192 @@ namespace factory {
 //		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 //	};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
-	struct basic_ifdstream: public std::basic_istream<Ch> {
-		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
-		typedef std::basic_istream<Ch,Tr> istream_type;
-		explicit basic_ifdstream(Fd&& fd): istream_type(nullptr),
-			_fdbuf(std::move(fd), 512, 0) { this->init(&this->_fdbuf); }
-	private:
-		fdbuf_type _fdbuf;
-	};
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		struct basic_ifdstream: public std::basic_istream<Ch> {
+			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef std::basic_istream<Ch,Tr> istream_type;
+			explicit basic_ifdstream(Fd&& fd): istream_type(nullptr),
+				_fdbuf(std::move(fd), 512, 0) { this->init(&this->_fdbuf); }
+		private:
+			fdbuf_type _fdbuf;
+		};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
-	struct basic_ofdstream: public std::basic_ostream<Ch> {
-		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
-		typedef std::basic_ostream<Ch,Tr> ostream_type;
-		explicit basic_ofdstream(Fd&& fd): ostream_type(nullptr),
-			_fdbuf(std::move(fd), 0, 512) { this->init(&this->_fdbuf); }
-	private:
-		fdbuf_type _fdbuf;
-	};
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		struct basic_ofdstream: public std::basic_ostream<Ch> {
+			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef std::basic_ostream<Ch,Tr> ostream_type;
+			explicit basic_ofdstream(Fd&& fd): ostream_type(nullptr),
+				_fdbuf(std::move(fd), 0, 512) { this->init(&this->_fdbuf); }
+		private:
+			fdbuf_type _fdbuf;
+		};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
-	struct basic_fdstream: public std::basic_iostream<Ch> {
-		typedef basic_fdbuf<Ch,Fd> fdbuf_type;
-		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		explicit basic_fdstream(Fd&& fd): iostream_type(nullptr),
-			_fdbuf(std::move(fd), 512, 512) { this->init(&this->_fdbuf); }
-	private:
-		fdbuf_type _fdbuf;
-	};
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		struct basic_fdstream: public std::basic_iostream<Ch> {
+			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef std::basic_iostream<Ch,Tr> iostream_type;
+			explicit basic_fdstream(Fd&& fd): iostream_type(nullptr),
+				_fdbuf(std::move(fd), 512, 512) { this->init(&this->_fdbuf); }
+		private:
+			fdbuf_type _fdbuf;
+		};
 
-	template<class Base>
-	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
-		typedef basic_kernelbuf<Base> kernelbuf_type;
-		typedef typename Base::char_type Ch;
-		typedef typename Base::traits_type Tr;
-		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		basic_kstream(): iostream_type(nullptr), _kernelbuf()
-			{ this->init(&this->_kernelbuf); }
-	private:
-		kernelbuf_type _kernelbuf;
-	};
+		template<class Base>
+		struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
+			typedef basic_kernelbuf<Base> kernelbuf_type;
+			typedef typename Base::char_type Ch;
+			typedef typename Base::traits_type Tr;
+			typedef std::basic_iostream<Ch,Tr> iostream_type;
+			basic_kstream(): iostream_type(nullptr), _kernelbuf()
+				{ this->init(&this->_kernelbuf); }
+		private:
+			kernelbuf_type _kernelbuf;
+		};
 
-	typedef basic_fdbuf<char> fdbuf;
-	typedef basic_ifdstream<char> ifdstream;
-	typedef basic_ofdstream<char> ofdstream;
-	typedef basic_kstream<char> kstream;
+		#define FACTORY_PACKSTREAM
+		template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
+		struct Packing_stream: public std::basic_iostream<Ch,Tr> {
 
-	#define FACTORY_PACKSTREAM
-	template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
-	struct Packing_stream: public std::basic_iostream<Ch,Tr> {
+			typedef std::basic_iostream<Ch,Tr> iostream_type;
+			typedef std::basic_streambuf<Ch,Tr> streambuf_type;
+			typedef Ch char_type;
+			typedef Packing_stream<Ch,Tr,Size> this_type;
 
-		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		typedef std::basic_streambuf<Ch,Tr> streambuf_type;
-		typedef Ch char_type;
-		typedef Packing_stream<Ch,Tr,Size> this_type;
+			explicit Packing_stream(streambuf_type* str): iostream_type(str) {
+//				this->init(str);
+			}
+			Packing_stream(Packing_stream&& rhs): iostream_type(rhs.rdbuf()) {}
+			Packing_stream(const Packing_stream&) = delete;
+			Packing_stream() = delete;
 
-		explicit Packing_stream(streambuf_type* str): iostream_type(str) {
-//			this->init(str);
-		}
-		Packing_stream(Packing_stream&& rhs): iostream_type(rhs.rdbuf()) {}
-		Packing_stream(const Packing_stream&) = delete;
-		Packing_stream() = delete;
+			Packing_stream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
+			Packing_stream& operator<<(char rhs) { return write(rhs); }
+			Packing_stream& operator<<(int8_t rhs)  { return write(rhs); }
+			Packing_stream& operator<<(int16_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(int32_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(int64_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(uint8_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(uint16_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(uint32_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(uint64_t rhs) { return write(rhs); }
+			Packing_stream& operator<<(float rhs) { return write(rhs); }
+			Packing_stream& operator<<(double rhs) { return write(rhs); }
+//			Packing_stream& operator<<(long double rhs) { return write(rhs); }
+			Packing_stream& operator<<(const std::string& rhs) { return write(rhs); }
+			template<class T>
+			Packing_stream& operator<<(const Bytes<T>& rhs) {
+				return this->write(rhs.begin(), rhs.size());
+			}
 
-		Packing_stream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
-		Packing_stream& operator<<(char rhs) { return write(rhs); }
-		Packing_stream& operator<<(int8_t rhs)  { return write(rhs); }
-		Packing_stream& operator<<(int16_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(int32_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(int64_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(uint8_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(uint16_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(uint32_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(uint64_t rhs) { return write(rhs); }
-		Packing_stream& operator<<(float rhs) { return write(rhs); }
-		Packing_stream& operator<<(double rhs) { return write(rhs); }
-//		Packing_stream& operator<<(long double rhs) { return write(rhs); }
-		Packing_stream& operator<<(const std::string& rhs) { return write(rhs); }
-		template<class T>
-		Packing_stream& operator<<(const Bytes<T>& rhs) {
-			return this->write(rhs.begin(), rhs.size());
-		}
+			Packing_stream& operator>>(bool& rhs) {
+				char c = 0; read(c); rhs = c == 1; return *this;
+			}
+			Packing_stream& operator>>(char& rhs) { return read(rhs); }
+			Packing_stream& operator>>(int8_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(int16_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(int32_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(int64_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(uint8_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(uint16_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(uint32_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(uint64_t& rhs) { return read(rhs); }
+			Packing_stream& operator>>(float& rhs) { return read(rhs); }
+			Packing_stream& operator>>(double& rhs) { return read(rhs); }
+//			Packing_stream& operator>>(long double& rhs) { return read(rhs); }
+			Packing_stream& operator>>(std::string& rhs) { return read(rhs); }
+			template<class T>
+			Packing_stream& operator>>(Bytes<T>& rhs) {
+				return this->read(rhs.begin(), rhs.size());
+			}
 
-		Packing_stream& operator>>(bool& rhs) {
-			char c = 0; read(c); rhs = c == 1; return *this;
-		}
-		Packing_stream& operator>>(char& rhs) { return read(rhs); }
-		Packing_stream& operator>>(int8_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(int16_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(int32_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(int64_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(uint8_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(uint16_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(uint32_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(uint64_t& rhs) { return read(rhs); }
-		Packing_stream& operator>>(float& rhs) { return read(rhs); }
-		Packing_stream& operator>>(double& rhs) { return read(rhs); }
-//		Packing_stream& operator>>(long double& rhs) { return read(rhs); }
-		Packing_stream& operator>>(std::string& rhs) { return read(rhs); }
-		template<class T>
-		Packing_stream& operator>>(Bytes<T>& rhs) {
-			return this->read(rhs.begin(), rhs.size());
-		}
+			this_type& write(const Ch* buf, std::streamsize n) {
+				this->iostream_type::write(buf, n);
+				return *this;
+			}
 
-		this_type& write(const Ch* buf, std::streamsize n) {
-			this->iostream_type::write(buf, n);
-			return *this;
-		}
+			this_type& read(Ch* buf, std::streamsize n) {
+				this->iostream_type::read(buf, n);
+				return *this;
+			}
 
-		this_type& read(Ch* buf, std::streamsize n) {
-			this->iostream_type::read(buf, n);
-			return *this;
-		}
+		private:
 
-	private:
-
-//		template<class T>
-//		static void debug(std::ostream& out, T val) {
-//			int n = sizeof val;
-//			unsigned char* p = reinterpret_cast<unsigned char*>(&val);
-//			for (int i=0; i<n; ++i) {
-//				out << std::setw(2) << (unsigned int)p[i];
+//			template<class T>
+//			static void debug(std::ostream& out, T val) {
+//				int n = sizeof val;
+//				unsigned char* p = reinterpret_cast<unsigned char*>(&val);
+//				for (int i=0; i<n; ++i) {
+//					out << std::setw(2) << (unsigned int)p[i];
+//				}
 //			}
-//		}
 
-		template<class T>
-		Packing_stream& write(T rhs) {
-#ifndef IGNORE_ISO_IEC559
-			static_assert(std::is_integral<T>::value
-				|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559), 
-				"This system does not support ISO IEC 559"
-	            " floating point representation for either float, double or long double"
-	            " types, i.e. there is no portable way of"
-	            " transmitting floating point numbers over the network"
-	            " without precision loss. If all computers in the network do not"
-	            " conform to this standard but represent floating point"
-	            " numbers exactly in the same way, you can ignore this assertion"
-	            " by defining IGNORE_ISO_IEC559.");
-#endif
-			Bytes<T> val = rhs;
-			val.to_network_format();
-//			Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
-//			debug(Logger<Level::IO>(), rhs);
-//			Logger<Level::IO>() << " to ";
-//			debug(Logger<Level::IO>(), val.val);
-//			Logger<Level::IO>() << std::dec << std::endl;
-//			this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
-			this->operator<<(val);
-			return *this;
-		}
+			template<class T>
+			Packing_stream& write(T rhs) {
+			#ifndef IGNORE_ISO_IEC559
+				static_assert(std::is_integral<T>::value
+					|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559), 
+					"This system does not support ISO IEC 559"
+		            " floating point representation for either float, double or long double"
+		            " types, i.e. there is no portable way of"
+		            " transmitting floating point numbers over the network"
+		            " without precision loss. If all computers in the network do not"
+		            " conform to this standard but represent floating point"
+		            " numbers exactly in the same way, you can ignore this assertion"
+		            " by defining IGNORE_ISO_IEC559.");
+			#endif
+				Bytes<T> val = rhs;
+				val.to_network_format();
+//				Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
+//				debug(Logger<Level::IO>(), rhs);
+//				Logger<Level::IO>() << " to ";
+//				debug(Logger<Level::IO>(), val.val);
+//				Logger<Level::IO>() << std::dec << std::endl;
+//				this->iostream_type::write(static_cast<const Ch*>(val), sizeof(rhs));
+				this->operator<<(val);
+				return *this;
+			}
 
-		Packing_stream& write(const std::string& rhs) {
-			Size length = static_cast<Size>(rhs.size());
-//			Logger<Level::IO>() << "Writing string of length = " << length << std::endl;
-			write(length);
-			this->iostream_type::write(reinterpret_cast<const char_type*>(rhs.c_str()), length);
-			return *this;
-		}
+			Packing_stream& write(const std::string& rhs) {
+				Size length = static_cast<Size>(rhs.size());
+//				Logger<Level::IO>() << "Writing string of length = " << length << std::endl;
+				write(length);
+				this->iostream_type::write(reinterpret_cast<const char_type*>(rhs.c_str()), length);
+				return *this;
+			}
 
-		template<class T>
-		Packing_stream& read(T& rhs) {
-			Bytes<T> val;
-			this->iostream_type::read(static_cast<Ch*>(val), sizeof(rhs));
-			val.to_host_format();
-			rhs = val;
-//			Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
-//			debug(Logger<Level::IO>(), val);
-//			Logger<Level::IO>() << " to ";
-//			debug(Logger<Level::IO>(), rhs);
-//			Logger<Level::IO>() << std::dec << std::endl;
-			return *this;
-		}
+			template<class T>
+			Packing_stream& read(T& rhs) {
+				Bytes<T> val;
+				this->iostream_type::read(static_cast<Ch*>(val), sizeof(rhs));
+				val.to_host_format();
+				rhs = val;
+//				Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
+//				debug(Logger<Level::IO>(), val);
+//				Logger<Level::IO>() << " to ";
+//				debug(Logger<Level::IO>(), rhs);
+//				Logger<Level::IO>() << std::dec << std::endl;
+				return *this;
+			}
 
-		Packing_stream& read(std::string& rhs) {
-			Size length;
-			read(length);
-			std::string::value_type* bytes = new std::string::value_type[length];
-//			Logger<Level::IO>() << "Reading string of length = " << length << std::endl;
-			this->iostream_type::read(reinterpret_cast<char_type*>(bytes), length);
-			rhs.assign(bytes, bytes + length);
-			delete[] bytes;
-			return *this;
-		}
+			Packing_stream& read(std::string& rhs) {
+				Size length;
+				read(length);
+				std::string::value_type* bytes = new std::string::value_type[length];
+//				Logger<Level::IO>() << "Reading string of length = " << length << std::endl;
+				this->iostream_type::read(reinterpret_cast<char_type*>(bytes), length);
+				rhs.assign(bytes, bytes + length);
+				delete[] bytes;
+				return *this;
+			}
 
-	};
+		};
+	}
 
-	typedef Packing_stream<char> packstream;
+	typedef components::basic_fdbuf<char> fdbuf;
+	typedef components::basic_ifdstream<char> ifdstream;
+	typedef components::basic_ofdstream<char> ofdstream;
+	typedef components::basic_kstream<char> kstream;
+	typedef components::Packing_stream<char> packstream;
 
 	struct End_packet {
 		friend std::ostream& operator<<(std::ostream& out, End_packet) {

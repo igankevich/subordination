@@ -1,4 +1,4 @@
-#include <factory/factory.hh>
+#include <libfactory.cc>
 
 using namespace factory;
 
