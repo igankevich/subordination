@@ -175,4 +175,65 @@ namespace factory {
 		const T& val;
 	};
 
+	namespace components {
+
+		template<class Ifa>
+		struct ifaddrs_iterator:
+			public std::iterator<std::forward_iterator_tag, Ifa>
+		{
+			typedef Ifa ifaddrs_type;
+
+			explicit constexpr
+			ifaddrs_iterator(ifaddrs_type* rhs): _addr(rhs) {}
+			constexpr ifaddrs_iterator() = default;
+			inline ~ifaddrs_iterator() = default;
+			constexpr ifaddrs_iterator(const ifaddrs_iterator&) = default;
+			inline ifaddrs_iterator& operator=(const ifaddrs_iterator&) = default;
+			constexpr bool operator==(const ifaddrs_iterator& rhs) const { return this->_addr == rhs._addr; }
+			constexpr bool operator!=(const ifaddrs_iterator& rhs) const { return !operator==(rhs); }
+		
+			inline ifaddrs_type& operator*() { return *this->_addr; }
+			constexpr const ifaddrs_type& operator*() const { return *this->_addr; }
+			inline ifaddrs_type* operator->() { return this->_addr; }
+			constexpr const ifaddrs_type* operator->() const { return this->_addr; }
+			inline ifaddrs_iterator& operator++() { this->next(); return *this; }
+			inline ifaddrs_iterator& operator++(int) {
+				ifaddrs_iterator tmp(this); this->next(); return tmp;
+			}
+
+		private:
+			inline void next() { this->_addr = this->_addr->ifa_next; }
+
+			ifaddrs_type* _addr;
+		};
+
+		struct Ifaddrs {
+
+			typedef struct ::ifaddrs ifaddrs_type;
+			typedef ifaddrs_type value_type;
+			typedef ifaddrs_iterator<ifaddrs_type> iterator;
+			typedef std::size_t size_type;
+
+			Ifaddrs() {
+				check(::getifaddrs(&this->_addrs),
+					__FILE__, __LINE__, __func__);
+			}
+			~Ifaddrs() { ::freeifaddrs(this->_addrs); }
+
+			iterator begin() { return iterator(this->_addrs); }
+			iterator begin() const { return iterator(this->_addrs); }
+			static constexpr iterator end() { return iterator(); }
+
+			bool empty() const { return this->_addrs->ifa_next == nullptr; }
+			size_type size() const {
+				return std::count_if(this->begin(), this->end(),
+					[] (const value_type&) { return true; });
+			}
+
+		private:
+			ifaddrs_type* _addrs = nullptr;
+		};
+
+	}
+
 }

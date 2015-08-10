@@ -80,68 +80,37 @@ namespace factory {
 		
 		std::vector<Address_range> discover_neighbours();
 
-/*
-		Endpoint random_endpoint(const std::vector<Address_range>& addrs, Port port) {
-
-			typedef typename Address_range::Int I;
-
-			size_t n = addrs.size();
-			I total_count = 0;
-			for (size_t i=0; i<n; ++i) {
-				total_count += addrs[i].end() - addrs[i].start();
-			}
-
-			typedef std::default_random_engine::result_type Res_type;
-			static std::default_random_engine generator(static_cast<Res_type>(std::chrono::steady_clock::now().time_since_epoch().count()));
-			std::uniform_int_distribution<I> distribution(0, total_count-1);
-			I m = distribution(generator);
-
-			size_t i = 0;
-			I cnt;
-			while (m > (cnt = addrs[i].end() - addrs[i].start()) && i < n) {
-				m -= cnt;
-				i++;
-			}
-
-			I addr = addrs[i].start() + m;
-			return Endpoint(addr, port);
-		}
-		*/
-
 		inline
-		uint32_t get_bind_address() {
+		Endpoint get_bind_address() {
 
-			uint32_t ret = 0;
+			Endpoint ret;
 		
-			struct ::ifaddrs* ifaddr;
-			check(::getifaddrs(&ifaddr),
-				__FILE__, __LINE__, __func__);
-		
-			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+			Ifaddrs addrs;
+			Ifaddrs::iterator result = 
+			std::find_if(addrs.begin(), addrs.end(), [] (const Ifaddrs::ifaddrs_type& rhs) {
 
-				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
 					// ignore non-internet networks
-					continue;
+					return false;
 				}
 
-				Endpoint addr(*ifa->ifa_addr);
+				Endpoint addr(*rhs.ifa_addr);
 				if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
 					// ignore localhost and non-IPv4 addresses
-					continue;
+					return false;
 				}
 
-				Endpoint netmask(*ifa->ifa_netmask);
+				Endpoint netmask(*rhs.ifa_netmask);
 				if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
 					// ignore wide-area networks
-					continue;
+					return false;
 				}
 		
-				ret = addr.address();
-		
-				break;
+				return true;
+			});
+			if (result != addrs.end()) {
+				ret = Endpoint(*result->ifa_addr);
 			}
-		
-			::freeifaddrs(ifaddr);
 		
 			return ret;
 		}

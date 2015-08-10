@@ -212,7 +212,7 @@ namespace factory {
 				stop_all_factories();
 				static int num_calls = 0;
 				static const int MAX_CALLS = 3;
-				num_calls++;
+				++num_calls;
 				std::clog << "Ctrl-C shutdown." << std::endl;
 				if (num_calls >= MAX_CALLS) {
 					std::clog << "MAX_CALLS reached. Aborting." << std::endl;
@@ -220,6 +220,7 @@ namespace factory {
 				}
 			}
 
+			[[noreturn]]
 			static void print_backtrace(int) {
 				throw Error("segmentation fault", __FILE__, __LINE__, __func__);
 			}
