@@ -49,7 +49,7 @@ struct Test_endpoint {
 		for (size_t i=0; i<addrs.size(); ++i) {
 			if (addrs[i] != addrs2[i]) {
 				std::stringstream msg;
-				msg << "[multiple] Addresses does not match: "
+				msg << "[multiple] Addresses do not match: "
 					<< addrs[i] << " /= " << addrs2[i];
 				throw std::runtime_error(msg.str());
 			}
@@ -181,7 +181,7 @@ struct Test_endpoint {
 
 		if (addrs.size() != addrs2.size()) {
 			std::stringstream msg;
-			msg << "[multiple] Read/write arrays size do not match: "
+			msg << "[io] Read/write arrays size do not match: "
 				<< addrs.size() << " /= " << addrs2.size();
 			throw std::runtime_error(msg.str());
 		}
@@ -189,7 +189,7 @@ struct Test_endpoint {
 		for (size_t i=0; i<addrs.size(); ++i) {
 			if (addrs[i] != addrs2[i]) {
 				std::stringstream msg;
-				msg << "[multiple] Addresses does not match: "
+				msg << "[io] Addresses does not match: "
 					<< addrs[i] << " /= " << addrs2[i];
 				throw std::runtime_error(msg.str());
 			}

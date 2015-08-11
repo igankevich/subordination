@@ -1,32 +1,3 @@
-#ifdef FACTORY_PACKSTREAM
-namespace factory {
-	// TODO: this is not portable (now it is even less portable than it used to be...)
-	inline
-	packstream& operator<<(packstream& out, const Endpoint& rhs) {
-		return out << make_bytes(rhs);
-	}
-	inline
-	packstream& operator>>(packstream& in, Endpoint& rhs) {
-		Bytes<Endpoint> tmp;
-		in.read(tmp.begin(), tmp.size());
-		rhs = tmp;
-		return in;
-	}
-	inline
-	std::streambuf& operator<<(std::streambuf& buf, const Endpoint& rhs) {
-		Bytes<Endpoint> bytes = rhs;
-		buf.sputn(bytes.begin(), bytes.size());
-		return buf;
-	}
-	inline
-	std::streambuf& operator>>(std::streambuf& buf, Endpoint& rhs) {
-		Bytes<Endpoint> bytes;
-		buf.sgetn(bytes.begin(), bytes.size());
-		rhs = bytes;
-		return buf;
-	}
-}
-#else
 namespace factory {
 
 	typedef std::string Host;
@@ -77,14 +48,26 @@ namespace factory {
 	
 		typedef ::in_addr_t Rep;
 		typedef struct ::in_addr Addr;
+		typedef struct ::sockaddr_in sin_type;
+		typedef struct ::in_addr in_type;
 	
 		constexpr IPv4_addr(): addr(0) {}
 		constexpr IPv4_addr(Rep a): addr(a) {}
-		constexpr IPv4_addr(const IPv4_addr&) = default;
-		constexpr IPv4_addr(const struct ::sockaddr_in& a): addr(a.sin_addr.s_addr) {}
-		constexpr IPv4_addr(const struct ::in_addr& a): addr(a.s_addr) {}
+
+		constexpr
+		IPv4_addr(const IPv4_addr& rhs) noexcept:
+			addr(rhs.addr) {}
+
+		constexpr
+		IPv4_addr(const sin_type& rhs) noexcept:
+			IPv4_addr(rhs.sin_addr) {}
+
+		constexpr
+		IPv4_addr(const in_type& rhs) noexcept:
+			addr(rhs.s_addr) {}
 	
-		friend std::ostream& operator<<(std::ostream& out, IPv4_addr rhs) {
+		friend std::ostream&
+		operator<<(std::ostream& out, IPv4_addr rhs) {
 			using namespace components;
 			return out
 				<< ((rhs.addr >> 0)  & UINT32_C(0xff)) << Dot()
@@ -93,7 +76,8 @@ namespace factory {
 				<< ((rhs.addr >> 24) & UINT32_C(0xff));
 		}
 	
-		friend std::istream& operator>>(std::istream& in, IPv4_addr& rhs) {
+		friend std::istream&
+		operator>>(std::istream& in, IPv4_addr& rhs) {
 			using namespace components;
 			Octet o1, o2, o3, o4;
 			in >> o1 >> Dot() >> o2 >> Dot() >> o3 >> Dot() >> o4;
@@ -105,6 +89,16 @@ namespace factory {
 					((o4.rep() << 24) & UINT32_C(0xff000000));
 			}
 			return in;
+		}
+
+		friend packstream&
+		operator<<(packstream& out, const IPv4_addr& rhs) {
+			return out << rhs.raw;
+		}
+
+		friend packstream&
+		operator>>(packstream& in, IPv4_addr& rhs) {
+			return in >> rhs.raw;
 		}
 	
 		constexpr operator Rep() const { return addr; }
@@ -120,6 +114,7 @@ namespace factory {
 	private:
 		Rep addr;
 		Addr inaddr;
+		Bytes<Rep> raw;
 	};
 
 	namespace components {
@@ -170,7 +165,10 @@ namespace factory {
 		typedef struct ::in6_addr Addr;
 
 		constexpr IPv6_addr(): in_addr6{} {}
-		constexpr IPv6_addr(const IPv6_addr&) = default;
+
+		constexpr
+		IPv6_addr(const IPv6_addr& rhs) noexcept:
+			in_addr6(rhs.in_addr6) {}
 		constexpr IPv6_addr(const struct ::sockaddr_in6& a): in_addr6(a.sin6_addr) {}
 		constexpr IPv6_addr(const struct ::in6_addr& a): in_addr6(a) {}
 
@@ -263,6 +261,16 @@ namespace factory {
 			return in;
 		}
 
+		friend packstream&
+		operator<<(packstream& out, const IPv6_addr& rhs) {
+			return out << rhs.raw;
+		}
+
+		friend packstream&
+		operator>>(packstream& in, IPv6_addr& rhs) {
+			return in >> rhs.raw;
+		}
+
 	private:
 		constexpr const Field* begin() const { return addr; }
 		constexpr const Field* end() const { return addr + num_fields(); }
@@ -275,6 +283,7 @@ namespace factory {
 
 		Field addr[8];
 		Addr in_addr6;
+		Bytes<Addr> raw;
 	};
 
 	union Endpoint {
@@ -287,19 +296,24 @@ namespace factory {
 		typedef ::socklen_t socklen_type;
 		typedef ::sa_family_t family_type;
 		typedef ::in_addr_t addr4_type;
+		typedef ::in_port_t port_type;
 		typedef std::uint128_t addr6_type;
 
 		constexpr
 		Endpoint() noexcept {}
 
 		constexpr
-		Endpoint(const Endpoint&) noexcept = default;
+		Endpoint(const Endpoint& rhs) noexcept:
+			_addr6(rhs._addr6) {}
 
 		Endpoint(const char* h, const Port p) { addr(h, p); }
 
 		constexpr
 		Endpoint(const IPv4_addr h, const Port p) noexcept:
 			_addr6{
+#if HAVE_SOCKADDR_LEN
+				0,
+#endif
 				AF_INET,
 				to_network_format<Port>(p),
 				to_network_format<IPv4_addr>(h.rep()),
@@ -310,6 +324,9 @@ namespace factory {
 		constexpr
 		Endpoint(const IPv6_addr& h, const Port p) noexcept:
 			_addr6{
+#if HAVE_SOCKADDR_LEN
+				0,
+#endif
 				AF_INET6,
 				to_network_format<Port>(p),
 				0, // flowinfo
@@ -332,6 +349,9 @@ namespace factory {
 		constexpr
 		Endpoint(const Endpoint& rhs, const Port newport) noexcept:
 			_addr6{
+#if HAVE_SOCKADDR_LEN
+				0,
+#endif
 				rhs.family(),
 				to_network_format<Port>(newport),
 				rhs.family() == AF_INET6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
@@ -373,7 +393,8 @@ namespace factory {
 			return !operator bool();
 		}
 
-		friend std::ostream& operator<<(std::ostream& out, const Endpoint& rhs) {
+		friend std::ostream&
+		operator<<(std::ostream& out, const Endpoint& rhs) {
 			std::ostream::sentry s(out);
 			if (s) {
 				using namespace components;
@@ -381,34 +402,70 @@ namespace factory {
 					out << Left_br() << rhs.addr6() << Right_br()
 						<< Colon() << to_host_format<Port>(rhs.port6());
 				} else {
-					out << rhs.addr4() << Colon() << to_host_format<Port>(rhs.port4());
+					Port port = to_host_format<Port>(rhs.port4());
+					std::clog << "Writing host = "
+						<< rhs.addr4() << ':' << port << std::endl;
+					out << rhs.addr4() << Colon() << port;
 				}
 			}
 			return out;
 		}
 
-		friend std::istream& operator>>(std::istream& in, Endpoint& rhs) {
+		friend std::istream&
+		operator>>(std::istream& in, Endpoint& rhs) {
 			std::istream::sentry s(in);
 			if (s) {
 				using namespace components;
 				IPv4_addr host;
-				Port port;
+				Port port = 0;
 				std::ios_base::fmtflags oldf = in.flags();
 				in >> std::noskipws;
 				std::streampos oldg = in.tellg();
 				if (in >> host >> Colon() >> port) {
 					rhs.addr4(host, port);
-					std::clog << "Reading host = " << host << std::endl;
+					std::clog << "Reading host = "
+						<< host << ':' << port << std::endl;
 				} else {
 					in.clear();
 					in.seekg(oldg);
 					IPv6_addr host6;
 					if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
 						rhs.addr6(host6, port);
-						std::clog << "Reading host = " << host6 << std::endl;
+						std::clog << "Reading host = "
+							<< host6 << ':' << port << std::endl;
 					}
 				}
 				in.flags(oldf);
+			}
+			return in;
+		}
+
+		// TODO: this is not portable (now it is even less portable than it used to be...)
+		friend packstream&
+		operator<<(packstream& out, const Endpoint& rhs) {
+			out << rhs.family();
+			if (rhs.family() == AF_INET6) {
+				out << rhs.addr6() << make_bytes(rhs.port6());
+			} else {
+				out << rhs.addr4() << make_bytes(rhs.port4());
+			}
+			return out;
+		}
+
+		friend packstream&
+		operator>>(packstream& in, Endpoint& rhs) {
+			in >> rhs._addr6.sin6_family;
+			Bytes<Port> port;
+			if (rhs.family() == AF_INET6) {
+				IPv6_addr addr;
+				in >> addr >> port;
+				rhs._addr6.sin6_addr = addr;
+				rhs._addr6.sin6_port = port;
+			} else {
+				IPv4_addr addr;
+				in >> addr >> port;
+				rhs._addr4.sin_addr = addr;
+				rhs._addr4.sin_port = port;
 			}
 			return in;
 		}
@@ -527,6 +584,7 @@ namespace factory {
 	};
 
 	static_assert(sizeof(Endpoint) == sizeof(Endpoint::sin6_type), "bad endpoint size");
+	static_assert(sizeof(Endpoint::family_type) == 1, "bad family_type size");
+	static_assert(sizeof(Endpoint::port_type) == 2, "bad port_type size");
 
 }
-#endif
