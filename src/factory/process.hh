@@ -421,10 +421,12 @@ namespace factory {
 		struct Semaphore {
 
 			typedef ::sem_t sem_type;
+			typedef int flags_type;
 
 			Semaphore() = default;
 
-			explicit Semaphore(const std::string& name, bool owner=true):
+			explicit
+			Semaphore(const std::string& name, bool owner=true):
 				_name(name),
 				_owner(owner),
 				_sem(this->open_sem())
@@ -472,8 +474,12 @@ namespace factory {
 
 			sem_type* open_sem() {
 				return check(::sem_open(this->_name.c_str(),
-					this->_owner ? (O_CREAT | O_EXCL) : 0, 0666, 0), SEM_FAILED,
+					this->determine_flags(), 0666, 0), SEM_FAILED,
 					__FILE__, __LINE__, __func__);
+			}
+
+			flags_type determine_flags() const {
+				return this->_owner ? (O_CREAT | O_EXCL) : 0;
 			}
 
 			std::string _name;

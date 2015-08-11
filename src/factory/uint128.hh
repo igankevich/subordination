@@ -27,6 +27,7 @@ namespace std {
 struct uint128 {
 
 	typedef uint64_t base_type;
+	static_assert(std::is_unsigned<base_type>::value, "bad base type");
 
 	// constructors for all basic types
 	uint128() = default;
@@ -91,12 +92,22 @@ struct uint128 {
     uint128 operator++(int) const { return ++uint128(*this); }
     uint128 operator--(int) const { return --uint128(*this); }
 
+//	uint128 operator+(const uint128& rhs) const { return uint128(*this) += rhs; }
+	constexpr
+	uint128 operator+(const uint128& rhs) {
+    	return do_plus(*this, rhs, this->lo + rhs.lo);
+	}
+	static constexpr
+	uint128 do_plus(const uint128& lhs, const uint128& rhs, const base_type new_lo) {
+		return uint128(new_lo, lhs.hi + rhs.hi
+			+ (new_lo < lhs.lo ? base_type(1) : base_type(0)));
+	}
 	// basic math operators
-    uint128& operator+=(const uint128 &b) {
+    uint128& operator+=(const uint128& rhs) {
 		const base_type old_lo = lo;
 
-    	lo += b.lo;
-    	hi += b.hi;
+    	lo += rhs.lo;
+    	hi += rhs.hi;
 
 		if (lo < old_lo) {
 			++hi;
@@ -236,7 +247,6 @@ struct uint128 {
 	}
 
 	// derived arithmetic operators
-	uint128 operator+(const uint128& rhs) const { return uint128(*this) += rhs; }
 	uint128 operator-(const uint128& rhs) const { return uint128(*this) -= rhs; }
 	uint128 operator/(const uint128& rhs) const { return uint128(*this) /= rhs; }
 	uint128 operator*(const uint128& rhs) const { return uint128(*this) *= rhs; }
@@ -429,5 +439,60 @@ namespace std {
 	}
 	std::ostream& operator<<(std::ostream& o, __uint128_t rhs);
 	std::istream& operator>>(std::istream& in, __uint128_t& rhs);
+
+	namespace components {
+		template<unsigned int radix, unsigned int No, char ... Chars>
+		struct is_valid_uint128_literal {
+			static const bool value = true;
+		};
+
+		template<unsigned int radix, unsigned int No, char ch, char ... Chars>
+		struct is_valid_uint128_literal<radix, No, ch, Chars...> {
+
+			static const unsigned int new_radix = 
+				No == 0 && ch == '0' ? 8 :
+				No == 1 && radix == 8 && ch == 'x' ? 16 :
+				10;
+
+			static const bool value =
+				(No == 0 && ch >= '0' && ch <= '9')
+				|| (No == 1 && radix == 8 && ch == 'x')
+				|| (No == 1 && radix == 8 && ch >= '1' && ch <= '9')
+				|| (No == 1 && radix == 10 && ch >= '0' && ch <= '9')
+				|| (No >= 2 && (
+					(radix == 10 && ch >= '0' && ch <= '9')
+					|| ((radix == 16 && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'))))
+					|| (radix == 8 && ch >= '0' && ch <= '7')
+				))
+				&& is_valid_uint128_literal<new_radix, No+1, Chars...>::value;
+		};
+
+		template<unsigned int radix, class Ch>
+		constexpr Ch to_int(Ch ch) {
+			return radix == 16 && ch >= 'a' ? ch-'a'+10 : ch-'0';
+		}
+		template<unsigned int radix, class It>
+		constexpr __uint128_t do_parse_uint128(It first, It last, __uint128_t val=0) {
+			return first == last ? val
+				: do_parse_uint128<radix>(first+1, last, 
+				val*radix + to_int<radix>(std::tolower(*first)));
+		}
+		template<std::size_t n, class Arr>
+		constexpr __uint128_t parse_uint128(Arr arr) {
+			static_assert(n != 0, "empty literal");
+			return
+				n >= 2 && arr[0] == '0' && arr[1] == 'x' ? do_parse_uint128<16>(arr+2, arr + n) :
+				n >= 2 && arr[0] == '0' && arr[1] >= '1' && arr[1] <= '9' ? do_parse_uint128<8>(arr+1, arr + n) :
+				do_parse_uint128<10>(arr, arr+n);
+		}
+	}
+}
+
+template<char ... Chars>
+constexpr __uint128_t
+operator"" _u128() noexcept {
+	using namespace std::components;
+	static_assert(is_valid_uint128_literal<10, 0, Chars...>::value, "bad uint128 literal");
+	return parse_uint128<sizeof...(Chars)>((const char[]){Chars...});
 }
 #endif

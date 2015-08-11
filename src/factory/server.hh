@@ -15,18 +15,18 @@ namespace factory {
 
 		struct Resident {
 
-			Resident() {}
-			virtual ~Resident() {}
+			Resident() = default;
+			virtual ~Resident() = default;
 
 			bool stopped() const { return _stopped; }
 			void stopped(bool b) { _stopped = b; }
 
-			void wait() {}
+			void start() {}
 			virtual void stop() { stopped(true); }
+			void wait() {}
 			virtual void stop_now() {}
 			// TODO: boilerplate :(
 			virtual Endpoint addr() const { return Endpoint(); }
-			void start() {}
 
 		protected:
 			void wait_impl() {}
@@ -36,35 +36,65 @@ namespace factory {
 			volatile bool _stopped = false;
 		};
 
-		template<class Sub, class Super>
-		struct Server_link: public Super {
+		template<class Sub, class Base>
+		struct Server_link: public Base {
+			typedef Base base_type;
+			typedef Sub derived_type;
 			void wait() {
-				Super::wait();
-				static_cast<Sub*>(this)->Sub::wait_impl();
+				base_type::wait();
+				static_cast<derived_type*>(this)->derived_type::wait_impl();
 			}
 			void stop() {
-				Super::stop();
-				static_cast<Sub*>(this)->Sub::stop_impl();
+				base_type::stop();
+				static_cast<derived_type*>(this)->derived_type::stop_impl();
 			}
 		};
 
 		template<class K>
 		struct Server: public virtual Resident {
 
-			typedef Server<K> This;
+			typedef K kernel_type;
 			typedef K Kernel;
 
 			Server() = default;
-			virtual ~Server() {}
-			void operator=(This&) = delete;
+			virtual ~Server() = default;
+			Server& operator=(Server&) = delete;
 
-			virtual void send(Kernel*) = 0;
-			This* parent() const { return this->_parent; }
-			void setparent(This* rhs) { this->_parent = rhs; }
-			This* root() { return this->_parent ? this->_parent->root() : this; }
+			void setparent(Server* rhs) {
+				if (this->_parent) {
+					this->_parent->remove_child(this);
+				}
+				this->_parent = rhs;
+				if (rhs) {
+					rhs->add_child(this);
+				}
+			}
+
+			inline Server*
+			parent() const noexcept {
+				return this->_parent;
+			}
+
+			inline Server*
+			root() noexcept {
+				return this->_parent
+					? this->_parent->root()
+					: this;
+			}
+
+			inline const Server*
+			root() const noexcept {
+				return this->_parent
+					? this->_parent->root()
+					: this;
+			}
+
+			virtual void add_child(Server*) {}
+			virtual void remove_child(Server*) {}
+			virtual void send(kernel_type*) = 0;
 
 		private:
-			This* _parent = nullptr;
+			Server* _parent = nullptr;
 		};
 
 		template<class Server, class Sub_server>

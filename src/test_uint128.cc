@@ -1,5 +1,6 @@
 #define FACTORY_FORCE_CUSTOM_UINT128
 #include <factory/factory_base.hh>
+#include "libfactory.cc"
 
 using namespace factory;
 
@@ -127,6 +128,9 @@ void test___uint128_t() {
 	check_read("ffffffff", __uint128_t(0xffffffff), std::hex);
 	check_read("abcdef", __uint128_t(0xabcdef), std::hex);
 	check_read("AbCdeF1234", __uint128_t(0xabcdef1234), std::hex);
+	check_write(10000_u128, "10000");
+	check_write(0xabcde_u128, "abcde", std::hex);
+	check_write(010000_u128, "10000", std::oct);
 }
 #else
 void test___uint128_t() {}
