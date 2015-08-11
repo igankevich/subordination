@@ -14,6 +14,7 @@ DONE [320:8bbef1f9628a] Introduce ``flags'' field in Basic_kernel. Possible uses
 DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 DONE [] Remove factory_stop() and other global functions. Now multiple factory instances, and custom factory instances are possible.
+DONE [] Close all Socket in destructor (use rvalue references).
 
 ??? [needs more testing] Make Factory::stop() reliable.
 ??? [needs perf tests] Filter out chars <= 31 and != \r\n on std::cout stream.
@@ -43,8 +44,7 @@ Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
 Add common header to source files.
 Add license.
 Filter environment variables on startup (whitelist).
-Minimise the use of bare pointers.
+Minimise the use of bare pointers (use reference_wrappers, unique_ptrs etc.).
 Implement generic state machine for use in kernelbuf and websocketbuf.
 Make locks mutable.
-Close all Socket in destructor (use rvalue references).
 Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.

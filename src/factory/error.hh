@@ -42,11 +42,16 @@ namespace factory {
 		template<Level lvl=Level::KERNEL>
 		struct Logger {
 
-			inline Logger(): _buf() {
+			inline
+			Logger(): _buf() {
 				__logger_mutex.lock();
 				this->next_record();
 			}
-			inline ~Logger() { __logger_mutex.unlock(); }
+
+			inline
+			~Logger() {
+				__logger_mutex.unlock();
+			}
 
 			Logger(const Logger&) = delete;
 			Logger& operator=(const Logger&) = delete;
