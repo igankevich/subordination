@@ -30,7 +30,7 @@ namespace factory {
 namespace factory {
 
 	typedef std::string Host;
-	typedef uint16_t Port;
+	typedef ::in_port_t Port;
 
 	namespace components {
 
@@ -73,12 +73,14 @@ namespace factory {
 		typedef Num<uint8_t, uint32_t> Octet;
 	}
 
-	struct IPv4_addr {
+	union IPv4_addr {
 	
-		typedef uint32_t Rep;
+		typedef ::in_addr_t Rep;
+		typedef struct ::in_addr Addr;
 	
 		constexpr IPv4_addr(): addr(0) {}
 		constexpr IPv4_addr(Rep a): addr(a) {}
+		constexpr IPv4_addr(const IPv4_addr&) = default;
 		constexpr IPv4_addr(const struct ::sockaddr_in& a): addr(a.sin_addr.s_addr) {}
 		constexpr IPv4_addr(const struct ::in_addr& a): addr(a.s_addr) {}
 	
@@ -107,6 +109,7 @@ namespace factory {
 	
 		constexpr operator Rep() const { return addr; }
 		constexpr Rep rep() const { return addr; }
+		constexpr operator const Addr&() const { return this->inaddr; }
 
 		constexpr bool operator==(IPv4_addr rhs) const { return addr == rhs.addr; }
 		constexpr bool operator!=(IPv4_addr rhs) const { return addr != rhs.addr; }
@@ -116,7 +119,46 @@ namespace factory {
 	
 	private:
 		Rep addr;
+		Addr inaddr;
 	};
+
+	namespace components {
+
+		template<unsigned int radix, class Ch>
+		constexpr Ch to_int(Ch ch) {
+			return radix == 16 && ch >= 'a' ? ch-'a'+10 : ch-'0';
+		}
+
+		constexpr uint32_t shift_octet(uint32_t octet, uint32_t nshift) {
+			return nshift == 0 ? (octet & 0xff) :
+				nshift == 8 ? ((octet << nshift) & 0xff00) :
+				nshift == 16 ? ((octet << nshift) & 0xff0000) :
+				nshift == 24 ? ((octet << nshift) & 0xff000000) : 
+				throw "bad nshift";
+		}
+
+		template<uint32_t radix=10, class It>
+		constexpr uint32_t do_parse_ipv4_addr(It first, It last, uint32_t val=0, uint32_t octet=0, uint32_t nshift=0) {
+			return first == last ?
+				(val | shift_octet(octet, nshift)) :
+				*first == '.' ?
+				do_parse_ipv4_addr(first+1, last,
+					val | shift_octet(octet, nshift),
+					0, nshift + 8) :
+				(*first >= '0' && *first <= '9') ?
+				do_parse_ipv4_addr(first+1, last, val,
+					octet*radix + to_int<radix>(*first),
+					nshift) :
+				throw "bad char";
+		}
+
+	}
+
+	constexpr IPv4_addr
+	operator"" _ipv4(const char* arr, std::size_t n) noexcept {
+		using namespace ::factory::components;
+		return do_parse_ipv4_addr(arr, arr+n);
+	}
 
 	union IPv6_addr {
 
@@ -237,7 +279,12 @@ namespace factory {
 		constexpr Endpoint() {}
 		Endpoint(const char* h, Port p) { addr(h, p); }
 		Endpoint(const Host& h, Port p) { addr(h.c_str(), p); }
-		Endpoint(IPv4_addr h, Port p) { addr(h, p); }
+		constexpr Endpoint(const IPv4_addr h, const Port p):
+			_addr4{
+				AF_INET,
+				to_network_format<Port>(p),
+				{ to_network_format<IPv4_addr>(h.rep()) }
+			} {}
 		Endpoint(const IPv6_addr& h, Port p) { addr(h, p); }
 		constexpr Endpoint(const Addr4& rhs): _addr4(rhs) {}
 		constexpr Endpoint(const Addr6& rhs): _addr6(rhs) {}
@@ -373,16 +420,16 @@ namespace factory {
 
 		void addr(const IPv4_addr h, Port p) {
 			_addr4.sin_family = AF_INET;
-			_addr4.sin_addr.s_addr = to_network_format<IPv4_addr::Rep>(h);
 			_addr4.sin_port = to_network_format<Port>(p);
+			_addr4.sin_addr.s_addr = to_network_format<IPv4_addr::Rep>(h);
 		}
 
 		void addr(const IPv6_addr& h, Port p) {
 			Bytes<IPv6_addr> tmp = h;
 			tmp.to_network_format();
 			_addr6.sin6_family = AF_INET6;
-			_addr6.sin6_addr = tmp.value();
 			_addr6.sin6_port = to_network_format<Port>(p);
+			_addr6.sin6_addr = tmp.value();
 		}
 
 		Addr6 _addr6 = {};

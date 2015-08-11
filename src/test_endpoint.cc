@@ -193,6 +193,12 @@ struct Test_endpoint {
 		}
 	}
 
+	void test_literals() {
+		std::cout << "192.168.33.77"_ipv4 << std::endl;
+		constexpr Endpoint endp("192.168.33.77"_ipv4,0);
+		std::cout << endp << std::endl;
+	}
+
 private:
 
 	void check_bool(Endpoint x, bool y) {
@@ -237,6 +243,7 @@ struct App {
 		test.test_variations_ipv4();
 		test.test_operators();
 		test.test_io();
+		test.test_literals();
 	}
 	void test_ipv6() {
 		Test_endpoint<__uint128_t> test;

@@ -467,6 +467,11 @@ namespace std {
 				&& is_valid_uint128_literal<new_radix, No+1, Chars...>::value;
 		};
 
+		constexpr
+		char const_tolower(char ch) {
+			return ch >= 'A' && ch <= 'F' ? ('a'+ch-'A') : ch;
+		}
+
 		template<unsigned int radix, class Ch>
 		constexpr Ch to_int(Ch ch) {
 			return radix == 16 && ch >= 'a' ? ch-'a'+10 : ch-'0';
@@ -475,7 +480,7 @@ namespace std {
 		constexpr __uint128_t do_parse_uint128(It first, It last, __uint128_t val=0) {
 			return first == last ? val
 				: do_parse_uint128<radix>(first+1, last, 
-				val*radix + to_int<radix>(std::tolower(*first)));
+				val*radix + to_int<radix>(const_tolower(*first)));
 		}
 		template<std::size_t n, class Arr>
 		constexpr __uint128_t parse_uint128(Arr arr) {
