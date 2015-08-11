@@ -185,9 +185,7 @@ namespace factory {
 		private:
 
 			Endpoint virtual_addr(Endpoint addr) const {
-				Endpoint vaddr = addr;
-				vaddr.port(server_addr().port());
-				return vaddr;
+				return Endpoint(addr, server_addr().port());
 			}
 
 			void flush_kernels() {
@@ -280,8 +278,7 @@ namespace factory {
 
 			server_type* connect_to_server(Endpoint addr, Event::legacy_event events) {
 				// bind to server address with ephemeral port
-				Endpoint srv_addr = this->server_addr();
-				srv_addr.port(0);
+				Endpoint srv_addr(this->server_addr(), 0);
 				socket_type sock;
 				sock.bind(srv_addr);
 				sock.connect(addr);

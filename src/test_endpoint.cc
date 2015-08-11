@@ -1,4 +1,5 @@
 #include <factory/factory_base.hh>
+#include "test.hh"
 
 using namespace factory;
 
@@ -157,6 +158,8 @@ struct Test_endpoint {
 		check_bool(Endpoint("10::1", 0) < Endpoint("10::2", 0), true);
 		check_bool(Endpoint("10::2", 0) < Endpoint("10::1", 0), false);
 		check_bool(Endpoint("10.0.0.1", 0) < Endpoint("10::1", 0), true);
+		// copying
+		test::equal(Endpoint(Endpoint("10.0.0.1", 1234), 100), Endpoint("10.0.0.1", 100));
 	}
 
 	void test_io() {
@@ -194,9 +197,18 @@ struct Test_endpoint {
 	}
 
 	void test_literals() {
+		constexpr IPv4_addr any4;
+		constexpr IPv6_addr any6;
+		constexpr Endpoint any;
 		std::cout << "192.168.33.77"_ipv4 << std::endl;
 		constexpr Endpoint endp("192.168.33.77"_ipv4,0);
 		std::cout << endp << std::endl;
+		constexpr Endpoint endpX(Endpoint("10.0.0.1"_ipv4, 1234), 100);
+		constexpr Endpoint endpY("10.0.0.1"_ipv4, 100);
+		test::equal(endpX, endpY);
+		constexpr Endpoint endpU(Endpoint(IPv6_addr(), 1234), 100);
+		constexpr Endpoint endpV(IPv6_addr(), 100);
+		test::equal(endpU, endpV);
 	}
 
 private:

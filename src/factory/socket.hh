@@ -83,7 +83,7 @@ namespace factory {
 			}
 
 			void accept(Socket& socket, Endpoint& addr) {
-				Endpoint::Sock_len len = sizeof(Endpoint);
+				Endpoint::socklen_type len = sizeof(Endpoint);
 				socket = Socket(check(::accept(this->_fd, addr.sockaddr(), &len),
 					__FILE__, __LINE__, __func__));
 				socket.setf(Non_block);
@@ -134,7 +134,7 @@ namespace factory {
 				if (!this->is_valid()) {
 					ret = -1;
 				} else {
-					Endpoint::Sock_len sz = sizeof(opt);
+					Endpoint::socklen_type sz = sizeof(opt);
 					check_if_not<std::errc::not_a_socket>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
 						__FILE__, __LINE__, __func__);
 				}
@@ -159,14 +159,14 @@ namespace factory {
 
 			Endpoint bind_addr() const {
 				Endpoint addr;
-				Endpoint::Sock_len len = sizeof(Endpoint);
+				Endpoint::socklen_type len = sizeof(Endpoint);
 				int ret = ::getsockname(this->_fd, addr.sockaddr(), &len);
 				return ret == -1 ? Endpoint() : addr;
 			}
 
 			Endpoint name() const {
 				Endpoint addr;
-				Endpoint::Sock_len len = sizeof(Endpoint);
+				Endpoint::socklen_type len = sizeof(Endpoint);
 				check(::getsockname(this->_fd, addr.sockaddr(), &len),
 					__FILE__, __LINE__, __func__);
 				return addr;
@@ -174,7 +174,7 @@ namespace factory {
 
 			Endpoint peer_name() const {
 				Endpoint addr;
-				Endpoint::Sock_len len = sizeof(Endpoint);
+				Endpoint::socklen_type len = sizeof(Endpoint);
 				check(::getpeername(this->_fd, addr.sockaddr(), &len),
 					__FILE__, __LINE__, __func__);
 				return addr;

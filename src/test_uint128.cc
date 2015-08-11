@@ -128,12 +128,9 @@ void test___uint128_t() {
 	check_read("ffffffff", __uint128_t(0xffffffff), std::hex);
 	check_read("abcdef", __uint128_t(0xabcdef), std::hex);
 	check_read("AbCdeF1234", __uint128_t(0xabcdef1234), std::hex);
-	constexpr __uint128_t x1 = 10000_u128;
-	constexpr __uint128_t x2 = 0xabcde_u128;
-	constexpr __uint128_t x3 = 010000_u128;
-	check_write(x1, "10000");
-	check_write(x2, "abcde", std::hex);
-	check_write(x3, "10000", std::oct);
+	check_write(10000_u128, "10000");
+	check_write(0xabcde_u128, "abcde", std::hex);
+	check_write(010000_u128, "10000", std::oct);
 }
 #else
 void test___uint128_t() {}

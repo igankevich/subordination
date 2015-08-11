@@ -441,31 +441,6 @@ namespace std {
 	std::istream& operator>>(std::istream& in, __uint128_t& rhs);
 
 	namespace components {
-		template<unsigned int radix, unsigned int No, char ... Chars>
-		struct is_valid_uint128_literal {
-			static const bool value = true;
-		};
-
-		template<unsigned int radix, unsigned int No, char ch, char ... Chars>
-		struct is_valid_uint128_literal<radix, No, ch, Chars...> {
-
-			static const unsigned int new_radix = 
-				No == 0 && ch == '0' ? 8 :
-				No == 1 && radix == 8 && ch == 'x' ? 16 :
-				10;
-
-			static const bool value =
-				(No == 0 && ch >= '0' && ch <= '9')
-				|| (No == 1 && radix == 8 && ch == 'x')
-				|| (No == 1 && radix == 8 && ch >= '1' && ch <= '9')
-				|| (No == 1 && radix == 10 && ch >= '0' && ch <= '9')
-				|| (No >= 2 && (
-					(radix == 10 && ch >= '0' && ch <= '9')
-					|| ((radix == 16 && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'))))
-					|| (radix == 8 && ch >= '0' && ch <= '7')
-				))
-				&& is_valid_uint128_literal<new_radix, No+1, Chars...>::value;
-		};
 
 		constexpr
 		char const_tolower(char ch) {
@@ -484,7 +459,6 @@ namespace std {
 		}
 		template<std::size_t n, class Arr>
 		constexpr __uint128_t parse_uint128(Arr arr) {
-			static_assert(n != 0, "empty literal");
 			return
 				n >= 2 && arr[0] == '0' && arr[1] == 'x' ? do_parse_uint128<16>(arr+2, arr + n) :
 				n >= 2 && arr[0] == '0' && arr[1] >= '1' && arr[1] <= '9' ? do_parse_uint128<8>(arr+1, arr + n) :
@@ -497,7 +471,6 @@ template<char ... Chars>
 constexpr __uint128_t
 operator"" _u128() noexcept {
 	using namespace std::components;
-	static_assert(is_valid_uint128_literal<10, 0, Chars...>::value, "bad uint128 literal");
 	return parse_uint128<sizeof...(Chars)>((const char[]){Chars...});
 }
 #endif
