@@ -116,10 +116,12 @@ namespace factory {
 			typedef Result result_type;
 			typedef typename Engine::result_type
 				base_result_type;
-			constexpr const std::size_t
-			NUM_BASE_RESULTS =
-				sizeof(result_type) / sizeof(base_result_type) +
-				sizeof(result_type) % sizeof(base_result_type);
+			static_assert(sizeof(base_result_type) > 0 &&
+				sizeof(result_type) > 0 &&
+				sizeof(result_type) % sizeof(base_result_type) == 0,
+				"bad result type");
+			constexpr const std::size_t NUM_BASE_RESULTS =
+				sizeof(result_type) / sizeof(base_result_type);
 			union {
 				result_type value;
 				base_result_type base[NUM_BASE_RESULTS];
