@@ -3,12 +3,12 @@ using namespace factory;
 
 void spinlock_counter(unsigned nthreads, unsigned increment) {
 	volatile unsigned counter = 0;
-	Spin_mutex m;
+	spin_mutex m;
 	std::vector<std::thread> threads;
 	for (unsigned i=0; i<nthreads; ++i) {
 		threads.push_back(std::thread([&counter, increment, &m] () {
 			for (unsigned j=0; j<increment; ++j) {
-				std::lock_guard<Spin_mutex> lock(m);
+				std::lock_guard<spin_mutex> lock(m);
 				++counter;
 			}
 		}));
@@ -122,13 +122,13 @@ void spinlock_queue(I nthreads, I max) {
 template<class Bigint>
 void test_perf(Bigint m) {
 	Time t0 = current_time_nano();
-	test_spinlock<Bigint>(spinlock_queue<Bigint, Spin_mutex>, 1, m);
-	test_spinlock<Bigint>(spinlock_queue<Bigint, Spin_mutex>, 1, m);
+	test_spinlock<Bigint>(spinlock_queue<Bigint, spin_mutex>, 1, m);
+	test_spinlock<Bigint>(spinlock_queue<Bigint, spin_mutex>, 1, m);
 	Time t1 = current_time_nano();
 	test_spinlock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
 	test_spinlock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
 	Time t2 = current_time_nano();
-	std::cout << "Time(Spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
+	std::cout << "Time(spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
 	std::cout << "Time(std::mutex, " << m << ") = " << t2-t1 << "ns" << std::endl;
 }
 

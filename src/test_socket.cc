@@ -1,11 +1,11 @@
-#include <factory/factory.hh>
+#include "libfactory.cc"
 
 using namespace factory;
 
 #include "datum.hh"
 
 Endpoint server_endpoint("127.0.0.1", 10000);
-Endpoint client_endpoint("127.0.0.1", 20000);
+Endpoint client_endpoint({127,0,0,1}, 20000);
 
 const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 2;
@@ -147,6 +147,10 @@ struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 1) {
+			Logger<Level::TEST>()
+				<< "server=" << server_endpoint
+				<< ",client=" << client_endpoint
+				<< std::endl;
 			uint32_t sleep = sleep_time();
 			Process_group procs;
 			procs.add([&argv, sleep] () {

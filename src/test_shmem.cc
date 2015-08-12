@@ -45,7 +45,7 @@ void test_shmembuf() {
 //template<class T>
 //struct Shmem_queue {
 //
-//	typedef Spin_mutex Mutex;
+//	typedef spin_mutex Mutex;
 ////	typedef std::mutex Mutex;
 //	typedef std::condition_variable Cond;
 //
@@ -178,7 +178,7 @@ void test_shmembuf() {
 //	}
 //	
 //	Shmem_queue<T> _pool;
-//	Semaphore _semaphore;
+//	semaphore _semaphore;
 //	volatile bool stopped = false;
 //	std::thread worker;
 //};

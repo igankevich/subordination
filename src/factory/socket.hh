@@ -57,23 +57,23 @@ namespace factory {
 			void bind(const Endpoint& e) {
 				this->create_socket_if_necessary();
 				this->setopt(Reuse_addr);
+				Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 				check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
 					__FILE__, __LINE__, __func__);
-				Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
 			}
 			
 			void listen() {
+				Logger<Level::COMPONENT>() << "Listening on " << this->name() << std::endl;
 				check(::listen(this->_fd, SOMAXCONN),
 					__FILE__, __LINE__, __func__);
-				Logger<Level::COMPONENT>() << "Listening on " << this->name() << std::endl;
 			}
 
 			void connect(const Endpoint& e) {
 				try {
 					this->create_socket_if_necessary();
+					Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
 					check_if_not<std::errc::operation_in_progress>(::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
 						__FILE__, __LINE__, __func__);
-					Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
 				} catch (std::system_error& err) {
 					Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
 					std::stringstream msg;

@@ -107,7 +107,8 @@ namespace factory {
 		};
 
 		template<size_t No, class F>
-		constexpr Apply_to<No,F> apply_to(F&& f) {
+		constexpr Apply_to<No,F>
+		apply_to(F&& f) {
 			return Apply_to<No,F>(f);
 		}
 
@@ -132,28 +133,6 @@ namespace factory {
 			return result.value;
 		}
 
-		template<class Engine, class T>
-		struct n_random_bytes_engine {
-			
-			typedef T result_type;
-			typedef typename Engine::result_type
-				base_result_type;
-		
-			template<class ... Args>
-			explicit
-			n_random_bytes_engine(Args&& ... args):
-				base_engine(std::forward<Args>(args)...) {}
-			
-			T operator()() {
-				return n_random_bytes<T>(base_engine);
-			}
-		
-			Engine& engine() { return base_engine; }
-		
-		private:
-			Engine base_engine;
-		};
-
 		struct use_flags {
 			explicit
 			use_flags(std::ios_base& s):
@@ -167,6 +146,37 @@ namespace factory {
 		private:
 			std::ios_base& str;
 			std::ios_base::fmtflags oldf;
+		};
+
+		/// Fast mutex for scheduling strategies.
+		struct spin_mutex {
+	
+			inline void
+			lock() noexcept {
+				while (_flag.test_and_set(std::memory_order_acquire));
+			}
+
+			inline void
+			unlock() noexcept {
+				_flag.clear(std::memory_order_release);
+			}
+
+			inline bool
+			try_lock() noexcept {
+				return !_flag.test_and_set(std::memory_order_acquire);
+			}
+	
+			inline
+			spin_mutex() noexcept = default;
+	
+			// disallow copy & move operations
+			spin_mutex(const spin_mutex&) = delete;
+			spin_mutex(spin_mutex&&) = delete;
+			spin_mutex& operator=(const spin_mutex&) = delete;
+			spin_mutex& operator=(spin_mutex&&) = delete;
+	
+		private:
+			std::atomic_flag _flag = ATOMIC_FLAG_INIT;
 		};
 
 	}

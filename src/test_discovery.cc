@@ -949,7 +949,7 @@ struct App {
 			uint32_t npeers = 3;
 			Endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
 			std::string base_ip = "127.0.0.1";
-			Command_line cmdline(argc, argv);
+			bits::Command_line cmdline(argc, argv);
 			cmdline.parse([&bind_addr, &npeers, &base_ip](const std::string& arg, std::istream& in) {
 				     if (arg == "--bind-addr") { in >> bind_addr; }
 				else if (arg == "--num-peers") { in >> npeers; }

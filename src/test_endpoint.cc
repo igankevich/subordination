@@ -3,13 +3,13 @@
 #include "test.hh"
 
 using namespace factory;
+using factory::components::n_random_bytes;
 
 
 template<class T = uint32_t, class IP_addr = IPv4_addr>
 struct Test_endpoint {
 
-	typedef factory::components::n_random_bytes_engine<
-		std::random_device, T> engine_type;
+	typedef std::random_device engine_type;
 
 	void test_single() {
 		Endpoint addr1 = random_addr();
@@ -240,7 +240,7 @@ private:
 		}
 	}
 
-	Endpoint random_addr() { return Endpoint(IP_addr(generator()), 0); }
+	Endpoint random_addr() { return Endpoint(IP_addr(n_random_bytes<T>(generator)), 0); }
 
 	engine_type generator;
 };

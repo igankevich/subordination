@@ -37,7 +37,7 @@ namespace factory {
 				"unknwn";
 		}
 
-		extern Spin_mutex __logger_mutex;
+		extern spin_mutex __logger_mutex;
 
 		template<Level lvl=Level::KERNEL>
 		struct Logger {
@@ -167,7 +167,8 @@ namespace factory {
 		};
 
 		template<class Ret>
-		Ret check(Ret ret, Ret bad, const char* file, const int line, const char* func) {
+		Ret
+		check(Ret ret, Ret bad, const char* file, const int line, const char* func) {
 			if (ret == bad) {
 				throw Error(std::system_error(std::error_code(errno,
 					std::generic_category()), func),
@@ -177,8 +178,8 @@ namespace factory {
 		}
 
 		template<class Ret>
-		inline
-		Ret check(Ret ret, const char* file, const int line, const char* func) {
+		inline Ret
+		check(Ret ret, const char* file, const int line, const char* func) {
 			return check<Ret>(ret, Ret(-1), file, line, func);
 		}
 

@@ -48,12 +48,11 @@ namespace factory {
 			friend std::ostream&
 			operator<<(std::ostream& out, IPv4_addr rhs) {
 				using bits::Dot;
-				addr4_type a = to_host_format(rhs.addr);
 				return out
-					<< ((a >> 0)  & UINT32_C(0xff)) << Dot()
-					<< ((a >> 8)  & UINT32_C(0xff)) << Dot()
-					<< ((a >> 16) & UINT32_C(0xff)) << Dot()
-					<< ((a >> 24) & UINT32_C(0xff));
+					<< ((rhs.addr >> 0)  & UINT32_C(0xff)) << Dot()
+					<< ((rhs.addr >> 8)  & UINT32_C(0xff)) << Dot()
+					<< ((rhs.addr >> 16) & UINT32_C(0xff)) << Dot()
+					<< ((rhs.addr >> 24) & UINT32_C(0xff));
 			}
 		
 			friend std::istream&
@@ -115,7 +114,7 @@ namespace factory {
 			from_octets(oct_type o1, oct_type o2,
 				oct_type o3, oct_type o4)
 			{
-				return to_network_format(
+				return (
 					((o1 << 0)  & UINT32_C(0xff)) |
 					((o2 << 8)  & UINT32_C(0xff00)) |
 					((o3 << 16) & UINT32_C(0xff0000)) |
@@ -191,12 +190,11 @@ namespace factory {
 			operator<<(std::ostream& out, const IPv6_addr& rhs) {
 				std::ostream::sentry s(out);
 				if (s) {
-					IPv6_addr tmp = rhs;
-					tmp.raw.to_host_format();
+//					IPv6_addr tmp = rhs;
+//					tmp.raw.to_host_format();
 					use_flags f(out, std::ios::hex, std::ios::basefield); 
-					std::copy(tmp.begin(), tmp.end()-1,
-						std::ostream_iterator<hex_type>(out, ":"));
-					out << *(tmp.end()-1);
+					std::copy(rhs.begin(), rhs.end(),
+						intersperse_iterator<hex_type>(out, ":"));
 				}
 				return out;
 			}
@@ -252,7 +250,7 @@ namespace factory {
 				if (in.fail()) {
 					std::fill(rhs.begin(), rhs.end(), 0);
 				} else {
-					rhs.raw.to_network_format();
+//					rhs.raw.to_network_format();
 				}
 				return in;
 			}
@@ -283,7 +281,7 @@ namespace factory {
 				addr6_type h5, addr6_type h6,
 				addr6_type h7, addr6_type h8)
 			{
-				return to_network_format(
+				return (
 					((h1 << 0)   & UINT128_C(0xffff)) |
 					((h2 << 16)  & UINT128_C(0xffff0000)) |
 					((h3 << 32)  & UINT128_C(0xffff00000000)) |
@@ -404,14 +402,14 @@ namespace factory {
 				if (s) {
 					if (rhs.family() == AF_INET6) {
 						Port port = to_host_format<Port>(rhs.port6());
-						std::clog << "Writing host = "
-							<< rhs.addr6() << ':' << port << std::endl;
+//						std::clog << "Writing host = "
+//							<< rhs.addr6() << ':' << port << std::endl;
 						out << Left_br() << rhs.addr6() << Right_br()
 							<< Colon() << port;
 					} else {
 						Port port = to_host_format<Port>(rhs.port4());
-						std::clog << "Writing host = "
-							<< rhs.addr4() << ':' << port << std::endl;
+//						std::clog << "Writing host = "
+//							<< rhs.addr4() << ':' << port << std::endl;
 						out << rhs.addr4() << Colon() << port;
 					}
 				}

@@ -3,7 +3,7 @@ namespace factory {
 
 		inline
 		shared_mem<char>::id_type
-		generate_shmem_id(Process_id child, Process_id parent, int stream_no) {
+		generate_shmem_id(pid_type child, pid_type parent, int stream_no) {
 			static const int MAX_PID = 65536;
 			static const int MAX_STREAMS = 10;
 			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
@@ -11,7 +11,7 @@ namespace factory {
 
 		inline
 		std::string
-		generate_sem_name(Process_id child, Process_id parent, char tag) {
+		generate_sem_name(pid_type child, pid_type parent, char tag) {
 			std::ostringstream str;
 			str << "/factory-" << parent << '-' << child << '-' << tag;
 			return str.str();
@@ -28,7 +28,7 @@ namespace factory {
 			typedef Packing_stream<char> stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef Semaphore sem_type;
+			typedef semaphore sem_type;
 			typedef Application::id_type app_type;
 
 			Principal_server():
@@ -133,7 +133,7 @@ namespace factory {
 			typedef basic_shmembuf<char> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef Semaphore sem_type;
+			typedef semaphore sem_type;
 			typedef Packing_stream<char> stream_type;
 
 			explicit Sub_Rserver(const Application& app):
@@ -248,7 +248,7 @@ namespace factory {
 					}
 					if (!empty) {
 						int status = 0;
-						Process_id pid = Process::wait(&status);
+						pid_type pid = this_process::wait(&status);
 						std::unique_lock<std::mutex> lock(this->_mutex);
 						auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
 							[pid] (const pair_type& rhs) {
