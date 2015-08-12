@@ -632,7 +632,7 @@ namespace factory {
 			frame.opcode(Opcode::BINARY_FRAME);
 			frame.fin(1);
 			frame.payload_size(input_size);
-			frame.mask(components::rng());
+			frame.mask(n_random_bytes<Web_socket_frame::Mask>(rng));
 			frame.encode(result);
 			frame.copy_payload(first, last, result);
 			Logger<Level::WEBSOCKET>() << "send header " << frame << std::endl;
@@ -669,17 +669,18 @@ namespace factory {
 
 		template<class Res>
 		void websocket_key(Res key) {
-			typedef std::random_device::result_type T;
-			static const size_t WEBSOCKET_KEY_SIZE = 16;
-			size_t ncopied = 0;
-			unsigned char buf[WEBSOCKET_KEY_SIZE];
-			while (ncopied < WEBSOCKET_KEY_SIZE) {
-				size_t nb = std::min(WEBSOCKET_KEY_SIZE - ncopied, sizeof(T));
-				Bytes<T> bytes = components::rng();
-				std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
-				ncopied += nb;
-			}
-			base64_encode(buf, buf + WEBSOCKET_KEY_SIZE, key);
+//			typedef std::random_device::result_type T;
+//			static const size_t WEBSOCKET_KEY_SIZE = 16;
+//			size_t ncopied = 0;
+//			unsigned char buf[WEBSOCKET_KEY_SIZE];
+//			while (ncopied < WEBSOCKET_KEY_SIZE) {
+//				size_t nb = std::min(WEBSOCKET_KEY_SIZE - ncopied, sizeof(T));
+//				Bytes<T> bytes = components::rng();
+//				std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
+//				ncopied += nb;
+//			}
+			Bytes<std::uint128_t> buf = n_random_bytes<std::uint128_t>(rng);
+			base64_encode(buf.begin(), buf.begin() + buf.size(), key);
 		}
 
 	}

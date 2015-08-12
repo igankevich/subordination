@@ -1,7 +1,9 @@
 #include <factory/factory_base.hh>
+#include "libfactory.cc"
 #include "test.hh"
 
 using namespace factory;
+using namespace factory::components;
 
 void test_base64_size() {
 	for (size_t k=0; k<=100; ++k) {

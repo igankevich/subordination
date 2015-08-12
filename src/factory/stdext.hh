@@ -111,6 +111,60 @@ namespace factory {
 			return Apply_to<No,F>(f);
 		}
 
+		template<class Result, class Engine>
+		Result n_random_bytes(Engine& engine) {
+			typedef Result result_type;
+			typedef typename Engine::result_type
+				base_result_type;
+			constexpr const std::size_t NUM_BASE_RESULTS =
+				sizeof(result_type) / sizeof(base_result_type) +
+				sizeof(result_type) % sizeof(base_result_type);
+			union {
+				result_type value;
+				base_result_type base[NUM_BASE_RESULTS];
+			} result;
+			std::generate_n(result.base, NUM_BASE_RESULTS,
+				[&engine] () { return engine(); });
+			return result.value;
+		}
+
+		template<class Engine, class T>
+		struct n_random_bytes_engine {
+			
+			typedef T result_type;
+			typedef typename Engine::result_type
+				base_result_type;
+		
+			template<class ... Args>
+			explicit
+			n_random_bytes_engine(Args&& ... args):
+				base_engine(std::forward<Args>(args)...) {}
+			
+			T operator()() {
+				return n_random_bytes<T>(base_engine);
+			}
+		
+			Engine& engine() { return base_engine; }
+		
+		private:
+			Engine base_engine;
+		};
+
+		struct use_flags {
+			explicit
+			use_flags(std::ios_base& s):
+				str(s), oldf(str.flags()) {}
+			template<class ... Args>
+			use_flags(std::ios_base& s, Args&& ... args):
+				str(s), oldf(str.setf(std::forward<Args>(args)...)) {}
+			~use_flags() {
+				str.setf(oldf);
+			}
+		private:
+			std::ios_base& str;
+			std::ios_base::fmtflags oldf;
+		};
+
 	}
 
 }

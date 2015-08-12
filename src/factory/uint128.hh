@@ -473,4 +473,5 @@ operator"" _u128() noexcept {
 	using namespace std::components;
 	return parse_uint128<sizeof...(Chars)>((const char[]){Chars...});
 }
+#define UINT128_C(x) x##_u128
 #endif

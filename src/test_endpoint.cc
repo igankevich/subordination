@@ -1,19 +1,18 @@
 #include <factory/factory_base.hh>
+#include "libfactory.cc"
 #include "test.hh"
 
 using namespace factory;
 
-template<class T = uint32_t>
+
+template<class T = uint32_t, class IP_addr = IPv4_addr>
 struct Test_endpoint {
 
-	Test_endpoint():
-		generator(static_cast<std::default_random_engine::result_type>(current_time_nano())),
-		distribution(std::numeric_limits<T>::min(), std::numeric_limits<T>::max()),
-		dice(std::bind(distribution, generator))
-	{}
+	typedef factory::components::n_random_bytes_engine<
+		std::random_device, T> engine_type;
 
 	void test_single() {
-		Endpoint addr1(dice(), 0);
+		Endpoint addr1 = random_addr();
 		Endpoint addr2;
 		std::stringstream s;
 		s << addr1;
@@ -58,75 +57,76 @@ struct Test_endpoint {
 
 	void test_variations_ipv4() {
 		// basic functionality
-		check_read("0.0.0.0:0"             , Endpoint("0.0.0.0"         , 0));
-		check_read("0.0.0.0:1234"          , Endpoint("0.0.0.0"         , 1234));
-		check_read("0.0.0.0:65535"         , Endpoint("0.0.0.0"         , 65535));
-		check_read("10.0.0.1:0"            , Endpoint("10.0.0.1"        , 0));
-		check_read("255.0.0.1:0"           , Endpoint("255.0.0.1"       , 0));
-		check_read("255.255.255.255:65535" , Endpoint("255.255.255.255" , 65535));
+		check_read("0.0.0.0:0"             , Endpoint({0,0,0,0}         , 0));
+		check_read("0.0.0.0:1234"          , Endpoint({0,0,0,0}         , 1234));
+		check_read("0.0.0.0:65535"         , Endpoint({0,0,0,0}         , 65535));
+		check_read("10.0.0.1:0"            , Endpoint({10,0,0,1}        , 0));
+		check_read("255.0.0.1:0"           , Endpoint({255,0,0,1}       , 0));
+		check_read("255.255.255.255:65535" , Endpoint({255,255,255,255} , 65535));
 		// out of range ports
-		check_read("0.0.0.0:65536"         , Endpoint("0.0.0.0"         , 0));
-		check_read("0.0.0.1:65536"         , Endpoint("0.0.0.0"         , 0));
-		check_read("10.0.0.1:100000"       , Endpoint("0.0.0.0"         , 0));
+		check_read("0.0.0.0:65536"         , Endpoint({0,0,0,0}         , 0));
+		check_read("0.0.0.1:65536"         , Endpoint({0,0,0,0}         , 0));
+		check_read("10.0.0.1:100000"       , Endpoint({0,0,0,0}         , 0));
 		// out of range addrs
-		check_read("1000.0.0.1:0"          , Endpoint("0.0.0.0"         , 0));
+		check_read("1000.0.0.1:0"          , Endpoint({0,0,0,0}         , 0));
 		// good spaces
-		check_read(" 10.0.0.1:100"         , Endpoint("10.0.0.1"        , 100));
-		check_read("10.0.0.1:100 "         , Endpoint("10.0.0.1"        , 100));
-		check_read(" 10.0.0.1:100 "        , Endpoint("10.0.0.1"        , 100));
+		check_read(" 10.0.0.1:100"         , Endpoint({10,0,0,1}        , 100));
+		check_read("10.0.0.1:100 "         , Endpoint({10,0,0,1}        , 100));
+		check_read(" 10.0.0.1:100 "        , Endpoint({10,0,0,1}        , 100));
 		// bad spaces
-		check_read("10.0.0.1: 100"         , Endpoint("0.0.0.0"         , 0));
-		check_read("10.0.0.1 :100"         , Endpoint("0.0.0.0"         , 0));
-		check_read("10.0.0.1 : 100"        , Endpoint("0.0.0.0"         , 0));
-		check_read(" 10.0.0.1 : 100 "      , Endpoint("0.0.0.0"         , 0));
+		check_read("10.0.0.1: 100"         , Endpoint({0,0,0,0}         , 0));
+		check_read("10.0.0.1 :100"         , Endpoint({0,0,0,0}         , 0));
+		check_read("10.0.0.1 : 100"        , Endpoint({0,0,0,0}         , 0));
+		check_read(" 10.0.0.1 : 100 "      , Endpoint({0,0,0,0}         , 0));
 		// fancy addrs
-		check_read("10:100"                , Endpoint("0.0.0.0"         , 0));
-		check_read("10.1:100"              , Endpoint("0.0.0.0"         , 0));
-		check_read("10.0.1:100"            , Endpoint("0.0.0.0"         , 0));
-		check_read(""                      , Endpoint("0.0.0.0"         , 0));
-		check_read("anc:100"               , Endpoint("0.0.0.0"         , 0));
-		check_read(":100"                  , Endpoint("0.0.0.0"         , 0));
-		check_read("10.0.0.0.1:100"        , Endpoint("0.0.0.0"         , 0));
+		check_read("10:100"                , Endpoint({0,0,0,0}         , 0));
+		check_read("10.1:100"              , Endpoint({0,0,0,0}         , 0));
+		check_read("10.0.1:100"            , Endpoint({0,0,0,0}         , 0));
+		check_read(""                      , Endpoint({0,0,0,0}         , 0));
+		check_read("anc:100"               , Endpoint({0,0,0,0}         , 0));
+		check_read(":100"                  , Endpoint({0,0,0,0}         , 0));
+		check_read("10.0.0.0.1:100"        , Endpoint({0,0,0,0}         , 0));
 	}
 
 	void test_variations_ipv6() {
+		std::clog << __func__ << std::endl;
 		// basic functionality
-		check_read("[::1]:0"                 , Endpoint("0:0:0:0:0:0:0:1"  , 0));
-		check_read("[1::1]:0"                , Endpoint("1:0:0:0:0:0:0:1"  , 0));
-		check_read("[::]:0"                  , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[2001:1:0::123]:0"       , Endpoint("2001:1:0:0:0:0:0:123"  , 0));
-		check_read("[0:0:0:0:0:0:0:0]:0"     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[0:0:0:0:0:0:0:0]:1234"  , Endpoint("0:0:0:0:0:0:0:0"  , 1234));
-		check_read("[0:0:0:0:0:0:0:0]:65535" , Endpoint("0:0:0:0:0:0:0:0"  , 65535));
-		check_read("[10:1:0:1:0:0:0:0]:0"    , Endpoint("10:1:0:1:0:0:0:0" , 0));
-		check_read("[255:0:0:1:1:2:3:4]:0"   , Endpoint("255:0:0:1:1:2:3:4", 0));
+		check_read("[::1]:0"                 , Endpoint({0x0,0,0,0,0,0,0,1}  , 0));
+		check_read("[1::1]:0"                , Endpoint({0x1,0,0,0,0,0,0,1}  , 0));
+		check_read("[::]:0"                  , Endpoint({0x0,0,0,0,0,0,0,0}  , 0));
+		check_read("[2001:1:0::123]:0"       , Endpoint({0x2001,1,0,0,0,0,0,0x123}  , 0));
+		check_read("[0:0:0:0:0:0:0:0]:0"     , Endpoint({0x0,0,0,0,0,0,0,0}  , 0));
+		check_read("[0:0:0:0:0:0:0:0]:1234"  , Endpoint({0x0,0,0,0,0,0,0,0}  , 1234));
+		check_read("[0:0:0:0:0:0:0:0]:65535" , Endpoint({0x0,0,0,0,0,0,0,0}  , 65535));
+		check_read("[10:1:0:1:0:0:0:0]:0"    , Endpoint({0x10,1,0,1,0,0,0,0} , 0));
+		check_read("[255:0:0:1:1:2:3:4]:0"   , Endpoint({0x255,0,0,1,1,2,3,4}, 0));
 		check_read("[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535",
-			Endpoint("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff" , 65535));
+			Endpoint({0xffff,0xffff,0xffff,0xffff,0xffff,0xffff,0xffff,0xffff} , 65535));
 		// out of range ports
-		check_read("[::1]:65536"             , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[::0]:65536"             , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[::0]:100000"            , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[::1]:65536"             , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[::0]:65536"             , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[::0]:100000"            , Endpoint({0,0,0,0,0,0,0,0}  , 0));
 		// out of range addrs
-		check_read("[1ffff::1]:0"              , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[1ffff::1]:0"              , Endpoint({0,0,0,0,0,0,0,0}  , 0));
 		// good spaces
-		check_read(" [10::1]:100"              , Endpoint("10::1"        , 100));
-		check_read("[10::1]:100 "              , Endpoint("10::1"        , 100));
-		check_read(" [10::1]:100 "             , Endpoint("10::1"        , 100));
+		check_read(" [10::1]:100"              , Endpoint({0x10,0,0,0,0,0,0,1}        , 100));
+		check_read("[10::1]:100 "              , Endpoint({0x10,0,0,0,0,0,0,1}        , 100));
+		check_read(" [10::1]:100 "             , Endpoint({0x10,0,0,0,0,0,0,1}        , 100));
 		// bad spaces
-		check_read("[10::1]: 100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[10::1 ]:100"         , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[10::1 ]: 100"        , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read(" [10::1 ]: 100 "      , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[10::1]: 100"         , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[10::1 ]:100"         , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[10::1 ]: 100"        , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read(" [10::1 ]: 100 "      , Endpoint({0,0,0,0,0,0,0,0}  , 0));
 		// fancy addrs
-		check_read("[::1::1]:0"              , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[:::]:0"                 , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[:]:0"                   , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[]:0"                    , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("]:0"                     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[:0"                     , Endpoint("0:0:0:0:0:0:0:0"  , 0));
-		check_read("[10:0:0:0:0:0:0:0:1]:0"  , Endpoint("0:0:0:0:0:0:0:0"  , 0));
+		check_read("[::1::1]:0"              , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[:::]:0"                 , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[:]:0"                   , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[]:0"                    , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("]:0"                     , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[:0"                     , Endpoint({0,0,0,0,0,0,0,0}  , 0));
+		check_read("[10:0:0:0:0:0:0:0:1]:0"  , Endpoint({0,0,0,0,0,0,0,0}  , 0));
 		// IPv4 mapped addrs
-		check_read("[::ffff:127.1.2.3]:0"    , Endpoint("0:0:0:ffff:127:1:2:3", 0));
+		check_read("[::ffff:127.1.2.3]:0"    , Endpoint({0,0,0,0xffff,0x127,1,2,3}, 0));
 	}
 
 	void test_operators() {
@@ -240,16 +240,14 @@ private:
 		}
 	}
 
-	Endpoint random_addr() { return Endpoint(dice(), 0); }
+	Endpoint random_addr() { return Endpoint(IP_addr(generator()), 0); }
 
-	std::default_random_engine generator;
-	std::uniform_int_distribution<T> distribution;
-	std::function<T()> dice;
+	engine_type generator;
 };
 
 struct App {
 	void test_ipv4() {
-		Test_endpoint<uint32_t> test;
+		Test_endpoint<uint32_t, IPv4_addr> test;
 		test.test_single();
 		test.test_multiple();
 		test.test_variations_ipv4();
@@ -258,7 +256,7 @@ struct App {
 		test.test_literals();
 	}
 	void test_ipv6() {
-		Test_endpoint<__uint128_t> test;
+		Test_endpoint<std::uint128_t, IPv6_addr> test;
 		test.test_single();
 		test.test_multiple();
 		test.test_variations_ipv6();
@@ -269,6 +267,8 @@ struct App {
 		try {
 			test_ipv4();
 			test_ipv6();
+//		std::clog << Endpoint({192, 168, 0, 1}, 0) << std::endl;
+		std::clog << Endpoint({10, 0, 0, 0, 0, 0, 0, 1}, 0) << std::endl;
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;
