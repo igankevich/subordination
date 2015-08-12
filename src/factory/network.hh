@@ -92,8 +92,6 @@ namespace factory {
 		typedef typename Integral<sizeof(T)>::type Int;
 		typedef Bytes<T,Byte> This;
 		typedef typename std::decay<Int>::type Retval;
-		typedef Byte byte_type;
-		typedef byte_type* iterator;
 
 		constexpr Bytes(): val{} {}
 		constexpr Bytes(const Bytes& rhs): val(rhs.val) {}
