@@ -1,6 +1,7 @@
 namespace factory {
 
 	namespace components {
+		struct Null {};
 
 		template<class K, class V>
 		struct Repository {

@@ -2,19 +2,26 @@ namespace factory {
 	namespace components {
 
 		inline
-		shared_mem<char>::id_type
+		std::string
 		generate_shmem_id(pid_type child, pid_type parent, int stream_no) {
-			static const int MAX_PID = 65536;
-			static const int MAX_STREAMS = 10;
-			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
+//			static const int MAX_PID = 65536;
+//			static const int MAX_STREAMS = 10;
+//			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
+			std::ostringstream str;
+			str << "/factory-shm-" << parent << '-' << child << '-' << stream_no;
+			std::string name = str.str();
+			name.shrink_to_fit();
+			return name;
 		}
 
 		inline
 		std::string
 		generate_sem_name(pid_type child, pid_type parent, char tag) {
 			std::ostringstream str;
-			str << "/factory-" << parent << '-' << child << '-' << tag;
-			return str.str();
+			str << "/factory-sem-" << parent << '-' << child << '-' << tag;
+			std::string name = str.str();
+			name.shrink_to_fit();
+			return name;
 		}
 
 		template<class Server>
@@ -57,8 +64,8 @@ namespace factory {
 				Logger<Level::SERVER>() << "Principal_server::start()" << std::endl;
 				this->_ibuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 1));
 				this->_obuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 0));
-				this->_isem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'i'), false);
-				this->_osem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'o'), false);
+				this->_isem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'i'));
+				this->_osem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'o'));
 				this->_thread = std::thread(std::mem_fn(&this_type::serve), this);
 			}
 
@@ -138,10 +145,10 @@ namespace factory {
 
 			explicit Sub_Rserver(const Application& app):
 				_proc(app.execute()), //TODO: race condition
-				_osem(generate_sem_name(this->_proc.id(), this_process::id(), 'o')),
-				_isem(generate_sem_name(this->_proc.id(), this_process::id(), 'i')),
-				_ibuf(generate_shmem_id(this->_proc.id(), this_process::id(), 0)),
-				_obuf(generate_shmem_id(this->_proc.id(), this_process::id(), 1)),
+				_osem(generate_sem_name(this->_proc.id(), this_process::id(), 'o'), 0666),
+				_isem(generate_sem_name(this->_proc.id(), this_process::id(), 'i'), 0666),
+				_ibuf(generate_shmem_id(this->_proc.id(), this_process::id(), 0), 0666),
+				_obuf(generate_shmem_id(this->_proc.id(), this_process::id(), 1), 0666),
 				_ostream(&this->_obuf)
 				{}
 

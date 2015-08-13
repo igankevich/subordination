@@ -192,6 +192,7 @@ namespace factory {
 				if (s) {
 //					IPv6_addr tmp = rhs;
 //					tmp.raw.to_host_format();
+					typedef IPv6_addr::hex_type hex_type;
 					use_flags f(out, std::ios::hex, std::ios::basefield); 
 					std::copy(rhs.begin(), rhs.end(),
 						intersperse_iterator<hex_type>(out, ":"));
@@ -299,6 +300,8 @@ namespace factory {
 		};
 
 		union Endpoint {
+
+			typedef uint16_t portable_family_type;
 
 			constexpr
 			Endpoint() noexcept {}
@@ -447,7 +450,8 @@ namespace factory {
 
 			friend packstream&
 			operator<<(packstream& out, const Endpoint& rhs) {
-				out << rhs.family();
+				typedef Endpoint::portable_family_type portable_family_type;
+				out << portable_family_type(rhs.family());
 				if (rhs.family() == AF_INET6) {
 					out << rhs.addr6() << make_bytes(rhs.port6());
 				} else {
@@ -458,7 +462,10 @@ namespace factory {
 
 			friend packstream&
 			operator>>(packstream& in, Endpoint& rhs) {
-				in >> rhs._addr6.sin6_family;
+				typedef Endpoint::portable_family_type portable_family_type;
+				portable_family_type fam;
+				in >> fam;
+				rhs._addr6.sin6_family = fam;
 				Bytes<Port> port;
 				if (rhs.family() == AF_INET6) {
 					IPv6_addr addr;
@@ -586,7 +593,7 @@ namespace factory {
 		};
 
 		static_assert(sizeof(Endpoint) == sizeof(sin6_type), "bad endpoint size");
-		static_assert(sizeof(family_type) == 1, "bad family_type size");
+//		static_assert(sizeof(family_type) == 1, "bad family_type size");
 		static_assert(sizeof(port_type) == 2, "bad port_type size");
 
 	}

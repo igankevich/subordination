@@ -44,6 +44,7 @@ TESTS = \
 	test_socket \
 	test_offline \
 	test_websocket \
+	test_shmem \
 	test_spinlock \
 	test_endpoint \
 	test_encoding \

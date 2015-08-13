@@ -71,6 +71,7 @@
 	#endif
 	
 	// Base system
+	#include "forward.hh"
 	#include "base.hh"
 	#include "stdext.hh"
 	#include "unistdext.hh"
