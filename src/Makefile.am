@@ -50,6 +50,7 @@ TESTS = \
 	test_encoding \
 	test_timer \
 	test_uint128 \
+	test_uint128_custom \
 	test_kernel \
 	test_discovery \
 	test_poller \
@@ -67,11 +68,14 @@ check_PROGRAMS = \
 	test_shmem \
 	test_timer \
 	test_uint128 \
+	test_uint128_custom \
 	test_kernel \
 	test_discovery \
 	test_poller \
 	test_appserver
 
+test_uint128_custom_SOURCES = test_uint128.cc
+test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128
 
 #test_appserver_SOURCES = test_appserver.cc libfactory.cc
 # disable stack trace for tests where a child process must fail

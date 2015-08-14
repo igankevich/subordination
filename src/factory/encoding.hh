@@ -501,11 +501,13 @@ namespace factory {
 			Len64 payload_size() const {
 				using namespace constants;
 				switch (hdr.len) {
-					case LEN16_TAG: return Bytes<Len16>(hdr.extlen).to_host_format();
-					case LEN64_TAG:
-						return Bytes<Len64>(rawhdr + BASE_SIZE,
-							rawhdr + BASE_SIZE + sizeof(Len64))
-							.to_host_format();
+					case LEN16_TAG: return to_host_format<Len16>(hdr.extlen);
+					case LEN64_TAG: {
+						bits::Bytes<Len64> tmp(rawhdr + BASE_SIZE,
+							rawhdr + BASE_SIZE + sizeof(Len64));
+						tmp.to_host_format();
+						return tmp.value();
+					}
 					default:
 						return hdr.len;
 				}
@@ -517,12 +519,12 @@ namespace factory {
 					hdr.len = rhs;
 				} else if (rhs > 125 && rhs <= std::numeric_limits<Len16>::max()) {
 					hdr.len = LEN16_TAG;
-					Bytes<Len16> raw = rhs;
+					bits::Bytes<Len16> raw = rhs;
 					raw.to_network_format();
 					hdr.extlen = raw;
 				} else {
 					hdr.len = LEN64_TAG;
-					Bytes<Len64> raw = rhs;
+					bits::Bytes<Len64> raw = rhs;
 					raw.to_network_format();
 					std::copy(raw.begin(), raw.end(), rawhdr + BASE_SIZE);
 				}
@@ -537,10 +539,10 @@ namespace factory {
 				using namespace constants;
 				switch (hdr.len) {
 					case LEN16_TAG: return hdr.extlen2;
-					case LEN64_TAG: return Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
+					case LEN64_TAG: return bits::Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
 							rawhdr + header_size());
 					default:
-						return Bytes<Mask>(rawhdr + BASE_SIZE,
+						return bits::Bytes<Mask>(rawhdr + BASE_SIZE,
 							rawhdr + BASE_SIZE + MASK_SIZE);
 				}
 			}
@@ -554,12 +556,12 @@ namespace factory {
 					switch (hdr.len) {
 						case LEN16_TAG: hdr.extlen2 = rhs; break;
 						case LEN64_TAG: {
-							Bytes<Mask> tmp = rhs;
+							bits::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + header_size() - MASK_SIZE);
 							break;
 						}
 						default: {
-							Bytes<Mask> tmp = rhs;
+							bits::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + BASE_SIZE);
 							break;
 						}
@@ -571,7 +573,7 @@ namespace factory {
 			void copy_payload(It first, It last, Res result) const {
 				using namespace constants;
 				if (is_masked()) {
-					Bytes<Mask> m = mask();
+					bits::Bytes<Mask> m = mask();
 					size_t i = 0;
 					std::transform(first, last, result,
 						[&i,&m] (char ch) {
@@ -587,7 +589,7 @@ namespace factory {
 			char getpayloadc(It first, size_t nread) const {
 				using namespace constants;
 				if (is_masked()) {
-					Bytes<Mask> m = mask();
+					bits::Bytes<Mask> m = mask();
 					size_t i = 0;
 					return *first ^ m[nread%4];
 				} else {
@@ -608,11 +610,11 @@ namespace factory {
 						<< "opcode=" << rhs.hdr.opcode << ','
 						<< "maskbit=" << rhs.hdr.maskbit << ','
 						<< "len=" << rhs.hdr.len << ','
-//						<< "extlen16=" << Bytes<Len16>(rhs.hdr.extlen) << ','
-//						<< "mask16=" << Bytes<Mask>(rhs.hdr.extlen2) << ','
-//						<< "extlen64=" << Bytes<Len64>(rhs.hdr.extlen3) << ','
-//						<< "mask64=" << Bytes<Mask>(rhs.hdr.mask) << ','
-						<< "mask=" << Bytes<Mask>(rhs.mask()) << ','
+//						<< "extlen16=" << bits::Bytes<Len16>(rhs.hdr.extlen) << ','
+//						<< "mask16=" << bits::Bytes<Mask>(rhs.hdr.extlen2) << ','
+//						<< "extlen64=" << bits::Bytes<Len64>(rhs.hdr.extlen3) << ','
+//						<< "mask64=" << bits::Bytes<Mask>(rhs.hdr.mask) << ','
+						<< "mask=" << bits::Bytes<Mask>(rhs.mask()) << ','
 						<< "payload_size=" << rhs.payload_size() << ','
 						<< "header_size=" << rhs.header_size();
 				}
@@ -656,8 +658,8 @@ namespace factory {
 		void websocket_accept_header(const std::string& web_socket_key, Res header) {
 			static const char WEBSOCKET_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 			static const size_t SHA_DIGEST_SIZE = 5;
-			typedef Bytes<uint32_t, unsigned char> Digest_item;
-			Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
+			typedef bits::Bytes<uint32_t, unsigned char> Digest_item;
+			bits::Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
 			SHA1 sha1;
 			sha1.input(web_socket_key.begin(), web_socket_key.end());
 			sha1.input(WEBSOCKET_GUID, WEBSOCKET_GUID + sizeof(WEBSOCKET_GUID)-1);
@@ -675,11 +677,11 @@ namespace factory {
 //			unsigned char buf[WEBSOCKET_KEY_SIZE];
 //			while (ncopied < WEBSOCKET_KEY_SIZE) {
 //				size_t nb = std::min(WEBSOCKET_KEY_SIZE - ncopied, sizeof(T));
-//				Bytes<T> bytes = components::rng();
+//				bits::Bytes<T> bytes = components::rng();
 //				std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
 //				ncopied += nb;
 //			}
-			Bytes<std::uint128_t> buf = n_random_bytes<std::uint128_t>(rng);
+			bits::Bytes<std::uint128_t> buf = n_random_bytes<std::uint128_t>(rng);
 			base64_encode(buf.begin(), buf.begin() + buf.size(), key);
 		}
 

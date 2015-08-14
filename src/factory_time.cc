@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Bind address: "
 		<< components::get_bind_address()
 		<< std::endl;
+	std::cout << "bits::Bytes = " << make_bytes(0xabcdefUL) << std::endl;
 	throw Error("abc", __FILE__, __LINE__, __func__);
 	return 0;
 }

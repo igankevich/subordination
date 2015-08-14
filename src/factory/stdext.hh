@@ -124,7 +124,7 @@ namespace factory {
 			constexpr const std::size_t NUM_BASE_RESULTS =
 				sizeof(result_type) / sizeof(base_result_type);
 			union {
-				result_type value;
+				result_type value{};
 				base_result_type base[NUM_BASE_RESULTS];
 			} result;
 			std::generate_n(result.base,
@@ -177,6 +177,17 @@ namespace factory {
 	
 		private:
 			std::atomic_flag _flag = ATOMIC_FLAG_INIT;
+		};
+
+		template<class T, std::streamsize W>
+		struct Fixed_width {
+			Fixed_width(T x): val(x) {}
+			friend std::ostream&
+			operator<<(std::ostream& out, const Fixed_width& rhs) {
+				return out << std::setw(W) << rhs.val;
+			}
+		private:
+			T val;
 		};
 
 	}

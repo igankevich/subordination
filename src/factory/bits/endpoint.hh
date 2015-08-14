@@ -44,11 +44,13 @@ namespace factory {
 		typedef Num<uint16_t, uint32_t> Hextet;
 		typedef Num<uint8_t, uint32_t> Octet;
 
+/*
 		template<unsigned int radix, class Ch>
 		constexpr Ch
 		to_int(Ch ch) {
 			return radix == 16 && ch >= 'a' ? ch-'a'+10 : ch-'0';
 		}
+*/
 
 		template<class addr4_type>
 		constexpr addr4_type

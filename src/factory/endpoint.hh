@@ -123,7 +123,7 @@ namespace factory {
 
 			addr4_type addr;
 			in4_type inaddr;
-			Bytes<addr4_type> raw;
+			bits::Bytes<addr4_type> raw;
 		};
 
 		constexpr IPv4_addr
@@ -296,7 +296,7 @@ namespace factory {
 			addr6_type addr;
 			in6_type inaddr;
 			hex_type hextets[8];
-			Bytes<in6_type> raw;
+			bits::Bytes<in6_type> raw;
 		};
 
 		union Endpoint {
@@ -453,9 +453,9 @@ namespace factory {
 				typedef Endpoint::portable_family_type portable_family_type;
 				out << portable_family_type(rhs.family());
 				if (rhs.family() == AF_INET6) {
-					out << rhs.addr6() << make_bytes(rhs.port6());
+					out << rhs.addr6() << bits::make_bytes(rhs.port6());
 				} else {
-					out << rhs.addr4() << make_bytes(rhs.port4());
+					out << rhs.addr4() << bits::make_bytes(rhs.port4());
 				}
 				return out;
 			}
@@ -466,7 +466,7 @@ namespace factory {
 				portable_family_type fam;
 				in >> fam;
 				rhs._addr6.sin6_family = fam;
-				Bytes<Port> port;
+				bits::Bytes<Port> port;
 				if (rhs.family() == AF_INET6) {
 					IPv6_addr addr;
 					in >> addr >> port;

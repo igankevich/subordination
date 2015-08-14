@@ -97,8 +97,8 @@ struct Sender: public Identifiable<Kernel> {
 				std::stringstream msg;
 				msg << "input and output does not match at i="
 					<< i << ",size=" << _input.size() << ":\n"
-					<< Bytes<Datum>(_input[i]) << "\n!=\n"
-					<< Bytes<Datum>(output[i]);
+					<< bits::Bytes<Datum>(_input[i]) << "\n!=\n"
+					<< bits::Bytes<Datum>(output[i]);
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 		}

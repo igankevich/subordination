@@ -1,3 +1,10 @@
+#include <string>
+#include <random>
+#include <functional>
+#include <algorithm>
+#include <sstream>
+#include <iterator>
+
 namespace test {
 
 	template<class T>

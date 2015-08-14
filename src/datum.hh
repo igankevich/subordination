@@ -85,8 +85,8 @@ struct Datum {
 private:
 	int64_t x;
 	int32_t y;
-	factory::Bytes<float> z;
-	factory::Bytes<double> u;
+	factory::bits::Bytes<float> z;
+	factory::bits::Bytes<double> u;
 	int16_t v;
 	int8_t w;
 	char padding[5] = {};

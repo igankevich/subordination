@@ -222,7 +222,7 @@ namespace factory {
 //			Packing_stream& operator<<(long double rhs) { return write(rhs); }
 			Packing_stream& operator<<(const std::string& rhs) { return write(rhs); }
 			template<class T>
-			Packing_stream& operator<<(const Bytes<T>& rhs) {
+			Packing_stream& operator<<(const bits::Bytes<T>& rhs) {
 				return this->write(rhs.begin(), rhs.size());
 			}
 
@@ -243,7 +243,7 @@ namespace factory {
 //			Packing_stream& operator>>(long double& rhs) { return read(rhs); }
 			Packing_stream& operator>>(std::string& rhs) { return read(rhs); }
 			template<class T>
-			Packing_stream& operator>>(Bytes<T>& rhs) {
+			Packing_stream& operator>>(bits::Bytes<T>& rhs) {
 				return this->read(rhs.begin(), rhs.size());
 			}
 
@@ -282,7 +282,7 @@ namespace factory {
 		            " numbers exactly in the same way, you can ignore this assertion"
 		            " by defining IGNORE_ISO_IEC559.");
 			#endif
-				Bytes<T> val = rhs;
+				bits::Bytes<T> val = rhs;
 				val.to_network_format();
 //				Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');
 //				debug(Logger<Level::IO>(), rhs);
@@ -304,8 +304,8 @@ namespace factory {
 
 			template<class T>
 			Packing_stream& read(T& rhs) {
-				Bytes<T> val;
-				this->iostream_type::read(static_cast<Ch*>(val), sizeof(rhs));
+				bits::Bytes<T> val;
+				this->iostream_type::read(val.begin(), val.size());
 				val.to_host_format();
 				rhs = val;
 //				Logger<Level::IO>() << "Converted from " << std::hex << std::setfill('0');

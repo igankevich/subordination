@@ -1,4 +1,7 @@
 #include "bits/unistdext.hh"
+#include "bits/byte_swap.hh"
+#include "bits/ifaddrs.hh"
+
 namespace factory {
 
 	typedef ::pid_t pid_type;
@@ -570,7 +573,77 @@ namespace factory {
 		
 			constexpr static const proj_id_type DEFAULT_PROJ_ID = 'a';
 		};
+
+		struct Ifaddrs {
+
+			typedef struct ::ifaddrs ifaddrs_type;
+			typedef ifaddrs_type value_type;
+			typedef bits::ifaddrs_iterator<ifaddrs_type> iterator;
+			typedef std::size_t size_type;
+
+			Ifaddrs() {
+				check(::getifaddrs(&this->_addrs),
+					__FILE__, __LINE__, __func__);
+			}
+			~Ifaddrs() noexcept { 
+				if (this->_addrs) {
+					::freeifaddrs(this->_addrs);
+				}
+			}
+
+			iterator
+			begin() noexcept {
+				return iterator(this->_addrs);
+			}
+
+			iterator
+			begin() const noexcept {
+				return iterator(this->_addrs);
+			}
+
+			static constexpr iterator
+			end() noexcept {
+				return iterator();
+			}
+
+			bool
+			empty() const noexcept {
+				return this->begin() == this->end();
+			}
+
+			size_type
+			size() const noexcept {
+				return std::distance(this->begin(), this->end());
+			}
+
+		private:
+			ifaddrs_type* _addrs = nullptr;
+		};
 	
+	}
+
+	template<class T>
+	T to_network_format(bits::Bytes<T> n) noexcept {
+		n.to_network_format();
+		return n.value();
+	}
+
+	template<class T>
+	T to_host_format(bits::Bytes<T> n) noexcept {
+		n.to_host_format();
+		return n.value();
+	}
+
+	template<class T>
+	constexpr T
+	to_network_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
+	}
+
+	template<class T>
+	constexpr T
+	to_host_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
 	}
 
 }

@@ -43,8 +43,8 @@ namespace factory {
 					uint32_t i = UINT32_C(1);
 					uint8_t b[4];
 				} endian;
-				if ((is_network_byte_order() && endian.b[0] != 0)
-					|| (!is_network_byte_order() && endian.b[0] != 1))
+				if ((bits::is_network_byte_order() && endian.b[0] != 0)
+					|| (!bits::is_network_byte_order() && endian.b[0] != 1))
 				{
 					throw Error("endiannes was not correctly determined at compile time",
 						__FILE__, __LINE__, __func__);
@@ -255,11 +255,12 @@ namespace factory {
 #ifdef HAVE___UINT128_T
 namespace std {
 	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
+		using factory::bits::get_stream_radix;
 		static const unsigned int NBITS = sizeof(__uint128_t)
 			* std::numeric_limits<unsigned char>::digits;
 		std::ostream::sentry s(o);
 		if (!s) { return o; }
-		int radix = uint128_get_radix(o);
+		int radix = get_stream_radix(o);
 		if (rhs == 0) { o << '0'; }
 		else {
 			// at worst it will be NBITS digits (base 2) so make our buffer
@@ -282,10 +283,11 @@ namespace std {
 	}
 
 	std::istream& operator>>(std::istream& in, __uint128_t& rhs) {
+		using factory::bits::get_stream_radix;
 		std::istream::sentry s(in);
 		if (s) {
 			rhs = 0;
-			unsigned int radix = uint128_get_radix(in);
+			unsigned int radix = get_stream_radix(in);
 			char ch;
 			while (in >> ch) {
 				unsigned int n = radix;
