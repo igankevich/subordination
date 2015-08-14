@@ -15,7 +15,8 @@ namespace factory {
 		typedef struct ::in_addr in4_type;
 		typedef struct ::in6_addr in6_type;
 		typedef ::socklen_t socklen_type;
-		typedef ::sa_family_t family_type;
+		typedef bits::family_type family_type;
+		typedef bits::legacy_family_type sa_family_type;
 		typedef ::in_addr_t addr4_type;
 		typedef std::uint128_t addr6_type;
 		typedef ::in_port_t port_type;
@@ -318,7 +319,7 @@ namespace factory {
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
-					AF_INET,
+					static_cast<sa_family_type>(family_type::inet),
 					to_network_format<Port>(p),
 					h.rep(),
 					IN6ADDR_ANY_INIT,
@@ -331,7 +332,7 @@ namespace factory {
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
-					AF_INET6,
+					static_cast<sa_family_type>(family_type::inet6),
 					to_network_format<Port>(p),
 					0, // flowinfo
 					h,
@@ -356,26 +357,26 @@ namespace factory {
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
-					rhs.family(),
+					rhs.sa_family(),
 					to_network_format<Port>(newport),
-					rhs.family() == AF_INET6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
-					rhs.family() == AF_INET  ? in6_type{} : rhs._addr6.sin6_addr,
+					rhs.family() == family_type::inet6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
+					rhs.family() == family_type::inet  ? in6_type{} : rhs._addr6.sin6_addr,
 					0 // scope
 				} {}
 
 			bool
 			operator<(const Endpoint& rhs) const noexcept {
-				return family() == AF_INET
-					? std::make_tuple(family(), addr4(), port4())
-					< std::make_tuple(rhs.family(), rhs.addr4(), rhs.port4())
-					: std::make_tuple(family(), addr6(), port6())
-					< std::make_tuple(rhs.family(), rhs.addr6(), rhs.port6());
+				return family() == family_type::inet
+					? std::make_tuple(sa_family(), addr4(), port4())
+					< std::make_tuple(rhs.sa_family(), rhs.addr4(), rhs.port4())
+					: std::make_tuple(sa_family(), addr6(), port6())
+					< std::make_tuple(rhs.sa_family(), rhs.addr6(), rhs.port6());
 			}
 
 			constexpr bool
 			operator==(const Endpoint& rhs) const noexcept {
-				return (family() == rhs.family() || family() == 0 || rhs.family() == 0)
-					&& (family() == AF_INET
+				return (sa_family() == rhs.sa_family() || sa_family() == 0 || rhs.sa_family() == 0)
+					&& (family() == family_type::inet
 					? addr4() == rhs.addr4() && port4() == rhs.port4()
 					: addr6() == rhs.addr6() && port6() == rhs.port6());
 			}
@@ -387,7 +388,7 @@ namespace factory {
 
 			constexpr explicit
 			operator bool() const noexcept {
-				return family() != 0 && (family() == AF_INET
+				return sa_family() != 0 && (family() == family_type::inet
 					? static_cast<bool>(addr4())
 					: static_cast<bool>(addr6()));
 			}
@@ -403,7 +404,7 @@ namespace factory {
 				using bits::Colon;
 				std::ostream::sentry s(out);
 				if (s) {
-					if (rhs.family() == AF_INET6) {
+					if (rhs.family() == family_type::inet6) {
 						Port port = to_host_format<Port>(rhs.port6());
 //						std::clog << "Writing host = "
 //							<< rhs.addr6() << ':' << port << std::endl;
@@ -450,9 +451,8 @@ namespace factory {
 
 			friend packstream&
 			operator<<(packstream& out, const Endpoint& rhs) {
-				typedef Endpoint::portable_family_type portable_family_type;
-				out << portable_family_type(rhs.family());
-				if (rhs.family() == AF_INET6) {
+				out << rhs.family();
+				if (rhs.family() == family_type::inet6) {
 					out << rhs.addr6() << bits::make_bytes(rhs.port6());
 				} else {
 					out << rhs.addr4() << bits::make_bytes(rhs.port4());
@@ -462,12 +462,11 @@ namespace factory {
 
 			friend packstream&
 			operator>>(packstream& in, Endpoint& rhs) {
-				typedef Endpoint::portable_family_type portable_family_type;
-				portable_family_type fam;
+				family_type fam;
 				in >> fam;
-				rhs._addr6.sin6_family = fam;
+				rhs._addr6.sin6_family = static_cast<sa_family_type>(fam);
 				bits::Bytes<Port> port;
-				if (rhs.family() == AF_INET6) {
+				if (rhs.family() == family_type::inet6) {
 					IPv6_addr addr;
 					in >> addr >> port;
 					rhs._addr6.sin6_addr = addr;
@@ -493,7 +492,7 @@ namespace factory {
 
 			constexpr family_type
 			family() const noexcept {
-				return this->_addr6.sin6_family;
+				return static_cast<family_type>(this->_addr6.sin6_family);
 			}
 
 		private:
@@ -521,12 +520,17 @@ namespace factory {
 
 			constexpr socklen_type
 			sockaddrlen() const {
-				return this->family() == AF_INET6
+				return this->family() == family_type::inet6
 					? sizeof(sin6_type)
 					: sizeof(sin4_type);
 			}
 
 		private:
+
+			constexpr sa_family_type
+			sa_family() const noexcept {
+				return this->_addr6.sin6_family;
+			}
 
 			constexpr IPv4_addr
 			addr4() const {
@@ -549,13 +553,13 @@ namespace factory {
 			}
 
 			void addr4(IPv4_addr a, Port p) {
-				this->_addr4.sin_family = AF_INET;
+				this->_addr4.sin_family = static_cast<sa_family_type>(family_type::inet);
 				this->_addr4.sin_addr = a;
 				this->_addr4.sin_port = to_network_format<Port>(p);
 			}
 
 			void addr6(IPv6_addr a, Port p) {
-				this->_addr6.sin6_family = AF_INET6;
+				this->_addr6.sin6_family = static_cast<sa_family_type>(family_type::inet6);
 				this->_addr6.sin6_addr = a;
 				this->_addr6.sin6_port = to_network_format<Port>(p);
 			}
@@ -576,13 +580,13 @@ namespace factory {
 			}
 
 			void addr(const IPv4_addr h, Port p) {
-				this->_addr4.sin_family = AF_INET;
+				this->_addr4.sin_family = static_cast<sa_family_type>(family_type::inet);
 				this->_addr4.sin_port = to_network_format<Port>(p);
 				this->_addr4.sin_addr = h;
 			}
 
 			void addr(const IPv6_addr& h, Port p) {
-				this->_addr6.sin6_family = AF_INET6;
+				this->_addr6.sin6_family = static_cast<sa_family_type>(family_type::inet6);
 				this->_addr6.sin6_port = to_network_format<Port>(p);
 				this->_addr6.sin6_addr = h;
 			}

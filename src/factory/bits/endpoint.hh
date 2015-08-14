@@ -82,6 +82,46 @@ namespace factory {
 				0;
 		}
 
+		typedef uint8_t raw_family_type;
+		typedef ::sa_family_t legacy_family_type;
+
+		enum struct family_type: legacy_family_type {
+			inet = AF_INET,
+			inet6 = AF_INET6
+		};
+
+		enum struct portable_family_type: raw_family_type {
+			inet = 0,
+			inet6 = 1
+		};
+
+		constexpr portable_family_type
+		map_family_type(family_type t) {
+			return t == family_type::inet6
+				? portable_family_type::inet6
+				: portable_family_type::inet;
+		};
+
+		constexpr family_type
+		map_family_type(portable_family_type t) {
+			return t == portable_family_type::inet6
+				? family_type::inet6
+				: family_type::inet;
+		};
+
+		packstream&
+		operator<<(packstream& out, family_type rhs) {
+			return out << static_cast<raw_family_type>(map_family_type(rhs));
+		}
+		
+		packstream&
+		operator>>(packstream& in, family_type& rhs) {
+			raw_family_type raw;
+			in >> raw;
+			rhs = map_family_type(static_cast<portable_family_type>(raw));
+			return in;
+		}
+
 	}
 
 }
