@@ -60,26 +60,18 @@ namespace factory {
 				((n & UINT64_C(0x00000000000000ff)) << 56);
 			#endif
 		}
-		/// TODO: rewrite with compile-time user-defined literarals (as in the code above).
+
 		template<>
 		inline uint128_t
 		byte_swap(uint128_t x) noexcept {
 			int i = sizeof(x) * std::numeric_limits<unsigned char>::digits / 2;
 			uint128_t k = (UINT128_C(1) << i) - 1;
-			while (i >= 8)
-			{
+			while (i >= 8) {
 			    x = ((x & k) << i) ^ ((x >> i) & k);
 			    i >>= 1;
 			    k ^= k << i;
 			}
 			return k;
-//			union {
-//				uint128_t x;
-//				unsigned char y[sizeof(uint128_t)];
-//			} tmp;
-//			tmp.x = n;
-//			std::reverse(tmp.y, tmp.y + sizeof(tmp.y));
-//			return tmp.x;
 		}
 
 		// compile-time unit tests for byte swapping

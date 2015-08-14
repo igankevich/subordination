@@ -59,6 +59,16 @@ namespace factory {
 		
 			typedef T base_type;
 
+			struct xd_pair {
+				basic_uint x;
+				basic_uint d;
+			};
+
+			struct div_pair {
+				basic_uint quotient;
+				basic_uint remainder;
+			};
+
 			static_assert(
 				std::is_unsigned<base_type>::value &&
 				std::is_integral<base_type>::value,
@@ -80,11 +90,6 @@ namespace factory {
 			explicit constexpr
 			basic_uint(base_type l, base_type h) noexcept:
 				lo(l), hi(h) {}
-
-			explicit
-			basic_uint(const std::string &sz): lo(0), hi(0) {
-				from_string(sz.begin(), sz.end());
-			}
 		
 			basic_uint&
 			operator=(const basic_uint& other) noexcept {
@@ -107,10 +112,25 @@ namespace factory {
 			}
 		
 			// derived comparison operators
-			constexpr bool operator!=(const basic_uint& y) const noexcept { return !operator==(y); }
-			constexpr bool operator> (const basic_uint& y) const noexcept { return y < *this; }
-			constexpr bool operator<=(const basic_uint& y) const noexcept { return !(y < *this); }
-			constexpr bool operator>=(const basic_uint& y) const noexcept { return !operator<(y); }
+			constexpr bool
+			operator!=(const basic_uint& y) const noexcept {
+				return !operator==(y);
+			}
+
+			constexpr bool
+			operator>(const basic_uint& y) const noexcept {
+				return y < *this;
+			}
+
+			constexpr bool
+			operator<=(const basic_uint& y) const noexcept {
+				return !(y < *this);
+			}
+
+			constexpr bool
+			operator>=(const basic_uint& y) const noexcept {
+				return !operator<(y);
+			}
 		
 			// unary operators
 		    constexpr explicit
@@ -126,7 +146,7 @@ namespace factory {
 			constexpr basic_uint
 			operator-() const noexcept {
 				// standard 2's compliment negation
-				return ~basic_uint(*this) + basic_uint(1);
+				return ~(*this) + basic_uint(1);
 			}
 		
 		    constexpr basic_uint
@@ -331,16 +351,19 @@ namespace factory {
 					do_mult(basic_uint(), basic_uint(*this), rhs, 0);
 			}
 
-			static constexpr
-			basic_uint do_mult(basic_uint lhs, const basic_uint& a, basic_uint t, unsigned int i) noexcept {
-				return i == NBITS ? lhs :
-					(t & 1)
-					? do_mult(lhs + (a << i), a, t >> 1, i+1)
-					: do_mult(lhs, a, t >> 1, i+1);
+			constexpr basic_uint
+			operator/(const basic_uint& rhs) const noexcept {
+				return do_divide(*this,
+					do_divide_shift({basic_uint(1), rhs}, *this),
+					0).quotient;
 			}
 
-			basic_uint operator/(const basic_uint& rhs) const { return basic_uint(*this) /= rhs; }
-			basic_uint operator%(const basic_uint& rhs) const { return basic_uint(*this) %= rhs; }
+			constexpr basic_uint
+			operator%(const basic_uint& rhs) const noexcept {
+				return do_divide(*this,
+					do_divide_shift({basic_uint(1), rhs}, *this),
+					0).remainder;
+			}
 		
 			// derived bit-wise operators
 			constexpr basic_uint
@@ -376,12 +399,8 @@ namespace factory {
 					: do_right_shift(*this, n.lo, NBITS/2);
 			}
 		
-			constexpr int
-			to_integer() const noexcept {
-				return static_cast<int>(lo);
-			}
-		
-			friend std::ostream &operator<<(std::ostream& out, const basic_uint& n) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const basic_uint& n) {
 				std::ostream::sentry s(out);
 				if (s) {
 					int radix = bits::get_stream_radix(out);
@@ -405,7 +424,8 @@ namespace factory {
 				return out;
 			}
 		
-			friend std::istream& operator>>(std::istream& in, basic_uint& rhs) {
+			friend std::istream&
+			operator>>(std::istream& in, basic_uint& rhs) {
 				std::istream::sentry s(in);
 				if (s) {
 					rhs = 0;
@@ -447,6 +467,11 @@ namespace factory {
 		
 		private:
 		
+			constexpr int
+			to_integer() const noexcept {
+				return static_cast<int>(lo);
+			}
+		
 			static constexpr
 			basic_uint do_plus(const basic_uint& lhs, const basic_uint& rhs, const base_type new_lo) noexcept {
 				return basic_uint(new_lo, lhs.hi + rhs.hi
@@ -470,53 +495,35 @@ namespace factory {
 					(lhs.lo >> n) | ((lhs.hi & (~(base_type(-1) << n))) << (halfsize - n)),
 					lhs.hi >> n);
 			}
-		
-			template<class It>
-			void from_string(It first, It last) {
-				// do we have at least one character?
-				if (first == last) return;
-				// make some reasonable assumptions
-				unsigned int radix = 10;
-				// check if there is radix changing prefix (0 or 0x)
-				if (*first == '0') {
-					radix = 8;
-					++first;
-					if (first != last) {
-						if (*first == 'x') {
-							radix = 16;
-							++first;
-						}
-					}
-				}
-		
-				while (first != last) {
-					unsigned int n;
-					const char ch = std::tolower(*first);
-					if (ch >= 'a' && ch <= 'z') {
-						if (ch - 'a' + 10 < radix) {
-							n = ch - 'a' + 10;
-						} else {
-							break;
-						}
-					} else if (ch >= '0' && ch <= '9') {
-						if (ch - '0' < radix) {
-							n = ch - '0';
-						} else {
-							break;
-						}
-					} else {
-						/* completely invalid character */
-						break;
-					}
-		
-					(*this) *= radix;
-					(*this) += n;
-		
-					++first;
-				}
+
+			static constexpr basic_uint
+			do_mult(basic_uint lhs, const basic_uint& a, basic_uint t, unsigned int i) noexcept {
+				return i == NBITS ? lhs :
+					(t & 1)
+					? do_mult(lhs + (a << i), a, t >> 1, i+1)
+					: do_mult(lhs, a, t >> 1, i+1);
+			}
+
+			static constexpr xd_pair
+			do_divide_shift(xd_pair pair, const basic_uint& n) {
+				return ((n >= pair.d) && (((pair.d >> (NBITS - 1)) & 1) == 0))
+					? do_divide_shift({pair.x << 1, pair.d << 1}, n)
+					: pair;
+			}
+
+			static constexpr div_pair
+			do_divide(basic_uint n, xd_pair pair, basic_uint answer=0) {
+				return pair.x == 0
+					? div_pair{answer, n}
+					: (
+						n >= pair.d
+							? do_divide(n - pair.d, {pair.x >> 1, pair.d >> 1}, answer | pair.x)
+							: do_divide(n, {pair.x >> 1, pair.d >> 1}, answer)
+					);
 			}
 		
-			static void divide(const basic_uint& numerator, const basic_uint& denominator,
+			static void
+			divide(const basic_uint& numerator, const basic_uint& denominator,
 				basic_uint& quotient, basic_uint& remainder)
 			{
 				if (denominator == 0) {
