@@ -9,97 +9,145 @@ namespace factory {
 	typedef struct ::sigaction sigaction_type;
 	typedef int fd_type;
 	typedef int flag_type;
+	struct fd_flag;
 
-	enum struct fd_flag: flag_type {
-		non_block = O_NONBLOCK,
-		append = O_APPEND,
-		async = O_ASYNC,
-		dsync = O_DSYNC,
-		sync = O_SYNC,
-		direct = O_DIRECT,
-		noatime = O_NOATIME
-	};
+	struct fd {
 
-	enum struct fd_status_flag: flag_type {
-		close_on_exec = FD_CLOEXEC
-	};
+		enum status_flag: flag_type {
+			non_blocking = O_NONBLOCK,
+			append = O_APPEND,
+			async = O_ASYNC,
+			dsync = O_DSYNC,
+			sync = O_SYNC
+		};
 
-	template<class Flag>
-	struct negate_flag {
-		Flag f;
-	};
+		enum flag: flag_type {
+			close_on_exec = FD_CLOEXEC
+		};
 
-	struct all_fd_flags {
+		fd() = default;
+		fd(const fd&) = delete;
+		fd& operator=(const fd&) = delete;
 
-		constexpr
-		all_fd_flags(fd_flag x, fd_status_flag y) noexcept:
-			f1(static_cast<flag_type>(x)), f2(static_cast<flag_type>(y)) {}
+		inline explicit
+		fd(fd_type rhs) noexcept:
+			_fd(rhs) {}
 
-		constexpr
-		all_fd_flags(fd_flag x) noexcept:
-			f1(static_cast<flag_type>(x)), f2(-1) {}
+		inline
+		fd(fd&& rhs) noexcept: _fd(rhs._fd) {
+			rhs._fd = -1;
+		}
 
-		constexpr
-		all_fd_flags(fd_status_flag y) noexcept:
-			f1(-1), f2(static_cast<flag_type>(y)) {}
+		~fd() {
+			this->close();
+		}
 
-		void set(fd_type fd) {
+		inline
+		fd& operator=(fd&& rhs) {
+			_fd = rhs._fd;
+			rhs._fd = -1;
+			return *this;
+		}
+		
+		void close() {
 			using components::check;
-			if (f1 != -1) {
-				int flags = check(::fcntl(fd, F_GETFL),
+			if (*this) {
+				check(::close(this->_fd),
+					__FILE__, __LINE__, __func__);
+				this->_fd = -1;
+			}
+		}
+
+		inline flag_type
+		status_flags() const {
+			return get_flags(F_GETFL);
+		}
+
+		inline flag_type
+		fd_flags() const {
+			return get_flags(F_GETFD);
+		}
+
+		inline fd_flag flags() const;
+
+		inline void
+		setf(flag_type rhs) {
+			set_flag(F_SETFL, get_flags(F_GETFL) | rhs);
+		}
+
+		inline void
+		set_flags(flag_type rhs) {
+			set_flag(F_SETFD, rhs);
+		}
+
+		inline void setf(fd_flag fls);
+
+		inline bool
+		operator==(const fd& rhs) const noexcept {
+			return this->_fd == rhs._fd;
+		}
+
+		inline explicit
+		operator bool() const noexcept {
+			return this->_fd >= 0;
+		}
+
+		inline bool
+		operator !() const noexcept {
+			return !operator bool();
+		}
+
+	private:
+
+		flag_type
+		get_flags(int which) const {
+			using components::check;
+			return check(::fcntl(this->_fd, which),
 				__FILE__, __LINE__, __func__);
-				check(::fcntl(fd, F_SETFL, flags | f1),
-					__FILE__, __LINE__, __func__);
-			}
-			if (f2 != -1) {
-				check(::fcntl(fd, F_SETFD, f2),
-					__FILE__, __LINE__, __func__);
-			}
 		}
 
-		friend constexpr all_fd_flags
-		operator|(all_fd_flags lhs, fd_flag rhs) noexcept {
-			return all_fd_flags(lhs.f1 | static_cast<flag_type>(rhs), lhs.f2);
+		void
+		set_flag(int which, flag_type val) {
+			using components::check;
+			check(::fcntl(this->_fd, which, val),
+				__FILE__, __LINE__, __func__);
 		}
 
-		friend constexpr all_fd_flags
-		operator|(all_fd_flags lhs, fd_status_flag rhs) noexcept {
-			return all_fd_flags(lhs.f1, lhs.f2 | static_cast<flag_type>(rhs));
+	protected:
+		fd_type _fd;
+	};
+
+	struct fd_flag {
+
+		constexpr
+		fd_flag(fd::status_flag x, fd::flag y) noexcept:
+			f1(x), f2(y) {}
+
+		constexpr
+		fd_flag(fd::flag x, fd::status_flag y) noexcept:
+			f1(y), f2(x) {}
+
+		constexpr
+		fd_flag(const fd_flag&) noexcept = default;
+
+		void set(fd& f) const {
+			f.setf(f1);
+			f.set_flags(f2);
 		}
 
-		friend constexpr all_fd_flags
-		operator|(fd_flag lhs, all_fd_flags rhs) noexcept {
-			return all_fd_flags(rhs.f1 | static_cast<flag_type>(lhs), rhs.f2);
+		static inline fd_flag
+		flags(const fd& f) {
+			return fd_flag(f.status_flags(), f.fd_flags());
 		}
 
-		friend constexpr all_fd_flags
-		operator|(fd_status_flag lhs, all_fd_flags rhs) noexcept {
-			return all_fd_flags(rhs.f1, rhs.f2 | static_cast<flag_type>(lhs));
+		friend constexpr fd_flag
+		operator|(fd_flag lhs, fd_flag rhs) noexcept {
+			return fd_flag(lhs.f1 | rhs.f1, lhs.f2 | rhs.f2);
 		}
 
-		friend constexpr all_fd_flags
-		operator|(all_fd_flags lhs, all_fd_flags rhs) noexcept {
-			return all_fd_flags(lhs.f1 | rhs.f1, lhs.f2 | rhs.f2);
-		}
-
-		friend constexpr all_fd_flags
-		operator&(all_fd_flags lhs, all_fd_flags rhs) noexcept {
-			return all_fd_flags(lhs.f1 & rhs.f1, lhs.f2 & rhs.f2);
-		}
-
-		friend constexpr all_fd_flags
-		operator&(all_fd_flags lhs, negate_flag<fd_flag> rhs) noexcept {
-			return all_fd_flags(lhs.f1 & ~static_cast<flag_type>(rhs.f), lhs.f2);
-		}
-
-		friend constexpr all_fd_flags
-		operator&(all_fd_flags lhs, negate_flag<fd_status_flag> rhs) noexcept {
-			return all_fd_flags(lhs.f1, lhs.f2 & ~static_cast<flag_type>(rhs.f));
-		}
-
-		constexpr all_fd_flags
-		operator~() const noexcept {
-			return all_fd_flags(~f1, ~f2);
+		friend constexpr fd_flag
+		operator&(fd_flag lhs, fd_flag rhs) noexcept {
+			return fd_flag(lhs.f1 & rhs.f1, lhs.f2 & rhs.f2);
 		}
 
 		explicit constexpr
@@ -112,36 +160,51 @@ namespace factory {
 			return !operator bool();
 		}
 
+		constexpr fd_flag
+		operator~() const noexcept {
+			return fd_flag(~f1, ~f2);
+		}
+
+		constexpr bool
+		operator==(const fd_flag& rhs) const noexcept {
+			return f1 == rhs.f1 && f2 == rhs.f2;
+		}
+
+		constexpr bool
+		operator!=(const fd_flag& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
 	private:
 
 		constexpr
-		all_fd_flags(flag_type x, flag_type y) noexcept:
+		fd_flag(flag_type x, flag_type y) noexcept:
 			f1(x), f2(y) {}
 
-		flag_type f1 = -1;
-		flag_type f2 = -1;
+		flag_type f1 = 0;
+		flag_type f2 = 0;
 	};
 
-	constexpr all_fd_flags
-	operator|(fd_status_flag lhs, fd_flag rhs) noexcept {
-		return all_fd_flags(rhs, lhs);
+	constexpr fd_flag
+	operator|(fd::status_flag lhs, fd::flag rhs) noexcept {
+		return fd_flag(lhs, rhs);
 	}
 
-	constexpr all_fd_flags
-	operator|(fd_flag lhs, fd_status_flag rhs) noexcept {
-		return all_fd_flags(lhs, rhs);
+	constexpr fd_flag
+	operator|(fd::flag lhs, fd::status_flag rhs) noexcept {
+		return fd_flag(lhs, rhs);
 	}
 
-	constexpr negate_flag<fd_status_flag>
-	operator~(fd_status_flag rhs) noexcept {
-		return negate_flag<fd_status_flag>{rhs};
+
+	fd_flag
+	fd::flags() const {
+		return fd_flag::flags(*this);
 	}
 
-	constexpr negate_flag<fd_flag>
-	operator~(fd_flag rhs) noexcept {
-		return negate_flag<fd_flag>{rhs};
+	void
+	fd::setf(fd_flag f) {
+		f.set(*this);
 	}
-
 
 	namespace components {
 
@@ -412,7 +475,7 @@ namespace factory {
 			}
 
 			void close() {
-				if (this->_sem) {
+				if (this->_sem != SEM_FAILED) {
 					check(::sem_close(this->_sem),
 						__FILE__, __LINE__, __func__);
 					if (this->_owner) {
@@ -755,39 +818,57 @@ namespace factory {
 			ifaddrs_type* _addrs = nullptr;
 		};
 
-		struct pipe_type {
+	}
 
-			pipe_type() {
-				check(::pipe(this->_fds),
-					__FILE__, __LINE__, __func__);
-				all_fd_flags fls(fd_flag::non_block | fd_status_flag::close_on_exec);
-				fls.set(this->in());
+	namespace unix {
+
+		union pipe {
+
+			inline
+			pipe(): _fds{} {
+				open();
 			}
 
 			inline
-			pipe_type(pipe_type&& rhs) noexcept:
-				_fds{rhs._fds[0], rhs._fds[1]}
-			{
-				rhs._fds[0] = -1;
-				rhs._fds[1] = -1;
+			pipe(pipe&& rhs) noexcept:
+				_fds{std::move(rhs._fds[0]), std::move(rhs._fds[1])}
+			{}
+
+			inline fd&
+			in() noexcept {
+				return this->_fds[0];
 			}
 
-			~pipe_type() {
-				if (this->_fds[0] >= 0) {
-					check(::close(this->_fds[0]),
-						__FILE__, __LINE__, __func__);
-				}
-				if (this->_fds[1] >= 0) {
-					check(::close(this->_fds[1]),
-						__FILE__, __LINE__, __func__);
-				}
+			inline fd&
+			out() noexcept {
+				return this->_fds[1];
 			}
 
-			fd_type in() const noexcept { return this->_fds[0]; }
-			fd_type out() const noexcept { return this->_fds[1]; }
+			inline const fd&
+			in() const noexcept {
+				return this->_fds[0];
+			}
+
+			inline const fd&
+			out() const noexcept {
+				return this->_fds[1];
+			}
+			
+			void open() {
+				this->close();
+				using components::check;
+				check(::pipe(this->_rawfds),
+					__FILE__, __LINE__, __func__);
+			}
+
+			void close() {
+				in().close();
+				out().close();
+			}
 
 		private:
-			fd_type _fds[2];
+			fd _fds[2];
+			fd_type _rawfds[2];
 		};
 		
 	

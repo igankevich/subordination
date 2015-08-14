@@ -76,7 +76,7 @@ namespace factory {
 				socklen_type len = sizeof(Endpoint);
 				socket = Socket(check(::accept(this->_fd, addr.sockaddr(), &len),
 					__FILE__, __LINE__, __func__));
-				socket.setf(fd_flag::non_block | fd_status_flag::close_on_exec);
+				socket.setf(fd::non_blocking | fd::close_on_exec);
 //				socket.setf(close_on_exec);
 				Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
 			}
@@ -94,24 +94,23 @@ namespace factory {
 				}
 			}
 
-			all_fd_flags status_flags() const {
-				return static_cast<fd_status_flag>(check(::fcntl(this->_fd, F_GETFL),
-					__FILE__, __LINE__, __func__));
+			inline flag_type
+			status_flags() const {
+				return fd_flag::status_flags(this->_fd);
 			}
-			all_fd_flags fd_flags() const {
-				return static_cast<fd_flag>(check(::fcntl(this->_fd, F_GETFD),
-					__FILE__, __LINE__, __func__));
-			}
-//			void setf(Flag f) {
-//				check(::fcntl(this->_fd, F_SETFL, this->status_flags() | f),
-//					__FILE__, __LINE__, __func__);
-//			}
-//			void setf(fd_status_flag f) {
-//				check(::fcntl(this->_fd, F_SETFD, this->fd_flags() | f),
-//					__FILE__, __LINE__, __func__);
-//			}
 
-			void setf(all_fd_flags fls) {
+			inline flag_type
+			fd_flags() const {
+				return fd_flag::fd_flags(this->_fd);
+			}
+
+			inline fd_flag
+			flags() const {
+				return fd_flag::flags(this->_fd);
+			}
+
+			inline void
+			setf(fd_flag fls) {
 				fls.set(this->_fd);
 			}
 
@@ -206,7 +205,7 @@ namespace factory {
 			inline
 			void set_mandatory_flags() {
 			#if !HAVE_DECL_SOCK_NONBLOCK
-				this->setf(fd_flag::non_block | fd_status_flag::close_on_exec);
+				this->setf(fd::non_blocking | fd::close_on_exec);
 			#endif
 			}
 

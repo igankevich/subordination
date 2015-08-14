@@ -97,7 +97,10 @@ namespace factory {
 			typedef events_type::size_type size_type;
 			typedef H* ptr_type;
 
-			Poller() { this->add(Event(this->_pipe.in(), Event::In), nullptr); }
+			Poller() {
+				this->_pipe.in().setf(fd::non_blocking | fd::close_on_exec);
+				this->add(Event(this->_pipe.in(), Event::In), nullptr);
+			}
 			~Poller() = default;
 			Poller(const Poller&) = delete;
 			Poller& operator=(const Poller&) = delete;
@@ -281,7 +284,7 @@ namespace factory {
 				return out;
 			}
 		
-			pipe_type _pipe;
+			unix::pipe _pipe;
 			events_type _events;
 			handlers_type _handlers;
 			volatile bool _stopped = false;
