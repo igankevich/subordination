@@ -8,7 +8,6 @@ namespace factory {
 	inline Timer_server* timer_server() { return __factory.timer_server(); }
 	inline App_server* app_server() { return __factory.app_server(); }
 	inline Principal_server* principal_server() { return __factory.principal_server(); }
-	inline Repository_stack* repository() { return __factory.repository(); }
 
 	namespace components {
 		template<class App, class Endp, class Buf>

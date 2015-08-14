@@ -4,17 +4,7 @@ namespace factory {
 
 		struct Socket {
 
-			typedef int fd_type;
-			typedef int flag_type;
 			typedef int opt_type;
-
-			enum Flag: flag_type {
-				Non_block = O_NONBLOCK
-			};
-
-			enum fd_flag: flag_type {
-				Close_on_exec = FD_CLOEXEC
-			};
 
 			enum Option: opt_type {
 				Reuse_addr = SO_REUSEADDR,
@@ -86,8 +76,8 @@ namespace factory {
 				socklen_type len = sizeof(Endpoint);
 				socket = Socket(check(::accept(this->_fd, addr.sockaddr(), &len),
 					__FILE__, __LINE__, __func__));
-				socket.setf(Non_block);
-				socket.setf(Close_on_exec);
+				socket.setf(fd_flag::non_block | fd_status_flag::close_on_exec);
+//				socket.setf(close_on_exec);
 				Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
 			}
 
@@ -104,21 +94,25 @@ namespace factory {
 				}
 			}
 
-			flag_type flags() const {
-				return check(::fcntl(this->_fd, F_GETFL),
-					__FILE__, __LINE__, __func__);
+			all_fd_flags status_flags() const {
+				return static_cast<fd_status_flag>(check(::fcntl(this->_fd, F_GETFL),
+					__FILE__, __LINE__, __func__));
 			}
-			flag_type fd_flags() const {
-				return check(::fcntl(this->_fd, F_GETFD),
-					__FILE__, __LINE__, __func__);
+			all_fd_flags fd_flags() const {
+				return static_cast<fd_flag>(check(::fcntl(this->_fd, F_GETFD),
+					__FILE__, __LINE__, __func__));
 			}
-			void setf(Flag f) {
-				check(::fcntl(this->_fd, F_SETFL, this->flags() | f),
-					__FILE__, __LINE__, __func__);
-			}
-			void setf(fd_flag f) {
-				check(::fcntl(this->_fd, F_SETFD, this->fd_flags() | f),
-					__FILE__, __LINE__, __func__);
+//			void setf(Flag f) {
+//				check(::fcntl(this->_fd, F_SETFL, this->status_flags() | f),
+//					__FILE__, __LINE__, __func__);
+//			}
+//			void setf(fd_status_flag f) {
+//				check(::fcntl(this->_fd, F_SETFD, this->fd_flags() | f),
+//					__FILE__, __LINE__, __func__);
+//			}
+
+			void setf(all_fd_flags fls) {
+				fls.set(this->_fd);
 			}
 
 			void setopt(Option opt) {
@@ -212,8 +206,7 @@ namespace factory {
 			inline
 			void set_mandatory_flags() {
 			#if !HAVE_DECL_SOCK_NONBLOCK
-				this->setf(Non_block);
-				this->setf(Close_on_exec);
+				this->setf(fd_flag::non_block | fd_status_flag::close_on_exec);
 			#endif
 			}
 
@@ -283,8 +276,6 @@ namespace factory {
 	};
 	
 	struct Web_socket: public Socket {
-
-		using Socket::fd_type;
 
 		enum struct State {
 			INITIAL_STATE,

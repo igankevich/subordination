@@ -7,6 +7,141 @@ namespace factory {
 	typedef ::pid_t pid_type;
 	typedef ::mode_t mode_type;
 	typedef struct ::sigaction sigaction_type;
+	typedef int fd_type;
+	typedef int flag_type;
+
+	enum struct fd_flag: flag_type {
+		non_block = O_NONBLOCK,
+		append = O_APPEND,
+		async = O_ASYNC,
+		dsync = O_DSYNC,
+		sync = O_SYNC,
+		direct = O_DIRECT,
+		noatime = O_NOATIME
+	};
+
+	enum struct fd_status_flag: flag_type {
+		close_on_exec = FD_CLOEXEC
+	};
+
+	template<class Flag>
+	struct negate_flag {
+		Flag f;
+	};
+
+	struct all_fd_flags {
+
+		constexpr
+		all_fd_flags(fd_flag x, fd_status_flag y) noexcept:
+			f1(static_cast<flag_type>(x)), f2(static_cast<flag_type>(y)) {}
+
+		constexpr
+		all_fd_flags(fd_flag x) noexcept:
+			f1(static_cast<flag_type>(x)), f2(-1) {}
+
+		constexpr
+		all_fd_flags(fd_status_flag y) noexcept:
+			f1(-1), f2(static_cast<flag_type>(y)) {}
+
+		void set(fd_type fd) {
+			using components::check;
+			if (f1 != -1) {
+				int flags = check(::fcntl(fd, F_GETFL),
+				__FILE__, __LINE__, __func__);
+				check(::fcntl(fd, F_SETFL, flags | f1),
+					__FILE__, __LINE__, __func__);
+			}
+			if (f2 != -1) {
+				check(::fcntl(fd, F_SETFD, f2),
+					__FILE__, __LINE__, __func__);
+			}
+		}
+
+		friend constexpr all_fd_flags
+		operator|(all_fd_flags lhs, fd_flag rhs) noexcept {
+			return all_fd_flags(lhs.f1 | static_cast<flag_type>(rhs), lhs.f2);
+		}
+
+		friend constexpr all_fd_flags
+		operator|(all_fd_flags lhs, fd_status_flag rhs) noexcept {
+			return all_fd_flags(lhs.f1, lhs.f2 | static_cast<flag_type>(rhs));
+		}
+
+		friend constexpr all_fd_flags
+		operator|(fd_flag lhs, all_fd_flags rhs) noexcept {
+			return all_fd_flags(rhs.f1 | static_cast<flag_type>(lhs), rhs.f2);
+		}
+
+		friend constexpr all_fd_flags
+		operator|(fd_status_flag lhs, all_fd_flags rhs) noexcept {
+			return all_fd_flags(rhs.f1, rhs.f2 | static_cast<flag_type>(lhs));
+		}
+
+		friend constexpr all_fd_flags
+		operator|(all_fd_flags lhs, all_fd_flags rhs) noexcept {
+			return all_fd_flags(lhs.f1 | rhs.f1, lhs.f2 | rhs.f2);
+		}
+
+		friend constexpr all_fd_flags
+		operator&(all_fd_flags lhs, all_fd_flags rhs) noexcept {
+			return all_fd_flags(lhs.f1 & rhs.f1, lhs.f2 & rhs.f2);
+		}
+
+		friend constexpr all_fd_flags
+		operator&(all_fd_flags lhs, negate_flag<fd_flag> rhs) noexcept {
+			return all_fd_flags(lhs.f1 & ~static_cast<flag_type>(rhs.f), lhs.f2);
+		}
+
+		friend constexpr all_fd_flags
+		operator&(all_fd_flags lhs, negate_flag<fd_status_flag> rhs) noexcept {
+			return all_fd_flags(lhs.f1, lhs.f2 & ~static_cast<flag_type>(rhs.f));
+		}
+
+		constexpr all_fd_flags
+		operator~() const noexcept {
+			return all_fd_flags(~f1, ~f2);
+		}
+
+		explicit constexpr
+		operator bool() const noexcept {
+			return f1 != 0 || f2 != 0;
+		}
+
+		constexpr bool
+		operator !() const noexcept {
+			return !operator bool();
+		}
+
+	private:
+
+		constexpr
+		all_fd_flags(flag_type x, flag_type y) noexcept:
+			f1(x), f2(y) {}
+
+		flag_type f1 = -1;
+		flag_type f2 = -1;
+	};
+
+	constexpr all_fd_flags
+	operator|(fd_status_flag lhs, fd_flag rhs) noexcept {
+		return all_fd_flags(rhs, lhs);
+	}
+
+	constexpr all_fd_flags
+	operator|(fd_flag lhs, fd_status_flag rhs) noexcept {
+		return all_fd_flags(lhs, rhs);
+	}
+
+	constexpr negate_flag<fd_status_flag>
+	operator~(fd_status_flag rhs) noexcept {
+		return negate_flag<fd_status_flag>{rhs};
+	}
+
+	constexpr negate_flag<fd_flag>
+	operator~(fd_flag rhs) noexcept {
+		return negate_flag<fd_flag>{rhs};
+	}
+
 
 	namespace components {
 
@@ -619,6 +754,42 @@ namespace factory {
 		private:
 			ifaddrs_type* _addrs = nullptr;
 		};
+
+		struct pipe_type {
+
+			pipe_type() {
+				check(::pipe(this->_fds),
+					__FILE__, __LINE__, __func__);
+				all_fd_flags fls(fd_flag::non_block | fd_status_flag::close_on_exec);
+				fls.set(this->in());
+			}
+
+			inline
+			pipe_type(pipe_type&& rhs) noexcept:
+				_fds{rhs._fds[0], rhs._fds[1]}
+			{
+				rhs._fds[0] = -1;
+				rhs._fds[1] = -1;
+			}
+
+			~pipe_type() {
+				if (this->_fds[0] >= 0) {
+					check(::close(this->_fds[0]),
+						__FILE__, __LINE__, __func__);
+				}
+				if (this->_fds[1] >= 0) {
+					check(::close(this->_fds[1]),
+						__FILE__, __LINE__, __func__);
+				}
+			}
+
+			fd_type in() const noexcept { return this->_fds[0]; }
+			fd_type out() const noexcept { return this->_fds[1]; }
+
+		private:
+			fd_type _fds[2];
+		};
+		
 	
 	}
 
@@ -645,5 +816,8 @@ namespace factory {
 	to_host_format(T n) noexcept {
 		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
 	}
+
+	using components::Process;
+	using components::Process_group;
 
 }

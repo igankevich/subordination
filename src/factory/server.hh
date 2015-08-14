@@ -416,7 +416,6 @@ namespace factory {
 			class Timer_server,
 			class App_server,
 			class Principal_server,
-			class Repository_stack,
 			class Shutdown
 		>
 		struct Basic_factory: public Server<typename Local_server::Kernel> {
@@ -433,8 +432,7 @@ namespace factory {
 				_ext_server(),
 				_timer_server(),
 				_app_server(),
-				_principal_server(),
-				_repository()
+				_principal_server()
 			{
 				init_parents();
 				register_factory(this);
@@ -495,7 +493,6 @@ namespace factory {
 			Timer_server* timer_server() { return &_timer_server; }
 			App_server* app_server() { return &_app_server; }
 			Principal_server* principal_server() { return &_principal_server; }
-			Repository_stack* repository() { return &_repository; }
 
 			Endpoint addr() const { return _remote_server.server_addr(); }
 
@@ -518,7 +515,6 @@ namespace factory {
 			Timer_server _timer_server;
 			App_server _app_server;
 			Principal_server _principal_server;
-			Repository_stack _repository;
 			Role _role = Role::Principal;
 		};
 

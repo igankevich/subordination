@@ -1,3 +1,9 @@
+#ifndef FACTORY_STDEXT_HH
+#define FACTORY_STDEXT_HH
+
+#include "bits/basic_uint.hh"
+#include "bits/uint128.hh"
+
 namespace factory {
 
 	namespace components {
@@ -193,3 +199,4 @@ namespace factory {
 	}
 
 }
+#endif // FACTORY_STDEXT_HH

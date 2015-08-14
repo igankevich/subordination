@@ -84,42 +84,11 @@ namespace factory {
 		static_assert(sizeof(Event) == sizeof(Basic_event),
 			"The size of Event does not match the size of ``struct pollfd''.");
 
-		struct Pipe {
-
-			Pipe() {
-				check(::pipe(this->_fds), __FILE__, __LINE__, __func__);
-				int flags = check(::fcntl(this->in(), F_GETFL), __FILE__, __LINE__, __func__);
-				check(::fcntl(this->in(), F_SETFL, flags | O_NONBLOCK), __FILE__, __LINE__, __func__);
-				check(::fcntl(this->in(), F_SETFD, FD_CLOEXEC), __FILE__, __LINE__, __func__);
-			}
-
-			Pipe(Pipe&& rhs): _fds{rhs._fds[0], rhs._fds[1]} {
-				rhs._fds[0] = -1;
-				rhs._fds[1] = -1;
-			}
-
-			~Pipe() {
-				if (this->_fds[0] >= 0) {
-					check(::close(this->_fds[0]), __FILE__, __LINE__, __func__);
-				}
-				if (this->_fds[1] >= 0) {
-					check(::close(this->_fds[1]), __FILE__, __LINE__, __func__);
-				}
-			}
-
-			int in() const { return this->_fds[0]; }
-			int out() const { return this->_fds[1]; }
-
-		private:
-			int _fds[2];
-		};
-		
 		template<class H, class D=std::default_delete<H>>
 		struct Poller {
 
 			enum note_type: char { Notify = '!' };
 			enum timeout_type: int { Infinite = -1 };
-			typedef Pipe pipe_type;
 			typedef int fd_type;
 			typedef Event event_type;
 			typedef std::unique_ptr<H,D> handler_type;
@@ -239,11 +208,11 @@ namespace factory {
 			}
 
 			void check_pollrdhup(Event& e) {
-			#if !HAVE_DECL_POLLRDHUP
+				#if !HAVE_DECL_POLLRDHUP
 				if (e.probe() == 0) {
 					e.setrev(Event::Hup);
 				}
-			#endif
+				#endif
 			}
 
 			void check_dirty() {

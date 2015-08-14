@@ -2,6 +2,7 @@ namespace factory {
 
 	namespace components {
 
+		// TODO: remove this class
 		template<class T>
 		struct LBuffer {
 			
@@ -143,6 +144,7 @@ namespace factory {
 			size_t read_pos = 0;
 		};
 
+		// TODO: remove
 		template<class Container>
 		class front_pop_iterator:
 		    public std::iterator<std::input_iterator_tag, typename Container::value_type>

@@ -211,7 +211,4 @@ namespace factory {
 
 	}
 
-	using components::Process;
-	using components::Process_group;
-
 }

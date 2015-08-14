@@ -289,7 +289,7 @@ namespace factory {
 				Event::legacy_event events,
 				Event::legacy_event revents=0)
 			{
-				socket_type::fd_type fd = sock.fd();
+				fd_type fd = sock.fd();
 				server_type* s = new server_type(std::move(sock), vaddr);
 				s->setparent(this);
 				this->_upstream[vaddr] = s;

@@ -64,16 +64,6 @@ namespace factory {
 		typedef Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
 			Local_server;
 
-		template<class K, class V>
-			using Repository = factory::components::Repository<K, V>;
-
-		typedef
-			factory::components::Repository_stack<factory::components::Repository,
-				int16_t, std::string,
-				std::string, int16_t,
-				Kernel*, Server<Kernel>*>
-					Repository_stack;
-
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
 				factory::components::Kernel_link<T, Kernel>>;
@@ -98,7 +88,6 @@ namespace factory {
 			Timer_server,
 			App_server,
 			Principal_server,
-			Repository_stack,
 			Shutdown>
 			Factory;
 
