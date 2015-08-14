@@ -4,7 +4,7 @@ namespace factory {
 
 		template<class Ifa>
 		struct ifaddrs_iterator:
-			public std::iterator<std::forward_iterator_tag, Ifa>
+			public std::iterator<std::input_iterator_tag, Ifa>
 		{
 			typedef Ifa ifaddrs_type;
 			typedef ifaddrs_type* pointer;
