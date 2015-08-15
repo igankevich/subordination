@@ -31,7 +31,7 @@ namespace factory {
 				this_type* _this;
 			};
 
-			typedef Poller<server_type, server_deleter> poller_type;
+			typedef unix::event_poller<server_type, server_deleter> poller_type;
 
 			Socket_server() = default;
 			virtual ~Socket_server() = default;
@@ -45,7 +45,7 @@ namespace factory {
 				this->_poller.clear();
 			}
 
-			void handle_event(Event& ev) {
+			void handle_event(unix::poll_event& ev) {
 				if (ev.fd() == this->_poller.pipe_in()) {
 					this->process_kernels();
 					if (this->stopping()) {
@@ -68,7 +68,7 @@ namespace factory {
 					<< sock << std::endl;
 				auto res = this->_upstream.find(vaddr);
 				if (res == this->_upstream.end()) {
-					this->add_connected_server(std::move(sock), vaddr, Event::In);
+					this->add_connected_server(std::move(sock), vaddr, unix::poll_event::In);
 					Logger<Level::SERVER>()
 						<< "connected peer "
 						<< vaddr << std::endl;
@@ -87,7 +87,7 @@ namespace factory {
 						// to read kernels until the socket
 						// is closed from the other end
 						server_type* new_s = new server_type(std::move(sock), addr);
-						this->link_server(s, new_s, Event{new_s->fd(), Event::In});
+						this->link_server(s, new_s, unix::poll_event{new_s->fd(), unix::poll_event::In});
 						debug("not replacing upstream");
 					} else {
 						Logger<Level::SERVER> log;
@@ -97,7 +97,7 @@ namespace factory {
 						new_s->setparent(this);
 						new_s->socket(std::move(sock));
 						this->_upstream[vaddr] = new_s;
-						this->_poller.add(Event{new_s->fd(), Event::Inout, Event::Inout}, new_s, server_deleter(this));
+						this->_poller.add(unix::poll_event{new_s->fd(), unix::poll_event::Inout, unix::poll_event::Inout}, new_s, server_deleter(this));
 						log << " with " << *new_s << std::endl;
 						debug("replacing upstream");
 					}
@@ -146,13 +146,13 @@ namespace factory {
 //					throw Error("Can not add upstream server when socket server is running.",
 //						__FILE__, __LINE__, __func__);
 //				}
-				this->connect_to_server(addr, Event::In);
+				this->connect_to_server(addr, unix::poll_event::In);
 			}
 
 			void socket(const unix::endpoint& addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
-				this->_poller.add(Event{this->_socket.fd(), Event::In}, nullptr, server_deleter(this));
+				this->_poller.add(unix::poll_event{this->_socket.fd(), unix::poll_event::In}, nullptr, server_deleter(this));
 			}
 
 			void start() {
@@ -192,7 +192,7 @@ namespace factory {
 				typedef typename upstream_type::value_type pair_type;
 				std::for_each(this->_upstream.begin(),
 					this->_upstream.end(), [] (pair_type& rhs)
-					{ rhs.second->simulate(Event{rhs.second->fd(), Event::Out}); });
+					{ rhs.second->simulate(unix::poll_event{rhs.second->fd(), unix::poll_event::Out}); });
 			}
 
 			void process_kernels() {
@@ -236,12 +236,12 @@ namespace factory {
 						if (!k->to()) {
 							k->to(k->from());
 						}
-						this->find_or_create_peer(k->to(), Event::Inout)->send(k);
+						this->find_or_create_peer(k->to(), unix::poll_event::Inout)->send(k);
 					}
 				}
 			}
 
-			server_type* find_or_create_peer(const unix::endpoint& addr, Event::legacy_event ev) {
+			server_type* find_or_create_peer(const unix::endpoint& addr, unix::poll_event::legacy_event ev) {
 				server_type* ret;
 				auto result = _upstream.find(addr);
 				if (result == _upstream.end()) {
@@ -276,7 +276,7 @@ namespace factory {
 					<< msg << " events " << this->_poller << std::endl;
 			}
 
-			server_type* connect_to_server(unix::endpoint addr, Event::legacy_event events) {
+			server_type* connect_to_server(unix::endpoint addr, unix::poll_event::legacy_event events) {
 				// bind to server address with ephemeral port
 				unix::endpoint srv_addr(this->server_addr(), 0);
 				socket_type sock;
@@ -286,18 +286,18 @@ namespace factory {
 			}
 
 			server_type* add_connected_server(socket_type&& sock, unix::endpoint vaddr,
-				Event::legacy_event events,
-				Event::legacy_event revents=0)
+				unix::poll_event::legacy_event events,
+				unix::poll_event::legacy_event revents=0)
 			{
 				fd_type fd = sock.fd();
 				server_type* s = new server_type(std::move(sock), vaddr);
 				s->setparent(this);
 				this->_upstream[vaddr] = s;
-				this->_poller.add(Event{fd, events, revents}, s, server_deleter(this));
+				this->_poller.add(unix::poll_event{fd, events, revents}, s, server_deleter(this));
 				return s;
 			}
 
-			void link_server(server_type* par, server_type* sub, Event ev) {
+			void link_server(server_type* par, server_type* sub, unix::poll_event ev) {
 				sub->setparent(this);
 				sub->setvaddr(par->vaddr());
 				sub->link(par);
@@ -409,19 +409,19 @@ namespace factory {
 				return this->socket().error() == 0;
 			}
 
-			void operator()(Event& event) {
+			void operator()(unix::poll_event& event) {
 				if (this->valid()) {
 					this->handle_event(event);
 				} else {
-					event.setrev(Event::Hup);
+					event.setrev(unix::poll_event::Hup);
 				}
 			}
 
-			void simulate(Event event) {
+			void simulate(unix::poll_event event) {
 				this->handle_event(event);
 			}
 
-			void handle_event(Event& event) {
+			void handle_event(unix::poll_event& event) {
 				bool overflow = false;
 				if (event.in()) {
 					Logger<Level::COMPONENT>() << "recv rdstate="
@@ -449,9 +449,9 @@ namespace factory {
 					}
 				}
 				if (overflow) {
-					event.setev(Event::Out);
+					event.setev(unix::poll_event::Out);
 				} else {
-					event.unsetev(Event::Out);
+					event.unsetev(unix::poll_event::Out);
 					this->_dirty = false;
 				}
 			}
@@ -559,7 +559,7 @@ namespace factory {
 			void read_kernels() {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				this->simulate(Event{this->fd(), Event::In});
+				this->simulate(unix::poll_event{this->fd(), unix::poll_event::In});
 			}
 
 			unix::endpoint _vaddr;

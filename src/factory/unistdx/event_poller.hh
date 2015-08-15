@@ -1,10 +1,10 @@
 namespace factory {
 
-	namespace components {
+	namespace unix {
 
 		typedef struct ::pollfd Basic_event;
 
-		struct Event: public Basic_event {
+		struct poll_event: public Basic_event {
 
 			typedef decltype(Basic_event::events) legacy_event;
 			typedef int fd_type;
@@ -18,59 +18,131 @@ namespace factory {
 				Def = POLLRDHUP
 			};
 
-			friend
-			constexpr legacy_event operator|(event_type lhs, event_type rhs) {
+			friend constexpr legacy_event
+			operator|(event_type lhs, event_type rhs) noexcept {
 				return static_cast<legacy_event>(lhs) | static_cast<legacy_event>(rhs);
 			}
-			friend
-			constexpr legacy_event operator|(legacy_event lhs, event_type rhs) {
+
+			friend constexpr legacy_event
+			operator|(legacy_event lhs, event_type rhs) noexcept {
 				return lhs | static_cast<legacy_event>(rhs);
 			}
-			friend
-			constexpr legacy_event operator|(event_type lhs, legacy_event rhs) {
+
+			friend constexpr legacy_event
+			operator|(event_type lhs, legacy_event rhs) noexcept {
 				return static_cast<legacy_event>(lhs) | rhs;
 			}
-			friend
-			constexpr legacy_event operator&(legacy_event lhs, event_type rhs) {
+
+			friend constexpr legacy_event
+			operator&(legacy_event lhs, event_type rhs) noexcept {
 				return lhs & static_cast<legacy_event>(rhs);
 			}
-			friend
-			constexpr legacy_event operator&(event_type lhs, legacy_event rhs) {
+
+			friend constexpr legacy_event
+			operator&(event_type lhs, legacy_event rhs) noexcept {
 				return static_cast<legacy_event>(lhs) & rhs;
 			}
 
-			constexpr explicit Event(fd_type f=-1, legacy_event ev=0, legacy_event rev=0):
+			explicit constexpr
+			poll_event(fd_type f=-1, legacy_event ev=0, legacy_event rev=0) noexcept:
 				Basic_event{f,ev|Def,rev} {}
 
-			constexpr legacy_event revents() const { return this->Basic_event::revents; }
+			constexpr legacy_event
+			revents() const noexcept {
+				return this->Basic_event::revents;
+			}
 
-			void disable() { this->Basic_event::fd = -1; }
-			constexpr fd_type fd() const { return this->Basic_event::fd; }
-			constexpr bool bad_fd() const { return this->fd() < 0; } 
+			inline void
+			disable() noexcept {
+				this->Basic_event::fd = -1;
+			}
 
-			constexpr bool in() const { return (this->revents() & In) != 0; }
-			constexpr bool out() const { return (this->revents() & Out) != 0; }
-			constexpr bool hup() const { return (this->revents() & Hup) != 0; }
-			constexpr bool err() const { return (this->revents() & Err) != 0; }
-			constexpr bool bad() const { return (this->revents() & (Hup | Err)) != 0; }
+			constexpr fd_type
+			fd() const noexcept {
+				return this->Basic_event::fd;
+			}
+			
+			constexpr bool
+			bad_fd() const noexcept {
+				return this->fd() < 0;
+			} 
 
-			void setev(event_type rhs) { this->Basic_event::events |= rhs; }
-			void unsetev(event_type rhs) { this->Basic_event::events &= ~rhs; }
-			void setrev(event_type rhs) { this->Basic_event::revents |= rhs; }
-			void unsetrev(event_type rhs) { this->Basic_event::revents &= ~rhs; }
-			void setall(event_type rhs) { this->setev(rhs); this->setrev(rhs); }
+			constexpr bool
+			in() const noexcept {
+				return (this->revents() & In) != 0;
+			}
 
-			ssize_t probe() const {
+			constexpr bool
+			out() const noexcept {
+				return (this->revents() & Out) != 0;
+			}
+
+			constexpr bool
+			hup() const noexcept {
+				return (this->revents() & Hup) != 0;
+			}
+
+			constexpr bool
+			err() const noexcept {
+				return (this->revents() & Err) != 0;
+			}
+
+			constexpr bool
+			bad() const noexcept {
+				return (this->revents() & (Hup | Err)) != 0;
+			}
+
+			inline void
+			setev(event_type rhs) noexcept {
+				this->Basic_event::events |= rhs;
+			}
+
+			inline void
+			unsetev(event_type rhs) noexcept {
+				this->Basic_event::events &= ~rhs;
+			}
+
+			inline void
+			setrev(event_type rhs) noexcept {
+				this->Basic_event::revents |= rhs;
+			}
+
+			inline void
+			unsetrev(event_type rhs) noexcept {
+				this->Basic_event::revents &= ~rhs;
+			}
+
+			inline void
+			setall(event_type rhs) noexcept {
+				this->setev(rhs); this->setrev(rhs);
+			}
+
+			inline ssize_t
+			probe() const noexcept {
 				char c;
 				return ::recv(this->fd(), &c, 1, MSG_PEEK);
 			}
 
-			constexpr bool operator==(const Event& rhs) const { return this->fd() == rhs.fd(); }
-			constexpr bool operator!=(const Event& rhs) const { return this->fd() != rhs.fd(); }
-			constexpr bool operator< (const Event& rhs) const { return this->fd() <  rhs.fd(); }
-			Event& operator=(const Event&) = default;
+			constexpr bool
+			operator==(const poll_event& rhs) const noexcept {
+				return this->fd() == rhs.fd();
+			}
 
-			friend std::ostream& operator<<(std::ostream& out, const Event& rhs) {
+			constexpr bool
+			operator!=(const poll_event& rhs) const noexcept {
+				return this->fd() != rhs.fd();
+			}
+
+			constexpr bool
+			operator<(const poll_event& rhs) const noexcept {
+				return this->fd() < rhs.fd();
+			}
+
+			inline
+			poll_event& operator=(const poll_event&) noexcept = default;
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const poll_event& rhs) {
 				return out << "{fd=" << rhs.fd() << ",ev="
 					<< (rhs.in() ? 'r' : '-')
 					<< (rhs.out() ? 'w' : '-')
@@ -81,30 +153,30 @@ namespace factory {
 
 		};
 
-		static_assert(sizeof(Event) == sizeof(Basic_event),
-			"The size of Event does not match the size of ``struct pollfd''.");
+		static_assert(sizeof(poll_event) == sizeof(Basic_event),
+			"The size of poll_event does not match the size of ``struct pollfd''.");
 
 		template<class H, class D=std::default_delete<H>>
-		struct Poller {
+		struct event_poller {
 
 			enum note_type: char { Notify = '!' };
 			enum timeout_type: int { Infinite = -1 };
 			typedef int fd_type;
-			typedef Event event_type;
+			typedef poll_event event_type;
 			typedef std::unique_ptr<H,D> handler_type;
 			typedef std::vector<event_type> events_type;
 			typedef std::vector<handler_type> handlers_type;
 			typedef events_type::size_type size_type;
 			typedef H* ptr_type;
 
-			Poller() {
+			event_poller() {
 				this->_pipe.in().setf(unix::fd::non_blocking | unix::fd::close_on_exec);
-				this->add(Event(this->_pipe.in().get_fd(), Event::In), nullptr);
+				this->add(poll_event(this->_pipe.in().get_fd(), poll_event::In), nullptr);
 			}
-			~Poller() = default;
-			Poller(const Poller&) = delete;
-			Poller& operator=(const Poller&) = delete;
-			Poller(Poller&& rhs):
+			~event_poller() = default;
+			event_poller(const event_poller&) = delete;
+			event_poller& operator=(const event_poller&) = delete;
+			event_poller(event_poller&& rhs):
 				_pipe(std::move(rhs._pipe)),
 				_events(std::move(rhs._events)),
 				_handlers(std::move(rhs._handlers)),
@@ -126,7 +198,7 @@ namespace factory {
 			bool stopped() const { return this->_stopped; }
 
 			void stop() {
-				Logger<Level::COMPONENT>() << "Poller::stop()" << std::endl;
+				std::clog << "event_poller::stop()" << std::endl;
 				this->_stopped = true;
 			}
 
@@ -136,22 +208,22 @@ namespace factory {
 			}
 
 			void add(event_type ev, ptr_type ptr, D deleter = D()) {
-				Logger<Level::COMPONENT>() << "Poller::add " << ev << std::endl;
+				std::clog << "event_poller::add " << ev << std::endl;
 				this->_events.push_back(ev);
 				this->_handlers.emplace_back(std::move(handler_type(ptr, deleter)));
 			}
 		
 			void disable(fd_type fd) {
-				events_type::iterator pos = this->find(Event{fd}); 
+				events_type::iterator pos = this->find(poll_event{fd}); 
 				if (pos != this->_events.end()) {
-					Logger<Level::COMPONENT>() << "ignoring fd=" << pos->fd() << std::endl;
+					std::clog << "ignoring fd=" << pos->fd() << std::endl;
 					pos->disable();
 				}
 			}
 
 		private:
 
-			events_type::iterator find(const Event& ev) {
+			events_type::iterator find(const poll_event& ev) {
 				return std::find(this->_events.begin(),
 					this->_events.end(), ev);
 			}
@@ -182,7 +254,7 @@ namespace factory {
 				this->_events.erase(result.first(), fixed_end);
 				this->_handlers.erase(result.second(), fixed_end2);
 
-//				Logger<Level::COMPONENT>()
+//				std::clog
 //					<< "all events when erasing: "
 //					<< *this << std::endl;
 //				size_type i = 0;
@@ -195,13 +267,13 @@ namespace factory {
 //				);
 //				It1 it = std::remove_if(fixed_beg, fixed_end, pred);
 //				std::for_each(it, fixed_end, [] (event_type& ev) {
-//					Logger<Level::COMPONENT>()
+//					std::clog
 //						<< "erasing event "
 //						<< ev << std::endl;
 //				});
 //				std::for_each(it2, fixed_end2, [] (const handler_type& ptr) {
 //					if (ptr) {
-//						Logger<Level::COMPONENT>()
+//						std::clog
 //							<< "erasing server "
 //							<< *ptr << std::endl;
 //					}
@@ -210,10 +282,10 @@ namespace factory {
 //				this->_handlers.erase(it2, fixed_end2);
 			}
 
-			void check_pollrdhup(Event& e) {
+			void check_pollrdhup(poll_event& e) {
 				#if !HAVE_DECL_POLLRDHUP
 				if (e.probe() == 0) {
-					e.setrev(Event::Hup);
+					e.setrev(poll_event::Hup);
 				}
 				#endif
 			}
@@ -221,10 +293,10 @@ namespace factory {
 			void check_dirty() {
 				size_type i = 0;
 				std::for_each(this->_events.begin(), this->_events.end(),
-					[this,&i] (Event& ev) {
+					[this,&i] (poll_event& ev) {
 						handler_type& h = this->_handlers[i];
 						if (h && h->dirty()) {
-							ev.setev(Event::Out);
+							ev.setev(poll_event::Out);
 						}
 						++i;
 					}
@@ -236,21 +308,21 @@ namespace factory {
 
 				do {
 					check_dirty();
-					Logger<Level::COMPONENT>() << "poll(): size="
+					std::clog << "poll(): size="
 						<< this->_events.size() << std::endl;
 					check_if_not<std::errc::interrupted>(::poll(this->_events.data(),
 						this->_events.size(), Infinite),
 						__FILE__, __LINE__, __func__);
 				} while (errno == EINTR);
 
-				this->remove_fds_if(std::mem_fn(&Event::bad_fd));
+				this->remove_fds_if(std::mem_fn(&poll_event::bad_fd));
 
 				size_type i = 0;
 				std::for_each(this->_events.begin(), this->_events.end(),
-					[this,&callback,&i] (Event& ev) {
+					[this,&callback,&i] (poll_event& ev) {
 						handler_type& h = this->_handlers[i];
 						if (h && h->dirty()) {
-							ev.setrev(Event::Out);
+							ev.setrev(poll_event::Out);
 						}
 						this->check_pollrdhup(ev);
 						if (!ev.bad_fd()) {
@@ -270,14 +342,14 @@ namespace factory {
 						++i;
 					}
 				);
-				this->remove_fds_if(std::mem_fn(&Event::bad));
+				this->remove_fds_if(std::mem_fn(&poll_event::bad));
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const Poller& rhs) {
+			friend std::ostream& operator<<(std::ostream& out, const event_poller& rhs) {
 				std::ostream::sentry s(out);
 				if (s) {
 					out << '{';
-					stdx::intersperse_iterator<Event> it(out, ",");
+					stdx::intersperse_iterator<poll_event> it(out, ",");
 					std::copy(rhs._events.cbegin(), rhs._events.cend(), it);
 					out << '}';
 				}
