@@ -73,7 +73,7 @@
 	// Base system
 	#include "forward.hh"
 	#include "base.hh"
-	#include "stdext.hh"
+	#include "stdx.hh"
 	#include "packstream.hh"
 	#include "unistdext.hh"
 	#include "error.hh"

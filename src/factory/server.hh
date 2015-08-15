@@ -141,8 +141,8 @@ namespace factory {
 			}
 		
 			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << intersperse(rhs._upstream.begin(),
-					rhs._upstream.end(), ',');
+				std::copy(rhs._upstream.begin(), rhs._upstream.end(),
+					stdx::intersperse_iterator<const Srv&>(out, ","));
 			}
 			
 			void start() {

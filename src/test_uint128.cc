@@ -3,7 +3,6 @@
 #include "test.hh"
 
 using namespace factory;
-using factory::components::n_random_bytes;
 
 void check_bool(bool x, bool y) {
 	if (x != y) {
@@ -164,7 +163,7 @@ template<class T>
 void test_bytes_swap2_perf() {
 	Time t0 = current_time_nano();
 	for (int i=0; i<100000; ++i) {
-		T x = n_random_bytes<T>(rng);
+		T x = stdx::n_random_bytes<T>(rng);
 		T y = byte_swap3<T>(x);
 	}
 	Time t1 = current_time_nano();
@@ -174,7 +173,7 @@ template<class T>
 void test_bytes_swap_perf() {
 	Time t0 = current_time_nano();
 	for (int i=0; i<100000; ++i) {
-		T x = n_random_bytes<T>(rng);
+		T x = stdx::n_random_bytes<T>(rng);
 		T y = bits::byte_swap<T>(x);
 	}
 	Time t1 = current_time_nano();

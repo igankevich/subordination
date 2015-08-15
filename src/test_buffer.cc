@@ -132,7 +132,7 @@ void test_filterbuf() {
 	}
 }
 
-template<class T, class Fd=int>
+template<class T, class Fd=unix::fd>
 void test_kernelbuf() {
 	std::clog << "Checking kernelbuf" << std::endl;
 	std::string filename = "/tmp/"
@@ -146,14 +146,14 @@ void test_kernelbuf() {
 		{
 			unix::file file(filename, unix::file::write_only, unix::file::create | unix::file::truncate,  S_IRUSR | S_IWUSR);
 			okernelbuf buf;
-			buf.setfd(file.get_fd());
+			buf.setfd(std::move(file));
 			std::basic_ostream<T> out(&buf);
 			out << contents;
 		}
 		{
 			unix::file file(filename, unix::file::read_only);
 			ikernelbuf buf;
-			buf.setfd(file.get_fd());
+			buf.setfd(std::move(file));
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
 			in.read(&result[0], k);

@@ -634,7 +634,7 @@ namespace factory {
 			frame.opcode(Opcode::BINARY_FRAME);
 			frame.fin(1);
 			frame.payload_size(input_size);
-			frame.mask(n_random_bytes<Web_socket_frame::Mask>(rng));
+			frame.mask(stdx::n_random_bytes<Web_socket_frame::Mask>(rng));
 			frame.encode(result);
 			frame.copy_payload(first, last, result);
 			Logger<Level::WEBSOCKET>() << "send header " << frame << std::endl;
@@ -681,7 +681,7 @@ namespace factory {
 //				std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
 //				ncopied += nb;
 //			}
-			bits::Bytes<std::uint128_t> buf = n_random_bytes<std::uint128_t>(rng);
+			bits::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
 			base64_encode(buf.begin(), buf.begin() + buf.size(), key);
 		}
 

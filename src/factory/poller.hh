@@ -172,8 +172,8 @@ namespace factory {
 				It2 fixed_beg2 = this->_handlers.begin();
 				It2 fixed_end2 = this->_handlers.end();
 //				typedef typename decltype(beg3)::reference reference;
-				auto result = std::remove_if(make_paired(fixed_beg, fixed_beg2),
-					make_paired(fixed_end, fixed_end2), apply_to<0>(pred));
+				auto result = std::remove_if(stdx::make_paired(fixed_beg, fixed_beg2),
+					stdx::make_paired(fixed_end, fixed_end2), stdx::apply_to<0>(pred));
 //				auto result = std::remove_if(beg3, end3,
 //					[pred] (reference rhs) {
 //						return pred(std::get<0>(rhs));
@@ -277,7 +277,7 @@ namespace factory {
 				std::ostream::sentry s(out);
 				if (s) {
 					out << '{';
-					intersperse_iterator<Event> it(out, ",");
+					stdx::intersperse_iterator<Event> it(out, ",");
 					std::copy(rhs._events.cbegin(), rhs._events.cend(), it);
 					out << '}';
 				}

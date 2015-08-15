@@ -163,7 +163,7 @@ namespace factory {
 					return tmp;
 				}
 			);
-			components::intersperse_iterator<std::string> it(out, ",\n    ");
+			stdx::intersperse_iterator<std::string> it(out, ",\n    ");
 			std::copy(callstack.begin(), callstack.end(), it);
 			out << ']';
 		}
@@ -202,7 +202,7 @@ namespace factory {
 				if (addrs.empty()) {
 					out << unix::endpoint();
 				} else {
-					intersperse_iterator<unix::endpoint> it(out, ",");
+					stdx::intersperse_iterator<unix::endpoint> it(out, ",");
 					std::copy(addrs.begin(), addrs.end(), it);
 				}
 			}
@@ -416,7 +416,7 @@ namespace factory {
 			static std::atomic<Id> counter(factory_start_id());
 			return counter++;
 		}
-		spin_mutex __logger_mutex;
+		stdx::spin_mutex __logger_mutex;
 		std::vector<Address_range> discover_neighbours() {
 		
 			struct ::ifaddrs* ifaddr;

@@ -257,7 +257,7 @@ namespace factory {
 				friend std::ostream& operator<<(std::ostream& out, const print_values& rhs) {
 					typedef typename upstream_type::value_type value_type;
 					out << '{';
-					intersperse_iterator<server_type> it(out, ",");
+					stdx::intersperse_iterator<server_type> it(out, ",");
 					std::transform(rhs.map.begin(), rhs.map.end(), it,
 						[] (const value_type& pair) -> const server_type& {
 							return *pair.second;

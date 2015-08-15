@@ -255,15 +255,12 @@ namespace factory {
 
 		template<class T, class B>
 		std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
-			using components::intersperse_iterator;
-			using components::Fixed_width;
-			using components::use_flags;
 			typedef typename Bytes<T,B>::value_type value_type;
 			std::ostream::sentry s(out);
 			if (s) {
-				use_flags f(out, std::ios::hex, std::ios::basefield); 
+				stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
 				out.fill('0');
-				intersperse_iterator<Fixed_width<unsigned int, 2>> it(out, " ");
+				stdx::intersperse_iterator<stdx::fixed_width<unsigned int, 2>> it(out, " ");
 				std::transform(rhs.begin(), rhs.end(), it,
 					[] (value_type ch) -> unsigned char {
 						return static_cast<unsigned char>(ch);

@@ -3,7 +3,6 @@
 #include "bits/endpoint.hh"
 
 #include "unistdx/types.hh"
-#include "unistdx/fd.hh"
 #include "unistdx/file.hh"
 #include "unistdx/endpoint.hh"
 #include "unistdx/socket.hh"

@@ -13,7 +13,7 @@ namespace factory {
 
 			typedef typename shared_mem<char_type>::size_type size_type;
 			typedef typename shared_mem<char_type>::path_type path_type;
-			typedef spin_mutex mutex_type;
+			typedef stdx::spin_mutex mutex_type;
 			typedef typename shared_mem<Ch>::proj_id_type proj_id_type;
 
 			explicit

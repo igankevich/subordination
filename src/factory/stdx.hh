@@ -3,10 +3,37 @@
 
 #include "bits/basic_uint.hh"
 #include "bits/uint128.hh"
+#include "bits/stdx.hh"
 
 namespace factory {
 
-	namespace components {
+	namespace stdx {
+
+		template<class T, std::streamsize W>
+		struct fixed_width {
+			fixed_width(T x): val(x) {}
+			friend std::ostream&
+			operator<<(std::ostream& out, const fixed_width& rhs) {
+				return out << std::setw(W) << rhs.val;
+			}
+		private:
+			T val;
+		};
+
+		struct use_flags {
+			explicit
+			use_flags(std::ios_base& s):
+				str(s), oldf(str.flags()) {}
+			template<class ... Args>
+			use_flags(std::ios_base& s, Args&& ... args):
+				str(s), oldf(str.setf(std::forward<Args>(args)...)) {}
+			~use_flags() {
+				str.setf(oldf);
+			}
+		private:
+			std::ios_base& str;
+			std::ios_base::fmtflags oldf;
+		};
 
 		template <class T, class Ch=char, class Tr=std::char_traits<Ch>>
 		struct intersperse_iterator:
@@ -100,59 +127,10 @@ namespace factory {
 		}
 
 		template<size_t No, class F>
-		struct Apply_to {
-			constexpr explicit Apply_to(F&& f): func(f) {}
-			template<class Arg>
-			auto operator()(const Arg& rhs) ->
-				typename std::result_of<F&(decltype(std::get<No>(rhs)))>::type
-			{
-				return func(std::get<No>(rhs));
-			}
-		private:
-			F&& func;
-		};
-
-		template<size_t No, class F>
-		constexpr Apply_to<No,F>
+		constexpr bits::Apply_to<No,F>
 		apply_to(F&& f) {
-			return Apply_to<No,F>(f);
+			return bits::Apply_to<No,F>(f);
 		}
-
-		template<class Result, class Engine>
-		Result n_random_bytes(Engine& engine) {
-			typedef Result result_type;
-			typedef typename Engine::result_type
-				base_result_type;
-			static_assert(sizeof(base_result_type) > 0 &&
-				sizeof(result_type) > 0 &&
-				sizeof(result_type) % sizeof(base_result_type) == 0,
-				"bad result type");
-			constexpr const std::size_t NUM_BASE_RESULTS =
-				sizeof(result_type) / sizeof(base_result_type);
-			union {
-				result_type value{};
-				base_result_type base[NUM_BASE_RESULTS];
-			} result;
-			std::generate_n(result.base,
-				NUM_BASE_RESULTS,
-				std::ref(engine));
-			return result.value;
-		}
-
-		struct use_flags {
-			explicit
-			use_flags(std::ios_base& s):
-				str(s), oldf(str.flags()) {}
-			template<class ... Args>
-			use_flags(std::ios_base& s, Args&& ... args):
-				str(s), oldf(str.setf(std::forward<Args>(args)...)) {}
-			~use_flags() {
-				str.setf(oldf);
-			}
-		private:
-			std::ios_base& str;
-			std::ios_base::fmtflags oldf;
-		};
 
 		/// Fast mutex for scheduling strategies.
 		struct spin_mutex {
@@ -185,22 +163,27 @@ namespace factory {
 			std::atomic_flag _flag = ATOMIC_FLAG_INIT;
 		};
 
-		template<class T, std::streamsize W>
-		struct Fixed_width {
-			Fixed_width(T x): val(x) {}
-			friend std::ostream&
-			operator<<(std::ostream& out, const Fixed_width& rhs) {
-				return out << std::setw(W) << rhs.val;
-			}
-		private:
-			T val;
-		};
+		template<class Result, class Engine>
+		Result n_random_bytes(Engine& engine) {
+			typedef Result result_type;
+			typedef typename Engine::result_type
+				base_result_type;
+			static_assert(sizeof(base_result_type) > 0 &&
+				sizeof(result_type) > 0 &&
+				sizeof(result_type) % sizeof(base_result_type) == 0,
+				"bad result type");
+			constexpr const std::size_t NUM_BASE_RESULTS =
+				sizeof(result_type) / sizeof(base_result_type);
+			union {
+				result_type value{};
+				base_result_type base[NUM_BASE_RESULTS];
+			} result;
+			std::generate_n(result.base,
+				NUM_BASE_RESULTS,
+				std::ref(engine));
+			return result.value;
+		}
 
-	}
-
-	namespace stdx {
-		using components::intersperse_iterator;
-		using components::use_flags;
 	}
 
 }

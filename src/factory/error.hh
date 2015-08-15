@@ -37,7 +37,7 @@ namespace factory {
 				"unknwn";
 		}
 
-		extern spin_mutex __logger_mutex;
+		extern stdx::spin_mutex __logger_mutex;
 
 		template<Level lvl=Level::KERNEL>
 		struct Logger {
