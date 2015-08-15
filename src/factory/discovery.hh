@@ -81,9 +81,9 @@ namespace factory {
 		std::vector<Address_range> discover_neighbours();
 
 		inline
-		Endpoint get_bind_address() {
+		unix::endpoint get_bind_address() {
 
-			Endpoint ret;
+			unix::endpoint ret;
 		
 			Ifaddrs addrs;
 			Ifaddrs::iterator result = 
@@ -94,14 +94,14 @@ namespace factory {
 					return false;
 				}
 
-				Endpoint addr(*rhs.ifa_addr);
-				if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
+				unix::endpoint addr(*rhs.ifa_addr);
+				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
 					// ignore localhost and non-IPv4 addresses
 					return false;
 				}
 
-				Endpoint netmask(*rhs.ifa_netmask);
-				if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
+				unix::endpoint netmask(*rhs.ifa_netmask);
+				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
 					// ignore wide-area networks
 					return false;
 				}
@@ -109,7 +109,7 @@ namespace factory {
 				return true;
 			});
 			if (result != addrs.end()) {
-				ret = Endpoint(*result->ifa_addr);
+				ret = unix::endpoint(*result->ifa_addr);
 			}
 		
 			return ret;

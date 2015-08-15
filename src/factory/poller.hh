@@ -98,8 +98,8 @@ namespace factory {
 			typedef H* ptr_type;
 
 			Poller() {
-				this->_pipe.in().setf(fd::non_blocking | fd::close_on_exec);
-				this->add(Event(this->_pipe.in(), Event::In), nullptr);
+				this->_pipe.in().setf(unix::fd::non_blocking | unix::fd::close_on_exec);
+				this->add(Event(this->_pipe.in().get_fd(), Event::In), nullptr);
 			}
 			~Poller() = default;
 			Poller(const Poller&) = delete;
@@ -112,7 +112,7 @@ namespace factory {
 				{}
 		
 			void notify(note_type c = Notify) {
-				check(::write(this->_pipe.out(),
+				check(::write(this->_pipe.out().get_fd(),
 					&c, sizeof(note_type)),
 					__FILE__, __LINE__, __func__);
 			}
@@ -122,7 +122,7 @@ namespace factory {
 				while (!this->stopped()) this->wait(callback);
 			}
 
-			fd_type pipe_in() const { return this->_pipe.in(); }
+			fd_type pipe_in() const { return this->_pipe.in().get_fd(); }
 			bool stopped() const { return this->_stopped; }
 
 			void stop() {

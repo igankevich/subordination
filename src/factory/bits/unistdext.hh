@@ -23,10 +23,18 @@ namespace factory {
 			}
 
 		private:
-
 			std::string _s;
 		};
 
+		typedef struct ::sigaction sigaction_type;
+
+		struct Action: public sigaction_type {
+			inline
+			Action(void (*func)(int)) noexcept {
+				this->sa_handler = func;
+			}
+		};
+	
 	}
 
 }

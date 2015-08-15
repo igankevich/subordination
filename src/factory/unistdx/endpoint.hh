@@ -1,13 +1,30 @@
-#ifndef FACTORY_ENDPOINT_HH
-#define FACTORY_ENDPOINT_HH
-
-#include "bits/endpoint.hh"
-
 namespace factory {
 
-	typedef ::in_port_t Port;
+	template<class T>
+	T to_network_format(bits::Bytes<T> n) noexcept {
+		n.to_network_format();
+		return n.value();
+	}
 
-	namespace components {
+	template<class T>
+	T to_host_format(bits::Bytes<T> n) noexcept {
+		n.to_host_format();
+		return n.value();
+	}
+
+	template<class T>
+	constexpr T
+	to_network_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
+	}
+
+	template<class T>
+	constexpr T
+	to_host_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
+	}
+
+	namespace unix {
 
 		typedef struct ::sockaddr sa_type;
 		typedef struct ::sockaddr_in sin4_type;
@@ -21,33 +38,33 @@ namespace factory {
 		typedef std::uint128_t addr6_type;
 		typedef ::in_port_t port_type;
 
-		union IPv4_addr {
+		union ipv4_addr {
 		
 			typedef uint8_t oct_type;
 		
 			constexpr
-			IPv4_addr() noexcept:
+			ipv4_addr() noexcept:
 				addr(0) {}
 
 			constexpr explicit
-			IPv4_addr(addr4_type rhs) noexcept:
+			ipv4_addr(addr4_type rhs) noexcept:
 				addr(rhs) {}
 
 			constexpr
-			IPv4_addr(const IPv4_addr& rhs) noexcept:
+			ipv4_addr(const ipv4_addr& rhs) noexcept:
 				addr(rhs.addr) {}
 
 			constexpr explicit
-			IPv4_addr(const in4_type& rhs) noexcept:
+			ipv4_addr(const in4_type& rhs) noexcept:
 				addr(rhs.s_addr) {}
 
 			constexpr
-			IPv4_addr(oct_type o1, oct_type o2,
+			ipv4_addr(oct_type o1, oct_type o2,
 				oct_type o3, oct_type o4):
 				addr(from_octets(o1, o2, o3, o4)) {}
 		
 			friend std::ostream&
-			operator<<(std::ostream& out, IPv4_addr rhs) {
+			operator<<(std::ostream& out, ipv4_addr rhs) {
 				using bits::Dot;
 				return out
 					<< ((rhs.addr >> 0)  & UINT32_C(0xff)) << Dot()
@@ -57,23 +74,23 @@ namespace factory {
 			}
 		
 			friend std::istream&
-			operator>>(std::istream& in, IPv4_addr& rhs) {
+			operator>>(std::istream& in, ipv4_addr& rhs) {
 				using bits::Dot; using bits::Octet;
 				Octet o1, o2, o3, o4;
 				in >> o1 >> Dot() >> o2 >> Dot() >> o3 >> Dot() >> o4;
 				if (!in.fail()) {
-					rhs.addr = IPv4_addr::from_octets(o1, o2, o3, o4);
+					rhs.addr = ipv4_addr::from_octets(o1, o2, o3, o4);
 				}
 				return in;
 			}
 
 			friend packstream&
-			operator<<(packstream& out, const IPv4_addr& rhs) {
+			operator<<(packstream& out, const ipv4_addr& rhs) {
 				return out << rhs.raw;
 			}
 
 			friend packstream&
-			operator>>(packstream& in, IPv4_addr& rhs) {
+			operator>>(packstream& in, ipv4_addr& rhs) {
 				return in >> rhs.raw;
 			}
 		
@@ -85,17 +102,17 @@ namespace factory {
 			}
 
 			constexpr bool
-			operator<(const IPv4_addr& rhs) const noexcept {
+			operator<(const ipv4_addr& rhs) const noexcept {
 				return addr < rhs.addr;
 			}
 
 			constexpr bool
-			operator==(IPv4_addr rhs) const noexcept {
+			operator==(ipv4_addr rhs) const noexcept {
 				return addr == rhs.addr;
 			}
 
 			constexpr bool
-			operator!=(IPv4_addr rhs) const noexcept {
+			operator!=(ipv4_addr rhs) const noexcept {
 				return addr != rhs.addr;
 			}
 
@@ -127,35 +144,34 @@ namespace factory {
 			bits::Bytes<addr4_type> raw;
 		};
 
-		constexpr IPv4_addr
+		constexpr ipv4_addr
 		operator"" _ipv4(const char* arr, std::size_t n) noexcept {
-			using components::addr4_type;
-			return IPv4_addr(to_network_format(
+			return ipv4_addr(to_network_format(
 				bits::do_parse_ipv4_addr<addr4_type>(arr, arr+n)));
 		}
 
-		union IPv6_addr {
+		union ipv6_addr {
 
 			typedef uint16_t hex_type;
 
 			constexpr
-			IPv6_addr() noexcept:
+			ipv6_addr() noexcept:
 				inaddr{} {}
 
 			constexpr
-			IPv6_addr(const IPv6_addr& rhs) noexcept:
+			ipv6_addr(const ipv6_addr& rhs) noexcept:
 				inaddr(rhs.inaddr) {}
 
 			constexpr explicit
-			IPv6_addr(addr6_type rhs) noexcept:
+			ipv6_addr(addr6_type rhs) noexcept:
 				addr(rhs) {}
 
 			constexpr explicit
-			IPv6_addr(const in6_type& rhs) noexcept:
+			ipv6_addr(const in6_type& rhs) noexcept:
 				inaddr(rhs) {}
 
 			constexpr
-			IPv6_addr(hex_type h1, hex_type h2,
+			ipv6_addr(hex_type h1, hex_type h2,
 				hex_type h3, hex_type h4,
 				hex_type h5, hex_type h6,
 				hex_type h7, hex_type h8):
@@ -168,12 +184,12 @@ namespace factory {
 			}
 
 			constexpr bool
-			operator<(const IPv6_addr& rhs) const {
+			operator<(const ipv6_addr& rhs) const {
 				return addr < rhs.addr;
 			}
 
 			constexpr bool
-			operator==(const IPv6_addr& rhs) const {
+			operator==(const ipv6_addr& rhs) const {
 				return addr == rhs.addr;
 			}
 
@@ -188,25 +204,25 @@ namespace factory {
 			}
 
 			friend std::ostream&
-			operator<<(std::ostream& out, const IPv6_addr& rhs) {
+			operator<<(std::ostream& out, const ipv6_addr& rhs) {
 				std::ostream::sentry s(out);
 				if (s) {
-//					IPv6_addr tmp = rhs;
+//					ipv6_addr tmp = rhs;
 //					tmp.raw.to_host_format();
-					typedef IPv6_addr::hex_type hex_type;
-					use_flags f(out, std::ios::hex, std::ios::basefield); 
+					typedef ipv6_addr::hex_type hex_type;
+					stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
 					std::copy(rhs.begin(), rhs.end(),
-						intersperse_iterator<hex_type>(out, ":"));
+						stdx::intersperse_iterator<hex_type>(out, ":"));
 				}
 				return out;
 			}
 
 			friend std::istream&
-			operator>>(std::istream& in, IPv6_addr& rhs) {
+			operator>>(std::istream& in, ipv6_addr& rhs) {
 				std::istream::sentry s(in);
 				if (!s) { return in; }
-				typedef IPv6_addr::hex_type hex_type;
-				use_flags f(in, std::ios::hex, std::ios::basefield); 
+				typedef ipv6_addr::hex_type hex_type;
+				stdx::use_flags f(in, std::ios::hex, std::ios::basefield); 
 				int field_no = 0;
 				int zeros_field = -1;
 				std::for_each(rhs.begin(), rhs.end(),
@@ -258,12 +274,12 @@ namespace factory {
 			}
 
 			friend packstream&
-			operator<<(packstream& out, const IPv6_addr& rhs) {
+			operator<<(packstream& out, const ipv6_addr& rhs) {
 				return out << rhs.raw;
 			}
 
 			friend packstream&
-			operator>>(packstream& in, IPv6_addr& rhs) {
+			operator>>(packstream& in, ipv6_addr& rhs) {
 				return in >> rhs.raw;
 			}
 
@@ -300,72 +316,72 @@ namespace factory {
 			bits::Bytes<in6_type> raw;
 		};
 
-		union Endpoint {
+		union endpoint {
 
 			typedef uint16_t portable_family_type;
 
 			constexpr
-			Endpoint() noexcept {}
+			endpoint() noexcept {}
 
 			constexpr
-			Endpoint(const Endpoint& rhs) noexcept:
+			endpoint(const endpoint& rhs) noexcept:
 				_addr6(rhs._addr6) {}
 
-			Endpoint(const char* h, const Port p) { addr(h, p); }
+			endpoint(const char* h, const port_type p) { addr(h, p); }
 
 			constexpr
-			Endpoint(const IPv4_addr h, const Port p) noexcept:
+			endpoint(const ipv4_addr h, const port_type p) noexcept:
 				_addr6{
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
 					static_cast<sa_family_type>(family_type::inet),
-					to_network_format<Port>(p),
+					to_network_format<port_type>(p),
 					h.rep(),
 					IN6ADDR_ANY_INIT,
 					0
 				} {}
 
 			constexpr
-			Endpoint(const IPv6_addr& h, const Port p) noexcept:
+			endpoint(const ipv6_addr& h, const port_type p) noexcept:
 				_addr6{
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
 					static_cast<sa_family_type>(family_type::inet6),
-					to_network_format<Port>(p),
+					to_network_format<port_type>(p),
 					0, // flowinfo
 					h,
 					0 // scope
 				} {}
 				
 			constexpr
-			Endpoint(const sin4_type& rhs) noexcept:
+			endpoint(const sin4_type& rhs) noexcept:
 				_addr4(rhs) {}
 
 			constexpr
-			Endpoint(const sin6_type& rhs) noexcept:
+			endpoint(const sin6_type& rhs) noexcept:
 				_addr6(rhs) {}
 
 			constexpr
-			Endpoint(const sa_type& rhs) noexcept:
+			endpoint(const sa_type& rhs) noexcept:
 				_sockaddr(rhs) {}
 
 			constexpr
-			Endpoint(const Endpoint& rhs, const Port newport) noexcept:
+			endpoint(const endpoint& rhs, const port_type newport) noexcept:
 				_addr6{
 				#if HAVE_SOCKADDR_LEN
 					0,
 				#endif
 					rhs.sa_family(),
-					to_network_format<Port>(newport),
+					to_network_format<port_type>(newport),
 					rhs.family() == family_type::inet6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
 					rhs.family() == family_type::inet  ? in6_type{} : rhs._addr6.sin6_addr,
 					0 // scope
 				} {}
 
 			bool
-			operator<(const Endpoint& rhs) const noexcept {
+			operator<(const endpoint& rhs) const noexcept {
 				return family() == family_type::inet
 					? std::make_tuple(sa_family(), addr4(), port4())
 					< std::make_tuple(rhs.sa_family(), rhs.addr4(), rhs.port4())
@@ -374,7 +390,7 @@ namespace factory {
 			}
 
 			constexpr bool
-			operator==(const Endpoint& rhs) const noexcept {
+			operator==(const endpoint& rhs) const noexcept {
 				return (sa_family() == rhs.sa_family() || sa_family() == 0 || rhs.sa_family() == 0)
 					&& (family() == family_type::inet
 					? addr4() == rhs.addr4() && port4() == rhs.port4()
@@ -382,7 +398,7 @@ namespace factory {
 			}
 
 			constexpr bool
-			operator!=(const Endpoint& rhs) const noexcept {
+			operator!=(const endpoint& rhs) const noexcept {
 				return !operator==(rhs);
 			}
 
@@ -399,19 +415,19 @@ namespace factory {
 			}
 
 			friend std::ostream&
-			operator<<(std::ostream& out, const Endpoint& rhs) {
+			operator<<(std::ostream& out, const endpoint& rhs) {
 				using bits::Left_br; using bits::Right_br;
 				using bits::Colon;
 				std::ostream::sentry s(out);
 				if (s) {
 					if (rhs.family() == family_type::inet6) {
-						Port port = to_host_format<Port>(rhs.port6());
+						port_type port = to_host_format<port_type>(rhs.port6());
 //						std::clog << "Writing host = "
 //							<< rhs.addr6() << ':' << port << std::endl;
 						out << Left_br() << rhs.addr6() << Right_br()
 							<< Colon() << port;
 					} else {
-						Port port = to_host_format<Port>(rhs.port4());
+						port_type port = to_host_format<port_type>(rhs.port4());
 //						std::clog << "Writing host = "
 //							<< rhs.addr4() << ':' << port << std::endl;
 						out << rhs.addr4() << Colon() << port;
@@ -421,14 +437,14 @@ namespace factory {
 			}
 
 			friend std::istream&
-			operator>>(std::istream& in, Endpoint& rhs) {
+			operator>>(std::istream& in, endpoint& rhs) {
 				using bits::Left_br; using bits::Right_br;
 				using bits::Colon;
 				std::istream::sentry s(in);
 				if (s) {
-					IPv4_addr host;
-					Port port = 0;
-					use_flags f(in);
+					ipv4_addr host;
+					port_type port = 0;
+					stdx::use_flags f(in);
 					in.unsetf(std::ios_base::skipws);
 					std::streampos oldg = in.tellg();
 					if (in >> host >> Colon() >> port) {
@@ -438,7 +454,7 @@ namespace factory {
 					} else {
 						in.clear();
 						in.seekg(oldg);
-						IPv6_addr host6;
+						ipv6_addr host6;
 						if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
 							rhs.addr6(host6, port);
 							std::clog << "Reading host6 = "
@@ -450,7 +466,7 @@ namespace factory {
 			}
 
 			friend packstream&
-			operator<<(packstream& out, const Endpoint& rhs) {
+			operator<<(packstream& out, const endpoint& rhs) {
 				out << rhs.family();
 				if (rhs.family() == family_type::inet6) {
 					out << rhs.addr6() << bits::make_bytes(rhs.port6());
@@ -461,18 +477,18 @@ namespace factory {
 			}
 
 			friend packstream&
-			operator>>(packstream& in, Endpoint& rhs) {
+			operator>>(packstream& in, endpoint& rhs) {
 				family_type fam;
 				in >> fam;
 				rhs._addr6.sin6_family = static_cast<sa_family_type>(fam);
-				bits::Bytes<Port> port;
+				bits::Bytes<port_type> port;
 				if (rhs.family() == family_type::inet6) {
-					IPv6_addr addr;
+					ipv6_addr addr;
 					in >> addr >> port;
 					rhs._addr6.sin6_addr = addr;
 					rhs._addr6.sin6_port = port;
 				} else {
-					IPv4_addr addr;
+					ipv4_addr addr;
 					in >> addr >> port;
 					rhs._addr4.sin_addr = addr;
 					rhs._addr4.sin_port = port;
@@ -485,9 +501,9 @@ namespace factory {
 				return to_host_format<addr4_type>(this->addr4().rep());
 			}
 
-			constexpr Port
+			constexpr port_type
 			port() const noexcept {
-				return to_host_format<Port>(this->port4());
+				return to_host_format<port_type>(this->port4());
 			}
 
 			constexpr family_type
@@ -532,62 +548,62 @@ namespace factory {
 				return this->_addr6.sin6_family;
 			}
 
-			constexpr IPv4_addr
+			constexpr ipv4_addr
 			addr4() const {
-				return IPv4_addr(this->_addr4.sin_addr);
+				return ipv4_addr(this->_addr4.sin_addr);
 			}
 
-			constexpr Port
+			constexpr port_type
 			port4() const {
 				return this->_addr4.sin_port;
 			}
 
-			constexpr IPv6_addr
+			constexpr ipv6_addr
 			addr6() const {
-				return IPv6_addr(this->_addr6.sin6_addr);
+				return ipv6_addr(this->_addr6.sin6_addr);
 			}
 
-			constexpr Port
+			constexpr port_type
 			port6() const {
 				return this->_addr6.sin6_port;
 			}
 
-			void addr4(IPv4_addr a, Port p) {
+			void addr4(ipv4_addr a, port_type p) {
 				this->_addr4.sin_family = static_cast<sa_family_type>(family_type::inet);
 				this->_addr4.sin_addr = a;
-				this->_addr4.sin_port = to_network_format<Port>(p);
+				this->_addr4.sin_port = to_network_format<port_type>(p);
 			}
 
-			void addr6(IPv6_addr a, Port p) {
+			void addr6(ipv6_addr a, port_type p) {
 				this->_addr6.sin6_family = static_cast<sa_family_type>(family_type::inet6);
 				this->_addr6.sin6_addr = a;
-				this->_addr6.sin6_port = to_network_format<Port>(p);
+				this->_addr6.sin6_port = to_network_format<port_type>(p);
 			}
 		
-			void addr(const char* host, Port p) {
-				IPv4_addr a4;
+			void addr(const char* host, port_type p) {
+				ipv4_addr a4;
 				std::stringstream tmp(host);
 				if (tmp >> a4) {
 					addr4(a4, p);
 				} else {
 					tmp.clear();
 					tmp.seekg(0);
-					IPv6_addr a6;
+					ipv6_addr a6;
 					if (tmp >> a6) {
 						addr6(a6, p);
 					}
 				}
 			}
 
-			void addr(const IPv4_addr h, Port p) {
+			void addr(const ipv4_addr h, port_type p) {
 				this->_addr4.sin_family = static_cast<sa_family_type>(family_type::inet);
-				this->_addr4.sin_port = to_network_format<Port>(p);
+				this->_addr4.sin_port = to_network_format<port_type>(p);
 				this->_addr4.sin_addr = h;
 			}
 
-			void addr(const IPv6_addr& h, Port p) {
+			void addr(const ipv6_addr& h, port_type p) {
 				this->_addr6.sin6_family = static_cast<sa_family_type>(family_type::inet6);
-				this->_addr6.sin6_port = to_network_format<Port>(p);
+				this->_addr6.sin6_port = to_network_format<port_type>(p);
 				this->_addr6.sin6_addr = h;
 			}
 
@@ -596,16 +612,9 @@ namespace factory {
 			sa_type _sockaddr;
 		};
 
-		static_assert(sizeof(Endpoint) == sizeof(sin6_type), "bad endpoint size");
-//		static_assert(sizeof(family_type) == 1, "bad family_type size");
+		static_assert(sizeof(endpoint) == sizeof(sin6_type), "bad endpoint size");
 		static_assert(sizeof(port_type) == 2, "bad port_type size");
 
 	}
 
-	using components::IPv4_addr;
-	using components::IPv6_addr;
-	using components::Endpoint;
-	using components::operator""_ipv4;
-
 }
-#endif // FACTORY_ENDPOINT_HH

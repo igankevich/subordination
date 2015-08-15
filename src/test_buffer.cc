@@ -1,10 +1,20 @@
 #include <factory/factory_base.hh>
+#include "libfactory.cc"
 #include "test.hh"
 #include "datum.hh"
 
 using namespace factory;
-using factory::components::Socket;
-using factory::components::File;
+using factory::components::Error;
+using factory::components::basic_ofdstream;
+using factory::components::basic_ifdstream;
+using factory::components::basic_okernelbuf;
+using factory::components::basic_ikernelbuf;
+using factory::components::basic_kernelbuf;
+using factory::components::basic_fdbuf;
+using factory::components::basic_kstream;
+using factory::components::LBuffer;
+using factory::components::check;
+using factory::bits::make_bytes;
 
 template<class T, template<class X> class B>
 void test_buffer() {
@@ -69,13 +79,13 @@ void test_fdbuf() {
 		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
-			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
-			factory::basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
+			unix::file file(filename, unix::file::write_only, unix::file::create | unix::file::truncate,  S_IRUSR | S_IWUSR);
+			basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
-			File file(filename, O_RDONLY);
-			factory::basic_ifdstream<T,Tr,Fd> in(std::move(file));
+			unix::file file(filename, unix::file::read_only);
+			basic_ifdstream<T,Tr,Fd> in(std::move(file));
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -88,14 +98,15 @@ void test_fdbuf() {
 		}
 		{
 			std::clog << "Checking flush()" << std::endl;
-			File file(filename, O_WRONLY);
-			factory::basic_ofdstream<T,Tr,Fd> out(std::move(file));
+			unix::file file(filename, unix::file::write_only);
+			basic_ofdstream<T,Tr,Fd> out(std::move(file));
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);
 		}
 	}
-	check("remove()", std::remove(filename.c_str()));
+	components::check(std::remove(filename.c_str()),
+		__FILE__, __LINE__, __func__);
 }
 
 template<class T>
@@ -133,16 +144,16 @@ void test_kernelbuf() {
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
-			File file(filename, O_WRONLY | O_CREAT | O_TRUNC,  S_IRUSR | S_IWUSR);
+			unix::file file(filename, unix::file::write_only, unix::file::create | unix::file::truncate,  S_IRUSR | S_IWUSR);
 			okernelbuf buf;
-			buf.setfd(file.fd());
+			buf.setfd(file.get_fd());
 			std::basic_ostream<T> out(&buf);
 			out << contents;
 		}
 		{
-			File file(filename, O_RDONLY);
+			unix::file file(filename, unix::file::read_only);
 			ikernelbuf buf;
-			buf.setfd(file.fd());
+			buf.setfd(file.get_fd());
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
 			in.read(&result[0], k);
@@ -162,7 +173,8 @@ void test_kernelbuf() {
 			}
 		}
 	}
-	check("remove()", std::remove(filename.c_str()));
+	components::check(std::remove(filename.c_str()),
+		__FILE__, __LINE__, __func__);
 }
 
 template<class T>
@@ -253,7 +265,7 @@ struct App {
 //			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
-			test_fdbuf<char, File>();
+			test_fdbuf<char, unix::file>();
 //			test_fdbuf<unsigned char, int>();
 //			test_fdbuf<char, Socket>();
 			test_filterbuf<char>();

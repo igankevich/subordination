@@ -615,7 +615,7 @@ namespace factory {
 //
 //			template<class K>
 //			int send_to_resource(K* kernel) {
-//				const Endpoint* endp = Resources::resources().lookup(kernel->resource());
+//				const unix::endpoint* endp = Resources::resources().lookup(kernel->resource());
 //				if (endp == nullptr) {
 //					std::stringstream msg;
 //					msg << "Can not find server which provides resource '" << kernel->resource() << "'.";
@@ -628,7 +628,7 @@ namespace factory {
 //
 ////			template<class K, class I>
 ////			int operator()(Kernel_pair<K>* pair, I&) {
-//////				Endpoint endp = pair->subordinate()->from();
+//////				unix::endpoint endp = pair->subordinate()->from();
 //////				Remote_server<Kernel_pair<K>, This> srv(endp);
 //////				srv.send(pair);
 ////				return -1;
@@ -637,11 +637,11 @@ namespace factory {
 //			struct Profiler: public virtual Top::Profiler {
 //				Index index() const { return _index; }
 //				void index(Index i) { _index = i; }
-//				void endpoint(const Endpoint& endp) { _endpoint = endp; }
-//				const Endpoint& endpoint() const { return _endpoint; }
+//				void endpoint(const unix::endpoint& endp) { _endpoint = endp; }
+//				const unix::endpoint& endpoint() const { return _endpoint; }
 //			private:
 //				Index _index;
-//				Endpoint _endpoint;
+//				unix::endpoint _endpoint;
 //			};
 //
 //			struct Rprofiler: public Profiler, public Top::Rprofiler {};

@@ -11,14 +11,14 @@ int main(int argc, char* argv[]) {
 		if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
 			return;
 		}
-		Endpoint addr(*rhs.ifa_addr);
+		unix::endpoint addr(*rhs.ifa_addr);
 		std::cout << std::setw(10) << std::left
 			<< rhs.ifa_name << addr << std::endl;
 	});
 	std::cout << "Bind address: "
 		<< components::get_bind_address()
 		<< std::endl;
-	std::cout << "bits::Bytes = " << make_bytes(0xabcdefUL) << std::endl;
+	std::cout << "bits::Bytes = " << bits::make_bytes(0xabcdefUL) << std::endl;
 	throw Error("abc", __FILE__, __LINE__, __func__);
 	return 0;
 }

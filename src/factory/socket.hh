@@ -2,239 +2,6 @@ namespace factory {
 
 	namespace components {
 
-		struct Socket {
-
-			typedef int opt_type;
-
-			enum Option: opt_type {
-				Reuse_addr = SO_REUSEADDR,
-				Keep_alive = SO_KEEPALIVE
-			};
-
-			static const flag_type DEFAULT_FLAGS = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
-			static const fd_type BADFD = -1;
-
-			constexpr Socket() noexcept: _fd(BADFD) {}
-			constexpr explicit Socket(fd_type socket) noexcept: _fd(socket) {}
-			explicit Socket(Socket&& rhs) noexcept: _fd(rhs._fd) { rhs._fd = BADFD; }
-			/// Bind on @bind_addr and listen.
-			explicit Socket(const Endpoint& bind_addr): _fd(BADFD) {
-				this->bind(bind_addr);
-				this->listen();
-			}
-			/// Bind on @bind_addr and connect to a server on @conn_addr.
-			Socket(const Endpoint& bind_addr, const Endpoint& conn_addr): _fd(BADFD) {
-				this->bind(bind_addr);
-				this->connect(conn_addr);
-			}
-			~Socket() { this->close(); }
-			Socket& operator=(Socket&& rhs) {
-				this->close();
-				this->_fd = rhs._fd;
-				rhs._fd = BADFD;
-				return *this;
-			}
-
-			void create_socket_if_necessary() {
-				if (!this->is_valid()) {
-					this->_fd =
-						check(::socket(AF_INET, DEFAULT_FLAGS, 0),
-						__FILE__, __LINE__, __func__);
-					this->set_mandatory_flags();
-				}
-			}
-
-			void bind(const Endpoint& e) {
-				this->create_socket_if_necessary();
-				this->setopt(Reuse_addr);
-				Logger<Level::COMPONENT>() << "Binding to " << e << std::endl;
-				check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
-					__FILE__, __LINE__, __func__);
-			}
-			
-			void listen() {
-				Logger<Level::COMPONENT>() << "Listening on " << this->name() << std::endl;
-				check(::listen(this->_fd, SOMAXCONN),
-					__FILE__, __LINE__, __func__);
-			}
-
-			void connect(const Endpoint& e) {
-				try {
-					this->create_socket_if_necessary();
-					Logger<Level::COMPONENT>() << "Connecting to " << e << std::endl;
-					check_if_not<std::errc::operation_in_progress>(::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
-						__FILE__, __LINE__, __func__);
-				} catch (std::system_error& err) {
-					Logger<Level::COMPONENT>() << "Rethrowing connection error." << std::endl;
-					std::stringstream msg;
-					msg << err.what() << ". Endpoint=" << e;
-					throw Connection_error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-			}
-
-			void accept(Socket& socket, Endpoint& addr) {
-				socklen_type len = sizeof(Endpoint);
-				socket = Socket(check(::accept(this->_fd, addr.sockaddr(), &len),
-					__FILE__, __LINE__, __func__));
-				socket.setf(fd::non_blocking | fd::close_on_exec);
-//				socket.setf(close_on_exec);
-				Logger<Level::COMPONENT>() << "Accepted connection from " << addr << std::endl;
-			}
-
-			void close() {
-				if (this->is_valid()) {
-					Logger<Level::COMPONENT>()
-						<< "Closing socket "
-						<< this->_fd << std::endl;
-					check_if_not<std::errc::not_connected>(::shutdown(this->_fd, SHUT_RDWR),
-						__FILE__, __LINE__, __func__);
-					check(::close(this->_fd), __FILE__,
-						__LINE__, __func__);
-					this->_fd = BADFD;
-				}
-			}
-
-			inline flag_type
-			status_flags() const {
-				return fd_flag::status_flags(this->_fd);
-			}
-
-			inline flag_type
-			fd_flags() const {
-				return fd_flag::fd_flags(this->_fd);
-			}
-
-			inline fd_flag
-			flags() const {
-				return fd_flag::flags(this->_fd);
-			}
-
-			inline void
-			setf(fd_flag fls) {
-				fls.set(this->_fd);
-			}
-
-			void setopt(Option opt) {
-				int one = 1;
-				check(::setsockopt(this->_fd,
-					SOL_SOCKET, opt, &one, sizeof(one)),
-					__FILE__, __LINE__, __func__);
-			}
-
-			int error() const {
-				int ret = 0;
-				int opt = 0;
-				if (!this->is_valid()) {
-					ret = -1;
-				} else {
-					socklen_type sz = sizeof(opt);
-					check_if_not<std::errc::not_a_socket>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
-						__FILE__, __LINE__, __func__);
-				}
-				// ignore EAGAIN since it is common 'error' in asynchronous programming
-				if (opt == EAGAIN || opt == EINPROGRESS) {
-					ret = 0;
-				} else {
-					// If one connects to localhost to a different port and the service is offline
-					// then socket's local port can be chosen to be the same as the port of the service.
-					// If this happens the socket connects to itself and sends and replies to
-					// its own messages (at least on Linux). This conditional solves the issue.
-					try {
-						if (ret == 0 && this->name() == this->peer_name()) {
-							ret = -1;
-						}
-					} catch (...) {
-						ret = -1;
-					}
-				}
-				return ret;
-			}
-
-			Endpoint bind_addr() const {
-				Endpoint addr;
-				socklen_type len = sizeof(Endpoint);
-				int ret = ::getsockname(this->_fd, addr.sockaddr(), &len);
-				return ret == -1 ? Endpoint() : addr;
-			}
-
-			Endpoint name() const {
-				Endpoint addr;
-				socklen_type len = sizeof(Endpoint);
-				check(::getsockname(this->_fd, addr.sockaddr(), &len),
-					__FILE__, __LINE__, __func__);
-				return addr;
-			}
-
-			Endpoint peer_name() const {
-				Endpoint addr;
-				socklen_type len = sizeof(Endpoint);
-				check(::getpeername(this->_fd, addr.sockaddr(), &len),
-					__FILE__, __LINE__, __func__);
-				return addr;
-			}
-
-			uint32_t read(void* buf, size_t size) {
-				ssize_t ret = ::read(this->_fd, buf, size);
-				return ret == -1 ? 0 : static_cast<uint32_t>(ret);
-			}
-
-			uint32_t write(const void* buf, size_t size) {
-				ssize_t ret = ::write(this->_fd, buf, size);
-//				ssize_t ret = ::send(_fd, buf, size, MSG_NOSIGNAL);
-				return ret == -1 ? 0 : static_cast<uint32_t>(ret);
-			}
-
-			fd_type fd() const noexcept { return this->_fd; }
-			bool operator==(const Socket& rhs) const noexcept {
-				return this->_fd == rhs._fd;
-			}
-			bool is_valid() const { return this->_fd >= 0; }
-
-			friend std::ostream& operator<<(std::ostream& out, const Socket& rhs) {
-				return out << "{fd=" << rhs._fd << ",st="
-					<< (rhs.error() == 0 ? "ok" : std::error_code(errno, std::generic_category()).message())
-					<< '}';
-			}
-
-			// TODO: remove this ``boilerplate''
-			bool empty() const { return true; }
-			bool flush() const { return true; }
-
-		private:
-
-			inline
-			void set_mandatory_flags() {
-			#if !HAVE_DECL_SOCK_NONBLOCK
-				this->setf(fd::non_blocking | fd::close_on_exec);
-			#endif
-			}
-
-		protected:
-			fd_type _fd;
-		};
-
-		typedef Socket Filedesc;
-
-		struct File: public Socket {
-			File() {}
-			explicit File(File&& rhs): Socket(std::move(rhs)) {}
-			explicit File(const std::string& filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR):
-				File(filename.c_str(), flags, mode) {}
-			explicit File(const char* filename, int flags=O_RDWR, ::mode_t mode=S_IRUSR|S_IWUSR) {
-				this->_fd = check(::open(filename, flags, mode),
-					__FILE__, __LINE__, __func__);
-			}
-			~File() {
-				if (*this) {
-					check(::close(this->_fd),
-						__FILE__, __LINE__, __func__);
-					this->_fd = BADFD;
-				}
-			}
-			explicit operator bool() const { return this->_fd >= 0; }
-			bool operator !() const { return this->_fd < 0; }
-		};
-
 		/*
 		 * WebSocket lib with support for "wss://" encryption.
 		 * Copyright 2010 Joel Martin
@@ -274,7 +41,7 @@ namespace factory {
 		std::unordered_map<std::string, std::string> hdrs;
 	};
 	
-	struct Web_socket: public Socket {
+	struct Web_socket: public unix::socket {
 
 		enum struct State {
 			INITIAL_STATE,
@@ -300,7 +67,7 @@ namespace factory {
 			{}
 
 //		explicit Web_socket(fd_type fd):
-//			Socket(fd),
+//			unix::socket(fd),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 //			send_buffer(BUFFER_SIZE),
@@ -310,7 +77,7 @@ namespace factory {
 
 		// TODO: move all fields
 		explicit Web_socket(Web_socket&& rhs):
-			Socket(std::move(rhs)),
+			unix::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -318,8 +85,8 @@ namespace factory {
 			mid_buffer(BUFFER_SIZE)
 			{}
 
-		explicit Web_socket(Socket&& rhs):
-			Socket(std::move(rhs)),
+		explicit Web_socket(unix::socket&& rhs):
+			unix::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -328,7 +95,7 @@ namespace factory {
 			{}
 
 		explicit Web_socket(fd_type rhs):
-			Socket(rhs),
+			unix::socket(rhs),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -336,8 +103,8 @@ namespace factory {
 			mid_buffer(BUFFER_SIZE)
 			{}
 
-//		explicit Web_socket(const Socket& rhs):
-//			Socket(rhs),
+//		explicit Web_socket(const unix::socket& rhs):
+//			unix::socket(rhs),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 //			send_buffer(BUFFER_SIZE),
@@ -348,12 +115,12 @@ namespace factory {
 		virtual ~Web_socket() { this->close(); }
 
 		Web_socket& operator=(Web_socket&& rhs) {
-			Socket::operator=(std::move(rhs));
+			unix::socket::operator=(std::move(rhs));
 			return *this;
 		}
 
-//		Web_socket& operator=(const Socket& rhs) {
-//			Socket::operator=(rhs);
+//		Web_socket& operator=(const unix::socket& rhs) {
+//			unix::socket::operator=(rhs);
 //			return *this;
 //		}
 
@@ -411,7 +178,7 @@ namespace factory {
 
 		bool flush() {
 			size_t old_size = send_buffer.size();
-			send_buffer.flush<Socket&>(*this);
+			send_buffer.flush<unix::socket&>(*this);
 			Logger<Level::WEBSOCKET>() << "send buffer"
 				<< "(" << old_size - send_buffer.size() << ") "
 				<< std::endl;
@@ -615,7 +382,7 @@ namespace factory {
 			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
 		}
 
-		void fill() { recv_buffer.fill<Socket&>(*this); }
+		void fill() { recv_buffer.fill<unix::socket&>(*this); }
 
 		State state = State::INITIAL_STATE;
 		Role role = Role::SERVER;

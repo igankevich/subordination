@@ -395,11 +395,11 @@ namespace factory {
 			void id(Id rhs) { _id = rhs; }
 			constexpr bool identifiable() const { return _id != ROOT_ID; }
 
-			virtual Endpoint from() const { return _src; }
-			virtual void from(Endpoint rhs) { _src = rhs; }
+			virtual unix::endpoint from() const { return _src; }
+			virtual void from(unix::endpoint rhs) { _src = rhs; }
 
-			virtual Endpoint to() const { return _dst; }
-			virtual void to(Endpoint rhs) { _dst = rhs; }
+			virtual unix::endpoint to() const { return _dst; }
+			virtual void to(unix::endpoint rhs) { _dst = rhs; }
 
 			constexpr bool operator==(const Mobile<K>& rhs) const {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
@@ -410,8 +410,8 @@ namespace factory {
 
 		private:
 			Id _id = ROOT_ID;
-			Endpoint _src;
-			Endpoint _dst;
+			unix::endpoint _src;
+			unix::endpoint _dst;
 			Application::id_type _app = 0;
 		};
 

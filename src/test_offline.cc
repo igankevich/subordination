@@ -4,8 +4,8 @@ using namespace factory;
 
 #include "datum.hh"
 
-Endpoint server_endpoint("127.0.0.1", 10001);
-Endpoint client_endpoint("127.0.0.1", 20001);
+unix::endpoint server_endpoint("127.0.0.1", 10001);
+unix::endpoint client_endpoint("127.0.0.1", 20001);
 
 const uint32_t NUM_SIZES = 13;
 const uint32_t NUM_KERNELS = 7;

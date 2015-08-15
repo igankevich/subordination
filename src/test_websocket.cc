@@ -4,8 +4,8 @@ using namespace factory;
 
 #include "datum.hh"
 
-Endpoint server_endpoint("127.0.0.1", 10002);
-Endpoint client_endpoint("127.0.0.1", 20002);
+unix::endpoint server_endpoint("127.0.0.1", 10002);
+unix::endpoint client_endpoint("127.0.0.1", 20002);
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
 const std::vector<size_t> POWERS = {16,17};

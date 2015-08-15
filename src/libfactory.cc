@@ -163,7 +163,7 @@ namespace factory {
 					return tmp;
 				}
 			);
-			components::intersperse_iterator<std::string> it(out, ",");
+			components::intersperse_iterator<std::string> it(out, ",\n    ");
 			std::copy(callstack.begin(), callstack.end(), it);
 			out << ']';
 		}
@@ -192,29 +192,28 @@ namespace factory {
 					[now] (F* rhs) { now ? rhs->stop_now() : rhs->stop(); });
 			}
 			void print_all_endpoints(std::ostream& out) const {
-				std::vector<Endpoint> addrs;
+				std::vector<unix::endpoint> addrs;
 				std::for_each(this->_factories.begin(), this->_factories.end(),
 					[&addrs] (const F* rhs) {
-						Endpoint a = rhs->addr();
+						unix::endpoint a = rhs->addr();
 						if (a) { addrs.push_back(a); }
 					}
 				);
 				if (addrs.empty()) {
-					out << Endpoint();
+					out << unix::endpoint();
 				} else {
-					intersperse_iterator<Endpoint> it(out, ",");
+					intersperse_iterator<unix::endpoint> it(out, ",");
 					std::copy(addrs.begin(), addrs.end(), it);
 				}
 			}
 
 		private:
 			void init_signal_handlers() {
-				Action shutdown(emergency_shutdown);
-				this_process::bind_signal(SIGTERM, shutdown);
-				this_process::bind_signal(SIGINT, shutdown);
-				this_process::bind_signal(SIGPIPE, Action(SIG_IGN));
+				this_process::bind_signal(SIGTERM, emergency_shutdown);
+				this_process::bind_signal(SIGINT, emergency_shutdown);
+				this_process::bind_signal(SIGPIPE, SIG_IGN);
 #ifndef FACTORY_NO_BACKTRACE
-				this_process::bind_signal(SIGSEGV, Action(print_backtrace));
+				this_process::bind_signal(SIGSEGV, print_backtrace);
 #endif
 			}
 
@@ -433,14 +432,14 @@ namespace factory {
 					continue;
 				}
 	
-				Endpoint addr(*ifa->ifa_addr);
-				if (addr.address() == Endpoint("127.0.0.1", 0).address()) {
+				unix::endpoint addr(*ifa->ifa_addr);
+				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
 					// ignore localhost and non-IPv4 addresses
 					continue;
 				}
 	
-				Endpoint netmask(*ifa->ifa_netmask);
-				if (netmask.address() == Endpoint("255.255.255.255",0).address()) {
+				unix::endpoint netmask(*ifa->ifa_netmask);
+				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
 					// ignore wide-area networks
 					continue;
 				}

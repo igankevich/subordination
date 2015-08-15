@@ -26,7 +26,7 @@ namespace factory {
 			void wait() {}
 			virtual void stop_now() {}
 			// TODO: boilerplate :(
-			virtual Endpoint addr() const { return Endpoint(); }
+			virtual unix::endpoint addr() const { return unix::endpoint(); }
 
 		protected:
 			void wait_impl() {}
@@ -494,7 +494,7 @@ namespace factory {
 			App_server* app_server() { return &_app_server; }
 			Principal_server* principal_server() { return &_principal_server; }
 
-			Endpoint addr() const { return _remote_server.server_addr(); }
+			unix::endpoint addr() const { return _remote_server.server_addr(); }
 
 			void setrole(Role rhs) { this->_role = rhs; }
 

@@ -4,7 +4,7 @@ using namespace factory;
 
 const Port DISCOVERY_PORT = 10000;
 
-std::vector<Endpoint> all_peers;
+std::vector<unix::endpoint> all_peers;
 std::thread exiter;
 
 uint32_t my_netmask() {
@@ -16,22 +16,22 @@ uint32_t my_netmask() {
 }
 
 struct Node {
-	explicit Node(const Endpoint& rhs): addr(rhs) {}
+	explicit Node(const unix::endpoint& rhs): addr(rhs) {}
 	friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
 		return out << "n" << uint64_t(rhs.addr.address()) * uint64_t(rhs.addr.port());
 	}
 private:
-	const Endpoint& addr;
+	const unix::endpoint& addr;
 };
 
 struct Edge {
-	Edge(const Endpoint& a, const Endpoint& b): x(a), y(b) {}
+	Edge(const unix::endpoint& a, const unix::endpoint& b): x(a), y(b) {}
 	friend std::ostream& operator<<(std::ostream& out, const Edge& rhs) {
 		return out << Node(rhs.x) << '_' << Node(rhs.y);
 	}
 private:
-	const Endpoint& x;
-	const Endpoint& y;
+	const unix::endpoint& x;
+	const unix::endpoint& y;
 };
 
 struct Peer {
@@ -94,7 +94,7 @@ struct Peer {
 			>> rhs._update_time;
 	}
 
-	friend std::ostream& operator<<(std::ostream& out, const std::pair<Endpoint,Peer>& rhs) {
+	friend std::ostream& operator<<(std::ostream& out, const std::pair<unix::endpoint,Peer>& rhs) {
 		return out
 			<< rhs.first << ' '
 			<< rhs.second._t << ' '
@@ -103,7 +103,7 @@ struct Peer {
 			<< rhs.second._update_time;
 	}
 
-	friend std::istream& operator>>(std::istream& in, std::pair<Endpoint,Peer>& rhs) {
+	friend std::istream& operator>>(std::istream& in, std::pair<unix::endpoint,Peer>& rhs) {
 		return in
 			>> rhs.first
 			>> rhs.second._t
@@ -142,9 +142,9 @@ Time prog_start = current_time_nano();
 
 struct Compare_distance {
 
-	explicit Compare_distance(Endpoint from): _from(from) {}
+	explicit Compare_distance(unix::endpoint from): _from(from) {}
 
-	bool operator()(const std::pair<const Endpoint,Peer>& lhs, const std::pair<const Endpoint,Peer>& rhs) const {
+	bool operator()(const std::pair<const unix::endpoint,Peer>& lhs, const std::pair<const unix::endpoint,Peer>& rhs) const {
 //		Logger<Level::DISCOVERY>() << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
@@ -154,7 +154,7 @@ struct Compare_distance {
 			< std::make_pair(addr_distance(_from, rhs.first), rhs.first);
 	}
 
-	bool operator()(const Endpoint& lhs, const Endpoint& rhs) const {
+	bool operator()(const unix::endpoint& lhs, const unix::endpoint& rhs) const {
 		return std::make_pair(addr_distance(_from, lhs), lhs)
 			< std::make_pair(addr_distance(_from, rhs), rhs);
 	}
@@ -171,29 +171,29 @@ private:
 	static const uint32_t p = 1;
 	static const uint32_t fanout = UINT32_C(1) << p;
 	
-	static std::pair<uint32_t, uint32_t> addr_level_num(Endpoint addr) {
+	static std::pair<uint32_t, uint32_t> addr_level_num(unix::endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
 		uint32_t num = pos - (UINT32_C(1) << (lvl*p));
 		return std::make_pair(lvl, num);
 	}
 	
-	static std::pair<uint32_t, uint32_t> addr_distance(Endpoint lhs, Endpoint rhs) {
+	static std::pair<uint32_t, uint32_t> addr_distance(unix::endpoint lhs, unix::endpoint rhs) {
 		auto p1 = addr_level_num(lhs);
 		auto p2 = addr_level_num(rhs);
 		return std::make_pair(lvl_sub(p2.first, p1.first),
 			abs_sub(p2.second, p1.second/fanout));
 	}
 
-	Endpoint _from;
+	unix::endpoint _from;
 };
 
 struct Peers {
 
-	typedef std::map<Endpoint, Peer> Map;
-	typedef std::set<Endpoint> Set;
+	typedef std::map<unix::endpoint, Peer> Map;
+	typedef std::set<unix::endpoint> Set;
 
-	explicit Peers(Endpoint addr):
+	explicit Peers(unix::endpoint addr):
 		_peers(),
 		_this_addr(addr),
 		_principal(),
@@ -206,28 +206,28 @@ struct Peers {
 		_principal(rhs._principal),
 		_subordinates(rhs._subordinates) {}
 
-	void add_peer(Endpoint addr) {
+	void add_peer(unix::endpoint addr) {
 		if (!addr || addr == _this_addr) return;
 		if (_peers.count(addr) == 0) {
 			_peers[addr];
 		}
 	}
 
-	Endpoint best_peer() const {
+	unix::endpoint best_peer() const {
 		return std::min_element(_peers.begin(), _peers.end(),
 			Compare_distance(_this_addr))->first;
 	}
 
-	Endpoint this_addr() const { return _this_addr; }
-	Endpoint principal() const { return _principal; }
+	unix::endpoint this_addr() const { return _this_addr; }
+	unix::endpoint principal() const { return _principal; }
 
 	void remove_principal() {
 		_peers.erase(_principal);
-		_principal = Endpoint();
+		_principal = unix::endpoint();
 	}
 
-	bool change_principal(Endpoint new_princ) {
-		Endpoint old_princ = _principal;
+	bool change_principal(unix::endpoint new_princ) {
+		unix::endpoint old_princ = _principal;
 		bool success = false;
 		if (old_princ != new_princ) {
 			_principal = new_princ;
@@ -239,7 +239,7 @@ struct Peers {
 		return success;
 	}
 
-	void revert_principal(Endpoint old_princ) {
+	void revert_principal(unix::endpoint old_princ) {
 		Logger<Level::DISCOVERY>() << "Reverting principal to " << old_princ << std::endl;
 		_peers.erase(_principal);
 		if (old_princ) {
@@ -267,7 +267,7 @@ struct Peers {
 		}
 	}
 
-	void add_subordinate(Endpoint addr) {
+	void add_subordinate(unix::endpoint addr) {
 		Logger<Level::DISCOVERY>() << "Adding subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) == 0) {
 			Logger<Level::GRAPH>()
@@ -286,7 +286,7 @@ struct Peers {
 		add_peer(addr);
 	}
 
-	void remove_subordinate(Endpoint addr) {
+	void remove_subordinate(unix::endpoint addr) {
 		Logger<Level::DISCOVERY>() << "Removing subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) > 0) {
 			Logger<Level::GRAPH>()
@@ -311,7 +311,7 @@ struct Peers {
 	Map::const_iterator begin() const { return _peers.begin(); }
 	Map::const_iterator end() const { return _peers.end(); }
 
-	Peer& operator[](const Endpoint& rhs) { return _peers[rhs]; }
+	Peer& operator[](const unix::endpoint& rhs) { return _peers[rhs]; }
 
 	friend std::ostream& operator<<(std::ostream& out, const Peers& rhs) {
 		rhs.write(out, "\n");
@@ -319,7 +319,7 @@ struct Peers {
 	}
 
 	friend std::istream& operator>>(std::istream& in, Peers& rhs) {
-		Endpoint addr;
+		unix::endpoint addr;
 		Peer p;
 		while (in >> addr >> p) {
 			in.get();
@@ -329,14 +329,14 @@ struct Peers {
 	}
 
 	void write(std::ostream& out, const char* sep = "\n") const {
-		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out, sep);
+		std::ostream_iterator<std::pair<unix::endpoint,Peer>> it(out, sep);
 		std::copy(_peers.begin(), _peers.end(), it);
 	}
 
 	void debug() {
 		Logger<Level::DISCOVERY> log;
 		log << "Principal = " << _principal << ", subordinates = ";
-		std::ostream_iterator<Endpoint> it(log.ostream(), ", ");
+		std::ostream_iterator<unix::endpoint> it(log.ostream(), ", ");
 		std::copy(_subordinates.begin(), _subordinates.end(), it);
 		log << " peers = ";
 		write(log.ostream(), ", ");
@@ -345,8 +345,8 @@ struct Peers {
 
 private:
 	Map _peers;
-	Endpoint _this_addr;
-	Endpoint _principal;
+	unix::endpoint _this_addr;
+	unix::endpoint _principal;
 	Set _subordinates;
 };
 
@@ -367,7 +367,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 		out << _state << _time;
 		out << uint32_t(_peers.size());
-		for (const Endpoint& sub : _peers) {
+		for (const unix::endpoint& sub : _peers) {
 			out << sub;
 		}
 	}
@@ -381,7 +381,7 @@ struct Profiler: public Mobile<Profiler> {
 		in >> n;
 		_peers.clear();
 		for (uint32_t i=0; i<n; ++i) {
-			Endpoint addr;
+			unix::endpoint addr;
 			in >> addr;
 			_peers.insert(addr);
 		}
@@ -392,7 +392,7 @@ struct Profiler: public Mobile<Profiler> {
 	}
 
 	void copy_peers_to(Peers& peers) {
-		for (const Endpoint& addr : _peers) {
+		for (const unix::endpoint& addr : _peers) {
 			peers.add_peer(addr);
 		}
 	}
@@ -410,7 +410,7 @@ private:
 	Time _time = 0;
 	State _state = 0;
 
-	std::set<Endpoint> _peers;
+	std::set<unix::endpoint> _peers;
 };
 
 
@@ -430,7 +430,7 @@ struct Ping: public Mobile<Ping> {
 
 struct Scanner: public Identifiable<Kernel> {
 
-	explicit Scanner(Endpoint addr, Endpoint st_addr):
+	explicit Scanner(unix::endpoint addr, unix::endpoint st_addr):
 		_source(addr),
 		_oldaddr(st_addr),
 		_scan_addr(),
@@ -470,43 +470,43 @@ struct Scanner: public Identifiable<Kernel> {
 		}
 	}
 
-	Endpoint discovered_node() const { return _discovered_node; }
-	Endpoint scan_addr() const { return _scan_addr; }
+	unix::endpoint discovered_node() const { return _discovered_node; }
+	unix::endpoint scan_addr() const { return _scan_addr; }
 
 private:
 
-	std::vector<Endpoint> create_servers(std::vector<Endpoint> servers) {
-		std::vector<Endpoint> tmp;
+	std::vector<unix::endpoint> create_servers(std::vector<unix::endpoint> servers) {
+		std::vector<unix::endpoint> tmp;
 		std::copy_if(servers.cbegin(), servers.cend(),
-			std::back_inserter(tmp), [this] (Endpoint addr) {
+			std::back_inserter(tmp), [this] (unix::endpoint addr) {
 				return addr < this->_source;
 			});
 		return tmp;
 	}
 
 	/// determine addr to check next
-	Endpoint next_scan_addr() {
+	unix::endpoint next_scan_addr() {
 		auto res = find(_servers.begin(), _servers.end(), _scan_addr);
 		return (res == _servers.end() || res == _servers.begin()) 
 			? _servers.back()
 			: *--res;
 	}
 
-	Endpoint start_addr(const std::vector<Endpoint>& peers) const {
-		if (peers.empty()) return Endpoint();
+	unix::endpoint start_addr(const std::vector<unix::endpoint>& peers) const {
+		if (peers.empty()) return unix::endpoint();
 		auto it = std::min_element(peers.begin(), peers.end(), Compare_distance(_source));
 		if (*it != _source) {
 			return *it;
 		}
 		auto res = find(peers.begin(), peers.end(), _source);
-		Endpoint st = peers.front();
+		unix::endpoint st = peers.front();
 		if (res != peers.end()) {
 			st = *res;
 		}
 		return st;
 	}
 		
-	void try_to_connect(Endpoint addr) {
+	void try_to_connect(unix::endpoint addr) {
 		Ping* ping = new Ping;
 		ping->to(addr);
 		ping->parent(this);
@@ -514,11 +514,11 @@ private:
 		remote_server()->send(ping);
 	}
 
-	Endpoint _source;
-	Endpoint _oldaddr;
-	Endpoint _scan_addr;
-	std::vector<Endpoint> _servers;
-	Endpoint _discovered_node;
+	unix::endpoint _source;
+	unix::endpoint _oldaddr;
+	unix::endpoint _scan_addr;
+	std::vector<unix::endpoint> _servers;
+	unix::endpoint _discovered_node;
 
 	uint32_t _num_scanned = 0;
 };
@@ -579,13 +579,13 @@ struct Negotiator: public Mobile<Negotiator> {
 	Negotiator():
 		_old_principal(), _new_principal() {}
 
-	Negotiator(Endpoint old, Endpoint neww):
+	Negotiator(unix::endpoint old, unix::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 
 	void negotiate(Peers& peers) {
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
-		Endpoint this_addr = peers.this_addr();
+		unix::endpoint this_addr = peers.this_addr();
 		if (_new_principal == this_addr) {
 			// principal becomes subordinate
 			if (this->from() == peers.principal()) {
@@ -629,14 +629,14 @@ struct Negotiator: public Mobile<Negotiator> {
 	}
 
 private:
-	Endpoint _old_principal;
-	Endpoint _new_principal;
+	unix::endpoint _old_principal;
+	unix::endpoint _new_principal;
 	bool _stop = false;
 };
 
 struct Master_negotiator: public Identifiable<Kernel> {
 
-	Master_negotiator(Endpoint old, Endpoint neww):
+	Master_negotiator(unix::endpoint old, unix::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 	
 	void act() {
@@ -664,11 +664,11 @@ struct Master_negotiator: public Identifiable<Kernel> {
 		}
 	}
 
-	Endpoint old_principal() const { return _old_principal; }
+	unix::endpoint old_principal() const { return _old_principal; }
 
 private:
 
-	void send_negotiator(Endpoint addr) {
+	void send_negotiator(unix::endpoint addr) {
 		++_num_sent;
 		Negotiator* n = new Negotiator(_old_principal, _new_principal);
 		n->principal(addr.address());
@@ -676,8 +676,8 @@ private:
 		upstream(remote_server(), n);
 	}
 
-	Endpoint _old_principal;
-	Endpoint _new_principal;
+	unix::endpoint _old_principal;
+	unix::endpoint _new_principal;
 	uint8_t _num_sent = 0;
 };
 
@@ -686,7 +686,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	Master_discoverer(const Master_discoverer&) = delete;
 	Master_discoverer& operator=(const Master_discoverer&) = delete;
 
-	explicit Master_discoverer(Endpoint this_addr):
+	explicit Master_discoverer(unix::endpoint this_addr):
 		factory::Identifiable<Kernel>(this_addr.address()),
 		_peers(this_addr),
 		_scanner(nullptr),
@@ -756,7 +756,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 		if (_negotiator == k) {
 			if (k->result() != Result::SUCCESS) {
 				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
-				Endpoint princ = _peers.principal();
+				unix::endpoint princ = _peers.principal();
 				_peers.revert_principal(neg->old_principal());
 				run_negotiator(princ, _peers.principal());
 			}
@@ -777,7 +777,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 
 private:
 
-	void run_scan(Endpoint old_addr = Endpoint()) {
+	void run_scan(unix::endpoint old_addr = unix::endpoint()) {
 		_scanner = new Scanner(_peers.this_addr(), old_addr);
 		if (!old_addr) {
 			_peers.add_peer(_scanner->scan_addr());
@@ -791,12 +791,12 @@ private:
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}
 
-	void run_negotiator(Endpoint old_princ, Endpoint new_princ) {
+	void run_negotiator(unix::endpoint old_princ, unix::endpoint new_princ) {
 		upstream(the_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
 	}
 
-	void change_principal(Endpoint new_princ) {
-		Endpoint old_princ = _peers.principal();
+	void change_principal(unix::endpoint new_princ) {
+		unix::endpoint old_princ = _peers.principal();
 		if (!_negotiator && _peers.change_principal(new_princ)) {
 			Logger<Level::DISCOVERY>() << "Changing principal to " << new_princ << std::endl;
 			_peers.debug();
@@ -849,13 +849,13 @@ bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
 
 void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	all_peers.clear();
-	uint32_t start = Endpoint(base_ip.c_str(), 0).address();
+	uint32_t start = unix::endpoint(base_ip.c_str(), 0).address();
 	uint32_t end = start + npeers;
 	for (uint32_t i=start; i<end; ++i) {
-		Endpoint endpoint(i, DISCOVERY_PORT);
+		unix::endpoint endpoint(i, DISCOVERY_PORT);
 		all_peers.push_back(endpoint);
 	}
-	for (Endpoint addr : all_peers) {
+	for (unix::endpoint addr : all_peers) {
 		auto it = std::min_element(all_peers.begin(), all_peers.end(),
 			Compare_distance(addr));
 		Logger<Level::DISCOVERY>()
@@ -863,7 +863,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	}
 //	uint32_t p = 1;
 //	uint32_t fanout = 1 << p;
-//	for (Endpoint addr : all_peers) {
+//	for (unix::endpoint addr : all_peers) {
 //		uint32_t pos = addr.position(my_netmask());
 //		uint32_t lvl = log(pos, p);
 //		uint32_t rem = pos - (1 << lvl);
@@ -871,7 +871,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 //		Logger<Level::DISCOVERY>()
 //			<< "Netmask = "
 //			<< addr << ", "
-//			<< Endpoint(my_netmask(), 0) << ", "
+//			<< unix::endpoint(my_netmask(), 0) << ", "
 //			<< pos << ", "
 //			<< lvl << ":" << rem << " --> "
 //			<< lvl-1 << ":" << rem/fanout << ", distance = "
@@ -880,27 +880,27 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 //	}
 }
 
-std::string cache_filename(Endpoint source) {
+std::string cache_filename(unix::endpoint source) {
 	std::stringstream s;
 	s << "/tmp/" << source << ".cache";
 	return s.str();
 }
 
 void write_cache_all() {
-	std::map<Endpoint,Peer> peers;
+	std::map<unix::endpoint,Peer> peers;
 	std::transform(all_peers.begin(), all_peers.end(), std::inserter(peers, peers.begin()),
-		[] (Endpoint addr) {
+		[] (unix::endpoint addr) {
 			return std::make_pair(addr, Peer());
 		});
-	for (Endpoint& addr : all_peers) {
+	for (unix::endpoint& addr : all_peers) {
 		std::ofstream out(cache_filename(addr));
-		std::ostream_iterator<std::pair<Endpoint,Peer>> it(out);
+		std::ostream_iterator<std::pair<unix::endpoint,Peer>> it(out);
 		std::copy(peers.begin(), peers.end(), it);
 	}
 }
 
 void write_graph_nodes() {
-	for (Endpoint addr : all_peers) {
+	for (unix::endpoint addr : all_peers) {
 		Logger<Level::GRAPH>()
 			<< "log[logline++] = {"
 			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
@@ -926,7 +926,7 @@ struct App {
 
 				Process_group processes;
 				int start_id = 1000;
-				for (Endpoint endpoint : all_peers) {
+				for (unix::endpoint endpoint : all_peers) {
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
 						this_process::env("START_ID", start_id);
 						return this_process::execute(argv[0],
@@ -947,7 +947,7 @@ struct App {
 			}
 		} else {
 			uint32_t npeers = 3;
-			Endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
+			unix::endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
 			std::string base_ip = "127.0.0.1";
 			bits::Command_line cmdline(argc, argv);
 			cmdline.parse([&bind_addr, &npeers, &base_ip](const std::string& arg, std::istream& in) {
@@ -957,14 +957,14 @@ struct App {
 			});
 			Logger<Level::DISCOVERY>() << "Bind address " << bind_addr << std::endl;
 			generate_all_peers(npeers, base_ip);
-			if (Endpoint(base_ip,0).address() == bind_addr.address()) {
+			if (unix::endpoint(base_ip,0).address() == bind_addr.address()) {
 				write_graph_nodes();
 			}
 			try {
 				the_server()->add_cpu(0);
 				remote_server()->socket(bind_addr);
 				__factory.start();
-				Time start_delay = this_process::getenv("START_DELAY", Time(bind_addr == Endpoint("127.0.0.1", 10000) ? 0 : 2));
+				Time start_delay = this_process::getenv("START_DELAY", Time(bind_addr == unix::endpoint("127.0.0.1", 10000) ? 0 : 2));
 				Master_discoverer* master = new Master_discoverer(bind_addr);
 				master->after(std::chrono::seconds(start_delay));
 //				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));

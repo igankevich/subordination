@@ -99,7 +99,7 @@ namespace factory {
 				ilock_type lock(this->_ibuf);
 				this->_istream.clear();
 				this->_istream.rdbuf(&this->_ibuf);
-				Endpoint src;
+				unix::endpoint src;
 				this->_istream >> src;
 				Logger<Level::APP>() << "read_and_send_kernel(): src=" << src
 					<< ",rdstate=" << debug_stream(this->_istream)
@@ -176,7 +176,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(basic_ikernelbuf<X>& buf, const Endpoint& from) {
+			void forward(basic_ikernelbuf<X>& buf, const unix::endpoint& from) {
 				olock_type lock(this->_obuf);
 				this->_ostream.rdbuf(&this->_obuf);
 				this->_ostream << from;
@@ -231,7 +231,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(key_type app, const Endpoint& from, basic_ikernelbuf<X>& buf) {
+			void forward(key_type app, const unix::endpoint& from, basic_ikernelbuf<X>& buf) {
 				typename map_type::iterator result = this->_apps.find(app);
 				if (result == this->_apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);

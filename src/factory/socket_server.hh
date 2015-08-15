@@ -7,10 +7,10 @@ namespace factory {
 
 			typedef Remote_server server_type;
 			typedef Socket_server<Server, Remote_server, Kernel, Pool> this_type;
-			typedef std::map<Endpoint, Remote_server*> upstream_type;
+			typedef std::map<unix::endpoint, Remote_server*> upstream_type;
 			typedef std::mutex mutex_type;
 			typedef std::thread thread_type;
-			typedef Socket socket_type;
+			typedef unix::socket socket_type;
 			typedef Pool<Kernel*> pool_type;
 
 			struct server_deleter {
@@ -59,10 +59,10 @@ namespace factory {
 			}
 
 			void accept_connection() {
-				Endpoint addr;
+				unix::endpoint addr;
 				socket_type sock;
 				this->_socket.accept(sock, addr);
-				Endpoint vaddr = virtual_addr(addr);
+				unix::endpoint vaddr = virtual_addr(addr);
 				Logger<Level::SERVER>()
 					<< "after accept: socket="
 					<< sock << std::endl;
@@ -122,7 +122,7 @@ namespace factory {
 
 			bool empty() const {
 				return std::all_of(_upstream.cbegin(), _upstream.cend(),
-					[] (const std::pair<Endpoint,server_type*>& rhs)
+					[] (const std::pair<unix::endpoint,server_type*>& rhs)
 				{
 					return rhs.second->empty();
 				});
@@ -141,7 +141,7 @@ namespace factory {
 				this->_poller.notify();
 			}
 
-			void peer(Endpoint addr) {
+			void peer(unix::endpoint addr) {
 //				if (!this->stopped()) {
 //					throw Error("Can not add upstream server when socket server is running.",
 //						__FILE__, __LINE__, __func__);
@@ -149,7 +149,7 @@ namespace factory {
 				this->connect_to_server(addr, Event::In);
 			}
 
-			void socket(const Endpoint& addr) {
+			void socket(const unix::endpoint& addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
 				this->_poller.add(Event{this->_socket.fd(), Event::In}, nullptr, server_deleter(this));
@@ -180,12 +180,12 @@ namespace factory {
 				return out << "sserver " << rhs._cpu;
 			}
 
-			Endpoint server_addr() const { return this->_socket.bind_addr(); }
+			unix::endpoint server_addr() const { return this->_socket.bind_addr(); }
 		
 		private:
 
-			Endpoint virtual_addr(Endpoint addr) const {
-				return Endpoint(addr, server_addr().port());
+			unix::endpoint virtual_addr(unix::endpoint addr) const {
+				return unix::endpoint(addr, server_addr().port());
 			}
 
 			void flush_kernels() {
@@ -224,7 +224,7 @@ namespace factory {
 						}
 						// delete broadcast kernel
 						delete k;
-					} else if (k->moves_upstream() && k->to() == Endpoint()) {
+					} else if (k->moves_upstream() && k->to() == unix::endpoint()) {
 						if (_upstream.empty()) {
 							throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
 						}
@@ -241,7 +241,7 @@ namespace factory {
 				}
 			}
 
-			server_type* find_or_create_peer(const Endpoint& addr, Event::legacy_event ev) {
+			server_type* find_or_create_peer(const unix::endpoint& addr, Event::legacy_event ev) {
 				server_type* ret;
 				auto result = _upstream.find(addr);
 				if (result == _upstream.end()) {
@@ -276,16 +276,16 @@ namespace factory {
 					<< msg << " events " << this->_poller << std::endl;
 			}
 
-			server_type* connect_to_server(Endpoint addr, Event::legacy_event events) {
+			server_type* connect_to_server(unix::endpoint addr, Event::legacy_event events) {
 				// bind to server address with ephemeral port
-				Endpoint srv_addr(this->server_addr(), 0);
+				unix::endpoint srv_addr(this->server_addr(), 0);
 				socket_type sock;
 				sock.bind(srv_addr);
 				sock.connect(addr);
 				return this->add_connected_server(std::move(sock), addr, events);
 			}
 
-			server_type* add_connected_server(socket_type&& sock, Endpoint vaddr,
+			server_type* add_connected_server(socket_type&& sock, unix::endpoint vaddr,
 				Event::legacy_event events,
 				Event::legacy_event revents=0)
 			{
@@ -333,7 +333,7 @@ namespace factory {
 			typedef typename Kernel::app_type app_type;
 			typedef std::deque<Kernel*> pool_type;
 
-			Remote_Rserver(Socket&& sock, Endpoint vaddr):
+			Remote_Rserver(unix::socket&& sock, unix::endpoint vaddr):
 				_vaddr(vaddr),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
@@ -460,14 +460,14 @@ namespace factory {
 			int fd() const { return this->socket().fd(); }
 			const socket_type& socket() const { return this->_kernelbuf.fd(); }
 			socket_type& socket() { return this->_kernelbuf.fd(); }
-			void socket(Socket&& rhs) {
+			void socket(unix::socket&& rhs) {
 				this->_stream >> underflow;
 				this->_stream.clear();
 				this->_kernelbuf.setfd(socket_type(std::move(rhs)));
 			}
-			Endpoint bind_addr() const { return this->socket().bind_addr(); }
-			const Endpoint& vaddr() const { return this->_vaddr; }
-			void setvaddr(const Endpoint& rhs) { this->_vaddr = rhs; }
+			unix::endpoint bind_addr() const { return this->socket().bind_addr(); }
+			const unix::endpoint& vaddr() const { return this->_vaddr; }
+			void setvaddr(const unix::endpoint& rhs) { this->_vaddr = rhs; }
 
 			bool empty() const { return this->_buffer.empty(); }
 
@@ -562,7 +562,7 @@ namespace factory {
 				this->simulate(Event{this->fd(), Event::In});
 			}
 
-			Endpoint _vaddr;
+			unix::endpoint _vaddr;
 			Kernelbuf _kernelbuf;
 			stream_type _stream;
 			pool_type _buffer;

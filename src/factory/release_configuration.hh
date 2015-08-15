@@ -30,7 +30,7 @@ namespace factory {
 			using Iserver = factory::components::Iserver<Base, Sub>;
 
 		template<class K>
-			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::components::Socket>;
+			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::unix::socket>;
 
 		template<class K>
 			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::components::Web_socket>;
@@ -91,7 +91,7 @@ namespace factory {
 			Shutdown>
 			Factory;
 
-//		typedef factory::components::Basic_topology<Endpoint, uint16_t> Topology;
+//		typedef factory::components::Basic_topology<unix::endpoint, uint16_t> Topology;
 	}
 
 	using namespace factory::configuration;

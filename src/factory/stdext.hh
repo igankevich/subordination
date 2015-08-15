@@ -198,5 +198,10 @@ namespace factory {
 
 	}
 
+	namespace stdx {
+		using components::intersperse_iterator;
+		using components::use_flags;
+	}
+
 }
 #endif // FACTORY_STDEXT_HH
