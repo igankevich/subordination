@@ -74,13 +74,32 @@ namespace factory {
 			bool first = true;
 		};
 
+		template<class T1, class T2>
+		struct pair: public std::pair<T1,T2> {
+
+			typedef std::pair<T1,T2> base_pair;
+
+			explicit
+			pair(T1 x, T2 y):
+				base_pair(x, y) {}
+
+			pair(const pair& rhs):
+				base_pair(rhs) {}
+
+			pair& operator=(pair&& rhs) {
+				base_pair::first = std::move(rhs.first);
+				base_pair::second = std::move(rhs.second);
+				return *this;
+			}
+		};
+
 		template<class It1, class It2>
 		struct paired_iterator: public std::iterator<
 			typename std::iterator_traits<It1>::iterator_category,
 			std::tuple<typename std::iterator_traits<It1>::value_type,typename std::iterator_traits<It2>::value_type>,
 			std::ptrdiff_t,
 			std::tuple<typename std::iterator_traits<It1>::value_type*,typename std::iterator_traits<It2>::value_type*>,
-			std::tuple<typename std::iterator_traits<It1>::value_type&&,typename std::iterator_traits<It2>::value_type&&>
+			stdx::pair<typename std::iterator_traits<It1>::reference,typename std::iterator_traits<It2>::reference>
 			>
 		{
 			typedef typename std::iterator_traits<paired_iterator>::reference reference;
@@ -91,6 +110,10 @@ namespace factory {
 
 			typedef typename std::iterator_traits<It1>::value_type&& rvalueref1;
 			typedef typename std::iterator_traits<It2>::value_type&& rvalueref2;
+			typedef stdx::pair<
+				typename std::iterator_traits<It1>::reference,
+				typename std::iterator_traits<It2>::reference>
+					pair_type;
 
 			inline paired_iterator(It1 x, It2 y): iter1(x), iter2(y) {}
 			inline paired_iterator() = default;
@@ -101,8 +124,16 @@ namespace factory {
 			constexpr bool operator==(const paired_iterator& rhs) const { return iter1 == rhs.iter1; }
 			constexpr bool operator!=(const paired_iterator& rhs) const { return !this->operator==(rhs); }
 
-			inline const_reference operator*() const { return std::tuple<rvalueref1,rvalueref2>(*iter1,*iter2); }
-			inline reference operator*() { return std::tuple<rvalueref1,rvalueref2>(std::move(*iter1),std::move(*iter2)); }
+			inline const_reference
+			operator*() const {
+				return pair_type(*iter1,*iter2);
+			}
+
+			inline reference
+			operator*() {
+				return pair_type(*iter1,*iter2);
+			}
+
 			inline const_pointer operator->() const { return std::make_tuple(iter1.operator->(),iter2.operator->()); }
 			inline pointer operator->() { return std::make_tuple(iter1.operator->(),iter2.operator->()); }
 			inline paired_iterator& operator++() { ++iter1; ++iter2; return *this; }

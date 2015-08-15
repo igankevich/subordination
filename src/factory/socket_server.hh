@@ -32,6 +32,7 @@ namespace factory {
 			};
 
 			typedef unix::event_poller<server_type, server_deleter> poller_type;
+			typedef std::unique_ptr<server_type, server_deleter> handler_ptr;
 
 			Socket_server() = default;
 			virtual ~Socket_server() = default;
@@ -97,7 +98,9 @@ namespace factory {
 						new_s->setparent(this);
 						new_s->socket(std::move(sock));
 						this->_upstream[vaddr] = new_s;
-						this->_poller.add(unix::poll_event{new_s->fd(), unix::poll_event::Inout, unix::poll_event::Inout}, new_s, server_deleter(this));
+						this->_poller.emplace(
+							unix::poll_event{new_s->fd(), unix::poll_event::Inout, unix::poll_event::Inout},
+							handler_ptr(new_s, server_deleter(this)));
 						log << " with " << *new_s << std::endl;
 						debug("replacing upstream");
 					}
@@ -152,7 +155,8 @@ namespace factory {
 			void socket(const unix::endpoint& addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
-				this->_poller.add(unix::poll_event{this->_socket.fd(), unix::poll_event::In}, nullptr, server_deleter(this));
+				this->_poller.insert_special(unix::poll_event{this->_socket.fd(),
+					unix::poll_event::In});
 			}
 
 			void start() {
@@ -293,7 +297,9 @@ namespace factory {
 				server_type* s = new server_type(std::move(sock), vaddr);
 				s->setparent(this);
 				this->_upstream[vaddr] = s;
-				this->_poller.add(unix::poll_event{fd, events, revents}, s, server_deleter(this));
+				this->_poller.emplace(
+					unix::poll_event{fd, events, revents},
+					handler_ptr(s, server_deleter(this)));
 				return s;
 			}
 
@@ -301,7 +307,7 @@ namespace factory {
 				sub->setparent(this);
 				sub->setvaddr(par->vaddr());
 				sub->link(par);
-				this->_poller.add(ev, sub, server_deleter(this));
+				this->_poller.emplace(ev, handler_ptr(sub, server_deleter(this)));
 			}
 
 			poller_type _poller;
