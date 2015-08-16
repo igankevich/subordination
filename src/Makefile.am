@@ -38,7 +38,7 @@ bin_PROGRAMS = \
 #lib_LTLIBRARIES = \
 #	libfactory.la
 
-TESTS = \
+check_PROGRAMS = \
 	test_buffer \
 	test_marshaling \
 	test_socket \
@@ -56,23 +56,7 @@ TESTS = \
 	test_poller \
 	test_appserver
 
-check_PROGRAMS = \
-	test_buffer \
-	test_marshaling \
-	test_socket \
-	test_offline \
-	test_spinlock \
-	test_endpoint \
-	test_encoding \
-	test_websocket \
-	test_shmem \
-	test_timer \
-	test_uint128 \
-	test_uint128_custom \
-	test_kernel \
-	test_discovery \
-	test_poller \
-	test_appserver
+TESTS = $(check_PROGRAMS)
 
 test_uint128_custom_SOURCES = test_uint128.cc
 test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128

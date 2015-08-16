@@ -7,6 +7,7 @@
 #include "unistdx/endpoint.hh"
 #include "unistdx/socket.hh"
 #include "unistdx/pipe.hh"
+#include "unistdx/proc_poller.hh"
 #include "unistdx/event_poller.hh"
 #include "unistdx/this_process.hh"
 
