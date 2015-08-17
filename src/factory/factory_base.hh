@@ -25,6 +25,7 @@
 	#include <sstream>
 	#include <ctime>
 	#include <vector>
+	#include <list>
 	#include <stdexcept>
 	#include <system_error>
 	#include <queue>

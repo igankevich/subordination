@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDEXT_HH
-#define FACTORY_STDEXT_HH
+#ifndef FACTORY_STDX_HH
+#define FACTORY_STDX_HH
 
 #include "bits/basic_uint.hh"
 #include "bits/uint128.hh"
@@ -215,73 +215,135 @@ namespace factory {
 			return result.value;
 		}
 
+		template<class C>
+		inline auto
+		front(C& container) noexcept
+		-> decltype(container.front())
+		{
+			return container.front();
+		}
+
+		template<class C>
+		inline auto
+		front(const C& container) noexcept
+		-> decltype(container.front())
+		{
+			return container.front();
+		}
+
+		template<class T, class Cont, class Comp>
+		inline auto
+		front(std::priority_queue<T,Cont,Comp>& container) noexcept
+		-> decltype(container.top())
+		{
+			return container.top();
+		}
+
+		template<class T, class Cont, class Comp>
+		inline auto
+		front(const std::priority_queue<T,Cont,Comp>& container) noexcept
+		-> decltype(container.top())
+		{
+			return container.top();
+		}
+
+		template<class C>
+		inline auto
+		pop(C& container) noexcept
+		-> decltype(container.pop())
+		{
+			return container.pop();
+		}
+
+		template<class T, class Alloc>
+		inline auto
+		pop(std::deque<T,Alloc>& container) noexcept
+		-> decltype(container.pop_front())
+		{
+			return container.pop_front();
+		}
+
+		template<class T, class Alloc>
+		inline auto
+		pop(std::list<T,Alloc>& container) noexcept
+		-> decltype(container.pop_front())
+		{
+			return container.pop_front();
+		}
+
 		template<class Container>
 		struct front_pop_iterator:
-		    public std::iterator<std::input_iterator_tag, typename Container::value_type>
+		    public std::iterator<std::input_iterator_tag,
+				typename Container::value_type>
 		{
 
 			typedef Container container_type;
 			typedef typename Container::value_type value_type;
 
-			explicit
+			explicit constexpr
 			front_pop_iterator(container_type& x) noexcept:
-			container(&x), val(x.front()) {}
+			container(&x) {}
 
-			front_pop_iterator() noexcept:
-				container(nullptr), val() {}
+			constexpr
+			front_pop_iterator() noexcept = default;
 
+			constexpr
 			front_pop_iterator(const front_pop_iterator& rhs) noexcept = default;
 
 			inline bool
-			operator==(const front_pop_iterator& rhs) const noexcept {
-				return container == rhs.container;
+			operator==(const front_pop_iterator&) const noexcept {
+				return container->empty();
 			}
 
 			inline bool
 			operator!=(const front_pop_iterator& rhs) const noexcept {
-				return container != rhs.container;
+				return !operator==(rhs);
 			}
 
 			value_type&
 			operator*() noexcept {
-				return val;
+				return front(*container);
 			}
 
-			const value_type&
-			operator*() const noexcept {
-				return val;
-			}
-
-			const value_type*
+			value_type*
 			operator->() noexcept {
-				return &val;
-			}
-
-			const value_type*
-			operator->() const noexcept {
-				return &val;
+				return &front(*container);
 			}
 
 			inline front_pop_iterator&
 			operator++() noexcept {
-				val = container->front();
-				container->pop();
+				pop(*container);
 				return *this;
 			}
 
-			inline front_pop_iterator
+			inline front_pop_iterator&
 			operator++(int) noexcept {
-				front_pop_iterator tmp = *this;
-				++*this;
-				return tmp;
+				throw std::logic_error("can't post increment stdx::front_pop_iterator");
+				return *this;
 			}
 
 		private:
-			container_type* container;
-			value_type val;
+			container_type* container = nullptr;
 		};
+
+		template<class C>
+		inline front_pop_iterator<C>
+		front_popper(C& cont) noexcept {
+			return front_pop_iterator<C>(cont);
+		}
+
+		template<class It, class Pred, class Func>
+		void
+		for_each_if(It first, It last, Pred pred, Func func) {
+			while (first != last) {
+				if (pred(*first)) {
+					func(*first);
+				}
+				++first;
+			}
+		}
 
 	}
 
 }
-#endif // FACTORY_STDEXT_HH
+#endif // FACTORY_STDX_HH
