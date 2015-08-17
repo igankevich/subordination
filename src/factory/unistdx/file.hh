@@ -160,6 +160,9 @@ namespace factory {
 			constexpr
 			fd_flag(const fd_flag&) noexcept = default;
 
+			constexpr
+			fd_flag() noexcept = default;
+
 			void set(fd& f) const {
 				f.setf(f1);
 				f.set_flags(f2);

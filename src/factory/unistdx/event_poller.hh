@@ -47,10 +47,6 @@ namespace factory {
 			poll_event(fd_type f=-1, legacy_event ev=0, legacy_event rev=0) noexcept:
 				Basic_event{f,ev|Def,rev} {}
 
-			explicit constexpr
-			poll_event(const unix::fd& f, legacy_event ev=0, legacy_event rev=0) noexcept:
-				poll_event(f.get_fd(),ev,rev) {}
-
 			constexpr legacy_event
 			revents() const noexcept {
 				return this->Basic_event::revents;
@@ -160,22 +156,26 @@ namespace factory {
 		static_assert(sizeof(poll_event) == sizeof(Basic_event),
 			"The size of poll_event does not match the size of ``struct pollfd''.");
 
-		template<class H, class D=std::default_delete<H>>
+		using bits::object_tag;
+		using bits::pointer_tag;
+		using bits::smart_pointer_tag;
+
+		template<class H, class Tag=object_tag>
 		struct event_poller {
 
 			enum note_type: char { Notify = '!' };
-			enum timeout_type: int { Infinite = -1 };
 
-			typedef std::unique_ptr<H,D> handler_type;
+			typedef H handler_type;
 			typedef std::vector<poll_event> events_type;
 			typedef std::vector<handler_type> handlers_type;
 			typedef events_type::size_type size_type;
-			typedef H* ptr_type;
+			typedef bits::handler_wrapper<Tag> wrapper;
 
 			inline
-			event_poller() {
-				init_pipe();
-			}
+			event_poller():
+			_pipe(unix::fd::non_blocking | unix::fd::close_on_exec),
+			_events{poll_event{this->_pipe.in().get_fd(), poll_event::In}}
+			{}
 
 			~event_poller() = default;
 			event_poller(const event_poller&) = delete;
@@ -186,18 +186,22 @@ namespace factory {
 				_pipe(std::move(rhs._pipe)),
 				_events(std::move(rhs._events)),
 				_handlers(std::move(rhs._handlers)),
+				_specials(std::move(rhs._specials)),
 				_stopped(rhs._stopped)
 				{}
 		
 			inline void
-			notify(note_type c = Notify) {
+			notify(note_type c = Notify) noexcept {
 				this->_pipe.out().write(&c, sizeof(note_type));
 			}
 		
 			template<class Callback>
 			inline void
 			run(Callback callback) {
-				while (!this->stopped()) this->wait(callback);
+				insert_pending_specials();
+				while (!this->stopped()) {
+					this->wait(callback);
+				}
 			}
 
 			inline fd_type
@@ -218,31 +222,25 @@ namespace factory {
 
 			inline void
 			clear() noexcept {
-				// TODO: do not delete first
-				this->_events.erase(_events.begin() + NPIPES, _events.end());
+				this->_events.erase(special_begin(), _events.end());
 				this->_handlers.clear();
 			}
 
 			void
 			insert_special(poll_event ev) {
 				std::clog << "event_poller::insert_special " << ev << std::endl;
-				this->_events.insert(this->begin(), ev);
-				++nspecial;
+				_specials.push_back(ev);
 			}
 
-			void emplace(poll_event ev, handler_type&& handler) {
+			void
+			emplace(poll_event ev, handler_type&& handler) {
 				std::clog << "event_poller::emplace " << ev << std::endl;
 				this->_events.push_back(ev);
 				this->_handlers.emplace_back(std::move(handler));
 			}
-
-//			void add(poll_event ev, ptr_type ptr, D deleter = D()) {
-//				std::clog << "event_poller::add " << ev << std::endl;
-//				this->_events.push_back(ev);
-//				this->_handlers.emplace_back(std::move(handler_type(ptr, deleter)));
-//			}
 		
-			void disable(fd_type fd) {
+			void
+			disable(fd_type fd) noexcept {
 				events_type::iterator pos = this->find(poll_event{fd}); 
 				if (pos != this->_events.end()) {
 					std::clog << "ignoring fd=" << pos->fd() << std::endl;
@@ -252,21 +250,14 @@ namespace factory {
 
 		private:
 
-			inline void
-			init_pipe() {
-				this->_pipe.in().setf(unix::fd::non_blocking | unix::fd::close_on_exec);
-				_events.insert(_events.begin(),
-					poll_event{this->_pipe.in(), poll_event::In});
-			}
-
 			inline events_type::const_iterator
-			begin() const noexcept {
-				return _events.begin() + NPIPES + nspecial;
+			ordinary_begin() const noexcept {
+				return _events.begin() + NPIPES + nspecials;
 			}
 
 			inline events_type::iterator
-			begin() noexcept {
-				return _events.begin() + NPIPES + nspecial;
+			ordinary_begin() noexcept {
+				return _events.begin() + NPIPES + nspecials;
 			}
 
 			inline events_type::iterator
@@ -276,15 +267,17 @@ namespace factory {
 
 			inline events_type::iterator
 			special_end() noexcept {
-				return _events.begin() + NPIPES + nspecial;
+				return _events.begin() + NPIPES + nspecials;
 			}
 
-			events_type::iterator find(const poll_event& ev) {
+			inline events_type::iterator
+			find(const poll_event& ev) noexcept {
 				return std::find(this->_events.begin() + NPIPES,
 					this->_events.end(), ev);
 			}
 
-			void consume_notify() {
+			void
+			consume_notify() noexcept {
 				const size_t n = 20;
 				char tmp[n];
 				ssize_t c;
@@ -310,7 +303,7 @@ namespace factory {
 			remove_fds_if(Pred pred) {
 				remove_specials_if(special_begin(), special_end(), pred);
 				remove_ordinary_if(
-					stdx::make_paired(begin(), _handlers.begin()),
+					stdx::make_paired(ordinary_begin(), _handlers.begin()),
 					stdx::make_paired(_events.end(), _handlers.end()),
 					stdx::apply_to<0>(pred));
 			}
@@ -319,7 +312,7 @@ namespace factory {
 			inline void
 			for_each_ordinary_fd(Func func) {
 				std::for_each(
-					stdx::make_paired(begin(), _handlers.begin()),
+					stdx::make_paired(ordinary_begin(), _handlers.begin()),
 					stdx::make_paired(_events.end(), _handlers.end()),
 					[&func] (const stdx::pair<poll_event&,handler_type&>& rhs) {
 						func(rhs.first, rhs.second);
@@ -327,7 +320,8 @@ namespace factory {
 			}
 
 			template<class It>
-			void simulate_pollrdhup(It first, It last) {
+			void
+			check_hup(It first, It last) {
 				while (first != last) {
 					if (first->probe() == 0) {
 						first->setrev(poll_event::Hup);
@@ -336,71 +330,59 @@ namespace factory {
 				}
 			}
 
-			void check_dirty() {
+			void
+			check_dirty() {
 				for_each_ordinary_fd(
 					[] (poll_event& ev, handler_type& h) {
-						if (h->dirty()) {
+						if (wrapper::dirty(h)) {
 							ev.setev(poll_event::Out);
 						}
 					}
 				);
-//				size_type i = 0;
-//				std::for_each(this->begin(), this->_events.end(),
-//					[this,&i] (poll_event& ev) {
-//						handler_type& h = this->_handlers[i];
-//						if (h->dirty()) {
-//							ev.setev(poll_event::Out);
-//						}
-//						++i;
-//					}
-//				);
+			}
+
+			void
+			insert_pending_specials() {
+				_events.insert(this->ordinary_begin(), _specials.begin(), _specials.end());
+				nspecials += _specials.size();
+				_specials.clear();
 			}
 		
 			template<class Callback>
-			void wait(Callback callback) {
+			void
+			wait(Callback callback) {
 
 				do {
 					check_dirty();
 //					std::clog << "poll(): size="
 //						<< this->_events.size() << std::endl;
-					check_if_not<std::errc::interrupted>(::poll(this->_events.data(),
-						this->_events.size(), Infinite),
+					check_if_not<std::errc::interrupted>(
+						::poll(this->_events.data(),
+						this->_events.size(), no_timeout),
 						__FILE__, __LINE__, __func__);
 				} while (errno == EINTR);
 
 				this->remove_fds_if(std::mem_fn(&poll_event::bad_fd));
 
 				#if !HAVE_DECL_POLLRDHUP
-				simulate_pollrdhup(_events.begin(), _events.end());
+				check_hup(_events.begin(), _events.end());
 				#endif
 				handle_pipe(_events.front(), callback);
 				handle_specials(special_begin(), special_end(), callback);
 
 				for_each_ordinary_fd(
 					[&callback] (poll_event& ev, handler_type& h) {
-						if (h->dirty()) {
+						if (wrapper::dirty(h)) {
 							ev.setrev(poll_event::Out);
 						}
 						if (!ev.bad_fd()) {
-							h->operator()(ev);
+							wrapper::handle(h, ev);
 						}
 					}
 				);
 
-//				size_type i = 0;
-//				std::for_each(this->begin(), this->_events.end(),
-//					[this,&callback,&i] (poll_event& ev) {
-//						handler_type& h = this->_handlers[i];
-//						if (h->dirty()) {
-//							ev.setrev(poll_event::Out);
-//						}
-//						if (!ev.bad_fd()) {
-//							h->operator()(ev);
-//						}
-//						++i;
-//					}
-//				);
-				this->remove_fds_if(std::mem_fn(&poll_event::bad));
+				remove_fds_if(std::mem_fn(&poll_event::bad));
+				insert_pending_specials();
 			}
 
 			template<class F>
@@ -423,12 +405,13 @@ namespace factory {
 				}
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const event_poller& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const event_poller& rhs) {
 				std::ostream::sentry s(out);
 				if (s) {
 					out << '{';
-					stdx::intersperse_iterator<poll_event> it(out, ",");
-					std::copy(rhs._events.cbegin(), rhs._events.cend(), it);
+					std::copy(rhs._events.begin(), rhs._events.end(),
+						stdx::intersperse_iterator<poll_event>(out, ","));
 					out << '}';
 				}
 				return out;
@@ -437,11 +420,14 @@ namespace factory {
 			unix::pipe _pipe;
 			events_type _events;
 			handlers_type _handlers;
+			std::vector<poll_event> _specials;
 			volatile bool _stopped = false;
-			size_type nspecial = 0;
+			size_type nspecials = 0;
 
 			static constexpr const size_type
 			NPIPES = 1;
+
+			enum: int { no_timeout = -1 };
 		};
 
 	}

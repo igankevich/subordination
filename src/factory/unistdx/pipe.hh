@@ -10,6 +10,17 @@ namespace factory {
 			}
 
 			inline
+			pipe(fd_flag in_flags, fd_flag out_flags=fd_flag()): _fds{} {
+				open();
+				if (in_flags) {
+					in_flags.set(in());
+				}
+				if (out_flags) {
+					out_flags.set(out());
+				}
+			}
+
+			inline
 			pipe(pipe&& rhs) noexcept:
 				_fds{std::move(rhs._fds[0]), std::move(rhs._fds[1])}
 			{}

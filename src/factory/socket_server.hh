@@ -31,8 +31,8 @@ namespace factory {
 				this_type* _this;
 			};
 
-			typedef unix::event_poller<server_type, server_deleter> poller_type;
 			typedef std::unique_ptr<server_type, server_deleter> handler_ptr;
+			typedef unix::event_poller<handler_ptr, unix::smart_pointer_tag> poller_type;
 
 			Socket_server() = default;
 			virtual ~Socket_server() = default;
@@ -157,6 +157,9 @@ namespace factory {
 				this->_socket.listen();
 				this->_poller.insert_special(unix::poll_event{this->_socket.fd(),
 					unix::poll_event::In});
+				if (!_poller.stopped()) {
+					_poller.notify();
+				}
 			}
 
 			void start() {
@@ -480,7 +483,8 @@ namespace factory {
 			this_type* link() const { return this->_link; }
 			void link(this_type* rhs) { this->_link = rhs; }
 
-			friend std::ostream& operator<<(std::ostream& out, const this_type& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const this_type& rhs) {
 				return out << "{vaddr="
 					<< rhs.vaddr() << ",sock="
 					<< rhs.socket() << ",kernels="

@@ -34,6 +34,43 @@ namespace factory {
 				this->sa_handler = func;
 			}
 		};
+
+		struct object_tag {};
+		struct pointer_tag {};
+		struct smart_pointer_tag {};
+
+		template<class tag>
+		struct handler_wrapper {};
+
+		template<>
+		struct handler_wrapper<pointer_tag> {
+			template<class T>
+			static inline bool
+			dirty(T obj) { return obj->dirty(); }
+			template<class T, class E>
+			static inline void
+			handle(T obj, E ev) { obj->operator()(ev); }
+		};
+
+		template<>
+		struct handler_wrapper<object_tag> {
+			template<class T>
+			static inline bool
+			dirty(T& obj) { return obj.dirty(); }
+			template<class T, class E>
+			static inline void
+			handle(T& obj, E ev) { obj.operator()(ev); }
+		};
+
+		template<>
+		struct handler_wrapper<smart_pointer_tag> {
+			template<class T>
+			static inline bool
+			dirty(T& obj) { return obj->dirty(); }
+			template<class T, class E>
+			static inline void
+			handle(T& obj, E ev) { obj->operator()(ev); }
+		};
 	
 	}
 
