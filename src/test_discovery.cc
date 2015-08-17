@@ -696,7 +696,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 
 	void act() {
 		prog_start = current_time_nano();
-//		Time start_time = this_process::getenv("START_TIME", Time(0));
+//		Time start_time = unix::this_process::getenv("START_TIME", Time(0));
 //		if (start_time > 0) {
 //			using namespace std::chrono;
 //			nanoseconds now = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
@@ -728,7 +728,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
-//				Time wait_time = this_process::getenv("WAIT_TIME", Time(60000000000UL));
+//				Time wait_time = unix::this_process::getenv("WAIT_TIME", Time(60000000000UL));
 //				if (current_time_nano() - prog_start > wait_time) {
 //					Logger<Level::DISCOVERY>() << "Hail the new king "
 //						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
@@ -924,12 +924,12 @@ struct App {
 					return 0;
 				}
 
-				Process_group processes;
+				unix::procgroup processes;
 				int start_id = 1000;
 				for (unix::endpoint endpoint : all_peers) {
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
-						this_process::env("START_ID", start_id);
-						return this_process::execute(argv[0],
+						unix::this_process::env("START_ID", start_id);
+						return unix::this_process::execute(argv[0],
 							"--bind-addr", endpoint,
 							"--num-peers", npeers,
 							"--base-ip", base_ip);
@@ -964,7 +964,7 @@ struct App {
 				the_server()->add_cpu(0);
 				remote_server()->socket(bind_addr);
 				__factory.start();
-				Time start_delay = this_process::getenv("START_DELAY", Time(bind_addr == unix::endpoint("127.0.0.1", 10000) ? 0 : 2));
+				Time start_delay = unix::this_process::getenv("START_DELAY", Time(bind_addr == unix::endpoint("127.0.0.1", 10000) ? 0 : 2));
 				Master_discoverer* master = new Master_discoverer(bind_addr);
 				master->after(std::chrono::seconds(start_delay));
 //				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));

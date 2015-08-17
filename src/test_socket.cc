@@ -139,7 +139,7 @@ private:
 };
 
 uint32_t sleep_time() {
-	return this_process::getenv("SLEEP_TIME", UINT32_C(0));
+	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 
@@ -152,18 +152,23 @@ struct App {
 				<< ",client=" << client_endpoint
 				<< std::endl;
 			uint32_t sleep = sleep_time();
-			Process_group procs;
+			unix::procgroup procs;
 			procs.add([&argv, sleep] () {
-				this_process::env("START_ID", 1000);
-				return this_process::execute(argv[0], 'x', sleep);
+				unix::this_process::env("START_ID", 1000);
+				return unix::this_process::execute(argv[0], 'x', sleep);
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv, sleep] () {
-				this_process::env("START_ID", 2000);
-				return this_process::execute(argv[0], 'y', sleep);
+				unix::this_process::env("START_ID", 2000);
+				return unix::this_process::execute(argv[0], 'y', sleep);
 			});
-			retval = procs.wait();
+			Logger<Level::TEST>() << "unix::proc group = " << procs << std::endl;
+			procs.wait([] (const unix::proc& proc, unix::proc_info stat) {
+				Logger<Level::TEST>() << "proc exited proc=" << proc
+					<< ",status=" << stat.exit_code() << std::endl;
+			});
+//			retval = procs.wait();
 		} else {
 			try {
 				if (argc != 3)

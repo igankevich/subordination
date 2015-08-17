@@ -3,7 +3,7 @@ namespace factory {
 
 		inline
 		std::string
-		generate_shmem_id(pid_type child, pid_type parent, int stream_no) {
+		generate_shmem_id(unix::pid_type child, unix::pid_type parent, int stream_no) {
 //			static const int MAX_PID = 65536;
 //			static const int MAX_STREAMS = 10;
 //			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
@@ -16,7 +16,7 @@ namespace factory {
 
 		inline
 		std::string
-		generate_sem_name(pid_type child, pid_type parent, char tag) {
+		generate_sem_name(unix::pid_type child, unix::pid_type parent, char tag) {
 			std::ostringstream str;
 			str << "/factory-sem-" << parent << '-' << child << '-' << tag;
 			std::string name = str.str();
@@ -29,13 +29,13 @@ namespace factory {
 
 			typedef Principal_server<Server> this_type;
 			typedef typename Server::Kernel kernel_type;
-			typedef Process process_type;
+			typedef unix::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
 			typedef Packing_stream<char> stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef semaphore sem_type;
+			typedef unix::semaphore sem_type;
 			typedef Application::id_type app_type;
 
 			Principal_server():
@@ -46,7 +46,7 @@ namespace factory {
 				_isem(),
 				_osem(),
 				_thread(),
-				_app(this_process::getenv("APP_ID", Application::ROOT))
+				_app(unix::this_process::getenv("APP_ID", Application::ROOT))
 				{}
 
 			Principal_server(Principal_server&& rhs):
@@ -62,10 +62,10 @@ namespace factory {
 
 			void start() {
 				Logger<Level::SERVER>() << "Principal_server::start()" << std::endl;
-				this->_ibuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 1));
-				this->_obuf.attach(generate_shmem_id(this_process::id(), this_process::parent_id(), 0));
-				this->_isem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'i'));
-				this->_osem.open(generate_sem_name(this_process::id(), this_process::parent_id(), 'o'));
+				this->_ibuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 1));
+				this->_obuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 0));
+				this->_isem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'i'));
+				this->_osem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'o'));
 				this->_thread = std::thread(std::mem_fn(&this_type::serve), this);
 			}
 
@@ -135,25 +135,25 @@ namespace factory {
 
 			typedef Sub_Rserver<Kernel> this_type;
 			typedef Kernel kernel_type;
-			typedef Process process_type;
+			typedef unix::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef semaphore sem_type;
+			typedef unix::semaphore sem_type;
 			typedef Packing_stream<char> stream_type;
 
 			explicit Sub_Rserver(const Application& app):
 				_proc(app.execute()), //TODO: race condition
-				_osem(generate_sem_name(this->_proc.id(), this_process::id(), 'o'), 0666),
-				_isem(generate_sem_name(this->_proc.id(), this_process::id(), 'i'), 0666),
-				_ibuf(generate_shmem_id(this->_proc.id(), this_process::id(), 0), 0666),
-				_obuf(generate_shmem_id(this->_proc.id(), this_process::id(), 1), 0666),
+				_osem(generate_sem_name(this->_proc.id(), unix::this_process::id(), 'o'), 0666),
+				_isem(generate_sem_name(this->_proc.id(), unix::this_process::id(), 'i'), 0666),
+				_ibuf(generate_shmem_id(this->_proc.id(), unix::this_process::id(), 0), 0666),
+				_obuf(generate_shmem_id(this->_proc.id(), unix::this_process::id(), 1), 0666),
 				_ostream(&this->_obuf)
 				{}
 
 			Sub_Rserver(Sub_Rserver&& rhs):
-				_proc(rhs._proc),
+				_proc(std::move(rhs._proc)),
 				_osem(std::move(rhs._osem)),
 				_isem(std::move(rhs._isem)),
 				_ibuf(std::move(rhs._ibuf)),
@@ -255,7 +255,7 @@ namespace factory {
 					}
 					if (!empty) {
 						int status = 0;
-						pid_type pid = this_process::wait(&status);
+						unix::pid_type pid = unix::this_process::wait(&status);
 						std::unique_lock<std::mutex> lock(this->_mutex);
 						auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
 							[pid] (const pair_type& rhs) {

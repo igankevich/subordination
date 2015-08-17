@@ -138,7 +138,7 @@ private:
 };
 
 uint32_t sleep_time() {
-	return this_process::getenv("SLEEP_TIME", UINT32_C(0));
+	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 
@@ -146,16 +146,16 @@ struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 1) {
-			Process_group procs;
+			unix::procgroup procs;
 			procs.add([&argv] () {
-				this_process::env("START_ID", 1000);
-				return this_process::execute(argv[0], 's');
+				unix::this_process::env("START_ID", 1000);
+				return unix::this_process::execute(argv[0], 's');
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () {
-				this_process::env("START_ID", 2000);
-				return this_process::execute(argv[0], 'c');
+				unix::this_process::env("START_ID", 2000);
+				return unix::this_process::execute(argv[0], 'c');
 			});
 			retval = procs.wait();
 		} else {

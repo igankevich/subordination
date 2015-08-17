@@ -188,7 +188,7 @@ void test_shmembuf() {
 //
 //
 //void test_shmem_client() {
-//	Shmem_server<char> queue(this_process::parent_id());
+//	Shmem_server<char> queue(unix::this_process::parent_id());
 //	sleep(2);
 //	queue.send('a');
 //	queue.send('q');
@@ -197,10 +197,10 @@ void test_shmembuf() {
 //}
 //
 //void test_shmem_server(char** argv) {
-//	Shmem_server<char> queue(this_process::id(), 1024);
-//	Process_group procs;
+//	Shmem_server<char> queue(unix::this_process::id(), 1024);
+//	unix::procgroup procs;
 //	procs.add([&argv] () {
-//		return this_process::execute(argv[0], "client");
+//		return unix::this_process::execute(argv[0], "client");
 //	});
 //	queue.wait();
 //	procs.wait();

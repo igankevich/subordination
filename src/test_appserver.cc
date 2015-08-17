@@ -148,14 +148,14 @@ private:
 };
 
 uint32_t sleep_time() {
-	return this_process::getenv("SLEEP_TIME", UINT32_C(0));
+	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 
 
 struct App {
 	int run(int argc, char* argv[]) {
-		Application::id_type app = this_process::getenv("APP_ID", 0);
+		Application::id_type app = unix::this_process::getenv("APP_ID", 0);
 		if (app == MY_APP_ID) {
 			Logger<Level::TEST>() << "I am an application no. " << app << "!" << std::endl;
 			the_server()->add_cpu(0);

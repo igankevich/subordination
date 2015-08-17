@@ -2,12 +2,9 @@ namespace factory {
 
 	namespace unix {
 
-		typedef struct ::pollfd Basic_event;
+		struct poll_event: public basic_event {
 
-		struct poll_event: public Basic_event {
-
-			typedef decltype(Basic_event::events) legacy_event;
-			typedef int fd_type;
+			typedef decltype(basic_event::events) legacy_event;
 
 			enum event_type: legacy_event {
 				In = POLLIN,
@@ -45,21 +42,21 @@ namespace factory {
 
 			explicit constexpr
 			poll_event(fd_type f=-1, legacy_event ev=0, legacy_event rev=0) noexcept:
-				Basic_event{f,ev|Def,rev} {}
+				basic_event{f,ev|Def,rev} {}
 
 			constexpr legacy_event
 			revents() const noexcept {
-				return this->Basic_event::revents;
+				return this->basic_event::revents;
 			}
 
 			inline void
 			disable() noexcept {
-				this->Basic_event::fd = -1;
+				this->basic_event::fd = -1;
 			}
 
 			constexpr fd_type
 			fd() const noexcept {
-				return this->Basic_event::fd;
+				return this->basic_event::fd;
 			}
 			
 			constexpr bool
@@ -94,22 +91,22 @@ namespace factory {
 
 			inline void
 			setev(event_type rhs) noexcept {
-				this->Basic_event::events |= rhs;
+				this->basic_event::events |= rhs;
 			}
 
 			inline void
 			unsetev(event_type rhs) noexcept {
-				this->Basic_event::events &= ~rhs;
+				this->basic_event::events &= ~rhs;
 			}
 
 			inline void
 			setrev(event_type rhs) noexcept {
-				this->Basic_event::revents |= rhs;
+				this->basic_event::revents |= rhs;
 			}
 
 			inline void
 			unsetrev(event_type rhs) noexcept {
-				this->Basic_event::revents &= ~rhs;
+				this->basic_event::revents &= ~rhs;
 			}
 
 			inline void
@@ -153,7 +150,7 @@ namespace factory {
 
 		};
 
-		static_assert(sizeof(poll_event) == sizeof(Basic_event),
+		static_assert(sizeof(poll_event) == sizeof(basic_event),
 			"The size of poll_event does not match the size of ``struct pollfd''.");
 
 		using bits::object_tag;

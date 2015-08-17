@@ -11,13 +11,13 @@ namespace factory {
 			using typename std::basic_streambuf<Ch,Tr>::pos_type;
 			using typename std::basic_streambuf<Ch,Tr>::off_type;
 
-			typedef typename shared_mem<char_type>::size_type size_type;
-			typedef typename shared_mem<char_type>::path_type path_type;
+			typedef typename unix::shared_mem<char_type>::size_type size_type;
+			typedef typename unix::shared_mem<char_type>::path_type path_type;
 			typedef stdx::spin_mutex mutex_type;
-			typedef typename shared_mem<Ch>::proj_id_type proj_id_type;
+			typedef typename unix::shared_mem<Ch>::proj_id_type proj_id_type;
 
 			explicit
-			basic_shmembuf(path_type&& path, mode_type mode):
+			basic_shmembuf(path_type&& path, unix::mode_type mode):
 				_sharedmem(std::forward<path_type>(path), 512, mode, BUFFER_PROJID),
 				_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
 			{
@@ -48,7 +48,7 @@ namespace factory {
 			basic_shmembuf() = default;
 			~basic_shmembuf() = default;
 
-			void open(path_type&& path, mode_type mode) {
+			void open(path_type&& path, unix::mode_type mode) {
 				this->_sharedmem.open(std::forward<path_type>(path), 512, mode, BUFFER_PROJID);
 				this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
 				this->_sharedpart->size = this->_sharedmem.size();
@@ -160,7 +160,7 @@ namespace factory {
 				}
 				this->debug("sync_sharedmem");
 				if (this->bad_size()) {
-					throw Error("bad shared_mem size",
+					throw Error("bad unix::shared_mem size",
 						__FILE__, __LINE__, __func__);
 				}
 				this->readoffs();
@@ -198,7 +198,7 @@ namespace factory {
 				this->debug("readoffs");
 			}
 
-			shared_mem<char_type> _sharedmem;
+			unix::shared_mem<char_type> _sharedmem;
 			struct shmem_header {
 				size_type size = 0;
 				mutex_type mtx;

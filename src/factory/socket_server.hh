@@ -296,7 +296,7 @@ namespace factory {
 				unix::poll_event::legacy_event events,
 				unix::poll_event::legacy_event revents=0)
 			{
-				fd_type fd = sock.fd();
+				unix::fd_type fd = sock.fd();
 				server_type* s = new server_type(std::move(sock), vaddr);
 				s->setparent(this);
 				this->_upstream[vaddr] = s;

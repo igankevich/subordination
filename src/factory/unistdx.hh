@@ -1,137 +1,21 @@
-#include "bits/unistdext.hh"
+#include "bits/unistdx.hh"
 #include "bits/ifaddrs.hh"
 #include "bits/endpoint.hh"
 
 #include "unistdx/types.hh"
-#include "unistdx/file.hh"
 #include "unistdx/endpoint.hh"
-#include "unistdx/socket.hh"
-#include "unistdx/pipe.hh"
-#include "unistdx/proc_poller.hh"
-#include "unistdx/event_poller.hh"
-#include "unistdx/this_process.hh"
+#include "unistdx/fildes.hh"
+#include "unistdx/event.hh"
+#include "unistdx/process.hh"
 
 namespace factory {
 
-	namespace components {
-
-		struct Process {
-
-			constexpr Process() = default;
-
-			template<class F>
-			explicit
-			Process(F f) { run(f); }
-
-			template<class F>
-			void run(F f) {
-				_child_pid = ::fork();
-				if (_child_pid == 0) {
-					int ret = f();
-//					Logger<Level::COMPONENT>() << ": exit(" << ret << ')' << std::endl;
-					std::exit(ret);
-				}
-			}
-
-			void stop() {
-				if (_child_pid > 0) {
-			    	check(::kill(_child_pid, SIGHUP),
-						__FILE__, __LINE__, __func__);
-				}
-			}
-
-			std::pair<int,int>
-			wait() {
-				int ret = 0, sig = 0;
-				if (_child_pid > 0) {
-					int status = 0;
-					check_if_not<std::errc::interrupted>(
-						::waitpid(_child_pid, &status, 0),
-						__FILE__, __LINE__, __func__);
-					ret = WEXITSTATUS(status);
-					if (WIFSIGNALED(status)) {
-						sig = WTERMSIG(status);
-					}
-//					Logger<Level::COMPONENT>()
-//						<< _child_pid << ": waitpid(), ret=" << ret
-//						<< ", sig=" << sig << std::endl;
-				}
-				return std::make_pair(ret, sig);
-			}
-
-			friend std::ostream&
-			operator<<(std::ostream& out, const Process& rhs) {
-				return out << rhs.id();
-			}
-
-			constexpr pid_type
-			id() const noexcept {
-				return _child_pid;
-			}
-
-		private:
-			pid_type _child_pid = 0;
-		};
-
-		struct Process_group {
-
-			template<class F>
-			void add(F f) {
-				_procs.push_back(Process(f));
-			}
-
-			int wait() {
-				int ret = 0;
-				for (Process& p : _procs) {
-					std::pair<int,int> x = p.wait();
-					ret += std::abs(x.first | x.second);
-				}
-				return ret;
-			}
-
-/*
-			template<class F>
-			void wait(F callback) {
-				int status = 0;
-				int pid = check_if_not<std::errc::interrupted>(
-					::wait(&status),
-					__FILE__, __LINE__, __func__);
-				auto result = std::find_if(_procs.begin(), _procs.end(),
-					[pid] (Process p) {
-						return p.id() == pid;
-					}
-				);
-				if (result != _procs.end()) {
-					int ret = WIFEXITED(status) ? WEXITSTATUS(status) : 0,
-						sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-					callback(*result, ret, sig);
-				}
-			}
-*/
-
-			void stop() {
-				for (Process& p : _procs)
-					p.stop();
-			}
-
-			Process& operator[](size_t i) { return _procs[i]; }
-			const Process& operator[](size_t i) const { return _procs[i]; }
-
-			friend std::ostream& operator<<(std::ostream& out, const Process_group& rhs) {
-				for (const Process& p : rhs._procs) {
-					out << p << ' ';
-				}
-				return out;
-			}
-
-		private:
-			std::vector<Process> _procs;
-		};
+	namespace unix {
 
 		struct Command_line {
 
 			Command_line(int argc, char* argv[]) noexcept:
-				cmdline()
+			cmdline()
 			{
 				std::copy_n(argv, argc,
 					std::ostream_iterator<char*>(cmdline, "\n"));
@@ -508,55 +392,6 @@ namespace factory {
 			constexpr static const proj_id_type DEFAULT_PROJ_ID = 'a';
 		};
 
-		struct Ifaddrs {
-
-			typedef struct ::ifaddrs ifaddrs_type;
-			typedef ifaddrs_type value_type;
-			typedef bits::ifaddrs_iterator<ifaddrs_type> iterator;
-			typedef std::size_t size_type;
-
-			Ifaddrs() {
-				check(::getifaddrs(&this->_addrs),
-					__FILE__, __LINE__, __func__);
-			}
-			~Ifaddrs() noexcept { 
-				if (this->_addrs) {
-					::freeifaddrs(this->_addrs);
-				}
-			}
-
-			iterator
-			begin() noexcept {
-				return iterator(this->_addrs);
-			}
-
-			iterator
-			begin() const noexcept {
-				return iterator(this->_addrs);
-			}
-
-			static constexpr iterator
-			end() noexcept {
-				return iterator();
-			}
-
-			bool
-			empty() const noexcept {
-				return this->begin() == this->end();
-			}
-
-			size_type
-			size() const noexcept {
-				return std::distance(this->begin(), this->end());
-			}
-
-		private:
-			ifaddrs_type* _addrs = nullptr;
-		};
-
 	}
-
-	using components::Process;
-	using components::Process_group;
 
 }

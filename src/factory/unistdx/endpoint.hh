@@ -615,6 +615,52 @@ namespace factory {
 		static_assert(sizeof(endpoint) == sizeof(sin6_type), "bad endpoint size");
 		static_assert(sizeof(port_type) == 2, "bad port_type size");
 
+		struct ifaddrs {
+
+			typedef struct ::ifaddrs ifaddrs_type;
+			typedef ifaddrs_type value_type;
+			typedef bits::ifaddrs_iterator<ifaddrs_type> iterator;
+			typedef std::size_t size_type;
+
+			ifaddrs() {
+				check(::getifaddrs(&this->_addrs),
+					__FILE__, __LINE__, __func__);
+			}
+			~ifaddrs() noexcept { 
+				if (this->_addrs) {
+					::freeifaddrs(this->_addrs);
+				}
+			}
+
+			iterator
+			begin() noexcept {
+				return iterator(this->_addrs);
+			}
+
+			iterator
+			begin() const noexcept {
+				return iterator(this->_addrs);
+			}
+
+			static constexpr iterator
+			end() noexcept {
+				return iterator();
+			}
+
+			bool
+			empty() const noexcept {
+				return this->begin() == this->end();
+			}
+
+			size_type
+			size() const noexcept {
+				return std::distance(this->begin(), this->end());
+			}
+
+		private:
+			ifaddrs_type* _addrs = nullptr;
+		};
+
 	}
 
 }

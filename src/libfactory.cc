@@ -209,11 +209,11 @@ namespace factory {
 
 		private:
 			void init_signal_handlers() {
-				this_process::bind_signal(SIGTERM, emergency_shutdown);
-				this_process::bind_signal(SIGINT, emergency_shutdown);
-				this_process::bind_signal(SIGPIPE, SIG_IGN);
+				unix::this_process::bind_signal(SIGTERM, emergency_shutdown);
+				unix::this_process::bind_signal(SIGINT, emergency_shutdown);
+				unix::this_process::bind_signal(SIGPIPE, SIG_IGN);
 #ifndef FACTORY_NO_BACKTRACE
-				this_process::bind_signal(SIGSEGV, print_backtrace);
+				unix::this_process::bind_signal(SIGSEGV, print_backtrace);
 #endif
 			}
 
@@ -403,7 +403,7 @@ namespace factory {
 	namespace components {
 		Id factory_start_id() {
 			constexpr static const Id DEFAULT_START_ID = 1000;
-			Id i = this_process::getenv("START_ID", DEFAULT_START_ID);
+			Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
 			if (i == ROOT_ID) {
 				i = DEFAULT_START_ID;
 				Logger<Level::COMPONENT>() << "Bad START_ID value: " << ROOT_ID << std::endl;
@@ -479,12 +479,45 @@ namespace factory {
 			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
 				[] (const Address_range& range)
 			{
-				std::clog << Address(range.start()) << '-' << Address(range.end()) << '\n';
+				std::clog << unix::ipv4_addr(range.start()) << '-' << unix::ipv4_addr(range.end()) << '\n';
 			});
 		
 			::freeifaddrs(ifaddr);
 		
 			return sorted_ranges;
+		}
+		unix::endpoint get_bind_address() {
+
+			unix::endpoint ret;
+		
+			unix::ifaddrs addrs;
+			unix::ifaddrs::iterator result = 
+			std::find_if(addrs.begin(), addrs.end(), [] (const unix::ifaddrs::ifaddrs_type& rhs) {
+
+				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
+					// ignore non-internet networks
+					return false;
+				}
+
+				unix::endpoint addr(*rhs.ifa_addr);
+				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
+					// ignore localhost and non-IPv4 addresses
+					return false;
+				}
+
+				unix::endpoint netmask(*rhs.ifa_netmask);
+				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
+					// ignore wide-area networks
+					return false;
+				}
+		
+				return true;
+			});
+			if (result != addrs.end()) {
+				ret = unix::endpoint(*result->ifa_addr);
+			}
+		
+			return ret;
 		}
 	}
 }

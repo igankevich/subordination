@@ -20,40 +20,67 @@ namespace factory {
 		template<class I>
 		struct Interval {
 
-			typedef I Int;
+			typedef I int_type;
 		
-			Interval(): _start(0), _end(0) {}
-			Interval(I a, I b): _start(a), _end(b) {}
-			Interval(const Interval<I>& rhs): _start(rhs._start), _end(rhs._end) {}
+			constexpr
+			Interval() noexcept:
+			_start(0), _end(0) {}
+
+			constexpr
+			Interval(I a, I b) noexcept:
+			_start(a), _end(b) {}
+			
+			constexpr
+			Interval(const Interval& rhs) noexcept:
+			_start(rhs._start), _end(rhs._end) {}
 		
-			I start() const { return _start; }
-			I end() const { return _end; }
+			constexpr
+			I start() const noexcept {
+				return _start;
+			}
+			
+			constexpr
+			I end() const noexcept {
+				return _end;
+			}
 		
-			bool overlaps(const Interval<I>& rhs) const {
+			constexpr bool
+			overlaps(const Interval& rhs) const noexcept {
 				return (_start < rhs._start && _end > rhs._start)
 					|| (rhs._start < _start && rhs._end > _start);
 			}
 		
-			Interval<I>& operator+=(const Interval<I>& rhs) {
+			inline Interval&
+			operator+=(const Interval& rhs) noexcept {
 				_start = std::min(_start, rhs._start);
 				_end = std::max(_end, rhs._end);
 				return *this;
 			}
 			
-			bool operator<(const Interval<I>& rhs) const {
+			constexpr bool
+			operator<(const Interval& rhs) const noexcept {
 				return _start < rhs._start;
 			}
 		
-			friend std::ostream& operator<<(std::ostream& out, const Interval<I>& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Interval& rhs) {
 				return out << rhs._start << ' ' << rhs._end;
 			}
 		
-			friend std::istream& operator>>(std::istream& in, Interval<I>& rhs) {
+			friend std::istream&
+			operator>>(std::istream& in, Interval& rhs) {
 				return in >> rhs._start >> rhs._end;
 			}
 		
-			bool empty() const { return _start >= _end; }
-			I count() const { return _end - _start; }
+			constexpr bool
+			empty() const noexcept {
+				return !(_start < _end);
+			}
+
+			constexpr I
+			count() const noexcept {
+				return _end - _start;
+			}
 		
 		private:
 			I _start, _end;
@@ -61,59 +88,11 @@ namespace factory {
 		
 		typedef Interval<uint32_t> Address_range;
 		
-		union Address {
-		
-			explicit Address(uint32_t a=0): _addr(a) {}
-		
-			friend std::ostream& operator<<(std::ostream& out, const Address& rhs) {
-				return out
-					<< int(rhs._bytes[3]) << '.'
-					<< int(rhs._bytes[2]) << '.'
-					<< int(rhs._bytes[1]) << '.'
-					<< int(rhs._bytes[0]);
-			}
-		
-		private:
-			uint32_t _addr;
-			unsigned char _bytes[sizeof(_addr)];
-		};
-		
-		std::vector<Address_range> discover_neighbours();
+		std::vector<Address_range>
+		discover_neighbours();
 
-		inline
-		unix::endpoint get_bind_address() {
-
-			unix::endpoint ret;
-		
-			Ifaddrs addrs;
-			Ifaddrs::iterator result = 
-			std::find_if(addrs.begin(), addrs.end(), [] (const Ifaddrs::ifaddrs_type& rhs) {
-
-				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
-					// ignore non-internet networks
-					return false;
-				}
-
-				unix::endpoint addr(*rhs.ifa_addr);
-				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
-					// ignore localhost and non-IPv4 addresses
-					return false;
-				}
-
-				unix::endpoint netmask(*rhs.ifa_netmask);
-				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
-					// ignore wide-area networks
-					return false;
-				}
-		
-				return true;
-			});
-			if (result != addrs.end()) {
-				ret = unix::endpoint(*result->ifa_addr);
-			}
-		
-			return ret;
-		}
+		unix::endpoint
+		get_bind_address(); 
 
 	}
 
