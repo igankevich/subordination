@@ -144,56 +144,6 @@ namespace factory {
 			size_t read_pos = 0;
 		};
 
-		// TODO: remove
-		template<class Container>
-		class front_pop_iterator:
-		    public std::iterator<std::input_iterator_tag, typename Container::value_type>
-		{
-		public:
-			typedef Container container_type;
-			typedef typename Container::value_type value_type;
-			typedef typename Container::value_type iterator;
-
-			explicit front_pop_iterator(Container& x):
-				container(&x), ptr(x.begin()) {}
-			front_pop_iterator(Container& x, iterator it):
-				container(&x), ptr(it) {}
-			front_pop_iterator(front_pop_iterator& rhs):
-				container(rhs.container), ptr(rhs.ptr) {}
-
-			std::ptrdiff_t operator-(const front_pop_iterator<Container>& rhs) {
-				return ptr - rhs.ptr;
-			}
-			front_pop_iterator<Container> operator+(std::ptrdiff_t rhs) const {
-				return front_pop_iterator<Container>(container,
-					std::advance(container.begin(), rhs));
-			}
-			bool operator==(const front_pop_iterator<Container>& rhs) const {
-				return ptr == rhs.ptr;
-			}
-			bool operator!=(const front_pop_iterator<Container>& rhs) const {
-				return ptr != rhs.ptr;
-			}
-
-			const value_type& operator*() const { return *ptr; }
-			const value_type* operator->() const { return ptr; }
-			front_pop_iterator<Container>& operator++ () {
-				ptr = container.front();
-				container.pop_front();
-				return *this;
-			}
-
-			front_pop_iterator<Container> operator++ (int) {
-				front_pop_iterator<Container> tmp = *this;
-				++*this;
-				return tmp;
-			}
-
-		protected:
-			Container& container;
-			value_type* ptr;
-		};
-
 	}
 
 }
