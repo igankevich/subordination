@@ -1,19 +1,25 @@
+#ifndef FACTORY_EXT_ENCODING_HH
+#define FACTORY_EXT_ENCODING_HH
+
 // This code is adapted from Omnifarious answer to Stackoverflow question.
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c
 namespace factory {
 
 	namespace components {
 
-		constexpr size_t base64_encoded_size(size_t len) {
-			return ((len + 2) / 3) * 4;
+		constexpr size_t
+		base64_encoded_size(size_t len) noexcept {
+			return ((len + 2u) / 3u) * 4u;
 		}
 
-		constexpr size_t base64_max_decoded_size(size_t len) {
+		constexpr size_t
+		base64_max_decoded_size(size_t len) noexcept {
 			return len / 4u * 3u;
 		}
 		
 		template<class It, class Res>
-		void base64_encode(It first, It last, Res result) noexcept {
+		void
+		base64_encode(It first, It last, Res result) {
 
 			constexpr static const char BASE64_TABLE[65] =
 				"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -60,7 +66,8 @@ namespace factory {
 		}
 		
 		template<class It, class Res>
-		size_t base64_decode(It first, It last, Res result) {
+		size_t
+		base64_decode(It first, It last, Res result) {
 
 			constexpr static const unsigned char BASE64_REVERSE_TABLE[128] = {
 			   64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
@@ -132,12 +139,13 @@ namespace factory {
 		
 		struct SHA1 {
 
-			constexpr SHA1():
+			constexpr SHA1() noexcept:
 				H{0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0},
 				Message_Block{} {}
 		
 			template<class It>
-			void result(It output) {
+			inline void
+			result(It output) noexcept {
 				static_assert(sizeof(*output) == 4,
 					"SHA1::result() works for sequences of 4-byte sized types.");
 				PadMessage();
@@ -145,7 +153,8 @@ namespace factory {
 			}
 		
 			template<class It>
-			void input(It first, It last) {
+			void
+			input(It first, It last) {
 
 				static_assert(sizeof(*first) == 1,
 					"SHA1::input() works for sequences of 1-byte sized types.");
@@ -335,7 +344,8 @@ namespace factory {
 			 *  Performs a circular left shift operation
 			 */
 			constexpr static
-			uint32_t CircularShift(int bits, uint32_t word) {
+			uint32_t
+			CircularShift(int bits, uint32_t word) noexcept {
 				return (word << bits) | (word >> (32-bits));
 			}
 		
@@ -387,7 +397,8 @@ namespace factory {
 		 *
 		 */
 		template<class It, class Res>
-		void sha1_encode(It first, It last, Res result) {
+		void
+		sha1_encode(It first, It last, Res result) {
 			SHA1 sha1;
 			sha1.input(first, last);
 			sha1.result(result);
@@ -688,3 +699,4 @@ namespace factory {
 	}
 
 }
+#endif // FACTORY_EXT_ENCODING_HH

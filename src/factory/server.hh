@@ -522,3 +522,4 @@ namespace factory {
 
 }
 
+#include "server/cpu_server.hh"

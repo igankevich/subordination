@@ -215,6 +215,72 @@ namespace factory {
 			return result.value;
 		}
 
+		template<class Container>
+		struct front_pop_iterator:
+		    public std::iterator<std::input_iterator_tag, typename Container::value_type>
+		{
+
+			typedef Container container_type;
+			typedef typename Container::value_type value_type;
+
+			explicit
+			front_pop_iterator(container_type& x) noexcept:
+			container(&x), val(x.front()) {}
+
+			front_pop_iterator() noexcept:
+				container(nullptr), val() {}
+
+			front_pop_iterator(const front_pop_iterator& rhs) noexcept = default;
+
+			inline bool
+			operator==(const front_pop_iterator& rhs) const noexcept {
+				return container == rhs.container;
+			}
+
+			inline bool
+			operator!=(const front_pop_iterator& rhs) const noexcept {
+				return container != rhs.container;
+			}
+
+			value_type&
+			operator*() noexcept {
+				return val;
+			}
+
+			const value_type&
+			operator*() const noexcept {
+				return val;
+			}
+
+			const value_type*
+			operator->() noexcept {
+				return &val;
+			}
+
+			const value_type*
+			operator->() const noexcept {
+				return &val;
+			}
+
+			inline front_pop_iterator&
+			operator++() noexcept {
+				val = container->front();
+				container->pop();
+				return *this;
+			}
+
+			inline front_pop_iterator
+			operator++(int) noexcept {
+				front_pop_iterator tmp = *this;
+				++*this;
+				return tmp;
+			}
+
+		private:
+			container_type* container;
+			value_type val;
+		};
+
 	}
 
 }
