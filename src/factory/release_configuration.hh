@@ -61,8 +61,10 @@ namespace factory {
 //		template<class Base, class S>
 //			using Profiled_Dserver = typename S::template Rprofiler<Dserver<typename S::template Rprofiler_top<Base>>>;
 
-		typedef Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
-			Local_server;
+//		typedef Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
+//			Local_server;
+
+		typedef factory::components::CPU_server<Kernel> Local_server;
 
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,

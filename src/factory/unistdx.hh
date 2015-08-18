@@ -94,6 +94,12 @@ namespace factory {
 					__FILE__, __LINE__, __func__);
 			}
 
+			void notify_all() {
+				for (int i=0; i<1000; ++i) {
+					notify_one();
+				}
+			}
+
 			void close() {
 				if (this->_sem != SEM_FAILED) {
 					check(::sem_close(this->_sem),
@@ -123,6 +129,67 @@ namespace factory {
 			path_type _path;
 			bool _owner = false;
 			sem_type _sem = SEM_FAILED;
+		};
+
+		struct thread_semaphore {
+
+			typedef ::sem_t sem_type;
+
+			thread_semaphore():
+			_sem()
+			{
+				init_sem();
+			}
+
+			~thread_semaphore() {
+				destroy();
+			}
+
+			void wait() {
+				check(::sem_wait(&_sem),
+					__FILE__, __LINE__, __func__);
+			}
+
+			template<class Mutex>
+			void wait(Mutex& mtx) {
+				mtx.unlock();
+				wait();
+				mtx.lock();
+			}
+
+			template<class Mutex, class Pred>
+			void wait(Mutex& mtx, Pred pred) {
+				while (!pred()) {
+					wait(mtx);
+				}
+			}
+
+			void notify_one() {
+				check(::sem_post(&_sem),
+					__FILE__, __LINE__, __func__);
+			}
+
+			void notify_all() {
+				for (int i=0; i<1000; ++i) {
+					notify_one();
+				}
+			}
+
+		private:
+
+			inline void
+			destroy() {
+				check(::sem_destroy(&_sem),
+					__FILE__, __LINE__, __func__);
+			}
+
+			inline void
+			init_sem() {
+				check(::sem_init(&_sem, 0, 0),
+					__FILE__, __LINE__, __func__);
+			}
+
+			sem_type _sem;
 		};
 
 		template<class T>

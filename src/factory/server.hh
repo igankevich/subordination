@@ -12,28 +12,61 @@ namespace factory {
 		extern std::mutex __kernel_delete_mutex;
 		void register_server();
 		void global_barrier(std::unique_lock<std::mutex>&);
+	
+		enum struct server_state {
+			initial,
+			started,
+			stopped
+		};
 
 		struct Resident {
 
 			Resident() = default;
 			virtual ~Resident() = default;
 
-			bool stopped() const { return _stopped; }
-			void stopped(bool b) { _stopped = b; }
+			virtual void
+			start() {
+				setstate(server_state::started);
+			}
 
-			void start() {}
-			virtual void stop() { stopped(true); }
-			void wait() {}
-			virtual void stop_now() {}
+			virtual void
+			stop() {
+				setstate(server_state::stopped);
+			}
+
+			virtual void
+			wait() {}
+
+			virtual void
+			stop_now() {}
+
 			// TODO: boilerplate :(
-			virtual unix::endpoint addr() const { return unix::endpoint(); }
+			virtual unix::endpoint
+			addr() const {
+				return unix::endpoint();
+			}
+
+			inline void
+			setstate(server_state rhs) noexcept {
+				_state = rhs;
+			}
+
+			inline bool
+			stopped() const noexcept {
+				return _state == server_state::stopped;
+			}
+
+			inline bool
+			started() const noexcept {
+				return _state == server_state::started;
+			}
 
 		protected:
 			void wait_impl() {}
 			void stop_impl() {}
 
 		private:
-			volatile bool _stopped = false;
+			volatile server_state _state = server_state::initial;
 		};
 
 		template<class Sub, class Base>
@@ -96,6 +129,16 @@ namespace factory {
 		private:
 			Server* _parent = nullptr;
 		};
+
+	}
+
+}
+
+#include "server/cpu_server.hh"
+
+namespace factory {
+
+	namespace components {
 
 		template<class Server, class Sub_server>
 		struct Iserver: public Server_link<Iserver<Server, Sub_server>, Server> {
@@ -522,4 +565,3 @@ namespace factory {
 
 }
 
-#include "server/cpu_server.hh"

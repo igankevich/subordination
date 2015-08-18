@@ -5,9 +5,9 @@ namespace factory {
 
 	namespace components {
 
-		template<class T, class Kernels=std::queue<T>,
-		class Threads=std::vector<std::thread>, class Mutex=std::mutex,
-		class Lock=std::unique_lock<Mutex>, class Semaphore=std::condition_variable>
+		template<class T, class Kernels=std::queue<T*>,
+		class Threads=std::vector<std::thread>, class Mutex=stdx::spin_mutex,
+		class Lock=std::unique_lock<Mutex>, class Semaphore=unix::thread_semaphore>
 		struct Server_with_pool: public Server<T> {
 
 			typedef T kernel_type;
@@ -46,27 +46,27 @@ namespace factory {
 			Server_with_pool& operator=(const Server_with_pool&) = delete;
 
 			void
-			send(kernel_type* kernel) {
+			send(kernel_type* kernel) override {
 				lock_type lock(_mutex);
 				_kernels.push(kernel);
 				_semaphore.notify_one();
 			}
 
 			void
-			start() noexcept {
+			start() override {
 				basic_server::start();
 				std::generate(_threads.begin(), _threads.end(),
-					std::mem_fn(&Server_with_pool::new_thread));
+					std::bind(&Server_with_pool::new_thread, this));
 			}
 
 			void
-			stop() noexcept {
+			stop() override {
 				basic_server::stop();
 				_semaphore.notify_all();
 			}
 
 			void
-			wait() noexcept {
+			wait() override {
 				basic_server::wait();
 				stdx::for_each_if(_threads.begin(), _threads.end(),
 					std::mem_fn(&std::thread::joinable),
@@ -74,6 +74,7 @@ namespace factory {
 			}
 
 		protected:
+
 			virtual void
 			do_run() = 0;
 
@@ -91,7 +92,7 @@ namespace factory {
 			collect_kernels(It sack) {
 				stdx::front_pop_iterator<kernel_pool> it_end;
 				std::for_each(stdx::front_popper(_kernels), it_end,
-					std::bind(std::mem_fn(&kernel_type::mark_as_deleted), sack));
+					[sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); });
 			}
 
 			void
@@ -109,9 +110,9 @@ namespace factory {
 				// will destroy all kernels automatically
 			}
 
-			inline std::thread&&
-			new_thread() noexcept {
-				return std::move(std::thread(std::mem_fn(&Server_with_pool::run), this));
+			static inline std::thread
+			new_thread(Server_with_pool* rhs) noexcept {
+				return std::thread(std::mem_fn(&Server_with_pool::run), rhs);
 			}
 			
 		protected:
@@ -145,23 +146,24 @@ namespace factory {
 				return out << "cpuserver";
 			}
 
+			void add_cpu(size_t) {}
+
 		private:
 
 			void
-			do_run() {
+			do_run() override {
 				while (!this->stopped()) {
-					kernel_type* kernel = recv_kernel();
-					kernel->run_act();
+					lock_type lock(this->_mutex);
+					this->_semaphore.wait(lock, [this] () {
+						return this->stopped() || !this->_kernels.empty();
+					});
+					if (!this->stopped()) {
+						kernel_type* kernel = stdx::front(this->_kernels);
+						stdx::pop(this->_kernels);
+						lock.unlock();
+						kernel->run_act();
+					}
 				}
-			}
-
-			inline kernel_type*
-			recv_kernel() noexcept {
-				lock_type lock(this->_mutex);
-				this->_semaphore.wait(lock, std::mem_fn(&CPU_server::stopped));
-				kernel_type* kernel = stdx::front(this->_kernels);
-				stdx::pop(this->_kernels);
-				return kernel;
 			}
 			
 		};
