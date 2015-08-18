@@ -85,7 +85,6 @@
 	#include "socket_server.hh"
 	#include "app_server.hh"
 	#include "discovery.hh"
-	#include "strategy.hh"
 	
 	// Configuration
 	#include "release_configuration.hh"

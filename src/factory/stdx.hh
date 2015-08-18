@@ -194,6 +194,44 @@ namespace factory {
 			std::atomic_flag _flag = ATOMIC_FLAG_INIT;
 		};
 
+		template<class Mutex>
+		struct simple_lock {
+			
+			typedef Mutex mutex_type;
+
+			inline
+			simple_lock(mutex_type& m) noexcept:
+			mtx(m)
+			{
+				lock();
+			}
+
+			inline
+			~simple_lock() noexcept {
+				unlock();
+			}
+
+			inline void
+			lock() noexcept {
+				mtx.lock();
+			}
+
+			inline void
+			unlock() noexcept {
+				mtx.unlock();
+			}
+
+			// disallow copy & move operations
+			simple_lock() = delete;
+			simple_lock(const simple_lock&) = delete;
+			simple_lock(simple_lock&&) = delete;
+			simple_lock& operator=(const simple_lock&) = delete;
+			simple_lock& operator=(simple_lock&&) = delete;
+
+		private:
+			Mutex& mtx;
+		};
+
 		template<class Result, class Engine>
 		Result n_random_bytes(Engine& engine) {
 			typedef Result result_type;
@@ -300,13 +338,23 @@ namespace factory {
 				return !operator==(rhs);
 			}
 
-			value_type&
-			operator*() noexcept {
+			const value_type&
+			operator*() const noexcept {
 				return front(*container);
 			}
 
+//			value_type&
+//			operator*() noexcept {
+//				return front(*container);
+//			}
+
 			value_type*
 			operator->() noexcept {
+				return &front(*container);
+			}
+
+			const value_type*
+			operator->() const noexcept {
 				return &front(*container);
 			}
 
@@ -341,6 +389,93 @@ namespace factory {
 				}
 				++first;
 			}
+		}
+
+		template<class C>
+		inline void
+		push(C& container, const typename C::value_type& rhs) {
+			return container.push_back(rhs);
+		}
+
+		template<class C>
+		inline void
+		push(C& container, const typename C::value_type&& rhs) {
+			return container.push_back(std::move(rhs));
+		}
+
+		template<class T, class Cont>
+		inline void
+		push(std::queue<T,Cont>& container, 
+			const typename std::queue<T,Cont>::value_type& rhs) {
+			return container.push(rhs);
+		}
+
+		template<class T, class Cont>
+		inline void
+		push(std::queue<T,Cont>& container, 
+			const typename std::queue<T,Cont>::value_type&& rhs) {
+			return container.push(std::move(rhs));
+		}
+
+		template<class T, class Cont, class Comp>
+		inline void
+		push(std::priority_queue<T,Cont,Comp>& container, 
+			const typename std::priority_queue<T,Cont,Comp>::value_type& rhs) {
+			return container.push(rhs);
+		}
+
+		template<class T, class Cont, class Comp>
+		inline void
+		push(std::priority_queue<T,Cont,Comp>& container, 
+			const typename std::priority_queue<T,Cont,Comp>::value_type&& rhs) {
+			return container.push(std::move(rhs));
+		}
+
+		template <class Container>
+		struct back_insert_iterator:
+		public std::iterator<std::output_iterator_tag,void,void,void,void> {
+		
+			typedef Container container_type;
+			typedef typename Container::value_type value_type;
+
+			explicit inline
+			back_insert_iterator(Container& x) noexcept: container(x) {}
+
+			inline back_insert_iterator&
+			operator=(const value_type& rhs) {
+				push(container, rhs);
+				return *this;
+			}
+
+			inline back_insert_iterator&
+			operator=(const value_type&& rhs) {
+				push(container, std::move(rhs));
+				return *this;
+			}
+
+			inline back_insert_iterator&
+			operator*() noexcept {
+				return *this;
+			}
+
+			inline back_insert_iterator&
+			operator++() noexcept {
+				return *this;
+			}
+
+			inline back_insert_iterator
+			operator++(int) noexcept {
+				return *this;
+			}
+
+		private:
+			Container& container;
+		};
+
+		template<class Container>
+		inline back_insert_iterator<Container>
+		back_inserter(Container& rhs) {
+			return back_insert_iterator<Container>(rhs);
 		}
 
 	}

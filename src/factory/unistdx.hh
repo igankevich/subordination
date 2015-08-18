@@ -134,6 +134,8 @@ namespace factory {
 		struct thread_semaphore {
 
 			typedef ::sem_t sem_type;
+			typedef std::chrono::system_clock clock_type;
+			typedef struct ::timespec timespec_type;
 
 			thread_semaphore():
 			_sem()
@@ -150,26 +152,85 @@ namespace factory {
 					__FILE__, __LINE__, __func__);
 			}
 
-			template<class Mutex>
-			void wait(Mutex& mtx) {
-				mtx.unlock();
+			template<class Lock>
+			void wait(Lock& lock) {
+				lock.unlock();
 				wait();
-				mtx.lock();
+				lock.lock();
 			}
 
-			template<class Mutex, class Pred>
-			void wait(Mutex& mtx, Pred pred) {
+			template<class Lock, class Pred>
+			void wait(Lock& lock, Pred pred) {
 				while (!pred()) {
-					wait(mtx);
+					wait(lock);
 				}
 			}
 
-			void notify_one() {
+			template<class Lock, class Rep, class Period>
+			std::cv_status
+			wait_for(Lock& lock, const std::chrono::duration<Rep,Period>& dur) {
+				return wait_until(lock, clock_type::now() + dur);
+			}
+
+			template<class Lock, class Rep, class Period, class Pred>
+			bool
+			wait_for(Lock& lock, const std::chrono::duration<Rep,Period>& dur, Pred pred) {
+				return wait_until(lock, clock_type::now() + dur, pred);
+			}
+
+			template<class Lock, class Duration>
+			std::cv_status
+			wait_until(Lock& lock, const std::chrono::time_point<clock_type,Duration>& tp) {
+				using namespace std::chrono;
+				const auto s = time_point_cast<seconds>(tp);
+				const auto ns = duration_cast<nanoseconds>(tp - s);
+				const timespec_type timeout{s.time_since_epoch().count(), ns.count()};
+				lock.unlock();
+				check_if_not<std::errc::timed_out>(::sem_timedwait(&_sem, &timeout),
+					__FILE__, __LINE__, __func__);
+				std::cv_status st = std::errc(errno) == std::errc::timed_out
+					? std::cv_status::timeout : std::cv_status::no_timeout;
+				lock.lock();
+				return st;
+			}
+
+			template<class Lock, class Duration, class Pred>
+			bool
+			wait_until(Lock& lock, const std::chrono::time_point<clock_type,Duration>& tp, Pred pred) {
+				while (!pred()) {
+					if (wait_until(lock, tp) == std::cv_status::timeout) {
+						return pred();
+					}
+				}
+				return true;
+			}
+
+			template<class Lock, class Clock, class Duration>
+			std::cv_status
+			wait_until(Lock& lock, const std::chrono::time_point<Clock,Duration>& tp) {
+				typedef Clock other_clock;
+				const auto delta = tp - other_clock::now();
+				const auto new_tp = clock_type::now() + delta;
+				return wait_until(lock, new_tp);
+			}
+
+			template<class Lock, class Clock, class Duration, class Pred>
+			bool
+			wait_until(Lock& lock, const std::chrono::time_point<Clock,Duration>& tp, Pred pred) {
+				typedef Clock other_clock;
+				const auto delta = tp - other_clock::now();
+				const auto new_tp = clock_type::now() + delta;
+				return wait_until(lock, new_tp, pred);
+			}
+
+			void
+			notify_one() {
 				check(::sem_post(&_sem),
 					__FILE__, __LINE__, __func__);
 			}
 
-			void notify_all() {
+			void
+			notify_all() {
 				for (int i=0; i<1000; ++i) {
 					notify_one();
 				}
@@ -190,6 +251,80 @@ namespace factory {
 			}
 
 			sem_type _sem;
+		};
+
+		template<class Semaphore>
+		struct semaphore_traits {
+			typedef std::mutex mutex_type;
+			typedef std::unique_lock<mutex_type> lock_type;
+		};
+
+		template<>
+		struct semaphore_traits<thread_semaphore> {
+			typedef bits::no_mutex mutex_type;
+			typedef bits::no_lock<mutex_type> lock_type;
+		};
+
+		template<class Semaphore>
+		struct timer: private Semaphore {
+
+			typedef semaphore_traits<Semaphore> traits_type;
+			typedef typename traits_type::mutex_type mutex_type;
+			typedef typename traits_type::lock_type lock_type;
+
+			inline void
+			wait() {
+				lock_type lock(mtx);
+				Semaphore::wait(lock);
+			}
+
+			template<class Pred>
+			inline void
+			wait(Pred pred) {
+				lock_type lock(mtx);
+				Semaphore::wait(lock, pred);
+			}
+
+			template<class Rep, class Period>
+			inline std::cv_status
+			wait_for(const std::chrono::duration<Rep,Period>& dur) {
+				lock_type lock(mtx);
+				return Semaphore::wait_for(dur);
+			}
+
+			template<class Rep, class Period, class Pred>
+			inline bool
+			wait_for(const std::chrono::duration<Rep,Period>& dur, Pred pred) {
+				lock_type lock(mtx);
+				return Semaphore::wait_for(dur, pred);
+			}
+
+			template<class Clock, class Duration>
+			inline std::cv_status
+			wait_until(const std::chrono::time_point<Clock,Duration>& tp) {
+				lock_type lock(mtx);
+				return Semaphore::wait_until(lock, tp);
+			}
+
+			template<class Clock, class Duration, class Pred>
+			inline bool
+			wait_until(const std::chrono::time_point<Clock,Duration>& tp, Pred pred) {
+				lock_type lock(mtx);
+				return Semaphore::wait_until(lock, tp, pred);
+			}
+
+			inline void
+			notify_one() {
+				Semaphore::notify_one();
+			}
+
+			inline void
+			notify_all() {
+				Semaphore::notify_all();
+			}
+
+		private:
+			mutex_type mtx;
 		};
 
 		template<class T>

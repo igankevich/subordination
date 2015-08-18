@@ -46,6 +46,7 @@ src/test_uint128_custom
 src/test_kernel
 src/test_poller
 src/test_appserver
+src/test_posix
 src/factory_time
 src/*.html
 src/*.xml

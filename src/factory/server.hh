@@ -125,6 +125,7 @@ namespace factory {
 			virtual void add_child(Server*) {}
 			virtual void remove_child(Server*) {}
 			virtual void send(kernel_type*) = 0;
+			virtual void send(kernel_type**, size_t) {}
 
 		private:
 			Server* _parent = nullptr;
@@ -134,292 +135,294 @@ namespace factory {
 
 }
 
+#include "server/basic_server.hh"
 #include "server/cpu_server.hh"
+#include "server/timer_server.hh"
 
 namespace factory {
 
 	namespace components {
 
-		template<class Server, class Sub_server>
-		struct Iserver: public Server_link<Iserver<Server, Sub_server>, Server> {
+//		template<class Server, class Sub_server>
+//		struct Iserver: public Server_link<Iserver<Server, Sub_server>, Server> {
+//
+//			typedef Sub_server Srv;
+//			typedef Iserver<Server, Sub_server> This;
+//
+//			Iserver() {}
+//			Iserver(const This&) = delete;
+//			Iserver(This&& rhs): _upstream(std::move(rhs._upstream)) {
+//				std::for_each(
+//					_upstream.begin(),
+//					_upstream.end(),
+//					std::bind(std::mem_fn(&Srv::setparent), this));
+//			}
+//		
+//			void add(Srv&& srv) {
+//				srv.setparent(this);
+//				_upstream.emplace_back(srv);
+//			}
+//
+//			void add_cpu(size_t cpu) {
+//				Sub_server srv;
+//				srv.affinity(cpu);
+//				srv.setparent(this);
+//				_upstream.emplace_back(std::move(srv));
+//			}
+//
+//			void wait_impl() {
+//				Logger<Level::SERVER>() << "Iserver::wait()" << std::endl;
+//				std::for_each(
+//					_upstream.begin(),
+//					_upstream.end(),
+//					std::mem_fn(&Srv::wait));
+//			}
+//		
+//			void stop_impl() {
+//				Logger<Level::SERVER>() << "Iserver::stop()" << std::endl;
+//				std::for_each(
+//					_upstream.begin(),
+//					_upstream.end(),
+//					std::mem_fn(&Srv::stop));
+//			}
+//		
+//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+//				std::copy(rhs._upstream.begin(), rhs._upstream.end(),
+//					stdx::intersperse_iterator<const Srv&>(out, ","));
+//			}
+//			
+//			void start() {
+//				Logger<Level::SERVER>() << "Iserver::start()" << std::endl;
+//				std::for_each(
+//					_upstream.begin(),
+//					_upstream.end(),
+//					std::mem_fn(&Srv::start));
+//			}
+//		
+//		protected:
+//			std::vector<Srv> _upstream;
+//		};
 
-			typedef Sub_server Srv;
-			typedef Iserver<Server, Sub_server> This;
+//		template<template<class A> class Pool, class Server>
+//		struct Rserver: public Server_link<Rserver<Pool, Server>, Server> {
+//
+//			typedef Server Srv;
+//			typedef typename Server::Kernel Kernel;
+//			typedef Rserver<Pool, Server> This;
+//
+//			Rserver():
+//				_pool(),
+//				_cpu(0),
+//				_thread(),
+//				_mutex(),
+//				_semaphore()
+//			{}
+//
+//			Rserver(This&& rhs):
+//				_pool(std::move(rhs._pool)),
+//				_cpu(rhs._cpu),
+//				_thread(std::move(rhs._thread)),
+//				_mutex(),
+//				_semaphore()
+//			{}
+//
+//			This& operator=(const This&) = delete;
+//
+//			virtual ~Rserver() {
+//				// ensure that kernels inserted without starting
+//				// a server are deleted
+//				std::vector<std::unique_ptr<Kernel>> sack;
+//				delete_all_kernels(std::back_inserter(sack));
+//			}
+//
+//			void add() {}
+//
+//			void send(Kernel* kernel) {
+//				std::unique_lock<std::mutex> lock(_mutex);
+//				_pool.push(kernel);
+//				_semaphore.notify_one();
+//			}
+//
+//			void wait_impl() {
+//				Logger<Level::SERVER>() << "Rserver::wait()" << std::endl;
+//				if (_thread.joinable()) {
+//					_thread.join();
+//				}
+//			}
+//
+//			void stop_impl() {
+//				Logger<Level::SERVER>() << "Rserver::stop_impl()" << std::endl;
+//				_semaphore.notify_all();
+//			}
+//
+//			void start() {
+//				Logger<Level::SERVER>() << "Rserver::start()" << std::endl;
+//				_thread = std::thread([this] { this->serve(); });
+//			}
+//
+//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+//				return out << "rserver " << rhs._cpu;
+//			}
+//
+//			void affinity(size_t cpu) { _cpu = cpu; }
+//
+//		protected:
+//
+//			void serve() {
+//				register_server();
+//				thread_affinity(_cpu);
+//				while (!this->stopped()) {
+//					if (!_pool.empty()) {
+//						std::unique_lock<std::mutex> lock(_mutex);
+//						Kernel* kernel = _pool.front();
+//						_pool.pop();
+//						lock.unlock();
+//						this->process_kernel(kernel);
+////						kernel->act();
+//					} else {
+//						wait_for_a_kernel();
+//					}
+//				}
+//				// Recursively collect kernel pointers to the sack
+//				// and delete them all at once. Collection process
+//				// is fully serial to prevent multiple deletions
+//				// and access to unitialised values.
+//				std::unique_lock<std::mutex> lock(__kernel_delete_mutex);
+//				std::vector<std::unique_ptr<Kernel>> sack;
+//				delete_all_kernels(std::back_inserter(sack));
+//				// simple barrier for all threads participating in deletion
+//				global_barrier(lock);
+//				// destructors of scoped variables
+//				// will destroy all kernels automatically
+//			}
+//
+//		private:
+//
+//			void wait_for_a_kernel() {
+//				std::unique_lock<std::mutex> lock(_mutex);
+//				_semaphore.wait(lock, [this] {
+//					return !_pool.empty() || this->stopped();
+//				});
+//			}
+//
+//			template<class It>
+//			void delete_all_kernels(It it) {
+//				while (!_pool.empty()) {
+//					_pool.front()->mark_as_deleted(it);
+//					_pool.pop();
+//				}
+//			}
+//
+//			Pool<Kernel*> _pool;
+//			size_t _cpu = 0;
+//		
+//			std::thread _thread;
+//			std::mutex _mutex;
+//			std::condition_variable _semaphore;
+//		};
 
-			Iserver() {}
-			Iserver(const This&) = delete;
-			Iserver(This&& rhs): _upstream(std::move(rhs._upstream)) {
-				std::for_each(
-					_upstream.begin(),
-					_upstream.end(),
-					std::bind(std::mem_fn(&Srv::setparent), this));
-			}
-		
-			void add(Srv&& srv) {
-				srv.setparent(this);
-				_upstream.emplace_back(srv);
-			}
-
-			void add_cpu(size_t cpu) {
-				Sub_server srv;
-				srv.affinity(cpu);
-				srv.setparent(this);
-				_upstream.emplace_back(std::move(srv));
-			}
-
-			void wait_impl() {
-				Logger<Level::SERVER>() << "Iserver::wait()" << std::endl;
-				std::for_each(
-					_upstream.begin(),
-					_upstream.end(),
-					std::mem_fn(&Srv::wait));
-			}
-		
-			void stop_impl() {
-				Logger<Level::SERVER>() << "Iserver::stop()" << std::endl;
-				std::for_each(
-					_upstream.begin(),
-					_upstream.end(),
-					std::mem_fn(&Srv::stop));
-			}
-		
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				std::copy(rhs._upstream.begin(), rhs._upstream.end(),
-					stdx::intersperse_iterator<const Srv&>(out, ","));
-			}
-			
-			void start() {
-				Logger<Level::SERVER>() << "Iserver::start()" << std::endl;
-				std::for_each(
-					_upstream.begin(),
-					_upstream.end(),
-					std::mem_fn(&Srv::start));
-			}
-		
-		protected:
-			std::vector<Srv> _upstream;
-		};
-
-		template<template<class A> class Pool, class Server>
-		struct Rserver: public Server_link<Rserver<Pool, Server>, Server> {
-
-			typedef Server Srv;
-			typedef typename Server::Kernel Kernel;
-			typedef Rserver<Pool, Server> This;
-
-			Rserver():
-				_pool(),
-				_cpu(0),
-				_thread(),
-				_mutex(),
-				_semaphore()
-			{}
-
-			Rserver(This&& rhs):
-				_pool(std::move(rhs._pool)),
-				_cpu(rhs._cpu),
-				_thread(std::move(rhs._thread)),
-				_mutex(),
-				_semaphore()
-			{}
-
-			This& operator=(const This&) = delete;
-
-			virtual ~Rserver() {
-				// ensure that kernels inserted without starting
-				// a server are deleted
-				std::vector<std::unique_ptr<Kernel>> sack;
-				delete_all_kernels(std::back_inserter(sack));
-			}
-
-			void add() {}
-
-			void send(Kernel* kernel) {
-				std::unique_lock<std::mutex> lock(_mutex);
-				_pool.push(kernel);
-				_semaphore.notify_one();
-			}
-
-			void wait_impl() {
-				Logger<Level::SERVER>() << "Rserver::wait()" << std::endl;
-				if (_thread.joinable()) {
-					_thread.join();
-				}
-			}
-
-			void stop_impl() {
-				Logger<Level::SERVER>() << "Rserver::stop_impl()" << std::endl;
-				_semaphore.notify_all();
-			}
-
-			void start() {
-				Logger<Level::SERVER>() << "Rserver::start()" << std::endl;
-				_thread = std::thread([this] { this->serve(); });
-			}
-
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << "rserver " << rhs._cpu;
-			}
-
-			void affinity(size_t cpu) { _cpu = cpu; }
-
-		protected:
-
-			void serve() {
-				register_server();
-				thread_affinity(_cpu);
-				while (!this->stopped()) {
-					if (!_pool.empty()) {
-						std::unique_lock<std::mutex> lock(_mutex);
-						Kernel* kernel = _pool.front();
-						_pool.pop();
-						lock.unlock();
-						this->process_kernel(kernel);
-//						kernel->act();
-					} else {
-						wait_for_a_kernel();
-					}
-				}
-				// Recursively collect kernel pointers to the sack
-				// and delete them all at once. Collection process
-				// is fully serial to prevent multiple deletions
-				// and access to unitialised values.
-				std::unique_lock<std::mutex> lock(__kernel_delete_mutex);
-				std::vector<std::unique_ptr<Kernel>> sack;
-				delete_all_kernels(std::back_inserter(sack));
-				// simple barrier for all threads participating in deletion
-				global_barrier(lock);
-				// destructors of scoped variables
-				// will destroy all kernels automatically
-			}
-
-		private:
-
-			void wait_for_a_kernel() {
-				std::unique_lock<std::mutex> lock(_mutex);
-				_semaphore.wait(lock, [this] {
-					return !_pool.empty() || this->stopped();
-				});
-			}
-
-			template<class It>
-			void delete_all_kernels(It it) {
-				while (!_pool.empty()) {
-					_pool.front()->mark_as_deleted(it);
-					_pool.pop();
-				}
-			}
-
-			Pool<Kernel*> _pool;
-			size_t _cpu = 0;
-		
-			std::thread _thread;
-			std::mutex _mutex;
-			std::condition_variable _semaphore;
-		};
-
-		template<class Server>
-		struct Tserver: public Server_link<Tserver<Server>, Server> {
-
-			typedef Server Srv;
-			typedef typename Server::Kernel Kernel;
-			typedef Tserver<Server> This;
-
-			struct Compare_time {
-				bool operator()(const Kernel* lhs, const Kernel* rhs) const {
-					return (lhs->timed() && !rhs->timed()) || lhs->at() > rhs->at();
-				}
-			};
-
-			typedef std::priority_queue<Kernel*, std::vector<Kernel*>, Compare_time> Pool;
-
-			Tserver():
-				_pool(),
-				_cpu(0),
-				_thread(),
-				_mutex(),
-				_semaphore()
-			{}
-
-			virtual ~Tserver() {
-				std::unique_lock<std::mutex> lock(_mutex);
-				while (!_pool.empty()) {
-					delete _pool.top();
-					_pool.pop();
-				}
-			}
-
-			void add() {}
-
-			void send(Kernel* kernel) {
-				std::unique_lock<std::mutex> lock(_mutex);
-				_pool.push(kernel);
-				_semaphore.notify_one();
-			}
-
-			void wait_impl() {
-				Logger<Level::SERVER>() << "Tserver::wait()" << std::endl;
-				if (_thread.joinable()) {
-					_thread.join();
-				}
-			}
-
-			void stop_impl() {
-				Logger<Level::SERVER>() << "Tserver::stop_impl()" << std::endl;
-				_semaphore.notify_all();
-			}
-
-			void start() {
-				Logger<Level::SERVER>() << "Tserver::start()" << std::endl;
-				_thread = std::thread([this] { this->serve(); });
-			}
-
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << "tserver " << rhs._cpu;
-			}
-
-			void affinity(size_t cpu) { _cpu = cpu; }
-
-		protected:
-
-			void serve() {
-				thread_affinity(_cpu);
-				while (!this->stopped()) {
-					if (!_pool.empty()) {
-						std::unique_lock<std::mutex> lock(_mutex);
-						Kernel* kernel = _pool.top();
-						bool run = true;
-						if (kernel->at() > Kernel::Clock::now() && kernel->timed()) {
-							run = _semaphore.wait_until(lock, kernel->at(),
-								[this] { return this->stopped(); });
-						}
-						if (run) {
-							_pool.pop();
-							lock.unlock();
-							this->parent()->send(kernel);
-						}
-					} else {
-						wait_for_a_kernel();
-					}
-				}
-			}
-
-		private:
-
-			void wait_for_a_kernel() {
-				std::unique_lock<std::mutex> lock(_mutex);
-				_semaphore.wait(lock, [this] {
-					return !_pool.empty() || this->stopped();
-				});
-			}
-
-			Pool _pool;
-			size_t _cpu;
-		
-			std::thread _thread;
-			std::mutex _mutex;
-			std::condition_variable _semaphore;
-		};
+//		template<class Server>
+//		struct Tserver: public Server_link<Tserver<Server>, Server> {
+//
+//			typedef Server Srv;
+//			typedef typename Server::Kernel Kernel;
+//			typedef Tserver<Server> This;
+//
+//			struct Compare_time {
+//				bool operator()(const Kernel* lhs, const Kernel* rhs) const {
+//					return (lhs->timed() && !rhs->timed()) || lhs->at() > rhs->at();
+//				}
+//			};
+//
+//			typedef std::priority_queue<Kernel*, std::vector<Kernel*>, Compare_time> Pool;
+//
+//			Tserver():
+//				_pool(),
+//				_cpu(0),
+//				_thread(),
+//				_mutex(),
+//				_semaphore()
+//			{}
+//
+//			virtual ~Tserver() {
+//				std::unique_lock<std::mutex> lock(_mutex);
+//				while (!_pool.empty()) {
+//					delete _pool.top();
+//					_pool.pop();
+//				}
+//			}
+//
+//			void add() {}
+//
+//			void send(Kernel* kernel) {
+//				std::unique_lock<std::mutex> lock(_mutex);
+//				_pool.push(kernel);
+//				_semaphore.notify_one();
+//			}
+//
+//			void wait_impl() {
+//				Logger<Level::SERVER>() << "Tserver::wait()" << std::endl;
+//				if (_thread.joinable()) {
+//					_thread.join();
+//				}
+//			}
+//
+//			void stop_impl() {
+//				Logger<Level::SERVER>() << "Tserver::stop_impl()" << std::endl;
+//				_semaphore.notify_all();
+//			}
+//
+//			void start() {
+//				Logger<Level::SERVER>() << "Tserver::start()" << std::endl;
+//				_thread = std::thread([this] { this->serve(); });
+//			}
+//
+//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
+//				return out << "tserver " << rhs._cpu;
+//			}
+//
+//			void affinity(size_t cpu) { _cpu = cpu; }
+//
+//		protected:
+//
+//			void serve() {
+//				thread_affinity(_cpu);
+//				while (!this->stopped()) {
+//					if (!_pool.empty()) {
+//						std::unique_lock<std::mutex> lock(_mutex);
+//						Kernel* kernel = _pool.top();
+//						bool run = true;
+//						if (kernel->at() > Kernel::Clock::now() && kernel->timed()) {
+//							run = _semaphore.wait_until(lock, kernel->at(),
+//								[this] { return this->stopped(); });
+//						}
+//						if (run) {
+//							_pool.pop();
+//							lock.unlock();
+//							this->parent()->send(kernel);
+//						}
+//					} else {
+//						wait_for_a_kernel();
+//					}
+//				}
+//			}
+//
+//		private:
+//
+//			void wait_for_a_kernel() {
+//				std::unique_lock<std::mutex> lock(_mutex);
+//				_semaphore.wait(lock, [this] {
+//					return !_pool.empty() || this->stopped();
+//				});
+//			}
+//
+//			Pool _pool;
+//			size_t _cpu;
+//		
+//			std::thread _thread;
+//			std::mutex _mutex;
+//			std::condition_variable _semaphore;
+//		};
 
 	}
 }

@@ -54,7 +54,8 @@ check_PROGRAMS = \
 	test_kernel \
 	test_discovery \
 	test_poller \
-	test_appserver
+	test_appserver \
+	test_posix
 
 TESTS = $(check_PROGRAMS)
 
