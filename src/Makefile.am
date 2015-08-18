@@ -57,7 +57,8 @@ check_PROGRAMS = \
 	test_appserver \
 	test_posix
 
-TESTS = $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS) \
+	test_reinterpret_cast
 
 test_uint128_custom_SOURCES = test_uint128.cc
 test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128

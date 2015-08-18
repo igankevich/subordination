@@ -1,0 +1,15 @@
+#!/bin/sh
+
+do_static_check() {
+find . -type f -name "$2" |
+while read filename; do
+grep -H "$1" "$filename" && exit 1
+done
+}
+
+static_check() {
+do_static_check "$1" "*.cc"
+do_static_check "$1" "*.hh"
+}
+
+static_check reinterpret_cast
