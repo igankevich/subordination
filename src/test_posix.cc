@@ -1,19 +1,32 @@
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 #include <unistd.h>
 
 
 enum struct Color {
-	FG_RED      = 31,
-	FG_GREEN    = 32,
-	FG_YELLOW   = 33,
-	FG_BLUE     = 34,
-	FG_DEFAULT  = 39,
-	BG_RED      = 41,
-	BG_GREEN    = 42,
-	BG_BLUE     = 44,
-	BG_DEFAULT  = 49
+	RESET            = 0,
+	FG_RED           = 31,
+	FG_GREEN         = 32,
+	FG_YELLOW        = 33,
+	FG_BLUE          = 34,
+	FG_MAGENTA       = 35,
+	FG_CYAN          = 36,
+	FG_LIGHT_GRAY    = 37,
+	FG_DARK_GRAY     = 90,
+	FG_LIGHT_RED     = 91,
+	FG_LIGHT_GREEN   = 92,
+	FG_LIGHT_YELLOW  = 93,
+	FG_LIGHT_BLUE    = 94,
+	FG_LIGHT_MAGENTA = 95,
+	FG_LIGHT_CYAN    = 96,
+	FG_WHITE         = 97,
+	FG_DEFAULT       = 39,
+	BG_RED           = 41,
+	BG_GREEN         = 42,
+	BG_BLUE          = 44,
+	BG_DEFAULT       = 49
 };
 
 std::ostream&
@@ -25,29 +38,39 @@ operator<<(std::ostream& os, Color rhs) {
 void
 printval(const char* name) {
 	std::cout << std::setw(40) << std::left << name
-		<< Color::FG_RED << "not supported" << Color::FG_DEFAULT << '\n';
+		<< Color::FG_LIGHT_RED << "not supported" << Color::RESET << '\n';
 }
 
 void
 might_be_supported(const char* name) {
 	std::cout << std::setw(40) << std::left << name
-		<< Color::FG_YELLOW
+		<< Color::FG_LIGHT_YELLOW
 		<< "might or might not be supported"
-		<< Color::FG_DEFAULT << '\n';
+		<< Color::RESET << '\n';
 }
 
 template<class T>
 void
-printval(const char* name, T val) {
+printval(const std::string& name, T val) {
 	if (val == -1) {
-		printval(name);
+		printval(name.c_str());
 	} else if (val == 0) {
-		might_be_supported(name);
+		might_be_supported(name.c_str());
 	} else {
-		std::cout << std::setw(40) << std::left << name
-			<< Color::FG_GREEN << "supported" << Color::FG_DEFAULT;
-		if (val != 1) {
-			std::cout << " (" << val << ')';
+		std::cout << std::setw(40) << std::left << name;
+		if (name.find("VERSION") != std::string::npos) {
+			std::cout << val;
+		} else {
+			std::cout << Color::FG_LIGHT_GREEN;
+			if (name.find("SOURCE")) {
+				std::cout << "defined";
+			} else {
+				std::cout << "supported";
+			}
+			std::cout << Color::RESET;
+			if (val != 1) {
+				std::cout << " (" << val << ')';
+			}
 		}
 		std::cout << '\n';
 	}
@@ -128,11 +151,6 @@ printval("_POSIX2_SYMLINKS");
 printval("_POSIX2_UPE", _POSIX2_UPE);
 #else
 printval("_POSIX2_UPE");
-#endif
-#if defined(_POSIX2_VERSION)
-printval("_POSIX2_VERSION", _POSIX2_VERSION);
-#else
-printval("_POSIX2_VERSION");
 #endif
 #if defined(_POSIX_ADVISORY_INFO)
 printval("_POSIX_ADVISORY_INFO", _POSIX_ADVISORY_INFO);
@@ -454,10 +472,80 @@ printval("_POSIX_VDISABLE", _POSIX_VDISABLE);
 #else
 printval("_POSIX_VDISABLE");
 #endif
+#if defined(_XOPEN_CRYPT)
+printval("_XOPEN_CRYPT", _XOPEN_CRYPT);
+#else
+printval("_XOPEN_CRYPT");
+#endif
+#if defined(_XOPEN_ENH_I18N)
+printval("_XOPEN_ENH_I18N", _XOPEN_ENH_I18N);
+#else
+printval("_XOPEN_ENH_I18N");
+#endif
+#if defined(_XOPEN_REALTIME)
+printval("_XOPEN_REALTIME", _XOPEN_REALTIME);
+#else
+printval("_XOPEN_REALTIME");
+#endif
+#if defined(_XOPEN_REALTIME_THREADS)
+printval("_XOPEN_REALTIME_THREADS", _XOPEN_REALTIME_THREADS);
+#else
+printval("_XOPEN_REALTIME_THREADS");
+#endif
+#if defined(_XOPEN_SHM)
+printval("_XOPEN_SHM", _XOPEN_SHM);
+#else
+printval("_XOPEN_SHM");
+#endif
+#if defined(_XOPEN_STREAMS)
+printval("_XOPEN_STREAMS", _XOPEN_STREAMS);
+#else
+printval("_XOPEN_STREAMS");
+#endif
+#if defined(_XOPEN_UNIX)
+printval("_XOPEN_UNIX", _XOPEN_UNIX);
+#else
+printval("_XOPEN_UNIX");
+#endif
+#if defined(_XOPEN_UUCP)
+printval("_XOPEN_UUCP", _XOPEN_UUCP);
+#else
+printval("_XOPEN_UUCP");
+#endif
+#if defined(_POSIX_C_SOURCE)
+printval("_POSIX_C_SOURCE", _POSIX_C_SOURCE);
+#else
+printval("_POSIX_C_SOURCE");
+#endif
+#if defined(_POSIX_SOURCE)
+printval("_POSIX_SOURCE", _POSIX_SOURCE);
+#else
+printval("_POSIX_SOURCE");
+#endif
+#if defined(_XOPEN_SOURCE)
+printval("_XOPEN_SOURCE", _XOPEN_SOURCE);
+#else
+printval("_XOPEN_SOURCE");
+#endif
+#if defined(_XOPEN_SOURCE_EXTENDED)
+printval("_XOPEN_SOURCE_EXTENDED", _XOPEN_SOURCE_EXTENDED);
+#else
+printval("_XOPEN_SOURCE_EXTENDED");
+#endif
 #if defined(_POSIX_VERSION)
 printval("_POSIX_VERSION", _POSIX_VERSION);
 #else
 printval("_POSIX_VERSION");
+#endif
+#if defined(_POSIX2_VERSION)
+printval("_POSIX2_VERSION", _POSIX2_VERSION);
+#else
+printval("_POSIX2_VERSION");
+#endif
+#if defined(_XOPEN_VERSION)
+printval("_XOPEN_VERSION", _XOPEN_VERSION);
+#else
+printval("_XOPEN_VERSION");
 #endif
 }
 
