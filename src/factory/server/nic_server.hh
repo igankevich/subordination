@@ -275,7 +275,7 @@ namespace factory {
 			typedef std::map<unix::endpoint, server_type> upstream_type;
 			typedef Socket socket_type;
 
-			typedef bits::handler_wrapper<unix::smart_pointer_tag> wrapper;
+			typedef bits::handler_wrapper<unix::pointer_tag> wrapper;
 
 			typedef NIC_server_base<T, Socket> base_server;
 			using typename base_server::kernel_type;
@@ -370,7 +370,8 @@ namespace factory {
 			void remove_server(server_type* ptr) {
 				// remove from the mapping if it is not linked
 				// with other subordinate server
-				Logger<Level::SERVER>() << "Removing server " << *ptr << std::endl;
+				// TODO: occasional ``Bad file descriptor''
+//				Logger<Level::SERVER>() << "Removing server " << *ptr << std::endl;
 				if (!ptr->link()) {
 					this->_upstream.erase(ptr->vaddr());
 				}
@@ -442,12 +443,15 @@ namespace factory {
 			}
 
 			bool empty() const {
-				typedef typename upstream_type::value_type pair_type;
-				return std::all_of(_upstream.cbegin(), _upstream.cend(),
-					[] (const pair_type& rhs)
-				{
-					return rhs.second.empty();
-				});
+				return std::all_of(stdx::field_iter<1>(_upstream.begin()),
+					stdx::field_iter<1>(_upstream.end()),
+					std::mem_fn(&server_type::empty));
+//				typedef typename upstream_type::value_type pair_type;
+//				return std::all_of(_upstream.cbegin(), _upstream.cend(),
+//					[] (const pair_type& rhs)
+//				{
+//					return rhs.second.empty();
+//				});
 			}
 
 			void peer(unix::endpoint addr) {
@@ -551,14 +555,10 @@ namespace factory {
 			struct print_values {
 				explicit print_values(const upstream_type& rhs): map(rhs) {}
 				friend std::ostream& operator<<(std::ostream& out, const print_values& rhs) {
-					typedef typename upstream_type::value_type value_type;
 					out << '{';
-					stdx::intersperse_iterator<server_type> it(out, ",");
-					std::transform(rhs.map.begin(), rhs.map.end(), it,
-						[] (const value_type& pair) -> const server_type& {
-							return pair.second;
-						}
-					);
+					std::copy(stdx::field_iter<1>(rhs.map.begin()),
+						stdx::field_iter<1>(rhs.map.end()),
+						stdx::intersperse_iterator<server_type>(out, ","));
 					out << '}';
 					return out;
 				}
