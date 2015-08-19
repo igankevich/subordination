@@ -2,7 +2,7 @@ namespace factory {
 
 	namespace components {
 
-		template<class T, class Fd=int>
+		template<class T, class Fd=unix::fd>
 		struct basic_fdbuf: public std::basic_streambuf<T> {
 
 			using typename std::basic_streambuf<T>::int_type;
@@ -32,11 +32,10 @@ namespace factory {
 				this->setp(beg, beg + this->_pbuf.size());
 			}
 
-			basic_fdbuf(basic_fdbuf&& rhs):
-				_fd(std::move(rhs._fd)),
-				_gbuf(std::move(rhs._gbuf)),
-				_pbuf(std::move(rhs._pbuf))
-				{}
+
+//			basic_fdbuf& operator=(basic_fdbuf&) = delete;
+//			basic_fdbuf(basic_fdbuf&) = delete;
+			basic_fdbuf(basic_fdbuf&& rhs) = default;
 
 			virtual ~basic_fdbuf() {
 				// TODO: for now full sync is not guaranteed for non-blocking I/O
@@ -171,9 +170,6 @@ namespace factory {
 			void setfd(fd_type&& rhs) { this->_fd = std::move(rhs); }
 			const fd_type& fd() const { return this->_fd; }
 			fd_type& fd() { return this->_fd; }
-
-			basic_fdbuf& operator=(basic_fdbuf&) = delete;
-			basic_fdbuf(basic_fdbuf&) = delete;
 		
 		private:
 			static
@@ -221,7 +217,7 @@ namespace factory {
 			std::vector<char_type> _pbuf;
 		};
 
-		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=unix::fd>
 		struct basic_ifdstream: public std::basic_istream<Ch> {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_istream<Ch,Tr> istream_type;
@@ -231,7 +227,7 @@ namespace factory {
 			fdbuf_type _fdbuf;
 		};
 
-		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=unix::fd>
 		struct basic_ofdstream: public std::basic_ostream<Ch> {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_ostream<Ch,Tr> ostream_type;
@@ -241,7 +237,7 @@ namespace factory {
 			fdbuf_type _fdbuf;
 		};
 
-		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=int>
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=unix::fd>
 		struct basic_fdstream: public std::basic_iostream<Ch> {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_iostream<Ch,Tr> iostream_type;

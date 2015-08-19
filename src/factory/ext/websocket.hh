@@ -103,6 +103,16 @@ namespace factory {
 			mid_buffer(BUFFER_SIZE)
 			{}
 
+		explicit
+		Web_socket(const unix::endpoint& bind_addr, const unix::endpoint& conn_addr):
+		unix::socket(bind_addr, conn_addr),
+		_http_headers(),
+		key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
+		send_buffer(BUFFER_SIZE),
+		recv_buffer(BUFFER_SIZE),
+		mid_buffer(BUFFER_SIZE)
+		{}
+
 //		explicit Web_socket(const unix::socket& rhs):
 //			unix::socket(rhs),
 //			_http_headers(),

@@ -135,6 +135,16 @@ namespace factory {
 				return this->fd() < rhs.fd();
 			}
 
+			explicit constexpr
+			operator bool() const noexcept {
+				return !this->bad() && !this->bad_fd();
+			}
+
+			constexpr bool
+			operator !() const noexcept {
+				return !operator bool();
+			}
+
 			inline
 			poll_event& operator=(const poll_event&) noexcept = default;
 
@@ -157,16 +167,13 @@ namespace factory {
 		using bits::pointer_tag;
 		using bits::smart_pointer_tag;
 
-		template<class H, class Tag=object_tag>
+		template<class H>
 		struct event_poller {
-
-			enum note_type: char { Notify = '!' };
 
 			typedef H handler_type;
 			typedef std::vector<poll_event> events_type;
 			typedef std::vector<handler_type> handlers_type;
 			typedef events_type::size_type size_type;
-			typedef bits::handler_wrapper<Tag> wrapper;
 
 			inline
 			event_poller():
@@ -183,38 +190,35 @@ namespace factory {
 				_pipe(std::move(rhs._pipe)),
 				_events(std::move(rhs._events)),
 				_handlers(std::move(rhs._handlers)),
-				_specials(std::move(rhs._specials)),
-				_stopped(rhs._stopped)
+				_specials(std::move(rhs._specials))
 				{}
 		
 			inline void
-			notify(note_type c = Notify) noexcept {
-				this->_pipe.out().write(&c, sizeof(note_type));
+			notify_one() noexcept {
+				char c = '!';
+				this->_pipe.out().write(&c, sizeof(char));
 			}
 		
-			template<class Callback>
 			inline void
-			run(Callback callback) {
+			notify_all() noexcept {
+				notify_one();
+			}
+		
+			template<class Lock, class Pred>
+			inline void
+			wait(Lock& lock, Pred pred) {
 				insert_pending_specials();
-				while (!this->stopped()) {
-					this->wait(callback);
+				bool success = false;
+				while (!success && !pred()) {
+					lock.unlock();
+					success = do_wait();
+					lock.lock();
 				}
 			}
 
 			inline fd_type
 			pipe_in() const noexcept {
 				return this->_pipe.in().get_fd();
-			}
-
-			inline bool
-			stopped() const noexcept {
-				return this->_stopped;
-			}
-
-			inline void
-			stop() noexcept {
-//				std::clog << "event_poller::stop()" << std::endl;
-				this->_stopped = true;
 			}
 
 			inline void
@@ -245,7 +249,40 @@ namespace factory {
 				}
 			}
 
+			template<class Func>
+			inline void
+			for_each_ordinary_fd(Func func) {
+				std::for_each(
+					stdx::make_paired(ordinary_begin(), _handlers.begin()),
+					stdx::make_paired(_events.end(), _handlers.end()),
+					[&func] (const stdx::pair<poll_event&,handler_type&>& rhs) {
+						func(rhs.first, rhs.second);
+					});
+			}
+
+			template<class Func>
+			inline void
+			for_each_special_fd(Func func) {
+				std::for_each(special_begin(), special_end(), func);
+			}
+
+			template<class Func>
+			inline void
+			for_each_pipe_fd(Func func) {
+				std::for_each(pipes_begin(), pipes_end(), func);
+			}
+
 		private:
+
+			inline events_type::iterator
+			pipes_begin() noexcept {
+				return _events.begin();
+			}
+
+			inline events_type::iterator
+			pipes_end() noexcept {
+				return _events.begin() + NPIPES;
+			}
 
 			inline events_type::const_iterator
 			ordinary_begin() const noexcept {
@@ -273,14 +310,6 @@ namespace factory {
 					this->_events.end(), ev);
 			}
 
-			void
-			consume_notify() noexcept {
-				const size_t n = 20;
-				char tmp[n];
-				ssize_t c;
-				while ((c = ::read(this->pipe_in(), tmp, n)) != -1);
-			}
-
 			template<class It, class Pred>
 			void
 			remove_ordinary_if(It first, It last, Pred pred) {
@@ -305,17 +334,6 @@ namespace factory {
 					stdx::apply_to<0>(pred));
 			}
 
-			template<class Func>
-			inline void
-			for_each_ordinary_fd(Func func) {
-				std::for_each(
-					stdx::make_paired(ordinary_begin(), _handlers.begin()),
-					stdx::make_paired(_events.end(), _handlers.end()),
-					[&func] (const stdx::pair<poll_event&,handler_type&>& rhs) {
-						func(rhs.first, rhs.second);
-					});
-			}
-
 			template<class It>
 			void
 			check_hup(It first, It last) {
@@ -328,78 +346,37 @@ namespace factory {
 			}
 
 			void
-			check_dirty() {
-				for_each_ordinary_fd(
-					[] (poll_event& ev, handler_type& h) {
-						if (wrapper::dirty(h)) {
-							ev.setev(poll_event::Out);
-						}
-					}
-				);
-			}
-
-			void
 			insert_pending_specials() {
 				_events.insert(this->ordinary_begin(), _specials.begin(), _specials.end());
 				nspecials += _specials.size();
 				_specials.clear();
 			}
 		
-			template<class Callback>
-			void
-			wait(Callback callback) {
+			bool
+			do_wait() {
 
-				do {
-					check_dirty();
-//					std::clog << "poll(): size="
-//						<< this->_events.size() << std::endl;
-					check_if_not<std::errc::interrupted>(
-						::poll(this->_events.data(),
-						this->_events.size(), no_timeout),
-						__FILE__, __LINE__, __func__);
-				} while (errno == EINTR);
+				bool success = false;
 
-				this->remove_fds_if(std::mem_fn(&poll_event::bad_fd));
-
-				#if !HAVE_DECL_POLLRDHUP
-				check_hup(_events.begin(), _events.end());
-				#endif
-				handle_pipe(_events.front(), callback);
-				handle_specials(special_begin(), special_end(), callback);
-
-				for_each_ordinary_fd(
-					[&callback] (poll_event& ev, handler_type& h) {
-						if (wrapper::dirty(h)) {
-							ev.setrev(poll_event::Out);
-						}
-						if (!ev.bad_fd()) {
-							wrapper::handle(h, ev);
-						}
-					}
-				);
-
-				remove_fds_if(std::mem_fn(&poll_event::bad));
+				remove_fds_if(std::logical_not<poll_event>());
 				insert_pending_specials();
-			}
 
-			template<class F>
-			inline void
-			handle_pipe(poll_event ev, F callback) {
-				if (ev.in()) {
-					this->consume_notify();
-					callback(ev);
-				}
-			}
+//				check_dirty();
+//				std::clog << "poll(): size="
+//					<< this->_events.size() << std::endl;
+				check_if_not<std::errc::interrupted>(
+					::poll(this->_events.data(),
+					this->_events.size(), no_timeout),
+					__FILE__, __LINE__, __func__);
+				success = errno != EINTR;
 
-			template<class It, class F>
-			void
-			handle_specials(It first, It last, F callback) {
-				while (first != last) {
-					if (!first->bad_fd()) {
-						callback(*first);
-					}
-					++first;
+				if (success) {
+					#if !HAVE_DECL_POLLRDHUP
+					check_hup(_events.begin(), _events.end());
+					#endif
+					for_each_pipe_fd(&event_poller::consume);
 				}
+				
+				return success;
 			}
 
 			friend std::ostream&
@@ -413,12 +390,21 @@ namespace factory {
 				}
 				return out;
 			}
+
+			static void
+			consume(const poll_event& ev) noexcept {
+				if (ev.in()) {
+					const size_t n = 20;
+					char tmp[n];
+					ssize_t c;
+					while ((c = ::read(ev.fd(), tmp, n)) != -1);
+				}
+			}
 		
 			unix::pipe _pipe;
 			events_type _events;
 			handlers_type _handlers;
 			std::vector<poll_event> _specials;
-			volatile bool _stopped = false;
 			size_type nspecials = 0;
 
 			static constexpr const size_type

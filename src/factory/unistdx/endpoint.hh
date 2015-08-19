@@ -27,10 +27,10 @@ namespace factory {
 	namespace unix {
 
 		typedef struct ::sockaddr sa_type;
-		typedef struct ::sockaddr_in sin4_type;
-		typedef struct ::sockaddr_in6 sin6_type;
-		typedef struct ::in_addr in4_type;
-		typedef struct ::in6_addr in6_type;
+		typedef struct ::sockaddr_in sockinet4_type;
+		typedef struct ::sockaddr_in6 sockinet6_type;
+		typedef struct ::in_addr inet4_type;
+		typedef struct ::in6_addr inet6_type;
 		typedef ::socklen_t socklen_type;
 		typedef bits::family_type family_type;
 		typedef bits::legacy_family_type sa_family_type;
@@ -55,7 +55,7 @@ namespace factory {
 				addr(rhs.addr) {}
 
 			constexpr explicit
-			ipv4_addr(const in4_type& rhs) noexcept:
+			ipv4_addr(const inet4_type& rhs) noexcept:
 				addr(rhs.s_addr) {}
 
 			constexpr
@@ -97,7 +97,7 @@ namespace factory {
 			constexpr addr4_type rep() const { return addr; }
 
 			constexpr
-			operator const in4_type&() const noexcept {
+			operator const inet4_type&() const noexcept {
 				return this->inaddr;
 			}
 
@@ -140,7 +140,7 @@ namespace factory {
 			}
 
 			addr4_type addr;
-			in4_type inaddr;
+			inet4_type inaddr;
 			bits::Bytes<addr4_type> raw;
 		};
 
@@ -167,7 +167,7 @@ namespace factory {
 				addr(rhs) {}
 
 			constexpr explicit
-			ipv6_addr(const in6_type& rhs) noexcept:
+			ipv6_addr(const inet6_type& rhs) noexcept:
 				inaddr(rhs) {}
 
 			constexpr
@@ -179,7 +179,7 @@ namespace factory {
 				h5, h6, h7, h8)) {}
 
 			constexpr
-			operator const in6_type&() const {
+			operator const inet6_type&() const {
 				return inaddr;
 			}
 
@@ -311,9 +311,9 @@ namespace factory {
 			}
 
 			addr6_type addr;
-			in6_type inaddr;
+			inet6_type inaddr;
 			hex_type hextets[8];
-			bits::Bytes<in6_type> raw;
+			bits::Bytes<inet6_type> raw;
 		};
 
 		union endpoint {
@@ -356,11 +356,11 @@ namespace factory {
 				} {}
 				
 			constexpr
-			endpoint(const sin4_type& rhs) noexcept:
+			endpoint(const sockinet4_type& rhs) noexcept:
 				_addr4(rhs) {}
 
 			constexpr
-			endpoint(const sin6_type& rhs) noexcept:
+			endpoint(const sockinet6_type& rhs) noexcept:
 				_addr6(rhs) {}
 
 			constexpr
@@ -376,7 +376,7 @@ namespace factory {
 					rhs.sa_family(),
 					to_network_format<port_type>(newport),
 					rhs.family() == family_type::inet6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
-					rhs.family() == family_type::inet  ? in6_type{} : rhs._addr6.sin6_addr,
+					rhs.family() == family_type::inet  ? inet6_type{} : rhs._addr6.sin6_addr,
 					0 // scope
 				} {}
 
@@ -537,8 +537,8 @@ namespace factory {
 			constexpr socklen_type
 			sockaddrlen() const {
 				return this->family() == family_type::inet6
-					? sizeof(sin6_type)
-					: sizeof(sin4_type);
+					? sizeof(sockinet6_type)
+					: sizeof(sockinet4_type);
 			}
 
 		private:
@@ -607,12 +607,12 @@ namespace factory {
 				this->_addr6.sin6_addr = h;
 			}
 
-			sin6_type _addr6 = {};
-			sin4_type _addr4;
+			sockinet6_type _addr6 = {};
+			sockinet4_type _addr4;
 			sa_type _sockaddr;
 		};
 
-		static_assert(sizeof(endpoint) == sizeof(sin6_type), "bad endpoint size");
+		static_assert(sizeof(endpoint) == sizeof(sockinet6_type), "bad endpoint size");
 		static_assert(sizeof(port_type) == 2, "bad port_type size");
 
 		struct ifaddrs {

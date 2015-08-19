@@ -6,6 +6,20 @@ namespace factory {
 	namespace components {
 
 		template<class T>
+		struct Compare_time {
+			inline bool
+			operator()(const T* lhs, const T* rhs) const noexcept {
+				return lhs->at() > rhs->at();
+			}
+		};
+
+		template<class T>
+		using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
+
+		template<class T>
+		using Timer_server_base = Fast_server_with_pool<T, Time_priority_pool<T>>;
+
+		template<class T>
 		struct Timer_server: public Timer_server_base<T> {
 
 			typedef Timer_server_base<T> base_server;

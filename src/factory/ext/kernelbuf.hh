@@ -3,7 +3,7 @@ namespace factory {
 	namespace components {
 
 		template<class Base>
-		struct basic_ikernelbuf: public virtual Base {
+		struct basic_ikernelbuf: public Base {
 
 			typedef Base base_type;
 			using typename Base::int_type;
@@ -21,6 +21,7 @@ namespace factory {
 			basic_ikernelbuf() = default;
 			basic_ikernelbuf(basic_ikernelbuf&&) = default;
 			basic_ikernelbuf(const basic_ikernelbuf&) = delete;
+			virtual ~basic_ikernelbuf() = default;
 
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 				"bad base class for ibasic_kernelbuf");
@@ -165,7 +166,7 @@ namespace factory {
 		}
 
 		template<class Base>
-		struct basic_okernelbuf: public virtual Base {
+		struct basic_okernelbuf: public Base {
 
 			using typename Base::int_type;
 			using typename Base::traits_type;
@@ -290,9 +291,7 @@ namespace factory {
 		};
 
 		template<class Base1, class Base2=Base1>
-		struct basic_kernelbuf:
-			public basic_okernelbuf<Base1>,
-			public basic_ikernelbuf<Base2>{};
+		struct basic_kernelbuf: public basic_okernelbuf<basic_ikernelbuf<Base1>> {};
 
 		template<class Base>
 		struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {

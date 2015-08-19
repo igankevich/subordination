@@ -21,7 +21,7 @@ namespace factory {
 		template<class K>
 			using Server = factory::components::Server<K>;
 	
-		template<class X> using Pool = std::queue<X>;
+//		template<class X> using Pool = std::queue<X>;
 
 //		template<class S>
 //			using Rserver = factory::components::Rserver<Pool, S>;
@@ -29,17 +29,14 @@ namespace factory {
 //		template<class Base, class Sub>
 //			using Iserver = factory::components::Iserver<Base, Sub>;
 
-		template<class K>
-			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::unix::socket>;
+//		template<class K>
+//			using Remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::unix::socket>;
+
+//		template<class K>
+//			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::components::Web_socket>;
 
 		template<class K>
-			using Web_socket_remote_Rserver = factory::components::Remote_Rserver<K, Pool, factory::components::Web_socket>;
-
-		template<class K>
-			using Socket_server = factory::components::Socket_server<Server<K>, Remote_Rserver<Kernel>, Kernel, Pool>;
-
-		template<class K>
-			using Web_socket_server = factory::components::Socket_server<Server<K>, Web_socket_remote_Rserver<Kernel>, Kernel, Pool>;
+			using Web_socket_server = factory::components::NIC_server<K, factory::components::Web_socket>;
 
 //		template<class Base, class S>
 //			using Profiled_Iserver = typename S::template Strategy<typename S::template Iprofiler<Base>>;
@@ -64,7 +61,6 @@ namespace factory {
 //		typedef Profiled_Iserver<Iserver<Server<Kernel>, Profiled_Rserver<Server<Kernel>, Round_robin>>, Round_robin>
 //			Local_server;
 
-		typedef factory::components::CPU_server<Kernel> Local_server;
 
 		template<class T>
 			using Mobile = factory::components::Type_init<T, Type, Kernel,
@@ -73,12 +69,12 @@ namespace factory {
 		template<class T>
 			using Unidentifiable = factory::components::Type_init<T, Type, Kernel, Kernel>;
 
-//		typedef factory::components::Tserver<Server<Kernel>> Timer_server;
+		typedef factory::components::CPU_server<Kernel> Local_server;
+		typedef factory::components::NIC_server<Kernel, factory::unix::socket> Remote_server;
 		typedef factory::components::Timer_server<Kernel> Timer_server;
 		typedef factory::components::Sub_Iserver<Server<Kernel>> App_server;
 		typedef factory::components::Principal_server<Server<Kernel>> Principal_server;
 
-		typedef Socket_server<Kernel> Remote_server;
 		typedef Web_socket_server<Kernel> External_server;
 
 		typedef factory::components::Shutdown<Mobile, Type> Shutdown;

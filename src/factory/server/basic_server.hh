@@ -1,3 +1,6 @@
+#ifndef FACTORY_SERVER_BASIC_SERVER_HH
+#define FACTORY_SERVER_BASIC_SERVER_HH
+
 namespace factory {
 
 	namespace components {
@@ -23,6 +26,7 @@ namespace factory {
 			
 			Server_with_pool() = default;
 
+			explicit
 			Server_with_pool(unsigned concurrency) noexcept:
 			_kernels(),
 			_threads(concurrency == 0u ? 1u : concurrency),
@@ -139,20 +143,7 @@ namespace factory {
 		using Standard_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
-		template<class T>
-		struct Compare_time {
-			inline bool
-			operator()(const T* lhs, const T* rhs) const noexcept {
-				return lhs->at() > rhs->at();
-			}
-		};
-
-		template<class T>
-		using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
-
-		template<class T>
-		using Timer_server_base = Fast_server_with_pool<T, Time_priority_pool<T>>;
-
 	}
 
 }
+#endif // FACTORY_SERVER_BASIC_SERVER_HH

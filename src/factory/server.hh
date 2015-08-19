@@ -23,6 +23,10 @@ namespace factory {
 
 			Resident() = default;
 			virtual ~Resident() = default;
+			Resident(Resident&&) = default;
+
+			Resident(const Resident&) = delete;
+			Resident& operator=(const Resident&) = delete;
 
 			virtual void
 			start() {
@@ -84,13 +88,16 @@ namespace factory {
 		};
 
 		template<class K>
-		struct Server: public virtual Resident {
+		struct Server: public Resident {
 
 			typedef K kernel_type;
 			typedef K Kernel;
 
 			Server() = default;
 			virtual ~Server() = default;
+			Server(Server&&) = default;
+
+			Server(const Server&) = delete;
 			Server& operator=(Server&) = delete;
 
 			void setparent(Server* rhs) {
@@ -138,6 +145,7 @@ namespace factory {
 #include "server/basic_server.hh"
 #include "server/cpu_server.hh"
 #include "server/timer_server.hh"
+#include "server/nic_server.hh"
 
 namespace factory {
 

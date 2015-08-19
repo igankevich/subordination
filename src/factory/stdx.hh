@@ -153,7 +153,8 @@ namespace factory {
 		};
 
 		template<class It1, class It2>
-		inline paired_iterator<It1,It2> make_paired(It1 it1, It2 it2) {
+		inline paired_iterator<It1,It2>
+		make_paired(It1 it1, It2 it2) {
 			return paired_iterator<It1,It2>(it1, it2);
 		}
 
@@ -387,6 +388,17 @@ namespace factory {
 				if (pred(*first)) {
 					func(*first);
 				}
+				++first;
+			}
+		}
+
+		template<class Lock, class It, class Func>
+		void
+		for_each_thread_safe(Lock& lock, It first, It last, Func func) {
+			while (first != last) {
+				lock.unlock();
+				func(*first);
+				lock.lock();
 				++first;
 			}
 		}

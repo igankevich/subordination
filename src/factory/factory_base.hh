@@ -82,7 +82,6 @@
 	#include "type.hh"
 	#include "kernel.hh"
 	#include "server.hh"
-	#include "socket_server.hh"
 	#include "app_server.hh"
 	#include "discovery.hh"
 	
