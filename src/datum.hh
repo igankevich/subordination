@@ -27,52 +27,59 @@ struct Datum {
 		rnd(static_cast<double&>(u)); rnd(v); rnd(w);
 	}
 
-	constexpr Datum(const Datum& rhs):
+	constexpr
+	Datum(const Datum& rhs):
 		x(rhs.x), y(rhs.y), z(rhs.z),
 		u(rhs.u), v(rhs.v), w(rhs.w)
 	{}
 
-	bool operator==(const Datum& rhs) const {
+	bool
+	operator==(const Datum& rhs) const {
 		return
 			x == rhs.x && y == rhs.y && z == rhs.z &&
 			u == rhs.u && v == rhs.v && w == rhs.w;
 	}
 
-	bool operator!=(const Datum& rhs) const {
+	bool
+	operator!=(const Datum& rhs) const {
 		return
 			x != rhs.x || y != rhs.y || z != rhs.z ||
 			u != rhs.u || v != rhs.v || w != rhs.w;
 	}
 
-	friend factory::packstream& operator<<(factory::packstream& out, const Datum& rhs) {
+	friend factory::packstream&
+	operator<<(factory::packstream& out, const Datum& rhs) {
 		return out
 			<< rhs.x << rhs.y << rhs.z
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	friend factory::packstream& operator>>(factory::packstream& in, Datum& rhs) {
+	friend factory::packstream&
+	operator>>(factory::packstream& in, Datum& rhs) {
 		return in
 			>> rhs.x >> rhs.y >> rhs.z
 			>> rhs.u >> rhs.v >> rhs.w;
 	}
 
-	friend std::ostream& operator<<(std::ostream& out, const Datum& rhs) {
-		out.write(reinterpret_cast<const char*>(&rhs.x), sizeof(rhs.x));
-		out.write(reinterpret_cast<const char*>(&rhs.y), sizeof(rhs.y));
-		out.write(reinterpret_cast<const char*>(&rhs.z), sizeof(rhs.z));
-		out.write(reinterpret_cast<const char*>(&rhs.u), sizeof(rhs.u));
-		out.write(reinterpret_cast<const char*>(&rhs.v), sizeof(rhs.v));
-		out.write(reinterpret_cast<const char*>(&rhs.w), sizeof(rhs.w));
+	friend std::ostream&
+	operator<<(std::ostream& out, const Datum& rhs) {
+		write_raw(out, rhs.x);
+		write_raw(out, rhs.y);
+		write_raw(out, rhs.z);
+		write_raw(out, rhs.u);
+		write_raw(out, rhs.v);
+		write_raw(out, rhs.w);
 		return out;
 	}
 
-	friend std::istream& operator>>(std::istream& in, Datum& rhs) {
-		in.read(reinterpret_cast<char*>(&rhs.x), sizeof(rhs.x));
-		in.read(reinterpret_cast<char*>(&rhs.y), sizeof(rhs.y));
-		in.read(reinterpret_cast<char*>(&rhs.z), sizeof(rhs.z));
-		in.read(reinterpret_cast<char*>(&rhs.u), sizeof(rhs.u));
-		in.read(reinterpret_cast<char*>(&rhs.v), sizeof(rhs.v));
-		in.read(reinterpret_cast<char*>(&rhs.w), sizeof(rhs.w));
+	friend std::istream&
+	operator>>(std::istream& in, Datum& rhs) {
+		read_raw(in, rhs.x);
+		read_raw(in, rhs.y);
+		read_raw(in, rhs.z);
+		read_raw(in, rhs.u);
+		read_raw(in, rhs.v);
+		read_raw(in, rhs.w);
 		return in;
 	}
 
@@ -83,6 +90,22 @@ struct Datum {
 	}
 
 private:
+
+	template<class T>
+	static void
+	write_raw(std::ostream& out, const T& rhs) {
+		factory::bits::Bytes<T> raw = rhs;
+		out.write(raw.begin(), raw.size());
+	}
+
+	template<class T>
+	static void
+	read_raw(std::istream& in, T& rhs) {
+		factory::bits::Bytes<T> raw;
+		in.read(raw.begin(), raw.size());
+		rhs = raw;
+	}
+
 	int64_t x;
 	int32_t y;
 	factory::bits::Bytes<float> z;

@@ -447,7 +447,7 @@ namespace factory {
 		}
 	
 		void react(factory::Kernel* kernel) {
-			Worker* w = reinterpret_cast<Worker*>(kernel);
+			Worker* w = dynamic_cast<Worker*>(kernel);
 			I x1 = w->a, x2 = w->b;
 			for (I i=x1; i<x2; ++i) g(i);
 			if (++n == m) commit(the_server());

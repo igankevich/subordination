@@ -71,15 +71,6 @@ namespace factory {
 
 		private:
 
-//			template<class T>
-//			static void debug(std::ostream& out, T val) {
-//				int n = sizeof val;
-//				unsigned char* p = reinterpret_cast<unsigned char*>(&val);
-//				for (int i=0; i<n; ++i) {
-//					out << std::setw(2) << (unsigned int)p[i];
-//				}
-//			}
-
 			template<class T>
 			Packing_stream& write(T rhs) {
 			#ifndef IGNORE_ISO_IEC559
@@ -110,7 +101,7 @@ namespace factory {
 				Size length = static_cast<Size>(rhs.size());
 //				Logger<Level::IO>() << "Writing string of length = " << length << std::endl;
 				write(length);
-				this->iostream_type::write(reinterpret_cast<const char_type*>(rhs.c_str()), length);
+				this->iostream_type::write(rhs.c_str(), length);
 				return *this;
 			}
 
@@ -133,7 +124,7 @@ namespace factory {
 				read(length);
 				std::string::value_type* bytes = new std::string::value_type[length];
 //				Logger<Level::IO>() << "Reading string of length = " << length << std::endl;
-				this->iostream_type::read(reinterpret_cast<char_type*>(bytes), length);
+				this->iostream_type::read(bytes, length);
 				rhs.assign(bytes, bytes + length);
 				delete[] bytes;
 				return *this;
