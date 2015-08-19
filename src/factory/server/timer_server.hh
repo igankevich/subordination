@@ -13,7 +13,6 @@ namespace factory {
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
 			using typename base_server::sem_type;
-			typedef unix::timer<sem_type> timer_type;
 
 			Timer_server(Timer_server&& rhs) noexcept:
 			base_server(std::move(rhs))
@@ -34,39 +33,37 @@ namespace factory {
 
 			void add_cpu(size_t) {}
 
-			void
-			stop() override {
-				base_server::stop();
-				_timer.notify_all();
-			}
-
 		private:
 
 			void
 			do_run() override {
 				while (!this->stopped()) {
 					lock_type lock(this->_mutex);
-					this->_semaphore.wait(lock, [this] () {
-						return this->stopped() || !this->_kernels.empty();
-					});
+					wait_until_kernel_arrives(lock);
 					if (!this->stopped()) {
 						kernel_type* kernel = stdx::front(this->_kernels);
-						stdx::pop(this->_kernels);
-						lock.unlock();
-						if (!wait_until(kernel)) {
+						if (!wait_until_kernel_is_ready(lock, kernel)) {
+							stdx::pop(this->_kernels);
+							lock.unlock();
 							kernel->run_act();
 						}
 					}
 				}
 			}
 
+			inline void
+			wait_until_kernel_arrives(lock_type& lock) {
+				this->_semaphore.wait(lock, [this] () {
+					return this->stopped() || !this->_kernels.empty();
+				});
+			}
+
 			inline bool
-			wait_until(kernel_type* kernel) {
-				return _timer.wait_until(kernel->at(),
+			wait_until_kernel_is_ready(lock_type& lock, kernel_type* kernel) {
+				return this->_semaphore.wait_until(lock, kernel->at(),
 					[this] { return this->stopped(); });
 			}
 			
-			timer_type _timer;
 		};
 
 	}
