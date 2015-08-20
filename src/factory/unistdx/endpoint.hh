@@ -1,3 +1,12 @@
+#ifndef FACTORY_UNISTDX_ENDPOINT_HH
+#define FACTORY_UNISTDX_ENDPOINT_HH
+
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+
+#include "../bits/endpoint.hh"
+
 namespace factory {
 
 	template<class T>
@@ -664,3 +673,4 @@ namespace factory {
 	}
 
 }
+#endif // FACTORY_UNISTDX_ENDPOINT_HH

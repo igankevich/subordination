@@ -1,6 +1,5 @@
 #include "bits/unistdx.hh"
 #include "bits/ifaddrs.hh"
-#include "bits/endpoint.hh"
 
 #include "unistdx/types.hh"
 #include "unistdx/endpoint.hh"

@@ -251,11 +251,11 @@ namespace factory {
 	}
 }
 
-#ifdef HAVE___UINT128_T
+#if defined(FACTORY_HAVE_UINT128_T)
 namespace std {
-	std::ostream& operator<<(std::ostream& o, __uint128_t rhs) {
+	std::ostream& operator<<(std::ostream& o, unsigned __int128 rhs) {
 		using factory::bits::get_stream_radix;
-		static const unsigned int NBITS = sizeof(__uint128_t)
+		static const unsigned int NBITS = sizeof(unsigned __int128)
 			* std::numeric_limits<unsigned char>::digits;
 		std::ostream::sentry s(o);
 		if (!s) { return o; }
@@ -266,12 +266,12 @@ namespace std {
 			// that plus room for null terminator
     		char buf[NBITS + 1] = {};
 
-    		__uint128_t ii = rhs;
+    		unsigned __int128 ii = rhs;
     		int i = NBITS - 1;
 
     		while (ii != 0 && i) {
-				__uint128_t res = ii/radix;
-				__uint128_t remainder = ii%radix;
+				unsigned __int128 res = ii/radix;
+				unsigned __int128 remainder = ii%radix;
 				ii = res;
         		buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder];
     		}
@@ -281,7 +281,7 @@ namespace std {
 		return o;
 	}
 
-	std::istream& operator>>(std::istream& in, __uint128_t& rhs) {
+	std::istream& operator>>(std::istream& in, unsigned __int128& rhs) {
 		using factory::bits::get_stream_radix;
 		std::istream::sentry s(in);
 		if (s) {

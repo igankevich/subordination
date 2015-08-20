@@ -121,7 +121,7 @@ void test_uint128() {
 	check_write(010000_u128, "10000", std::oct);
 }
 
-#ifdef HAVE___UINT128_T
+/*
 
 	template<class T>
 	inline T
@@ -179,33 +179,30 @@ void test_bytes_swap_perf() {
 	Time t1 = current_time_nano();
 	std::cout << "byte_swap: time=" << (t1-t0) << "ns" << std::endl;
 }
-void test___uint128_t() {
-	check_write(__uint128_t(123), "123");
-	check_write(__uint128_t(0x123456789abcdef), "123456789abcdef", std::hex);
-	check_write(__uint128_t(0123), "123", std::oct);
-	check_read("123", __uint128_t(123));
-	check_read("123", __uint128_t(0123), std::oct);
-	check_read("123456789abcdef", __uint128_t(0x123456789abcdef), std::hex);
-	check_read("ffffffff", __uint128_t(0xffffffff), std::hex);
-	check_read("abcdef", __uint128_t(0xabcdef), std::hex);
-	check_read("AbCdeF1234", __uint128_t(0xabcdef1234), std::hex);
-	check_write(10000_u128, "10000");
-	check_write(0xabcde_u128, "abcde", std::hex);
-	check_write(010000_u128, "10000", std::oct);
-//	test_bytes_swap_perf<__uint128_t>();
-//	test_bytes_swap2_perf<__uint128_t>();
-//	test_bytes_swap_perf<uint128_t>();
-//	test_bytes_swap2_perf<uint128_t>();
-}
-#else
-void test___uint128_t() {}
-#endif
+*/
+//void test___uint128_t() {
+//	check_write(__uint128_t(123), "123");
+//	check_write(__uint128_t(0x123456789abcdef), "123456789abcdef", std::hex);
+//	check_write(__uint128_t(0123), "123", std::oct);
+//	check_read("123", __uint128_t(123));
+//	check_read("123", __uint128_t(0123), std::oct);
+//	check_read("123456789abcdef", __uint128_t(0x123456789abcdef), std::hex);
+//	check_read("ffffffff", __uint128_t(0xffffffff), std::hex);
+//	check_read("abcdef", __uint128_t(0xabcdef), std::hex);
+//	check_read("AbCdeF1234", __uint128_t(0xabcdef1234), std::hex);
+//	check_write(10000_u128, "10000");
+//	check_write(0xabcde_u128, "abcde", std::hex);
+//	check_write(010000_u128, "10000", std::oct);
+////	test_bytes_swap_perf<__uint128_t>();
+////	test_bytes_swap2_perf<__uint128_t>();
+////	test_bytes_swap_perf<uint128_t>();
+////	test_bytes_swap2_perf<uint128_t>();
+//}
 
 struct App {
 	int run(int, char**) {
 		try {
 			test_uint128();
-			test___uint128_t();
 		} catch (std::exception& e) {
 			std::cerr << e.what() << std::endl;
 			return 1;

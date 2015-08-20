@@ -63,10 +63,10 @@
 	#include <sys/shm.h>
 	#include <sys/wait.h>
 	#include <semaphore.h>
-	#include <netinet/in.h>
-	#include <arpa/inet.h>
+//	#include <netinet/in.h>
+//	#include <arpa/inet.h>
 //	#include <poll.h>
-	#include <ifaddrs.h>
+//	#include <ifaddrs.h>
 	#ifdef HAVE_EXECINFO_H
 		#include <execinfo.h>
 	#endif

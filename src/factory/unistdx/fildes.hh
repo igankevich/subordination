@@ -5,13 +5,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
-#if defined(SOCK_STREAM)
-	#if !defined(SOCK_NONBLOCK)
-		#define SOCK_NONBLOCK 0
-	#endif
-	#if !defined(SOCK_CLOEXEC)
-		#define SOCK_CLOEXEC 0
-	#endif
+
+#if !defined(SOCK_NONBLOCK)
+	#define SOCK_NONBLOCK 0
+#endif
+#if !defined(SOCK_CLOEXEC)
+	#define SOCK_CLOEXEC 0
 #endif
 
 namespace factory {
@@ -479,7 +478,7 @@ namespace factory {
 
 			inline
 			void set_mandatory_flags() {
-			#if defined(SOCK_STREAM) && !defined(SOCK_NONBLOCK)
+			#if !SOCK_NONBLOCK || !SOCK_CLOEXEC
 				this->setf(unix::fd::non_blocking | unix::fd::close_on_exec);
 			#endif
 			}

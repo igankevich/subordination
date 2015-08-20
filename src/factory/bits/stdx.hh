@@ -91,6 +91,40 @@ namespace factory {
 		static_assert(std::is_empty<no_lock<int>>::value, "bad no_lock type");
 		static_assert(std::is_empty<no_mutex>::value, "bad no_mutex type");
 		static_assert(std::is_empty<no_semaphore>::value, "bad no_semaphore type");
+
+		constexpr char
+		const_tolower(char ch) noexcept {
+			return ch >= 'A' && ch <= 'F' ? ('a'+ch-'A') : ch;
+		}
+
+		template<unsigned int radix, class Ch>
+		constexpr Ch
+		to_int(Ch ch) noexcept {
+			return radix == 16 && ch >= 'a' ? ch-'a'+10 : ch-'0';
+		}
+
+		inline int
+		get_stream_radix(const std::ios_base& out) noexcept {
+			return out.flags() & std::ios_base::hex ? 16 :
+				out.flags() & std::ios_base::oct ? 8 : 10;
+		}
+
+		template<class Uint, unsigned int radix, class It>
+		constexpr Uint
+		do_parse_uint(It first, It last, Uint val=0) noexcept {
+			return first == last ? val
+				: do_parse_uint<Uint, radix>(first+1, last, 
+				val*radix + to_int<radix>(const_tolower(*first)));
+		}
+
+		template<class Uint, std::size_t n, class Arr>
+		constexpr Uint
+		parse_uint(Arr arr) noexcept {
+			return
+				n >= 2 && arr[0] == '0' && arr[1] == 'x' ? do_parse_uint<Uint,16>(arr+2, arr + n) :
+				n >= 2 && arr[0] == '0' && arr[1] >= '1' && arr[1] <= '9' ? do_parse_uint<Uint,8>(arr+1, arr + n) :
+				do_parse_uint<Uint,10>(arr, arr+n);
+		}
 	
 	}
 

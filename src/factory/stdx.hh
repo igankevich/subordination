@@ -1,9 +1,8 @@
 #ifndef FACTORY_STDX_HH
 #define FACTORY_STDX_HH
 
-#include "bits/basic_uint.hh"
-#include "bits/uint128.hh"
 #include "bits/stdx.hh"
+#include "bits/uint128.hh"
 
 namespace factory {
 
