@@ -1,6 +1,16 @@
+#ifndef FACTORY_UNISTDX_EVENT_HH
+#define FACTORY_UNISTDX_EVENT_HH
+
+#include <poll.h>
+#if !defined(POLLRDHUP)
+	#define POLLRDHUP 0
+#endif
+
 namespace factory {
 
 	namespace unix {
+
+		typedef struct ::pollfd basic_event;
 
 		struct poll_event: public basic_event {
 
@@ -370,7 +380,7 @@ namespace factory {
 				success = errno != EINTR;
 
 				if (success) {
-					#if !HAVE_DECL_POLLRDHUP
+					#if !defined(POLLRDHUP)
 					check_hup(_events.begin(), _events.end());
 					#endif
 					for_each_pipe_fd(&event_poller::consume);
@@ -416,3 +426,4 @@ namespace factory {
 	}
 
 }
+#endif // FACTORY_UNISTDX_EVENT_HH

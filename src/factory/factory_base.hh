@@ -58,14 +58,14 @@
 	#include <unistd.h>
 	#include <fcntl.h>
 	#include <sys/types.h>
-	#include <sys/socket.h>
+//	#include <sys/socket.h>
 	#include <sys/ipc.h>
 	#include <sys/shm.h>
 	#include <sys/wait.h>
 	#include <semaphore.h>
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
-	#include <poll.h>
+//	#include <poll.h>
 	#include <ifaddrs.h>
 	#ifdef HAVE_EXECINFO_H
 		#include <execinfo.h>

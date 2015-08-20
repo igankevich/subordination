@@ -1,3 +1,19 @@
+#ifndef FACTORY_UNISTDX_FILDES_HH
+#define FACTORY_UNISTDX_FILDES_HH
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
+#if defined(SOCK_STREAM)
+	#if !defined(SOCK_NONBLOCK)
+		#define SOCK_NONBLOCK 0
+	#endif
+	#if !defined(SOCK_CLOEXEC)
+		#define SOCK_CLOEXEC 0
+	#endif
+#endif
+
 namespace factory {
 
 	namespace unix {
@@ -463,7 +479,7 @@ namespace factory {
 
 			inline
 			void set_mandatory_flags() {
-			#if !HAVE_DECL_SOCK_NONBLOCK
+			#if defined(SOCK_STREAM) && !defined(SOCK_NONBLOCK)
 				this->setf(unix::fd::non_blocking | unix::fd::close_on_exec);
 			#endif
 			}
@@ -474,6 +490,7 @@ namespace factory {
 
 			inline
 			pipe(): _fds{} {
+				// TODO: F_SETNOSIGPIPE
 				open();
 			}
 
@@ -538,3 +555,4 @@ namespace factory {
 	}
 
 }
+#endif // FACTORY_UNISTDX_FILDES_HH

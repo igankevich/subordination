@@ -6,7 +6,6 @@ namespace factory {
 		typedef ::pid_t pid_type;
 		typedef int fd_type;
 		typedef int flag_type;
-		typedef struct ::pollfd basic_event;
 	
 		typedef int stat_type;
 		typedef int code_type;
