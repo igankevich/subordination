@@ -49,3 +49,4 @@ Implement generic state machine for use in kernelbuf and websocketbuf.
 Make locks mutable.
 Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.
 Ignore all useless signals.
+Add thread names to write to logs.

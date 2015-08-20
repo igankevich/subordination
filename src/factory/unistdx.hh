@@ -1,6 +1,7 @@
 #include "bits/unistdx.hh"
 #include "bits/ifaddrs.hh"
 
+#include "unistdx/log.hh"
 #include "unistdx/types.hh"
 #include "unistdx/endpoint.hh"
 #include "unistdx/fildes.hh"

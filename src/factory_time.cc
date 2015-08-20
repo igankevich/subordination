@@ -4,10 +4,9 @@ using namespace factory;
 
 int main(int argc, char* argv[]) {
 	std::cout << current_time_nano() << std::endl;
-	using components::Ifaddrs;
 	using components::Error;
-	Ifaddrs addrs;
-	std::for_each(addrs.begin(), addrs.end(), [] (const Ifaddrs::value_type& rhs) {
+	unix::ifaddrs addrs;
+	std::for_each(addrs.begin(), addrs.end(), [] (const unix::ifaddrs::value_type& rhs) {
 		if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
 			return;
 		}
@@ -19,6 +18,10 @@ int main(int argc, char* argv[]) {
 		<< components::get_bind_address()
 		<< std::endl;
 	std::cout << "bits::Bytes = " << bits::make_bytes(0xabcdefUL) << std::endl;
-	throw Error("abc", __FILE__, __LINE__, __func__);
+	std::clog << "[clog] Hello world!" << std::endl;
+	::syslog(LOG_NOTICE, "[syslog] Hello world!");
+	std::cerr << "[cerr] Hello world!" << std::endl;
+	sleep(3);
+//	throw Error("abc", __FILE__, __LINE__, __func__);
 	return 0;
 }
