@@ -3,7 +3,7 @@
 #include "test.hh"
 
 using namespace factory;
-using factory::components::n_random_bytes;
+using factory::stdx::n_random_bytes;
 using factory::unix::operator""_ipv4;
 using factory::unix::ipv4_addr;
 using factory::unix::ipv6_addr;

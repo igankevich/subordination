@@ -186,8 +186,10 @@ namespace factory {
 				const auto ns = duration_cast<nanoseconds>(tp - s);
 				const timespec_type timeout{s.time_since_epoch().count(), ns.count()};
 				lock.unlock();
+				#if _POSIX_SEMAPHORES > 0
 				check_if_not<std::errc::timed_out>(::sem_timedwait(&_sem, &timeout),
 					__FILE__, __LINE__, __func__);
+				#endif
 				std::cv_status st = std::errc(errno) == std::errc::timed_out
 					? std::cv_status::timeout : std::cv_status::no_timeout;
 				lock.lock();

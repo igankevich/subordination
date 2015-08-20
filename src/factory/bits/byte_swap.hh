@@ -1,3 +1,10 @@
+#define FACTORY_GCC_VERSION_GE(major, minor) \
+	((__GNUC__ > major) || (__GNUC__ == major && __GNUC_MINOR__ >= minor))
+#if FACTORY_GCC_VERSION_GE(4, 3)
+	#define FACTORY_HAVE_BUILTIN_SWAP16
+	#define FACTORY_HAVE_BUILTIN_SWAP32
+	#define FACTORY_HAVE_BUILTIN_SWAP64
+#endif
 namespace factory {
 
 	namespace bits {
@@ -26,13 +33,17 @@ namespace factory {
 		template<>
 		constexpr uint16_t
 		byte_swap<uint16_t>(uint16_t n) noexcept {
+			#if defined(FACTORY_HAVE_BUILTIN_SWAP16)
+			return __builtin_bswap16(n);
+			#else
 			return ((n & 0xff00)>>8) | ((n & 0x00ff)<<8);
+			#endif
 		}
 		
 		template<>
 		constexpr uint32_t
 		byte_swap<uint32_t>(uint32_t n) noexcept {
-			#ifdef HAVE___BUILTIN_BSWAP32
+			#if defined(FACTORY_HAVE_BUILTIN_SWAP32)
 			return __builtin_bswap32(n);
 			#else
 			return
@@ -46,7 +57,7 @@ namespace factory {
 		template<>
 		constexpr uint64_t
 		byte_swap<uint64_t>(uint64_t n) noexcept {
-			#ifdef HAVE___BUILTIN_BSWAP64
+			#if defined(FACTORY_HAVE_BUILTIN_SWAP64)
 			return __builtin_bswap64(n);
 			#else
 			return
@@ -75,20 +86,27 @@ namespace factory {
 		}
 
 		// compile-time unit tests for byte swapping
-		static_assert(byte_swap<uint16_t>(UINT16_C(0xABCD)) == UINT16_C(0xCDAB), "byte swap failed for u16");
-		static_assert(byte_swap<uint32_t>(UINT32_C(0xABCDDCBA)) == UINT32_C(0xBADCCDAB), "byte swap failed for u32");
-		static_assert(byte_swap<uint64_t>(UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB), "byte swap failed for u64");
+		static_assert(byte_swap<uint16_t>(
+			UINT16_C(0xABCD)) == UINT16_C(0xCDAB),
+			"byte swap failed for u16");
+		static_assert(byte_swap<uint32_t>(
+			UINT32_C(0xABCDDCBA)) == UINT32_C(0xBADCCDAB),
+			"byte swap failed for u32");
+		static_assert(byte_swap<uint64_t>(
+			UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB),
+			"byte swap failed for u64");
 		/// @}
 
 		constexpr bool
 		is_network_byte_order() noexcept {
-			#if defined(WORDS_BIGENDIAN)
+			#if defined(WORDS_BIGENDIAN) \
+				|| __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			return true;
 			#else
 			return false;
 			#endif
 		}
-		template<class Int, bool intgeral>
+		template<class Int, bool integral>
 		struct byte_swap_chooser {};
 
 		template<class Int>
@@ -234,7 +252,9 @@ namespace factory {
 			}
 
 			inline T&
-			value() noexcept { return _val; }
+			value() noexcept {
+				return _val;
+			}
 
 			static constexpr size_type
 			size() noexcept {
@@ -251,14 +271,19 @@ namespace factory {
 		};
 
 		template<class T>
-		constexpr Bytes<T> make_bytes(T rhs) { return Bytes<T>(rhs); }
+		constexpr Bytes<T>
+		make_bytes(T rhs) noexcept {
+			return Bytes<T>(rhs);
+		}
 
 		template<class T, class B>
 		std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
 			typedef typename Bytes<T,B>::value_type value_type;
 			std::ostream::sentry s(out);
 			if (s) {
-				stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
+//				stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
+				stdx::ios_guard g(out);
+				out.setf(std::ios::hex, std::ios::basefield);
 				out.fill('0');
 				stdx::intersperse_iterator<stdx::fixed_width<unsigned int, 2>> it(out, " ");
 				std::transform(rhs.begin(), rhs.end(), it,
@@ -266,7 +291,7 @@ namespace factory {
 						return static_cast<unsigned char>(ch);
 					}
 				);
-				out.fill(' ');
+//				out.fill(' ');
 			}
 			return out;
 		}

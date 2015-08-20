@@ -1,5 +1,5 @@
 #!/bin/sh
 
 find . -type f -name '*.hh' -exec grep -HI TODO \{\} \; |
-sed -rne 's/(.*):.*TODO[: ]*(.*)/\1|\2/p' |
+perl -n -e '/(.*):.*TODO[: ]*(.*)/ && print $1,"|",$2,"\n"' |
 column -t -s'|'

@@ -34,6 +34,21 @@ namespace factory {
 			std::ios_base::fmtflags oldf;
 		};
 
+		struct ios_guard {
+			explicit
+			ios_guard(std::ios& s):
+				str(s), oldf(str.flags()),
+				oldfill(str.fill()) {}
+			~ios_guard() {
+				str.setf(oldf);
+				str.fill(oldfill);
+			}
+		private:
+			std::ios& str;
+			std::ios_base::fmtflags oldf;
+			std::ios::char_type oldfill;
+		};
+
 		template <class T, class Ch=char, class Tr=std::char_traits<Ch>>
 		struct intersperse_iterator:
 			public std::iterator<std::output_iterator_tag, void, void, void, void>
