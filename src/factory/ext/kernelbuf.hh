@@ -1,3 +1,8 @@
+#ifndef FACTORY_EXT_KERNELBUF_HH
+#define FACTORY_EXT_KERNELBUF_HH
+
+#include "intro.hh"
+
 namespace factory {
 
 	namespace components {
@@ -309,6 +314,25 @@ namespace factory {
 
 	}
 
+	namespace stdx {
+
+		template<class Base>
+		struct type_traits<components::basic_ikernelbuf<Base>> {
+			static constexpr const char*
+			short_name() { return "ikernelbuf"; }
+			typedef components::buffer_category category;
+		};
+
+		template<class Base>
+		struct type_traits<components::basic_okernelbuf<Base>> {
+			static constexpr const char*
+			short_name() { return "okernelbuf"; }
+			typedef components::buffer_category category;
+		};
+	
+	}
+
 	typedef components::basic_kstream<char> kstream;
 
 }
+#endif // FACTORY_EXT_KERNELBUF_HH

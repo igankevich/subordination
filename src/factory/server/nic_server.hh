@@ -1,6 +1,8 @@
 #ifndef SERVER_NIC_SERVER_HH
 #define SERVER_NIC_SERVER_HH
 
+#include "intro.hh"
+
 namespace factory {
 
 	namespace components {
@@ -624,18 +626,23 @@ namespace factory {
 
 	namespace stdx {
 
-		struct server_category {};
-
 		template<class T, class Socket>
 		struct type_traits<components::NIC_server<T,Socket>> {
 			static constexpr const char*
 			short_name() { return "nic_server"; }
-			typedef server_category category;
+			typedef components::server_category category;
 		};
 
-		template<>
-		struct disable_log_category<server_category>:
-		public std::integral_constant<bool, true> {};
+		template<class T, class Socket, class Kernels>
+		struct type_traits<components::Remote_Rserver<T, Socket, Kernels>> {
+			static constexpr const char*
+			short_name() { return "nic_rserver"; }
+			typedef components::server_category category;
+		};
+
+//		template<>
+//		struct disable_log_category<server_category>:
+//		public std::integral_constant<bool, true> {};
 	
 	}
 

@@ -1,6 +1,8 @@
 #ifndef FACTORY_SERVER_CPU_SERVER_HH
 #define FACTORY_SERVER_CPU_SERVER_HH
 
+#include "intro.hh"
+
 namespace factory {
 
 	namespace components {
@@ -51,6 +53,17 @@ namespace factory {
 			
 		};
 
+	}
+
+	namespace stdx {
+
+		template<class T>
+		struct type_traits<components::CPU_server<T>> {
+			static constexpr const char*
+			short_name() { return "cpu_server"; }
+			typedef components::server_category category;
+		};
+	
 	}
 
 }

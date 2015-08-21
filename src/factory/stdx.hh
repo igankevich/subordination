@@ -573,10 +573,10 @@ namespace factory {
 		inline auto
 		field_iter(It it)
 		-> field_iterator<It, No,
-		typename std::remove_const<typename std::remove_reference<decltype(std::get<No>(*it))>::type>::type>
+		typename std::decay<decltype(std::get<No>(*it))>::type>
 		{
 			return field_iterator<It, No,
-			typename std::remove_const<typename std::remove_reference<decltype(std::get<No>(*it))>::type>::type
+			typename std::decay<decltype(std::get<No>(*it))>::type
 			>(it);
 		}
 
@@ -584,8 +584,8 @@ namespace factory {
 
 		template<class T>
 		struct type_traits {
-			static constexpr
-			const char* short_name() noexcept {
+			static constexpr const char*
+			short_name() noexcept {
 				return typeid(T).name();
 			}
 			typedef no_category category;
@@ -611,7 +611,10 @@ namespace factory {
 		template<class Tp>
 		struct basic_log {
 
-			basic_log() { write_header(_out); }
+			basic_log() {
+				write_header(std::clog,
+				stdx::type_traits<Tp>::short_name());
+			}
 
 			basic_log(const basic_log&) = delete;
 			basic_log& operator=(const basic_log&) = delete;
@@ -619,39 +622,32 @@ namespace factory {
 			template<class T>
 			basic_log<Tp>&
 			operator<<(const T& rhs) {
-				this->_out << rhs;
+				std::clog << rhs;
 				return *this;
 			}
 		
 			basic_log<Tp>&
-			operator<<(std::ostream& (*pf)(std::ostream&)) {
-				this->_out << pf;
+			operator<<(std::ostream& (*rhs)(std::ostream&)) {
+				std::clog << rhs;
 				return *this;
 			}
 		
-		protected:
+		private:
 
 			static void
-			write_header(std::ostream& out) {
-				const char* func = stdx::type_traits<Tp>::short_name();
+			write_header(std::ostream& out, const char* func) {
 				if (func) {
-					out << func << SEP;
+					out << func << ' ';
 				}
 			}
 
-			std::ostream& _out = std::clog;
-			
-			static constexpr const char SEP = ' ';
 		};
 		#endif
 	
 		template<class T>
 		struct log: public 
 		std::conditional<disable_log_category<typename type_traits<T>::category>::value,
-		no_log,
-		basic_log<T>
-		>::type
-		{};
+		no_log, basic_log<T>>::type {};
 
 	}
 

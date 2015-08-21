@@ -1,3 +1,8 @@
+#ifndef FACTORY_EXT_SHMEMBUF_HH
+#define FACTORY_EXT_SHMEMBUF_HH
+
+#include "intro.hh"
+
 namespace factory {
 
 	namespace components {
@@ -212,4 +217,16 @@ namespace factory {
 
 	}
 
+	namespace stdx {
+
+		template<class Ch, class Tr>
+		struct type_traits<components::basic_shmembuf<Ch,Tr>> {
+			static constexpr const char*
+			short_name() { return "shmembuf"; }
+			typedef components::buffer_category category;
+		};
+	
+	}
+
 }
+#endif // FACTORY_EXT_SHMEMBUF_HH

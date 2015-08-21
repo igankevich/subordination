@@ -1,3 +1,8 @@
+#ifndef FACTORY_EXT_FDBUF_HH
+#define FACTORY_EXT_FDBUF_HH
+
+#include "intro.hh"
+
 namespace factory {
 
 	namespace components {
@@ -250,8 +255,20 @@ namespace factory {
 
 	}
 
+	namespace stdx {
+
+		template<class T, class Fd>
+		struct type_traits<components::basic_fdbuf<T,Fd>> {
+			static constexpr const char*
+			short_name() { return "fdbuf"; }
+			typedef components::buffer_category category;
+		};
+	
+	}
+
 	typedef components::basic_fdbuf<char> fdbuf;
 	typedef components::basic_ifdstream<char> ifdstream;
 	typedef components::basic_ofdstream<char> ofdstream;
 
 }
+#endif // FACTORY_EXT_FDBUF_HH
