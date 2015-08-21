@@ -15,6 +15,17 @@
 
 namespace factory {
 
+	namespace bits {
+
+		template<class ... Args>
+		int safe_socket(Args&& ... args) {
+			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
+			int sock = ::socket(std::forward<Args>(args)...);
+			fcntl(sock, F_SETFD, O_CLOEXEC);
+			return sock;
+		}
+	}
+
 	namespace unix {
 
 		struct fd_flag;

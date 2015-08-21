@@ -71,6 +71,14 @@ namespace factory {
 			static inline void
 			handle(T& obj, E ev) { obj->operator()(ev); }
 		};
+
+		stdx::spin_mutex __forkmutex;
+
+		int
+		safe_fork() {
+			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
+			return ::fork();
+		}
 	
 	}
 

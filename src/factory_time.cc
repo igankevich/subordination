@@ -1,4 +1,5 @@
 #include <libfactory.cc>
+#include <sys/resource.h>
 
 using namespace factory;
 
@@ -22,6 +23,9 @@ int main(int argc, char* argv[]) {
 	::syslog(LOG_NOTICE, "[syslog] Hello world!");
 	std::cerr << "[cerr] Hello world!" << std::endl;
 	sleep(3);
+	struct ::rlimit limit;
+	::getrlimit(RLIMIT_NOFILE, &limit);
+	std::cout << "Max no. of fds: " << limit.rlim_max << std::endl;
 //	throw Error("abc", __FILE__, __LINE__, __func__);
 	return 0;
 }
