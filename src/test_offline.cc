@@ -15,6 +15,8 @@ std::atomic<uint32_t> shutdown_counter(0);
 
 struct Test_socket: public Mobile<Test_socket> {
 
+	typedef stdx::log<Test_socket> this_log;
+
 	Test_socket(): _data() {}
 	explicit Test_socket(std::vector<Datum> x): _data(x) {}
 
@@ -59,6 +61,8 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 
+	typedef stdx::log<Sender> this_log;
+
 	explicit Sender(uint32_t n):
 		_vector_size(n),
 		_input(_vector_size) {}
@@ -67,8 +71,8 @@ struct Sender: public Identifiable<Kernel> {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			upstream(remote_server(), new Test_socket(_input));
 			++shutdown_counter;
-			Logger<Level::COMPONENT>() << " Sender id = " << this->id() << std::endl;
-			Logger<Level::COMPONENT>() << " kernel count2 = " << shutdown_counter << std::endl;
+			this_log() << " Sender id = " << this->id() << std::endl;
+			this_log() << " kernel count2 = " << shutdown_counter << std::endl;
 		}
 	}
 
@@ -81,7 +85,7 @@ struct Sender: public Identifiable<Kernel> {
 			throw std::runtime_error(msg.str());
 		}
 
-		Logger<Level::COMPONENT>() << "Sender::kernel count = " << _num_returned+1 << std::endl;
+		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -95,13 +99,15 @@ struct Sender: public Identifiable<Kernel> {
 
 struct Main: public Kernel {
 
+	typedef stdx::log<Main> this_log;
+
 	void act() {
 		for (uint32_t i=1; i<=NUM_SIZES; ++i)
 			upstream(the_server(), new Sender(i));
 	}
 
 	void react(Kernel*) {
-		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
+		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_SIZES) {
 			commit(the_server());
 		}

@@ -28,6 +28,8 @@ namespace factory {
 			typedef std::function<void(K*)> Callback;
 			typedef K kernel_type;
 			typedef Type<K> this_type;
+
+			typedef stdx::log<Type> this_log;
 	
 			constexpr Type():
 				_id(0),
@@ -65,7 +67,7 @@ namespace factory {
 					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 				out << type->id();
-				Logger<Level::TEST>() << "Type::write_object: kernel=" << kernel << std::endl;
+				this_log() << "Type::write_object: kernel=" << kernel << std::endl;
 				kernel.write(out);
 			}
 

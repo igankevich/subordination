@@ -53,6 +53,7 @@ namespace factory {
 		} __factory_auto_check_endiannes;
 
 		struct Auto_set_terminate_handler {
+			typedef stdx::log<Auto_set_terminate_handler> this_log;
 			Auto_set_terminate_handler() {
 				Auto_set_terminate_handler::_old_handler
 					= std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
@@ -68,15 +69,15 @@ namespace factory {
 					try {
 						std::rethrow_exception(ptr);
 					} catch (Error& err) {
-						Logger<Level::ERR>() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						this_log() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
 						print_backtrace = false;
 					} catch (std::exception& err) {
-						Logger<Level::ERR>() << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						this_log() << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
 					} catch (...) {
-						Logger<Level::ERR>() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
+						this_log() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
 					}
 				} else {
-					Logger<Level::ERR>() << String_message("terminate called without an active exception",
+					this_log() << String_message("terminate called without an active exception",
 						__FILE__, __LINE__, __func__) << std::endl;
 				}
 				if (print_backtrace) {
@@ -178,16 +179,17 @@ namespace factory {
 namespace factory {
 	namespace components {
 		struct All_factories {
+			typedef stdx::log<All_factories> this_log;
 			typedef Resident F;
 			All_factories() {
 				init_signal_handlers();
 			}
 			void add(F* f) {
 				this->_factories.push_back(f);
-				Logger<Level::SERVER>() << "add factory: size=" << _factories.size() << std::endl;
+				this_log() << "add factory: size=" << _factories.size() << std::endl;
 			}
 			void stop_all(bool now=false) {
-				Logger<Level::SERVER>() << "stop all: size=" << _factories.size() << std::endl;
+				this_log() << "stop all: size=" << _factories.size() << std::endl;
 				std::for_each(_factories.begin(), _factories.end(),
 					[now] (F* rhs) { now ? rhs->stop_now() : rhs->stop(); });
 			}
@@ -402,13 +404,15 @@ namespace factory {
 
 	namespace components {
 		Id factory_start_id() {
+			struct factory_start_id_t{};
+			typedef stdx::log<factory_start_id_t> this_log;
 			constexpr static const Id DEFAULT_START_ID = 1000;
 			Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
 			if (i == ROOT_ID) {
 				i = DEFAULT_START_ID;
-				Logger<Level::COMPONENT>() << "Bad START_ID value: " << ROOT_ID << std::endl;
+				this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;
 			}
-			Logger<Level::COMPONENT>() << "START_ID = " << i << std::endl;
+			this_log() << "START_ID = " << i << std::endl;
 			return i;
 		}
 

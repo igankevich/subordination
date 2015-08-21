@@ -142,10 +142,12 @@ Time prog_start = current_time_nano();
 
 struct Compare_distance {
 
+	typedef stdx::log<Compare_distance> this_log;
+
 	explicit Compare_distance(unix::endpoint from): _from(from) {}
 
 	bool operator()(const std::pair<const unix::endpoint,Peer>& lhs, const std::pair<const unix::endpoint,Peer>& rhs) const {
-//		Logger<Level::DISCOVERY>() << "hoho" << std::endl;
+//		this_log() << "hoho" << std::endl;
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
 //			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
@@ -192,6 +194,7 @@ struct Peers {
 
 	typedef std::map<unix::endpoint, Peer> Map;
 	typedef std::set<unix::endpoint> Set;
+	typedef stdx::log<Peers> this_log;
 
 	explicit Peers(unix::endpoint addr):
 		_peers(),
@@ -240,7 +243,7 @@ struct Peers {
 	}
 
 	void revert_principal(unix::endpoint old_princ) {
-		Logger<Level::DISCOVERY>() << "Reverting principal to " << old_princ << std::endl;
+		this_log() << "Reverting principal to " << old_princ << std::endl;
 		_peers.erase(_principal);
 		if (old_princ) {
 			add_peer(old_princ);
@@ -268,9 +271,9 @@ struct Peers {
 	}
 
 	void add_subordinate(unix::endpoint addr) {
-		Logger<Level::DISCOVERY>() << "Adding subordinate = " << addr << std::endl;
+		this_log() << "Adding subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) == 0) {
-			Logger<Level::GRAPH>()
+			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
@@ -287,9 +290,9 @@ struct Peers {
 	}
 
 	void remove_subordinate(unix::endpoint addr) {
-		Logger<Level::DISCOVERY>() << "Removing subordinate = " << addr << std::endl;
+		this_log() << "Removing subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) > 0) {
-			Logger<Level::GRAPH>()
+			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ')'
@@ -430,6 +433,8 @@ struct Ping: public Mobile<Ping> {
 
 struct Scanner: public Identifiable<Kernel> {
 
+	typedef stdx::log<Scanner> this_log;
+
 	explicit Scanner(unix::endpoint addr, unix::endpoint st_addr):
 		_source(addr),
 		_oldaddr(st_addr),
@@ -440,7 +445,7 @@ struct Scanner: public Identifiable<Kernel> {
 
 	void act() {
 		if (_servers.empty()) {
-//			Logger<Level::DISCOVERY>() << "There are no servers to scan." << std::endl;
+//			this_log() << "There are no servers to scan." << std::endl;
 			commit(the_server(), Result::USER_ERROR);
 		} else {
 			if (!_scan_addr) {
@@ -510,7 +515,7 @@ private:
 		Ping* ping = new Ping;
 		ping->to(addr);
 		ping->parent(this);
-		Logger<Level::DISCOVERY>() << "scanning " << ping->to() << std::endl;
+		this_log() << "scanning " << ping->to() << std::endl;
 		remote_server()->send(ping);
 	}
 
@@ -524,6 +529,8 @@ private:
 };
 
 struct Discoverer: public Identifiable<Kernel> {
+
+	typedef stdx::log<Discoverer> this_log;
 
 	explicit Discoverer(const Peers& p): _peers(p) {}
 
@@ -575,6 +582,8 @@ private:
 };
 
 struct Negotiator: public Mobile<Negotiator> {
+
+	typedef stdx::log<Negotiator> this_log;
 
 	Negotiator():
 		_old_principal(), _new_principal() {}
@@ -636,6 +645,8 @@ private:
 
 struct Master_negotiator: public Identifiable<Kernel> {
 
+	typedef stdx::log<Master_negotiator> this_log;
+
 	Master_negotiator(unix::endpoint old, unix::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 	
@@ -647,7 +658,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 	}
 
 	void react(Kernel* k) {
-		Logger<Level::DISCOVERY>()
+		this_log()
 			<< "Negotiator returned from " << k->from()
 			<< " with result=" << k->result() << std::endl; 
 //		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
@@ -683,6 +694,8 @@ private:
 
 struct Master_discoverer: public Identifiable<Kernel> {
 
+	typedef stdx::log<Master_discoverer> this_log;
+
 	Master_discoverer(const Master_discoverer&) = delete;
 	Master_discoverer& operator=(const Master_discoverer&) = delete;
 
@@ -707,14 +720,14 @@ struct Master_discoverer: public Identifiable<Kernel> {
 //		}
 		exiter = std::thread([this] () { 
 			std::this_thread::sleep_for(std::chrono::seconds(10));
-			Logger<Level::DISCOVERY>() << "Hail the new king! addr="
+			this_log() << "Hail the new king! addr="
 				<< _peers.this_addr()
 				<< ",peers=" << this->_peers
 				<< ",npeers=" << all_peers.size() << std::endl;
 			_peers.debug();
 			__factory.stop();
 		});
-		Logger<Level::GRAPH>()
+		this_log()
 			<< "startTime.push("
 			<< current_time_nano() - prog_start
 			<< "*1e-6); // "
@@ -730,13 +743,13 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			if (k->result() != Result::SUCCESS) {
 //				Time wait_time = unix::this_process::getenv("WAIT_TIME", Time(60000000000UL));
 //				if (current_time_nano() - prog_start > wait_time) {
-//					Logger<Level::DISCOVERY>() << "Hail the new king "
+//					this_log() << "Hail the new king "
 //						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 //					__factory.stop();
 //				}
 				run_scan(_scanner->discovered_node());
 			} else {
-				Logger<Level::DISCOVERY>() << "Change 1" << std::endl;
+				this_log() << "Change 1" << std::endl;
 				change_principal(_scanner->discovered_node());
 				run_discovery();
 				_scanner = nullptr;
@@ -747,7 +760,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
 				_peers.update_peers(dsc->peers());
 				_peers.debug();
-				Logger<Level::DISCOVERY>() << "Change 2" << std::endl;
+				this_log() << "Change 2" << std::endl;
 				change_principal(_peers.best_peer());
 			} else {
 				run_discovery();
@@ -786,7 +799,7 @@ private:
 	}
 	
 	void run_discovery() {
-		Logger<Level::DISCOVERY>() << "Discovering..." << std::endl;
+		this_log() << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 		upstream(the_server(), _discoverer = new Discoverer(_peers));
 	}
@@ -798,7 +811,7 @@ private:
 	void change_principal(unix::endpoint new_princ) {
 		unix::endpoint old_princ = _peers.principal();
 		if (!_negotiator && _peers.change_principal(new_princ)) {
-			Logger<Level::DISCOVERY>() << "Changing principal to " << new_princ << std::endl;
+			this_log() << "Changing principal to " << new_princ << std::endl;
 			_peers.debug();
 			run_negotiator(old_princ, new_princ);
 		}
@@ -847,7 +860,10 @@ uint32_t num_peers() {
 
 bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
 
+struct test_discovery {};
+
 void generate_all_peers(uint32_t npeers, std::string base_ip) {
+	typedef stdx::log<test_discovery> this_log;
 	all_peers.clear();
 	uint32_t start = unix::endpoint(base_ip.c_str(), 0).address();
 	uint32_t end = start + npeers;
@@ -858,7 +874,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 	for (unix::endpoint addr : all_peers) {
 		auto it = std::min_element(all_peers.begin(), all_peers.end(),
 			Compare_distance(addr));
-		Logger<Level::DISCOVERY>()
+		this_log()
 			<< "Best link: " << addr << " -> " << *it << std::endl;
 	}
 //	uint32_t p = 1;
@@ -868,7 +884,7 @@ void generate_all_peers(uint32_t npeers, std::string base_ip) {
 //		uint32_t lvl = log(pos, p);
 //		uint32_t rem = pos - (1 << lvl);
 //		auto dist = addr_distance(all_peers[7], addr);
-//		Logger<Level::DISCOVERY>()
+//		this_log()
 //			<< "Netmask = "
 //			<< addr << ", "
 //			<< unix::endpoint(my_netmask(), 0) << ", "
@@ -900,8 +916,9 @@ void write_cache_all() {
 }
 
 void write_graph_nodes() {
+	typedef stdx::log<test_discovery> this_log;
 	for (unix::endpoint addr : all_peers) {
-		Logger<Level::GRAPH>()
+		this_log()
 			<< "log[logline++] = {"
 			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 			<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
@@ -912,6 +929,7 @@ void write_graph_nodes() {
 
 
 struct App {
+	typedef stdx::log<test_discovery> this_log;
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 2) {
@@ -937,7 +955,7 @@ struct App {
 					start_id += 1000;
 				}
 
-				Logger<Level::DISCOVERY>() << "Forked " << processes << std::endl;
+				this_log() << "Forked " << processes << std::endl;
 				
 				retval = processes.wait();
 
@@ -955,7 +973,7 @@ struct App {
 				else if (arg == "--num-peers") { in >> npeers; }
 				else if (arg == "--base-ip")   { in >> base_ip; }
 			});
-			Logger<Level::DISCOVERY>() << "Bind address " << bind_addr << std::endl;
+			this_log() << "Bind address " << bind_addr << std::endl;
 			generate_all_peers(npeers, base_ip);
 			if (unix::endpoint(base_ip,0).address() == bind_addr.address()) {
 				write_graph_nodes();

@@ -13,6 +13,7 @@ namespace factory {
 			typedef std::ios_base::openmode openmode;
 			typedef std::ios_base::seekdir seekdir;
 			typedef Fd fd_type;
+			typedef stdx::log<basic_fdbuf> this_log;
 
 			static fd_type&& badfd() {
 //				return std::move(std::is_same<fd_type,int>::value ? fd_type(-1) : fd_type());
@@ -50,7 +51,7 @@ namespace factory {
 //				if (this->eback() == this->gptr()) {
 //					char_type* base = &this->_gbuf.front();
 //					ssize_t n = this->_fd.read(base, this->_gbuf.size());
-//					Logger<Level::IO>() << "Reading fd=" << _fd << ",n=" << n << std::endl;
+//					this_log() << "Reading fd=" << _fd << ",n=" << n << std::endl;
 //					if (n <= 0) {
 //						return traits_type::eof();
 //					}
@@ -97,14 +98,14 @@ namespace factory {
 			}
 
 			int sync() {
-				Logger<Level::IO>() << "Sync" << std::endl;
+				this_log() << "Sync" << std::endl;
 				if (this->pptr() == this->pbase()) return 0;
 				ssize_t n = this->_fd.write(this->pbase(), this->pptr() - this->pbase());
 				if (n <= 0) {
 					return -1;
 				}
 				this->pbump(-n);
-				Logger<Level::IO>() << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
+				this_log() << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
 				return this->pptr() == this->pbase() ? 0 : -1;
 			}
 
@@ -112,11 +113,11 @@ namespace factory {
 				openmode which = std::ios_base::in | std::ios_base::out)
 			{
 				if (way == std::ios_base::beg) {
-					Logger<Level::IO>() << "seekoff way=beg,off=" << off << std::endl;
+					this_log() << "seekoff way=beg,off=" << off << std::endl;
 					return this->seekpos(off, which);
 				}
 				if (way == std::ios_base::cur) {
-					Logger<Level::IO>() << "seekoff way=cur,off=" << off << std::endl;
+					this_log() << "seekoff way=cur,off=" << off << std::endl;
 					pos_type pos = which & std::ios_base::in
 						? static_cast<pos_type>(this->gptr() - this->eback())
 						: static_cast<pos_type>(this->pptr() - this->pbase());
@@ -124,7 +125,7 @@ namespace factory {
 						: this->seekpos(pos + off, which);
 				}
 				if (way == std::ios_base::end) {
-					Logger<Level::IO>() << "seekoff way=end,off=" << off << std::endl;
+					this_log() << "seekoff way=end,off=" << off << std::endl;
 					pos_type pos = which & std::ios_base::in
 						? static_cast<pos_type>(this->egptr() - this->eback())
 						: static_cast<pos_type>(this->epptr() - this->pbase());
@@ -136,7 +137,7 @@ namespace factory {
 			pos_type seekpos(pos_type pos,
 				openmode mode = std::ios_base::in | std::ios_base::out)
 			{
-				Logger<Level::IO>() << "seekpos " << pos << std::endl;
+				this_log() << "seekpos " << pos << std::endl;
 				if (mode & std::ios_base::in) {
 					std::size_t size = this->egptr() - this->eback();
 					if (pos >= 0 && pos <= size) {
@@ -156,7 +157,7 @@ namespace factory {
 					}
 //					// enlarge buffer
 //					if (pos > size) {
-//						Logger<Level::IO>() << "GROW: pos=" << pos << std::endl;
+//						this_log() << "GROW: pos=" << pos << std::endl;
 //						this->growpbuf(pos);
 //						this->pbump(this->epptr() - this->pptr());
 //					}
@@ -191,7 +192,7 @@ namespace factory {
 				std::ptrdiff_t off = this->gptr() - this->eback();
 				std::ptrdiff_t n = this->egptr() - this->eback();
 				this->_gbuf.resize(new_size);
-				Logger<Level::IO>() << "Resize gbuf size="
+				this_log() << "Resize gbuf size="
 					<< this->_gbuf.size() << std::endl;
 				char_type* base = &this->_gbuf.front();
 				this->setg(base, base + off, base + n);
@@ -204,7 +205,7 @@ namespace factory {
 				std::ptrdiff_t off = this->pptr() - this->pbase();
 				std::ptrdiff_t n = this->epptr() - this->pbase();
 				this->_pbuf.resize(new_size);
-				Logger<Level::IO>() << "Resize pbuf size=" << new_size << std::endl;
+				this_log() << "Resize pbuf size=" << new_size << std::endl;
 				char_type* base = &this->_pbuf.front();
 				this->setp(base, base + new_size);
 				this->pbump(off);

@@ -179,7 +179,7 @@ namespace factory {
 //			}
 //
 //			void wait_impl() {
-//				Logger<Level::SERVER>() << "Iserver::wait()" << std::endl;
+//				this_log() << "Iserver::wait()" << std::endl;
 //				std::for_each(
 //					_upstream.begin(),
 //					_upstream.end(),
@@ -187,7 +187,7 @@ namespace factory {
 //			}
 //		
 //			void stop_impl() {
-//				Logger<Level::SERVER>() << "Iserver::stop()" << std::endl;
+//				this_log() << "Iserver::stop()" << std::endl;
 //				std::for_each(
 //					_upstream.begin(),
 //					_upstream.end(),
@@ -200,7 +200,7 @@ namespace factory {
 //			}
 //			
 //			void start() {
-//				Logger<Level::SERVER>() << "Iserver::start()" << std::endl;
+//				this_log() << "Iserver::start()" << std::endl;
 //				std::for_each(
 //					_upstream.begin(),
 //					_upstream.end(),
@@ -252,19 +252,19 @@ namespace factory {
 //			}
 //
 //			void wait_impl() {
-//				Logger<Level::SERVER>() << "Rserver::wait()" << std::endl;
+//				this_log() << "Rserver::wait()" << std::endl;
 //				if (_thread.joinable()) {
 //					_thread.join();
 //				}
 //			}
 //
 //			void stop_impl() {
-//				Logger<Level::SERVER>() << "Rserver::stop_impl()" << std::endl;
+//				this_log() << "Rserver::stop_impl()" << std::endl;
 //				_semaphore.notify_all();
 //			}
 //
 //			void start() {
-//				Logger<Level::SERVER>() << "Rserver::start()" << std::endl;
+//				this_log() << "Rserver::start()" << std::endl;
 //				_thread = std::thread([this] { this->serve(); });
 //			}
 //
@@ -369,19 +369,19 @@ namespace factory {
 //			}
 //
 //			void wait_impl() {
-//				Logger<Level::SERVER>() << "Tserver::wait()" << std::endl;
+//				this_log() << "Tserver::wait()" << std::endl;
 //				if (_thread.joinable()) {
 //					_thread.join();
 //				}
 //			}
 //
 //			void stop_impl() {
-//				Logger<Level::SERVER>() << "Tserver::stop_impl()" << std::endl;
+//				this_log() << "Tserver::stop_impl()" << std::endl;
 //				_semaphore.notify_all();
 //			}
 //
 //			void start() {
-//				Logger<Level::SERVER>() << "Tserver::start()" << std::endl;
+//				this_log() << "Tserver::start()" << std::endl;
 //				_thread = std::thread([this] { this->serve(); });
 //			}
 //
@@ -440,9 +440,10 @@ namespace factory {
 
 		template<template<class X> class Mobile, class Type>
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
+			typedef stdx::log<Shutdown> this_log;
 			explicit Shutdown(bool f=false): force(f) {}
 			void act() {
-				Logger<Level::COMPONENT>() << "broadcasting shutdown message" << std::endl;
+				this_log() << "broadcasting shutdown message" << std::endl;
 				bool f = this->force;
 				delete this;
 				stop_all_factories(f);

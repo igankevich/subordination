@@ -17,6 +17,7 @@ namespace factory {
 			typedef typename T::app_type app_type;
 			typedef Kernels pool_type;
 			typedef Server<T> base_server;
+			typedef stdx::log<Remote_Rserver> this_log;
 
 			Remote_Rserver(socket_type&& sock, unix::endpoint vaddr):
 				_vaddr(vaddr),
@@ -41,14 +42,14 @@ namespace factory {
 				_link(rhs._link),
 				_dirty(rhs._dirty)
 			{
-				Logger<Level::SERVER>() << "fd after move ctr " << _kernelbuf.fd() << std::endl;
-				Logger<Level::SERVER>() << "root after move ctr " << this->root()
+				this_log() << "fd after move ctr " << _kernelbuf.fd() << std::endl;
+				this_log() << "root after move ctr " << this->root()
 					<< ",this=" << this << std::endl;
 			}
 
 			virtual
 			~Remote_Rserver() {
-//				Logger<Level::SERVER>() << "deleting server " << *this << std::endl;
+//				this_log() << "deleting server " << *this << std::endl;
 				while (!_buffer.empty()) {
 					delete _buffer.front();
 					_buffer.pop_front();
@@ -59,7 +60,7 @@ namespace factory {
 
 				this->read_kernels();
 
-				Logger<Level::HANDLER>()
+				this_log()
 					<< "Kernels left: "
 					<< _buffer.size()
 					<< std::endl;
@@ -72,25 +73,25 @@ namespace factory {
 			}
 
 			void send(kernel_type* kernel) {
-				Logger<Level::HANDLER>() << "Remote_Rserver::send()" << std::endl;
+				this_log() << "Remote_Rserver::send()" << std::endl;
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
-					Logger<Level::HANDLER>() << "poll send error: tellp=" << _stream.tellp() << std::endl;
+					this_log() << "poll send error: tellp=" << _stream.tellp() << std::endl;
 				}
 				bool erase_kernel = true;
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(factory_generate_id());
 					erase_kernel = false;
-					Logger<Level::HANDLER>() << "Kernel generate id = " << kernel->id() << std::endl;
+					this_log() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 					erase_kernel = false;
-					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
+					this_log() << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				this->write_kernel(*kernel);
 				this->_dirty = true;
 				if (erase_kernel && !kernel->moves_everywhere()) {
-					Logger<Level::COMPONENT>() << "Delete kernel " << *kernel << std::endl;
+					this_log() << "Delete kernel " << *kernel << std::endl;
 					delete kernel;
 				}
 			}
@@ -115,8 +116,8 @@ namespace factory {
 			void handle_event(unix::poll_event& event) {
 				bool overflow = false;
 				if (event.in()) {
-					Logger<Level::COMPONENT>() << "recv rdstate="
-						<< debug_stream(_stream) << ",event=" << event << std::endl;
+					this_log() << "recv rdstate="
+						<< bits::debug_stream(_stream) << ",event=" << event << std::endl;
 					while (this->_stream) {
 						try {
 							this->read_and_send_kernel();
@@ -128,11 +129,11 @@ namespace factory {
 					this->_stream.clear();
 				}
 				if (event.out() && !event.hup()) {
-					Logger<Level::HANDLER>() << "Send rdstate=" << debug_stream(this->_stream) << std::endl;
+					this_log() << "Send rdstate=" << bits::debug_stream(this->_stream) << std::endl;
 					this->_stream.flush();
 					this->socket().flush();
 					if (this->_stream) {
-						Logger<Level::COMPONENT>() << "Flushed." << std::endl;
+						this_log() << "Flushed." << std::endl;
 					}
 					if (!this->_stream || !this->socket().empty()) {
 						overflow = true;
@@ -171,7 +172,7 @@ namespace factory {
 					<< rhs.vaddr() << ",sock="
 					<< rhs.socket() << ",kernels="
 					<< rhs._buffer.size() << ",str="
-					<< debug_stream(rhs._stream) << '}';
+					<< bits::debug_stream(rhs._stream) << '}';
 			}
 
 		private:
@@ -186,9 +187,9 @@ namespace factory {
 					Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
 						k->from(_vaddr);
 						k->setapp(app);
-						Logger<Level::COMPONENT>()
+						this_log()
 							<< "recv kernel=" << *k
-							<< ",rdstate=" << debug_stream(this->_stream)
+							<< ",rdstate=" << bits::debug_stream(this->_stream)
 							<< std::endl;
 						if (k->moves_downstream()) {
 							this->clear_kernel_buffer(k);
@@ -200,7 +201,7 @@ namespace factory {
 			}
 
 			void return_kernel(kernel_type* k) {
-				Logger<Level::HANDLER>()
+				this_log()
 					<< "No principal found for "
 					<< *k << std::endl;
 				k->principal(k->parent());
@@ -219,10 +220,10 @@ namespace factory {
 				Type<kernel_type>::write_object(kernel, this->_stream);
 				pos_type new_pos = this->_stream.tellp();
 				this->_stream << end_packet;
-				Logger<Level::COMPONENT>() << "send bytes="
+				this_log() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="
-					<< debug_stream(this->_stream)
+					<< bits::debug_stream(this->_stream)
 					<< ",krnl=" << kernel
 					<< std::endl;
 			}
@@ -239,12 +240,12 @@ namespace factory {
 					return *rhs == *k;
 				});
 				if (pos != _buffer.end()) {
-					Logger<Level::COMPONENT>() << "Kernel erased " << k->id() << std::endl;
+					this_log() << "Kernel erased " << k->id() << std::endl;
 					delete *pos;
 					this->_buffer.erase(pos);
-					Logger<Level::COMPONENT>() << "Buffer size = " << _buffer.size() << std::endl;
+					this_log() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {
-					Logger<Level::COMPONENT>() << "Kernel not found " << k->id() << std::endl;
+					this_log() << "Kernel not found " << k->id() << std::endl;
 				}
 			}
 			
@@ -286,7 +287,7 @@ namespace factory {
 
 			typedef server_type* handler_type;
 			typedef unix::event_poller<handler_type> poller_type;
-			typedef Logger<Level::SERVER, NIC_server> this_log;
+			typedef stdx::log<NIC_server> this_log;
 
 			NIC_server(NIC_server&& rhs) noexcept:
 			base_server(std::move(rhs))
@@ -372,7 +373,7 @@ namespace factory {
 				// remove from the mapping if it is not linked
 				// with other subordinate server
 				// TODO: occasional ``Bad file descriptor''
-//				Logger<Level::SERVER>() << "Removing server " << *ptr << std::endl;
+//				this_log() << "Removing server " << *ptr << std::endl;
 				if (!ptr->link()) {
 					this->_upstream.erase(ptr->vaddr());
 				}
@@ -384,24 +385,24 @@ namespace factory {
 				socket_type sock;
 				this->_socket.accept(sock, addr);
 				unix::endpoint vaddr = virtual_addr(addr);
-				Logger<Level::SERVER>()
+				this_log()
 					<< "after accept: socket="
 					<< sock << std::endl;
 				auto res = this->_upstream.find(vaddr);
 				if (res == this->_upstream.end()) {
 					this->add_connected_server(std::move(sock), vaddr, unix::poll_event::In);
-					Logger<Level::SERVER>()
+					this_log()
 						<< "connected peer "
 						<< vaddr << std::endl;
 				} else {
 					server_type& s = res->second;
-					Logger<Level::SERVER>()
+					this_log()
 						<< "ports: "
 						<< addr.port() << ' '
 						<< s.bind_addr().port()
 						<< std::endl;
 					if (addr.port() < s.bind_addr().port()) {
-						Logger<Level::SERVER>()
+						this_log()
 							<< "not replacing peer " << s
 							<< std::endl;
 						// create temporary subordinate server
@@ -411,7 +412,7 @@ namespace factory {
 						this->link_server(&s, new_s, unix::poll_event{new_s->fd(), unix::poll_event::In});
 						debug("not replacing upstream");
 					} else {
-						Logger<Level::SERVER> log;
+						this_log log;
 						log << "replacing peer " << s;
 						poller().disable(s.fd());
 						server_type new_s(std::move(s));
@@ -427,7 +428,7 @@ namespace factory {
 						debug("replacing upstream");
 					}
 				}
-				Logger<Level::SERVER>()
+				this_log()
 					<< "after add: socket="
 					<< sock << std::endl;
 			}
@@ -520,7 +521,7 @@ namespace factory {
 				}
 
 				if (k->moves_everywhere()) {
-					Logger<Level::SERVER>() << "broadcast kernel" << std::endl;
+					this_log() << "broadcast kernel" << std::endl;
 					for (auto& pair : _upstream) {
 						pair.second.send(k);
 					}
@@ -568,7 +569,7 @@ namespace factory {
 			};
 
 			void debug(const char* msg = "") {
-				Logger<Level::SERVER>()
+				this_log()
 					<< msg << " upstream " << print_values(this->_upstream) << std::endl
 					<< msg << " events " << poller() << std::endl;
 			}
@@ -590,7 +591,7 @@ namespace factory {
 				poller().emplace(
 					unix::poll_event{fd, events, revents},
 					handler_type(&result.first->second));
-				Logger<Level::SERVER>() << "added server " << result.first->second << std::endl;
+				this_log() << "added server " << result.first->second << std::endl;
 				return &result.first->second;
 			}
 
@@ -623,13 +624,18 @@ namespace factory {
 
 	namespace stdx {
 
+		struct server_category {};
+
 		template<class T, class Socket>
 		struct type_traits<components::NIC_server<T,Socket>> {
-			static constexpr
-			const char* short_name() noexcept {
-				return "nic_server";
-			}
+			static constexpr const char*
+			short_name() { return "nic_server"; }
+			typedef server_category category;
 		};
+
+		template<>
+		struct disable_log_category<server_category>:
+		public std::integral_constant<bool, true> {};
 	
 	}
 

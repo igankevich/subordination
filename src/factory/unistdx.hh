@@ -341,6 +341,7 @@ namespace factory {
 			typedef T* iterator;
 			typedef const T* const_iterator;
 			typedef std::string path_type;
+			typedef stdx::log<shared_mem> this_log;
 
 			shared_mem(path_type&& name, size_type sz, mode_type mode, proj_id_type num = DEFAULT_PROJ_ID):
 				_path(this->make_path(std::forward<path_type>(name))),
@@ -349,7 +350,7 @@ namespace factory {
 				_addr(this->attach()), _owner(true)
 			{
 				this->fillshmem();
-//				Logger<Level::SHMEM>()
+//				this_log()
 //					<< "shared_mem server: "
 //					<< "shmem=" << *this
 //					<< std::endl;
@@ -364,7 +365,7 @@ namespace factory {
 				_owner(false)
 			{
 				this->_size = this->load_size();
-//				Logger<Level::SHMEM>()
+//				this_log()
 //					<< "shared_mem client: "
 //					<< "shmem=" << *this
 //					<< std::endl;
@@ -478,7 +479,7 @@ namespace factory {
 				this->_addr = this->attach();
 				this->_owner = true;
 				this->fillshmem();
-//				Logger<Level::SHMEM>()
+//				this_log()
 //					<< "shared_mem server: "
 //					<< "shmem=" << *this
 //					<< std::endl;
@@ -492,7 +493,7 @@ namespace factory {
 				this->_shmid = this->getshmem();
 				this->_addr = this->attach();
 				this->_size = this->load_size();
-//				Logger<Level::SHMEM>()
+//				this_log()
 //					<< "shared_mem client: "
 //					<< "shmem=" << *this
 //					<< std::endl;

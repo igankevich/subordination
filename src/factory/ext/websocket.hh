@@ -43,6 +43,8 @@ namespace factory {
 	
 	struct Web_socket: public unix::socket {
 
+		typedef stdx::log<Web_socket> this_log;
+
 		enum struct State {
 			INITIAL_STATE,
 			PARSING_HTTP_METHOD,
@@ -167,15 +169,15 @@ namespace factory {
 					size_t len = websocket_decode(recv_buffer.read_begin(),
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
-					Logger<Level::WEBSOCKET>() << "recv buffer"
+					this_log() << "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
 						<< std::setw(40) << recv_buffer << std::endl;
-//					Logger<Level::WEBSOCKET>() << "mid buffer "
+//					this_log() << "mid buffer "
 //						<< std::setw(40) << mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
 				if (opcode == Opcode::CONN_CLOSE) {
-					Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
+					this_log() << "Close frame" << std::endl;
 					this->close();
 				} else {
 					bytes_read = mid_buffer.read(buf, size);
@@ -189,7 +191,7 @@ namespace factory {
 		bool flush() {
 			size_t old_size = send_buffer.size();
 			send_buffer.flush<unix::socket&>(*this);
-			Logger<Level::WEBSOCKET>() << "send buffer"
+			this_log() << "send buffer"
 				<< "(" << old_size - send_buffer.size() << ") "
 				<< std::endl;
 			return send_buffer.empty();
@@ -221,16 +223,16 @@ namespace factory {
 					auto sep2 = line.find(' ', sep1);
 					if (sep2 != std::string::npos && line.compare(sep1, sep2-sep1, "101")) {
 						state = State::PARSING_HEADERS;
-						Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
+						this_log() << "parsing headers" << std::endl;
 					} else {
 						state = State::PARSING_ERROR;
-						Logger<Level::WEBSOCKET>()
+						this_log()
 							<< "bad HTTP status in web socket hand shake" << std::endl;
 					}
 				}
 			} else {
 				state = State::PARSING_ERROR;
-				Logger<Level::WEBSOCKET>()
+				this_log()
 					<< "bad method in web socket hand shake" << std::endl;
 			}
 		}
@@ -240,10 +242,10 @@ namespace factory {
 			static const char GET[] = "GET";
 			if (std::search(first, last, GET, GET + sizeof(GET)-1) != last) {
 				state = State::PARSING_HEADERS;
-				Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
+				this_log() << "parsing headers" << std::endl;
 			} else {
 				state = State::PARSING_ERROR;
-				Logger<Level::WEBSOCKET>()
+				this_log()
 					<< "bad method in web socket hand shake" << std::endl;
 			}
 		}
@@ -257,15 +259,15 @@ namespace factory {
 				std::string value(it+2, last);
 				if (_http_headers.size() == MAX_HEADERS) {
 					state = State::PARSING_ERROR;
-					Logger<Level::WEBSOCKET>()
+					this_log()
 						<< "too many headers in HTTP request" << std::endl;
 				} else if (_http_headers.contain(key.c_str())) {
 					state = State::PARSING_ERROR;
-					Logger<Level::WEBSOCKET>()
+					this_log()
 						<< "duplicate HTTP header: '" << key << '\'' << std::endl;
 				} else {
 					_http_headers[key] = value;
-					Logger<Level::WEBSOCKET>()
+					this_log()
 						<< "Header['" << key << "'] = '" << value << "'" << std::endl;
 				}
 			}
@@ -344,16 +346,16 @@ namespace factory {
 				recv_buffer.reset();
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
-					Logger<Level::WEBSOCKET>() << "parsing error" << std::endl;
+					this_log() << "parsing error" << std::endl;
 				} else {
 					state = State::PARSING_SUCCESS;
-					Logger<Level::WEBSOCKET>() << "parsing success" << std::endl;
+					this_log() << "parsing success" << std::endl;
 				}
 			}
 		}
 
 		void reply_success() {
-			Logger<Level::WEBSOCKET>() << "replying success" << std::endl;
+			this_log() << "replying success" << std::endl;
 			std::string accept_header(ACCEPT_HEADER_LENGTH, 0);
 			websocket_accept_header(_http_headers["Sec-WebSocket-Key"], accept_header.begin());
 			std::stringstream response;
@@ -389,7 +391,7 @@ namespace factory {
 			std::string buf = request.str();
 			send_buffer.write(buf.data(), buf.size());
 			state = State::WRITING_HANDSHAKE;
-			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
+			this_log() << "writing handshake " << request.str() << std::endl;
 		}
 
 		void fill() { recv_buffer.fill<unix::socket&>(*this); }
@@ -476,12 +478,12 @@ namespace factory {
 //			if (this->state() == State::READING_FRAME) {
 //				size_t hdrsz = _frame.decode_header(this->_orig->gptr(), this->_orig->egptr());
 //				if (hdrsz > 0) {
-//					Logger<Level::WEBSOCKET>() << "recv header " << this->_frame << std::endl;
+//					this_log() << "recv header " << this->_frame << std::endl;
 //					this->_nread = 0;
 //					this->_orig->gbump(hdrsz);
 //					this->sets(State::READING_PAYLOAD);
 //					if (_frame.opcode() == Opcode::CONN_CLOSE) {
-//						Logger<Level::WEBSOCKET>() << "Close frame" << std::endl;
+//						this_log() << "Close frame" << std::endl;
 //						return traits_type::eof();
 //					}
 //					// TODO: validate frame
@@ -522,7 +524,7 @@ namespace factory {
 ////				this->_frame.mask(components::rng());
 ////				this->_frame.encode(result);
 ////				this->_frame.copy_payload(first, last, result);
-////				Logger<Level::WEBSOCKET>() << "send header " << this->frame << std::endl;
+////				this_log() << "send header " << this->frame << std::endl;
 ////			}
 ////			websocket_encode(buf, buf + size, std::back_inserter(send_buffer));
 ////			this->flush();
@@ -559,16 +561,16 @@ namespace factory {
 //					auto sep2 = line.find(' ', sep1);
 //					if (sep2 != std::string::npos && line.compare(sep1, sep2-sep1, "101")) {
 //						this->sets(State::PARSING_HEADERS);
-//						Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
+//						this_log() << "parsing headers" << std::endl;
 //					} else {
 //						this->sets(State::PARSING_ERROR);
-//						Logger<Level::WEBSOCKET>()
+//						this_log()
 //							<< "bad HTTP status in web socket hand shake" << std::endl;
 //					}
 //				}
 //			} else {
 //				this->sets(State::PARSING_ERROR);
-//				Logger<Level::WEBSOCKET>()
+//				this_log()
 //					<< "bad method in web socket hand shake" << std::endl;
 //			}
 //		}
@@ -578,10 +580,10 @@ namespace factory {
 //			static const char GET[] = "GET";
 //			if (std::search(first, last, GET, GET + sizeof(GET)-1) != last) {
 //				this->sets(State::PARSING_HEADERS);
-//				Logger<Level::WEBSOCKET>() << "parsing headers" << std::endl;
+//				this_log() << "parsing headers" << std::endl;
 //			} else {
 //				this->sets(State::PARSING_ERROR);
-//				Logger<Level::WEBSOCKET>()
+//				this_log()
 //					<< "bad method in web socket hand shake" << std::endl;
 //			}
 //		}
@@ -595,15 +597,15 @@ namespace factory {
 //				std::string value(it+2, last);
 //				if (_http_headers.size() == MAX_HEADERS) {
 //					this->sets(State::PARSING_ERROR);
-//					Logger<Level::WEBSOCKET>()
+//					this_log()
 //						<< "too many headers in HTTP request" << std::endl;
 //				} else if (_http_headers.contain(key.c_str())) {
 //					this->sets(State::PARSING_ERROR);
-//					Logger<Level::WEBSOCKET>()
+//					this_log()
 //						<< "duplicate HTTP header: '" << key << '\'' << std::endl;
 //				} else {
 //					this->_http_headers[key] = value;
-//					Logger<Level::WEBSOCKET>()
+//					this_log()
 //						<< "Header['" << key << "'] = '" << value << "'" << std::endl;
 //				}
 //			}
@@ -685,16 +687,16 @@ namespace factory {
 ////				recv_buffer.reset();
 //				if (!validate_headers()) {
 //					this->sets(State::PARSING_ERROR);
-//					Logger<Level::WEBSOCKET>() << "parsing error" << std::endl;
+//					this_log() << "parsing error" << std::endl;
 //				} else {
 //					this->sets(State::PARSING_SUCCESS);
-//					Logger<Level::WEBSOCKET>() << "parsing success" << std::endl;
+//					this_log() << "parsing success" << std::endl;
 //				}
 //			}
 //		}
 //
 //		void reply_success() {
-//			Logger<Level::WEBSOCKET>() << "replying success" << std::endl;
+//			this_log() << "replying success" << std::endl;
 //			std::string accept_header(ACCEPT_HEADER_LENGTH, 0);
 //			websocket_accept_header(_http_headers["Sec-WebSocket-Key"], accept_header.begin());
 //			std::stringstream response;
@@ -730,12 +732,12 @@ namespace factory {
 //			std::string buf = request.str();
 //			this->_orig->sputn(buf.data(), buf.size());
 //			this->sets(State::WRITING_HANDSHAKE);
-//			Logger<Level::WEBSOCKET>() << "writing handshake " << request.str() << std::endl;
+//			this_log() << "writing handshake " << request.str() << std::endl;
 //		}
 //
 //		void sets(State rhs) {
 //			this->_state = rhs;
-//			Logger<Level::WEBSOCKET>() << "state=" << this->_state << std::endl;
+//			this_log() << "state=" << this->_state << std::endl;
 //		}
 //		State state() const { return this->_state; }
 //		void setrole(Role rhs) { this->_role = rhs; }

@@ -15,6 +15,7 @@ namespace factory {
 			typedef typename unix::shared_mem<char_type>::path_type path_type;
 			typedef stdx::spin_mutex mutex_type;
 			typedef typename unix::shared_mem<Ch>::proj_id_type proj_id_type;
+			typedef stdx::log<basic_shmembuf> this_log;
 
 			explicit
 			basic_shmembuf(path_type&& path, unix::mode_type mode):
@@ -134,7 +135,7 @@ namespace factory {
 			mutex_type& mutex() { return this->_sharedpart->mtx; }
 
 			void debug(const char* msg) {
-				Logger<Level::SHMEM>()
+				this_log()
 					<< msg << ": size1="
 					<< this->_sharedpart->size
 					<< ",goff=" << this->_sharedpart->goff

@@ -5,13 +5,15 @@ using factory::components::Error;
 
 struct Sleepy_kernel: public Kernel {
 
+	typedef stdx::log<Sleepy_kernel> this_log;
+
 	void pos(int p) { position = p; }
 	int pos() const { return position; }
 
 	void act() {
 		const auto now = current_time_nano();
 		const auto at = this->at().time_since_epoch().count();
-		Logger<Level::TEST>()
+		this_log()
 			<< "Waking up at " << now
 			<< ", scheduled at " << at
 			<< ", delta=" << std::abs(now-at)
@@ -23,6 +25,7 @@ struct Sleepy_kernel: public Kernel {
 };
 
 struct Main: public Kernel {
+	typedef stdx::log<Main> this_log;
 	void act() {
 		std::vector<Kernel*> kernels(NUM_KERNELS);
 		// send kernels in reversed chronological order
@@ -64,13 +67,14 @@ private:
 };
 
 struct App {
+	typedef stdx::log<App> this_log;
 	int run(int argc, char* argv[]) {
-		Logger<Level::TEST>() << "sizeof(time_point) == " << sizeof(Kernel::Clock::time_point) << std::endl;
-		Logger<Level::TEST>() << "sizeof(duration) == " << sizeof(Kernel::Clock::duration) << std::endl;
+		this_log() << "sizeof(time_point) == " << sizeof(Kernel::Clock::time_point) << std::endl;
+		this_log() << "sizeof(duration) == " << sizeof(Kernel::Clock::duration) << std::endl;
 		int retval = 0;
 		try {
 			the_server()->add_cpu(0);
-			Logger<Level::TEST>() << "Starting at " << current_time_nano() << std::endl;
+			this_log() << "Starting at " << current_time_nano() << std::endl;
 			__factory.start();
 			the_server()->send(new Main);
 			__factory.wait();

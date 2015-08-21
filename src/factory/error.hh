@@ -2,119 +2,6 @@ namespace factory {
 
 	namespace components {
 
-		enum struct Level {
-			KERNEL,
-			SERVER,
-			HANDLER,
-			COMPONENT,
-			STRATEGY,
-			DISCOVERY,
-			GRAPH,
-			WEBSOCKET,
-			TEST,
-			IO,
-			SHMEM,
-			APP,
-			ERR
-		};
-
-		constexpr
-		const char* to_string(Level rhs) {
-			return
-				rhs == Level::KERNEL    ? "krnl"    : 
-				rhs == Level::SERVER    ? "srvr"    : 
-				rhs == Level::HANDLER   ? "handler" : 
-				rhs == Level::COMPONENT ? "cmpnt"   : 
-				rhs == Level::STRATEGY  ? "strat"   : 
-				rhs == Level::DISCOVERY ? "dscvr"   : 
-				rhs == Level::GRAPH     ? "grph"    : 
-				rhs == Level::WEBSOCKET ? "wbsckt"  : 
-				rhs == Level::TEST      ? "tst"     : 
-				rhs == Level::IO        ? "io"      : 
-				rhs == Level::SHMEM     ? "shm"     : 
-				rhs == Level::APP       ? "app"     : 
-				rhs == Level::ERR       ? "err"     : 
-				"unknwn";
-		}
-
-		struct no_type {};
-
-		template<Level lvl=Level::KERNEL, class Tp=no_type>
-		struct Logger {
-
-			explicit
-			Logger(std::ostream& out=std::clog):
-			_buf(out)
-			{
-				write_message_header(_buf,
-					stdx::type_traits<Tp>::short_name());
-			}
-
-			Logger(const Logger&) = delete;
-			Logger& operator=(const Logger&) = delete;
-		
-			template<class T>
-			std::ostream&
-			operator<<(const T& rhs) {
-				return this->_buf << rhs;
-			}
-		
-			template<class T>
-			std::ostream&
-			operator<<(const T* rhs) {
-				return this->_buf << rhs;
-			}
-		
-			template<class T>
-			std::ostream&
-			operator<<(T* rhs) {
-				return this->_buf << rhs;
-			}
-		
-		private:
-
-			static void
-			write_message_header(std::ostream& out, const char* func) {
-				components::print_all_endpoints(out);
-				out << SEP;
-				out << std::this_thread::get_id() << SEP;
-				if (func) {
-					out << func << SEP;
-				}
-			}
-
-			std::ostream& _buf = std::clog;
-			
-			static constexpr const char SEP = ' ';
-		};
-
-		struct No_logger {
-
-			constexpr No_logger() = default;
-
-			No_logger(const No_logger&) = delete;
-			No_logger& operator=(const No_logger&) = delete;
-		
-			template<class T>
-			constexpr const No_logger&
-			operator<<(const T&) const { return *this; }
-
-			constexpr const No_logger&
-			operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
-		};
-
-//		template<> struct Logger<Level::KERNEL   >: public No_logger {};
-//		template<> struct Logger<Level::SERVER   >: public No_logger {};
-
-//		template<> struct Logger<Level::HANDLER  >: public No_logger {};
-//		template<> struct Logger<Level::IO       >: public No_logger {};
-
-//		template<> struct Logger<Level::COMPONENT>: public No_logger {};
-//		template<> struct Logger<Level::STRATEGY >: public No_logger {};
-//		template<> struct Logger<Level::DISCOVERY>: public No_logger {};
-//		template<> struct Logger<Level::GRAPH    >: public No_logger {};
-//		template<> struct Logger<Level::WEBSOCKET>: public No_logger {};
-
 		struct Backtrace {
 			Backtrace();
 			~Backtrace() { ::free(this->symbols); }
@@ -269,11 +156,6 @@ namespace factory {
 		};
 	}
 
-	typedef components::Level Level;
-	using components::Logger;
-//	template<Level lvl,const char func[]> using Logger = components::Logger<lvl,func>;
-
-
 	enum struct Result: uint16_t {
 		SUCCESS = 0,
 		UNDEFINED = 1,
@@ -284,8 +166,8 @@ namespace factory {
 		FATAL_ERROR = 7
 	};
 
-	inline
-	std::ostream& operator<<(std::ostream& out, Result rhs) {
+	inline std::ostream&
+	operator<<(std::ostream& out, Result rhs) {
 		switch (rhs) {
 			case Result::SUCCESS: out << "SUCCESS"; break;
 			case Result::UNDEFINED: out << "UNDEFINED"; break;
@@ -297,27 +179,6 @@ namespace factory {
 			default: out << "UNKNOWN_RESULT";
 		}
 		return out;
-	}
-
-	namespace components {
-
-		struct debug_stream {
-			constexpr explicit debug_stream(const std::ios& s): str(s) {}
-			friend std::ostream& operator<<(std::ostream& out, const debug_stream& rhs) {
-				std::ostream::sentry s(out);
-				if (s) {
-					out
-						<< (rhs.str.good() ? 'g' : '-')
-						<< (rhs.str.bad()  ? 'b' : '-')
-						<< (rhs.str.fail() ? 'f' : '-')
-						<< (rhs.str.eof()  ? 'e' : '-');
-				}
-				return out;
-			}
-		private:
-			const std::ios& str;
-		};
-		
 	}
 
 }

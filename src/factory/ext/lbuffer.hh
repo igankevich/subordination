@@ -8,6 +8,7 @@ namespace factory {
 			
 			typedef T value_type;
 			typedef size_t Size;
+			typedef stdx::log<LBuffer> this_log;
 
 			explicit LBuffer(size_t base_size): _data(base_size) {}
 
@@ -86,10 +87,10 @@ namespace factory {
 				size_t total = read_pos;
 				while ((bytes_written = sink.write(read_begin(), write_pos-read_pos)) > 0) {
 					read_pos += bytes_written;
-					Logger<Level::COMPONENT>() << "bytes written = " << bytes_written << std::endl;
+					this_log() << "bytes written = " << bytes_written << std::endl;
 				}
 				total = read_pos - total;
-				Logger<Level::COMPONENT>()
+				this_log()
 					<< "readpos = " << read_pos
 					<< ", writepos = " << write_pos
 					<< std::endl;

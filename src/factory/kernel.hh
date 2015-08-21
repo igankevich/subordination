@@ -153,6 +153,7 @@ namespace factory {
 			typedef Principal<A> This;
 			typedef Kernel_ref<This> Ref;
 			typedef Basic_kernel::Flag Flag;
+			typedef stdx::log<Principal> this_log;
 
 			constexpr Principal(): _parent(nullptr), _principal(nullptr) {}
 			virtual ~Principal() {}
@@ -187,7 +188,7 @@ namespace factory {
 				}
 				Id parent_id;
 				in >> parent_id;
-				Logger<Level::KERNEL>() << "READING PARENT " << parent_id << std::endl;
+				this_log() << "READING PARENT " << parent_id << std::endl;
 				if (parent_id != ROOT_ID) {
 					_parent = parent_id;
 				}
@@ -197,7 +198,7 @@ namespace factory {
 				}
 				Id principal_id;
 				in >> principal_id;
-				Logger<Level::KERNEL>() << "READING PRINCIPAL " << principal_id << std::endl;
+				this_log() << "READING PRINCIPAL " << principal_id << std::endl;
 				_principal = principal_id;
 			}
 
@@ -239,26 +240,26 @@ namespace factory {
 					case Result::NO_PRINCIPAL_FOUND:
 					case Result::USER_ERROR:
 					default:
-						Logger<Level::KERNEL>() << "Result is defined" << std::endl;
+						this_log() << "Result is defined" << std::endl;
 						if (!_principal) {
-							Logger<Level::KERNEL>() << "Principal is null" << std::endl;
+							this_log() << "Principal is null" << std::endl;
 							if (!_parent) {
 								delete this;
-								Logger<Level::KERNEL>() << "SHUTDOWN" << std::endl;
+								this_log() << "SHUTDOWN" << std::endl;
 								stop_all_factories();
 							}
 						} else {
-							Logger<Level::KERNEL>() << "Principal is not null" << std::endl;
+							this_log() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
-								Logger<Level::KERNEL>() << "Principal react" << std::endl;
+								this_log() << "Principal react" << std::endl;
 								_principal->react(this);
 							} else {
-								Logger<Level::KERNEL>() << "Principal error" << std::endl;
+								this_log() << "Principal error" << std::endl;
 								_principal->error(this);
 							}
 							if (del) {
-								Logger<Level::KERNEL>() << "Deleting kernel " << *this << std::endl;
+								this_log() << "Deleting kernel " << *this << std::endl;
 								delete this;
 							}
 						}
@@ -365,6 +366,7 @@ namespace factory {
 		struct Mobile: public K {
 
 			typedef Application::id_type app_type;
+			typedef stdx::log<Mobile> this_log;
 		
 			constexpr Mobile(): _src(), _dst() {}
 
@@ -373,14 +375,14 @@ namespace factory {
 				Raw_result r;
 				in >> r;
 				this->result(static_cast<Result>(r));
-				Logger<Level::KERNEL>() << "Reading result = " << r << std::endl;
+				this_log() << "Reading result = " << r << std::endl;
 				in >> _id;
 			}
 
 			virtual void write(packstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
-				Logger<Level::KERNEL>()
+				this_log()
 					<< "writing kernel " 
 					"id=" << this->_id
 					<< ",rslt=" << this->result()

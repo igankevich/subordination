@@ -37,6 +37,7 @@ namespace factory {
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef unix::semaphore sem_type;
 			typedef Application::id_type app_type;
+			typedef stdx::log<Principal_server> this_log;
 
 			Principal_server():
 				_ibuf(),
@@ -61,7 +62,7 @@ namespace factory {
 				{}
 
 			void start() {
-				Logger<Level::SERVER>() << "Principal_server::start()" << std::endl;
+				this_log() << "Principal_server::start()" << std::endl;
 				this->_ibuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 1));
 				this->_obuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 0));
 				this->_isem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'i'));
@@ -101,20 +102,20 @@ namespace factory {
 				this->_istream.rdbuf(&this->_ibuf);
 				unix::endpoint src;
 				this->_istream >> src;
-				Logger<Level::APP>() << "read_and_send_kernel(): src=" << src
-					<< ",rdstate=" << debug_stream(this->_istream)
+				this_log() << "read_and_send_kernel(): src=" << src
+					<< ",rdstate=" << bits::debug_stream(this->_istream)
 					<< std::endl;
 				if (!this->_istream) return;
 				Type<kernel_type>::read_object(this->_istream, [this,&src] (kernel_type* k) {
 					k->from(src);
-					Logger<Level::APP>()
+					this_log()
 						<< "recv kernel=" << *k
-						<< ",rdstate=" << debug_stream(this->_istream)
+						<< ",rdstate=" << bits::debug_stream(this->_istream)
 						<< std::endl;
 				}, [this] (kernel_type* k) {
-					Logger<Level::APP>()
+					this_log()
 						<< "recv2 kernel=" << *k
-						<< ",rdstate=" << debug_stream(this->_istream)
+						<< ",rdstate=" << bits::debug_stream(this->_istream)
 						<< std::endl;
 					this->root()->send(k);
 				});
@@ -142,6 +143,7 @@ namespace factory {
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef unix::semaphore sem_type;
 			typedef Packing_stream<char> stream_type;
+			typedef stdx::log<Sub_Rserver> this_log;
 
 			explicit Sub_Rserver(const Application& app):
 				_proc(app.execute()), //TODO: race condition
@@ -168,9 +170,9 @@ namespace factory {
 				stream_type os(&this->_obuf);
 				// TODO: full-featured ostream is not needed here
 //				this->_ostream.rdbuf(&this->_obuf);
-				Logger<Level::APP>() << "write from " << k->from() << std::endl;
+				this_log() << "write from " << k->from() << std::endl;
 				os << k->from();
-				Logger<Level::APP>() << "send kernel " << *k << std::endl;
+				this_log() << "send kernel " << *k << std::endl;
 				Type<kernel_type>::write_object(*k, os);
 				this->_osem.notify_one();
 			}
@@ -202,13 +204,14 @@ namespace factory {
 			typedef typename app_type::id_type key_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
+			typedef stdx::log<Sub_Iserver> this_log;
 
 			void add(const app_type& app) {
 				if (this->_apps.count(app.id()) > 0) {
 					throw Error("trying to add an existing app",
 						__FILE__, __LINE__, __func__);
 				}
-				Logger<Level::APP>() << "starting app="
+				this_log() << "starting app="
 					<< app << std::endl;
 				std::unique_lock<std::mutex> lock(this->_mutex);
 				this->_apps.emplace(app.id(), rserver_type(app));
@@ -265,7 +268,7 @@ namespace factory {
 						if (result != this->_apps.end()) {
 							int ret = WIFEXITED(status) ? WEXITSTATUS(status) : 0,
 								sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-							Logger<Level::APP>() << "finished app="
+							this_log() << "finished app="
 								<< result->first
 								<< ",ret=" << ret
 								<< ",sig=" << sig

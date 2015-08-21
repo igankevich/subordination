@@ -14,10 +14,12 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 
 struct Test_web_socket: public Mobile<Test_web_socket> {
 
+	typedef stdx::log<Test_web_socket> this_log;
+
 	Test_web_socket(): _data() {}
 
 	void act() {
-		Logger<Level::WEBSOCKET>() << "Hello from web socket! Data = " << _data << std::endl;
+		this_log() << "Hello from web socket! Data = " << _data << std::endl;
 		_data = 321;
 		commit(ext_server());
 	}
@@ -75,6 +77,8 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 
+	typedef stdx::log<Sender> this_log;
+
 	explicit Sender(uint32_t n): _input(n) {}
 
 	void act() {
@@ -103,7 +107,7 @@ struct Sender: public Identifiable<Kernel> {
 			}
 		}
 
-		Logger<Level::COMPONENT>() << "Sender::kernel count = " << _num_returned+1 << std::endl;
+		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(the_server());
 		}
@@ -119,6 +123,8 @@ private:
 
 struct Main: public Kernel {
 
+	typedef stdx::log<Main> this_log;
+
 	void act() {
 		for (uint32_t i=0; i<POWERS.size(); ++i) {
 			size_t sz = 1 << POWERS[i];
@@ -127,7 +133,7 @@ struct Main: public Kernel {
 	}
 
 	void react(Kernel*) {
-		Logger<Level::COMPONENT>() << "Main::kernel count = " << _num_returned+1 << std::endl;
+		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == POWERS.size()) {
 			commit(the_server());
 		}

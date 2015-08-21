@@ -11,6 +11,7 @@ namespace factory {
 			using typename Base::char_type;
 			using typename Base::pos_type;
 			typedef uint32_t size_type;
+			typedef stdx::log<basic_ikernelbuf> this_log;
 
 			enum struct State {
 				READING_SIZE,
@@ -111,7 +112,7 @@ namespace factory {
 			}
 
 			void dumpstate() {
-				Logger<Level::IO>() << std::setw(20) << std::left << this->state()
+				this_log() << std::setw(20) << std::left << this->state()
 					<< "pptr=" << this->pptr() - this->pbase()
 					<< ",epptr=" << this->epptr() - this->pbase()
 					<< ",gptr=" << this->gptr() - this->eback()
@@ -133,7 +134,7 @@ namespace factory {
 			}
 
 			void sets(State rhs) {
-				Logger<Level::IO>() << "oldstate=" << this->_rstate
+				this_log() << "oldstate=" << this->_rstate
 					<< ",newstate=" << rhs << std::endl;
 				this->_rstate = rhs;
 			}
@@ -173,6 +174,7 @@ namespace factory {
 			using typename Base::char_type;
 			using typename Base::pos_type;
 			typedef uint32_t size_type;
+			typedef stdx::log<basic_okernelbuf> this_log;
 
 			enum struct State {
 				WRITING_SIZE,
@@ -221,7 +223,7 @@ namespace factory {
 					this->sets(State::WRITING_PAYLOAD);
 					this->setbeg(this->writepos());
 					this->putsize(0);
-					Logger<Level::IO>() << "begin_packet()     "
+					this_log() << "begin_packet()     "
 						<< "pbase=" << (void*)this->pbase()
 						<< ", pptr=" << (void*)this->pptr()
 						<< ", eback=" << (void*)this->eback()
@@ -242,7 +244,7 @@ namespace factory {
 						this->putsize(s);
 						this->seekpos(end, std::ios_base::out);
 					}
-					Logger<Level::IO>() << "end_packet(): size=" << s << std::endl;
+					this_log() << "end_packet(): size=" << s << std::endl;
 					this->sets(State::FINALISING);
 				}
 			}
@@ -250,7 +252,7 @@ namespace factory {
 			int finalise() {
 				int ret = -1;
 				if (this->state() == State::FINALISING) {
-					Logger<Level::IO>() << "finalise()" << std::endl;
+					this_log() << "finalise()" << std::endl;
 					ret = this->Base::sync();
 					if (ret == 0) {
 						this->sets(State::WRITING_SIZE);
@@ -271,7 +273,7 @@ namespace factory {
 			}
 
 			void sets(State rhs) {
-				Logger<Level::IO>() << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
+				this_log() << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
 				this->_state = rhs;
 			}
 			State state() const { return this->_state; }

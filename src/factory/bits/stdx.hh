@@ -125,6 +125,23 @@ namespace factory {
 				n >= 2 && arr[0] == '0' && arr[1] >= '1' && arr[1] <= '9' ? do_parse_uint<Uint,8>(arr+1, arr + n) :
 				do_parse_uint<Uint,10>(arr, arr+n);
 		}
+
+		struct debug_stream {
+			constexpr explicit debug_stream(const std::ios& s): str(s) {}
+			friend std::ostream& operator<<(std::ostream& out, const debug_stream& rhs) {
+				std::ostream::sentry s(out);
+				if (s) {
+					out
+						<< (rhs.str.good() ? 'g' : '-')
+						<< (rhs.str.bad()  ? 'b' : '-')
+						<< (rhs.str.fail() ? 'f' : '-')
+						<< (rhs.str.eof()  ? 'e' : '-');
+				}
+				return out;
+			}
+		private:
+			const std::ios& str;
+		};
 	
 	}
 
