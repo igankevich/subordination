@@ -286,6 +286,7 @@ namespace factory {
 
 			typedef server_type* handler_type;
 			typedef unix::event_poller<handler_type> poller_type;
+			typedef Logger<Level::SERVER, NIC_server> this_log;
 
 			NIC_server(NIC_server&& rhs) noexcept:
 			base_server(std::move(rhs))
@@ -500,7 +501,7 @@ namespace factory {
 
 			void
 			process_kernels() {
-				Logger<Level::SERVER>() << "NIC_server::process_kernels()" << std::endl;
+				this_log() << "NIC_server::process_kernels()" << std::endl;
 				stdx::front_pop_iterator<kernel_pool> it_end;
 				lock_type lock(this->_mutex);
 				stdx::for_each_thread_safe(lock,
@@ -618,6 +619,18 @@ namespace factory {
 			static const int MAX_STOP_ITERATIONS = 13;
 		};
 
+	}
+
+	namespace stdx {
+
+		template<class T, class Socket>
+		struct type_traits<components::NIC_server<T,Socket>> {
+			static constexpr
+			const char* short_name() noexcept {
+				return "nic_server";
+			}
+		};
+	
 	}
 
 }

@@ -580,6 +580,14 @@ namespace factory {
 			>(it);
 		}
 
+		template<class T>
+		struct type_traits {
+			static constexpr
+			const char* short_name() noexcept {
+				return typeid(T).name();
+			}
+		};
+
 	}
 
 }

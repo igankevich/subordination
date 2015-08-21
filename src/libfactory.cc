@@ -416,7 +416,6 @@ namespace factory {
 			static std::atomic<Id> counter(factory_start_id());
 			return counter++;
 		}
-		stdx::spin_mutex __logger_mutex;
 		std::vector<Address_range> discover_neighbours() {
 		
 			struct ::ifaddrs* ifaddr;

@@ -37,64 +37,55 @@ namespace factory {
 				"unknwn";
 		}
 
-		extern stdx::spin_mutex __logger_mutex;
+		struct no_type {};
 
-		template<Level lvl=Level::KERNEL>
+		template<Level lvl=Level::KERNEL, class Tp=no_type>
 		struct Logger {
 
-			inline
-			Logger(): _buf() {
-				__logger_mutex.lock();
-				this->next_record();
-			}
-
-			inline
-			~Logger() {
-				__logger_mutex.unlock();
+			explicit
+			Logger(std::ostream& out=std::clog):
+			_buf(out)
+			{
+				write_message_header(_buf,
+					stdx::type_traits<Tp>::short_name());
 			}
 
 			Logger(const Logger&) = delete;
 			Logger& operator=(const Logger&) = delete;
 		
 			template<class T>
-			Logger& operator<<(const T& rhs) {
-				this->_buf << rhs;
-				return *this;
+			std::ostream&
+			operator<<(const T& rhs) {
+				return this->_buf << rhs;
 			}
 		
-			Logger& operator<<(std::ostream& ( *pf )(std::ostream&)) {
-				this->_buf << pf;
-				if (pf == static_cast<std::ostream& (*)(std::ostream&)>(&std::endl)) {
-					std::cout << this->_buf.rdbuf() << std::flush;
-					this->_buf.clear();
-					this->next_record();
-				}
-				return *this;
+			template<class T>
+			std::ostream&
+			operator<<(const T* rhs) {
+				return this->_buf << rhs;
 			}
-
+		
+			template<class T>
+			std::ostream&
+			operator<<(T* rhs) {
+				return this->_buf << rhs;
+			}
+		
 		private:
 
-			const char* now() {
-				std::time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-				std::strftime(this->formatted_time, sizeof(formatted_time),
-					"%FT%T%z", std::localtime(&now_time));
-				return this->formatted_time;
+			static void
+			write_message_header(std::ostream& out, const char* func) {
+				components::print_all_endpoints(out);
+				out << SEP;
+				out << std::this_thread::get_id() << SEP;
+				if (func) {
+					out << func << SEP;
+				}
 			}
 
-			void next_record() {
-				this->_buf << this->now() << SEP;
-				components::print_all_endpoints(this->_buf);
-				this->_buf << SEP;
-				this->_buf << unix::this_process::id() << SEP;
-				this->_buf << std::this_thread::get_id() << SEP;
-				constexpr const char* lvlstr = to_string(lvl);
-				this->_buf << lvlstr << SEP;
-			}
-
-			std::stringstream _buf;
-			char formatted_time[25];
+			std::ostream& _buf = std::clog;
 			
-			static const char SEP = ' ';
+			static constexpr const char SEP = ' ';
 		};
 
 		struct No_logger {
@@ -114,8 +105,10 @@ namespace factory {
 
 //		template<> struct Logger<Level::KERNEL   >: public No_logger {};
 //		template<> struct Logger<Level::SERVER   >: public No_logger {};
-		template<> struct Logger<Level::HANDLER  >: public No_logger {};
-		template<> struct Logger<Level::IO       >: public No_logger {};
+
+//		template<> struct Logger<Level::HANDLER  >: public No_logger {};
+//		template<> struct Logger<Level::IO       >: public No_logger {};
+
 //		template<> struct Logger<Level::COMPONENT>: public No_logger {};
 //		template<> struct Logger<Level::STRATEGY >: public No_logger {};
 //		template<> struct Logger<Level::DISCOVERY>: public No_logger {};
@@ -277,7 +270,8 @@ namespace factory {
 	}
 
 	typedef components::Level Level;
-	template<Level lvl> using Logger = components::Logger<lvl>;
+	using components::Logger;
+//	template<Level lvl,const char func[]> using Logger = components::Logger<lvl,func>;
 
 
 	enum struct Result: uint16_t {

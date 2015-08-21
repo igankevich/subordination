@@ -142,7 +142,6 @@ uint32_t sleep_time() {
 	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
-
 struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
@@ -168,6 +167,7 @@ struct App {
 				Logger<Level::TEST>() << "proc exited proc=" << proc
 					<< ",status=" << stat.exit_code() << std::endl;
 			});
+			Logger<Level::TEST,App>() << "unix::log test " << std::endl;
 //			retval = procs.wait();
 		} else {
 			try {
