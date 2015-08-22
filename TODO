@@ -15,6 +15,9 @@ DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override i
 DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 DONE [] Remove factory_stop() and other global functions. Now multiple factory instances, and custom factory instances are possible.
 DONE [] Close all Socket in destructor (use rvalue references).
+DONE [] User defined literals for uint128.
+DONE [] Replace std::mutex with Spin_mutex in server queues.
+DONE [all new/delete operations were removed from NIC_server, pointers are needed to store poll() handlers] Minimise the use of bare pointers (use reference_wrappers, unique_ptrs etc.).
 
 ??? [needs more testing] Make Factory::stop() reliable.
 ??? [needs perf tests] Filter out chars <= 31 and != \r\n on std::cout stream.
@@ -23,9 +26,10 @@ DONE [] Close all Socket in destructor (use rvalue references).
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 NOT NEEDED [OS will do better] Implement thread affinity through pthread library with fall back to native OS calls.
 NOT NEEDED [it is not safe] Log markup for terminal.
+NOT NEEDED [type_traits is faster to compile] User defined literals for class metadata.
+NOT NEEDED [there many tools to access and filter logs (e.g. journalctl, grep /var/log/syslog etc.), so we forward our logs to them] Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 
 Make Buffer and LBuffer a subclass of std::streambuf.
-Replace std::mutex with Spin_mutex in server queues.
 Handle cases when a machine has multiple IP addresses.
 
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
@@ -35,18 +39,16 @@ Limit number of peers to reduce number of persistent connections.
 Manually align structures.
 Add macros to generate code for parallel and distributed framework versions.
 Test web socket and socket with random input to cover parsing and other errors.
-User defined literals for uint128 and for class metadata.
 Reduce amount of debug information in logs.
 Create log server to minimise lock contention when writing to log.
-Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 Add support for provenance.
 Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
 Add common header to source files.
 Add license.
-Filter environment variables on startup (whitelist).
-Minimise the use of bare pointers (use reference_wrappers, unique_ptrs etc.).
 Implement generic state machine for use in kernelbuf and websocketbuf.
 Make locks mutable.
 Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.
 Ignore all useless signals.
-Add thread names to write to logs.
+Add thread names to write to logs. Probably store them in thread pool.
+Shred environment on startup (no whitelist).
+Close fds other than 0, 1, 2 on startup (use getrlimit to determine maximum count and poll to process them in batches).
