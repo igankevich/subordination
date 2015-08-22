@@ -72,6 +72,58 @@ namespace factory {
 			handle(T& obj, E ev) { obj->operator()(ev); }
 		};
 
+		/// process-wide shared memory lock
+		/// which does not require global
+		/// variable
+		struct global_lock {
+
+			typedef stdx::spin_mutex mutex_type;
+
+			global_lock() { lock(); }
+			~global_lock() { unlock(); }
+
+		private:
+
+			void
+			lock() {
+				_shm = getshm();
+				if (_shm == -1) {
+					std::atexit(rm_shm_at_exit);
+					_shm = getshm(IPC_CREAT);
+					void* ptr = ::shmat(_shm, 0, 0);
+					_mutex = new (ptr) mutex_type;
+				} else {
+					void* ptr = ::shmat(_shm, 0, 0);
+					_mutex = static_cast<mutex_type*>(ptr);
+				}
+				_mutex->lock();
+			}
+
+			void
+			unlock() {
+				_mutex->unlock();
+				::shmdt(_mutex);
+			}
+
+			static int
+			getshm(int option=0) {
+				return ::shmget(LOCK_KEY, sizeof(mutex_type), 0600 | option);
+			}
+
+			static void
+			rm_shm_at_exit() {
+				int shm = getshm();
+				if (shm != -1) {
+					::shmctl(shm, IPC_RMID, 0);
+				}
+			}
+
+			int _shm;
+			mutex_type* _mutex = nullptr;
+			
+			static constexpr ::key_t LOCK_KEY = 123;
+		};
+
 		stdx::spin_mutex __forkmutex;
 
 		int
