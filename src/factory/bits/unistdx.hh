@@ -79,6 +79,34 @@ namespace factory {
 			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
 			return ::fork();
 		}
+
+		inline void
+		set_mandatory_flags(int fd) {
+			fcntl(fd, F_SETFD, O_CLOEXEC);
+			fcntl(fd, F_SETFL, O_NONBLOCK);
+		}
+
+		int
+		safe_pipe(int fds[2]) {
+			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
+			int ret = ::pipe(fds);
+			if (ret != -1) {
+				set_mandatory_flags(fds[0]);
+				set_mandatory_flags(fds[1]);
+				fcntl(fds[1], F_SETNOSIGPIPE, 1);
+			}
+			return ret;
+		}
+
+		int
+		safe_open(const char* path, int oflag, int mode) {
+			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
+			int ret = ::open(path, oflag, mode);
+			if (ret != -1) {
+				set_mandatory_flags(ret);
+			}
+			return ret;
+		}
 	
 	}
 

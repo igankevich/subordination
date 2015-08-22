@@ -17,13 +17,18 @@ namespace factory {
 
 	namespace bits {
 
-		template<class ... Args>
-		int safe_socket(Args&& ... args) {
+		int
+		safe_socket(int domain, int type, int protocol) {
 			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
-			int sock = ::socket(std::forward<Args>(args)...);
-			fcntl(sock, F_SETFD, O_CLOEXEC);
+			int sock = unix::check(
+				::socket(domain, type, protocol),
+				__FILE__, __LINE__, __func__);
+			#if !SOCK_NONBLOCK || !SOCK_CLOEXEC
+			set_mandatory_flags(sock);
+			#endif
 			return sock;
 		}
+
 	}
 
 	namespace unix {
@@ -44,6 +49,10 @@ namespace factory {
 
 			enum flag: flag_type {
 				close_on_exec = FD_CLOEXEC
+			};
+
+			enum pipe_flag: flag_type {
+				no_sigpipe = 1
 			};
 
 			static const fd_type
@@ -112,6 +121,16 @@ namespace factory {
 			inline void
 			setf(flag_type rhs) {
 				set_flag(F_SETFL, get_flags(F_GETFL) | rhs);
+			}
+
+			inline void
+			setf(pipe_flag rhs) {
+				set_flag(F_SETNOSIGPIPE, 1);
+			}
+
+			inline void
+			unsetf(pipe_flag rhs) {
+				set_flag(F_SETNOSIGPIPE, 0);
 			}
 
 			inline void
@@ -282,7 +301,7 @@ namespace factory {
 			explicit
 			file(const std::string& filename, openmode flags,
 				unix::flag_type flags2=0, mode_type mode=S_IRUSR|S_IWUSR):
-				unix::fd(components::check(::open(filename.c_str(), flags|flags2, mode),
+				unix::fd(components::check(bits::safe_open(filename.c_str(), flags|flags2, mode),
 					__FILE__, __LINE__, __func__)) {}
 
 			~file() {
@@ -335,17 +354,15 @@ namespace factory {
 				this->close();
 			}
 
-			socket& operator=(socket&& rhs) {
+			socket&
+			operator=(socket&& rhs) {
 				unix::fd::operator=(std::move(static_cast<unix::fd&&>(rhs)));
 				return *this;
 			}
 
 			void create_socket_if_necessary() {
 				if (!*this) {
-					this->_fd =
-						check(::socket(AF_INET, DEFAULT_FLAGS, 0),
-						__FILE__, __LINE__, __func__);
-					this->set_mandatory_flags();
+					this->_fd = bits::safe_socket(AF_INET, DEFAULT_FLAGS, 0);
 				}
 			}
 
@@ -485,34 +502,13 @@ namespace factory {
 			socket(fd_type sock) noexcept:
 				unix::fd(sock) {}
 
-		private:
-
-			inline
-			void set_mandatory_flags() {
-			#if !SOCK_NONBLOCK || !SOCK_CLOEXEC
-				this->setf(unix::fd::non_blocking | unix::fd::close_on_exec);
-			#endif
-			}
-
 		};
 
 		union pipe {
 
 			inline
 			pipe(): _fds{} {
-				// TODO: F_SETNOSIGPIPE
 				open();
-			}
-
-			inline
-			pipe(fd_flag in_flags, fd_flag out_flags=fd_flag()): _fds{} {
-				open();
-				if (in_flags) {
-					in_flags.set(in());
-				}
-				if (out_flags) {
-					out_flags.set(out());
-				}
 			}
 
 			inline
@@ -546,7 +542,7 @@ namespace factory {
 			void open() {
 				this->close();
 				using components::check;
-				check(::pipe(this->_rawfds),
+				check(bits::safe_pipe(this->_rawfds),
 					__FILE__, __LINE__, __func__);
 			}
 

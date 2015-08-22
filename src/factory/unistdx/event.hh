@@ -187,7 +187,7 @@ namespace factory {
 
 			inline
 			event_poller():
-			_pipe(unix::fd::non_blocking | unix::fd::close_on_exec),
+			_pipe(),
 			_events{poll_event{this->_pipe.in().get_fd(), poll_event::In}}
 			{}
 
