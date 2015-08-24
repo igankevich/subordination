@@ -4,77 +4,73 @@ namespace factory {
 
 	const Id ROOT_ID = 0;
 
-//	std::string demangle_type_name(const char* type_name) {
-//		int status = 0;
-//		char* real_name = abi::__cxa_demangle(type_name, 0, 0, &status);
-//		std::string str = status == 0 ? real_name : type_name;
-//		delete[] real_name;
-//		return str;
-//	}
-//
-//	template<class X>
-//	std::string demangle_type_name(const X& x) {
-//		return demangle_type_name(typeid(x).name());
-//	}
-
 	namespace components {
 
-		// TODO: move it to kernel.hh
-		enum struct Result: uint16_t {
-			SUCCESS = 0,
-			UNDEFINED = 1,
-			ENDPOINT_NOT_CONNECTED = 3,
-			NO_UPSTREAM_SERVERS_LEFT = 4,
-			NO_PRINCIPAL_FOUND = 5,
-			USER_ERROR = 6,
-			FATAL_ERROR = 7,
-			SHUTDOWN = 8
-		};
-
-		template<class K>
-		class Type {
-		public:
+		template<class T>
+		struct Type {
 
 			/// A portable type id
-			typedef int16_t Type_id;
-			typedef std::function<void(K*)> Callback;
-			typedef K kernel_type;
-			typedef Type<K> this_type;
+			typedef int16_t id_type;
+			typedef T kernel_type;
+			typedef std::function<T* ()> construct_type;
+			typedef std::function<T* (packstream&)> read_type;
 
 			typedef stdx::log<Type> this_log;
 	
-			constexpr Type():
+			constexpr
+			Type() noexcept:
 				_id(0),
 				_name(),
 				construct(),
-				read_and_send(),
 				read()
 			{}
 	
-			constexpr Type(const Type& rhs):
+			constexpr
+			Type(const Type& rhs) noexcept:
 				_id(rhs._id),
 				_name(rhs._name),
 				construct(rhs.construct),
-				read_and_send(rhs.read_and_send),
 				read(rhs.read)
 			{}
 
-			constexpr Type_id id() const { return _id; }
-			void id(Type_id i) { _id = i; }
+			constexpr id_type
+			id() const noexcept {
+				return _id;
+			}
 
-			constexpr const char* name() const { return _name.c_str(); }
-			void name(const char* n) { _name = n; }
+			void
+			id(id_type rhs) noexcept {
+				_id = rhs;
+			}
 
-			constexpr explicit operator bool() const { return this->_id != 0; }
-			constexpr bool operator !() const { return this->_id == 0; }
+			constexpr const char*
+			name() const noexcept {
+				return _name.c_str();
+			}
 
-			friend std::ostream& operator<<(std::ostream& out, const Type<K>& rhs) {
+			void
+			name(const char* rhs) noexcept {
+				_name = rhs;
+			}
+
+			constexpr explicit
+			operator bool() const noexcept {
+				return this->_id != 0;
+			}
+
+			constexpr bool
+			operator !() const noexcept {
+				return this->_id == 0;
+			}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Type& rhs) {
 				return out << rhs.name() << '(' << rhs.id() << ')';
 			}
 
 			static
 			void write_object(kernel_type& kernel, packstream& out) {
-				const this_type* type = kernel.type();
+				const Type* type = kernel.type();
 				if (type == nullptr) {
 					std::stringstream msg;
 					msg << "Can not find type for kernel id=" << kernel.id();
@@ -85,36 +81,13 @@ namespace factory {
 				kernel.write(out);
 			}
 
-			static
-			void read_object(packstream& packet,
-				Callback after_read, Callback send_object)
-			{
-				Type_id id;
-				packet >> id;
-				if (!packet) return;
-				const this_type* type = this_type::types().lookup(id);
-				if (type == nullptr) {
-					std::stringstream msg;
-					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-				try {
-					type->read_and_send(packet, after_read, send_object);
-				} catch (std::bad_alloc& err) {
-					std::stringstream msg;
-					msg << "Allocation error. Demarshalled kernel was prevented"
-						" from allocating too much memory. " << err.what();
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
-				}
-			}
-
 			template<class Func>
 			static void
 			read_object(packstream& packet, Func callback) {
-				Type_id id;
+				id_type id;
 				packet >> id;
 				if (!packet) return;
-				const this_type* type = this_type::types().lookup(id);
+				const Type* type = Type::types().lookup(id);
 				if (type == nullptr) {
 					std::stringstream msg;
 					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
@@ -133,20 +106,17 @@ namespace factory {
 			}
 	
 
-			class Types {
-			public:
+			struct Types {
 	
-				typedef Type<K> T;
-
-				Types() = default;
-	
-				const T* lookup(Type_id type_name) const {
+				const Type*
+				lookup(id_type type_name) const noexcept {
 					auto result = this->_types.find(type_name);
 					return result == this->_types.end() ? nullptr : result->second; 
 				}
 
-				void register_type(T* type) {
-					const T* existing_type = this->lookup(type->id());
+				void
+				register_type(Type* type) {
+					const Type* existing_type = this->lookup(type->id());
 					if (existing_type != nullptr) {
 						std::stringstream msg;
 						msg << "'" << *type << "' and '" << *existing_type
@@ -156,7 +126,8 @@ namespace factory {
 					this->_types[type->id()] = type;
 				}
 		
-				friend std::ostream& operator<<(std::ostream& out, const Types& rhs) {
+				friend std::ostream&
+				operator<<(std::ostream& out, const Types& rhs) {
 					std::ostream_iterator<Entry> it(out, "\n");
 					std::copy(rhs._types.cbegin(), rhs._types.cend(), it);
 					return out;
@@ -165,7 +136,7 @@ namespace factory {
 			private:
 
 				struct Entry {
-					Entry(const std::pair<const Type_id, T*>& k): _type(k.second) {}
+					Entry(const std::pair<const id_type, Type*>& k): _type(k.second) {}
 
 					friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
 						return out
@@ -176,10 +147,10 @@ namespace factory {
 					}
 
 				private:
-					T* _type;
+					Type* _type;
 				};
 
-				std::unordered_map<Type_id, T*> _types;
+				std::unordered_map<id_type, Type*> _types;
 			};
 
 			class Instances {
@@ -188,18 +159,18 @@ namespace factory {
 
 				Instances(): _instances(), _mutex() {}
 
-				K* lookup(Id id) {
+				T* lookup(Id id) {
 					std::unique_lock<std::mutex> lock(_mutex);
 					auto result = _instances.find(id);
 					return result == _instances.end() ? nullptr : result->second; 
 				}
 
-				void register_instance(K* inst) {
+				void register_instance(T* inst) {
 					std::unique_lock<std::mutex> lock(_mutex);
 					_instances[inst->id()] = inst;
 				}
 
-				void free_instance(K* inst) {
+				void free_instance(T* inst) {
 					std::unique_lock<std::mutex> lock(_mutex);
 					_instances.erase(inst->id());
 				}
@@ -214,7 +185,7 @@ namespace factory {
 			private:
 
 				struct Entry {
-					Entry(const std::pair<const Id, K*>& k): _kernel(k.second) {}
+					Entry(const std::pair<const Id, T*>& k): _kernel(k.second) {}
 
 					friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
 						return out
@@ -232,10 +203,10 @@ namespace factory {
 							: _kernel->type()->name();
 					}
 
-					K* _kernel;
+					T* _kernel;
 				};
 
-				std::unordered_map<Id, K*> _instances;
+				std::unordered_map<Id, T*> _instances;
 				std::mutex _mutex;
 			};
 
@@ -251,47 +222,30 @@ namespace factory {
 
 		private:
 
-			Type_id _id;
+			id_type _id;
 			std::string _name;
 
 		protected:
-			std::function<K* ()> construct;
-			std::function<void (packstream& in, Callback callback, Callback)> read_and_send;
-			std::function<K* (packstream&)> read;
+			construct_type construct;
+			read_type read;
 		};
 
-		template<class Sub, class Type, class K, class Base=K>
-		class Type_init: public Base {
-		public:
-			constexpr const Type* type() const { return &_type; }
+		template<class Sub, class Type, class T, class Base=T>
+		struct Type_init: public Base {
+
+			constexpr const Type*
+			type() const noexcept override {
+				return &_type;
+			}
 
 		private:
 			struct Init: public Type {
-				using typename Type::Callback;
 				Init() {
 					this->construct = [] { return new Sub; };
 					this->read = [] (packstream& in) {
 						Sub* k = new Sub;
 						k->read(in);
 						return k;
-					};
-					this->read_and_send = [] (packstream& in, Callback callback, Callback call2) {
-						Sub* k = new Sub;
-						k->read(in);
-//						if (in) {
-							//TODO: always true
-							// TODO: there should be only one callback
-							callback(k);
-							if (k->principal()) {
-								K* p = Type::instances().lookup(k->principal()->id());
-								if (p == nullptr) {
-									k->result(Result::NO_PRINCIPAL_FOUND);
-									throw No_principal_found<K>(k);
-								}
-								k->principal(p);
-							}
-							call2(k);
-//						}
 					};
 
 //					this->type_id(typeid(Sub));
@@ -308,19 +262,19 @@ namespace factory {
 			// Static template members are initialised on demand,
 			// i.e. only if they are accessed in a program.
 			// This function tries to fool the compiler.
-			virtual typename Type::Type_id unused() { return _type.id(); }
+			virtual typename Type::id_type unused() { return _type.id(); }
 
 			static const Init _type;
 		};
 
-		template<class Sub, class Type, class K, class Base>
-		const typename Type_init<Sub, Type, K, Base>::Init Type_init<Sub, Type, K, Base>::_type;
+		template<class Sub, class Type, class T, class Base>
+		const typename Type_init<Sub, Type, T, Base>::Init Type_init<Sub, Type, T, Base>::_type;
 
 		Id factory_start_id();
 		Id factory_generate_id();
 
-		template<class K, class Type>
-		class Identifiable: public K {
+		template<class T, class Type>
+		class Identifiable: public T {
 
 		public:
 
