@@ -51,9 +51,11 @@ namespace factory {
 				close_on_exec = FD_CLOEXEC
 			};
 
+			#ifdef F_SETNOSIGPIPE
 			enum pipe_flag: flag_type {
 				no_sigpipe = 1
 			};
+			#endif
 
 			static const fd_type
 			bad = -1;
@@ -123,6 +125,7 @@ namespace factory {
 				set_flag(F_SETFL, get_flags(F_GETFL) | rhs);
 			}
 
+			#ifdef F_SETNOSIGPIPE
 			inline void
 			setf(pipe_flag rhs) {
 				set_flag(F_SETNOSIGPIPE, 1);
@@ -132,6 +135,7 @@ namespace factory {
 			unsetf(pipe_flag rhs) {
 				set_flag(F_SETNOSIGPIPE, 0);
 			}
+			#endif
 
 			inline void
 			set_flags(flag_type rhs) {

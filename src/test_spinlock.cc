@@ -1,14 +1,16 @@
-#include <factory/factory_base.hh>
+#include "libfactory.cc"
 using namespace factory;
 
-void spinlock_counter(unsigned nthreads, unsigned increment) {
+template<class Mutex>
+void
+counter_test(unsigned nthreads, unsigned increment) {
 	volatile unsigned counter = 0;
-	stdx::spin_mutex m;
+	Mutex m;
 	std::vector<std::thread> threads;
 	for (unsigned i=0; i<nthreads; ++i) {
 		threads.push_back(std::thread([&counter, increment, &m] () {
 			for (unsigned j=0; j<increment; ++j) {
-				std::lock_guard<stdx::spin_mutex> lock(m);
+				std::lock_guard<Mutex> lock(m);
 				++counter;
 			}
 		}));
@@ -25,7 +27,7 @@ void spinlock_counter(unsigned nthreads, unsigned increment) {
 }
 
 template<class I, class Func>
-void test_spinlock(Func func, I min_threads, I npowers) {
+void test_lock(Func func, I min_threads, I npowers) {
 	I max_threads = std::max(I(std::thread::hardware_concurrency()), I(2)*min_threads);
 	for (I j=min_threads; j<=max_threads; ++j) {
 		for (I i=0; i<npowers; ++i) {
@@ -120,23 +122,38 @@ void spinlock_queue(I nthreads, I max) {
 }
 
 template<class Bigint>
-void test_perf(Bigint m) {
+void test_perf_x(Bigint m) {
 	Time t0 = current_time_nano();
-	test_spinlock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
-	test_spinlock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
+	test_lock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
+	test_lock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
 	Time t1 = current_time_nano();
-	test_spinlock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
-	test_spinlock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
+	test_lock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
+	test_lock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
 	Time t2 = current_time_nano();
 	std::cout << "Time(stdx::spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
 	std::cout << "Time(std::mutex, " << m << ") = " << t2-t1 << "ns" << std::endl;
 }
 
+template<class Mutex, class Bigint=uint64_t>
+void
+test_perf(Bigint m) {
+	Time t0 = current_time_nano();
+	test_lock<Bigint>(spinlock_queue<Bigint, Mutex>, 1, m);
+	test_lock<Bigint>(spinlock_queue<Bigint, Mutex>, 1, m);
+	Time t1 = current_time_nano();
+	std::cout
+		<< "mutex=" << typeid(Mutex).name()
+		<< ", int_type=" << typeid(Bigint).name()
+		<< ", time=" << t1-t0 << "ns"
+		<< std::endl;
+}
+
 int main() {
 	try {
-		test_spinlock<unsigned>(spinlock_counter, 2, 10);
-		test_perf<uint32_t>(10);
-		test_perf<uint64_t>(10);
+		test_lock<unsigned>(counter_test<stdx::spin_mutex>, 2, 10);
+		test_perf<stdx::spin_mutex>(10);
+		test_perf<std::mutex>(10);
+//		test_lock<unsigned>(counter_test<bits::global_mutex>, 2, 2);
 	} catch (std::exception& e) {
 		std::cerr << "Error. " << e.what() << std::endl;
 		return 1;

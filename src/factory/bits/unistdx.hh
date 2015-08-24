@@ -72,25 +72,31 @@ namespace factory {
 			handle(T& obj, E ev) { obj->operator()(ev); }
 		};
 
+		/*
+
 		/// process-wide shared memory lock
 		/// which does not require global
 		/// variable
-		struct global_lock {
+		struct global_mutex {
 
-			typedef stdx::spin_mutex mutex_type;
+//			typedef stdx::spin_mutex mutex_type;
+			typedef std::mutex mutex_type;
 
-			global_lock() { lock(); }
-			~global_lock() { unlock(); }
-
-		private:
+			global_mutex() { lock(); unlock(); }
+			~global_mutex() {
+				::shmdt(_mutex);
+				rm_shm_at_exit();
+			}
 
 			void
 			lock() {
 				_shm = getshm();
 				if (_shm == -1) {
 					std::atexit(rm_shm_at_exit);
-					_shm = getshm(IPC_CREAT);
-					void* ptr = ::shmat(_shm, 0, 0);
+					_shm = newshm();
+					std::cerr << "shm = " << _shm << std::endl;
+					void* ptr = components::check(::shmat(_shm, 0, 0),
+						__FILE__, __LINE__, __func__);
 					_mutex = new (ptr) mutex_type;
 				} else {
 					void* ptr = ::shmat(_shm, 0, 0);
@@ -103,11 +109,23 @@ namespace factory {
 			unlock() {
 				_mutex->unlock();
 				::shmdt(_mutex);
+				rm_shm_at_exit();
 			}
+
+		private:
 
 			static int
 			getshm(int option=0) {
 				return ::shmget(LOCK_KEY, sizeof(mutex_type), 0600 | option);
+			}
+
+			static int
+			newshm() {
+				std::cerr << "arg1=" << LOCK_KEY
+					<< ",arg2=" << sizeof(mutex_type)
+					<< std::endl;
+				return components::check(::shmget(LOCK_KEY, 4096, 0600 | IPC_CREAT),
+					__FILE__, __LINE__, __func__);
 			}
 
 			static void
@@ -118,11 +136,17 @@ namespace factory {
 				}
 			}
 
-			int _shm;
+			int _shm = 0;
 			mutex_type* _mutex = nullptr;
 			
 			static constexpr ::key_t LOCK_KEY = 123;
 		};
+
+		struct global_lock: public global_mutex {
+			global_lock() { lock(); }
+			~global_lock() { unlock(); }
+		};
+		*/
 
 		stdx::spin_mutex __forkmutex;
 
@@ -145,7 +169,9 @@ namespace factory {
 			if (ret != -1) {
 				set_mandatory_flags(fds[0]);
 				set_mandatory_flags(fds[1]);
+				#if defined(F_SETNOSIGPIPE)
 				fcntl(fds[1], F_SETNOSIGPIPE, 1);
+				#endif
 			}
 			return ret;
 		}
