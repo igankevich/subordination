@@ -5,143 +5,6 @@ namespace factory {
 	}
 }
 
-namespace factory {
-
-	namespace components {
-
-		extern std::mutex __kernel_delete_mutex;
-		void register_server();
-		void global_barrier(std::unique_lock<std::mutex>&);
-	
-		enum struct server_state {
-			initial,
-			started,
-			stopped
-		};
-
-		struct Resident {
-
-			Resident() = default;
-			virtual ~Resident() = default;
-			Resident(Resident&&) = default;
-
-			Resident(const Resident&) = delete;
-			Resident& operator=(const Resident&) = delete;
-
-			virtual void
-			start() {
-				setstate(server_state::started);
-			}
-
-			virtual void
-			stop() {
-				setstate(server_state::stopped);
-			}
-
-			virtual void
-			wait() {}
-
-			virtual void
-			stop_now() {}
-
-			// TODO: boilerplate :(
-			virtual unix::endpoint
-			addr() const {
-				return unix::endpoint();
-			}
-
-			inline void
-			setstate(server_state rhs) noexcept {
-				_state = rhs;
-			}
-
-			inline bool
-			stopped() const noexcept {
-				return _state == server_state::stopped;
-			}
-
-			inline bool
-			started() const noexcept {
-				return _state == server_state::started;
-			}
-
-		protected:
-			void wait_impl() {}
-			void stop_impl() {}
-
-		private:
-			volatile server_state _state = server_state::initial;
-		};
-
-		template<class Sub, class Base>
-		struct Server_link: public Base {
-			typedef Base base_type;
-			typedef Sub derived_type;
-			void wait() {
-				base_type::wait();
-				static_cast<derived_type*>(this)->derived_type::wait_impl();
-			}
-			void stop() {
-				base_type::stop();
-				static_cast<derived_type*>(this)->derived_type::stop_impl();
-			}
-		};
-
-		template<class K>
-		struct Server: public Resident {
-
-			typedef K kernel_type;
-			typedef K Kernel;
-
-			Server() = default;
-			virtual ~Server() = default;
-			Server(Server&&) = default;
-
-			Server(const Server&) = delete;
-			Server& operator=(Server&) = delete;
-
-//			void setparent(Server* rhs) {
-//				if (this->_parent) {
-//					this->_parent->remove_child(this);
-//				}
-//				this->_parent = rhs;
-//				if (rhs) {
-//					rhs->add_child(this);
-//				}
-//			}
-//
-//			inline Server*
-//			parent() const noexcept {
-//				return this->_parent;
-//			}
-//
-//			inline Server*
-//			root() noexcept {
-//				return this->_parent
-//					? this->_parent->root()
-//					: this;
-//			}
-//
-//			inline const Server*
-//			root() const noexcept {
-//				return this->_parent
-//					? this->_parent->root()
-//					: this;
-//			}
-
-//			virtual void add_child(Server*) {}
-//			virtual void remove_child(Server*) {}
-			virtual void send(kernel_type*) = 0;
-			virtual void send(kernel_type**, size_t) {}
-
-//		private:
-//			Server* _parent = nullptr;
-		};
-
-	}
-
-}
-
 #include "server/basic_server.hh"
 #include "server/cpu_server.hh"
 #include "server/timer_server.hh"
@@ -151,308 +14,23 @@ namespace factory {
 
 	namespace components {
 
-//		template<class Server, class Sub_server>
-//		struct Iserver: public Server_link<Iserver<Server, Sub_server>, Server> {
-//
-//			typedef Sub_server Srv;
-//			typedef Iserver<Server, Sub_server> This;
-//
-//			Iserver() {}
-//			Iserver(const This&) = delete;
-//			Iserver(This&& rhs): _upstream(std::move(rhs._upstream)) {
-//				std::for_each(
-//					_upstream.begin(),
-//					_upstream.end(),
-//					std::bind(std::mem_fn(&Srv::setparent), this));
-//			}
-//		
-//			void add(Srv&& srv) {
-//				srv.setparent(this);
-//				_upstream.emplace_back(srv);
-//			}
-//
-//			void add_cpu(size_t cpu) {
-//				Sub_server srv;
-//				srv.affinity(cpu);
-//				srv.setparent(this);
-//				_upstream.emplace_back(std::move(srv));
-//			}
-//
-//			void wait_impl() {
-//				this_log() << "Iserver::wait()" << std::endl;
-//				std::for_each(
-//					_upstream.begin(),
-//					_upstream.end(),
-//					std::mem_fn(&Srv::wait));
-//			}
-//		
-//			void stop_impl() {
-//				this_log() << "Iserver::stop()" << std::endl;
-//				std::for_each(
-//					_upstream.begin(),
-//					_upstream.end(),
-//					std::mem_fn(&Srv::stop));
-//			}
-//		
-//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-//				std::copy(rhs._upstream.begin(), rhs._upstream.end(),
-//					stdx::intersperse_iterator<const Srv&>(out, ","));
-//			}
-//			
-//			void start() {
-//				this_log() << "Iserver::start()" << std::endl;
-//				std::for_each(
-//					_upstream.begin(),
-//					_upstream.end(),
-//					std::mem_fn(&Srv::start));
-//			}
-//		
-//		protected:
-//			std::vector<Srv> _upstream;
-//		};
-
-//		template<template<class A> class Pool, class Server>
-//		struct Rserver: public Server_link<Rserver<Pool, Server>, Server> {
-//
-//			typedef Server Srv;
-//			typedef typename Server::Kernel Kernel;
-//			typedef Rserver<Pool, Server> This;
-//
-//			Rserver():
-//				_pool(),
-//				_cpu(0),
-//				_thread(),
-//				_mutex(),
-//				_semaphore()
-//			{}
-//
-//			Rserver(This&& rhs):
-//				_pool(std::move(rhs._pool)),
-//				_cpu(rhs._cpu),
-//				_thread(std::move(rhs._thread)),
-//				_mutex(),
-//				_semaphore()
-//			{}
-//
-//			This& operator=(const This&) = delete;
-//
-//			virtual ~Rserver() {
-//				// ensure that kernels inserted without starting
-//				// a server are deleted
-//				std::vector<std::unique_ptr<Kernel>> sack;
-//				delete_all_kernels(std::back_inserter(sack));
-//			}
-//
-//			void add() {}
-//
-//			void send(Kernel* kernel) {
-//				std::unique_lock<std::mutex> lock(_mutex);
-//				_pool.push(kernel);
-//				_semaphore.notify_one();
-//			}
-//
-//			void wait_impl() {
-//				this_log() << "Rserver::wait()" << std::endl;
-//				if (_thread.joinable()) {
-//					_thread.join();
-//				}
-//			}
-//
-//			void stop_impl() {
-//				this_log() << "Rserver::stop_impl()" << std::endl;
-//				_semaphore.notify_all();
-//			}
-//
-//			void start() {
-//				this_log() << "Rserver::start()" << std::endl;
-//				_thread = std::thread([this] { this->serve(); });
-//			}
-//
-//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-//				return out << "rserver " << rhs._cpu;
-//			}
-//
-//			void affinity(size_t cpu) { _cpu = cpu; }
-//
-//		protected:
-//
-//			void serve() {
-//				register_server();
-//				thread_affinity(_cpu);
-//				while (!this->stopped()) {
-//					if (!_pool.empty()) {
-//						std::unique_lock<std::mutex> lock(_mutex);
-//						Kernel* kernel = _pool.front();
-//						_pool.pop();
-//						lock.unlock();
-//						this->process_kernel(kernel);
-////						kernel->act();
-//					} else {
-//						wait_for_a_kernel();
-//					}
-//				}
-//				// Recursively collect kernel pointers to the sack
-//				// and delete them all at once. Collection process
-//				// is fully serial to prevent multiple deletions
-//				// and access to unitialised values.
-//				std::unique_lock<std::mutex> lock(__kernel_delete_mutex);
-//				std::vector<std::unique_ptr<Kernel>> sack;
-//				delete_all_kernels(std::back_inserter(sack));
-//				// simple barrier for all threads participating in deletion
-//				global_barrier(lock);
-//				// destructors of scoped variables
-//				// will destroy all kernels automatically
-//			}
-//
-//		private:
-//
-//			void wait_for_a_kernel() {
-//				std::unique_lock<std::mutex> lock(_mutex);
-//				_semaphore.wait(lock, [this] {
-//					return !_pool.empty() || this->stopped();
-//				});
-//			}
-//
-//			template<class It>
-//			void delete_all_kernels(It it) {
-//				while (!_pool.empty()) {
-//					_pool.front()->mark_as_deleted(it);
-//					_pool.pop();
-//				}
-//			}
-//
-//			Pool<Kernel*> _pool;
-//			size_t _cpu = 0;
-//		
-//			std::thread _thread;
-//			std::mutex _mutex;
-//			std::condition_variable _semaphore;
-//		};
-
-//		template<class Server>
-//		struct Tserver: public Server_link<Tserver<Server>, Server> {
-//
-//			typedef Server Srv;
-//			typedef typename Server::Kernel Kernel;
-//			typedef Tserver<Server> This;
-//
-//			struct Compare_time {
-//				bool operator()(const Kernel* lhs, const Kernel* rhs) const {
-//					return (lhs->timed() && !rhs->timed()) || lhs->at() > rhs->at();
-//				}
-//			};
-//
-//			typedef std::priority_queue<Kernel*, std::vector<Kernel*>, Compare_time> Pool;
-//
-//			Tserver():
-//				_pool(),
-//				_cpu(0),
-//				_thread(),
-//				_mutex(),
-//				_semaphore()
-//			{}
-//
-//			virtual ~Tserver() {
-//				std::unique_lock<std::mutex> lock(_mutex);
-//				while (!_pool.empty()) {
-//					delete _pool.top();
-//					_pool.pop();
-//				}
-//			}
-//
-//			void add() {}
-//
-//			void send(Kernel* kernel) {
-//				std::unique_lock<std::mutex> lock(_mutex);
-//				_pool.push(kernel);
-//				_semaphore.notify_one();
-//			}
-//
-//			void wait_impl() {
-//				this_log() << "Tserver::wait()" << std::endl;
-//				if (_thread.joinable()) {
-//					_thread.join();
-//				}
-//			}
-//
-//			void stop_impl() {
-//				this_log() << "Tserver::stop_impl()" << std::endl;
-//				_semaphore.notify_all();
-//			}
-//
-//			void start() {
-//				this_log() << "Tserver::start()" << std::endl;
-//				_thread = std::thread([this] { this->serve(); });
-//			}
-//
-//			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-//				return out << "tserver " << rhs._cpu;
-//			}
-//
-//			void affinity(size_t cpu) { _cpu = cpu; }
-//
-//		protected:
-//
-//			void serve() {
-//				thread_affinity(_cpu);
-//				while (!this->stopped()) {
-//					if (!_pool.empty()) {
-//						std::unique_lock<std::mutex> lock(_mutex);
-//						Kernel* kernel = _pool.top();
-//						bool run = true;
-//						if (kernel->at() > Kernel::Clock::now() && kernel->timed()) {
-//							run = _semaphore.wait_until(lock, kernel->at(),
-//								[this] { return this->stopped(); });
-//						}
-//						if (run) {
-//							_pool.pop();
-//							lock.unlock();
-//							this->parent()->send(kernel);
-//						}
-//					} else {
-//						wait_for_a_kernel();
-//					}
-//				}
-//			}
-//
-//		private:
-//
-//			void wait_for_a_kernel() {
-//				std::unique_lock<std::mutex> lock(_mutex);
-//				_semaphore.wait(lock, [this] {
-//					return !_pool.empty() || this->stopped();
-//				});
-//			}
-//
-//			Pool _pool;
-//			size_t _cpu;
-//		
-//			std::thread _thread;
-//			std::mutex _mutex;
-//			std::condition_variable _semaphore;
-//		};
-
-	}
-}
-namespace factory {
-
-	namespace components {
-
 		template<template<class X> class Mobile, class Type>
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
 			typedef stdx::log<Shutdown> this_log;
-			explicit Shutdown(bool f=false): force(f) {}
+			explicit Shutdown(bool f=false): force(f) {
+				this->result(Result::SHUTDOWN);
+			}
 			void act() {
 				this_log() << "broadcasting shutdown message" << std::endl;
-				bool f = this->force;
-				delete this;
-				stop_all_factories(f);
+//				bool f = this->force;
+//				delete this;
+//				stop_all_factories(f);
 			}
 //			void react() {}
 			void write_impl(packstream&) {}
 			void read_impl(packstream&) {}
 			static void init_type(Type* t) {
-				t->id(123);
+				t->id(SHUTDOWN_ID);
 				t->name("Shutdown");
 			}
 		private:
@@ -460,9 +38,9 @@ namespace factory {
 		};
 
 
-		void stop_all_factories(bool now);
-		void print_all_endpoints(std::ostream& out);
-		void register_factory(Resident* factory);
+//		void stop_all_factories(bool now);
+//		void print_all_endpoints(std::ostream& out);
+//		void register_factory(Resident* factory);
 
 		template<
 			class Local_server,
@@ -473,9 +51,11 @@ namespace factory {
 			class Principal_server,
 			class Shutdown
 		>
-		struct Basic_factory: public Managed_set<Server<typename Local_server::Kernel>> {
+		struct Basic_factory: public Managed_set<Server<typename Local_server::kernel_type>> {
 
-			typedef typename Local_server::Kernel Kernel;
+			typedef typename Local_server::kernel_type kernel_type;
+			typedef Server<kernel_type> base_server;
+
 			enum struct Role {
 				Principal,
 				Subordinate
@@ -507,7 +87,9 @@ namespace factory {
 				};
 			}
 
-			void start() {
+			void
+			start() override {
+				base_server::start();
 				_local_server.start();
 				_remote_server.start();
 				_ext_server.start();
@@ -518,7 +100,25 @@ namespace factory {
 				}
 			}
 
-			void stop_now() {
+//			void stop_now() {
+//				_local_server.stop();
+//				_remote_server.stop();
+//				_ext_server.stop();
+//				_timer_server.stop();
+//				_app_server.stop();
+//				if (_role == Role::Subordinate) {
+//					_principal_server.stop();
+//				}
+//			}
+
+			void
+			stop() override {
+				base_server::stop();
+				_remote_server.send(new Shutdown);
+				_app_server.send(new Shutdown);
+				if (_role == Role::Subordinate) {
+					_principal_server.send(new Shutdown);
+				}
 				_local_server.stop();
 				_remote_server.stop();
 				_ext_server.stop();
@@ -527,21 +127,18 @@ namespace factory {
 				if (_role == Role::Subordinate) {
 					_principal_server.stop();
 				}
+//				_remote_server.send(new Shutdown);
+//				_ext_server.send(new Shutdown);
+//				_app_server.send(new Shutdown);
+//				if (_role == Role::Subordinate) {
+//					_principal_server.send(new Shutdown);
+//				}
+//				Shutdown* s = new Shutdown(true);
+//				s->after(std::chrono::milliseconds(500));
+//				_timer_server.send(s);
 			}
 
-			void stop() {
-				_remote_server.send(new Shutdown);
-				_ext_server.send(new Shutdown);
-				_app_server.send(new Shutdown);
-				if (_role == Role::Subordinate) {
-					_principal_server.send(new Shutdown);
-				}
-				Shutdown* s = new Shutdown(true);
-				s->after(std::chrono::milliseconds(500));
-				_timer_server.send(s);
-			}
-
-			void wait() {
+			void wait() override {
 				_local_server.wait();
 				_remote_server.wait();
 				_ext_server.wait();
@@ -552,7 +149,7 @@ namespace factory {
 				}
 			}
 
-			void send(Kernel* k) { this->_local_server.send(k); }
+			void send(kernel_type* k) override { this->_local_server.send(k); }
 
 			Local_server* local_server() { return &_local_server; }
 			Remote_server* remote_server() { return &_remote_server; }

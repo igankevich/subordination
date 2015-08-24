@@ -16,7 +16,7 @@ namespace factory {
 			explicit Packing_stream(streambuf_type* str): iostream_type(str) {
 //				this->init(str);
 			}
-//			Packing_stream(Packing_stream&& rhs) = default;
+			Packing_stream(Packing_stream&& rhs): iostream_type(rhs.rdbuf()) {}
 			Packing_stream(const Packing_stream&) = delete;
 			Packing_stream() = delete;
 

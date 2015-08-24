@@ -1,3 +1,5 @@
+#include "server/basic_server.hh"
+
 #ifndef FACTORY_CONFIGURATION
 namespace factory {
 
@@ -13,6 +15,7 @@ namespace factory {
 				case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
 				case Result::USER_ERROR: out << "USER_ERROR"; break;
 				case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
+				case Result::SHUTDOWN: out << "SHUTDOWN"; break;
 				default: out << "UNKNOWN_RESULT";
 			}
 			return out;
@@ -237,7 +240,7 @@ namespace factory {
 
 			virtual const Type<This>* type() const { return nullptr; }
 
-			void run_act() {
+			void run_act(Managed_object<Server<This>>& this_server) {
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
@@ -248,6 +251,11 @@ namespace factory {
 //								delete this;
 //							}
 						}
+						break;
+					case Result::SHUTDOWN:
+						delete this;
+						this_log() << "SHUTDOWN" << std::endl;
+						this_server.root()->stop();
 						break;
 					case Result::SUCCESS:
 					case Result::ENDPOINT_NOT_CONNECTED:
@@ -261,7 +269,8 @@ namespace factory {
 							if (!_parent) {
 								delete this;
 								this_log() << "SHUTDOWN" << std::endl;
-								stop_all_factories();
+								this_server.root()->stop();
+//								stop_all_factories();
 							}
 						} else {
 							this_log() << "Principal is not null" << std::endl;

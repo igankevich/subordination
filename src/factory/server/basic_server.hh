@@ -1,9 +1,76 @@
 #ifndef FACTORY_SERVER_BASIC_SERVER_HH
 #define FACTORY_SERVER_BASIC_SERVER_HH
 
+#include "../managed_object.hh"
+
 namespace factory {
 
 	namespace components {
+
+		constexpr const Id SHUTDOWN_ID = 123;
+
+		extern std::mutex __kernel_delete_mutex;
+		void register_server();
+		void global_barrier(std::unique_lock<std::mutex>&);
+	
+		enum struct server_state {
+			initial,
+			started,
+			stopped
+		};
+
+		struct Resident {
+
+			virtual void
+			start() {
+				setstate(server_state::started);
+			}
+
+			virtual void
+			stop() {
+				setstate(server_state::stopped);
+			}
+
+			virtual void
+			wait() {}
+
+			virtual void
+			stop_now() {}
+
+			// TODO: boilerplate :(
+			virtual unix::endpoint
+			addr() const {
+				return unix::endpoint();
+			}
+
+			inline void
+			setstate(server_state rhs) noexcept {
+				_state = rhs;
+			}
+
+			inline bool
+			stopped() const noexcept {
+				return _state == server_state::stopped;
+			}
+
+			inline bool
+			started() const noexcept {
+				return _state == server_state::started;
+			}
+
+		private:
+			volatile server_state _state = server_state::initial;
+		};
+
+		template<class T>
+		struct Server: public Resident {
+
+			typedef T kernel_type;
+
+			virtual void send(kernel_type*) = 0;
+			virtual void send(kernel_type**, size_t) {}
+
+		};
 
 		template<
 			class T,

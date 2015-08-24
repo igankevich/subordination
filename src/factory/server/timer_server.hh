@@ -42,11 +42,6 @@ namespace factory {
 			Timer_server& operator=(const Timer_server&) = delete;
 			~Timer_server() = default;
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const Timer_server& rhs) {
-				return out << "timerserver";
-			}
-
 			void add_cpu(size_t) {}
 
 			Category
@@ -69,7 +64,7 @@ namespace factory {
 						if (!wait_until_kernel_is_ready(lock, kernel)) {
 							stdx::pop(this->_kernels);
 							lock.unlock();
-							kernel->run_act();
+							kernel->run_act(*this);
 						}
 					}
 				}

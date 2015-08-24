@@ -27,7 +27,8 @@ namespace factory {
 			NO_UPSTREAM_SERVERS_LEFT = 4,
 			NO_PRINCIPAL_FOUND = 5,
 			USER_ERROR = 6,
-			FATAL_ERROR = 7
+			FATAL_ERROR = 7,
+			SHUTDOWN = 8
 		};
 
 		template<class K>
@@ -46,14 +47,16 @@ namespace factory {
 				_id(0),
 				_name(),
 				construct(),
-				read_and_send()
+				read_and_send(),
+				read()
 			{}
 	
 			constexpr Type(const Type& rhs):
 				_id(rhs._id),
 				_name(rhs._name),
 				construct(rhs.construct),
-				read_and_send(rhs.read_and_send)
+				read_and_send(rhs.read_and_send),
+				read(rhs.read)
 			{}
 
 			constexpr Type_id id() const { return _id; }
@@ -103,6 +106,30 @@ namespace factory {
 						" from allocating too much memory. " << err.what();
 					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
+			}
+
+			template<class Func>
+			static void
+			read_object(packstream& packet, Func callback) {
+				Type_id id;
+				packet >> id;
+				if (!packet) return;
+				const this_type* type = this_type::types().lookup(id);
+				if (type == nullptr) {
+					std::stringstream msg;
+					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				kernel_type* kernel = nullptr;
+				try {
+					kernel = type->read(packet);
+				} catch (std::bad_alloc& err) {
+					std::stringstream msg;
+					msg << "Allocation error. Demarshalled kernel was prevented"
+						" from allocating too much memory. " << err.what();
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				callback(kernel);
 			}
 	
 
@@ -230,6 +257,7 @@ namespace factory {
 		protected:
 			std::function<K* ()> construct;
 			std::function<void (packstream& in, Callback callback, Callback)> read_and_send;
+			std::function<K* (packstream&)> read;
 		};
 
 		template<class Sub, class Type, class K, class Base=K>
@@ -242,6 +270,11 @@ namespace factory {
 				using typename Type::Callback;
 				Init() {
 					this->construct = [] { return new Sub; };
+					this->read = [] (packstream& in) {
+						Sub* k = new Sub;
+						k->read(in);
+						return k;
+					};
 					this->read_and_send = [] (packstream& in, Callback callback, Callback call2) {
 						Sub* k = new Sub;
 						k->read(in);

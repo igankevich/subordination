@@ -220,6 +220,7 @@ namespace factory {
 			}
 
 			static void emergency_shutdown(int sig) noexcept {
+				// TODO: this->root()->stop()
 				stop_all_factories();
 				static int num_calls = 0;
 				static const int MAX_CALLS = 3;

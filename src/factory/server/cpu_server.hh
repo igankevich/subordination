@@ -27,13 +27,6 @@ namespace factory {
 			CPU_server& operator=(const CPU_server&) = delete;
 			~CPU_server() = default;
 
-			void
-			write(std::ostream& out) const override {
-				out << '{';
-				out << "nthreads=" << this->_threads.size();
-				out << '}';
-			}
-
 			void add_cpu(size_t) {}
 
 			Category
@@ -65,7 +58,7 @@ namespace factory {
 						kernel_type* kernel = stdx::front(this->_kernels);
 						stdx::pop(this->_kernels);
 						lock.unlock();
-						kernel->run_act();
+						kernel->run_act(*this);
 					}
 				}
 			}

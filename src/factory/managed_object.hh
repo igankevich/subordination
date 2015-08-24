@@ -77,9 +77,6 @@ namespace factory {
 			virtual void
 			for_each(std::function<void(const Managed_object*)>) const {}
 
-			virtual void
-			write(std::ostream&) const {}
-
 			void
 			write_recursively(std::ostream& out) const {
 				write_categories(out);

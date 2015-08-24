@@ -30,7 +30,7 @@ namespace factory {
 		struct Principal_server: public Managed_object<Server> {
 
 			typedef Principal_server<Server> this_type;
-			typedef typename Server::Kernel kernel_type;
+			typedef typename Server::kernel_type kernel_type;
 			typedef unix::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
@@ -124,19 +124,46 @@ namespace factory {
 					<< ",rdstate=" << bits::debug_stream(this->_istream)
 					<< std::endl;
 				if (!this->_istream) return;
-				Type<kernel_type>::read_object(this->_istream, [this,&src] (kernel_type* k) {
-					k->from(src);
-					this_log()
-						<< "recv kernel=" << *k
-						<< ",rdstate=" << bits::debug_stream(this->_istream)
-						<< std::endl;
-				}, [this] (kernel_type* k) {
-					this_log()
-						<< "recv2 kernel=" << *k
-						<< ",rdstate=" << bits::debug_stream(this->_istream)
-						<< std::endl;
-					this->root()->send(k);
-				});
+				Type<kernel_type>::read_object(this->_istream,
+					[this,&src] (kernel_type* k) {
+						send_kernel(k, src);
+					}
+				);
+//				Type<kernel_type>::read_object(this->_istream, [this,&src] (kernel_type* k) {
+//					k->from(src);
+//					this_log()
+//						<< "recv kernel=" << *k
+//						<< ",rdstate=" << bits::debug_stream(this->_istream)
+//						<< std::endl;
+//				}, [this] (kernel_type* k) {
+//					this_log()
+//						<< "recv2 kernel=" << *k
+//						<< ",rdstate=" << bits::debug_stream(this->_istream)
+//						<< std::endl;
+//					this->root()->send(k);
+//				});
+			}
+
+			void
+			send_kernel(kernel_type* k, const unix::endpoint& src) {
+				k->from(src);
+				this_log()
+					<< "recv kernel=" << *k
+					<< ",rdstate=" << bits::debug_stream(this->_istream)
+					<< std::endl;
+				if (k->principal()) {
+					kernel_type* p = Type<kernel_type>::instances().lookup(k->principal()->id());
+					if (p == nullptr) {
+						k->result(Result::NO_PRINCIPAL_FOUND);
+						throw No_principal_found<kernel_type>(k);
+					}
+					k->principal(p);
+				}
+				this_log()
+					<< "recv2 kernel=" << *k
+					<< ",rdstate=" << bits::debug_stream(this->_istream)
+					<< std::endl;
+				this->root()->send(k);
 			}
 
 			ibuf_type _ibuf;
@@ -225,9 +252,9 @@ namespace factory {
 		template<class Server>
 		struct Sub_Iserver: public Managed_object<Server> {
 
-			typedef typename Server::Kernel Kernel;
+			typedef typename Server::kernel_type kernel_type;
 			typedef Application app_type;
-			typedef Sub_Rserver<Kernel> rserver_type;
+			typedef Sub_Rserver<kernel_type> rserver_type;
 			typedef typename app_type::id_type key_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
@@ -252,7 +279,7 @@ namespace factory {
 				this->_apps.emplace(app.id(), rserver_type(app));
 			}
 			
-			void send(Kernel* k) {
+			void send(kernel_type* k) {
 				if (k->moves_everywhere()) {
 //					std::for_each(this->_apps.begin(), this->_apps.end(),
 //						[k] (pair_type& rhs) {

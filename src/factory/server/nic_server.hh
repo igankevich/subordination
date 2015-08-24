@@ -194,20 +194,34 @@ namespace factory {
 				if (app != Application::ROOT) {
 					factory::components::forward_to_app(app, this->_vaddr, this->_kernelbuf);
 				} else {
-					Type<kernel_type>::read_object(this->_stream, [this,app] (kernel_type* k) {
-						k->from(_vaddr);
-						k->setapp(app);
-						this_log()
-							<< "recv kernel=" << *k
-							<< ",rdstate=" << bits::debug_stream(this->_stream)
-							<< std::endl;
-						if (k->moves_downstream()) {
-							this->clear_kernel_buffer(k);
+					Type<kernel_type>::read_object(this->_stream,
+						[this,app] (kernel_type* k) {
+							send_kernel(k, app);
 						}
-					}, [this] (kernel_type* k) {
-						this->root()->send(k);
-					});
+					);
 				}
+			}
+
+			void
+			send_kernel(kernel_type* k, app_type app) {
+				k->from(_vaddr);
+				k->setapp(app);
+				this_log()
+					<< "recv kernel=" << *k
+					<< ",rdstate=" << bits::debug_stream(this->_stream)
+					<< std::endl;
+				if (k->moves_downstream()) {
+					this->clear_kernel_buffer(k);
+				}
+				if (k->principal()) {
+					kernel_type* p = Type<kernel_type>::instances().lookup(k->principal()->id());
+					if (p == nullptr) {
+						k->result(Result::NO_PRINCIPAL_FOUND);
+						throw No_principal_found<kernel_type>(k);
+					}
+					k->principal(p);
+				}
+				this->root()->send(k);
 			}
 
 			void return_kernel(kernel_type* k) {
@@ -315,15 +329,12 @@ namespace factory {
 			do_run() override {
 				// start processing as early as possible
 				this->process_kernels();
+//				while (!this->stopped() && _stop_iterations < MAX_STOP_ITERATIONS) {
 				while (!this->stopped()) {
 					cleanup_and_check_if_dirty();
 					lock_type lock(this->_mutex);
 					this->_semaphore.wait(lock,
-						[this] () {
-//							return poller().stopped();
-							return this->stopped() && (this->empty()
-							|| this->_stop_iterations == MAX_STOP_ITERATIONS);
-						});
+						[this] () { return this->stopped(); });
 					lock.unlock();
 					check_and_process_kernels();
 					check_and_accept_connections();
@@ -347,15 +358,15 @@ namespace factory {
 
 			void
 			check_and_process_kernels() {
-				poller().for_each_pipe_fd([this] (unix::poll_event& ev) {
-					if (ev.in()) {
-						if (this->stopped()) {
-							this->try_to_stop_gracefully();
-						} else {
+				if (this->stopped()) {
+					this->try_to_stop_gracefully();
+				} else {
+					poller().for_each_pipe_fd([this] (unix::poll_event& ev) {
+						if (ev.in()) {
 							this->process_kernels();
 						}
-					}
-				});
+					});
+				}
 			}
 
 			void
@@ -484,11 +495,6 @@ namespace factory {
 					this->_semaphore.notify_one();
 				}
 			}
-	
-			friend std::ostream&
-			operator<<(std::ostream& out, const NIC_server& rhs) {
-				return out << "socketserver";
-			}
 
 			inline unix::endpoint
 			server_addr() const {
@@ -499,7 +505,17 @@ namespace factory {
 			category() const noexcept override {
 				return Category{
 					"nic_server",
-					[] () { return new NIC_server; }
+					[] () { return new NIC_server; },
+					{"endpoint"},
+					[] (const void* obj, Category::key_type key) {
+						const NIC_server* lhs = static_cast<const NIC_server*>(obj);
+						if (key == "endpoint") {
+							std::stringstream tmp;
+							tmp << lhs->server_addr();
+							return tmp.str();
+						}
+						return Category::value_type();
+					}
 				};
 			}
 		
