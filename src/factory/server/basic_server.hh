@@ -13,7 +13,7 @@ namespace factory {
 			class Lock=std::unique_lock<Mutex>,
 			class Semaphore=unix::thread_semaphore
 		>
-		struct Server_with_pool: public Server<T> {
+		struct Server_with_pool: public Managed_object<Server<T>> {
 
 			typedef T kernel_type;
 			typedef Kernels kernel_pool;

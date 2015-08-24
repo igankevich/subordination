@@ -49,6 +49,14 @@ namespace factory {
 
 			void add_cpu(size_t) {}
 
+			Category
+			category() const noexcept override {
+				return Category{
+					"tm_server",
+					[] () { return new Timer_server; }
+				};
+			}
+
 		private:
 
 			void

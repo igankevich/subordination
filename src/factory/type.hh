@@ -19,6 +19,17 @@ namespace factory {
 
 	namespace components {
 
+		// TODO: move it to kernel.hh
+		enum struct Result: uint16_t {
+			SUCCESS = 0,
+			UNDEFINED = 1,
+			ENDPOINT_NOT_CONNECTED = 3,
+			NO_UPSTREAM_SERVERS_LEFT = 4,
+			NO_PRINCIPAL_FOUND = 5,
+			USER_ERROR = 6,
+			FATAL_ERROR = 7
+		};
+
 		template<class K>
 		class Type {
 		public:

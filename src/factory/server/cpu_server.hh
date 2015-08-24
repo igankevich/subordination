@@ -2,6 +2,7 @@
 #define FACTORY_SERVER_CPU_SERVER_HH
 
 #include "intro.hh"
+#include "../managed_object.hh"
 
 namespace factory {
 
@@ -26,12 +27,30 @@ namespace factory {
 			CPU_server& operator=(const CPU_server&) = delete;
 			~CPU_server() = default;
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const CPU_server& rhs) {
-				return out << "cpuserver";
+			void
+			write(std::ostream& out) const override {
+				out << '{';
+				out << "nthreads=" << this->_threads.size();
+				out << '}';
 			}
 
 			void add_cpu(size_t) {}
+
+			Category
+			category() const noexcept override {
+				return Category{
+					"cpu_server",
+					[] () { return new CPU_server; },
+					{"nthreads"},
+					[] (const void* obj, Category::key_type key) {
+						const CPU_server* lhs = static_cast<const CPU_server*>(obj);
+						if (key == "nthreads") {
+							return std::to_string(lhs->_threads.size());
+						}
+						return Category::value_type();
+					}
+				};
+			}
 
 		private:
 

@@ -3,6 +3,21 @@ namespace factory {
 
 	namespace components {
 
+		inline std::ostream&
+		operator<<(std::ostream& out, Result rhs) {
+			switch (rhs) {
+				case Result::SUCCESS: out << "SUCCESS"; break;
+				case Result::UNDEFINED: out << "UNDEFINED"; break;
+				case Result::ENDPOINT_NOT_CONNECTED: out << "ENDPOINT_NOT_CONNECTED"; break;
+				case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
+				case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
+				case Result::USER_ERROR: out << "USER_ERROR"; break;
+				case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
+				default: out << "UNKNOWN_RESULT";
+			}
+			return out;
+		}
+
 		struct Basic_kernel {
 
 			typedef std::chrono::steady_clock Clock;

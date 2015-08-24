@@ -100,42 +100,42 @@ namespace factory {
 			Server(const Server&) = delete;
 			Server& operator=(Server&) = delete;
 
-			void setparent(Server* rhs) {
-				if (this->_parent) {
-					this->_parent->remove_child(this);
-				}
-				this->_parent = rhs;
-				if (rhs) {
-					rhs->add_child(this);
-				}
-			}
+//			void setparent(Server* rhs) {
+//				if (this->_parent) {
+//					this->_parent->remove_child(this);
+//				}
+//				this->_parent = rhs;
+//				if (rhs) {
+//					rhs->add_child(this);
+//				}
+//			}
+//
+//			inline Server*
+//			parent() const noexcept {
+//				return this->_parent;
+//			}
+//
+//			inline Server*
+//			root() noexcept {
+//				return this->_parent
+//					? this->_parent->root()
+//					: this;
+//			}
+//
+//			inline const Server*
+//			root() const noexcept {
+//				return this->_parent
+//					? this->_parent->root()
+//					: this;
+//			}
 
-			inline Server*
-			parent() const noexcept {
-				return this->_parent;
-			}
-
-			inline Server*
-			root() noexcept {
-				return this->_parent
-					? this->_parent->root()
-					: this;
-			}
-
-			inline const Server*
-			root() const noexcept {
-				return this->_parent
-					? this->_parent->root()
-					: this;
-			}
-
-			virtual void add_child(Server*) {}
-			virtual void remove_child(Server*) {}
+//			virtual void add_child(Server*) {}
+//			virtual void remove_child(Server*) {}
 			virtual void send(kernel_type*) = 0;
 			virtual void send(kernel_type**, size_t) {}
 
-		private:
-			Server* _parent = nullptr;
+//		private:
+//			Server* _parent = nullptr;
 		};
 
 	}
@@ -473,7 +473,7 @@ namespace factory {
 			class Principal_server,
 			class Shutdown
 		>
-		struct Basic_factory: public Server<typename Local_server::Kernel> {
+		struct Basic_factory: public Managed_set<Server<typename Local_server::Kernel>> {
 
 			typedef typename Local_server::Kernel Kernel;
 			enum struct Role {
@@ -490,10 +490,22 @@ namespace factory {
 				_principal_server()
 			{
 				init_parents();
+				init_names();
 				register_factory(this);
+				std::cout << std::endl;
+				this->dump_hierarchy(std::cout);
+				std::cout << std::endl;
 			}
 
 			virtual ~Basic_factory() {}
+
+			Category
+			category() const noexcept override {
+				return Category{
+					"factory",
+					[] () { return new Basic_factory; }
+				};
+			}
 
 			void start() {
 				_local_server.start();
@@ -562,6 +574,16 @@ namespace factory {
 				this->_timer_server.setparent(this);
 				this->_app_server.setparent(this);
 				this->_principal_server.setparent(this);
+			}
+
+			void init_names() {
+				this->setname("root");
+				_local_server.setname("local");
+				_remote_server.setname("remote");
+				_ext_server.setname("ext");
+				_timer_server.setname("timer");
+				_app_server.setname("app");
+				_principal_server.setname("princ");
 			}
 
 			Local_server _local_server;

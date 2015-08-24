@@ -81,6 +81,7 @@
 	#include "ext.hh"
 	#include "type.hh"
 	#include "kernel.hh"
+	#include "managed_object.hh"
 	#include "server.hh"
 	#include "app_server.hh"
 	#include "discovery.hh"

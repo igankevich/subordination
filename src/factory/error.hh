@@ -22,16 +22,24 @@ namespace factory {
 				std::runtime_error(err), _file(file), _line(line), _function(function)
 			{}
 
-			Error(const std::string& msg, const char* file, const int line, const char* function) noexcept:
-				std::runtime_error(msg), _file(file), _line(line), _function(function)
+			Error(std::string&& msg, const char* file, const int line, const char* function) noexcept:
+			std::runtime_error(std::forward<std::string>(msg)),
+			_file(file),
+			_line(line),
+			_function(function)
 			{}
 
 			Error(const Error& rhs) noexcept:
-				std::runtime_error(rhs), _file(rhs._file), _line(rhs._line), _function(rhs._function) {}
+			std::runtime_error(rhs),
+			_file(rhs._file),
+			_line(rhs._line),
+			_function(rhs._function)
+			{}
 
 			Error& operator=(const Error&) = delete;
 
-			friend std::ostream& operator<<(std::ostream& out, const Error& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Error& rhs) {
 				return out << '{'
 					<< "what=" << rhs.what()
 					<< ",origin=" << rhs._function
@@ -48,7 +56,7 @@ namespace factory {
 		};
 
 		template<class Ret>
-		Ret
+		inline Ret
 		check(Ret ret, Ret bad, const char* file, const int line, const char* func) {
 			if (ret == bad) {
 				throw Error(std::system_error(std::error_code(errno,
@@ -74,41 +82,43 @@ namespace factory {
 		}
 
 		struct Connection_error: public Error {
-			Connection_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Connection_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Read_error: public Error {
-			Read_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Read_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Write_error: public Error {
-			Write_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Write_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Marshalling_error: public Error {
-			Marshalling_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Marshalling_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Durability_error: public Error {
-			Durability_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Durability_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Network_error: public Error {
-			Network_error(const std::string& msg, const char* file, const int line, const char* function):
-				Error(msg, file, line, function) {}
+			Network_error(std::string&& msg, const char* file, const int line, const char* function):
+				Error(std::forward<std::string>(msg), file, line, function) {}
 		};
 
 		struct Error_message {
 
-			constexpr Error_message(const Error& err, const char* file, const int line, const char* function):
+			constexpr
+			Error_message(const Error& err, const char* file, const int line, const char* function) noexcept:
 				_error(err), _file(file), _line(line), _function(function) {}
 
-			friend std::ostream& operator<<(std::ostream& out, const Error_message& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Error_message& rhs) {
 				return out << '{'
 					<< "caught_at=" << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
 					<< ",rev=" << REPO_VERSION
@@ -154,31 +164,6 @@ namespace factory {
 		private:
 			K* _kernel;
 		};
-	}
-
-	enum struct Result: uint16_t {
-		SUCCESS = 0,
-		UNDEFINED = 1,
-		ENDPOINT_NOT_CONNECTED = 3,
-		NO_UPSTREAM_SERVERS_LEFT = 4,
-		NO_PRINCIPAL_FOUND = 5,
-		USER_ERROR = 6,
-		FATAL_ERROR = 7
-	};
-
-	inline std::ostream&
-	operator<<(std::ostream& out, Result rhs) {
-		switch (rhs) {
-			case Result::SUCCESS: out << "SUCCESS"; break;
-			case Result::UNDEFINED: out << "UNDEFINED"; break;
-			case Result::ENDPOINT_NOT_CONNECTED: out << "ENDPOINT_NOT_CONNECTED"; break;
-			case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
-			case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
-			case Result::USER_ERROR: out << "USER_ERROR"; break;
-			case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
-			default: out << "UNKNOWN_RESULT";
-		}
-		return out;
 	}
 
 }

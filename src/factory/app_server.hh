@@ -1,3 +1,5 @@
+#include "managed_object.hh"
+
 namespace factory {
 	namespace components {
 
@@ -25,7 +27,7 @@ namespace factory {
 		}
 
 		template<class Server>
-		struct Principal_server: public Server_link<Principal_server<Server>, Server> {
+		struct Principal_server: public Managed_object<Server> {
 
 			typedef Principal_server<Server> this_type;
 			typedef typename Server::Kernel kernel_type;
@@ -61,7 +63,17 @@ namespace factory {
 				_app(rhs._app)
 				{}
 
-			void start() {
+			Category
+			category() const noexcept override {
+				return Category{
+					"princ_server",
+					[] () { return new Principal_server; }
+				};
+			}
+
+			void
+			start() override {
+				Server::start();
 				this_log() << "Principal_server::start()" << std::endl;
 				this->_ibuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 1));
 				this->_obuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 0));
@@ -70,9 +82,15 @@ namespace factory {
 				this->_thread = std::thread(std::mem_fn(&this_type::serve), this);
 			}
 
-			void stop_impl() { this->_isem.notify_one(); }
+			void
+			stop() override {
+				Server::stop();
+				this->_isem.notify_one();
+			}
 
-			void wait_impl() {
+			void
+			wait() override {
+				Server::wait();
 				if (this->_thread.joinable()) {
 					this->_thread.join();
 				}
@@ -132,7 +150,7 @@ namespace factory {
 		};
 
 		template<class Kernel>
-		struct Sub_Rserver: public Server<Kernel> {
+		struct Sub_Rserver: public Managed_object<Server<Kernel>> {
 
 			typedef Sub_Rserver<Kernel> this_type;
 			typedef Kernel kernel_type;
@@ -163,7 +181,16 @@ namespace factory {
 				_ostream(std::move(rhs._ostream))
 				{}
 
-			process_type proc() const { return this->_proc; }
+			Category
+			category() const noexcept override {
+				return Category{
+					"sub_rserver",
+					[] () { return nullptr; }
+				};
+			}
+
+			const process_type&
+			proc() const noexcept { return this->_proc; }
 
 			void send(kernel_type* k) {
 				olock_type lock(this->_obuf);
@@ -196,7 +223,7 @@ namespace factory {
 		};
 
 		template<class Server>
-		struct Sub_Iserver: public Server {
+		struct Sub_Iserver: public Managed_object<Server> {
 
 			typedef typename Server::Kernel Kernel;
 			typedef Application app_type;
@@ -205,6 +232,14 @@ namespace factory {
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
 			typedef stdx::log<Sub_Iserver> this_log;
+
+			Category
+			category() const noexcept override {
+				return Category{
+					"sub_iserver",
+					[] () { return new Sub_Iserver; }
+				};
+			}
 
 			void add(const app_type& app) {
 				if (this->_apps.count(app.id()) > 0) {
@@ -242,11 +277,15 @@ namespace factory {
 				result->second.forward(buf, from);
 			}
 
-			void stop_impl() {
+			void
+			stop() override {
+				Server::stop();
 				this->_semaphore.notify_one();
 			}
 
-			void wait_impl() {
+			void
+			wait() override {
+				Server::wait();
 				while (!this->stopped() || !this->_apps.empty()) {
 					bool empty = false;
 					{

@@ -8,7 +8,7 @@ namespace factory {
 	namespace components {
 
 		template<class T, class Socket, class Kernels=std::deque<T*>>
-		struct Remote_Rserver: public Server<T> {
+		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef char Ch;
 			typedef basic_kernelbuf<basic_fdbuf<Ch,Socket>> Kernelbuf;
@@ -18,7 +18,7 @@ namespace factory {
 			typedef T kernel_type;
 			typedef typename T::app_type app_type;
 			typedef Kernels pool_type;
-			typedef Server<T> base_server;
+			typedef Managed_object<Server<T>> base_server;
 			typedef stdx::log<Remote_Rserver> this_log;
 
 			Remote_Rserver(socket_type&& sock, unix::endpoint vaddr):
@@ -56,6 +56,14 @@ namespace factory {
 					delete _buffer.front();
 					_buffer.pop_front();
 				}
+			}
+
+			Category
+			category() const noexcept override {
+				return Category{
+					"nic_rserver",
+					[] () { return nullptr; }
+				};
 			}
 
 			void recover_kernels() {
@@ -485,6 +493,14 @@ namespace factory {
 			inline unix::endpoint
 			server_addr() const {
 				return this->_socket.bind_addr();
+			}
+
+			Category
+			category() const noexcept override {
+				return Category{
+					"nic_server",
+					[] () { return new NIC_server; }
+				};
 			}
 		
 		private:
