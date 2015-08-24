@@ -65,7 +65,8 @@ namespace factory {
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE)
+			mid_buffer(BUFFER_SIZE),
+			_rng()
 			{}
 
 //		explicit Web_socket(unix::fd_type fd):
@@ -84,7 +85,8 @@ namespace factory {
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE)
+			mid_buffer(BUFFER_SIZE),
+			_rng()
 			{}
 
 		explicit Web_socket(unix::socket&& rhs):
@@ -93,7 +95,8 @@ namespace factory {
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE)
+			mid_buffer(BUFFER_SIZE),
+			_rng()
 			{}
 
 		explicit Web_socket(unix::fd_type rhs):
@@ -102,7 +105,8 @@ namespace factory {
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
 			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE)
+			mid_buffer(BUFFER_SIZE),
+			_rng()
 			{}
 
 		explicit
@@ -112,7 +116,8 @@ namespace factory {
 		key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 		send_buffer(BUFFER_SIZE),
 		recv_buffer(BUFFER_SIZE),
-		mid_buffer(BUFFER_SIZE)
+		mid_buffer(BUFFER_SIZE),
+		_rng()
 		{}
 
 //		explicit Web_socket(const unix::socket& rhs):
@@ -146,7 +151,8 @@ namespace factory {
 				}
 				handshake();
 			} else {
-				websocket_encode(buf, buf + size, std::back_inserter(send_buffer));
+				websocket_encode(buf, buf + size,
+					std::back_inserter(send_buffer), _rng);
 				this->flush();
 				ret = size;
 			}
@@ -377,7 +383,7 @@ namespace factory {
 		}
 
 		void start_handshake() {
-			websocket_key(this->key.begin());
+			websocket_key(this->key.begin(), _rng);
 			std::stringstream request;
 			request
 				<< "GET / HTTP/1.1" << HTTP_FIELD_SEPARATOR
@@ -404,6 +410,8 @@ namespace factory {
 		LBuffer<char> send_buffer;
 		LBuffer<char> recv_buffer;
 		LBuffer<char> mid_buffer;
+
+		std::random_device _rng;
 
 		static const size_t BUFFER_SIZE = 1024*16;
 		static const size_t MAX_HEADERS = 20;

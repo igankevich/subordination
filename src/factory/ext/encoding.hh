@@ -633,10 +633,10 @@ namespace factory {
 			}
 		};
 
-		extern std::random_device rng;
+//		extern std::random_device rng;
 		
-		template<class It, class Res>
-		void websocket_encode(It first, It last, Res result) {
+		template<class It, class Res, class Random>
+		void websocket_encode(It first, It last, Res result, Random& rng) {
 			struct websocket_encode_t {};
 			typedef stdx::log<websocket_encode_t> this_log;
 			size_t input_size = last - first;
@@ -682,8 +682,8 @@ namespace factory {
 			base64_encode(hash.begin(), hash.end(), header);
 		}
 
-		template<class Res>
-		void websocket_key(Res key) {
+		template<class Res, class Random>
+		void websocket_key(Res key, Random& rng) {
 //			typedef std::random_device::result_type T;
 //			static const size_t WEBSOCKET_KEY_SIZE = 16;
 //			size_t ncopied = 0;
