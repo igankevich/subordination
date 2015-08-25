@@ -12,26 +12,26 @@ namespace factory {
 			/// A portable type id
 			typedef int16_t id_type;
 			typedef T kernel_type;
-			typedef std::function<T* ()> construct_type;
+//			typedef std::function<T* ()> construct_type;
 			typedef std::function<T* (packstream&)> read_type;
 
 			typedef stdx::log<Type> this_log;
 	
-			constexpr
-			Type() noexcept:
-				_id(0),
-				_name(),
-				construct(),
-				read()
-			{}
-	
-			constexpr
-			Type(const Type& rhs) noexcept:
-				_id(rhs._id),
-				_name(rhs._name),
-				construct(rhs.construct),
-				read(rhs.read)
-			{}
+//			constexpr
+//			Type() noexcept:
+//				_id(0),
+//				_name(),
+//				construct(),
+//				read()
+//			{}
+//	
+//			constexpr
+//			Type(const Type& rhs) noexcept:
+//				_id(rhs._id),
+//				_name(rhs._name),
+//				construct(rhs.construct),
+//				read(rhs.read)
+//			{}
 
 			constexpr id_type
 			id() const noexcept {
@@ -70,13 +70,13 @@ namespace factory {
 
 			static
 			void write_object(kernel_type& kernel, packstream& out) {
-				const Type* type = kernel.type();
-				if (type == nullptr) {
+				const Type type = kernel.type();
+				if (!type) {
 					std::stringstream msg;
 					msg << "Can not find type for kernel id=" << kernel.id();
 					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
-				out << type->id();
+				out << type.id();
 				this_log() << "Type::write_object: kernel=" << kernel << std::endl;
 				kernel.write(out);
 			}
@@ -198,9 +198,9 @@ namespace factory {
 				private:
 
 					const char* safe_type_name() const {
-						return _kernel->type() == nullptr
+						return !_kernel->type()
 							? "_identifiable"
-							: _kernel->type()->name();
+							: _kernel->type().name();
 					}
 
 					T* _kernel;
@@ -220,28 +220,43 @@ namespace factory {
 				return x;
 			}
 
-		private:
 
 			id_type _id;
 			std::string _name;
-
-		protected:
-			construct_type construct;
+//			construct_type construct;
 			read_type read;
 		};
 
-		template<class Sub, class Type, class T, class Base=T>
+		template<class Sub, class T, class Base=T>
 		struct Type_init: public Base {
 
-			constexpr const Type*
+			constexpr const Type<T>
 			type() const noexcept override {
-				return &_type;
+				return _type;
 			}
 
+			void
+			write(packstream& out) override {
+				Base::write(out);
+				write_impl(out);
+			}
+
+			void
+			read(packstream& in) override {
+				Base::read(in);
+				read_impl(in);
+			}
+
+			virtual void
+			write_impl(packstream& out) = 0;
+
+			virtual void
+			read_impl(packstream& in) = 0;
+
 		private:
-			struct Init: public Type {
+			struct Init: public Type<T> {
 				Init() {
-					this->construct = [] { return new Sub; };
+//					this->construct = [] { return new Sub; };
 					this->read = [] (packstream& in) {
 						Sub* k = new Sub;
 						k->read(in);
@@ -249,20 +264,38 @@ namespace factory {
 					};
 
 					Sub::init_type(this);
-					Type::types().register_type(this);
+					Type<T>::types().register_type(this);
 				}
 			};
 
 			// Static template members are initialised on demand,
 			// i.e. only if they are accessed in a program.
 			// This function tries to fool the compiler.
-			virtual typename Type::id_type unused() { return _type.id(); }
+			virtual typename Type<T>::id_type unused() { return _type.id(); }
 
 			static const Init _type;
 		};
 
-		template<class Sub, class Type, class T, class Base>
-		const typename Type_init<Sub, Type, T, Base>::Init Type_init<Sub, Type, T, Base>::_type;
+		template<class Sub, class T, class Base>
+		const typename Type_init<Sub, T, Base>::Init Type_init<Sub, T, Base>::_type;
+
+//		template<class Type, uint16_t id>
+//		struct Register_type {
+//		private:
+//			struct Init: public Type {
+//				Init() {
+////					this->construct = [] { return new Sub; };
+//					this->read = [] (packstream& in) {
+//						Sub* k = new Sub;
+//						k->read(in);
+//						return k;
+//					};
+//
+//					Sub::init_type(this);
+//					Type::types().register_type(this);
+//				}
+//			};
+//		};
 
 		Id factory_start_id();
 		Id factory_generate_id();

@@ -34,9 +34,6 @@ namespace factory {
 			virtual void
 			wait() {}
 
-			virtual void
-			stop_now() {}
-
 			// TODO: boilerplate :(
 			virtual unix::endpoint
 			addr() const {

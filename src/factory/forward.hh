@@ -1,6 +1,5 @@
 namespace factory {
 
-
 	namespace components {
 
 //		void print_all_endpoints(std::ostream&);

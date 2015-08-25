@@ -1,19 +1,21 @@
 #include "server/basic_server.hh"
+#include "bits/kernel.hh"
 
 #ifndef FACTORY_CONFIGURATION
 namespace factory {
 
 	namespace components {
 
-		enum struct Result: uint16_t {
+		typedef uint16_t result_type;
+
+		enum struct Result: result_type {
 			SUCCESS = 0,
 			UNDEFINED = 1,
 			ENDPOINT_NOT_CONNECTED = 3,
 			NO_UPSTREAM_SERVERS_LEFT = 4,
 			NO_PRINCIPAL_FOUND = 5,
 			USER_ERROR = 6,
-			FATAL_ERROR = 7,
-			SHUTDOWN = 8
+			FATAL_ERROR = 7
 		};
 
 		inline std::ostream&
@@ -26,343 +28,10 @@ namespace factory {
 				case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
 				case Result::USER_ERROR: out << "USER_ERROR"; break;
 				case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
-				case Result::SHUTDOWN: out << "SHUTDOWN"; break;
 				default: out << "UNKNOWN_RESULT";
 			}
 			return out;
 		}
-
-		struct Basic_kernel {
-
-			typedef std::chrono::steady_clock Clock;
-			typedef Clock::time_point Time_point;
-			typedef Clock::duration Duration;
-			typedef std::bitset<1> Flags;
-			
-			enum struct Flag {
-				DELETED = 0
-			};
-
-			Basic_kernel() {}
-			virtual ~Basic_kernel() {}
-
-			virtual void act() {}
-
-			Result result() const { return _result; }
-			void result(Result rhs) { _result = rhs; }
-
-			// timed kernels
-			Time_point at() const { return _at; }
-			void at(Time_point t)  { _at = t; }
-			void after(Duration delay) { _at = Clock::now() + delay; }
-			bool timed() const { return _at != Time_point(Duration::zero()); }
-
-			// flags
-			Flags flags() const { return _flags; }
-			void setf(Flag f) { _flags.set(static_cast<size_t>(f)); }
-			void unsetf(Flag f) { _flags.reset(static_cast<size_t>(f)); }
-			bool isset(Flag f) const { return _flags.test(static_cast<size_t>(f)); }
-
-		private:
-			Result _result = Result::UNDEFINED;
-			Time_point _at = Time_point(Duration::zero());
-			Flags _flags = 0;
-		};
-
-		template<class K>
-		struct Kernel_ref {
-
-			constexpr Kernel_ref(): _kernel(nullptr), _temp(false) {}
-			constexpr Kernel_ref(K* rhs): _kernel(rhs), _temp(false) {}
-			Kernel_ref(Id rhs):
-				_kernel(rhs == ROOT_ID ? nullptr : new Transient_kernel(rhs)),
-				_temp(rhs != ROOT_ID) {}
-			Kernel_ref(const Kernel_ref& rhs): _kernel(rhs._kernel), _temp(rhs._temp) {
-				if (_temp) {
-					Id i = _kernel->id();
-					_kernel = new Transient_kernel(i);
-				}
-			}
-			~Kernel_ref() {
-				if (_temp) delete _kernel;
-			}
-
-			// dereference operators
-			K* operator->() { return _kernel; }
-			const K* operator->() const { return _kernel; }
-			K& operator*() { return *_kernel; }
-			const K& operator*() const { return *_kernel; }
-
-			Kernel_ref& operator=(const Kernel_ref& rhs) {
-				if (&rhs == this) return *this;
-				if (_temp) {
-					delete _kernel;
-				}
-				_temp = rhs._temp;
-				if (_temp) {
-					Id i = rhs._kernel->id();
-					_kernel = new Transient_kernel(i);
-				} else {
-					_kernel = rhs._kernel;
-				}
-				return *this;
-			}
-
-			Kernel_ref& operator=(K* rhs) {
-				if (rhs == _kernel) return *this;
-				if (_temp) {
-					delete _kernel;
-					_temp = false;
-				}
-				_kernel = rhs;
-				return *this;
-			}
-
-			Kernel_ref& operator=(Id rhs) {
-				if (_temp) {
-					delete _kernel;
-				}
-				if (rhs == ROOT_ID) {
-					_kernel = nullptr;
-					_temp = false;
-				} else {
-					_kernel = new Transient_kernel(rhs);
-					_temp = true;
-				}
-				return *this;
-			}
-
-			K* ptr() { return _kernel; }
-			const K* ptr() const { return _kernel; }
-
-			constexpr explicit operator bool() const { return _kernel != nullptr; }
-			constexpr bool operator !() const { return _kernel == nullptr; }
-
-			friend std::ostream& operator<<(std::ostream& out, const Kernel_ref<K>& rhs) {
-				return out << rhs->id();
-			}
-
-		private:
-			K* _kernel;
-			bool _temp;
-
-			// No one lives forever.
-			struct Transient_kernel: public Identifiable<K, Type<K>> {
-				explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i, false) {}
-			};
-		};
-
-
-		// The class ensures that certain methods (e.g. read, write)
-		// are called in a sequence starting from method in the top superclass
-		// and ending with method in the bottom subclass (like constructors and destructors).
-		// In contrast to simply overriding method
-		// this approach takes care of all superclasses' members being properly marshalled and demarshalled
-		// from the data stream thus ensuring that no method's top implementations are omitted.
-		template<class Sub, class Super>
-		struct Kernel_link: public Super {
-
-			virtual ~Kernel_link() {}
-
-			void read(packstream& in) {
-				Super::read(in);
-				static_cast<Sub*>(this)->Sub::read_impl(in);
-			}
-
-			void write(packstream& out) {
-				Super::write(out);
-				static_cast<Sub*>(this)->Sub::write_impl(out);
-			}
-
-		};
-
-		template<class A>
-		struct Principal: public Kernel_link<Principal<A>, A> {
-
-			typedef Principal<A> This;
-			typedef Kernel_ref<This> Ref;
-			typedef Basic_kernel::Flag Flag;
-			typedef stdx::log<Principal> this_log;
-
-			constexpr Principal(): _parent(nullptr), _principal(nullptr) {}
-			virtual ~Principal() {}
-
-			const Ref& principal() const { return _principal; }
-			Ref principal() { return _principal; }
-			void principal(Ref rhs) { _principal = rhs; }
-			void principal(This* rhs) { _principal = rhs; }
-
-			size_t hash() const {
-				return _principal && _principal->identifiable()
-					? _principal->id()
-					: size_t(_principal.ptr()) / alignof(size_t);
-			}
-
-			const Ref& parent() const { return _parent; }
-			Ref parent() { return _parent; }
-			void parent(Ref p) { _parent = p; }
-			void parent(This* p) { _parent = p; }
-
-			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
-			bool moves_downstream() const { return this->result() != Result::UNDEFINED && _principal && _parent; }
-			bool moves_somewhere() const { return this->result() == Result::UNDEFINED && _principal && _parent; }
-			bool moves_everywhere() const { return !_principal && !_parent; }
-
-			void read_impl(packstream& in) {
-				if (_parent) {
-					std::stringstream s;
-					s << "Parent is not null while reading from the data stream. Parent=";
-					s << _parent;
-					throw Error(s.str(), __FILE__, __LINE__, __func__);
-				}
-				Id parent_id;
-				in >> parent_id;
-				this_log() << "READING PARENT " << parent_id << std::endl;
-				if (parent_id != ROOT_ID) {
-					_parent = parent_id;
-				}
-				if (_principal.ptr() != nullptr) {
-					throw Error("Principal kernel is not null while reading from the data stream.",
-						__FILE__, __LINE__, __func__);
-				}
-				Id principal_id;
-				in >> principal_id;
-				this_log() << "READING PRINCIPAL " << principal_id << std::endl;
-				_principal = principal_id;
-			}
-
-			void write_impl(packstream& out) {
-				out << (!_parent ? ROOT_ID : _parent->id());
-				out << (!_principal ? ROOT_ID : _principal->id());
-			}
-
-			virtual void react(This*) {
-				std::stringstream msg;
-				msg << "Empty react in ";
-				if (const Type<This>* tp = type()) {
-					msg << *tp;
-				} else {
-					msg << "unknown type";
-				}
-				throw Error(msg.str(), __FILE__, __LINE__, __func__);
-			}
-
-			virtual void error(This* rhs) { react(rhs); }
-
-			virtual const Type<This>*
-			type() const noexcept {
-				return nullptr;
-			}
-
-			void run_act(Managed_object<Server<This>>& this_server) {
-				switch (this->result()) {
-					case Result::UNDEFINED:
-						if (_principal) {
-							_principal->react(this);
-						} else {
-							this->act();
-//							if (this->moves_everywhere()) {
-//								delete this;
-//							}
-						}
-						break;
-					case Result::SHUTDOWN:
-						delete this;
-						this_log() << "SHUTDOWN" << std::endl;
-						this_server.root()->stop();
-						break;
-					case Result::SUCCESS:
-					case Result::ENDPOINT_NOT_CONNECTED:
-					case Result::NO_UPSTREAM_SERVERS_LEFT:
-					case Result::NO_PRINCIPAL_FOUND:
-					case Result::USER_ERROR:
-					default:
-						this_log() << "Result is defined" << std::endl;
-						if (!_principal) {
-							this_log() << "Principal is null" << std::endl;
-							if (!_parent) {
-								delete this;
-								this_log() << "SHUTDOWN" << std::endl;
-								this_server.root()->stop();
-//								stop_all_factories();
-							}
-						} else {
-							this_log() << "Principal is not null" << std::endl;
-							bool del = *_principal == *_parent;
-							if (this->result() == Result::SUCCESS) {
-								this_log() << "Principal react" << std::endl;
-								_principal->react(this);
-							} else {
-								this_log() << "Principal error" << std::endl;
-								_principal->error(this);
-							}
-							if (del) {
-								this_log() << "Deleting kernel " << *this << std::endl;
-								delete this;
-							}
-						}
-				}
-			}
-
-			friend std::ostream& operator<<(std::ostream& out, const This& rhs) {
-				return out << '{'
-					<< (rhs.moves_upstream()   ? 'u' : '-')
-					<< (rhs.moves_downstream() ? 'd' : '-') 
-					<< (rhs.moves_somewhere()  ? 's' : '-') 
-					<< (rhs.moves_everywhere()  ? 'b' : '-') 
-					<< ",tp=" << (rhs.type() ? rhs.type()->id() : 0)
-					<< ",id="
-					<< rhs.id() << ",src="
-					<< rhs.from() << ",dst="
-					<< rhs.to() << ",rslt="
-					<< rhs.result()
-					<< '}';
-			}
-		
-		public:
-			template<class S>
-			inline void upstream(S* this_server, This* a) {
-				a->parent(this);
-				this_server->send(a);
-			}
-
-			template<class S>
-			inline void downstream(S* this_server, This* a) {
-				a->parent(this);
-				a->principal(this);
-				this_server->send(a);
-			}
-
-			template<class S>
-			inline void downstream(S* this_server, This* a, This* b) {
-				a->principal(b);
-				this->result(Result::SUCCESS);
-				this_server->send(a);
-			}
-
-			template<class S>
-			inline void commit(S* srv, Result res = Result::SUCCESS) {
-				this->principal(_parent);
-				this->result(res);
-				srv->send(this);
-			}
-
-			template<class It>
-			void mark_as_deleted(It result) {
-				if (!this->isset(Flag::DELETED)) {
-					this->setf(Flag::DELETED);
-					if (this->_parent) {
-						this->_parent->mark_as_deleted(result);
-					}
-					*result = std::unique_ptr<This>(this);
-					++result;
-				}
-			}
-
-		private:
-			Kernel_ref<This> _parent;
-			Kernel_ref<This> _principal;
-		};
 
 		struct Application {
 
@@ -400,15 +69,85 @@ namespace factory {
 			id_type _id;
 		};
 
-		template<class K>
-		struct Mobile: public K {
+		struct Basic_kernel {
 
+			typedef std::chrono::steady_clock Clock;
+			typedef Clock::time_point Time_point;
+			typedef Clock::duration Duration;
+			typedef std::bitset<1> Flags;
 			typedef Application::id_type app_type;
-			typedef stdx::log<Mobile> this_log;
-		
-			constexpr Mobile(): _src(), _dst() {}
+			typedef stdx::log<Basic_kernel> this_log;
+			
+			enum struct Flag {
+				DELETED = 0
+			};
 
-			virtual void read(packstream& in) { 
+			virtual
+			~Basic_kernel() = default;
+
+			Result
+			result() const noexcept {
+				return _result;
+			}
+
+			void
+			result(Result rhs) noexcept {
+				_result = rhs;
+			}
+
+			// timed kernels
+			Time_point
+			at() const noexcept {
+				return _at;
+			}
+
+			void
+			at(Time_point t) noexcept {
+				_at = t;
+			}
+
+			void
+			after(Duration delay) noexcept {
+				_at = Clock::now() + delay;
+			}
+
+			bool
+			timed() const noexcept {
+				return _at != Time_point(Duration::zero());
+			}
+
+			// flags
+			Flags
+			flags() const noexcept {
+				return _flags;
+			}
+
+			void
+			setf(Flag f) noexcept {
+				_flags.set(static_cast<size_t>(f));
+			}
+
+			void
+			unsetf(Flag f) noexcept {
+				_flags.reset(static_cast<size_t>(f));
+			}
+
+			bool
+			isset(Flag f) const noexcept {
+				return _flags.test(static_cast<size_t>(f));
+			}
+
+		private:
+
+			Result _result = Result::UNDEFINED;
+			Time_point _at = Time_point(Duration::zero());
+			Flags _flags = 0;
+		};
+
+		struct Mobile_kernel: public Basic_kernel {
+
+			virtual void
+			read(packstream& in) { 
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r;
 				in >> r;
@@ -417,7 +156,8 @@ namespace factory {
 				in >> _id;
 			}
 
-			virtual void write(packstream& out) {
+			virtual void
+			write(packstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
 				this_log()
@@ -428,31 +168,267 @@ namespace factory {
 				out << r << this->_id;
 			}
 
-			virtual void read_impl(packstream&) {}
-			virtual void write_impl(packstream&) {}
+			Id
+			id() const noexcept {
+				return _id;
+			}
 
-			constexpr Id id() const { return _id; }
-			void id(Id rhs) { _id = rhs; }
-			constexpr bool identifiable() const { return _id != ROOT_ID; }
+			void
+			id(Id rhs) noexcept {
+				_id = rhs;
+			}
 
-			virtual unix::endpoint from() const { return _src; }
-			virtual void from(unix::endpoint rhs) { _src = rhs; }
+			bool
+			identifiable() const noexcept {
+				return _id != ROOT_ID;
+			}
 
-			virtual unix::endpoint to() const { return _dst; }
-			virtual void to(unix::endpoint rhs) { _dst = rhs; }
+			virtual unix::endpoint
+			from() const noexcept {
+				return _src;
+			}
 
-			constexpr bool operator==(const Mobile<K>& rhs) const {
+			virtual void
+			from(unix::endpoint rhs) noexcept {
+				_src = rhs;
+			}
+
+			virtual unix::endpoint
+			to() const noexcept {
+				return _dst;
+			}
+
+			virtual void
+			to(unix::endpoint rhs) noexcept {
+				_dst = rhs;
+			}
+
+			bool
+			operator==(const Mobile_kernel& rhs) const noexcept {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 
-			constexpr app_type app() const { return this->_app; } 
-			void setapp(app_type rhs) { this->_app = rhs; }
+			app_type
+			app() const noexcept {
+				return this->_app;
+			} 
+
+			void
+			setapp(app_type rhs) noexcept {
+				this->_app = rhs;
+			}
 
 		private:
+
 			Id _id = ROOT_ID;
-			unix::endpoint _src;
-			unix::endpoint _dst;
+			unix::endpoint _src{};
+			unix::endpoint _dst{};
 			Application::id_type _app = 0;
+
+		};
+
+		struct Principal: public Mobile_kernel {
+
+			typedef Mobile_kernel base_kernel;
+			typedef Kernel_ref<Principal> Ref;
+			typedef Basic_kernel::Flag Flag;
+			typedef stdx::log<Principal> this_log;
+			typedef Managed_object<Server<Principal>> server_type;
+
+			const Ref& principal() const { return _principal; }
+			Ref principal() { return _principal; }
+			void principal(Ref rhs) { _principal = rhs; }
+			void principal(Principal* rhs) { _principal = rhs; }
+
+			size_t hash() const {
+				return _principal && _principal->identifiable()
+					? _principal->id()
+					: size_t(_principal.ptr()) / alignof(size_t);
+			}
+
+			const Ref& parent() const { return _parent; }
+			Ref parent() { return _parent; }
+			void parent(Ref p) { _parent = p; }
+			void parent(Principal* p) { _parent = p; }
+
+			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
+			bool moves_downstream() const { return this->result() != Result::UNDEFINED && _principal && _parent; }
+			bool moves_somewhere() const { return this->result() == Result::UNDEFINED && _principal && _parent; }
+			bool moves_everywhere() const { return !_principal && !_parent; }
+
+			void
+			read(packstream& in) override {
+				base_kernel::read(in);
+				if (_parent) {
+					std::stringstream s;
+					s << "Parent is not null while reading from the data stream. Parent=";
+					s << _parent;
+					throw Error(s.str(), __FILE__, __LINE__, __func__);
+				}
+				Id parent_id;
+				in >> parent_id;
+				this_log() << "READING PARENT " << parent_id << std::endl;
+				if (parent_id != ROOT_ID) {
+					_parent = parent_id;
+				}
+				if (_principal.ptr() != nullptr) {
+					throw Error("Principal kernel is not null while reading from the data stream.",
+						__FILE__, __LINE__, __func__);
+				}
+				Id principal_id;
+				in >> principal_id;
+				this_log() << "READING PRINCIPAL " << principal_id << std::endl;
+				_principal = principal_id;
+			}
+
+			void
+			write(packstream& out) override {
+				base_kernel::write(out);
+				out << (!_parent ? ROOT_ID : _parent->id());
+				out << (!_principal ? ROOT_ID : _principal->id());
+			}
+
+			virtual void
+			act(server_type& this_server) {
+				act();
+			}
+
+			virtual void
+			act() {}
+
+			virtual void
+			react(Principal*) {
+				std::stringstream msg;
+				msg << "Empty react in ";
+				const Type<Principal> tp = type();
+				if (tp) {
+					msg << tp;
+				} else {
+					msg << "unknown type";
+				}
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
+
+			virtual void
+			error(Principal* rhs) {
+				react(rhs);
+			}
+
+			virtual const Type<Principal>
+			type() const noexcept {
+				return Type<Principal>{0};
+			}
+
+			void
+			run_act(Managed_object<Server<Principal>>& this_server) {
+				switch (this->result()) {
+					case Result::UNDEFINED:
+						if (_principal) {
+							_principal->react(this);
+						} else {
+							this->act(this_server);
+//							if (this->moves_everywhere()) {
+//								delete this;
+//							}
+						}
+						break;
+					case Result::SUCCESS:
+					case Result::ENDPOINT_NOT_CONNECTED:
+					case Result::NO_UPSTREAM_SERVERS_LEFT:
+					case Result::NO_PRINCIPAL_FOUND:
+					case Result::USER_ERROR:
+					default:
+						this_log() << "Result is defined" << std::endl;
+						if (!_principal) {
+							this_log() << "Principal is null" << std::endl;
+							if (!_parent) {
+								delete this;
+								this_log() << "SHUTDOWN" << std::endl;
+								this_server.root()->stop();
+//								stop_all_factories();
+							}
+						} else {
+							this_log() << "Principal is not null" << std::endl;
+							bool del = *_principal == *_parent;
+							if (this->result() == Result::SUCCESS) {
+								this_log() << "Principal react" << std::endl;
+								_principal->react(this);
+							} else {
+								this_log() << "Principal error" << std::endl;
+								_principal->error(this);
+							}
+							if (del) {
+								this_log() << "Deleting kernel " << *this << std::endl;
+								delete this;
+							}
+						}
+				}
+			}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Principal& rhs) {
+				return out << '{'
+					<< (rhs.moves_upstream()   ? 'u' : '-')
+					<< (rhs.moves_downstream() ? 'd' : '-') 
+					<< (rhs.moves_somewhere()  ? 's' : '-') 
+					<< (rhs.moves_everywhere()  ? 'b' : '-') 
+					<< ",tp=" << rhs.type()
+					<< ",id="
+					<< rhs.id() << ",src="
+					<< rhs.from() << ",dst="
+					<< rhs.to() << ",rslt="
+					<< rhs.result()
+					<< '}';
+			}
+		
+		public:
+			template<class S>
+			void
+			upstream(S* this_server, Principal* a) {
+				a->parent(this);
+				this_server->send(a);
+			}
+
+			template<class S>
+			void
+			downstream(S* this_server, Principal* a) {
+				a->parent(this);
+				a->principal(this);
+				this_server->send(a);
+			}
+
+			template<class S>
+			void
+			downstream(S* this_server, Principal* a, Principal* b) {
+				a->principal(b);
+				this->result(Result::SUCCESS);
+				this_server->send(a);
+			}
+
+			template<class S>
+			void
+			commit(S* srv, Result res = Result::SUCCESS) {
+				this->principal(_parent);
+				this->result(res);
+				srv->send(this);
+			}
+
+			template<class It>
+			void
+			mark_as_deleted(It result) noexcept {
+				if (!this->isset(Flag::DELETED)) {
+					this->setf(Flag::DELETED);
+					if (this->_parent) {
+						this->_parent->mark_as_deleted(result);
+					}
+					*result = std::unique_ptr<Principal>(this);
+					++result;
+				}
+			}
+
+		private:
+			Kernel_ref<Principal> _parent = nullptr;
+			Kernel_ref<Principal> _principal = nullptr;
 		};
 
 	}

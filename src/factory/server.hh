@@ -35,52 +35,47 @@ namespace factory {
 			Server& _server;
 		};
 
-		template<template<class X> class Mobile, class Type>
-		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
+		template<class T>
+		struct Shutdown: public Type_init<Shutdown<T>, T> {
+
 			typedef stdx::log<Shutdown> this_log;
-			explicit Shutdown(bool f=false): force(f) {
-				this->result(Result::SHUTDOWN);
-			}
-			void act() {
+
+			void act(Managed_object<Server<Principal>>& this_server) override {
 				this_log() << "broadcasting shutdown message" << std::endl;
-//				bool f = this->force;
-//				delete this;
-//				stop_all_factories(f);
+				delete this;
+				this_server.root()->stop();
 			}
-//			void react() {}
-			void write_impl(packstream&) {}
+
 			void read_impl(packstream&) {}
-			static void init_type(Type* t) {
+			void write_impl(packstream&) {}
+
+			static void
+			init_type(Type<T>* t) {
 				t->id(SHUTDOWN_ID);
 				t->name("Shutdown");
 			}
-		private:
-			bool force = false;
+
 		};
 
-
-//		void stop_all_factories(bool now);
-//		void print_all_endpoints(std::ostream& out);
-//		void register_factory(Resident* factory);
-
 		template<
+			class Kernel,
 			class Local_server,
 			class Remote_server,
 			class External_server,
 			class Timer_server,
 			class App_server,
-			class Principal_server,
-			class Shutdown
+			class Principal_server
 		>
-		struct Basic_factory: public Managed_set<Server<typename Local_server::kernel_type>>,
+		struct Basic_factory: public Managed_set<Server<Kernel>>,
 			private Auto_check_endiannes,
 			private Auto_filter_bad_chars_on_cout_and_cerr,
 			private Auto_open_standard_file_descriptors,
-			private Auto_set_terminate_handler<Server<typename Local_server::kernel_type>>
+			private Auto_set_terminate_handler<Server<Kernel>>
 		{
 
-			typedef typename Local_server::kernel_type kernel_type;
+			typedef Kernel kernel_type;
 			typedef Server<kernel_type> base_server;
+			typedef Shutdown<kernel_type> shutdown_type;
 
 			enum struct Role {
 				Principal,
@@ -127,24 +122,13 @@ namespace factory {
 				}
 			}
 
-//			void stop_now() {
-//				_local_server.stop();
-//				_remote_server.stop();
-//				_ext_server.stop();
-//				_timer_server.stop();
-//				_app_server.stop();
-//				if (_role == Role::Subordinate) {
-//					_principal_server.stop();
-//				}
-//			}
-
 			void
 			stop() override {
 				base_server::stop();
-				_remote_server.send(new Shutdown);
-				_app_server.send(new Shutdown);
+				_remote_server.send(new shutdown_type);
+				_app_server.send(new shutdown_type);
 				if (_role == Role::Subordinate) {
-					_principal_server.send(new Shutdown);
+					_principal_server.send(new shutdown_type);
 				}
 				_local_server.stop();
 				_remote_server.stop();
