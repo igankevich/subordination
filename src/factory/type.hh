@@ -248,14 +248,8 @@ namespace factory {
 						return k;
 					};
 
-//					this->type_id(typeid(Sub));
 					Sub::init_type(this);
-					try {
-						Type::types().register_type(this);
-					} catch (std::exception& err) {
-						std::clog << "Error during initialisation of types. " << err.what() << std::endl;
-						std::abort();
-					}
+					Type::types().register_type(this);
 				}
 			};
 

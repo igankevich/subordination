@@ -1,4 +1,5 @@
-#include <libfactory.cc>
+#include "libfactory.cc"
+#include "test.hh"
 #include <sys/resource.h>
 
 using namespace factory;
@@ -15,17 +16,15 @@ int main(int argc, char* argv[]) {
 		std::cout << std::setw(10) << std::left
 			<< rhs.ifa_name << addr << std::endl;
 	});
-	std::cout << "Bind address: "
-		<< components::get_bind_address()
-		<< std::endl;
 	std::cout << "bits::Bytes = " << bits::make_bytes(0xabcdefUL) << std::endl;
 	std::clog << "[clog] Hello world!" << std::endl;
 	::syslog(LOG_NOTICE, "[syslog] Hello world!");
 	std::cerr << "[cerr] Hello world!" << std::endl;
-	sleep(3);
+//	sleep(3);
 	struct ::rlimit limit;
 	::getrlimit(RLIMIT_NOFILE, &limit);
 	std::cout << "Max no. of fds: " << limit.rlim_max << std::endl;
+	components::Daemon<Factory> __daemon(__factory);
 //	throw Error("abc", __FILE__, __LINE__, __func__);
 	return 0;
 }

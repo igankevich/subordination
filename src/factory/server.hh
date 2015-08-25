@@ -1,10 +1,5 @@
-namespace factory {
-	namespace components {
-		inline size_t total_cpus() noexcept { return std::thread::hardware_concurrency(); }
-		void thread_affinity(size_t);
-	}
-}
-
+#include "bits/security.hh"
+#include "bits/cpu_bind.hh"
 #include "server/basic_server.hh"
 #include "server/cpu_server.hh"
 #include "server/timer_server.hh"
@@ -13,6 +8,32 @@ namespace factory {
 namespace factory {
 
 	namespace components {
+
+		template<class Server>
+		struct Daemon {
+
+			explicit
+			Daemon(Server& rhs) noexcept:
+			_server(rhs)
+			{
+				std::cerr << "Starting daemon" << std::endl;
+				_server.start();
+				_server.wait();
+			}
+
+			~Daemon() {
+				if (!_server.stopped()) {
+					std::cerr << "Stopping daemon" << std::endl;
+					_server.stop();
+					_server.wait();
+				} else {
+					std::cerr << "Daemon is stopped" << std::endl;
+				}
+			}
+
+		private:
+			Server& _server;
+		};
 
 		template<template<class X> class Mobile, class Type>
 		struct Shutdown: public Mobile<Shutdown<Mobile, Type>> {
@@ -51,7 +72,12 @@ namespace factory {
 			class Principal_server,
 			class Shutdown
 		>
-		struct Basic_factory: public Managed_set<Server<typename Local_server::kernel_type>> {
+		struct Basic_factory: public Managed_set<Server<typename Local_server::kernel_type>>,
+			private Auto_check_endiannes,
+			private Auto_filter_bad_chars_on_cout_and_cerr,
+			private Auto_open_standard_file_descriptors,
+			private Auto_set_terminate_handler<Server<typename Local_server::kernel_type>>
+		{
 
 			typedef typename Local_server::kernel_type kernel_type;
 			typedef Server<kernel_type> base_server;
@@ -62,6 +88,7 @@ namespace factory {
 			};
 
 			Basic_factory():
+				Auto_set_terminate_handler<base_server>(this),
 				_local_server(),
 				_remote_server(),
 				_ext_server(),
@@ -71,7 +98,7 @@ namespace factory {
 			{
 				init_parents();
 				init_names();
-				register_factory(this);
+//				register_factory(this);
 				std::cout << std::endl;
 				this->dump_hierarchy(std::cout);
 				std::cout << std::endl;

@@ -88,12 +88,6 @@ namespace factory {
 		
 		typedef Interval<uint32_t> Address_range;
 		
-		std::vector<Address_range>
-		discover_neighbours();
-
-		unix::endpoint
-		get_bind_address(); 
-
 	}
 
 }

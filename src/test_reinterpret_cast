@@ -7,4 +7,7 @@ echo "Checking for $1... "
 grep -H "$1" $files && echo "$1: FAIL" || echo "$1: OK"
 }
 
-check reinterpret_cast
+check "reinterpret_cast"
+check "std::exit"
+check "std::abort"
+check "std::terminate"

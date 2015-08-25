@@ -71,3 +71,15 @@ namespace std {
 		return out;
 	}
 }
+
+namespace factory {
+	typedef std::chrono::nanoseconds::rep Time;
+	typedef std::chrono::nanoseconds Nanoseconds;
+	typedef typename std::make_signed<Time>::type Skew;
+
+	static Time current_time_nano() {
+		using namespace std::chrono;
+		typedef std::chrono::steady_clock Clock;
+		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+	}
+}

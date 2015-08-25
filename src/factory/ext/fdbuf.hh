@@ -20,12 +20,7 @@ namespace factory {
 			typedef Fd fd_type;
 			typedef stdx::log<basic_fdbuf> this_log;
 
-			static fd_type&& badfd() {
-//				return std::move(std::is_same<fd_type,int>::value ? fd_type(-1) : fd_type());
-				return std::move(fd_type());
-			}
-
-			basic_fdbuf(): basic_fdbuf(std::move(badfd()), 512, 512) {}
+			basic_fdbuf(): basic_fdbuf(std::move(fd_type()), 512, 512) {}
 
 			basic_fdbuf(fd_type&& fd, std::size_t gbufsize, std::size_t pbufsize):
 				_fd(std::move(fd)),

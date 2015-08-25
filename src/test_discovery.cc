@@ -1,4 +1,109 @@
 #include <factory/factory.hh>
+#include "discovery.hh"
+#include "test.hh"
+
+		std::vector<Address_range> discover_neighbours() {
+		
+			struct ::ifaddrs* ifaddr;
+			check(::getifaddrs(&ifaddr),
+				__FILE__, __LINE__, __func__);
+		
+			std::set<Address_range> ranges;
+		
+			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+	
+				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+					// ignore non-internet networks
+					continue;
+				}
+	
+				unix::endpoint addr(*ifa->ifa_addr);
+				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
+					// ignore localhost and non-IPv4 addresses
+					continue;
+				}
+	
+				unix::endpoint netmask(*ifa->ifa_netmask);
+				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
+					// ignore wide-area networks
+					continue;
+				}
+		
+				uint32_t addr_long = addr.address();
+				uint32_t mask_long = netmask.address();
+		
+				uint32_t start = (addr_long & mask_long) + 1;
+				uint32_t end = (addr_long & mask_long) + (~mask_long);
+		
+				ranges.insert(Address_range(start, addr_long));
+				ranges.insert(Address_range(addr_long+1, end));
+			}
+		
+			// combine overlaping ranges
+			std::vector<Address_range> sorted_ranges;
+			Address_range prev_range;
+			std::for_each(ranges.cbegin(), ranges.cend(),
+				[&sorted_ranges, &prev_range](const Address_range& range)
+			{
+				if (prev_range.empty()) {
+					prev_range = range;
+				} else {
+					if (prev_range.overlaps(range)) {
+						prev_range += range;
+					} else {
+						sorted_ranges.push_back(prev_range);
+						prev_range = range;
+					}
+				}
+			});
+		
+			if (!prev_range.empty()) {
+				sorted_ranges.push_back(prev_range);
+			}
+		
+			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
+				[] (const Address_range& range)
+			{
+				std::clog << unix::ipv4_addr(range.start()) << '-' << unix::ipv4_addr(range.end()) << '\n';
+			});
+		
+			::freeifaddrs(ifaddr);
+		
+			return sorted_ranges;
+		}
+		unix::endpoint get_bind_address() {
+
+			unix::endpoint ret;
+		
+			unix::ifaddrs addrs;
+			unix::ifaddrs::iterator result = 
+			std::find_if(addrs.begin(), addrs.end(), [] (const unix::ifaddrs::ifaddrs_type& rhs) {
+
+				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
+					// ignore non-internet networks
+					return false;
+				}
+
+				unix::endpoint addr(*rhs.ifa_addr);
+				if (addr.address() == unix::endpoint("127.0.0.1", 0).address()) {
+					// ignore localhost and non-IPv4 addresses
+					return false;
+				}
+
+				unix::endpoint netmask(*rhs.ifa_netmask);
+				if (netmask.address() == unix::endpoint("255.255.255.255",0).address()) {
+					// ignore wide-area networks
+					return false;
+				}
+		
+				return true;
+			});
+			if (result != addrs.end()) {
+				ret = unix::endpoint(*result->ifa_addr);
+			}
+		
+			return ret;
+		}
 
 using namespace factory;
 

@@ -12,8 +12,25 @@ namespace std {
 // Attempt to simulate useful behaviour for ``unsigned __int128''
 // (input/output operators, static type information.)
 namespace std {
-	std::ostream& operator<<(std::ostream& o, unsigned __int128 rhs);
-	std::istream& operator>>(std::istream& in, unsigned __int128& rhs);
+
+	inline std::ostream&
+	operator<<(std::ostream& out, unsigned __int128 rhs) {
+		std::ostream::sentry s(out);
+		if (s) {
+			factory::bits::uint128_put(rhs, out);
+		}
+		return out;
+	}
+
+	inline std::istream&
+	operator>>(std::istream& in, unsigned __int128& rhs) {
+		std::istream::sentry s(in);
+		if (s) {
+			factory::bits::uint128_get(rhs, in);
+		}
+		return in;
+	}
+
 }
 #else
 #include "basic_uint.hh"

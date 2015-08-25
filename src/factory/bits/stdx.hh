@@ -142,6 +142,70 @@ namespace factory {
 		private:
 			const std::ios& str;
 		};
+
+		template<class T>
+		void
+		uint128_put(T n, std::ostream& out) {
+
+			if (n == 0) { out << '0'; return; }
+
+			static constexpr const unsigned int
+			MAX_DIGITS_BASE8 = 43;
+			static constexpr const unsigned int
+			MAX_DIGITS_BASE10 = 39;
+			static constexpr const unsigned int
+			MAX_DIGITS_BASE16 = 32;
+
+			unsigned int radix = get_stream_radix(out);
+    		char buf[MAX_DIGITS_BASE8] = {};
+    		int i = MAX_DIGITS_BASE8;
+
+    		while (n) {
+				T remainder = n%radix;
+				n /= radix;
+        		buf[--i] = "0123456789abcdef"[remainder];
+    		}
+
+			out.rdbuf()->sputn(buf + i, sizeof(buf) - i);
+		}
+
+		template<class T>
+		void
+		uint128_get(T& rhs, std::istream& in) {
+			rhs = 0;
+			unsigned int radix = get_stream_radix(in);
+			char ch;
+			while (in >> ch) {
+				unsigned int n = radix;
+				switch (radix) {
+					case 16: {
+						ch = std::tolower(ch);
+						if (ch >= 'a' && ch <= 'f') {
+							n = ch - 'a' + 10;
+						} else if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
+						}
+					} break;
+					case 8:	
+						if (ch >= '0' && ch <= '7') {
+							n = ch - '0';
+						}
+						break;
+					case 10:
+					default:
+						if (ch >= '0' && ch <= '9') {
+							n = ch - '0';
+						}
+						break;
+				}
+				if (n == radix) {
+					break;
+				}
+
+				rhs *= radix;
+				rhs += n;
+			}
+		}
 	
 	}
 

@@ -58,22 +58,13 @@
 	#include <unistd.h>
 	#include <fcntl.h>
 	#include <sys/types.h>
-//	#include <sys/socket.h>
 	#include <sys/ipc.h>
 	#include <sys/shm.h>
 	#include <sys/wait.h>
 	#include <semaphore.h>
-//	#include <netinet/in.h>
-//	#include <arpa/inet.h>
-//	#include <poll.h>
-//	#include <ifaddrs.h>
-	#ifdef HAVE_EXECINFO_H
-		#include <execinfo.h>
-	#endif
 	
 	// Base system
 	#include "forward.hh"
-	#include "base.hh"
 	#include "stdx.hh"
 	#include "packstream.hh"
 	#include "unistdx.hh"
@@ -84,7 +75,6 @@
 	#include "managed_object.hh"
 	#include "server.hh"
 	#include "app_server.hh"
-	#include "discovery.hh"
 	
 	// Configuration
 	#include "release_configuration.hh"

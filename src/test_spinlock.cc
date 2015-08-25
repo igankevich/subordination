@@ -1,4 +1,5 @@
 #include "libfactory.cc"
+#include "test.hh"
 using namespace factory;
 
 template<class Mutex>
