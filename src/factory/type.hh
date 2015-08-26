@@ -1,3 +1,8 @@
+#ifndef FACTORY_TYPE_HH
+#define FACTORY_TYPE_HH
+
+#include <unordered_map>
+
 namespace factory {
 
 	typedef uint32_t Id;
@@ -286,3 +291,5 @@ namespace factory {
 	using components::Type;
 
 }
+
+#endif // FACTORY_TYPE_HH

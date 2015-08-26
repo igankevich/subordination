@@ -21,47 +21,22 @@
 	// STL
 	#include <iostream>
 	#include <iomanip>
-	#include <fstream>
 	#include <sstream>
-	#include <ctime>
 	#include <vector>
-	#include <list>
-	#include <stdexcept>
-	#include <system_error>
-	#include <queue>
 	#include <algorithm>
 	#include <iterator>
 	#include <chrono>
-	#include <tuple>
-	#include <random>
 	#include <string>
 	#include <functional>
-	#include <unordered_map>
-	#include <map>
-	#include <set>
-	#include <bitset>
 	
 	// Standard portable types
 	#include <cinttypes>
-	#include <cstring>
-	#include <cstdlib>
-	#include <csignal>
 	#include <cstddef>
 	
 	// C++ multi-threading
-	#include <thread>
 	#include <mutex>
 	#include <condition_variable>
 	#include <atomic>
-	
-	// POSIX system
-	#include <unistd.h>
-	#include <fcntl.h>
-	#include <sys/types.h>
-	#include <sys/ipc.h>
-	#include <sys/shm.h>
-	#include <sys/wait.h>
-	#include <semaphore.h>
 	
 	// Base system
 	#include "stdx.hh"

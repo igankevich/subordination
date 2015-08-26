@@ -1,6 +1,8 @@
 #ifndef FACTORY_BITS_CPU_BIND_HH
 #define FACTORY_BITS_CPU_BIND_HH
 
+#include <thread>
+
 namespace factory {
 
 	namespace components {

@@ -1,3 +1,8 @@
+#ifndef FACTORY_KERNEL_HH
+#define FACTORY_KERNEL_HH
+
+#include <bitset>
+
 #include "server/basic_server.hh"
 #include "bits/kernel.hh"
 
@@ -490,3 +495,5 @@ namespace factory {
 }
 */
 #endif
+
+#endif // FACTORY_KERNEL_HH

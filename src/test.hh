@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iterator>
+#include <stdexcept>
 
 namespace test {
 
@@ -38,8 +39,8 @@ namespace test {
 			auto pos = pair.first - cnt1.begin();
 			std::stringstream msg;
 			msg << "input and output does not match at i=" << pos << ":\n'"
-				<< make_bytes(*pair.first) << "'\n!=\n'" << make_bytes(*pair.second) << "'";
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				<< *pair.first << "'\n!=\n'" << *pair.second << "'";
+			throw std::runtime_error(msg.str());
 		}
 	}
 

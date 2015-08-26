@@ -1,6 +1,8 @@
 #ifndef SERVER_NIC_SERVER_HH
 #define SERVER_NIC_SERVER_HH
 
+#include <map>
+
 #include "intro.hh"
 
 namespace factory {

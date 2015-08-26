@@ -1,3 +1,9 @@
+#ifndef FACTORY_APP_SERVER_HH
+#define FACTORY_APP_SERVER_HH
+
+#include <thread>
+#include <map>
+
 #include "managed_object.hh"
 
 namespace factory {
@@ -37,7 +43,7 @@ namespace factory {
 			typedef Packing_stream<char> stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef unix::semaphore sem_type;
+			typedef unix::process_semaphore sem_type;
 			typedef Application::id_type app_type;
 			typedef stdx::log<Principal_server> this_log;
 
@@ -186,7 +192,7 @@ namespace factory {
 			typedef basic_shmembuf<char> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef unix::semaphore sem_type;
+			typedef unix::process_semaphore sem_type;
 			typedef Packing_stream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
@@ -356,3 +362,5 @@ namespace factory {
 
 	}
 }
+
+#endif // FACTORY_APP_SERVER_HH

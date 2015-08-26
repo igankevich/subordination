@@ -1,3 +1,5 @@
+#include <random>
+
 typedef std::chrono::nanoseconds::rep Time;
 
 Time time_seed() {

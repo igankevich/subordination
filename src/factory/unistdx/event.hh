@@ -6,6 +6,8 @@
 	#define POLLRDHUP 0
 #endif
 
+#include "../bits/check.hh"
+
 namespace factory {
 
 	namespace unix {
@@ -373,7 +375,7 @@ namespace factory {
 //				check_dirty();
 //				std::clog << "poll(): size="
 //					<< this->_events.size() << std::endl;
-				check_if_not<std::errc::interrupted>(
+				bits::check_if_not<std::errc::interrupted>(
 					::poll(this->_events.data(),
 					this->_events.size(), no_timeout),
 					__FILE__, __LINE__, __func__);

@@ -5,7 +5,9 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 
+#include "../bits/check.hh"
 #include "../bits/endpoint.hh"
+#include "../bits/ifaddrs.hh"
 
 namespace factory {
 
@@ -632,7 +634,7 @@ namespace factory {
 			typedef std::size_t size_type;
 
 			ifaddrs() {
-				check(::getifaddrs(&this->_addrs),
+				bits::check(::getifaddrs(&this->_addrs),
 					__FILE__, __LINE__, __func__);
 			}
 			~ifaddrs() noexcept { 

@@ -1,6 +1,8 @@
 #ifndef FACTORY_BITS_CHECK_HH
 #define FACTORY_BITS_CHECK_HH
 
+#include <system_error>
+
 namespace factory {
 
 	namespace bits {

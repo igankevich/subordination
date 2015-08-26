@@ -1,3 +1,9 @@
+#ifndef FACTORY_UNISTDX_LOG_HH
+#define FACTORY_UNISTDX_LOG_HH
+
+#include <thread>
+#include <unordered_map>
+
 #include <syslog.h>
 
 namespace factory {
@@ -68,6 +74,7 @@ namespace factory {
 			std::unordered_map<std::thread::id, buf_type> _bufs;
 		};
 
+		// TODO: move to Basic_factory
 		struct Install_syslog {
 
 			explicit
@@ -90,3 +97,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_UNISTDX_LOG_HH

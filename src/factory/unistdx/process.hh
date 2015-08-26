@@ -1,6 +1,21 @@
+#ifndef FACTORY_UNISTDX_PROCESS_HH
+#define FACTORY_UNISTDX_PROCESS_HH
+
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+
+#include "../bits/check.hh"
+
 namespace factory {
 
 	namespace unix {
+
+		typedef ::pid_t pid_type;
+		typedef int stat_type;
+		typedef int code_type;
+		typedef ::siginfo_t siginfo_type;
 
 		enum wait_flags {
 			proc_exited = WEXITED,
@@ -210,7 +225,7 @@ namespace factory {
 			wait() {
 				int stat = 0;
 				if (_pid > 0) {
-					check_if_not<std::errc::interrupted>(
+					bits::check_if_not<std::errc::interrupted>(
 						::waitpid(_pid, &stat, 0),
 						__FILE__, __LINE__, __func__);
 					_pid = 0;
@@ -248,7 +263,7 @@ namespace factory {
 
 			void
 			set_group_id(pid_type rhs) const {
-				check(::setpgid(_pid, rhs),
+				bits::check(::setpgid(_pid, rhs),
 					__FILE__, __LINE__, __func__);
 			}
 
@@ -330,7 +345,7 @@ namespace factory {
 			unix::proc_info
 			do_wait(wait_flags flags) const {
 				unix::siginfo_type info;
-				check_if_not<std::errc::interrupted>(
+				bits::check_if_not<std::errc::interrupted>(
 					::waitid(P_PGID, _gid, &info, flags),
 					__FILE__, __LINE__, __func__);
 				return unix::proc_info(info);
@@ -411,3 +426,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_UNISTDX_PROCESS_HH

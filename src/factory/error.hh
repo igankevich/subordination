@@ -1,3 +1,8 @@
+#ifndef FACTORY_ERROR_HH
+#define FACTORY_ERROR_HH
+
+#include <stdexcept>
+
 namespace factory {
 
 	namespace components {
@@ -126,3 +131,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_ERROR_HH

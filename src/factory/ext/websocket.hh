@@ -1,3 +1,9 @@
+#ifndef FACTORY_EXT_WEBSOCKET_HH
+#define FACTORY_EXT_WEBSOCKET_HH
+
+#include <random>
+#include <unordered_map>
+
 namespace factory {
 
 	namespace components {
@@ -800,3 +806,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_EXT_WEBSOCKET_HH

@@ -1,6 +1,9 @@
 #ifndef FACTORY_SERVER_BASIC_SERVER_HH
 #define FACTORY_SERVER_BASIC_SERVER_HH
 
+#include <thread>
+#include <queue>
+
 #include "../managed_object.hh"
 
 namespace factory {

@@ -1,6 +1,35 @@
+#ifndef FACTORY_BITS_UNISTDX_HH
+#define FACTORY_BITS_UNISTDX_HH
+
+#include <unistd.h>
+#include <fcntl.h>
+
 namespace factory {
 	
 	namespace bits {
+
+		struct Command_line {
+
+			explicit
+			Command_line(int argc, char* argv[]) noexcept:
+			_cmdline()
+			{
+				std::copy_n(argv, argc,
+					std::ostream_iterator<char*>(_cmdline, "\n"));
+			}
+
+			template<class F>
+			void
+			parse(F handle) {
+				std::string arg;
+				while (_cmdline >> std::ws >> arg) {
+					handle(arg, _cmdline);
+				}
+			}
+
+		private:
+			std::stringstream _cmdline;
+		};
 
 		template<class T>
 		std::string
@@ -189,3 +218,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_BITS_UNISTDX_HH
