@@ -294,6 +294,22 @@ namespace factory {
 		using Standard_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
+		template<class Unused>
+		struct No_server: public Managed_object<Server<Unused>> {
+			using typename Server<Unused>::kernel_type;
+			void send(kernel_type*) override {}
+			template<class ... Args>
+			void forward(Args&& ...) {}
+			void
+			setparent(Managed_object<Server<Unused>>*) override {}
+			Category
+			category() const noexcept override {
+				return Category{
+					"no_server",
+					[] () { return new No_server; }
+				};
+			}
+		};
 	}
 
 }

@@ -124,7 +124,7 @@ namespace factory {
 					<< ",rdstate=" << bits::debug_stream(this->_istream)
 					<< std::endl;
 				if (!this->_istream) return;
-				Type<kernel_type>::read_object(this->_istream,
+				Type<kernel_type>::read_object(this->factory()->types(), this->_istream,
 					[this,&src] (kernel_type* k) {
 						send_kernel(k, src);
 					}
@@ -152,7 +152,7 @@ namespace factory {
 					<< ",rdstate=" << bits::debug_stream(this->_istream)
 					<< std::endl;
 				if (k->principal()) {
-					kernel_type* p = Type<kernel_type>::instances().lookup(k->principal()->id());
+					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
 					if (p == nullptr) {
 						k->result(Result::NO_PRINCIPAL_FOUND);
 						throw No_principal_found<kernel_type>(k);

@@ -32,6 +32,7 @@ namespace factory {
 		struct Managed_object: public T {
 
 			typedef std::string name_type;
+			typedef std::function<void(const Managed_object<T>*)> for_each_func_type;
 
 			void
 			setname(name_type&& rhs) {
@@ -43,7 +44,7 @@ namespace factory {
 				return _name;
 			}
 
-			void
+			virtual void
 			setparent(Managed_object* rhs) {
 				T::setparent(rhs);
 				if (rhs != this) {
@@ -78,12 +79,28 @@ namespace factory {
 			virtual void remove_child(Managed_object*) {}
 
 			virtual void
-			for_each(std::function<void(const Managed_object*)>) const {}
+			for_each(for_each_func_type) const {}
+
+			template<class Foreign>
+			void
+			write_foreign(const Foreign& obj, name_type&& name, std::ostream& out) const {
+				obj.write_recursively(out,
+					[this,&name] (std::ostream& out) {
+						this->write_prefix(out);
+						out << KEY_SEPARATOR << name << KEY_SEPARATOR;
+					}
+				);
+			}
 
 			void
-			write_recursively(std::ostream& out) const {
+			write_prefix(std::ostream& out) const {
 				write_categories(out);
-				out << _name << '\n';
+			}
+
+			virtual void
+			write_recursively(std::ostream& out) const {
+				write_prefix(out);
+				out << LINE_SEPARATOR;
 				write_configuration(out);
 				for_each([&out] (const Managed_object* rhs) { rhs->write_recursively(out); });
 			}
@@ -92,10 +109,8 @@ namespace factory {
 			write_categories(std::ostream& out) const {
 				if (_parent) {
 					_parent->write_categories(out);
-				} else {
-					out << SEPARATOR;
 				}
-				out << category() << SEPARATOR;
+				out << KEY_SEPARATOR << _name;
 			}
 
 			void
@@ -103,8 +118,11 @@ namespace factory {
 				Category cat = category();
 				std::for_each(cat._params.begin(), cat._params.end(),
 					[this,&out,&cat] (const Category::key_type& key) {
-						write_categories(out);
-						out << _name << '.' << key << '=' << cat._getparam(this, key) << '\n';
+						write_prefix(out);
+						out << KEY_SEPARATOR << key
+							<< KEY_VALUE_SEPARATOR
+							<< cat._getparam(this, key)
+							<< LINE_SEPARATOR;
 					}
 				);
 			}
@@ -127,7 +145,11 @@ namespace factory {
 			Managed_object* _parent = nullptr;
 
 			static constexpr const char
-			SEPARATOR = '/';
+			KEY_SEPARATOR = '/';
+			static constexpr const char
+			KEY_VALUE_SEPARATOR = '=';
+			static constexpr const char
+			LINE_SEPARATOR = '\n';
 		};
 
 		template<class T>

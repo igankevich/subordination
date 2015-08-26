@@ -1,9 +1,9 @@
 #include <factory/factory.hh>
-#include <factory/cfg/standard.hh>
+#include <factory/cfg/minimal.hh>
 #include "datum.hh"
 
 using namespace factory;
-using namespace standard_config;
+using namespace minimal_config;
 
 
 unix::endpoint server_endpoint("127.0.0.1", 10000);
@@ -15,7 +15,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Mobile<Test_socket> {
+struct Test_socket: public Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
 	using typename Kernel::server_type;
@@ -35,13 +35,17 @@ struct Test_socket: public Mobile<Test_socket> {
 		commit(this_server.remote_server());
 	}
 
-	void write_impl(packstream& out) {
+	void
+	write(packstream& out) override {
+		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
 	}
 
-	void read_impl(packstream& in) {
+	void
+	read(packstream& in) override {
+		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -57,16 +61,34 @@ struct Test_socket: public Mobile<Test_socket> {
 		return _data;
 	}
 
-	static void init_type(Type* t) {
-		t->id(1);
-		t->name("Test_socket");
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
 	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			1,
+			"Test_socket",
+			[] (packstream& in) {
+				Test_socket* k = new Test_socket;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+//	static void init_type(Type* t) {
+//		t->id(1);
+//		t->name("Test_socket");
+//	}
 	
 private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public Identifiable<Kernel> {
+struct Sender: public Kernel, public Identifiable_tag {
 	typedef stdx::log<Sender> this_log;
 	using typename Kernel::server_type;
 
@@ -155,6 +177,8 @@ struct Main: public Kernel {
 			_role = 'm';
 //			retval = procs.wait();
 		} else {
+			__factory.types().register_type(Test_socket::static_type());
+			__factory.dump_hierarchy(std::cout);
 			if (argc != 3)
 				throw std::runtime_error("Wrong number of arguments.");
 			if (argv[1][0] == 'x') {
@@ -172,7 +196,7 @@ struct Main: public Kernel {
 	void act(Server& this_server) override {
 		if (_role == 'y') {
 			for (uint32_t i=1; i<=NUM_SIZES; ++i)
-				upstream(this_server.local_server(), new Sender(i, _sleep));
+				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(i, _sleep));
 		}
 		if (_role == 'm') {
 			commit(this_server.local_server());

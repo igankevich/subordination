@@ -89,7 +89,7 @@ namespace factory {
 				}
 				bool erase_kernel = true;
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
-					kernel->id(factory_generate_id());
+					kernel->id(this->factory()->factory_generate_id());
 					erase_kernel = false;
 					this_log() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
@@ -194,7 +194,7 @@ namespace factory {
 				if (app != Application::ROOT) {
 					this->app_server()->forward(app, this->_vaddr, this->_kernelbuf);
 				} else {
-					Type<kernel_type>::read_object(this->_stream,
+					Type<kernel_type>::read_object(this->factory()->types(), this->_stream,
 						[this,app] (kernel_type* k) {
 							send_kernel(k, app);
 						}
@@ -214,7 +214,7 @@ namespace factory {
 					this->clear_kernel_buffer(k);
 				}
 				if (k->principal()) {
-					kernel_type* p = Type<kernel_type>::instances().lookup(k->principal()->id());
+					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
 					if (p == nullptr) {
 						k->result(Result::NO_PRINCIPAL_FOUND);
 						throw No_principal_found<kernel_type>(k);

@@ -7,6 +7,67 @@ namespace factory {
 	namespace components {
 
 		template<class T>
+		struct Types {
+
+			typedef typename T::id_type id_type;
+
+			const T*
+			lookup(id_type type_name) const noexcept {
+				auto result = this->_types.find(type_name);
+				return result == this->_types.end() ? nullptr : &result->second; 
+			}
+
+			void
+			register_type(T type) {
+				const T* existing_type = this->lookup(type.id());
+				if (existing_type != nullptr) {
+					std::stringstream msg;
+					msg << "'" << type << "' and '" << *existing_type
+						<< "' have the same type identifiers.";
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				this->_types[type.id()] = type;
+			}
+
+			template<class Func>
+			void
+			write_recursively(std::ostream& out, Func write_prefix) const {
+				std::for_each(_types.begin(), _types.end(),
+					[&out,&write_prefix] (const std::pair<const id_type, T>& rhs) {
+						write_prefix(out);
+						out << rhs.second.id() << '=' << rhs.second << '\n';
+					}
+				);
+			}
+	
+			friend std::ostream&
+			operator<<(std::ostream& out, const Types& rhs) {
+				std::ostream_iterator<Entry> it(out, "\n");
+				std::copy(rhs._types.cbegin(), rhs._types.cend(), it);
+				return out;
+			}
+	
+		private:
+
+			struct Entry {
+				Entry(const std::pair<const id_type, T>& k): _type(k.second) {}
+
+				friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
+					return out
+						<< "/type/"
+						<< rhs._type.id()
+						<< " = "
+						<< rhs._type;
+				}
+
+			private:
+				T _type;
+			};
+
+			std::unordered_map<id_type, T> _types;
+		};
+
+		template<class T>
 		struct Type {
 
 			/// A portable type id
@@ -83,11 +144,11 @@ namespace factory {
 
 			template<class Func>
 			static void
-			read_object(packstream& packet, Func callback) {
+			read_object(Types<Type>& types, packstream& packet, Func callback) {
 				id_type id;
 				packet >> id;
 				if (!packet) return;
-				const Type* type = Type::types().lookup(id);
+				const Type* type = types.lookup(id);
 				if (type == nullptr) {
 					std::stringstream msg;
 					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
@@ -105,225 +166,123 @@ namespace factory {
 				callback(kernel);
 			}
 	
-
-			struct Types {
-	
-				const Type*
-				lookup(id_type type_name) const noexcept {
-					auto result = this->_types.find(type_name);
-					return result == this->_types.end() ? nullptr : result->second; 
-				}
-
-				void
-				register_type(Type* type) {
-					const Type* existing_type = this->lookup(type->id());
-					if (existing_type != nullptr) {
-						std::stringstream msg;
-						msg << "'" << *type << "' and '" << *existing_type
-							<< "' have the same type identifiers.";
-						throw Error(msg.str(), __FILE__, __LINE__, __func__);
-					}
-					this->_types[type->id()] = type;
-				}
-		
-				friend std::ostream&
-				operator<<(std::ostream& out, const Types& rhs) {
-					std::ostream_iterator<Entry> it(out, "\n");
-					std::copy(rhs._types.cbegin(), rhs._types.cend(), it);
-					return out;
-				}
-		
-			private:
-
-				struct Entry {
-					Entry(const std::pair<const id_type, Type*>& k): _type(k.second) {}
-
-					friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
-						return out
-							<< "/type/"
-							<< rhs._type->id()
-							<< " = "
-							<< *rhs._type;
-					}
-
-				private:
-					Type* _type;
-				};
-
-				std::unordered_map<id_type, Type*> _types;
-			};
-
-			class Instances {
-
-			public:
-
-				Instances(): _instances(), _mutex() {}
-
-				T* lookup(Id id) {
-					std::unique_lock<std::mutex> lock(_mutex);
-					auto result = _instances.find(id);
-					return result == _instances.end() ? nullptr : result->second; 
-				}
-
-				void register_instance(T* inst) {
-					std::unique_lock<std::mutex> lock(_mutex);
-					_instances[inst->id()] = inst;
-				}
-
-				void free_instance(T* inst) {
-					std::unique_lock<std::mutex> lock(_mutex);
-					_instances.erase(inst->id());
-				}
-		
-				friend std::ostream& operator<<(std::ostream& out, const Instances& rhs) {
-					// TODO: this function is not thread-safe
-					std::ostream_iterator<Entry> it(out, "\n");
-					std::copy(rhs._instances.cbegin(), rhs._instances.cend(), it);
-					return out;
-				}
-
-			private:
-
-				struct Entry {
-					Entry(const std::pair<const Id, T*>& k): _kernel(k.second) {}
-
-					friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
-						return out
-							<< "/instance/"
-							<< rhs._kernel->id()
-							<< " = "
-							<< rhs.safe_type_name();
-					}
-
-				private:
-
-					const char* safe_type_name() const {
-						return !_kernel->type()
-							? "_identifiable"
-							: _kernel->type().name();
-					}
-
-					T* _kernel;
-				};
-
-				std::unordered_map<Id, T*> _instances;
-				std::mutex _mutex;
-			};
-
-			static Types& types() {
-				static Types x;
-				return x;
-			}
-			
-			static Instances& instances() {
-				static Instances x;
-				return x;
-			}
-
-
 			id_type _id;
 			std::string _name;
 //			construct_type construct;
 			read_type read;
 		};
 
-		template<class Sub, class T, class Base=T>
-		struct Type_init: public Base {
-
-			constexpr const Type<T>
-			type() const noexcept override {
-				return _type;
-			}
-
-			void
-			write(packstream& out) override {
-				Base::write(out);
-				write_impl(out);
-			}
-
-			void
-			read(packstream& in) override {
-				Base::read(in);
-				read_impl(in);
-			}
-
-			virtual void
-			write_impl(packstream& out) = 0;
-
-			virtual void
-			read_impl(packstream& in) = 0;
-
-		private:
-			struct Init: public Type<T> {
-				Init() {
-					this->read = [] (packstream& in) {
-						Sub* k = new Sub;
-						k->read(in);
-						return k;
-					};
-
-					Sub::init_type(this);
-					Type<T>::types().register_type(this);
-				}
-			};
-
-			// Static template members are initialised on demand,
-			// i.e. only if they are accessed in a program.
-			// This function tries to fool the compiler.
-			virtual typename Type<T>::id_type
-			unused() { return _type.id(); }
-
-			static const Init _type;
-		};
-
-		template<class Sub, class T, class Base>
-		const typename Type_init<Sub, T, Base>::Init Type_init<Sub, T, Base>::_type;
-
-		// TODO: deprecated
-		inline Id
-		factory_start_id() noexcept {
-
-			struct factory_start_id_t{};
-			typedef stdx::log<factory_start_id_t> this_log;
-
-			constexpr static const Id
-			DEFAULT_START_ID = 1000;
-
-			Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
-			if (i == ROOT_ID) {
-				i = DEFAULT_START_ID;
-				this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;
-			}
-			this_log() << "START_ID = " << i << std::endl;
-			return i;
-		}
-
-		// TODO: deprecated
-		inline Id
-		factory_generate_id() {
-			static std::atomic<Id> counter(factory_start_id());
-			return counter++;
-		}
+//		template<class Sub, class T, class Base=T>
+//		struct Type_init: public Base {
+//
+//			constexpr const Type<T>
+//			type() const noexcept override {
+//				return _type;
+//			}
+//
+//			void
+//			write(packstream& out) override {
+//				Base::write(out);
+//				write_impl(out);
+//			}
+//
+//			void
+//			read(packstream& in) override {
+//				Base::read(in);
+//				read_impl(in);
+//			}
+//
+//			virtual void
+//			write_impl(packstream& out) = 0;
+//
+//			virtual void
+//			read_impl(packstream& in) = 0;
+//
+//		private:
+//			struct Init: public Type<T> {
+//				Init() {
+//					this->read = [] (packstream& in) {
+//						Sub* k = new Sub;
+//						k->read(in);
+//						return k;
+//					};
+//
+//					Sub::init_type(this);
+//					Type<T>::types().register_type(this);
+//				}
+//			};
+//
+//			// Static template members are initialised on demand,
+//			// i.e. only if they are accessed in a program.
+//			// This function tries to fool the compiler.
+//			virtual typename Type<T>::id_type
+//			unused() { return _type.id(); }
+//
+//			static const Init _type;
+//		};
+//
+//		template<class Sub, class T, class Base>
+//		const typename Type_init<Sub, T, Base>::Init Type_init<Sub, T, Base>::_type;
 
 		template<class T>
-		struct Identifiable: public T {
+		struct Instances {
 
-			explicit
-			Identifiable(Id i, bool b=true) {
-				this->id(i);
-				if (b) {
-					Type<T>::instances().register_instance(this);
+			Instances(): _instances(), _mutex() {}
+
+			T* lookup(Id id) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				auto result = _instances.find(id);
+				return result == _instances.end() ? nullptr : result->second; 
+			}
+
+			void register_instance(T* inst) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				_instances[inst->id()] = inst;
+			}
+
+			void free_instance(T* inst) {
+				std::unique_lock<std::mutex> lock(_mutex);
+				_instances.erase(inst->id());
+			}
+		
+			friend std::ostream& operator<<(std::ostream& out, const Instances& rhs) {
+				// TODO: this function is not thread-safe
+				std::ostream_iterator<Entry> it(out, "\n");
+				std::copy(rhs._instances.cbegin(), rhs._instances.cend(), it);
+				return out;
+			}
+
+		private:
+
+			struct Entry {
+				Entry(const std::pair<const Id, T*>& k): _kernel(k.second) {}
+
+				friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
+					return out
+						<< "/instance/"
+						<< rhs._kernel->id()
+						<< " = "
+						<< rhs.safe_type_name();
 				}
-			}
 
-			Identifiable() {
-				this->id(factory_generate_id());
-				Type<T>::instances().register_instance(this);
-			}
-			// TODO: call free_instance() in destructor ???
+			private:
 
+				const char* safe_type_name() const {
+					return !_kernel->type()
+						? "_identifiable"
+						: _kernel->type().name();
+				}
+
+				T* _kernel;
+			};
+
+			std::unordered_map<Id, T*> _instances;
+			std::mutex _mutex;
 		};
 	
 	}
+
+	struct Identifiable_tag {};
+	using components::Type;
 
 }

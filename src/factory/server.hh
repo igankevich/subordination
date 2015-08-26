@@ -36,11 +36,11 @@ namespace factory {
 		};
 
 		template<class Config>
-		struct Shutdown: public Type_init<Shutdown<Config>, typename Config::kernel> {
+		struct Shutdown: public Config::kernel {
 
 			typedef stdx::log<Shutdown> this_log;
 			typedef typename Config::server server_type;
-			typedef typename Config::kernel kernel_type;
+			typedef typename Config::kernel Kernel;
 
 			void act(server_type& this_server) override {
 				this_log() << "broadcasting shutdown message" << std::endl;
@@ -51,10 +51,22 @@ namespace factory {
 			void read_impl(packstream&) {}
 			void write_impl(packstream&) {}
 
-			static void
-			init_type(Type<kernel_type>* t) {
-				t->id(SHUTDOWN_ID);
-				t->name("Shutdown");
+			const Type<Kernel>
+			type() const noexcept override {
+				return static_type();
+			}
+
+			static const Type<Kernel>
+			static_type() noexcept {
+				return Type<Kernel>{
+					SHUTDOWN_ID,
+					"Shutdown",
+					[] (packstream& in) {
+						Shutdown* k = new Shutdown;
+						k->read(in);
+						return k;
+					}
+				};
 			}
 
 		};
@@ -67,8 +79,9 @@ namespace factory {
 			private Auto_set_terminate_handler<Server<Config>>
 		{
 
-			typedef Server<Config> base_server;
+			typedef Managed_set<Server<Config>> base_server;
 			using typename base_server::kernel_type;
+			using typename base_server::for_each_func_type;
 			typedef typename Config::local_server Local_server;
 			typedef typename Config::remote_server Remote_server;
 			typedef typename Config::external_server External_server;
@@ -83,7 +96,7 @@ namespace factory {
 			};
 
 			Basic_factory(Global_thread_context& context):
-				Auto_set_terminate_handler<base_server>(this),
+				Auto_set_terminate_handler<Server<Config>>(this),
 				_local_server(),
 				_remote_server(),
 				_ext_server(),
@@ -95,6 +108,7 @@ namespace factory {
 				init_parents();
 				init_names();
 				init_context(&context);
+				types().register_type(shutdown_type::static_type());
 				std::cout << std::endl;
 				this->dump_hierarchy(std::cout);
 				std::cout << std::endl;
@@ -203,7 +217,55 @@ namespace factory {
 				_exitcode = rhs;
 			}
 
+			template<class Kernel, class ... Args>
+			Kernel*
+			new_kernel(Args&& ... args) {
+				Kernel* k = new Kernel(std::forward<Args>(args)...);
+				if (std::is_convertible<Kernel, Identifiable_tag>::value) {
+					k->id(factory_generate_id());
+					instances().register_instance(k);
+				}
+				return k;
+			}
+
+			Id
+			factory_generate_id() {
+				return _counter++;
+			}
+
+			Instances<kernel_type>& instances() {
+				return _instances;
+			}
+
+			Types<Type<kernel_type>>& types() {
+				return _types;
+			}
+
+			void
+			write_recursively(std::ostream& out) const override {
+				base_server::write_recursively(out);
+				this->write_foreign(_types, "types", out);
+			}
+
 		private:
+
+			Id
+			factory_start_id() noexcept {
+
+				struct factory_start_id_t{};
+				typedef stdx::log<factory_start_id_t> this_log;
+
+				constexpr static const Id
+				DEFAULT_START_ID = 1000;
+
+				Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
+				if (i == ROOT_ID) {
+					i = DEFAULT_START_ID;
+					this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;
+				}
+				this_log() << "START_ID = " << i << std::endl;
+				return i;
+			}
 
 			void init_parents() {
 				this->_local_server.setparent(this);
@@ -241,6 +303,9 @@ namespace factory {
 			Principal_server _principal_server;
 			Role _role = Role::Principal;
 			int _exitcode = 0;
+			std::atomic<Id> _counter{factory_start_id()};
+			Instances<kernel_type> _instances;
+			Types<Type<kernel_type>> _types;
 		};
 
 		template<class Main, class Config>
