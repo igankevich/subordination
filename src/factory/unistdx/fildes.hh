@@ -85,9 +85,8 @@ namespace factory {
 			}
 			
 			void close() {
-				using components::check;
 				if (*this) {
-					check(::close(this->_fd),
+					bits::check(::close(this->_fd),
 						__FILE__, __LINE__, __func__);
 					this->_fd = bad;
 				}
@@ -178,15 +177,13 @@ namespace factory {
 
 			flag_type
 			get_flags(int which) const {
-				using components::check;
-				return check(::fcntl(this->_fd, which),
+				return bits::check(::fcntl(this->_fd, which),
 					__FILE__, __LINE__, __func__);
 			}
 
 			void
 			set_flag(int which, flag_type val) {
-				using components::check;
-				check(::fcntl(this->_fd, which, val),
+				bits::check(::fcntl(this->_fd, which, val),
 					__FILE__, __LINE__, __func__);
 			}
 
@@ -305,7 +302,7 @@ namespace factory {
 			explicit
 			file(const std::string& filename, openmode flags,
 				unix::flag_type flags2=0, mode_type mode=S_IRUSR|S_IWUSR):
-				unix::fd(components::check(bits::safe_open(filename.c_str(), flags|flags2, mode),
+				unix::fd(bits::check(bits::safe_open(filename.c_str(), flags|flags2, mode),
 					__FILE__, __LINE__, __func__)) {}
 
 			~file() {
@@ -545,8 +542,7 @@ namespace factory {
 			
 			void open() {
 				this->close();
-				using components::check;
-				check(bits::safe_pipe(this->_rawfds),
+				bits::check(bits::safe_pipe(this->_rawfds),
 					__FILE__, __LINE__, __func__);
 			}
 

@@ -62,10 +62,10 @@ namespace factory {
 				const int MAX_ITER = 3;
 				int fd = 0;
 				for (int i=0; i<MAX_ITER && fd<=2; ++i) {
-					fd = check(::open("/dev/null", O_RDWR),
+					fd = bits::check(::open("/dev/null", O_RDWR),
 						__FILE__, __LINE__, __func__);
 					if (fd > 2) {
-						check(::close(fd),
+						bits::check(::close(fd),
 							__FILE__, __LINE__, __func__);
 					}
 				}
@@ -99,6 +99,71 @@ namespace factory {
 				}
 			}
 		};
+
+		template<class Server>
+		struct Auto_set_terminate_handler {
+
+			typedef stdx::log<Auto_set_terminate_handler> this_log;
+			typedef Server server_type;
+
+			explicit
+			Auto_set_terminate_handler(server_type* root) noexcept {
+				_root = root;
+				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
+				init_signal_handlers();
+			}
+
+		private:
+
+			static void
+			error_printing_handler() noexcept {
+				static volatile bool called = false;
+				if (called) { return; }
+				called = true;
+				std::exception_ptr ptr = std::current_exception();
+				if (ptr) {
+					try {
+						std::rethrow_exception(ptr);
+					} catch (Error& err) {
+						this_log() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
+					} catch (std::exception& err) {
+						this_log() << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
+					} catch (...) {
+						this_log() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
+					}
+				} else {
+					this_log() << String_message("terminate called without an active exception",
+						__FILE__, __LINE__, __func__) << std::endl;
+				}
+				stop_root_server();
+			}
+
+			void
+			init_signal_handlers() noexcept {
+				unix::this_process::bind_signal(SIGTERM, emergency_shutdown);
+				unix::this_process::bind_signal(SIGINT, emergency_shutdown);
+				unix::this_process::bind_signal(SIGPIPE, SIG_IGN);
+			}
+
+			static void
+			emergency_shutdown(int) noexcept {
+				stop_root_server();
+			}
+
+			static void
+			stop_root_server() {
+				if (_root) {
+					_root->stop();
+				}
+			}
+
+		private:
+			static server_type* _root;
+		};
+
+		template<class Server>
+		typename Auto_set_terminate_handler<Server>::server_type*
+		Auto_set_terminate_handler<Server>::_root = nullptr;
 
 	}
 

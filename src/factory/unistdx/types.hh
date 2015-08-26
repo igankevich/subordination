@@ -1,3 +1,6 @@
+#ifndef FACTORY_UNISTDX_TYPES_HH
+#define FACTORY_UNISTDX_TYPES_HH
+
 namespace factory {
 
 	namespace unix {
@@ -11,9 +14,11 @@ namespace factory {
 		typedef int code_type;
 		typedef ::siginfo_t siginfo_type;
 
-		using components::check;
-		using components::check_if_not;
+		using bits::check;
+		using bits::check_if_not;
 
 	}
 
 }
+
+#endif // FACTORY_UNISTDX_TYPES_HH

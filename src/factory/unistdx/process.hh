@@ -201,7 +201,7 @@ namespace factory {
 			inline void
 			stop() {
 				if (_pid > 0) {
-			    	check(do_kill(SIGHUP),
+			    	bits::check(do_kill(SIGHUP),
 						__FILE__, __LINE__, __func__);
 				}
 			}
@@ -306,7 +306,7 @@ namespace factory {
 			inline void
 			stop() {
 				if (_gid > 0) {
-			    	check(::kill(_gid, SIGHUP),
+			    	bits::check(::kill(_gid, SIGHUP),
 						__FILE__, __LINE__, __func__);
 				}
 			}
@@ -353,7 +353,7 @@ namespace factory {
 	
 			inline void
 			set_group_id(pid_type rhs) {
-				components::check(::setpgid(this_process::id(), rhs),
+				bits::check(::setpgid(this_process::id(), rhs),
 					__FILE__, __LINE__, __func__);
 			}
 		
@@ -371,7 +371,7 @@ namespace factory {
 			template<class T>
 			void env(const char* key, T val) {
 				std::string str = bits::to_string(val);
-				components::check(::setenv(key, str.c_str(), 1),
+				bits::check(::setenv(key, str.c_str(), 1),
 					__FILE__, __LINE__, __func__);
 			}
 	
@@ -384,21 +384,20 @@ namespace factory {
 					argv[i] = const_cast<char*>(tmp[i].c_str());
 				}
 				argv[argc] = 0;
-				return components::check(::execv(argv[0], argv), 
+				return bits::check(::execv(argv[0], argv), 
 					__FILE__, __LINE__, __func__);
 			}
 	
 			pid_type
 			wait(int* status) {
-				using components::check_if_not;
-				return check_if_not<std::errc::interrupted>(
+				return bits::check_if_not<std::errc::interrupted>(
 					::wait(status),
 					__FILE__, __LINE__, __func__);
 			}
 	
 			inline void
 			bind_signal(int signum, const bits::Action& action) {
-				components::check(::sigaction(signum, &action, 0),
+				bits::check(::sigaction(signum, &action, 0),
 					__FILE__, __LINE__, __func__);
 			}
 	

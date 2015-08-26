@@ -64,11 +64,10 @@
 	#include <semaphore.h>
 	
 	// Base system
-	#include "forward.hh"
 	#include "stdx.hh"
 	#include "packstream.hh"
-	#include "unistdx.hh"
 	#include "error.hh"
+	#include "unistdx.hh"
 	#include "ext.hh"
 	#include "type.hh"
 	#include "kernel.hh"
