@@ -256,7 +256,6 @@ namespace factory {
 		private:
 			struct Init: public Type<T> {
 				Init() {
-//					this->construct = [] { return new Sub; };
 					this->read = [] (packstream& in) {
 						Sub* k = new Sub;
 						k->read(in);
@@ -271,7 +270,8 @@ namespace factory {
 			// Static template members are initialised on demand,
 			// i.e. only if they are accessed in a program.
 			// This function tries to fool the compiler.
-			virtual typename Type<T>::id_type unused() { return _type.id(); }
+			virtual typename Type<T>::id_type
+			unused() { return _type.id(); }
 
 			static const Init _type;
 		};
@@ -279,42 +279,46 @@ namespace factory {
 		template<class Sub, class T, class Base>
 		const typename Type_init<Sub, T, Base>::Init Type_init<Sub, T, Base>::_type;
 
-//		template<class Type, uint16_t id>
-//		struct Register_type {
-//		private:
-//			struct Init: public Type {
-//				Init() {
-////					this->construct = [] { return new Sub; };
-//					this->read = [] (packstream& in) {
-//						Sub* k = new Sub;
-//						k->read(in);
-//						return k;
-//					};
-//
-//					Sub::init_type(this);
-//					Type::types().register_type(this);
-//				}
-//			};
-//		};
+		// TODO: deprecated
+		inline Id
+		factory_start_id() noexcept {
 
-		Id factory_start_id();
-		Id factory_generate_id();
+			struct factory_start_id_t{};
+			typedef stdx::log<factory_start_id_t> this_log;
 
-		template<class T, class Type>
-		class Identifiable: public T {
+			constexpr static const Id
+			DEFAULT_START_ID = 1000;
 
-		public:
+			Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
+			if (i == ROOT_ID) {
+				i = DEFAULT_START_ID;
+				this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;
+			}
+			this_log() << "START_ID = " << i << std::endl;
+			return i;
+		}
 
-			explicit Identifiable(Id i, bool b=true) {
+		// TODO: deprecated
+		inline Id
+		factory_generate_id() {
+			static std::atomic<Id> counter(factory_start_id());
+			return counter++;
+		}
+
+		template<class T>
+		struct Identifiable: public T {
+
+			explicit
+			Identifiable(Id i, bool b=true) {
 				this->id(i);
 				if (b) {
-					Type::instances().register_instance(this);
+					Type<T>::instances().register_instance(this);
 				}
 			}
 
 			Identifiable() {
 				this->id(factory_generate_id());
-				Type::instances().register_instance(this);
+				Type<T>::instances().register_instance(this);
 			}
 			// TODO: call free_instance() in destructor ???
 

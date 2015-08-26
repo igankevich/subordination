@@ -35,54 +35,54 @@ namespace factory {
 			Server& _server;
 		};
 
-		template<class T>
-		struct Shutdown: public Type_init<Shutdown<T>, T> {
+		template<class Config>
+		struct Shutdown: public Type_init<Shutdown<Config>, typename Config::kernel> {
 
 			typedef stdx::log<Shutdown> this_log;
+			typedef typename Config::server server_type;
+			typedef typename Config::kernel kernel_type;
 
-			void act(Managed_object<Server<Principal>>& this_server) override {
+			void act(server_type& this_server) override {
 				this_log() << "broadcasting shutdown message" << std::endl;
 				delete this;
-				this_server.root()->stop();
+				this_server.factory()->stop();
 			}
 
 			void read_impl(packstream&) {}
 			void write_impl(packstream&) {}
 
 			static void
-			init_type(Type<T>* t) {
+			init_type(Type<kernel_type>* t) {
 				t->id(SHUTDOWN_ID);
 				t->name("Shutdown");
 			}
 
 		};
 
-		template<
-			class Kernel,
-			class Local_server,
-			class Remote_server,
-			class External_server,
-			class Timer_server,
-			class App_server,
-			class Principal_server
-		>
-		struct Basic_factory: public Managed_set<Server<Kernel>>,
+		template<class Config>
+		struct Basic_factory: public Managed_set<Server<Config>>,
 			private Auto_check_endiannes,
 			private Auto_filter_bad_chars_on_cout_and_cerr,
 			private Auto_open_standard_file_descriptors,
-			private Auto_set_terminate_handler<Server<Kernel>>
+			private Auto_set_terminate_handler<Server<Config>>
 		{
 
-			typedef Kernel kernel_type;
-			typedef Server<kernel_type> base_server;
-			typedef Shutdown<kernel_type> shutdown_type;
+			typedef Server<Config> base_server;
+			using typename base_server::kernel_type;
+			typedef typename Config::local_server Local_server;
+			typedef typename Config::remote_server Remote_server;
+			typedef typename Config::external_server External_server;
+			typedef typename Config::timer_server Timer_server;
+			typedef typename Config::app_server App_server;
+			typedef typename Config::principal_server Principal_server;
+			typedef Shutdown<Config> shutdown_type;
 
 			enum struct Role {
 				Principal,
 				Subordinate
 			};
 
-			Basic_factory():
+			Basic_factory(Global_thread_context& context):
 				Auto_set_terminate_handler<base_server>(this),
 				_local_server(),
 				_remote_server(),
@@ -91,9 +91,10 @@ namespace factory {
 				_app_server(),
 				_principal_server()
 			{
+				this->setfactory(this);
 				init_parents();
 				init_names();
-//				register_factory(this);
+				init_context(&context);
 				std::cout << std::endl;
 				this->dump_hierarchy(std::cout);
 				std::cout << std::endl;
@@ -105,7 +106,7 @@ namespace factory {
 			category() const noexcept override {
 				return Category{
 					"factory",
-					[] () { return new Basic_factory; }
+					[] () { return nullptr; }
 				};
 			}
 
@@ -173,6 +174,35 @@ namespace factory {
 
 			void setrole(Role rhs) { this->_role = rhs; }
 
+			void
+			run(int argc, char* argv[]) {
+				try {
+					do_config(argc, argv);
+					this->start();
+					do_run(argc, argv);
+					this->wait();
+				} catch (std::exception& e) {
+					std::cerr << e.what() << std::endl;
+					set_exit_code(EXIT_FAILURE);
+				}
+			}
+
+			virtual void
+			do_run(int argc, char* argv[]) {}
+
+			virtual void
+			do_config(int argc, char* argv[]) {}
+
+			int
+			exit_code() const noexcept {
+				return _exitcode;
+			}
+
+			void
+			set_exit_code(int rhs) noexcept {
+				_exitcode = rhs;
+			}
+
 		private:
 
 			void init_parents() {
@@ -194,6 +224,15 @@ namespace factory {
 				_principal_server.setname("princ");
 			}
 
+			void init_context(Global_thread_context* context) {
+				this->_local_server.set_global_context(context);
+				this->_remote_server.set_global_context(context);
+				this->_ext_server.set_global_context(context);
+				this->_timer_server.set_global_context(context);
+				this->_app_server.set_global_context(context);
+				this->_principal_server.set_global_context(context);
+			}
+
 			Local_server _local_server;
 			Remote_server _remote_server;
 			External_server _ext_server;
@@ -201,9 +240,43 @@ namespace factory {
 			App_server _app_server;
 			Principal_server _principal_server;
 			Role _role = Role::Principal;
+			int _exitcode = 0;
+		};
+
+		template<class Main, class Config>
+		struct App: public Basic_factory<Config> {
+
+			App(Global_thread_context& ctx):
+			Basic_factory<Config>(ctx)
+			{}
+
+			void
+			do_config(int argc, char* argv[]) override {
+				_main = new Main(*this, argc, argv);
+			}
+
+			void
+			do_run(int argc, char* argv[]) override {
+				this->local_server()->send(_main);
+			}
+
+		private:
+			Main* _main;
 		};
 
 	}
 
 }
 
+namespace factory {
+
+	template<class Main, class Config>
+	int
+	factory_main(int argc, char* argv[]) noexcept {
+		factory::components::Global_thread_context ctx;
+		factory::components::App<Main,Config> app(ctx);
+		app.run(argc, argv);
+		return app.exit_code();
+	}
+
+}

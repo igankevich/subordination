@@ -312,6 +312,27 @@ namespace factory {
 			kernelbuf_type _kernelbuf;
 		};
 
+
+		struct end_packet {
+			friend std::ostream&
+			operator<<(std::ostream& out, end_packet) {
+				out.rdbuf()->pubsync();
+				return out;
+			}
+		};
+
+		struct underflow {
+			friend std::istream&
+			operator>>(std::istream& in, underflow) {
+				// TODO: loop until source is exhausted
+				std::istream::pos_type old_pos = in.rdbuf()->pubseekoff(0, std::ios_base::cur, std::ios_base::in);
+				in.rdbuf()->pubseekoff(0, std::ios_base::end, std::ios_base::in);
+				in.rdbuf()->sgetc(); // underflows the stream buffer
+				in.rdbuf()->pubseekpos(old_pos);
+				return in;
+			}
+		};
+
 	}
 
 	namespace stdx {

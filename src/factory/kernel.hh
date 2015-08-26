@@ -227,13 +227,15 @@ namespace factory {
 
 		};
 
+		template<class Config>
 		struct Principal: public Mobile_kernel {
 
 			typedef Mobile_kernel base_kernel;
 			typedef Kernel_ref<Principal> Ref;
 			typedef Basic_kernel::Flag Flag;
 			typedef stdx::log<Principal> this_log;
-			typedef Managed_object<Server<Principal>> server_type;
+//			typedef Managed_object<Server<Principal>> server_type;
+			typedef typename Config::server server_type;
 
 			const Ref& principal() const { return _principal; }
 			Ref principal() { return _principal; }
@@ -297,7 +299,7 @@ namespace factory {
 			act() {}
 
 			virtual void
-			react(Principal*) {
+			react(server_type&, Principal*) {
 				std::stringstream msg;
 				msg << "Empty react in ";
 				const Type<Principal> tp = type();
@@ -310,8 +312,8 @@ namespace factory {
 			}
 
 			virtual void
-			error(Principal* rhs) {
-				react(rhs);
+			error(server_type& this_server, Principal* rhs) {
+				react(this_server, rhs);
 			}
 
 			virtual const Type<Principal>
@@ -320,11 +322,11 @@ namespace factory {
 			}
 
 			void
-			run_act(Managed_object<Server<Principal>>& this_server) {
+			run_act(server_type& this_server) {
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
-							_principal->react(this);
+							_principal->react(this_server, this);
 						} else {
 							this->act(this_server);
 //							if (this->moves_everywhere()) {
@@ -352,10 +354,10 @@ namespace factory {
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
 								this_log() << "Principal react" << std::endl;
-								_principal->react(this);
+								_principal->react(this_server, this);
 							} else {
 								this_log() << "Principal error" << std::endl;
-								_principal->error(this);
+								_principal->error(this_server, this);
 							}
 							if (del) {
 								this_log() << "Deleting kernel " << *this << std::endl;
@@ -435,6 +437,7 @@ namespace factory {
 
 }
 #else
+/*
 namespace factory {
 
 	class Notification: public Kernel {};
@@ -485,4 +488,5 @@ namespace factory {
 	}
 
 }
+*/
 #endif

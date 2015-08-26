@@ -19,7 +19,7 @@ namespace factory {
 		using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
 
 		template<class T>
-		using Timer_server_base = Fast_server_with_pool<T, Time_priority_pool<T>>;
+		using Timer_server_base = Fast_server_with_pool<T, Time_priority_pool<typename Server<T>::kernel_type>>;
 
 		template<class T>
 		struct Timer_server: public Timer_server_base<T> {

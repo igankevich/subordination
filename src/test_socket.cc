@@ -1,8 +1,10 @@
-#include "libfactory.cc"
+#include <factory/factory.hh>
+#include <factory/cfg/standard.hh>
+#include "datum.hh"
 
 using namespace factory;
+using namespace standard_config;
 
-#include "datum.hh"
 
 unix::endpoint server_endpoint("127.0.0.1", 10000);
 unix::endpoint client_endpoint({127,0,0,1}, 20000);
@@ -16,6 +18,7 @@ std::atomic<int> kernel_count(0);
 struct Test_socket: public Mobile<Test_socket> {
 
 	typedef stdx::log<Test_socket> this_log;
+	using typename Kernel::server_type;
 
 	Test_socket(): _data() {
 	}
@@ -28,8 +31,8 @@ struct Test_socket: public Mobile<Test_socket> {
 		--kernel_count;
 	}
 
-	void act() {
-		commit(remote_server());
+	void act(Server& this_server) override {
+		commit(this_server.remote_server());
 	}
 
 	void write_impl(packstream& out) {
@@ -65,13 +68,14 @@ private:
 
 struct Sender: public Identifiable<Kernel> {
 	typedef stdx::log<Sender> this_log;
+	using typename Kernel::server_type;
 
 	Sender(uint32_t n, uint32_t s):
 		_vector_size(n),
 		_input(_vector_size),
 		_sleep(s) {}
 
-	void act() {
+	void act(Server& this_server) override {
 		this_log() << "Sender "
 			<< "id = " << id()
 			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
@@ -79,12 +83,12 @@ struct Sender: public Identifiable<Kernel> {
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-			upstream(remote_server(), new Test_socket(_input));
+			upstream(this_server.remote_server(), new Test_socket(_input));
 //			this_log() << " Sender id = " << this->id() << std::endl;
 		}
 	}
 
-	void react(Kernel* child) {
+	void react(Server& this_server, Kernel* child) override {
 
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
@@ -105,7 +109,7 @@ struct Sender: public Identifiable<Kernel> {
 
 		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 
@@ -121,41 +125,16 @@ private:
 struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
+	using typename Kernel::server_type;
 
-	Main(uint32_t s): _sleep(s) {}
-
-	void act() {
-		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-			upstream(the_server(), new Sender(i, _sleep));
-	}
-
-	void react(Kernel*) {
-		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
-		this_log() << "global kernel count = " << kernel_count << std::endl;
-		if (++_num_returned == NUM_SIZES) {
-			commit(the_server());
-		}
-	}
-
-private:
-	uint32_t _num_returned = 0;
-	uint32_t _sleep = 0;
-};
-
-uint32_t sleep_time() {
-	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
-}
-
-struct App {
-	typedef stdx::log<App> this_log;
-	int run(int argc, char* argv[]) {
-		int retval = 0;
+	Main(Server& this_server, int argc, char* argv[]) {
+		auto& __factory = *this_server.factory();
 		if (argc <= 1) {
 			this_log()
 				<< "server=" << server_endpoint
 				<< ",client=" << client_endpoint
 				<< std::endl;
-			uint32_t sleep = sleep_time();
+			uint32_t sleep = 0;
 			unix::procgroup procs;
 			procs.add([&argv, sleep] () {
 				unix::this_process::env("START_ID", 1000);
@@ -173,40 +152,49 @@ struct App {
 					<< ",status=" << stat.exit_code() << std::endl;
 			});
 			this_log() << "unix::log test " << std::endl;
+			_role = 'm';
 //			retval = procs.wait();
 		} else {
-			try {
-				if (argc != 3)
-					throw std::runtime_error("Wrong number of arguments.");
-				uint32_t sleep = 0;
-				{
-					std::stringstream s;
-					s << argv[2];
-					s >> sleep;
-				}
-				the_server()->add_cpu(0);
-				if (argv[1][0] == 'x') {
-					remote_server()->socket(server_endpoint);
-					__factory.start();
-					__factory.wait();
-				}
-				if (argv[1][0] == 'y') {
-					remote_server()->socket(client_endpoint);
-					remote_server()->peer(server_endpoint);
-					__factory.start();
-					the_server()->send(new Main(sleep));
-					__factory.wait();
-				}
-			} catch (std::exception& e) {
-				std::cerr << e.what() << std::endl;
-				retval = 1;
+			if (argc != 3)
+				throw std::runtime_error("Wrong number of arguments.");
+			if (argv[1][0] == 'x') {
+				__factory.remote_server()->socket(server_endpoint);
+				_role = 'x';
+			}
+			if (argv[1][0] == 'y') {
+				__factory.remote_server()->socket(client_endpoint);
+				__factory.remote_server()->peer(server_endpoint);
+				_role = 'y';
 			}
 		}
-		return retval;
 	}
+
+	void act(Server& this_server) override {
+		if (_role == 'y') {
+			for (uint32_t i=1; i<=NUM_SIZES; ++i)
+				upstream(this_server.local_server(), new Sender(i, _sleep));
+		}
+		if (_role == 'm') {
+			commit(this_server.local_server());
+		}
+	}
+
+	void react(Server& this_server, Kernel*) override {
+		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
+		this_log() << "global kernel count = " << kernel_count << std::endl;
+		if (++_num_returned == NUM_SIZES) {
+			commit(this_server.local_server());
+		}
+	}
+
+private:
+	uint32_t _num_returned = 0;
+	uint32_t _sleep = 0;
+	char _role = 'm';
 };
 
-int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+int
+main(int argc, char* argv[]) {
+	using namespace factory;
+	return factory_main<Main,config>(argc, argv);
 }

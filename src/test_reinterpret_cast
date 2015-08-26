@@ -3,7 +3,7 @@
 files=$(find . -type f -name "*.cc" -or -name "*.hh")
 
 check() {
-echo "Checking for $1... "
+#echo "Checking for $1... "
 grep -H "$1" $files && echo "$1: FAIL" || echo "$1: OK"
 }
 

@@ -7,7 +7,7 @@ namespace factory {
 
 	namespace components {
 
-		template<class T, class Socket, class Kernels=std::deque<T*>>
+		template<class T, class Socket, class Kernels=std::deque<typename Server<T>::kernel_type*>>
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef char Ch;
@@ -15,10 +15,10 @@ namespace factory {
 			typedef Packing_stream<Ch> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
-			typedef T kernel_type;
-			typedef typename T::app_type app_type;
 			typedef Kernels pool_type;
 			typedef Managed_object<Server<T>> base_server;
+			using typename base_server::kernel_type;
+			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
 			Remote_Rserver(socket_type&& sock, unix::endpoint vaddr):
@@ -163,7 +163,7 @@ namespace factory {
 			const socket_type& socket() const { return this->_kernelbuf.fd(); }
 			socket_type& socket() { return this->_kernelbuf.fd(); }
 			void socket(unix::socket&& rhs) {
-				this->_stream >> underflow;
+				this->_stream >> underflow();
 				this->_stream.clear();
 				this->_kernelbuf.setfd(socket_type(std::move(rhs)));
 			}
@@ -192,7 +192,7 @@ namespace factory {
 				this->_stream >> app;
 				if (!this->_stream) return;
 				if (app != Application::ROOT) {
-					factory::components::forward_to_app(app, this->_vaddr, this->_kernelbuf);
+					this->app_server()->forward(app, this->_vaddr, this->_kernelbuf);
 				} else {
 					Type<kernel_type>::read_object(this->_stream,
 						[this,app] (kernel_type* k) {
@@ -243,7 +243,7 @@ namespace factory {
 				this->_stream << kernel.app();
 				Type<kernel_type>::write_object(kernel, this->_stream);
 				pos_type new_pos = this->_stream.tellp();
-				this->_stream << end_packet;
+				this->_stream << end_packet();
 				this_log() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="
@@ -288,7 +288,9 @@ namespace factory {
 			volatile bool _dirty = false;
 		};
 
-		template<class T, class Socket, class Kernels=std::queue<T*>, class Threads=std::vector<std::thread>>
+		template<class T, class Socket,
+		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Threads=std::vector<std::thread>>
 		using NIC_server_base = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
 			unix::event_poller<Remote_Rserver<T, Socket>*>>;

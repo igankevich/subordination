@@ -4,8 +4,8 @@ namespace factory {
 
 //		void print_all_endpoints(std::ostream&);
 //		void stop_all_factories(bool now=false);
-		template<class App, class Endp, class Buf>
-		void forward_to_app(App app, const Endp& from, Buf& buf);
+//		template<class App, class Endp, class Buf>
+//		void forward_to_app(App app, const Endp& from, Buf& buf);
 
 		template<class Ret>
 		Ret

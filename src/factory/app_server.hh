@@ -26,11 +26,11 @@ namespace factory {
 			return name;
 		}
 
-		template<class Server>
-		struct Principal_server: public Managed_object<Server> {
+		template<class T>
+		struct Principal_server: public Managed_object<Server<T>> {
 
-			typedef Principal_server<Server> this_type;
-			typedef typename Server::kernel_type kernel_type;
+			typedef Server<T> base_server;
+			typedef typename base_server::kernel_type kernel_type;
 			typedef unix::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
@@ -73,24 +73,24 @@ namespace factory {
 
 			void
 			start() override {
-				Server::start();
+				base_server::start();
 				this_log() << "Principal_server::start()" << std::endl;
 				this->_ibuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 1));
 				this->_obuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 0));
 				this->_isem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'i'));
 				this->_osem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'o'));
-				this->_thread = std::thread(std::mem_fn(&this_type::serve), this);
+				this->_thread = std::thread(std::mem_fn(&Principal_server::serve), this);
 			}
 
 			void
 			stop() override {
-				Server::stop();
+				base_server::stop();
 				this->_isem.notify_one();
 			}
 
 			void
 			wait() override {
-				Server::wait();
+				base_server::wait();
 				if (this->_thread.joinable()) {
 					this->_thread.join();
 				}
@@ -176,11 +176,11 @@ namespace factory {
 			app_type _app;
 		};
 
-		template<class Kernel>
-		struct Sub_Rserver: public Managed_object<Server<Kernel>> {
+		template<class T>
+		struct Sub_Rserver: public Managed_object<Server<T>> {
 
-			typedef Sub_Rserver<Kernel> this_type;
-			typedef Kernel kernel_type;
+			typedef Server<T> base_server;
+			typedef typename base_server::kernel_type kernel_type;
 			typedef unix::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
@@ -249,12 +249,13 @@ namespace factory {
 			stream_type _ostream;
 		};
 
-		template<class Server>
-		struct Sub_Iserver: public Managed_object<Server> {
+		template<class T>
+		struct Sub_Iserver: public Managed_object<Server<T>> {
 
-			typedef typename Server::kernel_type kernel_type;
+			typedef Server<T> base_server;
+			using typename base_server::kernel_type;
 			typedef Application app_type;
-			typedef Sub_Rserver<kernel_type> rserver_type;
+			typedef Sub_Rserver<T> rserver_type;
 			typedef typename app_type::id_type key_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
@@ -306,13 +307,13 @@ namespace factory {
 
 			void
 			stop() override {
-				Server::stop();
+				base_server::stop();
 				this->_semaphore.notify_one();
 			}
 
 			void
 			wait() override {
-				Server::wait();
+				base_server::wait();
 				while (!this->stopped() || !this->_apps.empty()) {
 					bool empty = false;
 					{

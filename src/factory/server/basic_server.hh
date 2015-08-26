@@ -9,8 +9,41 @@ namespace factory {
 
 		constexpr const Id SHUTDOWN_ID = 123;
 
-		extern std::mutex __kernel_delete_mutex;
-		void register_server();
+		struct Global_thread_context {
+
+			typedef std::mutex slowmutex_type;
+			typedef std::unique_lock<slowmutex_type> slowlock_type;
+			typedef stdx::spin_mutex fastmutex_type;
+
+			void
+			register_thread() noexcept {
+				++_nthreads;
+			}
+
+			void
+			global_barrier(slowlock_type& lock) noexcept {
+				if (--_nthreads <= 0) {
+					_semaphore.notify_all();
+				}
+				_semaphore.wait(lock, [this] () {
+					return _nthreads <= 0;
+				});
+			}
+
+			slowmutex_type&
+			slowmutex() noexcept {
+				return _slowmutex;
+			}
+
+		private:
+			fastmutex_type _fastmutex;
+			slowmutex_type _slowmutex;
+			std::atomic<int32_t> _nthreads{0};
+			std::condition_variable _semaphore;
+		};
+
+		extern std::mutex _slowmutex;
+		void register_thread();
 		void global_barrier(std::unique_lock<std::mutex>&);
 	
 		enum struct server_state {
@@ -55,23 +88,67 @@ namespace factory {
 				return _state == server_state::started;
 			}
 
+			void
+			set_global_context(Global_thread_context* rhs) noexcept {
+				_globalcon = rhs;
+			}
+
+			Global_thread_context*
+			global_context() noexcept {
+				return _globalcon;
+			}
+
 		private:
 			volatile server_state _state = server_state::initial;
+			Global_thread_context* _globalcon = nullptr;
 		};
 
-		template<class T>
+		template<class Config>
 		struct Server: public Resident {
 
-			typedef T kernel_type;
+			typedef typename Config::kernel kernel_type;
+			typedef typename Config::factory factory_type;
+			typedef typename Config::local_server Local_server;
+			typedef typename Config::remote_server Remote_server;
+			typedef typename Config::external_server External_server;
+			typedef typename Config::timer_server Timer_server;
+			typedef typename Config::app_server App_server;
+			typedef typename Config::principal_server Principal_server;
 
 			virtual void send(kernel_type*) = 0;
 			virtual void send(kernel_type**, size_t) {}
 
+			factory_type*
+			factory() noexcept {
+				return _root;
+			}
+
+			void
+			setfactory(factory_type* rhs) noexcept {
+				_root = rhs;
+			}
+
+			void
+			setparent(Server* rhs) noexcept {
+				if (rhs) {
+					setfactory(rhs->_root);
+				}
+			}
+
+			Local_server* local_server() { return _root->local_server(); }
+			Remote_server* remote_server() { return _root->remote_server(); }
+			External_server* ext_server() { return _root->ext_server(); }
+			Timer_server* timer_server() { return _root->timer_server(); }
+			App_server* app_server() { return _root->app_server(); }
+			Principal_server* principal_server() { return _root->principal_server(); }
+
+		protected:
+			factory_type* _root = nullptr;
 		};
 
 		template<
 			class T,
-			class Kernels=std::queue<T*>,
+			class Kernels=std::queue<typename Server<T>::kernel_type*>,
 			class Threads=std::vector<std::thread>,
 			class Mutex=stdx::spin_mutex,
 			class Lock=std::unique_lock<Mutex>,
@@ -79,14 +156,14 @@ namespace factory {
 		>
 		struct Server_with_pool: public Managed_object<Server<T>> {
 
-			typedef T kernel_type;
+			typedef Server<T> base_server;
+			using typename base_server::kernel_type;
 			typedef Kernels kernel_pool;
 			typedef Threads thread_pool;
 			typedef Mutex mutex_type;
 			typedef Lock lock_type;
 			typedef Semaphore sem_type;
 			typedef std::vector<std::unique_ptr<kernel_type>> kernel_sack;
-			typedef Server<T> base_server;
 			
 			Server_with_pool() = default;
 
@@ -156,10 +233,14 @@ namespace factory {
 			do_run() = 0;
 
 			void
-			run() {
-				register_server();
+			run(Global_thread_context* context) {
+				if (context) {
+					context->register_thread();
+				}
 				do_run();
-				collect_kernels();
+				if (context) {
+					collect_kernels(*context);
+				}
 			}
 
 		private:
@@ -173,23 +254,25 @@ namespace factory {
 			}
 
 			void
-			collect_kernels() {
+			collect_kernels(Global_thread_context& context) {
 				// Recursively collect kernel pointers to the sack
 				// and delete them all at once. Collection process
 				// is fully serial to prevent multiple deletions
 				// and access to unitialised values.
-				std::unique_lock<std::mutex> lock(__kernel_delete_mutex);
+				typedef Global_thread_context::slowlock_type lock_type;
+				lock_type lock(context.slowmutex());
 				kernel_sack sack;
 				collect_kernels(std::back_inserter(sack));
 				// simple barrier for all threads participating in deletion
-				global_barrier(lock);
+				context.global_barrier(lock);
 				// destructors of scoped variables
 				// will destroy all kernels automatically
 			}
 
 			static inline std::thread
 			new_thread(Server_with_pool* rhs) noexcept {
-				return std::thread(std::mem_fn(&Server_with_pool::run), rhs);
+				return std::thread(std::mem_fn(&Server_with_pool::run), rhs,
+					rhs->global_context());
 			}
 			
 		protected:
@@ -199,11 +282,15 @@ namespace factory {
 			sem_type _semaphore;
 		};
 
-		template<class T, class Kernels=std::queue<T*>, class Threads=std::vector<std::thread>>
+		template<class T,
+		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Threads=std::vector<std::thread>>
 		using Fast_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, unix::thread_semaphore>;
 
-		template<class T, class Kernels=std::queue<T*>, class Threads=std::vector<std::thread>>
+		template<class T,
+		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Threads=std::vector<std::thread>>
 		using Standard_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 

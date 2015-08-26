@@ -83,8 +83,8 @@ namespace factory {
 			bool _temp;
 
 			// No one lives forever.
-			struct Transient_kernel: public Identifiable<K, Type<K>> {
-				explicit Transient_kernel(Id i): Identifiable<K, Type<K>>(i, false) {}
+			struct Transient_kernel: public Identifiable<K> {
+				explicit Transient_kernel(Id i): Identifiable<K>(i, false) {}
 			};
 		};
 

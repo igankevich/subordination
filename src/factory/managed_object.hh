@@ -45,12 +45,15 @@ namespace factory {
 
 			void
 			setparent(Managed_object* rhs) {
-				if (_parent) {
-					_parent->remove_child(this);
-				}
-				_parent = rhs;
-				if (rhs) {
-					rhs->add_child(this);
+				T::setparent(rhs);
+				if (rhs != this) {
+					if (_parent) {
+						_parent->remove_child(this);
+					}
+					_parent = rhs;
+					if (rhs) {
+						rhs->add_child(this);
+					}
 				}
 			}
 
