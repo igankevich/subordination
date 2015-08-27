@@ -1,17 +1,20 @@
 #ifndef FACTORY_UNISTDX_SEMAPHORE_HH
 #define FACTORY_UNISTDX_SEMAPHORE_HH
 
+#include <unistd.h>
 #if _POSIX_SEMAPHORES > 0 || defined(__MACH__)
 	#include <semaphore.h>
 #else
 	#include <sys/types.h>
 	#include <sys/ipc.h>
 	#include <sys/sem.h>
+	#error implement SysV semaphores
 	// TODO: implement SysV semaphores
 #endif
 
 #include "../bits/check.hh"
 #include "../stdx/unlock_guard.hh"
+#include "fildes.hh"
 
 namespace factory {
 

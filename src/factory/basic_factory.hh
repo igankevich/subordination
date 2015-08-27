@@ -1,11 +1,8 @@
 #include "bits/security.hh"
 #include "bits/cpu_bind.hh"
-#include "server/basic_server.hh"
-#include "server/cpu_server.hh"
-#include "server/timer_server.hh"
-#include "server/nic_server.hh"
 
 #include "unistdx/process.hh"
+#include "unistdx/log.hh"
 
 namespace factory {
 
@@ -78,7 +75,8 @@ namespace factory {
 			private Auto_check_endiannes,
 			private Auto_filter_bad_chars_on_cout_and_cerr,
 			private Auto_open_standard_file_descriptors,
-			private Auto_set_terminate_handler<Server<Config>>
+			private Auto_set_terminate_handler<Server<Config>>,
+			private unix::Install_syslog
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
@@ -99,6 +97,7 @@ namespace factory {
 
 			Basic_factory(Global_thread_context& context):
 				Auto_set_terminate_handler<Server<Config>>(this),
+				Install_syslog(std::clog),
 				_local_server(),
 				_remote_server(),
 				_ext_server(),

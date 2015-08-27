@@ -4,9 +4,11 @@
 #include <thread>
 #include <map>
 
-#include "managed_object.hh"
-#include "unistdx/semaphore.hh"
-#include "unistdx/process.hh"
+#include "../managed_object.hh"
+#include "../unistdx/semaphore.hh"
+#include "../unistdx/process.hh"
+#include "../ext/kernelbuf.hh"
+#include "../ext/shmembuf.hh"
 
 namespace factory {
 	namespace components {

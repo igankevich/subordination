@@ -74,7 +74,6 @@ namespace factory {
 			std::unordered_map<std::thread::id, buf_type> _bufs;
 		};
 
-		// TODO: move to Basic_factory
 		struct Install_syslog {
 
 			explicit
@@ -91,8 +90,6 @@ namespace factory {
 			basic_logbuf<char> newbuf;
 			std::streambuf* oldbuf = nullptr;
 		};
-
-		Install_syslog __syslog1(std::clog);
 
 	}
 

@@ -3,6 +3,8 @@
 
 #include <unordered_map>
 
+#include "stdx/log.hh"
+
 namespace factory {
 
 	typedef uint32_t Id;

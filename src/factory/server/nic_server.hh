@@ -8,6 +8,8 @@
 #include "../unistdx/socket.hh"
 #include "../stdx/for_each.hh"
 #include "../stdx/field_iterator.hh"
+#include "../ext/fdbuf.hh"
+#include "../ext/kernelbuf.hh"
 
 namespace factory {
 

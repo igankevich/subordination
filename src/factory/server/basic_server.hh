@@ -6,6 +6,7 @@
 
 #include "../managed_object.hh"
 #include "../unistdx/semaphore.hh"
+#include "../unistdx/endpoint.hh"
 #include "../stdx/for_each.hh"
 #include "../stdx/back_inserter.hh"
 #include "../stdx/front_popper.hh"
