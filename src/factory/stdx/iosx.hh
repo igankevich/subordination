@@ -9,13 +9,14 @@ namespace factory {
 
 		template<class T, std::streamsize W>
 		struct fixed_width {
-			fixed_width(T x): val(x) {}
+			fixed_width(const T& x): val(x) {}
 			friend std::ostream&
 			operator<<(std::ostream& out, const fixed_width& rhs) {
-				return out << std::setw(W) << rhs.val;
+				out.width(W);
+				return out << rhs.val;
 			}
 		private:
-			T val;
+			const T& val;
 		};
 
 		struct ios_guard {
@@ -31,6 +32,31 @@ namespace factory {
 			std::ios& str;
 			std::ios_base::fmtflags oldf;
 			std::ios::char_type oldfill;
+		};
+
+		struct debug_stream {
+
+			constexpr explicit
+			debug_stream(const std::ios& s) noexcept:
+			str(s) {}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const debug_stream& rhs) {
+				std::ostream::sentry s(out);
+				if (s) {
+					out
+						<< (rhs.str.good() ? 'g' : '-')
+						<< (rhs.str.bad()  ? 'b' : '-')
+						<< (rhs.str.fail() ? 'f' : '-')
+						<< (rhs.str.eof()  ? 'e' : '-');
+				}
+				return out;
+			}
+
+		private:
+
+			const std::ios& str;
+
 		};
 
 	}

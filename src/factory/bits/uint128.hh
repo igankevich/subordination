@@ -1,7 +1,12 @@
+#ifndef FACTORY_BITS_UINT128_HH
+#define FACTORY_BITS_UINT128_HH
+
 // prefer builtin types over substitute implementation
 #if defined(__SIZEOF_INT128__) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
 	#define FACTORY_HAVE_UINT128_T
 #endif
+
+#include "uint128_parse.hh"
 
 #if defined(FACTORY_HAVE_UINT128_T)
 typedef unsigned __int128 uint128_t;
@@ -62,3 +67,5 @@ namespace factory {
 
 }
 #define UINT128_C(x) x##_u128
+
+#endif // FACTORY_BITS_UINT128_HH

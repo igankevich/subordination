@@ -3,11 +3,13 @@
 
 #include <iterator>
 #include <utility>
+#include <tuple>
 
 namespace factory {
 
 	namespace stdx {
 
+		/// A pair with ``move'' assignment operator.
 		template<class T1, class T2>
 		struct pair: public std::pair<T1,T2> {
 
@@ -30,7 +32,7 @@ namespace factory {
 		template<class It1, class It2>
 		struct paired_iterator: public std::iterator<
 			typename std::iterator_traits<It1>::iterator_category,
-			std::tuple<typename std::iterator_traits<It1>::value_type,typename std::iterator_traits<It2>::value_type>,
+			stdx::pair<typename std::iterator_traits<It1>::value_type,typename std::iterator_traits<It2>::value_type>,
 			std::ptrdiff_t,
 			stdx::pair<typename std::iterator_traits<It1>::value_type*,typename std::iterator_traits<It2>::value_type*>,
 			stdx::pair<typename std::iterator_traits<It1>::reference,typename std::iterator_traits<It2>::reference>
@@ -90,6 +92,25 @@ namespace factory {
 		inline paired_iterator<It1,It2>
 		make_paired(It1 it1, It2 it2) {
 			return paired_iterator<It1,It2>(it1, it2);
+		}
+
+		template<size_t No, class F>
+		struct Apply_to {
+			constexpr explicit Apply_to(F&& f): func(f) {}
+			template<class Arg>
+			auto operator()(const Arg& rhs) ->
+				typename std::result_of<F&(decltype(std::get<No>(rhs)))>::type
+			{
+				return func(std::get<No>(rhs));
+			}
+		private:
+			F&& func;
+		};
+
+		template<size_t No, class F>
+		constexpr Apply_to<No,F>
+		apply_to(F&& f) {
+			return Apply_to<No,F>(f);
 		}
 	
 	}

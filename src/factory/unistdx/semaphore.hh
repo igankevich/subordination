@@ -11,6 +11,7 @@
 #endif
 
 #include "../bits/check.hh"
+#include "../stdx/unlock_guard.hh"
 
 namespace factory {
 
@@ -146,9 +147,8 @@ namespace factory {
 
 			template<class Lock>
 			void wait(Lock& lock) {
-				lock.unlock();
+				stdx::unlock_guard<Lock> unlock(lock);
 				wait();
-				lock.lock();
 			}
 
 			template<class Lock, class Pred>
@@ -177,14 +177,11 @@ namespace factory {
 				const auto s = time_point_cast<seconds>(tp);
 				const auto ns = duration_cast<nanoseconds>(tp - s);
 				const timespec_type timeout{s.time_since_epoch().count(), ns.count()};
-				lock.unlock();
-				#if !defined(__MACH__)
+				stdx::unlock_guard<Lock> unlock(lock);
 				bits::check_if_not<std::errc::timed_out>(::sem_timedwait(&_sem, &timeout),
 					__FILE__, __LINE__, __func__);
-				#endif
 				std::cv_status st = std::errc(errno) == std::errc::timed_out
 					? std::cv_status::timeout : std::cv_status::no_timeout;
-				lock.lock();
 				return st;
 			}
 

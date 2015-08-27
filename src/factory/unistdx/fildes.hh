@@ -5,6 +5,7 @@
 #include <fcntl.h>
 
 #include "../bits/check.hh"
+#include "../bits/safe_calls.hh"
 
 namespace factory {
 
@@ -13,6 +14,16 @@ namespace factory {
 		typedef ::mode_t mode_type;
 		typedef int fd_type;
 		typedef int flag_type;
+
+		fd_type
+		safe_open(const char* path, flag_type oflag, mode_type mode) {
+			bits::global_lock_type lock(bits::__forkmutex);
+			fd_type ret = ::open(path, oflag, mode);
+			if (ret != -1) {
+				bits::set_mandatory_flags(ret);
+			}
+			return ret;
+		}
 
 		struct fd_flag;
 
@@ -283,7 +294,7 @@ namespace factory {
 			explicit
 			file(const std::string& filename, openmode flags,
 				unix::flag_type flags2=0, mode_type mode=S_IRUSR|S_IWUSR):
-				unix::fd(bits::check(bits::safe_open(filename.c_str(), flags|flags2, mode),
+				unix::fd(bits::check(safe_open(filename.c_str(), flags|flags2, mode),
 					__FILE__, __LINE__, __func__)) {}
 
 			~file() {

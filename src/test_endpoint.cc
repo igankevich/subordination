@@ -1,6 +1,9 @@
-#include <factory/factory_base.hh>
-#include "libfactory.cc"
+#include <factory/unistdx/endpoint.hh>
+#include <factory/stdx/n_random_bytes.hh>
+
 #include "test.hh"
+
+#include <iostream>
 
 using namespace factory;
 using factory::stdx::n_random_bytes;

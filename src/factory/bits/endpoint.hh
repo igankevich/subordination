@@ -1,3 +1,7 @@
+#include <limits>
+
+#include "uint128_parse.hh"
+
 namespace factory {
 
 	namespace bits {

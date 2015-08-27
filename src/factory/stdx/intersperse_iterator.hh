@@ -8,14 +8,15 @@ namespace factory {
 
 	namespace stdx {
 
-		template <class T, class Ch=char, class Tr=std::char_traits<Ch>>
+		template <class T, class Delim=const char*, class Ch=char, class Tr=std::char_traits<Ch>>
 		struct intersperse_iterator:
 			public std::iterator<std::output_iterator_tag, void, void, void, void>
 		{
 			typedef Ch char_type;
 			typedef Tr traits_type;
 			typedef std::basic_ostream<Ch,Tr> ostream_type;
-			typedef const char_type* delim_type;
+			typedef Delim delim_type;
+//			typedef const char_type* delim_type;
 
 			explicit constexpr
 			intersperse_iterator(ostream_type& s, delim_type delimiter=nullptr):

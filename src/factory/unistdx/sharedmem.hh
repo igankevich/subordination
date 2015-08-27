@@ -7,7 +7,9 @@
 // TODO: replace remove() with unlink() and remove stdio.h dependency
 
 #include "../bits/check.hh"
+#include "../stdx/log.hh"
 #include "fildes.hh"
+#include "process.hh"
 
 namespace factory {
 

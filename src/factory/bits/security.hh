@@ -1,6 +1,8 @@
 #ifndef FACTORY_EXT_SECURITY_HH
 #define FACTORY_EXT_SECURITY_HH
 
+#include "../unistdx/process.hh"
+
 namespace factory {
 
 	namespace components {

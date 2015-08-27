@@ -2,6 +2,7 @@
 #define FACTORY_SERVER_TIMER_SERVER_HH
 
 #include "intro.hh"
+#include "../unistdx/semaphore.hh"
 
 namespace factory {
 

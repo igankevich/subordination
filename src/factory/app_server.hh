@@ -5,6 +5,8 @@
 #include <map>
 
 #include "managed_object.hh"
+#include "unistdx/semaphore.hh"
+#include "unistdx/process.hh"
 
 namespace factory {
 	namespace components {
@@ -127,7 +129,7 @@ namespace factory {
 				unix::endpoint src;
 				this->_istream >> src;
 				this_log() << "read_and_send_kernel(): src=" << src
-					<< ",rdstate=" << bits::debug_stream(this->_istream)
+					<< ",rdstate=" << stdx::debug_stream(this->_istream)
 					<< std::endl;
 				if (!this->_istream) return;
 				Type<kernel_type>::read_object(this->factory()->types(), this->_istream,
@@ -155,7 +157,7 @@ namespace factory {
 				k->from(src);
 				this_log()
 					<< "recv kernel=" << *k
-					<< ",rdstate=" << bits::debug_stream(this->_istream)
+					<< ",rdstate=" << stdx::debug_stream(this->_istream)
 					<< std::endl;
 				if (k->principal()) {
 					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
@@ -167,7 +169,7 @@ namespace factory {
 				}
 				this_log()
 					<< "recv2 kernel=" << *k
-					<< ",rdstate=" << bits::debug_stream(this->_istream)
+					<< ",rdstate=" << stdx::debug_stream(this->_istream)
 					<< std::endl;
 				this->root()->send(k);
 			}

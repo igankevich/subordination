@@ -2,6 +2,7 @@
 #define FACTORY_EXT_SHMEMBUF_HH
 
 #include "intro.hh"
+#include "../unistdx/sharedmem.hh"
 
 namespace factory {
 

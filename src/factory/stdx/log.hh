@@ -1,65 +1,9 @@
-#ifndef FACTORY_STDX_HH
-#define FACTORY_STDX_HH
-
-#include "bits/stdx.hh"
-#include "bits/uint128.hh"
-
-#include "stdx/n_random_bytes.hh"
-#include "stdx/intersperse_iterator.hh"
-#include "stdx/front_popper.hh"
-#include "stdx/back_inserter.hh"
-#include "stdx/paired_iterator.hh"
-#include "stdx/field_iterator.hh"
-#include "stdx/spin_mutex.hh"
-#include "stdx/iosx.hh"
+#ifndef FACTORY_STDX_LOG_HH
+#define FACTORY_STDX_LOG_HH
 
 namespace factory {
 
 	namespace stdx {
-
-		// TODO: deprecated
-		struct use_flags {
-			explicit
-			use_flags(std::ios_base& s):
-				str(s), oldf(str.flags()) {}
-			template<class ... Args>
-			use_flags(std::ios_base& s, Args&& ... args):
-				str(s), oldf(str.setf(std::forward<Args>(args)...)) {}
-			~use_flags() {
-				str.setf(oldf);
-			}
-		private:
-			std::ios_base& str;
-			std::ios_base::fmtflags oldf;
-		};
-
-		template<size_t No, class F>
-		constexpr bits::Apply_to<No,F>
-		apply_to(F&& f) {
-			return bits::Apply_to<No,F>(f);
-		}
-
-		template<class It, class Pred, class Func>
-		void
-		for_each_if(It first, It last, Pred pred, Func func) {
-			while (first != last) {
-				if (pred(*first)) {
-					func(*first);
-				}
-				++first;
-			}
-		}
-
-		template<class Lock, class It, class Func>
-		void
-		for_each_thread_safe(Lock& lock, It first, It last, Func func) {
-			while (first != last) {
-				lock.unlock();
-				func(*first);
-				lock.lock();
-				++first;
-			}
-		}
 
 		struct no_category {};
 
@@ -133,4 +77,5 @@ namespace factory {
 	}
 
 }
-#endif // FACTORY_STDX_HH
+
+#endif // FACTORY_STDX_LOG_HH

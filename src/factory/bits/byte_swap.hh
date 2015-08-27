@@ -1,3 +1,6 @@
+#ifndef FACTORY_BITS_BYTE_SWAP_HH
+#define FACTORY_BITS_BYTE_SWAP_HH
+
 #define FACTORY_GCC_VERSION_GE(major, minor) \
 	((__GNUC__ > major) || (__GNUC__ == major && __GNUC_MINOR__ >= minor))
 #if FACTORY_GCC_VERSION_GE(4, 3)
@@ -5,6 +8,13 @@
 	#define FACTORY_HAVE_BUILTIN_SWAP32
 	#define FACTORY_HAVE_BUILTIN_SWAP64
 #endif
+
+#include <algorithm>
+
+#include "../stdx/intersperse_iterator.hh"
+#include "../stdx/iosx.hh"
+#include "../bits/uint128.hh"
+
 namespace factory {
 
 	namespace bits {
@@ -281,7 +291,6 @@ namespace factory {
 			typedef typename Bytes<T,B>::value_type value_type;
 			std::ostream::sentry s(out);
 			if (s) {
-//				stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
 				stdx::ios_guard g(out);
 				out.setf(std::ios::hex, std::ios::basefield);
 				out.fill('0');
@@ -291,7 +300,6 @@ namespace factory {
 						return static_cast<unsigned char>(ch);
 					}
 				);
-//				out.fill(' ');
 			}
 			return out;
 		}
@@ -299,3 +307,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_BITS_BYTE_SWAP_HH

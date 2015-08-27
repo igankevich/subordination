@@ -7,6 +7,8 @@
 #include <stdlib.h>
 
 #include "../bits/check.hh"
+#include "../bits/to_string.hh"
+#include "../bits/safe_calls.hh"
 
 namespace factory {
 
@@ -16,6 +18,20 @@ namespace factory {
 		typedef int stat_type;
 		typedef int code_type;
 		typedef ::siginfo_t siginfo_type;
+		typedef struct ::sigaction sigaction_type;
+
+		struct Action: public sigaction_type {
+			inline
+			Action(void (*func)(int)) noexcept {
+				this->sa_handler = func;
+			}
+		};
+
+		pid_type
+		safe_fork() {
+			bits::global_lock_type lock(bits::__forkmutex);
+			return ::fork();
+		}
 
 		enum wait_flags {
 			proc_exited = WEXITED,
@@ -411,7 +427,7 @@ namespace factory {
 			}
 	
 			inline void
-			bind_signal(int signum, const bits::Action& action) {
+			bind_signal(int signum, const Action& action) {
 				bits::check(::sigaction(signum, &action, 0),
 					__FILE__, __LINE__, __func__);
 			}

@@ -5,6 +5,8 @@
 #include "server/timer_server.hh"
 #include "server/nic_server.hh"
 
+#include "unistdx/process.hh"
+
 namespace factory {
 
 	namespace components {

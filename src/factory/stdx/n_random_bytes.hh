@@ -2,13 +2,15 @@
 #define FACTORY_STDX_N_RANDOM_BYTES_HH
 
 #include <algorithm>
+#include <functional>
 
 namespace factory {
 	
 	namespace stdx {
 
 		template<class Result, class Engine>
-		Result n_random_bytes(Engine& engine) {
+		Result
+		n_random_bytes(Engine& engine) {
 			typedef Result result_type;
 			typedef typename Engine::result_type
 				base_result_type;

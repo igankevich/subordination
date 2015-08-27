@@ -4,6 +4,10 @@
 #include <map>
 
 #include "intro.hh"
+#include "../unistdx/event.hh"
+#include "../unistdx/socket.hh"
+#include "../stdx/for_each.hh"
+#include "../stdx/field_iterator.hh"
 
 namespace factory {
 
@@ -129,7 +133,7 @@ namespace factory {
 				bool overflow = false;
 				if (event.in()) {
 					this_log() << "recv rdstate="
-						<< bits::debug_stream(_stream) << ",event=" << event << std::endl;
+						<< stdx::debug_stream(_stream) << ",event=" << event << std::endl;
 					while (this->_stream) {
 						try {
 							this->read_and_send_kernel();
@@ -141,7 +145,7 @@ namespace factory {
 					this->_stream.clear();
 				}
 				if (event.out() && !event.hup()) {
-					this_log() << "Send rdstate=" << bits::debug_stream(this->_stream) << std::endl;
+					this_log() << "Send rdstate=" << stdx::debug_stream(this->_stream) << std::endl;
 					this->_stream.flush();
 					this->socket().flush();
 					if (this->_stream) {
@@ -184,7 +188,7 @@ namespace factory {
 					<< rhs.vaddr() << ",sock="
 					<< rhs.socket() << ",kernels="
 					<< rhs._buffer.size() << ",str="
-					<< bits::debug_stream(rhs._stream) << '}';
+					<< stdx::debug_stream(rhs._stream) << '}';
 			}
 
 		private:
@@ -210,7 +214,7 @@ namespace factory {
 				k->setapp(app);
 				this_log()
 					<< "recv kernel=" << *k
-					<< ",rdstate=" << bits::debug_stream(this->_stream)
+					<< ",rdstate=" << stdx::debug_stream(this->_stream)
 					<< std::endl;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
@@ -249,7 +253,7 @@ namespace factory {
 				this_log() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="
-					<< bits::debug_stream(this->_stream)
+					<< stdx::debug_stream(this->_stream)
 					<< ",krnl=" << kernel
 					<< std::endl;
 			}
@@ -304,7 +308,7 @@ namespace factory {
 			typedef std::map<unix::endpoint, server_type> upstream_type;
 			typedef Socket socket_type;
 
-			typedef bits::handler_wrapper<unix::pointer_tag> wrapper;
+//			typedef bits::handler_wrapper<bits::pointer_tag> wrapper;
 
 			typedef NIC_server_base<T, Socket> base_server;
 			using typename base_server::kernel_type;
@@ -353,7 +357,7 @@ namespace factory {
 					[this] (unix::poll_event& ev, handler_type& h) {
 						if (!ev) {
 							this->remove_server(h);
-						} else if (wrapper::dirty(h)) {
+						} else if (h->dirty()) {
 							ev.setev(unix::poll_event::Out);
 						}
 					}
@@ -386,10 +390,10 @@ namespace factory {
 			read_and_write_kernels() {
 				poller().for_each_ordinary_fd(
 					[this] (unix::poll_event& ev, handler_type& h) {
-						if (wrapper::dirty(h)) {
+						if (h->dirty()) {
 							ev.setrev(unix::poll_event::Out);
 						}
-						wrapper::handle(h, ev);
+						h->operator()(ev);
 					}
 				);
 			}

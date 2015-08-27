@@ -5,6 +5,7 @@
 
 #include "server/basic_server.hh"
 #include "bits/kernel.hh"
+#include "unistdx/process.hh"
 
 #ifndef FACTORY_CONFIGURATION
 namespace factory {

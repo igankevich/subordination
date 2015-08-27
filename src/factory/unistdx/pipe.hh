@@ -4,10 +4,26 @@
 #include <unistd.h>
 
 #include "../bits/check.hh"
+#include "../bits/safe_calls.hh"
+#include "fildes.hh"
 
 namespace factory {
 
 	namespace unix {
+
+		fd_type
+		safe_pipe(fd_type fds[2]) {
+			bits::global_lock_type lock(bits::__forkmutex);
+			int ret = ::pipe(fds);
+			if (ret != -1) {
+				bits::set_mandatory_flags(fds[0]);
+				bits::set_mandatory_flags(fds[1]);
+				#if defined(F_SETNOSIGPIPE)
+				fcntl(fds[1], F_SETNOSIGPIPE, 1);
+				#endif
+			}
+			return ret;
+		}
 
 		union pipe {
 
@@ -46,7 +62,7 @@ namespace factory {
 			
 			void open() {
 				this->close();
-				bits::check(bits::safe_pipe(this->_rawfds),
+				bits::check(safe_pipe(this->_rawfds),
 					__FILE__, __LINE__, __func__);
 			}
 

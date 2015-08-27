@@ -7,6 +7,8 @@
 #endif
 
 #include "../bits/check.hh"
+#include "../stdx/paired_iterator.hh"
+#include "pipe.hh"
 
 namespace factory {
 
@@ -174,10 +176,6 @@ namespace factory {
 
 		static_assert(sizeof(poll_event) == sizeof(basic_event),
 			"The size of poll_event does not match the size of ``struct pollfd''.");
-
-		using bits::object_tag;
-		using bits::pointer_tag;
-		using bits::smart_pointer_tag;
 
 		template<class H>
 		struct event_poller {

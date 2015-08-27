@@ -5,9 +5,19 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 
+#include <istream>
+#include <sstream>
+#include <tuple>
+
+
+#include "../bits/uint128.hh"
+#include "../packstream.hh"
+
 #include "../bits/check.hh"
 #include "../bits/endpoint.hh"
 #include "../bits/ifaddrs.hh"
+#include "../stdx/iosx.hh"
+
 
 namespace factory {
 
@@ -157,8 +167,7 @@ namespace factory {
 
 		constexpr ipv4_addr
 		operator"" _ipv4(const char* arr, std::size_t n) noexcept {
-			return ipv4_addr(to_network_format(
-				bits::do_parse_ipv4_addr<addr4_type>(arr, arr+n)));
+			return ipv4_addr(bits::do_parse_ipv4_addr<addr4_type>(arr, arr+n));
 		}
 
 		union ipv6_addr {
@@ -221,9 +230,11 @@ namespace factory {
 //					ipv6_addr tmp = rhs;
 //					tmp.raw.to_host_format();
 					typedef ipv6_addr::hex_type hex_type;
-					stdx::use_flags f(out, std::ios::hex, std::ios::basefield); 
+					typedef std::ostream::char_type char_type;
+					stdx::ios_guard g(out);
+					out.setf(std::ios::hex, std::ios::basefield); 
 					std::copy(rhs.begin(), rhs.end(),
-						stdx::intersperse_iterator<hex_type>(out, ":"));
+						stdx::intersperse_iterator<hex_type,char_type>(out, ':'));
 				}
 				return out;
 			}
@@ -233,7 +244,8 @@ namespace factory {
 				std::istream::sentry s(in);
 				if (!s) { return in; }
 				typedef ipv6_addr::hex_type hex_type;
-				stdx::use_flags f(in, std::ios::hex, std::ios::basefield); 
+				stdx::ios_guard g(in);
+				in.setf(std::ios::hex, std::ios::basefield); 
 				int field_no = 0;
 				int zeros_field = -1;
 				std::for_each(rhs.begin(), rhs.end(),
@@ -455,21 +467,21 @@ namespace factory {
 				if (s) {
 					ipv4_addr host;
 					port_type port = 0;
-					stdx::use_flags f(in);
+					stdx::ios_guard g(in);
 					in.unsetf(std::ios_base::skipws);
 					std::streampos oldg = in.tellg();
 					if (in >> host >> Colon() >> port) {
 						rhs.addr4(host, port);
-						std::clog << "Reading host4 = "
-							<< host << ':' << port << std::endl;
+//						std::clog << "Reading host4 = "
+//							<< host << ':' << port << std::endl;
 					} else {
 						in.clear();
 						in.seekg(oldg);
 						ipv6_addr host6;
 						if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
 							rhs.addr6(host6, port);
-							std::clog << "Reading host6 = "
-								<< host6 << ':' << port << std::endl;
+//							std::clog << "Reading host6 = "
+//								<< host6 << ':' << port << std::endl;
 						}
 					}
 				}

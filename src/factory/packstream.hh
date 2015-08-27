@@ -1,3 +1,9 @@
+#ifndef FACTORY_PACKSTREAM_HH
+#define FACTORY_PACKSTREAM_HH
+
+#include <istream>
+#include <ostream>
+
 #include "bits/byte_swap.hh"
 
 namespace factory {
@@ -11,7 +17,7 @@ namespace factory {
 			typedef std::basic_streambuf<Ch,Tr> streambuf_type;
 			typedef Ch char_type;
 			typedef Packing_stream<Ch,Tr,Size> this_type;
-			typedef stdx::log<Packing_stream> this_log;
+//			typedef stdx::log<Packing_stream> this_log;
 
 			explicit Packing_stream(streambuf_type* str): iostream_type(str) {
 //				this->init(str);
@@ -139,3 +145,5 @@ namespace factory {
 	using components::packstream;
 
 }
+
+#endif // FACTORY_PACKSTREAM_HH

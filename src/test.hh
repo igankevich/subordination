@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iterator>
 #include <stdexcept>
+#include <chrono>
 
 namespace test {
 
