@@ -22,18 +22,28 @@ namespace stdx {
 		typedef const Field& const_reference;
 		typedef const Field* const_pointer;
 
-		explicit inline
-		field_iterator(It rhs): iter(rhs) {}
+		explicit
+		field_iterator(It rhs) noexcept:
+		iter(rhs) {}
 
-		inline field_iterator() = default;
-		inline ~field_iterator() = default;
-		inline field_iterator(const field_iterator&) = default;
-		inline field_iterator& operator=(const field_iterator&) = default;
+		field_iterator() = default;
+		~field_iterator() = default;
+		field_iterator(const field_iterator&) = default;
 
-		constexpr bool operator==(const field_iterator& rhs) const { return iter == rhs.iter; }
-		constexpr bool operator!=(const field_iterator& rhs) const { return !this->operator==(rhs); }
+		field_iterator&
+		operator=(const field_iterator&) = default;
 
-		inline const_reference
+		constexpr bool
+		operator==(const field_iterator& rhs) const noexcept {
+			return iter == rhs.iter;
+		}
+
+		constexpr bool
+		operator!=(const field_iterator& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
+		const_reference
 		operator*() const {
 			return std::get<No>(*iter);
 		}
@@ -43,7 +53,7 @@ namespace stdx {
 		//	return std::get<No>(*iter);
 		//}
 
-		inline const_pointer
+		const_pointer
 		operator->() const {
 			return std::get<No>(iter.operator->());
 		}
@@ -53,17 +63,26 @@ namespace stdx {
 		//	return std::get<No>(iter.operator->());
 		//}
 
-		inline field_iterator&
-		operator++() {
+		field_iterator&
+		operator++() noexcept {
 			++iter;
 			return *this;
 		}
 
-		inline field_iterator operator++(int) { field_iterator tmp(*this); ++iter; return tmp; }
-		inline difference_type operator-(const field_iterator& rhs) const {
+		field_iterator
+		operator++(int) noexcept {
+			field_iterator tmp(*this);
+			++iter;
+			return tmp;
+		}
+
+		difference_type
+		operator-(const field_iterator& rhs) const noexcept {
 			return std::distance(rhs.iter, iter);
 		}
-		inline field_iterator operator+(difference_type rhs) const {
+
+		field_iterator
+		operator+(difference_type rhs) const noexcept {
 			return field_iterator(std::advance(iter, rhs));
 		}
 
