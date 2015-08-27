@@ -4,9 +4,9 @@
 #include <fcntl.h>
 
 #include <mutex>
-#include "../stdx/spin_mutex.hh"
+#include <stdx/spin_mutex.hh>
 
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 

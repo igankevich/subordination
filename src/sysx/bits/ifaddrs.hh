@@ -1,4 +1,4 @@
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 

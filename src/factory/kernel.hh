@@ -5,7 +5,7 @@
 
 #include "server/basic_server.hh"
 #include "bits/kernel.hh"
-#include "unistdx/process.hh"
+#include "sysx/process.hh"
 
 #ifndef FACTORY_CONFIGURATION
 namespace factory {
@@ -53,10 +53,10 @@ namespace factory {
 
 			id_type id() const { return this->_id; }
 
-			unix::proc execute() const {
-				return unix::proc([this] () {
-					unix::this_process::env("APP_ID", this->_id);
-					return unix::this_process::execute(this->_execpath);
+			sysx::proc execute() const {
+				return sysx::proc([this] () {
+					sysx::this_process::env("APP_ID", this->_id);
+					return sysx::this_process::execute(this->_execpath);
 				});
 			}
 
@@ -189,23 +189,23 @@ namespace factory {
 				return _id != ROOT_ID;
 			}
 
-			virtual unix::endpoint
+			virtual sysx::endpoint
 			from() const noexcept {
 				return _src;
 			}
 
 			virtual void
-			from(unix::endpoint rhs) noexcept {
+			from(sysx::endpoint rhs) noexcept {
 				_src = rhs;
 			}
 
-			virtual unix::endpoint
+			virtual sysx::endpoint
 			to() const noexcept {
 				return _dst;
 			}
 
 			virtual void
-			to(unix::endpoint rhs) noexcept {
+			to(sysx::endpoint rhs) noexcept {
 				_dst = rhs;
 			}
 
@@ -227,8 +227,8 @@ namespace factory {
 		private:
 
 			Id _id = ROOT_ID;
-			unix::endpoint _src{};
-			unix::endpoint _dst{};
+			sysx::endpoint _src{};
+			sysx::endpoint _dst{};
 			Application::id_type _app = 0;
 
 		};

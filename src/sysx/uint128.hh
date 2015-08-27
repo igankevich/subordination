@@ -6,7 +6,7 @@
 	#define FACTORY_HAVE_UINT128_T
 #endif
 
-#include "uint128_parse.hh"
+#include <sysx/bits/uint128_parse.hh>
 
 #if defined(FACTORY_HAVE_UINT128_T)
 typedef unsigned __int128 uint128_t;
@@ -22,7 +22,7 @@ namespace std {
 	operator<<(std::ostream& out, unsigned __int128 rhs) {
 		std::ostream::sentry s(out);
 		if (s) {
-			factory::bits::uint128_put(rhs, out);
+			sysx::bits::uint128_put(rhs, out);
 		}
 		return out;
 	}
@@ -31,15 +31,15 @@ namespace std {
 	operator>>(std::istream& in, unsigned __int128& rhs) {
 		std::istream::sentry s(in);
 		if (s) {
-			factory::bits::uint128_get(rhs, in);
+			sysx::bits::uint128_get(rhs, in);
 		}
 		return in;
 	}
 
 }
 #else
-#include "basic_uint.hh"
-typedef factory::bits::basic_uint<uint64_t> uint128_t;
+#include <sysx/bits/basic_uint.hh>
+typedef sysx::bits::basic_uint<uint64_t> uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
 }
@@ -57,12 +57,16 @@ namespace std {
 
 }
 
-namespace factory {
+namespace sysx {
 
-	template<char ... Chars>
-	constexpr uint128_t
-	operator"" _u128() noexcept {
-		return bits::parse_uint<uint128_t, sizeof...(Chars)>((const char[]){Chars...});
+	namespace literals {
+
+		template<char ... Chars>
+		constexpr uint128_t
+		operator"" _u128() noexcept {
+			return bits::parse_uint<uint128_t, sizeof...(Chars)>((const char[]){Chars...});
+		}
+
 	}
 
 }

@@ -96,22 +96,22 @@ private:
 	template<class T>
 	static void
 	write_raw(std::ostream& out, const T& rhs) {
-		factory::bits::Bytes<T> raw = rhs;
+		sysx::Bytes<T> raw = rhs;
 		out.write(raw.begin(), raw.size());
 	}
 
 	template<class T>
 	static void
 	read_raw(std::istream& in, T& rhs) {
-		factory::bits::Bytes<T> raw;
+		sysx::Bytes<T> raw;
 		in.read(raw.begin(), raw.size());
 		rhs = raw;
 	}
 
 	int64_t x;
 	int32_t y;
-	factory::bits::Bytes<float> z;
-	factory::bits::Bytes<double> u;
+	sysx::Bytes<float> z;
+	sysx::Bytes<double> u;
 	int16_t v;
 	int8_t w;
 	char padding[5] = {};

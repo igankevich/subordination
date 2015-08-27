@@ -1,8 +1,9 @@
 #include <limits>
 
-#include "uint128_parse.hh"
+#include <sysx/bits/uint128_parse.hh>
+#include <factory/packstream.hh>
 
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 
@@ -113,13 +114,13 @@ namespace factory {
 				: family_type::inet;
 		};
 
-		packstream&
-		operator<<(packstream& out, family_type rhs) {
+		factory::packstream&
+		operator<<(factory::packstream& out, family_type rhs) {
 			return out << static_cast<raw_family_type>(map_family_type(rhs));
 		}
 		
-		packstream&
-		operator>>(packstream& in, family_type& rhs) {
+		factory::packstream&
+		operator>>(factory::packstream& in, family_type& rhs) {
 			raw_family_type raw;
 			in >> raw;
 			rhs = map_family_type(static_cast<portable_family_type>(raw));

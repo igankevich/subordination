@@ -12,7 +12,7 @@ namespace factory {
 			typedef components::Managed_object<components::Server<config>> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
-			typedef components::NIC_server<config, factory::unix::socket> remote_server;
+			typedef components::NIC_server<config, sysx::socket> remote_server;
 			typedef components::No_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::No_server<config> principal_server;

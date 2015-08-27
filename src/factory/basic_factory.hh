@@ -1,8 +1,9 @@
-#include "bits/security.hh"
-#include "bits/cpu_bind.hh"
+#include <sysx/security.hh>
+#include <sysx/process.hh>
+#include <sysx/log.hh>
+#include <sysx/cpu_bind.hh>
 
-#include "unistdx/process.hh"
-#include "unistdx/log.hh"
+#include <factory/bits/terminate_handler.hh>
 
 namespace factory {
 
@@ -72,11 +73,11 @@ namespace factory {
 
 		template<class Config>
 		struct Basic_factory: public Managed_set<Server<Config>>,
-			private Auto_check_endiannes,
-			private Auto_filter_bad_chars_on_cout_and_cerr,
-			private Auto_open_standard_file_descriptors,
+			private sysx::Auto_check_endiannes,
+			private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
+			private sysx::Auto_open_standard_file_descriptors,
 			private Auto_set_terminate_handler<Server<Config>>,
-			private unix::Install_syslog
+			private sysx::Install_syslog
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
@@ -185,7 +186,7 @@ namespace factory {
 			App_server* app_server() { return &_app_server; }
 			Principal_server* principal_server() { return &_principal_server; }
 
-			unix::endpoint addr() const { return _remote_server.server_addr(); }
+			sysx::endpoint addr() const { return _remote_server.server_addr(); }
 
 			void setrole(Role rhs) { this->_role = rhs; }
 
@@ -259,7 +260,7 @@ namespace factory {
 				constexpr static const Id
 				DEFAULT_START_ID = 1000;
 
-				Id i = unix::this_process::getenv("START_ID", DEFAULT_START_ID);
+				Id i = sysx::this_process::getenv("START_ID", DEFAULT_START_ID);
 				if (i == ROOT_ID) {
 					i = DEFAULT_START_ID;
 					this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;

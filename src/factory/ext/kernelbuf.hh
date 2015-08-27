@@ -1,6 +1,7 @@
 #ifndef FACTORY_EXT_KERNELBUF_HH
 #define FACTORY_EXT_KERNELBUF_HH
 
+#include <sysx/network_format.hh>
 #include "intro.hh"
 
 namespace factory {
@@ -80,7 +81,7 @@ namespace factory {
 			void read_kernel_packetsize() {
 				size_type count = this->egptr() - this->gptr();
 				if (count >= this->hdrsize()) {
-					bits::Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
+					sysx::Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
 					size.to_host_format();
 					this->gbump(this->hdrsize());
 					this->setpos(this->readoff());
@@ -267,7 +268,7 @@ namespace factory {
 			}
 
 			void putsize(size_type s) {
-				bits::Bytes<size_type> pckt_size(s);
+				sysx::Bytes<size_type> pckt_size(s);
 				pckt_size.to_network_format();
 				this->Base::xsputn(pckt_size.begin(), pckt_size.size());
 			}

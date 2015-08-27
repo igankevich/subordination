@@ -4,10 +4,10 @@
 #include <map>
 
 #include "intro.hh"
-#include "../unistdx/event.hh"
-#include "../unistdx/socket.hh"
-#include "../stdx/for_each.hh"
-#include "../stdx/field_iterator.hh"
+#include <sysx/event.hh>
+#include <sysx/socket.hh>
+#include <stdx/for_each.hh>
+#include <stdx/field_iterator.hh>
 #include "../ext/fdbuf.hh"
 #include "../ext/kernelbuf.hh"
 
@@ -29,7 +29,7 @@ namespace factory {
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
-			Remote_Rserver(socket_type&& sock, unix::endpoint vaddr):
+			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr):
 				_vaddr(vaddr),
 				_kernelbuf(),
 				_stream(&this->_kernelbuf),
@@ -119,19 +119,19 @@ namespace factory {
 				return this->socket().error() == 0;
 			}
 
-			void operator()(unix::poll_event& event) {
+			void operator()(sysx::poll_event& event) {
 				if (this->valid()) {
 					this->handle_event(event);
 				} else {
-					event.setrev(unix::poll_event::Hup);
+					event.setrev(sysx::poll_event::Hup);
 				}
 			}
 
-			void simulate(unix::poll_event event) {
+			void simulate(sysx::poll_event event) {
 				this->handle_event(event);
 			}
 
-			void handle_event(unix::poll_event& event) {
+			void handle_event(sysx::poll_event& event) {
 				bool overflow = false;
 				if (event.in()) {
 					this_log() << "recv rdstate="
@@ -159,9 +159,9 @@ namespace factory {
 					}
 				}
 				if (overflow) {
-					event.setev(unix::poll_event::Out);
+					event.setev(sysx::poll_event::Out);
 				} else {
-					event.unsetev(unix::poll_event::Out);
+					event.unsetev(sysx::poll_event::Out);
 					this->_dirty = false;
 				}
 			}
@@ -170,14 +170,14 @@ namespace factory {
 			int fd() const { return this->socket().fd(); }
 			const socket_type& socket() const { return this->_kernelbuf.fd(); }
 			socket_type& socket() { return this->_kernelbuf.fd(); }
-			void socket(unix::socket&& rhs) {
+			void socket(sysx::socket&& rhs) {
 				this->_stream >> underflow();
 				this->_stream.clear();
 				this->_kernelbuf.setfd(socket_type(std::move(rhs)));
 			}
-			unix::endpoint bind_addr() const { return this->socket().bind_addr(); }
-			const unix::endpoint& vaddr() const { return this->_vaddr; }
-			void setvaddr(const unix::endpoint& rhs) { this->_vaddr = rhs; }
+			sysx::endpoint bind_addr() const { return this->socket().bind_addr(); }
+			const sysx::endpoint& vaddr() const { return this->_vaddr; }
+			void setvaddr(const sysx::endpoint& rhs) { this->_vaddr = rhs; }
 
 			bool empty() const { return this->_buffer.empty(); }
 
@@ -284,10 +284,10 @@ namespace factory {
 			void read_kernels() {
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				this->simulate(unix::poll_event{this->fd(), unix::poll_event::In});
+				this->simulate(sysx::poll_event{this->fd(), sysx::poll_event::In});
 			}
 
-			unix::endpoint _vaddr;
+			sysx::endpoint _vaddr;
 			Kernelbuf _kernelbuf;
 			stream_type _stream;
 			pool_type _buffer;
@@ -301,13 +301,13 @@ namespace factory {
 		class Threads=std::vector<std::thread>>
 		using NIC_server_base = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
-			unix::event_poller<Remote_Rserver<T, Socket>*>>;
+			sysx::event_poller<Remote_Rserver<T, Socket>*>>;
 
 		template<class T, class Socket>
 		struct NIC_server: public NIC_server_base<T, Socket> {
 
 			typedef Remote_Rserver<T, Socket> server_type;
-			typedef std::map<unix::endpoint, server_type> upstream_type;
+			typedef std::map<sysx::endpoint, server_type> upstream_type;
 			typedef Socket socket_type;
 
 //			typedef bits::handler_wrapper<bits::pointer_tag> wrapper;
@@ -320,7 +320,7 @@ namespace factory {
 			using typename base_server::kernel_pool;
 
 			typedef server_type* handler_type;
-			typedef unix::event_poller<handler_type> poller_type;
+			typedef sysx::event_poller<handler_type> poller_type;
 			typedef stdx::log<NIC_server> this_log;
 
 			NIC_server(NIC_server&& rhs) noexcept:
@@ -356,11 +356,11 @@ namespace factory {
 
 			void cleanup_and_check_if_dirty() {
 				poller().for_each_ordinary_fd(
-					[this] (unix::poll_event& ev, handler_type& h) {
+					[this] (sysx::poll_event& ev, handler_type& h) {
 						if (!ev) {
 							this->remove_server(h);
 						} else if (h->dirty()) {
-							ev.setev(unix::poll_event::Out);
+							ev.setev(sysx::poll_event::Out);
 						}
 					}
 				);
@@ -371,7 +371,7 @@ namespace factory {
 				if (this->stopped()) {
 					this->try_to_stop_gracefully();
 				} else {
-					poller().for_each_pipe_fd([this] (unix::poll_event& ev) {
+					poller().for_each_pipe_fd([this] (sysx::poll_event& ev) {
 						if (ev.in()) {
 							this->process_kernels();
 						}
@@ -381,7 +381,7 @@ namespace factory {
 
 			void
 			check_and_accept_connections() {
-				poller().for_each_special_fd([this] (unix::poll_event& ev) {
+				poller().for_each_special_fd([this] (sysx::poll_event& ev) {
 					if (ev.in()) {
 						this->accept_connection();
 					}
@@ -391,9 +391,9 @@ namespace factory {
 			void
 			read_and_write_kernels() {
 				poller().for_each_ordinary_fd(
-					[this] (unix::poll_event& ev, handler_type& h) {
+					[this] (sysx::poll_event& ev, handler_type& h) {
 						if (h->dirty()) {
-							ev.setrev(unix::poll_event::Out);
+							ev.setrev(sysx::poll_event::Out);
 						}
 						h->operator()(ev);
 					}
@@ -412,16 +412,16 @@ namespace factory {
 			}
 
 			void accept_connection() {
-				unix::endpoint addr;
+				sysx::endpoint addr;
 				socket_type sock;
 				this->_socket.accept(sock, addr);
-				unix::endpoint vaddr = virtual_addr(addr);
+				sysx::endpoint vaddr = virtual_addr(addr);
 				this_log()
 					<< "after accept: socket="
 					<< sock << std::endl;
 				auto res = this->_upstream.find(vaddr);
 				if (res == this->_upstream.end()) {
-					this->add_connected_server(std::move(sock), vaddr, unix::poll_event::In);
+					this->add_connected_server(std::move(sock), vaddr, sysx::poll_event::In);
 					this_log()
 						<< "connected peer "
 						<< vaddr << std::endl;
@@ -440,7 +440,7 @@ namespace factory {
 						// to read kernels until the socket
 						// is closed from the other end
 						server_type* new_s = new server_type(std::move(sock), addr);
-						this->link_server(&s, new_s, unix::poll_event{new_s->fd(), unix::poll_event::In});
+						this->link_server(&s, new_s, sysx::poll_event{new_s->fd(), sysx::poll_event::In});
 						debug("not replacing upstream");
 					} else {
 						this_log log;
@@ -453,7 +453,7 @@ namespace factory {
 						_upstream.emplace(vaddr, std::move(new_s));
 //						this->_upstream.emplace(vaddr, std::move(*new_s));
 						poller().emplace(
-							unix::poll_event{res->second.fd(), unix::poll_event::Inout, unix::poll_event::Inout},
+							sysx::poll_event{res->second.fd(), sysx::poll_event::Inout, sysx::poll_event::Inout},
 							handler_type(&res->second));
 						log << " with " << res->second << std::endl;
 						debug("replacing upstream");
@@ -487,26 +487,26 @@ namespace factory {
 //				});
 			}
 
-			void peer(unix::endpoint addr) {
+			void peer(sysx::endpoint addr) {
 //				if (!this->stopped()) {
 //					throw Error("Can not add upstream server when socket server is running.",
 //						__FILE__, __LINE__, __func__);
 //				}
-				this->connect_to_server(addr, unix::poll_event::In);
+				this->connect_to_server(addr, sysx::poll_event::In);
 			}
 
 			void
-			socket(const unix::endpoint& addr) {
+			socket(const sysx::endpoint& addr) {
 				this->_socket.bind(addr);
 				this->_socket.listen();
-				poller().insert_special(unix::poll_event{this->_socket.fd(),
-					unix::poll_event::In});
+				poller().insert_special(sysx::poll_event{this->_socket.fd(),
+					sysx::poll_event::In});
 				if (!this->stopped()) {
 					this->_semaphore.notify_one();
 				}
 			}
 
-			inline unix::endpoint
+			inline sysx::endpoint
 			server_addr() const {
 				return this->_socket.bind_addr();
 			}
@@ -531,9 +531,9 @@ namespace factory {
 		
 		private:
 
-			inline unix::endpoint
-			virtual_addr(unix::endpoint addr) const {
-				return unix::endpoint(addr, server_addr().port());
+			inline sysx::endpoint
+			virtual_addr(sysx::endpoint addr) const {
+				return sysx::endpoint(addr, server_addr().port());
 			}
 
 			void
@@ -541,7 +541,7 @@ namespace factory {
 				typedef typename upstream_type::value_type pair_type;
 				std::for_each(this->_upstream.begin(),
 					this->_upstream.end(), [] (pair_type& rhs)
-					{ rhs.second.simulate(unix::poll_event{rhs.second.fd(), unix::poll_event::Out}); });
+					{ rhs.second.simulate(sysx::poll_event{rhs.second.fd(), sysx::poll_event::Out}); });
 			}
 
 			void
@@ -571,7 +571,7 @@ namespace factory {
 					}
 					// delete broadcast kernel
 					delete k;
-				} else if (k->moves_upstream() && k->to() == unix::endpoint()) {
+				} else if (k->moves_upstream() && k->to() == sysx::endpoint()) {
 					if (_upstream.empty()) {
 						throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
 					}
@@ -583,11 +583,11 @@ namespace factory {
 					if (!k->to()) {
 						k->to(k->from());
 					}
-					this->find_or_create_peer(k->to(), unix::poll_event::Inout)->send(k);
+					this->find_or_create_peer(k->to(), sysx::poll_event::Inout)->send(k);
 				}
 			}
 
-			server_type* find_or_create_peer(const unix::endpoint& addr, unix::poll_event::legacy_event ev) {
+			server_type* find_or_create_peer(const sysx::endpoint& addr, sysx::poll_event::legacy_event ev) {
 				server_type* ret;
 				auto result = _upstream.find(addr);
 				if (result == _upstream.end()) {
@@ -618,28 +618,28 @@ namespace factory {
 					<< msg << " events " << poller() << std::endl;
 			}
 
-			server_type* connect_to_server(unix::endpoint addr, unix::poll_event::legacy_event events) {
+			server_type* connect_to_server(sysx::endpoint addr, sysx::poll_event::legacy_event events) {
 				// bind to server address with ephemeral port
-				unix::endpoint srv_addr(this->server_addr(), 0);
+				sysx::endpoint srv_addr(this->server_addr(), 0);
 				return this->add_connected_server(socket_type(srv_addr, addr), addr, events);
 			}
 
-			server_type* add_connected_server(socket_type&& sock, unix::endpoint vaddr,
-				unix::poll_event::legacy_event events,
-				unix::poll_event::legacy_event revents=0)
+			server_type* add_connected_server(socket_type&& sock, sysx::endpoint vaddr,
+				sysx::poll_event::legacy_event events,
+				sysx::poll_event::legacy_event revents=0)
 			{
-				unix::fd_type fd = sock.fd();
+				sysx::fd_type fd = sock.fd();
 				server_type s(std::move(sock), vaddr);
 				s.setparent(this);
 				auto result = this->_upstream.emplace(vaddr, std::move(s));
 				poller().emplace(
-					unix::poll_event{fd, events, revents},
+					sysx::poll_event{fd, events, revents},
 					handler_type(&result.first->second));
 				this_log() << "added server " << result.first->second << std::endl;
 				return &result.first->second;
 			}
 
-			void link_server(server_type* par, server_type* sub, unix::poll_event ev) {
+			void link_server(server_type* par, server_type* sub, sysx::poll_event ev) {
 				sub->setparent(this);
 				sub->setvaddr(par->vaddr());
 				sub->link(par);

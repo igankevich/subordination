@@ -6,8 +6,8 @@ using namespace factory;
 using namespace minimal_config;
 
 
-unix::endpoint server_endpoint("127.0.0.1", 10000);
-unix::endpoint client_endpoint({127,0,0,1}, 20000);
+sysx::endpoint server_endpoint("127.0.0.1", 10000);
+sysx::endpoint client_endpoint({127,0,0,1}, 20000);
 
 const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 2;
@@ -157,23 +157,23 @@ struct Main: public Kernel {
 				<< ",client=" << client_endpoint
 				<< std::endl;
 			uint32_t sleep = 0;
-			unix::procgroup procs;
+			sysx::procgroup procs;
 			procs.add([&argv, sleep] () {
-				unix::this_process::env("START_ID", 1000);
-				return unix::this_process::execute(argv[0], 'x', sleep);
+				sysx::this_process::env("START_ID", 1000);
+				return sysx::this_process::execute(argv[0], 'x', sleep);
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv, sleep] () {
-				unix::this_process::env("START_ID", 2000);
-				return unix::this_process::execute(argv[0], 'y', sleep);
+				sysx::this_process::env("START_ID", 2000);
+				return sysx::this_process::execute(argv[0], 'y', sleep);
 			});
-			this_log() << "unix::proc group = " << procs << std::endl;
-			procs.wait([] (const unix::proc& proc, unix::proc_info stat) {
+			this_log() << "sysx::proc group = " << procs << std::endl;
+			procs.wait([] (const sysx::proc& proc, sysx::proc_info stat) {
 				this_log() << "proc exited proc=" << proc
 					<< ",status=" << stat.exit_code() << std::endl;
 			});
-			this_log() << "unix::log test " << std::endl;
+			this_log() << "sysx::log test " << std::endl;
 			_role = 'm';
 //			retval = procs.wait();
 		} else {

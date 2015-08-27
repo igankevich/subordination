@@ -79,12 +79,12 @@ void test_fdbuf() {
 		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
-			unix::file file(filename, unix::file::write_only, unix::file::create | unix::file::truncate,  S_IRUSR | S_IWUSR);
+			sysx::file file(filename, sysx::file::write_only, sysx::file::create | sysx::file::truncate,  S_IRUSR | S_IWUSR);
 			basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
-			unix::file file(filename, unix::file::read_only);
+			sysx::file file(filename, sysx::file::read_only);
 			basic_ifdstream<T,Tr,Fd> in(std::move(file));
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
@@ -98,7 +98,7 @@ void test_fdbuf() {
 		}
 		{
 			std::clog << "Checking flush()" << std::endl;
-			unix::file file(filename, unix::file::write_only);
+			sysx::file file(filename, sysx::file::write_only);
 			basic_ofdstream<T,Tr,Fd> out(std::move(file));
 			test::equal(out.eof(), false);
 			out.flush();
@@ -132,7 +132,7 @@ void test_filterbuf() {
 	}
 }
 
-template<class T, class Fd=unix::fd>
+template<class T, class Fd=sysx::fd>
 void test_kernelbuf() {
 	std::clog << "Checking kernelbuf" << std::endl;
 	std::string filename = "/tmp/"
@@ -144,14 +144,14 @@ void test_kernelbuf() {
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
-			unix::file file(filename, unix::file::write_only, unix::file::create | unix::file::truncate,  S_IRUSR | S_IWUSR);
+			sysx::file file(filename, sysx::file::write_only, sysx::file::create | sysx::file::truncate,  S_IRUSR | S_IWUSR);
 			okernelbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_ostream<T> out(&buf);
 			out << contents;
 		}
 		{
-			unix::file file(filename, unix::file::read_only);
+			sysx::file file(filename, sysx::file::read_only);
 			ikernelbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_istream<T> in(&buf);
@@ -265,7 +265,7 @@ struct App {
 //			test_buffer<unsigned char, Buffer>();
 			test_buffer<char, LBuffer>();
 			test_buffer<unsigned char, LBuffer>();
-			test_fdbuf<char, unix::file>();
+			test_fdbuf<char, sysx::file>();
 //			test_fdbuf<unsigned char, int>();
 //			test_fdbuf<char, Socket>();
 			test_filterbuf<char>();

@@ -1,8 +1,8 @@
 #ifndef FACTORY_EXT_ENCODING_HH
 #define FACTORY_EXT_ENCODING_HH
 
-#include "../unistdx/endpoint.hh"
-#include "../stdx/n_random_bytes.hh"
+#include <sysx/endpoint.hh>
+#include <stdx/n_random_bytes.hh>
 
 // This code is adapted from Omnifarious answer to Stackoverflow question.
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c

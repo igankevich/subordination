@@ -7,12 +7,12 @@ using namespace factory;
 int main(int argc, char* argv[]) {
 	std::cout << current_time_nano() << std::endl;
 	using components::Error;
-	unix::ifaddrs addrs;
-	std::for_each(addrs.begin(), addrs.end(), [] (const unix::ifaddrs::value_type& rhs) {
+	sysx::ifaddrs addrs;
+	std::for_each(addrs.begin(), addrs.end(), [] (const sysx::ifaddrs::value_type& rhs) {
 		if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
 			return;
 		}
-		unix::endpoint addr(*rhs.ifa_addr);
+		sysx::endpoint addr(*rhs.ifa_addr);
 		std::cout << std::setw(10) << std::left
 			<< rhs.ifa_name << addr << std::endl;
 	});

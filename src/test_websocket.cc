@@ -4,8 +4,8 @@ using namespace factory;
 
 #include "datum.hh"
 
-unix::endpoint server_endpoint("127.0.0.1", 10002);
-unix::endpoint client_endpoint("127.0.0.1", 20002);
+sysx::endpoint server_endpoint("127.0.0.1", 10002);
+sysx::endpoint client_endpoint("127.0.0.1", 20002);
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
 const std::vector<size_t> POWERS = {16,17};
@@ -144,7 +144,7 @@ private:
 };
 
 uint32_t sleep_time() {
-	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
+	return sysx::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 
@@ -152,16 +152,16 @@ struct App {
 	int run(int argc, char* argv[]) {
 		int retval = 0;
 		if (argc <= 1) {
-			unix::procgroup procs;
+			sysx::procgroup procs;
 			procs.add([&argv] () {
-				unix::this_process::env("START_ID", 1000);
-				return unix::this_process::execute(argv[0], 's');
+				sysx::this_process::env("START_ID", 1000);
+				return sysx::this_process::execute(argv[0], 's');
 			});
 			// wait for master to start
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			procs.add([&argv] () {
-				unix::this_process::env("START_ID", 2000);
-				return unix::this_process::execute(argv[0], 'c');
+				sysx::this_process::env("START_ID", 2000);
+				return sysx::this_process::execute(argv[0], 'c');
 			});
 			retval = procs.wait();
 		} else {

@@ -5,8 +5,8 @@ using namespace factory;
 
 #include "datum.hh"
 
-unix::endpoint server_endpoint("127.0.0.1", 10000);
-unix::endpoint client_endpoint("127.0.0.1", 20000);
+sysx::endpoint server_endpoint("127.0.0.1", 10000);
+sysx::endpoint client_endpoint("127.0.0.1", 20000);
 
 const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 2;
@@ -154,7 +154,7 @@ private:
 };
 
 uint32_t sleep_time() {
-	return unix::this_process::getenv("SLEEP_TIME", UINT32_C(0));
+	return sysx::this_process::getenv("SLEEP_TIME", UINT32_C(0));
 }
 
 
@@ -162,7 +162,7 @@ uint32_t sleep_time() {
 struct App {
 	typedef stdx::log<App> this_log;
 	int run(int argc, char* argv[]) {
-		Application::id_type app = unix::this_process::getenv("APP_ID", 0);
+		Application::id_type app = sysx::this_process::getenv("APP_ID", 0);
 		if (app == MY_APP_ID) {
 			this_log() << "I am an application no. " << app << "!" << std::endl;
 			the_server()->add_cpu(0);

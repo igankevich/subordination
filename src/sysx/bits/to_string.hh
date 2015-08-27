@@ -1,7 +1,7 @@
 #ifndef FACTORY_BITS_TO_STRING_HH
 #define FACTORY_BITS_TO_STRING_HH
 
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 

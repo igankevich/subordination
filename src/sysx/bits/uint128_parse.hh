@@ -1,7 +1,7 @@
 #ifndef FACTORY_BITS_UINT128_PARSE_HH
 #define FACTORY_BITS_UINT128_PARSE_HH
 
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 

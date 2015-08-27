@@ -11,11 +11,11 @@
 
 #include <algorithm>
 
-#include "../stdx/intersperse_iterator.hh"
-#include "../stdx/iosx.hh"
-#include "../bits/uint128.hh"
+#include <stdx/intersperse_iterator.hh>
+#include <stdx/iosx.hh>
+#include <sysx/uint128.hh>
 
-namespace factory {
+namespace sysx {
 
 	namespace bits {
 
@@ -85,6 +85,7 @@ namespace factory {
 		template<>
 		inline uint128_t
 		byte_swap(uint128_t x) noexcept {
+			using namespace sysx::literals;
 			int i = sizeof(x) * std::numeric_limits<unsigned char>::digits / 2;
 			uint128_t k = (UINT128_C(1) << i) - 1;
 			while (i >= 8) {
@@ -175,135 +176,159 @@ namespace factory {
 		template<> struct Integral<8>: public byte_swap_chooser<uint64_t,true> {};
 		template<> struct Integral<16>: public byte_swap_chooser<uint128_t,true> {};
 
-		template<class T, class Ch=char>
-		union Bytes {
+	}
 
-			typedef Ch value_type;
-			typedef Integral<sizeof(T)> integral_type;
-			typedef value_type* iterator;
-			typedef const value_type* const_iterator;
-			typedef std::size_t size_type;
+	template<class T, class Ch=char>
+	union Bytes {
 
-			constexpr
-			Bytes() noexcept:
-				_val{} {}
+		typedef Ch value_type;
+		typedef bits::Integral<sizeof(T)> integral_type;
+		typedef value_type* iterator;
+		typedef const value_type* const_iterator;
+		typedef std::size_t size_type;
 
-			constexpr
-			Bytes(const Bytes& rhs) noexcept:
-				_val(rhs._val) {}
+		constexpr
+		Bytes() noexcept:
+			_val{} {}
 
-			constexpr
-			Bytes(T rhs) noexcept:
-				_val(rhs) {}
+		constexpr
+		Bytes(const Bytes& rhs) noexcept:
+			_val(rhs._val) {}
 
-			template<class It>
-			Bytes(It first, It last) noexcept {
-				std::copy(first, last, _bytes);
-			}
+		constexpr
+		Bytes(T rhs) noexcept:
+			_val(rhs) {}
 
-			inline void
-			to_network_format() noexcept {
-				_intval.to_network_format();
-			}
-
-			inline void
-			to_host_format() noexcept {
-				_intval.to_host_format();
-			}
-
-			inline
-			operator T&() noexcept {
-				return _val;
-			}
-
-			constexpr
-			operator const T&() const noexcept {
-				return _val;
-			}
-
-			constexpr value_type
-			operator[](size_type idx) const noexcept {
-				return _bytes[idx];
-			}
-
-			constexpr bool
-			operator==(const Bytes& rhs) const noexcept {
-				return _intval == rhs._intval;
-			}
-
-			constexpr bool
-			operator!=(const Bytes& rhs) const noexcept {
-				return !operator==(rhs);
-			}
-
-			inline iterator
-			begin() noexcept {
-				return _bytes;
-			}
-
-			inline iterator
-			end() noexcept {
-				return _bytes + sizeof(T);
-			}
-
-			constexpr const_iterator
-			begin() const noexcept {
-				return _bytes;
-			}
-
-			constexpr const_iterator
-			end() const noexcept {
-				return _bytes + sizeof(T);
-			}
-
-			constexpr const T&
-			value() const noexcept {
-				return _val;
-			}
-
-			inline T&
-			value() noexcept {
-				return _val;
-			}
-
-			static constexpr size_type
-			size() noexcept {
-				return sizeof(T);
-			}
-
-		private:
-			T _val;
-			integral_type _intval;
-			value_type _bytes[sizeof(T)];
-
-			static_assert(sizeof(decltype(_val)) == sizeof(decltype(_intval)),
-				"bad integral type");
-		};
-
-		template<class T>
-		constexpr Bytes<T>
-		make_bytes(T rhs) noexcept {
-			return Bytes<T>(rhs);
+		template<class It>
+		Bytes(It first, It last) noexcept {
+			std::copy(first, last, _bytes);
 		}
 
-		template<class T, class B>
-		std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
-			typedef typename Bytes<T,B>::value_type value_type;
-			std::ostream::sentry s(out);
-			if (s) {
-				stdx::ios_guard g(out);
-				out.setf(std::ios::hex, std::ios::basefield);
-				out.fill('0');
-				stdx::intersperse_iterator<stdx::fixed_width<unsigned int, 2>> it(out, " ");
-				std::transform(rhs.begin(), rhs.end(), it,
-					[] (value_type ch) -> unsigned char {
-						return static_cast<unsigned char>(ch);
-					}
-				);
-			}
-			return out;
+		inline void
+		to_network_format() noexcept {
+			_intval.to_network_format();
 		}
 
+		inline void
+		to_host_format() noexcept {
+			_intval.to_host_format();
+		}
+
+		inline
+		operator T&() noexcept {
+			return _val;
+		}
+
+		constexpr
+		operator const T&() const noexcept {
+			return _val;
+		}
+
+		constexpr value_type
+		operator[](size_type idx) const noexcept {
+			return _bytes[idx];
+		}
+
+		constexpr bool
+		operator==(const Bytes& rhs) const noexcept {
+			return _intval == rhs._intval;
+		}
+
+		constexpr bool
+		operator!=(const Bytes& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
+		inline iterator
+		begin() noexcept {
+			return _bytes;
+		}
+
+		inline iterator
+		end() noexcept {
+			return _bytes + sizeof(T);
+		}
+
+		constexpr const_iterator
+		begin() const noexcept {
+			return _bytes;
+		}
+
+		constexpr const_iterator
+		end() const noexcept {
+			return _bytes + sizeof(T);
+		}
+
+		constexpr const T&
+		value() const noexcept {
+			return _val;
+		}
+
+		inline T&
+		value() noexcept {
+			return _val;
+		}
+
+		static constexpr size_type
+		size() noexcept {
+			return sizeof(T);
+		}
+
+	private:
+		T _val;
+		integral_type _intval;
+		value_type _bytes[sizeof(T)];
+
+		static_assert(sizeof(decltype(_val)) == sizeof(decltype(_intval)),
+			"bad integral type");
+	};
+
+	template<class T>
+	constexpr Bytes<T>
+	make_bytes(T rhs) noexcept {
+		return Bytes<T>(rhs);
+	}
+
+	template<class T, class B>
+	std::ostream& operator<<(std::ostream& out, const Bytes<T,B>& rhs) {
+		typedef typename Bytes<T,B>::value_type value_type;
+		std::ostream::sentry s(out);
+		if (s) {
+			stdx::ios_guard g(out);
+			out.setf(std::ios::hex, std::ios::basefield);
+			out.fill('0');
+			stdx::intersperse_iterator<stdx::fixed_width<unsigned int, 2>> it(out, " ");
+			std::transform(rhs.begin(), rhs.end(), it,
+				[] (value_type ch) -> unsigned char {
+					return static_cast<unsigned char>(ch);
+				}
+			);
+		}
+		return out;
+	}
+
+	template<class T>
+	T to_network_format(Bytes<T> n) noexcept {
+		n.to_network_format();
+		return n.value();
+	}
+
+	template<class T>
+	T to_host_format(Bytes<T> n) noexcept {
+		n.to_host_format();
+		return n.value();
+	}
+
+	template<class T>
+	constexpr T
+	to_network_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
+	}
+
+	template<class T>
+	constexpr T
+	to_host_format(T n) noexcept {
+		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
 	}
 
 }

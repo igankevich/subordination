@@ -5,8 +5,8 @@
 #include <map>
 
 #include "../managed_object.hh"
-#include "../unistdx/semaphore.hh"
-#include "../unistdx/process.hh"
+#include <sysx/semaphore.hh>
+#include <sysx/process.hh>
 #include "../ext/kernelbuf.hh"
 #include "../ext/shmembuf.hh"
 
@@ -15,7 +15,7 @@ namespace factory {
 
 		inline
 		std::string
-		generate_shmem_id(unix::pid_type child, unix::pid_type parent, int stream_no) {
+		generate_shmem_id(sysx::pid_type child, sysx::pid_type parent, int stream_no) {
 //			static const int MAX_PID = 65536;
 //			static const int MAX_STREAMS = 10;
 //			return child * MAX_PID * MAX_STREAMS + parent * MAX_STREAMS + stream_no;
@@ -28,7 +28,7 @@ namespace factory {
 
 		inline
 		std::string
-		generate_sem_name(unix::pid_type child, unix::pid_type parent, char tag) {
+		generate_sem_name(sysx::pid_type child, sysx::pid_type parent, char tag) {
 			std::ostringstream str;
 			str << "/factory-sem-" << parent << '-' << child << '-' << tag;
 			std::string name = str.str();
@@ -41,13 +41,13 @@ namespace factory {
 
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
-			typedef unix::proc process_type;
+			typedef sysx::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
 			typedef Packing_stream<char> stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef unix::process_semaphore sem_type;
+			typedef sysx::process_semaphore sem_type;
 			typedef Application::id_type app_type;
 			typedef stdx::log<Principal_server> this_log;
 
@@ -59,7 +59,7 @@ namespace factory {
 				_isem(),
 				_osem(),
 				_thread(),
-				_app(unix::this_process::getenv("APP_ID", Application::ROOT))
+				_app(sysx::this_process::getenv("APP_ID", Application::ROOT))
 				{}
 
 			Principal_server(Principal_server&& rhs):
@@ -85,10 +85,10 @@ namespace factory {
 			start() override {
 				base_server::start();
 				this_log() << "Principal_server::start()" << std::endl;
-				this->_ibuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 1));
-				this->_obuf.attach(generate_shmem_id(unix::this_process::id(), unix::this_process::parent_id(), 0));
-				this->_isem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'i'));
-				this->_osem.open(generate_sem_name(unix::this_process::id(), unix::this_process::parent_id(), 'o'));
+				this->_ibuf.attach(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 1));
+				this->_obuf.attach(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 0));
+				this->_isem.open(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'i'));
+				this->_osem.open(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'o'));
 				this->_thread = std::thread(std::mem_fn(&Principal_server::serve), this);
 			}
 
@@ -128,7 +128,7 @@ namespace factory {
 				ilock_type lock(this->_ibuf);
 				this->_istream.clear();
 				this->_istream.rdbuf(&this->_ibuf);
-				unix::endpoint src;
+				sysx::endpoint src;
 				this->_istream >> src;
 				this_log() << "read_and_send_kernel(): src=" << src
 					<< ",rdstate=" << stdx::debug_stream(this->_istream)
@@ -155,7 +155,7 @@ namespace factory {
 			}
 
 			void
-			send_kernel(kernel_type* k, const unix::endpoint& src) {
+			send_kernel(kernel_type* k, const sysx::endpoint& src) {
 				k->from(src);
 				this_log()
 					<< "recv kernel=" << *k
@@ -191,21 +191,21 @@ namespace factory {
 
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
-			typedef unix::proc process_type;
+			typedef sysx::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
-			typedef unix::process_semaphore sem_type;
+			typedef sysx::process_semaphore sem_type;
 			typedef Packing_stream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
 			explicit Sub_Rserver(const Application& app):
 				_proc(app.execute()), //TODO: race condition
-				_osem(generate_sem_name(this->_proc.id(), unix::this_process::id(), 'o'), 0666),
-				_isem(generate_sem_name(this->_proc.id(), unix::this_process::id(), 'i'), 0666),
-				_ibuf(generate_shmem_id(this->_proc.id(), unix::this_process::id(), 0), 0666),
-				_obuf(generate_shmem_id(this->_proc.id(), unix::this_process::id(), 1), 0666),
+				_osem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'o'), 0666),
+				_isem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'i'), 0666),
+				_ibuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 0), 0666),
+				_obuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 1), 0666),
 				_ostream(&this->_obuf)
 				{}
 
@@ -242,7 +242,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(basic_ikernelbuf<X>& buf, const unix::endpoint& from) {
+			void forward(basic_ikernelbuf<X>& buf, const sysx::endpoint& from) {
 				olock_type lock(this->_obuf);
 				this->_ostream.rdbuf(&this->_obuf);
 				this->_ostream << from;
@@ -307,7 +307,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(key_type app, const unix::endpoint& from, basic_ikernelbuf<X>& buf) {
+			void forward(key_type app, const sysx::endpoint& from, basic_ikernelbuf<X>& buf) {
 				typename map_type::iterator result = this->_apps.find(app);
 				if (result == this->_apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);
@@ -335,7 +335,7 @@ namespace factory {
 					}
 					if (!empty) {
 						int status = 0;
-						unix::pid_type pid = unix::this_process::wait(&status);
+						sysx::pid_type pid = sysx::this_process::wait(&status);
 						std::unique_lock<std::mutex> lock(this->_mutex);
 						auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
 							[pid] (const pair_type& rhs) {

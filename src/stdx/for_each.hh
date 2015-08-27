@@ -1,7 +1,7 @@
 #ifndef FACTORY_STDX_FOR_EACH_HH
 #define FACTORY_STDX_FOR_EACH_HH
 
-#include "unlock_guard.hh"
+#include <stdx/unlock_guard.hh>
 
 namespace stdx {
 

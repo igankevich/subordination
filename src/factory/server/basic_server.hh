@@ -5,11 +5,11 @@
 #include <queue>
 
 #include <factory/managed_object.hh>
-#include <factory/unistdx/semaphore.hh>
-#include <factory/unistdx/endpoint.hh>
-#include <factory/stdx/for_each.hh>
-#include <factory/stdx/back_inserter.hh>
-#include <factory/stdx/front_popper.hh>
+#include <sysx/semaphore.hh>
+#include <sysx/endpoint.hh>
+#include <stdx/for_each.hh>
+#include <stdx/back_inserter.hh>
+#include <stdx/front_popper.hh>
 
 namespace factory {
 
@@ -76,9 +76,9 @@ namespace factory {
 			wait() {}
 
 			// TODO: boilerplate :(
-			virtual unix::endpoint
+			virtual sysx::endpoint
 			addr() const {
-				return unix::endpoint();
+				return sysx::endpoint();
 			}
 
 			inline void
@@ -160,7 +160,7 @@ namespace factory {
 			class Threads=std::vector<std::thread>,
 			class Mutex=stdx::spin_mutex,
 			class Lock=std::unique_lock<Mutex>,
-			class Semaphore=unix::thread_semaphore
+			class Semaphore=sysx::thread_semaphore
 		>
 		struct Server_with_pool: public Managed_object<Server<T>> {
 
@@ -294,7 +294,7 @@ namespace factory {
 		class Kernels=std::queue<typename Server<T>::kernel_type*>,
 		class Threads=std::vector<std::thread>>
 		using Fast_server_with_pool = Server_with_pool<T, Kernels, Threads,
-			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, unix::thread_semaphore>;
+			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, sysx::thread_semaphore>;
 
 		template<class T,
 		class Kernels=std::queue<typename Server<T>::kernel_type*>,
