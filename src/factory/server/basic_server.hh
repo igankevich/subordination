@@ -4,12 +4,12 @@
 #include <thread>
 #include <queue>
 
-#include "../managed_object.hh"
-#include "../unistdx/semaphore.hh"
-#include "../unistdx/endpoint.hh"
-#include "../stdx/for_each.hh"
-#include "../stdx/back_inserter.hh"
-#include "../stdx/front_popper.hh"
+#include <factory/managed_object.hh>
+#include <factory/unistdx/semaphore.hh>
+#include <factory/unistdx/endpoint.hh>
+#include <factory/stdx/for_each.hh>
+#include <factory/stdx/back_inserter.hh>
+#include <factory/stdx/front_popper.hh>
 
 namespace factory {
 

@@ -666,27 +666,27 @@ namespace factory {
 
 	}
 
-	namespace stdx {
+}
 
-		template<class T, class Socket>
-		struct type_traits<components::NIC_server<T,Socket>> {
-			static constexpr const char*
-			short_name() { return "nic_server"; }
-			typedef components::server_category category;
-		};
+namespace stdx {
 
-		template<class T, class Socket, class Kernels>
-		struct type_traits<components::Remote_Rserver<T, Socket, Kernels>> {
-			static constexpr const char*
-			short_name() { return "nic_rserver"; }
-			typedef components::server_category category;
-		};
+	template<class T, class Socket>
+	struct type_traits<factory::components::NIC_server<T,Socket>> {
+		static constexpr const char*
+		short_name() { return "nic_server"; }
+		typedef factory::components::server_category category;
+	};
 
-//		template<>
-//		struct disable_log_category<server_category>:
-//		public std::integral_constant<bool, true> {};
-	
-	}
+	template<class T, class Socket, class Kernels>
+	struct type_traits<factory::components::Remote_Rserver<T, Socket, Kernels>> {
+		static constexpr const char*
+		short_name() { return "nic_rserver"; }
+		typedef factory::components::server_category category;
+	};
+
+	//template<>
+	//struct disable_log_category<server_category>:
+	//public std::integral_constant<bool, true> {};
 
 }
 #endif // SERVER_NIC_SERVER_HH

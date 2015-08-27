@@ -335,25 +335,26 @@ namespace factory {
 
 	}
 
-	namespace stdx {
-
-		template<class Base>
-		struct type_traits<components::basic_ikernelbuf<Base>> {
-			static constexpr const char*
-			short_name() { return "ikernelbuf"; }
-			typedef components::buffer_category category;
-		};
-
-		template<class Base>
-		struct type_traits<components::basic_okernelbuf<Base>> {
-			static constexpr const char*
-			short_name() { return "okernelbuf"; }
-			typedef components::buffer_category category;
-		};
-	
-	}
-
 	typedef components::basic_kstream<char> kstream;
 
 }
+
+namespace stdx {
+
+	template<class Base>
+	struct type_traits<factory::components::basic_ikernelbuf<Base>> {
+		static constexpr const char*
+		short_name() { return "ikernelbuf"; }
+		typedef factory::components::buffer_category category;
+	};
+
+	template<class Base>
+	struct type_traits<factory::components::basic_okernelbuf<Base>> {
+		static constexpr const char*
+		short_name() { return "okernelbuf"; }
+		typedef factory::components::buffer_category category;
+	};
+
+}
+
 #endif // FACTORY_EXT_KERNELBUF_HH

@@ -218,16 +218,17 @@ namespace factory {
 
 	}
 
-	namespace stdx {
+}
 
-		template<class Ch, class Tr>
-		struct type_traits<components::basic_shmembuf<Ch,Tr>> {
-			static constexpr const char*
-			short_name() { return "shmembuf"; }
-			typedef components::buffer_category category;
-		};
-	
-	}
+namespace stdx {
+
+	template<class Ch, class Tr>
+	struct type_traits<factory::components::basic_shmembuf<Ch,Tr>> {
+		static constexpr const char*
+		short_name() { return "shmembuf"; }
+		typedef factory::components::buffer_category category;
+	};
 
 }
+
 #endif // FACTORY_EXT_SHMEMBUF_HH
