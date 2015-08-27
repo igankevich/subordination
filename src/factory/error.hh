@@ -84,7 +84,6 @@ namespace factory {
 			operator<<(std::ostream& out, const Error_message& rhs) {
 				return out << '{'
 					<< "caught_at=" << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
-					<< ",rev=" << REPO_VERSION
 					<< ",err=" << rhs._error
 					<< '}';
 			}

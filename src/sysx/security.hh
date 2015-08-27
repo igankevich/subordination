@@ -1,7 +1,10 @@
 #ifndef FACTORY_EXT_SECURITY_HH
 #define FACTORY_EXT_SECURITY_HH
 
+#include <iostream>
+
 #include <sysx/process.hh>
+#include <sysx/network_format.hh>
 
 namespace sysx {
 

@@ -5,6 +5,7 @@
 #include <queue>
 
 #include <factory/managed_object.hh>
+#include <factory/type.hh>
 #include <sysx/semaphore.hh>
 #include <sysx/endpoint.hh>
 #include <stdx/for_each.hh>

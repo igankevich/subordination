@@ -1,7 +1,7 @@
 #ifndef FACTORY_EXT_FDBUF_HH
 #define FACTORY_EXT_FDBUF_HH
 
-#include "intro.hh"
+#include <factory/ext/intro.hh>
 
 namespace factory {
 

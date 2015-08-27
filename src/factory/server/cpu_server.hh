@@ -1,8 +1,8 @@
 #ifndef FACTORY_SERVER_CPU_SERVER_HH
 #define FACTORY_SERVER_CPU_SERVER_HH
 
-#include "intro.hh"
-#include "../managed_object.hh"
+#include <factory/server/intro.hh>
+#include <factory/managed_object.hh>
 
 namespace factory {
 

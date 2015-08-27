@@ -12,7 +12,10 @@
 	// TODO: implement SysV semaphores
 #endif
 
+#include <condition_variable>
+
 #include <stdx/unlock_guard.hh>
+
 #include <sysx/fildes.hh>
 
 namespace sysx {

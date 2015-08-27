@@ -4,11 +4,12 @@
 #include <thread>
 #include <map>
 
-#include "../managed_object.hh"
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
-#include "../ext/kernelbuf.hh"
-#include "../ext/shmembuf.hh"
+
+#include <factory/managed_object.hh>
+#include <factory/ext/kernelbuf.hh>
+#include <factory/ext/shmembuf.hh>
 
 namespace factory {
 	namespace components {

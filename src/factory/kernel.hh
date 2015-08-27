@@ -3,8 +3,8 @@
 
 #include <bitset>
 
-#include "server/basic_server.hh"
-#include "bits/kernel.hh"
+#include <factory/server/basic_server.hh>
+#include <factory/bits/kernel.hh>
 #include <sysx/process.hh>
 #include <sysx/packstream.hh>
 

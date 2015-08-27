@@ -1,8 +1,8 @@
 #ifndef FACTORY_SERVER_TIMER_SERVER_HH
 #define FACTORY_SERVER_TIMER_SERVER_HH
 
-#include "intro.hh"
 #include <sysx/semaphore.hh>
+#include <factory/server/intro.hh>
 
 namespace factory {
 

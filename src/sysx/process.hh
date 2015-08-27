@@ -6,6 +6,10 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 
+#include <algorithm>
+
+#include <stdx/intersperse_iterator.hh>
+
 #include <sysx/bits/check.hh>
 #include <sysx/bits/to_string.hh>
 #include <sysx/bits/safe_calls.hh>

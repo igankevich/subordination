@@ -1,8 +1,8 @@
 #ifndef FACTORY_CFG_MINIMAL_HH
 #define FACTORY_CFG_MINIMAL_HH
 
-#include "../server/cpu_server.hh"
-#include "../server/nic_server.hh"
+#include <factory/server/cpu_server.hh>
+#include <factory/server/nic_server.hh>
 
 namespace factory {
 

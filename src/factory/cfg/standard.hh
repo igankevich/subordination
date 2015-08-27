@@ -1,6 +1,9 @@
 #ifndef FACTORY_CFG_STANDARD_HH
 #define FACTORY_CFG_STANDARD_HH
 
+#include <factory/server/cpu_server.hh>
+#include <factory/server/nic_server.hh>
+
 namespace factory {
 
 	inline namespace standard_config {

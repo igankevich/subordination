@@ -1,6 +1,8 @@
 #ifndef FACTORY_BITS_TO_STRING_HH
 #define FACTORY_BITS_TO_STRING_HH
 
+#include <sstream>
+
 namespace sysx {
 
 	namespace bits {

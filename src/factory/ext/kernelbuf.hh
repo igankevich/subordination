@@ -1,8 +1,9 @@
 #ifndef FACTORY_EXT_KERNELBUF_HH
 #define FACTORY_EXT_KERNELBUF_HH
 
+#include <iomanip>
 #include <sysx/network_format.hh>
-#include "intro.hh"
+#include <factory/ext/intro.hh>
 
 namespace factory {
 
