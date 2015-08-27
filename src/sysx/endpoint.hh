@@ -11,7 +11,7 @@
 
 
 #include <sysx/uint128.hh>
-#include <factory/packstream.hh>
+#include <sysx/packstream.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/bits/endpoint.hh>
@@ -80,13 +80,13 @@ namespace sysx {
 			return in;
 		}
 
-		friend factory::packstream&
-		operator<<(factory::packstream& out, const ipv4_addr& rhs) {
+		friend packstream&
+		operator<<(packstream& out, const ipv4_addr& rhs) {
 			return out << rhs.raw;
 		}
 
-		friend factory::packstream&
-		operator>>(factory::packstream& in, ipv4_addr& rhs) {
+		friend packstream&
+		operator>>(packstream& in, ipv4_addr& rhs) {
 			return in >> rhs.raw;
 		}
 	
@@ -271,13 +271,13 @@ namespace sysx {
 			return in;
 		}
 
-		friend factory::packstream&
-		operator<<(factory::packstream& out, const ipv6_addr& rhs) {
+		friend packstream&
+		operator<<(packstream& out, const ipv6_addr& rhs) {
 			return out << rhs.raw;
 		}
 
-		friend factory::packstream&
-		operator>>(factory::packstream& in, ipv6_addr& rhs) {
+		friend packstream&
+		operator>>(packstream& in, ipv6_addr& rhs) {
 			return in >> rhs.raw;
 		}
 
@@ -464,8 +464,8 @@ namespace sysx {
 			return in;
 		}
 
-		friend factory::packstream&
-		operator<<(factory::packstream& out, const endpoint& rhs) {
+		friend packstream&
+		operator<<(packstream& out, const endpoint& rhs) {
 			out << rhs.family();
 			if (rhs.family() == family_type::inet6) {
 				out << rhs.addr6() << make_bytes(rhs.port6());
@@ -475,8 +475,8 @@ namespace sysx {
 			return out;
 		}
 
-		friend factory::packstream&
-		operator>>(factory::packstream& in, endpoint& rhs) {
+		friend packstream&
+		operator>>(packstream& in, endpoint& rhs) {
 			family_type fam;
 			in >> fam;
 			rhs._addr6.sin6_family = static_cast<sa_family_type>(fam);

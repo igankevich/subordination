@@ -39,7 +39,6 @@
 	#include <atomic>
 	
 	// Base system
-	#include "packstream.hh"
 	#include "error.hh"
 	#include "type.hh"
 	#include "kernel.hh"

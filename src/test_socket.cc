@@ -36,7 +36,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void
-	write(packstream& out) override {
+	write(sysx::packstream& out) override {
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -44,7 +44,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void
-	read(packstream& in) override {
+	read(sysx::packstream& in) override {
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -71,7 +71,7 @@ struct Test_socket: public Kernel {
 		return Type<Kernel>{
 			1,
 			"Test_socket",
-			[] (packstream& in) {
+			[] (sysx::packstream& in) {
 				Test_socket* k = new Test_socket;
 				k->read(in);
 				return k;

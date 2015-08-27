@@ -2,6 +2,7 @@
 #include <sysx/process.hh>
 #include <sysx/log.hh>
 #include <sysx/cpu_bind.hh>
+#include <sysx/packstream.hh>
 
 #include <factory/bits/terminate_handler.hh>
 
@@ -48,9 +49,6 @@ namespace factory {
 				this_server.factory()->stop();
 			}
 
-			void read_impl(packstream&) {}
-			void write_impl(packstream&) {}
-
 			const Type<Kernel>
 			type() const noexcept override {
 				return static_type();
@@ -61,7 +59,7 @@ namespace factory {
 				return Type<Kernel>{
 					SHUTDOWN_ID,
 					"Shutdown",
-					[] (packstream& in) {
+					[] (sysx::packstream& in) {
 						Shutdown* k = new Shutdown;
 						k->read(in);
 						return k;

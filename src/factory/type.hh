@@ -3,7 +3,8 @@
 
 #include <unordered_map>
 
-#include "stdx/log.hh"
+#include <stdx/log.hh>
+#include <sysx/packstream.hh>
 
 namespace factory {
 
@@ -81,7 +82,7 @@ namespace factory {
 			typedef int16_t id_type;
 			typedef T kernel_type;
 //			typedef std::function<T* ()> construct_type;
-			typedef std::function<T* (packstream&)> read_type;
+			typedef std::function<T* (sysx::packstream&)> read_type;
 
 			typedef stdx::log<Type> this_log;
 	
@@ -137,7 +138,7 @@ namespace factory {
 			}
 
 			static
-			void write_object(kernel_type& kernel, packstream& out) {
+			void write_object(kernel_type& kernel, sysx::packstream& out) {
 				const Type type = kernel.type();
 				if (!type) {
 					std::stringstream msg;
@@ -151,7 +152,7 @@ namespace factory {
 
 			template<class Func>
 			static void
-			read_object(Types<Type>& types, packstream& packet, Func callback) {
+			read_object(Types<Type>& types, sysx::packstream& packet, Func callback) {
 				id_type id;
 				packet >> id;
 				if (!packet) return;
@@ -188,27 +189,27 @@ namespace factory {
 //			}
 //
 //			void
-//			write(packstream& out) override {
+//			write(sysx::packstream& out) override {
 //				Base::write(out);
 //				write_impl(out);
 //			}
 //
 //			void
-//			read(packstream& in) override {
+//			read(sysx::packstream& in) override {
 //				Base::read(in);
 //				read_impl(in);
 //			}
 //
 //			virtual void
-//			write_impl(packstream& out) = 0;
+//			write_impl(sysx::packstream& out) = 0;
 //
 //			virtual void
-//			read_impl(packstream& in) = 0;
+//			read_impl(sysx::packstream& in) = 0;
 //
 //		private:
 //			struct Init: public Type<T> {
 //				Init() {
-//					this->read = [] (packstream& in) {
+//					this->read = [] (sysx::packstream& in) {
 //						Sub* k = new Sub;
 //						k->read(in);
 //						return k;

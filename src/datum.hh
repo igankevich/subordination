@@ -49,15 +49,15 @@ struct Datum {
 			u != rhs.u || v != rhs.v || w != rhs.w;
 	}
 
-	friend factory::packstream&
-	operator<<(factory::packstream& out, const Datum& rhs) {
+	friend sysx::packstream&
+	operator<<(sysx::packstream& out, const Datum& rhs) {
 		return out
 			<< rhs.x << rhs.y << rhs.z
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	friend factory::packstream&
-	operator>>(factory::packstream& in, Datum& rhs) {
+	friend sysx::packstream&
+	operator>>(sysx::packstream& in, Datum& rhs) {
 		return in
 			>> rhs.x >> rhs.y >> rhs.z
 			>> rhs.u >> rhs.v >> rhs.w;
