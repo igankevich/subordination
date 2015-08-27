@@ -4,6 +4,9 @@
 
 #include <unistd.h>
 
+unsigned int num_supported = 0;
+unsigned int num_unsupported = 0;
+unsigned int num_semisupported = 0;
 
 enum struct Color {
 	RESET            = 0,
@@ -36,13 +39,21 @@ operator<<(std::ostream& os, Color rhs) {
 }
 
 void
-printval(const char* name) {
-	std::cout << std::setw(40) << std::left << name
-		<< Color::FG_LIGHT_RED << "not supported" << Color::RESET << '\n';
+printval(const std::string& name) {
+	std::cout << std::setw(40) << std::left
+		<< name << Color::FG_LIGHT_RED;
+	if (name.find("SOURCE") == std::string::npos) {
+		++num_unsupported;
+		std::cout << "not supported";
+	} else {
+		std::cout << "undefined";
+	}
+	std::cout << Color::RESET << '\n';
 }
 
 void
 might_be_supported(const char* name) {
+	++num_semisupported;
 	std::cout << std::setw(40) << std::left << name
 		<< Color::FG_LIGHT_YELLOW
 		<< "might or might not be supported"
@@ -62,10 +73,11 @@ printval(const std::string& name, T val) {
 			std::cout << val;
 		} else {
 			std::cout << Color::FG_LIGHT_GREEN;
-			if (name.find("SOURCE")) {
+			if (name.find("SOURCE") != std::string::npos) {
 				std::cout << "defined";
 			} else {
 				std::cout << "supported";
+				++num_supported;
 			}
 			std::cout << Color::RESET;
 			if (val != 1) {
@@ -549,7 +561,23 @@ printval("_XOPEN_VERSION");
 #endif
 }
 
+unsigned int
+posix_support() {
+	return 100u
+		* (float(num_supported)
+		/ float(num_unsupported + num_semisupported));
+}
+
+void
+summary() {
+	std::cout << std::setw(40) << std::left
+		<< "Overall POSIX support: "
+		<< posix_support() << '%'
+		<< '\n';
+}
+
 int main() {
 	test_posix();
+	summary();
 	return 0;
 }

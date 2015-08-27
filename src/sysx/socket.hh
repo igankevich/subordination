@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_SOCKET_HH
-#define FACTORY_UNISTDX_SOCKET_HH
+#ifndef SYSX_SOCKET_HH
+#define SYSX_SOCKET_HH
 
 #include <sys/socket.h>
 #include <unistd.h>
@@ -228,4 +228,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_SOCKET_HH
+#endif // SYSX_SOCKET_HH

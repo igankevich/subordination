@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_PROCESS_HH
-#define FACTORY_UNISTDX_PROCESS_HH
+#ifndef SYSX_PROCESS_HH
+#define SYSX_PROCESS_HH
 
 #include <unistd.h>
 #include <signal.h>
@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <algorithm>
+#include <vector>
 
 #include <stdx/intersperse_iterator.hh>
 
@@ -443,4 +444,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_PROCESS_HH
+#endif // SYSX_PROCESS_HH

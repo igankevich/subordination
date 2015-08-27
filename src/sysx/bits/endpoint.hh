@@ -1,3 +1,6 @@
+#ifndef SYSX_BITS_ENDPOINT_HH
+#define SYSX_BITS_ENDPOINT_HH
+
 #include <limits>
 
 #include <sysx/bits/uint128_parse.hh>
@@ -130,3 +133,5 @@ namespace sysx {
 	}
 
 }
+
+#endif // SYSX_BITS_ENDPOINT_HH

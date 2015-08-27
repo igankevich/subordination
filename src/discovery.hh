@@ -1,3 +1,6 @@
+#ifndef DISCOVERY_HH
+#define DISCOVERY_HH
+
 namespace factory {
 
 	namespace components {
@@ -91,3 +94,5 @@ namespace factory {
 	}
 
 }
+
+#endif // DISCOVERY_HH

@@ -1,5 +1,5 @@
-#ifndef FACTORY_EXT_SECURITY_HH
-#define FACTORY_EXT_SECURITY_HH
+#ifndef SYSX_SECURITY_HH
+#define SYSX_SECURITY_HH
 
 #include <iostream>
 
@@ -105,4 +105,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_EXT_SECURITY_HH
+#endif // SYSX_SECURITY_HH

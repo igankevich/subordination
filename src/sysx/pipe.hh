@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_PIPE_HH
-#define FACTORY_UNISTDX_PIPE_HH
+#ifndef SYSX_PIPE_HH
+#define SYSX_PIPE_HH
 
 #include <unistd.h>
 
@@ -78,4 +78,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_PIPE_HH
+#endif // SYSX_PIPE_HH

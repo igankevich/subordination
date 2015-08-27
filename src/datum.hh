@@ -1,3 +1,6 @@
+#ifndef DATUM_HH
+#define DATUM_HH
+
 #include <random>
 
 typedef std::chrono::nanoseconds::rep Time;
@@ -116,3 +119,5 @@ private:
 	int8_t w;
 	char padding[5] = {};
 };
+
+#endif // DATUM_HH

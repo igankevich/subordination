@@ -1,3 +1,6 @@
+#ifndef TEST_HH
+#define TEST_HH
+
 #include <string>
 #include <random>
 #include <functional>
@@ -85,3 +88,5 @@ namespace factory {
 		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
 	}
 }
+
+#endif // TEST_HH

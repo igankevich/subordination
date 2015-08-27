@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_CMDLINE_HH
-#define FACTORY_UNISTDX_CMDLINE_HH
+#ifndef SYSX_CMDLINE_HH
+#define SYSX_CMDLINE_HH
 
 #include <algorithm>
 #include <iterator>
@@ -35,4 +35,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_CMDLINE_HH
+#endif // SYSX_CMDLINE_HH

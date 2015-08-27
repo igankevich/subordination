@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_FIELD_ITERATOR_HH
-#define FACTORY_STDX_FIELD_ITERATOR_HH
+#ifndef STDX_FIELD_ITERATOR_HH
+#define STDX_FIELD_ITERATOR_HH
 
 #include <iterator>
 #include <tuple>
@@ -103,4 +103,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_FIELD_ITERATOR_HH
+#endif // STDX_FIELD_ITERATOR_HH

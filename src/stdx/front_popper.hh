@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_FRONT_POPPER_HH
-#define FACTORY_STDX_FRONT_POPPER_HH
+#ifndef STDX_FRONT_POPPER_HH
+#define STDX_FRONT_POPPER_HH
 
 #include <queue>
 
@@ -136,4 +136,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_FRONT_POPPER_HH
+#endif // STDX_FRONT_POPPER_HH

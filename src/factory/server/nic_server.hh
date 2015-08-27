@@ -1,5 +1,5 @@
-#ifndef SERVER_NIC_SERVER_HH
-#define SERVER_NIC_SERVER_HH
+#ifndef FACTORY_SERVER_NIC_SERVER_HH
+#define FACTORY_SERVER_NIC_SERVER_HH
 
 #include <map>
 
@@ -692,4 +692,4 @@ namespace stdx {
 	//public std::integral_constant<bool, true> {};
 
 }
-#endif // SERVER_NIC_SERVER_HH
+#endif // FACTORY_SERVER_NIC_SERVER_HH

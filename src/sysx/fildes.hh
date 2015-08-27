@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_FILDES_HH
-#define FACTORY_UNISTDX_FILDES_HH
+#ifndef SYSX_FILDES_HH
+#define SYSX_FILDES_HH
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -303,4 +303,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_FILDES_HH
+#endif // SYSX_FILDES_HH

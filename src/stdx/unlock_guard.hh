@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_UNLOCK_GUARD_HH
-#define FACTORY_STDX_UNLOCK_GUARD_HH
+#ifndef STDX_UNLOCK_GUARD_HH
+#define STDX_UNLOCK_GUARD_HH
 
 namespace stdx {
 
@@ -43,4 +43,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_UNLOCK_GUARD_HH
+#endif // STDX_UNLOCK_GUARD_HH

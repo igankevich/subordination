@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_SPIN_MUTEX_HH
-#define FACTORY_STDX_SPIN_MUTEX_HH
+#ifndef STDX_SPIN_MUTEX_HH
+#define STDX_SPIN_MUTEX_HH
 
 #include <atomic>
 
@@ -76,4 +76,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_SPIN_MUTEX_HH
+#endif // STDX_SPIN_MUTEX_HH

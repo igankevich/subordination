@@ -1,0 +1,3 @@
+#!/bin/sh
+
+find . -type f -name '*.hh' -exec vim -c HeaderguardAdd -c ':wq' \{\} \;

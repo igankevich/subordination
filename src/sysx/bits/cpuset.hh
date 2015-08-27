@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_CPUSET_HH
-#define FACTORY_BITS_CPUSET_HH
+#ifndef SYSX_BITS_CPUSET_HH
+#define SYSX_BITS_CPUSET_HH
 
 struct CPU {
 	typedef ::cpu_set_t Set;
@@ -22,4 +22,4 @@ private:
 	size_t _size;
 };
 
-#endif // FACTORY_BITS_CPUSET_HH
+#endif // SYSX_BITS_CPUSET_HH

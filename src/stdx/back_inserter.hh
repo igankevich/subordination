@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_BACK_INSERTER_HH
-#define FACTORY_STDX_BACK_INSERTER_HH
+#ifndef STDX_BACK_INSERTER_HH
+#define STDX_BACK_INSERTER_HH
 
 #include <queue>
 
@@ -94,4 +94,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_BACK_INSERTER_HH
+#endif // STDX_BACK_INSERTER_HH

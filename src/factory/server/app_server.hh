@@ -1,5 +1,5 @@
-#ifndef FACTORY_APP_SERVER_HH
-#define FACTORY_APP_SERVER_HH
+#ifndef FACTORY_SERVER_APP_SERVER_HH
+#define FACTORY_SERVER_APP_SERVER_HH
 
 #include <thread>
 #include <map>
@@ -368,4 +368,4 @@ namespace factory {
 	}
 }
 
-#endif // FACTORY_APP_SERVER_HH
+#endif // FACTORY_SERVER_APP_SERVER_HH

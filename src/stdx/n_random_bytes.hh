@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_N_RANDOM_BYTES_HH
-#define FACTORY_STDX_N_RANDOM_BYTES_HH
+#ifndef STDX_N_RANDOM_BYTES_HH
+#define STDX_N_RANDOM_BYTES_HH
 
 #include <algorithm>
 #include <functional>
@@ -30,4 +30,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_N_RANDOM_BYTES_HH
+#endif // STDX_N_RANDOM_BYTES_HH

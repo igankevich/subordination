@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_BYTE_SWAP_HH
-#define FACTORY_BITS_BYTE_SWAP_HH
+#ifndef SYSX_NETWORK_FORMAT_HH
+#define SYSX_NETWORK_FORMAT_HH
 
 #define FACTORY_GCC_VERSION_GE(major, minor) \
 	((__GNUC__ > major) || (__GNUC__ == major && __GNUC_MINOR__ >= minor))
@@ -333,4 +333,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_BITS_BYTE_SWAP_HH
+#endif // SYSX_NETWORK_FORMAT_HH

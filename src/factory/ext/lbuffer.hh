@@ -1,3 +1,6 @@
+#ifndef FACTORY_EXT_LBUFFER_HH
+#define FACTORY_EXT_LBUFFER_HH
+
 namespace factory {
 
 	namespace components {
@@ -148,3 +151,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_EXT_LBUFFER_HH

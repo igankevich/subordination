@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_SHAREDMEM_HH
-#define FACTORY_UNISTDX_SHAREDMEM_HH
+#ifndef SYSX_SHAREDMEM_HH
+#define SYSX_SHAREDMEM_HH
 
 #include <unistd.h>
 #include <sys/shm.h>
@@ -267,4 +267,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_SHAREDMEM_HH
+#endif // SYSX_SHAREDMEM_HH

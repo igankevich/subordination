@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_UINT128_PARSE_HH
-#define FACTORY_BITS_UINT128_PARSE_HH
+#ifndef SYSX_BITS_UINT128_PARSE_HH
+#define SYSX_BITS_UINT128_PARSE_HH
 
 namespace sysx {
 
@@ -107,4 +107,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_BITS_UINT128_PARSE_HH
+#endif // SYSX_BITS_UINT128_PARSE_HH

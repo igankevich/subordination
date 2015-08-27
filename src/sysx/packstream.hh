@@ -1,5 +1,5 @@
-#ifndef FACTORY_PACKSTREAM_HH
-#define FACTORY_PACKSTREAM_HH
+#ifndef SYSX_PACKSTREAM_HH
+#define SYSX_PACKSTREAM_HH
 
 #include <istream>
 #include <ostream>
@@ -134,4 +134,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_PACKSTREAM_HH
+#endif // SYSX_PACKSTREAM_HH

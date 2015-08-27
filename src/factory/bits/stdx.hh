@@ -1,3 +1,6 @@
+#ifndef FACTORY_BITS_STDX_HH
+#define FACTORY_BITS_STDX_HH
+
 namespace factory {
 
 	namespace bits {
@@ -82,3 +85,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_BITS_STDX_HH

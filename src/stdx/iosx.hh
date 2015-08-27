@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_IOSX_HH
-#define FACTORY_STDX_IOSX_HH
+#ifndef STDX_IOSX_HH
+#define STDX_IOSX_HH
 
 #include <ostream>
 
@@ -59,4 +59,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_IOSX_HH
+#endif // STDX_IOSX_HH

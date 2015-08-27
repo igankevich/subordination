@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_LOG_HH
-#define FACTORY_UNISTDX_LOG_HH
+#ifndef SYSX_LOG_HH
+#define SYSX_LOG_HH
 
 #include <thread>
 #include <unordered_map>
@@ -91,4 +91,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_LOG_HH
+#endif // SYSX_LOG_HH

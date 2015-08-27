@@ -1,3 +1,6 @@
+#ifndef SYSX_BITS_IFADDRS_HH
+#define SYSX_BITS_IFADDRS_HH
+
 namespace sysx {
 
 	namespace bits {
@@ -80,3 +83,5 @@ namespace sysx {
 	}
 
 }
+
+#endif // SYSX_BITS_IFADDRS_HH

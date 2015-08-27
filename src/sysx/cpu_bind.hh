@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_CPU_BIND_HH
-#define FACTORY_BITS_CPU_BIND_HH
+#ifndef SYSX_CPU_BIND_HH
+#define SYSX_CPU_BIND_HH
 
 #include <thread>
 
@@ -50,4 +50,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_BITS_CPU_BIND_HH
+#endif // SYSX_CPU_BIND_HH

@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_TO_STRING_HH
-#define FACTORY_BITS_TO_STRING_HH
+#ifndef SYSX_BITS_TO_STRING_HH
+#define SYSX_BITS_TO_STRING_HH
 
 #include <sstream>
 
@@ -35,4 +35,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_BITS_TO_STRING_HH
+#endif // SYSX_BITS_TO_STRING_HH

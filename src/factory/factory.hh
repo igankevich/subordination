@@ -1,3 +1,6 @@
+#ifndef FACTORY_FACTORY_HH
+#define FACTORY_FACTORY_HH
+
 // autoconf defines
 #ifdef HAVE_CONFIG_H
 	#include <config.h>
@@ -363,3 +366,5 @@ namespace factory {
 	}
 
 }
+
+#endif // FACTORY_FACTORY_HH

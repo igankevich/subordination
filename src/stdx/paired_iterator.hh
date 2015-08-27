@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_PAIRED_ITERATOR_HH
-#define FACTORY_STDX_PAIRED_ITERATOR_HH
+#ifndef STDX_PAIRED_ITERATOR_HH
+#define STDX_PAIRED_ITERATOR_HH
 
 #include <iterator>
 #include <utility>
@@ -113,4 +113,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_PAIRED_ITERATOR_HH
+#endif // STDX_PAIRED_ITERATOR_HH

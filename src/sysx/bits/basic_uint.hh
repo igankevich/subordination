@@ -1,3 +1,6 @@
+#ifndef SYSX_BITS_BASIC_UINT_HH
+#define SYSX_BITS_BASIC_UINT_HH
+
 namespace sysx {
 
 	namespace bits {
@@ -534,3 +537,5 @@ namespace sysx {
 	}
 
 }
+
+#endif // SYSX_BITS_BASIC_UINT_HH

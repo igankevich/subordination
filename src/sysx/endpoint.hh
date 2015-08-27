@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_ENDPOINT_HH
-#define FACTORY_UNISTDX_ENDPOINT_HH
+#ifndef SYSX_ENDPOINT_HH
+#define SYSX_ENDPOINT_HH
 
 #include <sys/types.h>
 #include <ifaddrs.h>
@@ -662,4 +662,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_ENDPOINT_HH
+#endif // SYSX_ENDPOINT_HH

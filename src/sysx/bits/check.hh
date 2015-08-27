@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_CHECK_HH
-#define FACTORY_BITS_CHECK_HH
+#ifndef SYSX_BITS_CHECK_HH
+#define SYSX_BITS_CHECK_HH
 
 #include <stdexcept>
 #include <system_error>
@@ -76,4 +76,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_BITS_CHECK_HH
+#endif // SYSX_BITS_CHECK_HH

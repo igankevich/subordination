@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_FOR_EACH_HH
-#define FACTORY_STDX_FOR_EACH_HH
+#ifndef STDX_FOR_EACH_HH
+#define STDX_FOR_EACH_HH
 
 #include <stdx/unlock_guard.hh>
 
@@ -28,4 +28,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_FOR_EACH_HH
+#endif // STDX_FOR_EACH_HH

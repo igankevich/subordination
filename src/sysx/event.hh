@@ -1,5 +1,5 @@
-#ifndef FACTORY_UNISTDX_EVENT_HH
-#define FACTORY_UNISTDX_EVENT_HH
+#ifndef SYSX_EVENT_HH
+#define SYSX_EVENT_HH
 
 #include <poll.h>
 #if !defined(POLLRDHUP)
@@ -423,4 +423,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_EVENT_HH
+#endif // SYSX_EVENT_HH

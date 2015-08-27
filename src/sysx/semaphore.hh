@@ -1,15 +1,17 @@
-#ifndef FACTORY_UNISTDX_SEMAPHORE_HH
-#define FACTORY_UNISTDX_SEMAPHORE_HH
+#ifndef SYSX_SEMAPHORE_HH
+#define SYSX_SEMAPHORE_HH
 
 #include <unistd.h>
 #if _POSIX_SEMAPHORES > 0 || defined(__MACH__)
 	#include <semaphore.h>
-#else
+#elif _XOPEN_SHM > 0
 	#include <sys/types.h>
 	#include <sys/ipc.h>
 	#include <sys/sem.h>
 	#error implement SysV semaphores
 	// TODO: implement SysV semaphores
+#else
+	#error can not find POSIX/SysV semaphores API
 #endif
 
 #include <condition_variable>
@@ -250,4 +252,4 @@ namespace sysx {
 
 }
 
-#endif // FACTORY_UNISTDX_SEMAPHORE_HH
+#endif // SYSX_SEMAPHORE_HH

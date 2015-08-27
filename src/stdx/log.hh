@@ -1,5 +1,5 @@
-#ifndef FACTORY_STDX_LOG_HH
-#define FACTORY_STDX_LOG_HH
+#ifndef STDX_LOG_HH
+#define STDX_LOG_HH
 
 namespace stdx {
 
@@ -74,4 +74,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_STDX_LOG_HH
+#endif // STDX_LOG_HH
