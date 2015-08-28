@@ -1,6 +1,8 @@
-#include "libfactory.cc"
+#include <sysx/sharedmem.hh>
+#include <factory/ext/shmembuf.hh>
+
 using namespace factory;
-using factory::components::shared_mem;
+using sysx::shared_mem;
 using factory::components::basic_shmembuf;
 using factory::components::Error;
 #include "test.hh"
@@ -9,20 +11,33 @@ template<class T>
 struct Test_shmem {
 
 	typedef stdx::log<Test_shmem> this_log;
+	typedef typename shared_mem<T>::size_type size_type;
+	typedef shared_mem<T> shmem;
+
+	static bool
+	shmem_invariant(shmem& shm) {
+		return shm.begin() != nullptr && shm.end() != nullptr;
+	}
 
 	void test_shmem() {
 		const typename shared_mem<T>::size_type SHMEM_SIZE = 512;
 		const typename shared_mem<T>::proj_id_type SHMEMPROJID = 'F';
 		shared_mem<T> mem1("/test-shmem", SHMEM_SIZE, 0666, SHMEMPROJID);
 		shared_mem<T> mem2("/test-shmem", SHMEMPROJID);
-		test::equal(mem1.size(), SHMEM_SIZE);
-		test::equal(mem2.size(), SHMEM_SIZE);
+		test::invar(shmem_invariant, mem1);
+		test::invar(shmem_invariant, mem2);
+		size_type real_size = mem1.size();
+		std::cout << "mem1: " << mem1 << std::endl;
+		std::cout << "mem2: " << mem2 << std::endl;
+		test::equal(mem1.size(), real_size);
+		test::equal(mem2.size(), real_size);
 		mem2.sync();
-		test::equal(mem2.size(), SHMEM_SIZE);
-		mem1.resize(SHMEM_SIZE * 2);
-		test::equal(mem1.size(), SHMEM_SIZE * 2);
+		test::equal(mem2.size(), real_size);
+		mem1.resize(real_size * 2);
+		size_type new_size = mem1.size();
+		test::equal(mem1.size(), new_size);
 		mem2.sync();
-		test::equal(mem2.size(), SHMEM_SIZE * 2);
+		test::equal(mem2.size(), new_size);
 		std::generate(mem1.begin(), mem1.end(), test::randomval<T>);
 		test::compare(mem1, mem2);
 	}
@@ -47,8 +62,8 @@ struct Test_shmem {
 };
 
 int main(int argc, char* argv[]) {
-	Test_shmem test;
-	test.test_shmem<char>();
-	test.test_shmembuf<char>();
+	Test_shmem<char> test;
+	test.test_shmem();
+	test.test_shmembuf();
 	return 0;
 }

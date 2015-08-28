@@ -1,9 +1,12 @@
-#include <factory/factory_base.hh>
-#include "libfactory.cc"
+#include <iomanip>
+
+#include <factory/ext/encoding.hh>
 #include "test.hh"
 
 using namespace factory;
 using namespace factory::components;
+
+std::random_device rng;
 
 void test_base64_size() {
 	for (size_t k=0; k<=100; ++k) {
@@ -126,7 +129,7 @@ void test_web_socket() {
 			std::stringstream str2;
 			std::ostream_iterator<char> oit2(str2);
 			Opcode opcode;
-			websocket_encode(in.begin(), in.end(), oit);
+			websocket_encode(in.begin(), in.end(), oit, rng);
 			std::string encoded = str.str();
 			websocket_decode(encoded.begin(), encoded.end(), oit2, &opcode);
 			std::string out = str2.str();

@@ -104,8 +104,7 @@ namespace factory {
 				_error(err.what()), _file(file), _line(line), _function(func) {}
 
 			friend std::ostream& operator<<(std::ostream& out, const String_message& rhs) {
-				out << std::chrono::system_clock::now().time_since_epoch().count() << ' '
-					<< rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
+				out << rhs._function << '[' << rhs._file << ':' << rhs._line << ']'
 					<< ' ' << rhs._error << std::endl;
 				return out;
 			}

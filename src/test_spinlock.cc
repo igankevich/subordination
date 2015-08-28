@@ -1,4 +1,11 @@
-#include "libfactory.cc"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <queue>
+#include <iostream>
+
+#include <stdx/spin_mutex.hh>
 #include "test.hh"
 using namespace factory;
 
@@ -122,29 +129,29 @@ void spinlock_queue(I nthreads, I max) {
 	}
 }
 
-template<class Bigint>
-void test_perf_x(Bigint m) {
+template<class Integer>
+void test_perf_x(Integer m) {
 	Time t0 = current_time_nano();
-	test_lock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
-	test_lock<Bigint>(spinlock_queue<Bigint, stdx::spin_mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, stdx::spin_mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, stdx::spin_mutex>, 1, m);
 	Time t1 = current_time_nano();
-	test_lock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
-	test_lock<Bigint>(spinlock_queue<Bigint, std::mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, std::mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, std::mutex>, 1, m);
 	Time t2 = current_time_nano();
 	std::cout << "Time(stdx::spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
 	std::cout << "Time(std::mutex, " << m << ") = " << t2-t1 << "ns" << std::endl;
 }
 
-template<class Mutex, class Bigint=uint64_t>
+template<class Mutex, class Integer=uint64_t>
 void
-test_perf(Bigint m) {
+test_perf(Integer m) {
 	Time t0 = current_time_nano();
-	test_lock<Bigint>(spinlock_queue<Bigint, Mutex>, 1, m);
-	test_lock<Bigint>(spinlock_queue<Bigint, Mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, Mutex>, 1, m);
+	test_lock<Integer>(spinlock_queue<Integer, Mutex>, 1, m);
 	Time t1 = current_time_nano();
 	std::cout
 		<< "mutex=" << typeid(Mutex).name()
-		<< ", int_type=" << typeid(Bigint).name()
+		<< ", int_type=" << typeid(Integer).name()
 		<< ", time=" << t1-t0 << "ns"
 		<< std::endl;
 }

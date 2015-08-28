@@ -301,6 +301,40 @@ namespace sysx {
 
 	};
 
+	struct tmpfile: public file {
+
+		typedef std::string path_type;
+
+		tmpfile() noexcept = default;
+
+		explicit
+		tmpfile(tmpfile&& rhs) noexcept:
+		sysx::file(std::move(rhs)),
+		_path(std::move(rhs._path))
+		{}
+
+		explicit
+		tmpfile(const path_type& filename, openmode flags=read_write,
+		sysx::flag_type flags2=create|truncate, mode_type mode=S_IRUSR|S_IWUSR):
+		file(filename, flags, flags2, mode),
+		_path(filename)
+		{}
+
+		~tmpfile() {
+			this->close();
+			this->unlink();
+		}
+
+	private:
+
+		void
+		unlink() noexcept {
+			::unlink(_path.c_str());
+		}
+
+		path_type _path;
+	};
+
 }
 
 #endif // SYSX_FILDES_HH

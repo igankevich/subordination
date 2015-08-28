@@ -85,15 +85,13 @@ namespace sysx {
 		template<>
 		inline uint128_t
 		byte_swap(uint128_t x) noexcept {
-			using namespace sysx::literals;
-			int i = sizeof(x) * std::numeric_limits<unsigned char>::digits / 2;
-			uint128_t k = (UINT128_C(1) << i) - 1;
-			while (i >= 8) {
-			    x = ((x & k) << i) ^ ((x >> i) & k);
-			    i >>= 1;
-			    k ^= k << i;
-			}
-			return k;
+			union {
+				uint128_t n;
+				unsigned char raw[sizeof(uint128_t)];
+			} tmp;
+			tmp.n = x;
+			std::reverse(tmp.raw, tmp.raw + sizeof(uint128_t));
+			return tmp.n;
 		}
 
 		// compile-time unit tests for byte swapping

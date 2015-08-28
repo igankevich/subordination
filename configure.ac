@@ -9,9 +9,9 @@ AM_INIT_AUTOMAKE([-Wall])
 #AM_SILENT_RULES([yes])
 
 # libtool
-AM_PROG_AR
-LT_INIT
-AC_SUBST([LIBTOOL_DEPS])
+#AM_PROG_AR
+#LT_INIT
+#AC_SUBST([LIBTOOL_DEPS])
 
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
@@ -26,16 +26,16 @@ AC_PROG_CXX
 # Checks for libraries.
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
-AC_CHECK_DECLS([SOCK_NONBLOCK], [],
-	[AC_DEFINE(AS_TR_CPP(SOCK_NONBLOCK),0,[no value])],
-	[[#include <sys/socket.h>]])
-AC_CHECK_DECLS([SOCK_CLOEXEC], [],
-	[AC_DEFINE(AS_TR_CPP(SOCK_CLOEXEC),0,[no value])],
-	[[#include <sys/socket.h>]])
-AC_CHECK_DECLS([POLLRDHUP], [],
-	[AC_DEFINE(AS_TR_CPP(POLLRDHUP),0,[no value])],
-	[[#include <poll.h>]])
+#AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h sys/socket.h])
+#AC_CHECK_DECLS([SOCK_NONBLOCK], [],
+#	[AC_DEFINE(AS_TR_CPP(SOCK_NONBLOCK),0,[no value])],
+#	[[#include <sys/socket.h>]])
+#AC_CHECK_DECLS([SOCK_CLOEXEC], [],
+#	[AC_DEFINE(AS_TR_CPP(SOCK_CLOEXEC),0,[no value])],
+#	[[#include <sys/socket.h>]])
+#AC_CHECK_DECLS([POLLRDHUP], [],
+#	[AC_DEFINE(AS_TR_CPP(POLLRDHUP),0,[no value])],
+#	[[#include <poll.h>]])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_INT8_T
@@ -48,15 +48,15 @@ AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
-AC_CHECK_TYPES([ptrdiff_t])
-AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
+#AC_CHECK_TYPES([ptrdiff_t])
+#AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
 AC_TYPE_PID_T
 AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AX_PTHREAD
-AX_GCC_BUILTIN(__builtin_bswap64)
-AX_GCC_BUILTIN(__builtin_bswap32)
-AC_C_BIGENDIAN
-AX_CXX_GCC_ABI_DEMANGLE
+#AX_GCC_BUILTIN(__builtin_bswap64)
+#AX_GCC_BUILTIN(__builtin_bswap32)
+#AC_C_BIGENDIAN
+#AX_CXX_GCC_ABI_DEMANGLE
 FACTORY_SOCKADDR_LEN
 
 # compiler's security flags
@@ -64,24 +64,24 @@ AS_IF([test "x$enable_secureflags" = "xyes"], [FACTORY_SECURE_BINARY])
 AS_IF([test "x$enable_warnings" = "xyes"], [FACTORY_CXX_ENABLE_ALL_WARNINGS])
 
 # Checks for library functions.
-AC_FUNC_FORK
-AC_CHECK_FUNCS([socket setenv])
+#AC_FUNC_FORK
+#AC_CHECK_FUNCS([socket setenv])
 
-AX_HAVE_POLL(
-	[AX_CONFIG_FEATURE_ENABLE(poll)],
-	[AX_CONFIG_FEATURE_DISABLE(poll)])
-AX_CONFIG_FEATURE(
-	[poll], [This platform supports poll(2)],
-	[HAVE_POLL], [This platform supports poll(2).])
-FACTORY_THREAD_AFFINITY
-AX_EXECINFO
+#AX_HAVE_POLL(
+#	[AX_CONFIG_FEATURE_ENABLE(poll)],
+#	[AX_CONFIG_FEATURE_DISABLE(poll)])
+#AX_CONFIG_FEATURE(
+#	[poll], [This platform supports poll(2)],
+#	[HAVE_POLL], [This platform supports poll(2).])
+#FACTORY_THREAD_AFFINITY
+#AX_EXECINFO
 
 # Code coverage, memory leaks and threading errors automated tests.
 AX_CODE_COVERAGE
 AX_VALGRIND_CHECK
 FACTORY_PROFILING
 FACTORY_CHECK_CODE
-FACTORY_CXX_FLAG([-rdynamic])
+#FACTORY_CXX_FLAG([-rdynamic])
 
 # Documentation.
 DX_DOXYGEN_FEATURE(ON)

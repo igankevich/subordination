@@ -1,7 +1,9 @@
-//#include <factory/factory.hh>
-#include <libfactory.cc>
+#include <factory/factory.hh>
+#include <factory/cfg/standard.hh>
 
 using namespace factory;
+using namespace factory::standard_config;
+using factory::components::Application;
 
 #include "datum.hh"
 
@@ -14,7 +16,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Mobile<Test_socket> {
+struct Test_socket: public Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
 
@@ -29,20 +31,22 @@ struct Test_socket: public Mobile<Test_socket> {
 		--kernel_count;
 	}
 
-	void act() {
+	void act(Server& this_server) {
 		this_log() << "Test_socket::act(): It works!" << std::endl;
 //		commit(remote_server());
 	}
 
-	void write_impl(packstream& out) {
-		this_log() << "Test_socket::write_impl()" << std::endl;
+	void write(sysx::packstream& out) {
+		this_log() << "Test_socket::write()" << std::endl;
+		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
 	}
 
-	void read_impl(packstream& in) {
-		this_log() << "Test_socket::read_impl()" << std::endl;
+	void read(sysx::packstream& in) {
+		this_log() << "Test_socket::read()" << std::endl;
+		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -58,16 +62,30 @@ struct Test_socket: public Mobile<Test_socket> {
 		return _data;
 	}
 
-	static void init_type(Type* t) {
-		t->id(1);
-		t->name("Test_socket");
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			1,
+			"Test_socket",
+			[] (sysx::packstream& in) {
+				Test_socket* k = new Test_socket;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 	
 private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public Identifiable<Kernel> {
+/*
+struct Sender: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Sender> this_log;
 
@@ -76,7 +94,7 @@ struct Sender: public Identifiable<Kernel> {
 		_input(_vector_size),
 		_sleep(s) {}
 
-	void act() {
+	void act(Server& this_server) {
 		this_log() << "Sender "
 			<< "id = " << id()
 			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
@@ -84,7 +102,7 @@ struct Sender: public Identifiable<Kernel> {
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-			upstream(remote_server(), new Test_socket(_input));
+			upstream(this_server.remote_server(), new Test_socket(_input));
 //			this_log() << " Sender id = " << this->id() << std::endl;
 		}
 	}
@@ -122,15 +140,36 @@ private:
 	std::vector<Datum> _input;
 	uint32_t _sleep = 0;
 };
+*/
 
 const Application::id_type MY_APP_ID = 123;
+
 struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
 
-	Main(uint32_t s=0): _sleep(s) {}
+	Main(Server& this_server, int argc, char* argv[]) {
+		auto& __factory = *this_server.factory();
+		Application::id_type app = sysx::this_process::getenv("APP_ID", 0);
+		if (app == MY_APP_ID) {
+			this_log() << "I am an application no. " << app << "!" << std::endl;
+			__factory.setrole(Factory::Role::Subordinate);
+			__factory.start();
+			sleep(3);
+			__factory.stop();
+			__factory.wait();
+		} else {
+			__factory.app_server()->add(Application(argv[0], MY_APP_ID));
+			__factory.setrole(Factory::Role::Principal);
+			__factory.start();
+			the_server()->send(new Main);
+			sleep(3);
+			__factory.stop();
+			__factory.wait();
+		}
+	}
 
-	void act() {
+	void act(Server& this_server) {
 		Test_socket* kernel = new Test_socket;
 		kernel->from(server_endpoint);
 		kernel->setapp(MY_APP_ID);
@@ -140,7 +179,7 @@ struct Main: public Kernel {
 //			upstream(the_server(), new Sender(i, _sleep));
 	}
 
-	void react(Kernel*) {
+	void react(Server& this_server, Kernel*) {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
@@ -150,42 +189,10 @@ struct Main: public Kernel {
 
 private:
 	uint32_t _num_returned = 0;
-	uint32_t _sleep = 0;
 };
 
-uint32_t sleep_time() {
-	return sysx::this_process::getenv("SLEEP_TIME", UINT32_C(0));
-}
-
-
-
-struct App {
-	typedef stdx::log<App> this_log;
-	int run(int argc, char* argv[]) {
-		Application::id_type app = sysx::this_process::getenv("APP_ID", 0);
-		if (app == MY_APP_ID) {
-			this_log() << "I am an application no. " << app << "!" << std::endl;
-			the_server()->add_cpu(0);
-			__factory.setrole(Factory::Role::Subordinate);
-			__factory.start();
-			sleep(3);
-			__factory.stop();
-			__factory.wait();
-		} else {
-			the_server()->add_cpu(0);
-			app_server()->add(Application(argv[0], MY_APP_ID));
-			__factory.setrole(Factory::Role::Principal);
-			__factory.start();
-			the_server()->send(new Main);
-			sleep(3);
-			__factory.stop();
-			__factory.wait();
-		}
-		return 0;
-	}
-};
 
 int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+	using namespace factory;
+	return factory_main<Main,config>(argc, argv);
 }

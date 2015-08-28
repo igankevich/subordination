@@ -9,6 +9,9 @@
 #include <iterator>
 #include <stdexcept>
 #include <chrono>
+#include <type_traits>
+
+#include <stdx/n_random_bytes.hh>
 
 namespace test {
 
@@ -37,7 +40,6 @@ namespace test {
 
 	template<class Container1, class Container2>
 	void compare(const Container1& cnt1, const Container2& cnt2) {
-		using namespace factory;
 		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
 		if (pair.first != cnt1.end()) {
 			auto pos = pair.first - cnt1.begin();
@@ -65,6 +67,28 @@ namespace test {
 		static std::default_random_engine generator(static_cast<Res_type>(time_seed()));
 		static Distribution distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
 		return distribution(generator);
+	}
+
+	template<class It, class Engine>
+	void
+	randomise(It first, It last, Engine& rng) {
+		typedef typename std::decay<decltype(*first)>::type value_type;
+		while (first != last) {
+			*first = stdx::n_random_bytes<value_type>(rng);
+			++first;
+		}
+	}
+
+	template<class Func, class Object>
+	void
+	invar(Func invariant, Object& obj) {
+		if (!invariant(obj)) {
+			std::stringstream msg;
+			msg << "invariant does not hold for "
+				<< typeid(Object).name()
+				<< ": object=" << obj;
+			throw std::runtime_error(msg.str());
+		}
 	}
 
 }

@@ -2,7 +2,6 @@ include $(top_srcdir)/am/gcov.am
 include $(top_srcdir)/am/gprof.am
 include $(top_srcdir)/am/valgrind.am
 include $(top_srcdir)/am/cppcheck.am
-include $(top_srcdir)/am/version.am
 
 AM_CXXFLAGS = \
 	$(PTHREAD_CFLAGS) \
@@ -16,8 +15,6 @@ AM_LDFLAGS = \
 	$(PERF_TESTING_LDFLAGS) \
 	$(CODE_COVERAGE_LDFLAGS)
 
-#LDADD = libfactory.la
-
 AM_DEFAULT_SOURCE_EXT = .cc
 
 CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
@@ -29,14 +26,6 @@ CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
 #-Wunsafe-loop-optimizations         -- false positive for Process:execute
 #-Waggregate-return                  -- detects return of structs and unions
 #-Wabi                               -- probably not needed
-
-REPO_VERSION = $(top_srcdir)/bin/repo-version
-
-bin_PROGRAMS = \
-	factory_time
-
-#lib_LTLIBRARIES = \
-#	libfactory.la
 
 check_PROGRAMS = \
 	test_buffer \
@@ -58,17 +47,12 @@ check_PROGRAMS = \
 	test_posix
 
 TESTS = $(check_PROGRAMS) \
-	test_reinterpret_cast
+	test_static
 
 test_uint128_custom_SOURCES = test_uint128.cc
 test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128
 
-#test_appserver_SOURCES = test_appserver.cc libfactory.cc
-# disable stack trace for tests where a child process must fail
-#test_socket_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
-test_offline_CPPFLAGS    = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
-test_websocket_CPPFLAGS  = $(AM_CPPFLAGS) -DFACTORY_NO_BACKTRACE
-test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING
+test_websocket_SOURCES = test_socket.cc
+test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_WEBSOCKET
 
-libtool: $(LIBTOOL_DEPS)
-	$(SHELL) $(top_srcdir)/config.status libtool
+test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING

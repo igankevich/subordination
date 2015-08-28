@@ -6,6 +6,7 @@
 
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
+#include <sysx/packstream.hh>
 
 #include <factory/managed_object.hh>
 #include <factory/ext/kernelbuf.hh>
@@ -45,7 +46,7 @@ namespace factory {
 			typedef sysx::proc process_type;
 			typedef basic_shmembuf<char> ibuf_type;
 			typedef basic_shmembuf<char> obuf_type;
-			typedef Packing_stream<char> stream_type;
+			typedef sysx::basic_packstream<char> stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
@@ -198,7 +199,7 @@ namespace factory {
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
-			typedef Packing_stream<char> stream_type;
+			typedef sysx::basic_packstream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
 			explicit Sub_Rserver(const Application& app):

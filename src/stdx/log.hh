@@ -1,6 +1,10 @@
 #ifndef STDX_LOG_HH
 #define STDX_LOG_HH
 
+#include <typeinfo>
+#include <type_traits>
+#include <iostream>
+
 namespace stdx {
 
 	struct no_category {};

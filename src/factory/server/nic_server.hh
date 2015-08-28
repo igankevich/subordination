@@ -407,11 +407,11 @@ namespace factory {
 				// remove from the mapping if it is not linked
 				// with other subordinate server
 				// TODO: occasional ``Bad file descriptor''
-//				this_log() << "Removing server " << *ptr << std::endl;
+				this_log() << "Removing server " << *ptr << std::endl;
+				ptr->recover_kernels();
 				if (!ptr->link()) {
 					this->_upstream.erase(ptr->vaddr());
 				}
-				ptr->recover_kernels();
 			}
 
 			void accept_connection() {

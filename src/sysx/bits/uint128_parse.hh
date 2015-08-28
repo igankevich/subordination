@@ -1,6 +1,9 @@
 #ifndef SYSX_BITS_UINT128_PARSE_HH
 #define SYSX_BITS_UINT128_PARSE_HH
 
+#include <ostream>
+#include <istream>
+
 namespace sysx {
 
 	namespace bits {

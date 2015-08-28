@@ -1,5 +1,9 @@
-#include <factory/factory_base.hh>
-#include "libfactory.cc"
+#include <sysx/security.hh>
+#include <factory/ext/fdbuf.hh>
+#include <factory/ext/kernelbuf.hh>
+#include <factory/ext/lbuffer.hh>
+#include <factory/error.hh>
+
 #include "test.hh"
 #include "datum.hh"
 
@@ -13,15 +17,14 @@ using factory::components::basic_kernelbuf;
 using factory::components::basic_fdbuf;
 using factory::components::basic_kstream;
 using factory::components::LBuffer;
-using factory::components::check;
-using factory::bits::make_bytes;
+using factory::components::end_packet;
+
+std::random_device rng;
 
 template<class T, template<class X> class B>
 void test_buffer() {
 
-	std::default_random_engine generator;
-	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
-	auto dice = std::bind(distribution, generator);
+	stdx::adapt_engine<std::random_device, T> rng2(rng);
 
 	typedef typename B<T>::Size I;
 	const I MAX_SIZE_POWER = 12;
@@ -31,8 +34,7 @@ void test_buffer() {
 		for (I i=0; i<=MAX_SIZE_POWER; ++i) {
 			I size = I(2) << i;
 			std::vector<T> input(size);
-			for (size_t j=0; j<size; ++j)
-				input[j] = dice();
+			test::randomise(input.begin(), input.end(), rng2);
 			B<T> buf(chunk_size);
 			if (!buf.empty()) {
 				std::stringstream msg;
@@ -75,11 +77,12 @@ void test_fdbuf() {
 		+ ".factory";
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
+		sysx::tmpfile tfile(filename);
 		// fill file with random contents
 		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
-			sysx::file file(filename, sysx::file::write_only, sysx::file::create | sysx::file::truncate,  S_IRUSR | S_IWUSR);
+			sysx::file file(filename, sysx::file::write_only);
 			basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
 		}
 		{
@@ -105,8 +108,6 @@ void test_fdbuf() {
 			test::equal(out.tellp(), 0);
 		}
 	}
-	components::check(std::remove(filename.c_str()),
-		__FILE__, __LINE__, __func__);
 }
 
 template<class T>
@@ -117,7 +118,7 @@ void test_filterbuf() {
 		std::basic_string<T> contents = test::random_string<T>(k, 0, 31);
 		std::basic_stringstream<T> out;
 		std::basic_streambuf<T>* orig = out.rdbuf();
-		static_cast<std::basic_ostream<T>&>(out).rdbuf(new Filter_buf<T>(orig));
+		out.std::basic_ostream<T>::rdbuf(new sysx::filterbuf<T>(orig));
 		out << contents;
 		std::basic_string<T> result = out.str();
 		std::size_t cnt = std::count_if(result.begin(), result.end(), [] (T ch) {
@@ -142,9 +143,10 @@ void test_kernelbuf() {
 	typedef basic_okernelbuf<basic_fdbuf<T,Fd>> okernelbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
+		sysx::tmpfile tfile(filename);
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
-			sysx::file file(filename, sysx::file::write_only, sysx::file::create | sysx::file::truncate,  S_IRUSR | S_IWUSR);
+			sysx::file file(filename, sysx::file::write_only);
 			okernelbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_ostream<T> out(&buf);
@@ -173,8 +175,6 @@ void test_kernelbuf() {
 			}
 		}
 	}
-	components::check(std::remove(filename.c_str()),
-		__FILE__, __LINE__, __func__);
 }
 
 template<class T>
@@ -190,7 +190,7 @@ void test_kernelbuf_with_stringstream() {
 		kernelbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
 		out.write(contents.data(), contents.size());
-		out << end_packet << std::flush;
+		out << end_packet() << std::flush;
 		std::basic_string<T> result(contents.size(), '_');
 		out.read(&result[0], result.size());
 		if (result != contents) {
@@ -205,10 +205,6 @@ void test_kernelbuf_with_stringstream() {
 
 template<class T>
 void test_kernelbuf_withvector() {
-
-	std::default_random_engine generator;
-	std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::min(),std::numeric_limits<T>::max());
-	auto dice = std::bind(distribution, generator);
 
 	typedef std::size_t I;
 	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
@@ -228,7 +224,7 @@ void test_kernelbuf_withvector() {
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
-			str << rhs << end_packet;
+			str << rhs << end_packet();
 		});
 		if (str.tellg() != 0) {
 			std::stringstream msg;
@@ -252,36 +248,22 @@ void test_kernelbuf_withvector() {
 			auto pos = pair.first - input.begin();
 			std::stringstream msg;
 			msg << "input and output does not match at i=" << pos << ":\n'"
-				<< make_bytes(*pair.first) << "'\n!=\n'" << make_bytes(*pair.second) << "'";
+				<< sysx::make_bytes(*pair.first) << "'\n!=\n'" << sysx::make_bytes(*pair.second) << "'";
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 	}
 }
 
-struct App {
-	int run(int, char**) {
-//		try {
-//			test_buffer<char, Buffer>();
-//			test_buffer<unsigned char, Buffer>();
-			test_buffer<char, LBuffer>();
-			test_buffer<unsigned char, LBuffer>();
-			test_fdbuf<char, sysx::file>();
-//			test_fdbuf<unsigned char, int>();
-//			test_fdbuf<char, Socket>();
-			test_filterbuf<char>();
-//			test_filterbuf<unsigned char>();
-			test_kernelbuf<char>();
-			test_kernelbuf_with_stringstream<char>();
-			test_kernelbuf_withvector<char>();
-//		} catch (std::exception& e) {
-//			std::cerr << e.what() << std::endl;
-//			return 1;
-//		}
-		return 0;
-	}
-};
-
 int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+	test_buffer<char, LBuffer>();
+	test_buffer<unsigned char, LBuffer>();
+	test_fdbuf<char, sysx::file>();
+//	test_fdbuf<unsigned char, int>();
+//	test_fdbuf<char, Socket>();
+	test_filterbuf<char>();
+//	test_filterbuf<unsigned char>();
+	test_kernelbuf<char>();
+	test_kernelbuf_with_stringstream<char>();
+	test_kernelbuf_withvector<char>();
+	return 0;
 }

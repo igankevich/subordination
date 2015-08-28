@@ -4,9 +4,14 @@
 
 #include <unistd.h>
 
+struct support {
 unsigned int num_supported = 0;
 unsigned int num_unsupported = 0;
 unsigned int num_semisupported = 0;
+};
+
+support posix_1;
+support posix_2;
 
 enum struct Color {
 	RESET            = 0,
@@ -43,7 +48,11 @@ printval(const std::string& name) {
 	std::cout << std::setw(40) << std::left
 		<< name << Color::FG_LIGHT_RED;
 	if (name.find("SOURCE") == std::string::npos) {
-		++num_unsupported;
+		if (name.find("POSIX2") != std::string::npos) {
+			++posix_2.num_unsupported;
+		} else {
+			++posix_1.num_unsupported;
+		}
 		std::cout << "not supported";
 	} else {
 		std::cout << "undefined";
@@ -52,8 +61,12 @@ printval(const std::string& name) {
 }
 
 void
-might_be_supported(const char* name) {
-	++num_semisupported;
+might_be_supported(const std::string& name) {
+	if (name.find("POSIX2") != std::string::npos) {
+		++posix_2.num_semisupported;
+	} else {
+		++posix_1.num_semisupported;
+	}
 	std::cout << std::setw(40) << std::left << name
 		<< Color::FG_LIGHT_YELLOW
 		<< "might or might not be supported"
@@ -77,7 +90,11 @@ printval(const std::string& name, T val) {
 				std::cout << "defined";
 			} else {
 				std::cout << "supported";
-				++num_supported;
+				if (name.find("POSIX2") != std::string::npos) {
+					++posix_2.num_supported;
+				} else {
+					++posix_1.num_supported;
+				}
 			}
 			std::cout << Color::RESET;
 			if (val != 1) {
@@ -88,7 +105,37 @@ printval(const std::string& name, T val) {
 	}
 }
 
+void
+ruler() {
+std::cout << std::setw(40 + 31) << std::setfill('-')
+	<< "" << '\n' << std::setfill(' ');
+}
+
+unsigned int
+posix_support(support s) {
+	return 100u
+		* (float(s.num_supported)
+		/ float(s.num_supported + s.num_unsupported + s.num_semisupported));
+}
+
+void
+summary() {
+	ruler();
+	std::cout << std::setw(40) << std::left
+		<< "POSIX1 support: "
+		<< posix_support(posix_1) << '%'
+		<< '\n';
+	std::cout << std::setw(40) << std::left
+		<< "POSIX2 support: "
+		<< posix_support(posix_2) << '%'
+		<< '\n';
+	ruler();
+}
+
 void test_posix() {
+std::cout << std::setw(40) << std::left
+	<< "feature" << "status" << '\n';
+ruler();
 #if defined(_POSIX2_C_BIND)
 printval("_POSIX2_C_BIND", _POSIX2_C_BIND);
 #else
@@ -524,6 +571,9 @@ printval("_XOPEN_UUCP", _XOPEN_UUCP);
 #else
 printval("_XOPEN_UUCP");
 #endif
+
+summary();
+
 #if defined(_POSIX_C_SOURCE)
 printval("_POSIX_C_SOURCE", _POSIX_C_SOURCE);
 #else
@@ -561,23 +611,7 @@ printval("_XOPEN_VERSION");
 #endif
 }
 
-unsigned int
-posix_support() {
-	return 100u
-		* (float(num_supported)
-		/ float(num_unsupported + num_semisupported));
-}
-
-void
-summary() {
-	std::cout << std::setw(40) << std::left
-		<< "Overall POSIX support: "
-		<< posix_support() << '%'
-		<< '\n';
-}
-
 int main() {
 	test_posix();
-	summary();
 	return 0;
 }

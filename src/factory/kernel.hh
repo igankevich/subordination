@@ -442,6 +442,8 @@ namespace factory {
 
 	}
 
+	using components::Result;
+
 }
 #else
 /*

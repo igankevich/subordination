@@ -1,17 +1,87 @@
 #include <factory/factory.hh>
-#include <factory/cfg/minimal.hh>
+#include <factory/server/cpu_server.hh>
+
 #include "datum.hh"
 
-using namespace factory;
-using namespace minimal_config;
+#if defined(FACTORY_TEST_WEBSOCKET)
+#include <factory/server/nic_server.hh>
+#include <factory/ext/websocket.hh>
+#define FACTORY_SOCKET_TYPE factory::components::Web_socket
+#endif
 
+#if defined(FACTORY_TEST_APPSERVER)
+#include <factory/server/app_server.hh>
+#endif
+
+#if !defined(FACTORY_SOCKET_TYPE)
+#include <factory/server/nic_server.hh>
+#define FACTORY_TEST_SOCKET
+#define FACTORY_SOCKET_TYPE sysx::socket
+#endif
+
+namespace factory {
+#if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
+	inline namespace this_config {
+
+		struct config {
+			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Principal<config> kernel;
+			typedef components::CPU_server<config> local_server;
+			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
+			typedef components::No_server<config> timer_server;
+			typedef components::No_server<config> app_server;
+			typedef components::No_server<config> principal_server;
+			typedef components::No_server<config> external_server;
+			typedef components::Basic_factory<config> factory;
+		};
+
+		typedef config::kernel Kernel;
+		typedef config::server Server;
+	}
+#endif
+
+#if defined(FACTORY_TEST_APPSERVER)
+	inline namespace this_config {
+
+		struct config {
+			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Principal<config> kernel;
+			typedef components::CPU_server<config> local_server;
+			typedef components::Sub_Iserver<config> remote_server;
+			typedef components::No_server<config> timer_server;
+			typedef components::No_server<config> app_server;
+			typedef components::No_server<config> principal_server;
+			typedef components::No_server<config> external_server;
+			typedef components::Basic_factory<config> factory;
+		};
+
+		typedef config::kernel Kernel;
+		typedef config::server Server;
+	}
+#endif
+}
+
+using namespace factory;
+using namespace factory::this_config;
+
+namespace stdx {
+
+	template<>
+	struct disable_log_category<factory::components::buffer_category>:
+	public std::integral_constant<bool, true> {};
+
+}
 
 sysx::endpoint server_endpoint("127.0.0.1", 10000);
 sysx::endpoint client_endpoint({127,0,0,1}, 20000);
 
-const uint32_t NUM_SIZES = 1;
-const uint32_t NUM_KERNELS = 2;
-const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
+const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+//const std::vector<size_t> POWERS = {16,17};
+const uint32_t NUM_KERNELS = 1;
+const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
+//const uint32_t NUM_SIZES = 1;
+//const uint32_t NUM_KERNELS = 2;
+//const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
@@ -195,8 +265,10 @@ struct Main: public Kernel {
 
 	void act(Server& this_server) override {
 		if (_role == 'y') {
-			for (uint32_t i=1; i<=NUM_SIZES; ++i)
-				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(i, _sleep));
+			for (uint32_t i=0; i<=POWERS.size(); ++i) {
+				size_t sz = 1 << POWERS[i];
+				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(sz, _sleep));
+			}
 		}
 		if (_role == 'm') {
 			commit(this_server.local_server());
@@ -206,7 +278,7 @@ struct Main: public Kernel {
 	void react(Server& this_server, Kernel*) override {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
-		if (++_num_returned == NUM_SIZES) {
+		if (++_num_returned == POWERS.size()) {
 			commit(this_server.local_server());
 		}
 	}

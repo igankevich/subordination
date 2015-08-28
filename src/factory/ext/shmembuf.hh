@@ -2,6 +2,7 @@
 #define FACTORY_EXT_SHMEMBUF_HH
 
 #include <factory/ext/intro.hh>
+#include <factory/error.hh>
 #include <sysx/sharedmem.hh>
 
 namespace factory {

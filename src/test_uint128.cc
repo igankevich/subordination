@@ -1,5 +1,5 @@
-#include <factory/factory_base.hh>
-#include "libfactory.cc"
+#include <iostream>
+#include <sysx/uint128.hh>
 #include "test.hh"
 
 using namespace factory;
@@ -67,6 +67,7 @@ void check_exception(F func) {
 }
 
 void test_uint128() {
+	using namespace sysx::literals;
 	// check different numbers
 	check_op(uint128_t(0u), "0");
 	check_op(uint128_t(1), "1");

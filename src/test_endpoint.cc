@@ -1,15 +1,16 @@
-#include <factory/sysx/endpoint.hh>
-#include <factory/stdx/n_random_bytes.hh>
+#include <iostream>
+
+#include <sysx/endpoint.hh>
+#include <stdx/n_random_bytes.hh>
 
 #include "test.hh"
 
-#include <iostream>
 
 using namespace factory;
-using factory::stdx::n_random_bytes;
-using factory::sysx::operator""_ipv4;
-using factory::sysx::ipv4_addr;
-using factory::sysx::ipv6_addr;
+using stdx::n_random_bytes;
+using sysx::operator""_ipv4;
+using sysx::ipv4_addr;
+using sysx::ipv6_addr;
 
 
 template<class T = uint32_t, class IP_addr = ipv4_addr>
@@ -25,7 +26,7 @@ struct Test_endpoint {
 		s >> addr2;
 		if (addr1 != addr2) {
 			std::stringstream msg;
-			msg << "[single] Addresses does not match: " << addr1 << " /= " << addr2;
+			msg << "[single] Addresses do not match: " << addr1 << " /= " << addr2;
 			throw std::runtime_error(msg.str());
 		}
 	}
@@ -174,7 +175,7 @@ struct Test_endpoint {
 
 		// write
 		std::stringbuf buf;
-		packstream os(&buf);
+		sysx::packstream os(&buf);
 		std::for_each(addrs.begin(), addrs.end(), [&os] (const sysx::endpoint& rhs) {
 			os << rhs;
 		});
@@ -270,15 +271,15 @@ struct App {
 		test.test_io();
 	}
 	int run(int, char**) {
-		try {
+//		try {
 			test_ipv4();
 			test_ipv6();
 //		std::clog << sysx::endpoint({192, 168, 0, 1}, 0) << std::endl;
 		std::clog << sysx::endpoint({10, 0, 0, 0, 0, 0, 0, 1}, 0) << std::endl;
-		} catch (std::exception& e) {
-			std::cerr << e.what() << std::endl;
-			return 1;
-		}
+//		} catch (std::exception& e) {
+//			std::cerr << e.what() << std::endl;
+//			return 1;
+//		}
 		return 0;
 	}
 };

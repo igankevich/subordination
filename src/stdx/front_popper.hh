@@ -97,15 +97,15 @@ namespace stdx {
 			return front(*container);
 		}
 
-		value_type&
-		operator*() noexcept {
-			return front(*container);
-		}
+//		value_type&
+//		operator*() noexcept {
+//			return front(*container);
+//		}
 
-		value_type*
-		operator->() noexcept {
-			return &front(*container);
-		}
+//		value_type*
+//		operator->() noexcept {
+//			return &front(*container);
+//		}
 
 		const value_type*
 		operator->() const noexcept {

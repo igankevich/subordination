@@ -202,8 +202,6 @@ namespace sysx {
 		operator<<(std::ostream& out, const ipv6_addr& rhs) {
 			std::ostream::sentry s(out);
 			if (s) {
-				ipv6_addr tmp = rhs;
-				tmp.raw.to_host_format();
 				typedef ipv6_addr::hex_type hex_type;
 				typedef std::ostream::char_type char_type;
 				stdx::ios_guard g(out);
@@ -237,7 +235,7 @@ namespace sysx {
 						zeros_field = field_no;
 					}
 				}
-				bits::Hextet h;
+				bits::Hextet h = 0;
 				if (in >> h) {
 					char ch = in.peek();
 					// if prefixed with ::ffff:
@@ -266,7 +264,8 @@ namespace sysx {
 			if (in.fail()) {
 				std::fill(rhs.begin(), rhs.end(), 0);
 			} else {
-				rhs.raw.to_network_format();
+				// we do not need to change byte order here
+				// rhs.raw.to_network_format();
 			}
 			return in;
 		}
@@ -313,6 +312,11 @@ namespace sysx {
 		inet6_type inaddr;
 		hex_type hextets[8];
 		Bytes<inet6_type> raw;
+
+		static_assert(sizeof(addr) == sizeof(inaddr)
+			and sizeof(addr) == sizeof(hextets)
+			and sizeof(addr) == sizeof(raw),
+			"bad ipv6_addr size");
 	};
 
 	union endpoint {
@@ -421,14 +425,10 @@ namespace sysx {
 			if (s) {
 				if (rhs.family() == family_type::inet6) {
 					port_type port = to_host_format<port_type>(rhs.port6());
-					std::clog << "Writing host = "
-						<< rhs.addr6() << ':' << port << std::endl;
 					out << Left_br() << rhs.addr6() << Right_br()
 						<< Colon() << port;
 				} else {
 					port_type port = to_host_format<port_type>(rhs.port4());
-					std::clog << "Writing host = "
-						<< rhs.addr4() << ':' << port << std::endl;
 					out << rhs.addr4() << Colon() << port;
 				}
 			}
@@ -448,16 +448,12 @@ namespace sysx {
 				std::streampos oldg = in.tellg();
 				if (in >> host >> Colon() >> port) {
 					rhs.addr4(host, port);
-					std::clog << "Reading host4 = "
-						<< host << ':' << port << std::endl;
 				} else {
 					in.clear();
 					in.seekg(oldg);
 					ipv6_addr host6;
 					if (in >> Left_br() >> host6 >> Right_br() >> Colon() >> port) {
 						rhs.addr6(host6, port);
-						std::clog << "Reading host6 = "
-							<< host6 << ':' << port << std::endl;
 					}
 				}
 			}

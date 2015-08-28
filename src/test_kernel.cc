@@ -1,14 +1,18 @@
 #include <factory/factory.hh>
-using namespace factory;
+#include <factory/cfg/local.hh>
 
-std::atomic<uint32_t> kernel_count(0);
+using namespace factory;
+using namespace local_config;
+using factory::components::Error;
+
+std::atomic<int32_t> kernel_count(0);
 
 struct Sender: public Kernel {
 
-	Sender() { kernel_count++; }
-	virtual ~Sender() { kernel_count--; }
+	Sender() { ++kernel_count; }
+	~Sender() { --kernel_count; }
 
-	void act() {
+	void act(Server& this_server) override {
 //		throw Error("act() is called, but it should not",
 //			__FILE__, __LINE__, __func__);
 	}
@@ -16,40 +20,36 @@ struct Sender: public Kernel {
 
 struct Main: public Kernel {
 
-	Main() { kernel_count++; }
-	virtual ~Main() { kernel_count--; }
+	Main(Server& this_server, int argc, char* argv[])
+	{ ++kernel_count; }
 
-	void act() {
+	~Main()
+	{ --kernel_count; }
+
+	void act(Server& this_server) override {
 		for (uint32_t i=0; i<10; ++i)
-			upstream(the_server(), new Sender);
-		__factory.stop_now();
+			upstream(this_server.local_server(), new Sender);
+		this_server.factory()->stop();
 	}
 
-	void react(Kernel*) {
+	void react(Server&, Kernel*) override {
 		throw Error("react() is called, but it should not",
 			__FILE__, __LINE__, __func__);
 	}
 
 };
 
-struct App {
-	int run(int argc, char* argv[]) {
-		int retval = 0;
-		try {
-			the_server()->add_cpu(0);
-			the_server()->add_cpu(1);
-			the_server()->send(new Main);
-			__factory.start();
-			__factory.wait();
-		} catch (std::exception& e) {
-			std::cerr << e.what() << std::endl;
-			retval = 1;
-		}
-		return retval;
+int
+main(int argc, char* argv[]) {
+	using namespace factory;
+	int ret = factory_main<Main,config>(argc, argv);
+	if (kernel_count > 0) {
+		throw Error("some kernels were not deleted",
+			__FILE__, __LINE__, __func__);
 	}
-};
-
-int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+	if (kernel_count < 0) {
+		throw Error("some kernels were deleted multiple times",
+			__FILE__, __LINE__, __func__);
+	}
+	return ret;
 }

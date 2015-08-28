@@ -1,7 +1,11 @@
 #ifndef FACTORY_EXT_FDBUF_HH
 #define FACTORY_EXT_FDBUF_HH
 
+#include <vector>
+
 #include <factory/ext/intro.hh>
+#include <sysx/fildes.hh>
+#include <stdx/log.hh>
 
 namespace factory {
 

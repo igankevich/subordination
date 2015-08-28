@@ -26,17 +26,19 @@ namespace factory {
 
 			void
 			register_thread() noexcept {
+				slowlock_type lock(_slowmutex);
 				++_nthreads;
+				++_saved_nthreads;
 			}
 
 			void
 			global_barrier(slowlock_type& lock) noexcept {
-				if (--_nthreads <= 0) {
+				if (--_nthreads == 0) {
+					_nthreads = _saved_nthreads;
 					_semaphore.notify_all();
+				} else {
+					_semaphore.wait(lock);
 				}
-				_semaphore.wait(lock, [this] () {
-					return _nthreads <= 0;
-				});
 			}
 
 			slowmutex_type&
@@ -47,13 +49,10 @@ namespace factory {
 		private:
 			fastmutex_type _fastmutex;
 			slowmutex_type _slowmutex;
-			std::atomic<int32_t> _nthreads{0};
+			int32_t _nthreads = 0;
+			int32_t _saved_nthreads = 0;
 			std::condition_variable _semaphore;
 		};
-
-		extern std::mutex _slowmutex;
-		void register_thread();
-		void global_barrier(std::unique_lock<std::mutex>&);
 	
 		enum struct server_state {
 			initial,
@@ -270,10 +269,15 @@ namespace factory {
 				// and access to unitialised values.
 				typedef Global_thread_context::slowlock_type lock_type;
 				lock_type lock(context.slowmutex());
+				//std::cout << "global_barrier #1" << std::endl;
+				context.global_barrier(lock);
+				//std::cout << "global_barrier #1 end" << std::endl;
 				kernel_sack sack;
 				collect_kernels(std::back_inserter(sack));
 				// simple barrier for all threads participating in deletion
+				//std::cout << "global_barrier #2" << std::endl;
 				context.global_barrier(lock);
+				//std::cout << "global_barrier #2 end" << std::endl;
 				// destructors of scoped variables
 				// will destroy all kernels automatically
 			}

@@ -1,25 +1,49 @@
-#include "libfactory.cc"
+#include <factory/factory.hh>
+#include <factory/server/cpu_server.hh>
+#include <factory/server/timer_server.hh>
+
 #include "test.hh"
 
+namespace factory {
+
+inline namespace timer_config {
+
+	struct config {
+		typedef components::Managed_object<components::Server<config>> server;
+		typedef components::Principal<config> kernel;
+		typedef components::CPU_server<config> local_server;
+		typedef components::No_server<config> remote_server;
+		typedef components::Timer_server<config> timer_server;
+		typedef components::No_server<config> app_server;
+		typedef components::No_server<config> principal_server;
+		typedef components::No_server<config> external_server;
+		typedef components::Basic_factory<config> factory;
+	};
+
+	typedef config::kernel Kernel;
+	typedef config::server Server;
+}
+
+}
+
 using namespace factory;
+using namespace factory::timer_config;
 using factory::components::Error;
 
 struct Sleepy_kernel: public Kernel {
 
-	typedef stdx::log<Sleepy_kernel> this_log;
-
 	void pos(int p) { position = p; }
 	int pos() const { return position; }
 
-	void act() {
+	void act(Server& this_server) {
 		const auto now = current_time_nano();
 		const auto at = this->at().time_since_epoch().count();
-		this_log()
+		std::cout
 			<< "Waking up at " << now
 			<< ", scheduled at " << at
-			<< ", delta=" << std::abs(now-at)
+			<< ", delta=" << now-at
 			<< std::endl;
-		commit(the_server());
+		commit(this_server.local_server());
 	}
 
 	int position = 0;
@@ -27,15 +51,16 @@ struct Sleepy_kernel: public Kernel {
 
 struct Main: public Kernel {
 	typedef stdx::log<Main> this_log;
-	void act() {
+	Main(Server& this_server, int argc, char* argv[]) {}
+	void act(Server& this_server) {
 		std::vector<Kernel*> kernels(NUM_KERNELS);
-		// send kernels in reversed chronological order
+		// send kernels in inverse chronological order
 		for (int i=0; i<NUM_KERNELS; ++i) {
 			kernels[i] = new_sleepy_kernel(NUM_KERNELS - i, NUM_KERNELS - i);
 		}
-		timer_server()->send(kernels.data(), kernels.size());
+		this_server.timer_server()->send(kernels.data(), kernels.size());
 	}
-	void react(Kernel* child) {
+	void react(Server& this_server, Kernel* child) {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
 		if (last_pos + 1 != k->pos()) {
 			std::stringstream msg;
@@ -46,7 +71,7 @@ struct Main: public Kernel {
 		}
 		++last_pos;
 		if (++count == NUM_KERNELS) {
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 
@@ -67,27 +92,8 @@ private:
 	static const size_t NUM_KERNELS = 10;
 };
 
-struct App {
-	typedef stdx::log<App> this_log;
-	int run(int argc, char* argv[]) {
-		this_log() << "sizeof(time_point) == " << sizeof(Kernel::Clock::time_point) << std::endl;
-		this_log() << "sizeof(duration) == " << sizeof(Kernel::Clock::duration) << std::endl;
-		int retval = 0;
-		try {
-			the_server()->add_cpu(0);
-			this_log() << "Starting at " << current_time_nano() << std::endl;
-			__factory.start();
-			the_server()->send(new Main);
-			__factory.wait();
-		} catch (std::exception& e) {
-			std::cerr << e.what() << std::endl;
-			retval = 1;
-		}
-		return retval;
-	}
-};
-
-int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+int
+main(int argc, char* argv[]) {
+	using namespace factory;
+	return factory_main<Main,config>(argc, argv);
 }

@@ -1,8 +1,12 @@
 #ifndef FACTORY_EXT_ENCODING_HH
 #define FACTORY_EXT_ENCODING_HH
 
+#include <cstddef> // offsetof
+
 #include <sysx/endpoint.hh>
 #include <stdx/n_random_bytes.hh>
+#include <stdx/log.hh>
+#include <factory/error.hh>
 
 // This code is adapted from Omnifarious answer to Stackoverflow question.
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c
@@ -17,7 +21,7 @@ namespace factory {
 
 		constexpr size_t
 		base64_max_decoded_size(size_t len) noexcept {
-			return len / 4u * 3u;
+			return (len / 4u) * 3u;
 		}
 		
 		template<class It, class Res>
@@ -515,9 +519,9 @@ namespace factory {
 			Len64 payload_size() const {
 				using namespace constants;
 				switch (hdr.len) {
-					case LEN16_TAG: return to_host_format<Len16>(hdr.extlen);
+					case LEN16_TAG: return sysx::to_host_format<Len16>(hdr.extlen);
 					case LEN64_TAG: {
-						bits::Bytes<Len64> tmp(rawhdr + BASE_SIZE,
+						sysx::Bytes<Len64> tmp(rawhdr + BASE_SIZE,
 							rawhdr + BASE_SIZE + sizeof(Len64));
 						tmp.to_host_format();
 						return tmp.value();
@@ -533,12 +537,12 @@ namespace factory {
 					hdr.len = rhs;
 				} else if (rhs > 125 && rhs <= std::numeric_limits<Len16>::max()) {
 					hdr.len = LEN16_TAG;
-					bits::Bytes<Len16> raw = rhs;
+					sysx::Bytes<Len16> raw = rhs;
 					raw.to_network_format();
 					hdr.extlen = raw;
 				} else {
 					hdr.len = LEN64_TAG;
-					bits::Bytes<Len64> raw = rhs;
+					sysx::Bytes<Len64> raw = rhs;
 					raw.to_network_format();
 					std::copy(raw.begin(), raw.end(), rawhdr + BASE_SIZE);
 				}
@@ -553,10 +557,10 @@ namespace factory {
 				using namespace constants;
 				switch (hdr.len) {
 					case LEN16_TAG: return hdr.extlen2;
-					case LEN64_TAG: return bits::Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
+					case LEN64_TAG: return sysx::Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
 							rawhdr + header_size());
 					default:
-						return bits::Bytes<Mask>(rawhdr + BASE_SIZE,
+						return sysx::Bytes<Mask>(rawhdr + BASE_SIZE,
 							rawhdr + BASE_SIZE + MASK_SIZE);
 				}
 			}
@@ -570,12 +574,12 @@ namespace factory {
 					switch (hdr.len) {
 						case LEN16_TAG: hdr.extlen2 = rhs; break;
 						case LEN64_TAG: {
-							bits::Bytes<Mask> tmp = rhs;
+							sysx::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + header_size() - MASK_SIZE);
 							break;
 						}
 						default: {
-							bits::Bytes<Mask> tmp = rhs;
+							sysx::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + BASE_SIZE);
 							break;
 						}
@@ -587,7 +591,7 @@ namespace factory {
 			void copy_payload(It first, It last, Res result) const {
 				using namespace constants;
 				if (is_masked()) {
-					bits::Bytes<Mask> m = mask();
+					sysx::Bytes<Mask> m = mask();
 					size_t i = 0;
 					std::transform(first, last, result,
 						[&i,&m] (char ch) {
@@ -603,7 +607,7 @@ namespace factory {
 			char getpayloadc(It first, size_t nread) const {
 				using namespace constants;
 				if (is_masked()) {
-					bits::Bytes<Mask> m = mask();
+					sysx::Bytes<Mask> m = mask();
 					size_t i = 0;
 					return *first ^ m[nread%4];
 				} else {
@@ -611,7 +615,8 @@ namespace factory {
 				}
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const Web_socket_frame& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Web_socket_frame& rhs) {
 				typedef Web_socket_frame::Len16 Len16;
 				typedef Web_socket_frame::Len64 Len64;
 				typedef Web_socket_frame::Mask Mask;
@@ -624,11 +629,7 @@ namespace factory {
 						<< "opcode=" << rhs.hdr.opcode << ','
 						<< "maskbit=" << rhs.hdr.maskbit << ','
 						<< "len=" << rhs.hdr.len << ','
-//						<< "extlen16=" << bits::Bytes<Len16>(rhs.hdr.extlen) << ','
-//						<< "mask16=" << bits::Bytes<Mask>(rhs.hdr.extlen2) << ','
-//						<< "extlen64=" << bits::Bytes<Len64>(rhs.hdr.extlen3) << ','
-//						<< "mask64=" << bits::Bytes<Mask>(rhs.hdr.mask) << ','
-						<< "mask=" << bits::Bytes<Mask>(rhs.mask()) << ','
+						<< "mask=" << sysx::Bytes<Mask>(rhs.mask()) << ','
 						<< "payload_size=" << rhs.payload_size() << ','
 						<< "header_size=" << rhs.header_size();
 				}
@@ -636,11 +637,12 @@ namespace factory {
 			}
 		};
 
-//		extern std::random_device rng;
-		
+		struct websocket_category {};
+		struct websocket_encode_t {};
+		struct websocket_decode_t {};
+
 		template<class It, class Res, class Random>
 		void websocket_encode(It first, It last, Res result, Random& rng) {
-			struct websocket_encode_t {};
 			typedef stdx::log<websocket_encode_t> this_log;
 			size_t input_size = last - first;
 			if (input_size == 0) return;
@@ -654,9 +656,9 @@ namespace factory {
 			this_log() << "send header " << frame << std::endl;
 		}
 
+
 		template<class It, class Res>
 		size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
-			struct websocket_decode_t {};
 			typedef stdx::log<websocket_decode_t> this_log;
 			Web_socket_frame frame;
 			std::pair<It,It> payload = frame.decode(first, last);
@@ -674,8 +676,8 @@ namespace factory {
 		void websocket_accept_header(const std::string& web_socket_key, Res header) {
 			static const char WEBSOCKET_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 			static const size_t SHA_DIGEST_SIZE = 5;
-			typedef bits::Bytes<uint32_t, unsigned char> Digest_item;
-			bits::Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
+			typedef sysx::Bytes<uint32_t, unsigned char> Digest_item;
+			sysx::Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
 			SHA1 sha1;
 			sha1.input(web_socket_key.begin(), web_socket_key.end());
 			sha1.input(WEBSOCKET_GUID, WEBSOCKET_GUID + sizeof(WEBSOCKET_GUID)-1);
@@ -687,21 +689,12 @@ namespace factory {
 
 		template<class Res, class Random>
 		void websocket_key(Res key, Random& rng) {
-//			typedef std::random_device::result_type T;
-//			static const size_t WEBSOCKET_KEY_SIZE = 16;
-//			size_t ncopied = 0;
-//			unsigned char buf[WEBSOCKET_KEY_SIZE];
-//			while (ncopied < WEBSOCKET_KEY_SIZE) {
-//				size_t nb = std::min(WEBSOCKET_KEY_SIZE - ncopied, sizeof(T));
-//				bits::Bytes<T> bytes = components::rng();
-//				std::copy(bytes.begin(), bytes.begin() + nb, buf + ncopied);
-//				ncopied += nb;
-//			}
-			bits::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
+			sysx::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
 			base64_encode(buf.begin(), buf.begin() + buf.size(), key);
 		}
 
 	}
 
 }
+
 #endif // FACTORY_EXT_ENCODING_HH

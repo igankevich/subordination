@@ -205,7 +205,7 @@ namespace factory {
 			App_server* app_server() { return &_app_server; }
 			Principal_server* principal_server() { return &_principal_server; }
 
-			sysx::endpoint addr() const { return _remote_server.server_addr(); }
+//			sysx::endpoint addr() const { return _remote_server.server_addr(); }
 
 			void setrole(Role rhs) { this->_role = rhs; }
 

@@ -2,6 +2,8 @@
 #define DATUM_HH
 
 #include <random>
+#include <chrono>
+#include <sysx/packstream.hh>
 
 typedef std::chrono::nanoseconds::rep Time;
 

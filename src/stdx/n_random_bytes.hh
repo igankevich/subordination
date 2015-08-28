@@ -6,6 +6,49 @@
 
 namespace stdx {
 
+	template<class Engine, class Result>
+	struct adapt_engine {
+
+		typedef Result result_type;
+		typedef typename Engine::result_type base_result_type;
+
+		explicit
+		adapt_engine(Engine& rhs):
+		_engine(rhs),
+		_it(end())
+		{}
+
+		result_type
+		operator()() {
+			if (_it == end()) {
+				_it = begin();
+				_result = _engine();
+			}
+			result_type res = *_it;
+			++_it;
+			return res;
+		}
+
+	private:
+
+		result_type*
+		begin() { return _buffer; }
+
+		result_type*
+		end() { return _buffer + sizeof(_buffer); }
+
+		Engine& _engine;
+		union {
+		result_type _buffer[sizeof(base_result_type) / sizeof(result_type)];
+		base_result_type _result;
+		};
+
+		result_type* _it;
+
+		static_assert(sizeof(base_result_type) % sizeof(result_type) == 0,
+			"bad result type");
+	};
+
 	template<class Result, class Engine>
 	Result
 	n_random_bytes(Engine& engine) {

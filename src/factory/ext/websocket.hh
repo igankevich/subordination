@@ -5,6 +5,8 @@
 #include <unordered_map>
 
 #include <sysx/socket.hh>
+#include <factory/ext/lbuffer.hh>
+#include <factory/ext/encoding.hh>
 
 namespace factory {
 
