@@ -8,11 +8,6 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall])
 #AM_SILENT_RULES([yes])
 
-# libtool
-#AM_PROG_AR
-#LT_INIT
-#AC_SUBST([LIBTOOL_DEPS])
-
 # Check for arguments.
 AC_ARG_ENABLE([warnings],
 	AS_HELP_STRING([--enable-warnings], [enable all known compiler warnings]))
@@ -38,26 +33,26 @@ AC_PROG_CXX
 #	[[#include <poll.h>]])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_TYPE_INT8_T
-AC_TYPE_INT16_T
-AC_TYPE_INT32_T
-AC_TYPE_INT64_T
-AC_TYPE_SIZE_T
-AC_TYPE_SSIZE_T
-AC_TYPE_UINT8_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
+#AC_TYPE_INT8_T
+#AC_TYPE_INT16_T
+#AC_TYPE_INT32_T
+#AC_TYPE_INT64_T
+#AC_TYPE_SIZE_T
+#AC_TYPE_SSIZE_T
+#AC_TYPE_UINT8_T
+#AC_TYPE_UINT16_T
+#AC_TYPE_UINT32_T
+#AC_TYPE_UINT64_T
 #AC_CHECK_TYPES([ptrdiff_t])
 #AC_CHECK_TYPES([__int128, unsigned __int128_t, __uint128_t])
-AC_TYPE_PID_T
+#AC_TYPE_PID_T
 AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AX_PTHREAD
 #AX_GCC_BUILTIN(__builtin_bswap64)
 #AX_GCC_BUILTIN(__builtin_bswap32)
 #AC_C_BIGENDIAN
 #AX_CXX_GCC_ABI_DEMANGLE
-FACTORY_SOCKADDR_LEN
+#FACTORY_SOCKADDR_LEN
 
 # compiler's security flags
 AS_IF([test "x$enable_secureflags" = "xyes"], [FACTORY_SECURE_BINARY])
