@@ -3,6 +3,7 @@
 
 #include <factory/error.hh>
 #include <stdx/log.hh>
+#include <sysx/bits/check.hh>
 
 namespace factory {
 
@@ -32,6 +33,8 @@ namespace factory {
 				if (ptr) {
 					try {
 						std::rethrow_exception(ptr);
+					} catch (sysx::bits::os_error& err) {
+						this_log() << err << std::endl;
 					} catch (Error& err) {
 						this_log() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
 					} catch (std::exception& err) {

@@ -49,7 +49,7 @@ namespace sysx {
 			_owner(rhs._owner),
 			_sem(rhs._sem)
 		{
-			rhs._sem = nullptr;
+			rhs._sem = SEM_FAILED;
 		}
 
 		~process_semaphore() {
@@ -101,7 +101,7 @@ namespace sysx {
 					__FILE__, __LINE__, __func__);
 				if (this->_owner) {
 					bits::check(::sem_unlink(this->_path.c_str()),
-						__FILE__, __LINE__, __func__);
+						this->_path.c_str(), __LINE__, __func__);
 				}
 			}
 		}

@@ -202,7 +202,8 @@ namespace factory {
 			typedef sysx::basic_packstream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
-			explicit Sub_Rserver(const Application& app):
+			explicit
+			Sub_Rserver(const Application& app):
 				_proc(app.execute()), //TODO: race condition
 				_osem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'o'), 0666),
 				_isem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'i'), 0666),

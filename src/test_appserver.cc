@@ -1,17 +1,73 @@
 #include <factory/factory.hh>
-#include <factory/cfg/standard.hh>
+#include <factory/server/cpu_server.hh>
+#include <factory/server/timer_server.hh>
+#include <factory/server/app_server.hh>
+
+#define XSTRINGIFY(x) STRINGIFY(x)
+#define STRINGIFY(x) #x
+
+#if defined(FACTORY_TEST_SERVER)
+
+namespace factory {
+
+	inline namespace daemon_config {
+
+		struct config {
+			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Principal<config> kernel;
+			typedef components::CPU_server<config> local_server;
+			typedef components::Sub_Iserver<config> remote_server;
+			typedef components::Timer_server<config> timer_server;
+			typedef components::No_server<config> app_server;
+			typedef components::No_server<config> principal_server;
+			typedef components::No_server<config> external_server;
+			typedef components::Basic_factory<config> factory;
+		};
+
+		typedef config::kernel Kernel;
+		typedef config::server Server;
+	}
+
+}
+using namespace factory::daemon_config;
+#endif
+
+#if defined(FACTORY_TEST_APP)
+namespace factory {
+
+	inline namespace app_config {
+
+		struct config {
+			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Principal<config> kernel;
+			typedef components::CPU_server<config> local_server;
+			typedef components::Principal_server<config> remote_server;
+			typedef components::Timer_server<config> timer_server;
+			typedef components::No_server<config> app_server;
+			typedef components::No_server<config> principal_server;
+			typedef components::No_server<config> external_server;
+			typedef components::Basic_factory<config> factory;
+		};
+
+		typedef config::kernel Kernel;
+		typedef config::server Server;
+	}
+
+}
+using namespace factory::app_config;
+#endif
 
 using namespace factory;
-using namespace factory::standard_config;
 using factory::components::Application;
 
 #include "datum.hh"
+
 
 sysx::endpoint server_endpoint("127.0.0.1", 10000);
 sysx::endpoint client_endpoint("127.0.0.1", 20000);
 
 const uint32_t NUM_SIZES = 1;
-const uint32_t NUM_KERNELS = 2;
+const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
@@ -32,8 +88,8 @@ struct Test_socket: public Kernel {
 	}
 
 	void act(Server& this_server) {
-		this_log() << "Test_socket::act(): It works!" << std::endl;
-//		commit(remote_server());
+		std::cout << "Test_socket::act(): It works!" << std::endl;
+		commit(this_server.remote_server());
 	}
 
 	void write(sysx::packstream& out) {
@@ -128,7 +184,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 
 		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 
@@ -150,40 +206,37 @@ struct Main: public Kernel {
 
 	Main(Server& this_server, int argc, char* argv[]) {
 		auto& __factory = *this_server.factory();
+		__factory.types().register_type(Test_socket::static_type());
+		#if defined(FACTORY_TEST_SERVER)
+		std::cout << "App = " << XSTRINGIFY(FACTORY_APP_PATH) << std::endl;
+		__factory.remote_server()->add(Application(XSTRINGIFY(FACTORY_APP_PATH), MY_APP_ID));
+		#endif
+		#if defined(FACTORY_TEST_APP)
 		Application::id_type app = sysx::this_process::getenv("APP_ID", 0);
 		if (app == MY_APP_ID) {
 			this_log() << "I am an application no. " << app << "!" << std::endl;
-			__factory.setrole(Factory::Role::Subordinate);
-			__factory.start();
-			sleep(3);
-			__factory.stop();
-			__factory.wait();
-		} else {
-			__factory.app_server()->add(Application(argv[0], MY_APP_ID));
-			__factory.setrole(Factory::Role::Principal);
-			__factory.start();
-			the_server()->send(new Main);
-			sleep(3);
-			__factory.stop();
-			__factory.wait();
 		}
+		#endif
 	}
 
 	void act(Server& this_server) {
+		#if defined(FACTORY_TEST_SERVER)
 		Test_socket* kernel = new Test_socket;
 		kernel->from(server_endpoint);
 		kernel->setapp(MY_APP_ID);
 		kernel->parent(this);
-		app_server()->send(kernel);
+		this_server.remote_server()->send(kernel);
+		sleep(3);
+		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-//			upstream(the_server(), new Sender(i, _sleep));
+//			upstream(this_server.local_server(), new Sender(i, _sleep));
 	}
 
 	void react(Server& this_server, Kernel*) {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 

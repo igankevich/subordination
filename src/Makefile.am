@@ -27,7 +27,7 @@ CODE_COVERAGE_IGNORE_PATTERN += "test_*.cc" "datum.hh"
 #-Waggregate-return                  -- detects return of structs and unions
 #-Wabi                               -- probably not needed
 
-check_PROGRAMS = \
+ONE_FILE_TESTS = \
 	test_buffer \
 	test_marshaling \
 	test_socket \
@@ -43,10 +43,16 @@ check_PROGRAMS = \
 	test_kernel \
 	test_discovery \
 	test_poller \
-	test_appserver \
 	test_posix
 
-TESTS = $(check_PROGRAMS) \
+check_PROGRAMS = \
+	$(ONE_FILE_TESTS) \
+	test_appserver_app \
+	test_appserver_srv
+
+TESTS = \
+	$(ONE_FILE_TESTS) \
+	test_appserver_srv \
 	test_static
 
 test_uint128_custom_SOURCES = test_uint128.cc
@@ -54,5 +60,12 @@ test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128
 
 test_websocket_SOURCES = test_socket.cc
 test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_WEBSOCKET
+
+test_appserver_srv_SOURCES = test_appserver.cc
+test_appserver_srv_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_SERVER \
+	-DFACTORY_APP_PATH=$(abs_srcdir)/test_appserver_app
+
+test_appserver_app_SOURCES = test_appserver.cc
+test_appserver_app_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_APP
 
 test_discovery_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_NO_CPU_BINDING
