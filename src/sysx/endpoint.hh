@@ -178,6 +178,11 @@ namespace sysx {
 			return inaddr;
 		}
 
+		constexpr const inet6_type&
+		rep() const noexcept {
+			return inaddr;
+		}
+
 		constexpr bool
 		operator<(const ipv6_addr& rhs) const {
 			return addr < rhs.addr;
@@ -319,6 +324,40 @@ namespace sysx {
 			"bad ipv6_addr size");
 	};
 
+	template<class Addr>
+	constexpr sockinet6_type
+	new_sockinet(family_type f, port_type p, Addr h);
+
+	template<>
+	constexpr sockinet6_type
+	new_sockinet<ipv6_addr>(family_type f, port_type p, ipv6_addr h) {
+		return sockinet6_type{
+			#ifdef __MACH__
+			0,
+			#endif
+			static_cast<sa_family_type>(f),
+			to_network_format<port_type>(p),
+			0, // flowinfo
+			h.rep(),
+			0 // scope
+		};
+	}
+
+	template<>
+	constexpr sockinet6_type
+	new_sockinet<ipv4_addr>(family_type f, port_type p, ipv4_addr h) {
+		return sockinet6_type{
+				#ifdef __MACH__
+				0,
+				#endif
+				static_cast<sa_family_type>(f),
+				to_network_format<port_type>(p),
+				h.rep(),
+				IN6ADDR_ANY_INIT,
+				0 // scope
+		};
+	}
+
 	union endpoint {
 
 		typedef uint16_t portable_family_type;
@@ -334,29 +373,11 @@ namespace sysx {
 
 		constexpr
 		endpoint(const ipv4_addr h, const port_type p) noexcept:
-			_addr6{
-			#if HAVE_SOCKADDR_LEN
-				0,
-			#endif
-				static_cast<sa_family_type>(family_type::inet),
-				to_network_format<port_type>(p),
-				h.rep(),
-				IN6ADDR_ANY_INIT,
-				0
-			} {}
+			_addr6(new_sockinet(family_type::inet, p, h)) {}
 
 		constexpr
 		endpoint(const ipv6_addr& h, const port_type p) noexcept:
-			_addr6{
-			#if HAVE_SOCKADDR_LEN
-				0,
-			#endif
-				static_cast<sa_family_type>(family_type::inet6),
-				to_network_format<port_type>(p),
-				0, // flowinfo
-				h,
-				0 // scope
-			} {}
+			_addr6(new_sockinet(family_type::inet6, p, h)) {}
 			
 		constexpr
 		endpoint(const sockinet4_type& rhs) noexcept:
@@ -372,16 +393,12 @@ namespace sysx {
 
 		constexpr
 		endpoint(const endpoint& rhs, const port_type newport) noexcept:
-			_addr6{
-			#if HAVE_SOCKADDR_LEN
-				0,
-			#endif
-				rhs.sa_family(),
-				to_network_format<port_type>(newport),
-				rhs.family() == family_type::inet6 ? 0 : rhs._addr6.sin6_flowinfo, // flowinfo or sin_addr
-				rhs.family() == family_type::inet  ? inet6_type{} : rhs._addr6.sin6_addr,
-				0 // scope
-			} {}
+			_addr6(
+				rhs.family() == family_type::inet ?
+				new_sockinet<ipv4_addr>(family_type::inet, newport, 
+					ipv4_addr(rhs._addr6.sin6_flowinfo)) :
+				new_sockinet<ipv6_addr>(family_type::inet6, newport,
+					ipv6_addr(rhs._addr6.sin6_addr))) {}
 
 		bool
 		operator<(const endpoint& rhs) const noexcept {
