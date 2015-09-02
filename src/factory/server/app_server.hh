@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <map>
+#include <random>
 
 #include <stdx/n_random_bytes.hh>
 
@@ -75,26 +76,26 @@ namespace factory {
 			typedef stdx::log<Principal_server> this_log;
 
 			Principal_server():
-				_ibuf(),
-				_obuf(),
-				_istream(&this->_ibuf),
-				_ostream(&this->_obuf),
-				_isem(),
-				_osem(),
-				_thread(),
-				_app(sysx::this_process::getenv("APP_ID", Application::ROOT))
-				{}
+			_ibuf(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 1)),
+			_obuf(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 0)),
+			_istream(&this->_ibuf),
+			_ostream(&this->_obuf),
+			_isem(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'i')),
+			_osem(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'o')),
+			_thread(),
+			_app(sysx::this_process::getenv("APP_ID", Application::ROOT))
+			{}
 
 			Principal_server(Principal_server&& rhs):
-				_ibuf(std::move(rhs._ibuf)),
-				_obuf(std::move(rhs._obuf)),
-				_istream(std::move(rhs._istream)),
-				_ostream(std::move(rhs._ostream)),
-				_isem(std::move(rhs._isem)),
-				_osem(std::move(rhs._osem)),
-				_thread(std::move(rhs._thread)),
-				_app(rhs._app)
-				{}
+			_ibuf(std::move(rhs._ibuf)),
+			_obuf(std::move(rhs._obuf)),
+			_istream(std::move(rhs._istream)),
+			_ostream(std::move(rhs._ostream)),
+			_isem(std::move(rhs._isem)),
+			_osem(std::move(rhs._osem)),
+			_thread(std::move(rhs._thread)),
+			_app(rhs._app)
+			{}
 
 			Category
 			category() const noexcept override {
@@ -108,10 +109,10 @@ namespace factory {
 			start() override {
 				base_server::start();
 				this_log() << "Principal_server::start()" << std::endl;
-				this->_ibuf.attach(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 1));
-				this->_obuf.attach(generate_shmem_id(sysx::this_process::id(), sysx::this_process::parent_id(), 0));
-				this->_isem.open(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'i'));
-				this->_osem.open(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'o'));
+//				this->_ibuf.attach();
+//				this->_obuf.attach();
+//				this->_isem.open();
+//				this->_osem.open();
 				this->_thread = std::thread(std::mem_fn(&Principal_server::serve), this);
 			}
 

@@ -21,13 +21,12 @@ namespace factory {
 			typedef typename sysx::shared_mem<char_type>::size_type size_type;
 			typedef typename sysx::shared_mem<char_type>::path_type path_type;
 			typedef stdx::spin_mutex mutex_type;
-			typedef typename sysx::shared_mem<Ch>::proj_id_type proj_id_type;
 			typedef stdx::log<basic_shmembuf> this_log;
 
 			explicit
 			basic_shmembuf(path_type&& path, sysx::mode_type mode):
-				_sharedmem(std::forward<path_type>(path), 512, mode, BUFFER_PROJID),
-				_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
+			_sharedmem(std::forward<path_type>(path), 512, mode, BUFFER_PROJID),
+			_sharedpart(new (this->_sharedmem.ptr()) shmem_header)
 			{
 				this->_sharedpart->size = this->_sharedmem.size();
 				char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
@@ -38,8 +37,8 @@ namespace factory {
 
 			explicit
 			basic_shmembuf(path_type&& path):
-				_sharedmem(std::forward<path_type>(path), BUFFER_PROJID),
-				_sharedpart(static_cast<shmem_header*>(this->_sharedmem.ptr()))
+			_sharedmem(std::forward<path_type>(path), BUFFER_PROJID),
+			_sharedpart(static_cast<shmem_header*>(this->_sharedmem.ptr()))
 			{
 				char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
 				this->setg(ptr, ptr, ptr);
@@ -49,34 +48,12 @@ namespace factory {
 			} 
 
 			basic_shmembuf(basic_shmembuf&& rhs):
-				_sharedmem(std::move(rhs._sharedmem)),
-				_sharedpart(rhs._sharedpart)
-				{}
+			_sharedmem(std::move(rhs._sharedmem)),
+			_sharedpart(rhs._sharedpart)
+			{}
 
 			basic_shmembuf() = default;
 			~basic_shmembuf() = default;
-
-			void open(path_type&& path, sysx::mode_type mode) {
-				this->_sharedmem.open(std::forward<path_type>(path), 512, mode, BUFFER_PROJID);
-				this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
-				this->_sharedpart->size = this->_sharedmem.size();
-				char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
-				this->setg(ptr, ptr, ptr);
-				this->setp(ptr, this->_sharedmem.end());
-				this->writeoffs();
-				this->debug("basic_shmembuf::open()");
-			}
-			
-			void attach(path_type&& path) {
-				this->_sharedmem.attach(std::forward<path_type>(path), BUFFER_PROJID),
-//				this->_sharedpart = new (this->_sharedmem.ptr()) shmem_header;
-				this->_sharedpart = static_cast<shmem_header*>(this->_sharedmem.ptr());
-				char_type* ptr = this->_sharedmem.begin() + sizeof(shmem_header);
-				this->setg(ptr, ptr, ptr);
-				this->setp(ptr, this->_sharedmem.end());
-				this->sync_sharedmem();
-				this->debug("basic_shmembuf::attach()");
-			}
 
 			int_type overflow(int_type c = traits_type::eof()) {
 //				this->sync_sharedmem();
@@ -100,7 +77,8 @@ namespace factory {
 					: traits_type::to_int_type(*this->gptr());
 			}
 
-			int_type uflow() {
+			int_type
+			uflow() {
 //				this->sync_sharedmem();
 				if (this->underflow() == traits_type::eof()) return traits_type::eof();
 				int_type c = traits_type::to_int_type(*this->gptr());
@@ -109,7 +87,8 @@ namespace factory {
 				return c;
 			}
 
-			std::streamsize xsputn(const char_type* s, std::streamsize n) override {
+			std::streamsize
+			xsputn(const char_type* s, std::streamsize n) override {
 				this->debug("xsputn");
 				std::streamsize nwritten = 0;
 				while (nwritten != n) {
@@ -214,7 +193,7 @@ namespace factory {
 				pos_type poff = 0;
 			} *_sharedpart = nullptr;
 
-			static const proj_id_type BUFFER_PROJID = 'b';
+			static const char BUFFER_PROJID = 'b';
 		};
 
 	}

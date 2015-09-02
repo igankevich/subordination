@@ -21,7 +21,7 @@ struct Test_shmem {
 
 	void test_shmem() {
 		const typename shared_mem<T>::size_type SHMEM_SIZE = 512;
-		const typename shared_mem<T>::proj_id_type SHMEMPROJID = 'F';
+		const char SHMEMPROJID = 'F';
 		shared_mem<T> mem1("/test-shmem", SHMEM_SIZE, 0666, SHMEMPROJID);
 		shared_mem<T> mem2("/test-shmem", SHMEMPROJID);
 		test::invar(shmem_invariant, mem1);
