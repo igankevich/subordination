@@ -337,9 +337,19 @@ namespace sysx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
 	struct basic_fildesbuf: public std::basic_streambuf<Ch,Tr> {
+
 		std::streamsize
-		xsputn(char_type* s, std::streamsize n) override {
+		xsputn(const char_type* s, std::streamsize n) override {
+			return _fd.write(s, n);
 		}
+
+		std::streamsize
+		xsgetn(char_type* s, std::streamsize n) override {
+			return _fd.read(s, n);
+		}
+
+	private:
+		sysx::fd& _fd;
 	};
 
 }
