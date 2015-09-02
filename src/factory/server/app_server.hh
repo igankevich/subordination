@@ -4,6 +4,8 @@
 #include <thread>
 #include <map>
 
+#include <stdx/n_random_bytes.hh>
+
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
 #include <sysx/packstream.hh>
@@ -37,6 +39,25 @@ namespace factory {
 			name.shrink_to_fit();
 			return name;
 		}
+
+		struct Global_semaphore: public sysx::process_semaphore {
+
+			Global_semaphore():
+			sysx::process_semaphore(generate_name(), 0666)
+			{}
+
+		private:
+			std::string
+			generate_name() {
+				std::random_device rng;
+				uint128_t big_num = stdx::n_random_bytes<uint128_t>(rng);
+				std::ostringstream str;
+				str << "/factory-sem-" << sysx::this_process::id() << '-' << "app-" << big_num;
+				std::string name = str.str();
+				name.shrink_to_fit();
+				return name;
+			}
+		};
 
 		template<class T>
 		struct Principal_server: public Managed_object<Server<T>> {
@@ -202,24 +223,25 @@ namespace factory {
 			typedef sysx::basic_packstream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
+			template<class Semaphore>
 			explicit
-			Sub_Rserver(const Application& app):
-				_proc(app.execute()), //TODO: race condition
-				_osem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'o'), 0666),
-				_isem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'i'), 0666),
-				_ibuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 0), 0666),
-				_obuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 1), 0666),
-				_ostream(&this->_obuf)
-				{}
+			Sub_Rserver(const Application& app, Semaphore& sem):
+			_proc(app.execute(sem)),
+			_osem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'o'), 0666),
+			_isem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'i'), 0666),
+			_ibuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 0), 0666),
+			_obuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 1), 0666),
+			_ostream(&this->_obuf)
+			{}
 
 			Sub_Rserver(Sub_Rserver&& rhs):
-				_proc(std::move(rhs._proc)),
-				_osem(std::move(rhs._osem)),
-				_isem(std::move(rhs._isem)),
-				_ibuf(std::move(rhs._ibuf)),
-				_obuf(std::move(rhs._obuf)),
-				_ostream(std::move(rhs._ostream))
-				{}
+			_proc(std::move(rhs._proc)),
+			_osem(std::move(rhs._osem)),
+			_isem(std::move(rhs._isem)),
+			_ibuf(std::move(rhs._ibuf)),
+			_obuf(std::move(rhs._obuf)),
+			_ostream(&this->_obuf)
+			{}
 
 			Category
 			category() const noexcept override {
@@ -282,7 +304,8 @@ namespace factory {
 				};
 			}
 
-			void add(const app_type& app) {
+			void
+			add(const app_type& app) {
 				if (this->_apps.count(app.id()) > 0) {
 					throw Error("trying to add an existing app",
 						__FILE__, __LINE__, __func__);
@@ -290,10 +313,12 @@ namespace factory {
 				this_log() << "starting app="
 					<< app << std::endl;
 				std::unique_lock<std::mutex> lock(this->_mutex);
-				this->_apps.emplace(app.id(), rserver_type(app));
+				this->_apps.emplace(app.id(), rserver_type(app, _globalsem));
+				_globalsem.notify_one();
 			}
 			
-			void send(kernel_type* k) {
+			void
+			send(kernel_type* k) {
 				if (k->moves_everywhere()) {
 //					std::for_each(this->_apps.begin(), this->_apps.end(),
 //						[k] (pair_type& rhs) {
@@ -365,6 +390,7 @@ namespace factory {
 			map_type _apps;
 			std::mutex _mutex;
 			std::condition_variable _semaphore;
+			Global_semaphore _globalsem;
 		};
 
 	}

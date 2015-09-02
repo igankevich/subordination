@@ -299,7 +299,7 @@ namespace sysx {
 	struct procgroup {
 
 		template<class F>
-		void
+		proc&
 		add(F child_main) {
 			proc p(child_main);
 			if (_procs.empty()) {
@@ -307,6 +307,7 @@ namespace sysx {
 			}
 			p.set_group_id(_gid);
 			_procs.push_back(std::move(p));
+			return _procs.back();
 		}
 
 		int

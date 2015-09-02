@@ -54,8 +54,11 @@ namespace factory {
 
 			id_type id() const { return this->_id; }
 
-			sysx::proc execute() const {
-				return sysx::proc([this] () {
+			template<class Semaphore>
+			sysx::proc
+			execute(Semaphore& sem) const {
+				return sysx::proc([this,&sem] () {
+					sem.wait();
 					sysx::this_process::env("APP_ID", this->_id);
 					return sysx::this_process::execute(this->_execpath);
 				});
