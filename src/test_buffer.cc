@@ -18,6 +18,7 @@ using factory::components::basic_fdbuf;
 using factory::components::basic_kstream;
 using factory::components::LBuffer;
 using factory::components::end_packet;
+using factory::components::basic_streambuf_ext;
 
 std::random_device rng;
 
@@ -254,6 +255,56 @@ void test_kernelbuf_withvector() {
 	}
 }
 
+struct Stream_source {
+
+	explicit
+	Stream_source(std::istream& s):
+	_stream(s)
+	{}
+
+	ssize_t
+	sgetn(char* buf, size_t n) const noexcept {
+		_stream.read(static_cast<char*>(buf), n);
+		return _stream.gcount();
+	}
+
+private:
+	std::istream& _stream;
+};
+
+struct Stream_sink {
+
+	explicit
+	Stream_sink(std::ostream& s):
+	_stream(s)
+	{}
+
+	ssize_t
+	sputn(const char* buf, size_t n) const noexcept {
+		const std::streampos p0 = _stream.tellp();
+		_stream.write(buf, n);
+		const std::streampos p1 = _stream.tellp();
+		return p1-p0;
+	}
+
+private:
+	std::ostream& _stream;
+};
+
+template<class T>
+void
+test_source_sink() {
+	std::string content = "Hello world";
+	std::stringstream src;
+	src << content;
+	basic_streambuf_ext<T> buf;
+	buf.fill_from(*src.rdbuf());
+	std::stringstream result;
+	buf.flush_to(*result.rdbuf());
+//	result << &buf;
+	test::equal(result.str(), content);
+}
+
 int main(int argc, char* argv[]) {
 	test_buffer<char, LBuffer>();
 	test_buffer<unsigned char, LBuffer>();
@@ -265,5 +316,6 @@ int main(int argc, char* argv[]) {
 	test_kernelbuf<char>();
 	test_kernelbuf_with_stringstream<char>();
 	test_kernelbuf_withvector<char>();
+	test_source_sink<char>();
 	return 0;
 }

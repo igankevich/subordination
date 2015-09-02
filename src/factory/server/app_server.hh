@@ -331,8 +331,9 @@ namespace factory {
 //						}
 //					);
 				} else {
-					typename map_type::iterator result = this->_apps.find(k->app());
-					if (result == this->_apps.end()) {
+					typename map_type::iterator
+					result = _apps.find(k->app());
+					if (result == _apps.end()) {
 						throw Error("bad app id", __FILE__, __LINE__, __func__);
 					}
 					result->second.send(k);
@@ -379,7 +380,8 @@ namespace factory {
 			on_process_exit(sysx::proc& p, sysx::proc_info status) {
 				sysx::pid_type pid = p.id();
 				std::unique_lock<std::mutex> lock(this->_mutex);
-				auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
+				typename map_type::iterator
+				result = std::find_if(this->_apps.begin(), this->_apps.end(),
 					[pid] (const pair_type& rhs) {
 						return rhs.second.proc() == pid;
 					}

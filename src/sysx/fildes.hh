@@ -335,6 +335,13 @@ namespace sysx {
 		path_type _path;
 	};
 
+	template<class Ch, class Tr=std::char_traits<Ch>>
+	struct basic_fildesbuf: public std::basic_streambuf<Ch,Tr> {
+		std::streamsize
+		xsputn(char_type* s, std::streamsize n) override {
+		}
+	};
+
 }
 
 #endif // SYSX_FILDES_HH

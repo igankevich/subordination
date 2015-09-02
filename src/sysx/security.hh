@@ -103,6 +103,12 @@ namespace sysx {
 		}
 	};
 
+	struct Disable_sync_with_stdio {
+		Disable_sync_with_stdio() {
+			std::ios_base::sync_with_stdio(false);
+		}
+	};
+
 }
 
 #endif // SYSX_SECURITY_HH

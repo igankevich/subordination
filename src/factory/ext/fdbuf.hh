@@ -171,10 +171,20 @@ namespace factory {
 				return pos_type(off_type(-1));
 			}
 
-//			void setfd(int rhs) { this->_fd = rhs; }
-			void setfd(fd_type&& rhs) { this->_fd = std::move(rhs); }
-			const fd_type& fd() const { return this->_fd; }
-			fd_type& fd() { return this->_fd; }
+			void
+			setfd(fd_type&& rhs) {
+				this->_fd = std::move(rhs);
+			}
+
+			const fd_type&
+			fd() const {
+				return this->_fd;
+			}
+
+			fd_type&
+			fd() {
+				return this->_fd;
+			}
 		
 		private:
 			static
