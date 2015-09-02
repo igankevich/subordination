@@ -49,26 +49,28 @@ namespace factory {
 
 			Application(): _execpath(), _id(ROOT) {}
 
-			explicit Application(const path_type& exec, id_type id):
+			explicit
+			Application(const path_type& exec, id_type id):
 				_execpath(exec), _id(id) {}
 
-			id_type id() const { return this->_id; }
-
-			template<class Semaphore>
-			sysx::proc
-			execute(Semaphore& sem) const {
-				return sysx::proc([this,&sem] () {
-					sem.wait();
-					sysx::this_process::env("APP_ID", this->_id);
-					return sysx::this_process::execute(this->_execpath);
-				});
+			id_type
+			id() const {
+				return this->_id;
 			}
 
-			bool operator<(const Application& rhs) const {
+			int
+			execute() const {
+				sysx::this_process::env("APP_ID", this->_id);
+				return sysx::this_process::execute(this->_execpath);
+			}
+
+			bool
+			operator<(const Application& rhs) const {
 				return this->_id < rhs._id;
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, const Application& rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Application& rhs) {
 				return out
 					<< "{exec=" << rhs._execpath
 					<< ",id=" << rhs._id << '}';

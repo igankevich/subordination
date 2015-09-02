@@ -404,14 +404,16 @@ namespace sysx {
 
 		// TODO: setenv() is known to cause memory leaks
 		template<class T>
-		void env(const char* key, T val) {
+		void
+		env(const char* key, T val) {
 			std::string str = bits::to_string(val);
 			bits::check(::setenv(key, str.c_str(), 1),
 				__FILE__, __LINE__, __func__);
 		}
 
 		template<class ... Args>
-		int execute(const Args& ... args) {
+		int
+		execute(const Args& ... args) {
 			bits::To_string tmp[] = { args... };
 			const size_t argc = sizeof...(Args);
 			char* argv[argc + 1];
@@ -420,13 +422,6 @@ namespace sysx {
 			}
 			argv[argc] = 0;
 			return bits::check(::execv(argv[0], argv), 
-				__FILE__, __LINE__, __func__);
-		}
-
-		pid_type
-		wait(int* status) {
-			return bits::check_if_not<std::errc::interrupted>(
-				::wait(status),
 				__FILE__, __LINE__, __func__);
 		}
 

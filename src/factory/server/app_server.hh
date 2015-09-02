@@ -223,19 +223,18 @@ namespace factory {
 			typedef sysx::basic_packstream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
-			template<class Semaphore>
 			explicit
-			Sub_Rserver(const Application& app, Semaphore& sem):
-			_proc(app.execute(sem)),
-			_osem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'o'), 0666),
-			_isem(generate_sem_name(this->_proc.id(), sysx::this_process::id(), 'i'), 0666),
-			_ibuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 0), 0666),
-			_obuf(generate_shmem_id(this->_proc.id(), sysx::this_process::id(), 1), 0666),
+			Sub_Rserver(sysx::pid_type pid):
+			_proc(pid),
+			_osem(generate_sem_name(pid, sysx::this_process::id(), 'o'), 0666),
+			_isem(generate_sem_name(pid, sysx::this_process::id(), 'i'), 0666),
+			_ibuf(generate_shmem_id(pid, sysx::this_process::id(), 0), 0666),
+			_obuf(generate_shmem_id(pid, sysx::this_process::id(), 1), 0666),
 			_ostream(&this->_obuf)
 			{}
 
 			Sub_Rserver(Sub_Rserver&& rhs):
-			_proc(std::move(rhs._proc)),
+			_proc(rhs._proc),
 			_osem(std::move(rhs._osem)),
 			_isem(std::move(rhs._isem)),
 			_ibuf(std::move(rhs._ibuf)),
@@ -250,9 +249,6 @@ namespace factory {
 					[] () { return nullptr; }
 				};
 			}
-
-			const process_type&
-			proc() const noexcept { return this->_proc; }
 
 			void send(kernel_type* k) {
 				olock_type lock(this->_obuf);
@@ -275,8 +271,13 @@ namespace factory {
 				this->_osem.notify_one();
 			}
 
+			sysx::pid_type
+			proc() const {
+				return _proc;
+			}
+
 		private:
-			process_type _proc;
+			sysx::pid_type _proc;
 			sem_type _osem;
 			sem_type _isem;
 			ibuf_type _ibuf;
@@ -313,7 +314,11 @@ namespace factory {
 				this_log() << "starting app="
 					<< app << std::endl;
 				std::unique_lock<std::mutex> lock(this->_mutex);
-				this->_apps.emplace(app.id(), rserver_type(app, _globalsem));
+				sysx::proc& p = _processes.add([&app,this] () {
+					_globalsem.wait();
+					return app.execute();
+				});
+				this->_apps.emplace(app.id(), rserver_type(p.id()));
 				_globalsem.notify_one();
 			}
 			
@@ -362,32 +367,35 @@ namespace factory {
 						empty = this->_apps.empty();
 					}
 					if (!empty) {
-						int status = 0;
-						sysx::pid_type pid = sysx::this_process::wait(&status);
-						std::unique_lock<std::mutex> lock(this->_mutex);
-						auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
-							[pid] (const pair_type& rhs) {
-								return rhs.second.proc().id() == pid;
-							}
-						);
-						if (result != this->_apps.end()) {
-							int ret = WIFEXITED(status) ? WEXITSTATUS(status) : 0,
-								sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-							this_log() << "finished app="
-								<< result->first
-								<< ",ret=" << ret
-								<< ",sig=" << sig
-								<< std::endl;
-							this->_apps.erase(result);
-						} else {
-							// TODO: forward pid to the thread waiting for it
-						}
+						using namespace std::placeholders;
+						_processes.wait(std::bind(std::mem_fn(&Sub_Iserver::on_process_exit), this, _1, _2));
 					}
 				}
 			}
 
 		private:
+
+			void
+			on_process_exit(sysx::proc& p, sysx::proc_info status) {
+				sysx::pid_type pid = p.id();
+				std::unique_lock<std::mutex> lock(this->_mutex);
+				auto result = std::find_if(this->_apps.begin(), this->_apps.end(),
+					[pid] (const pair_type& rhs) {
+						return rhs.second.proc() == pid;
+					}
+				);
+				if (result != this->_apps.end()) {
+					this_log() << "finished app="
+						<< result->first
+						<< ",ret=" << status.exit_code()
+						<< ",sig=" << status.term_signal()
+						<< std::endl;
+					_apps.erase(result);
+				}
+			}
+
 			map_type _apps;
+			sysx::procgroup _processes;
 			std::mutex _mutex;
 			std::condition_variable _semaphore;
 			Global_semaphore _globalsem;
