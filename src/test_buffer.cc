@@ -4,6 +4,8 @@
 #include <factory/ext/lbuffer.hh>
 #include <factory/error.hh>
 
+#include <stdx/streambuf.hh>
+
 #include "test.hh"
 #include "datum.hh"
 
@@ -18,7 +20,6 @@ using factory::components::basic_fdbuf;
 using factory::components::basic_kstream;
 using factory::components::LBuffer;
 using factory::components::end_packet;
-using factory::components::basic_streambuf_ext;
 
 std::random_device rng;
 
@@ -297,7 +298,7 @@ test_source_sink() {
 	std::string content = "Hello world";
 	std::stringstream src;
 	src << content;
-	basic_streambuf_ext<T> buf;
+	stdx::basic_streambuf<T> buf;
 	buf.fill_from(*src.rdbuf());
 	std::stringstream result;
 	buf.flush_to(*result.rdbuf());

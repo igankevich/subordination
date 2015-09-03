@@ -1,0 +1,12 @@
+#!/bin/sh
+
+perm=$1
+if test -z "$perm"; then
+	perm=600
+fi
+ipcs -m | grep "^0x.* $USER $perm " |
+awk -F' ' '{print $2}' |
+while read line; do
+	echo "Removing $line"
+	ipcrm -m $line;
+done

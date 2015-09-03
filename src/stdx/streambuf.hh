@@ -1,7 +1,12 @@
+#ifndef STDX_STREAMBUF_HH
+#define STDX_STREAMBUF_HH
+
+#include <streambuf>
+
 namespace stdx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
-	struct fast_streambuf: public std::basic_streambuf<Ch,Tr> {
+	struct basic_streambuf: public std::basic_streambuf<Ch,Tr> {
 
 		typedef std::basic_streambuf<Ch,Tr> base_type;
 		using typename base_type::char_type;
@@ -16,6 +21,7 @@ namespace stdx {
 					pgrow();
 				}
 				n = src.sgetn(pfirst(), plast() - pfirst());
+				std::cout << "Read " << n << std::endl;
 				if (n <= 0) {
 					break;
 				}
@@ -70,3 +76,5 @@ namespace stdx {
 	};
 
 }
+
+#endif // STDX_STREAMBUF_HH

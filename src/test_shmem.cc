@@ -13,6 +13,7 @@ struct Test_shmem {
 	typedef stdx::log<Test_shmem> this_log;
 	typedef typename shared_mem<T>::size_type size_type;
 	typedef shared_mem<T> shmem;
+	typedef basic_shmembuf<T> shmembuf;
 
 	static bool
 	shmem_invariant(shmem& shm) {
@@ -43,20 +44,35 @@ struct Test_shmem {
 	}
 	
 	void test_shmembuf() {
-		typedef basic_shmembuf<T> shmembuf;
 		shmembuf buf1("/test-shmem-2", 0600);
 		shmembuf buf2("/test-shmem-2");
-		std::vector<T> input(20);
-		std::generate(input.begin(), input.end(), test::randomval<T>);
-		buf1.lock();
-		buf1.sputn(&input.front(), input.size());
-		buf1.unlock();
-		this_log() << "test_shmembuf() middle" << std::endl;
-		std::vector<T> output(input.size());
-		buf2.lock();
-		buf2.sgetn(&output.front(), output.size());
-		buf2.unlock();
-		test::compare(input, output);
+		for (int i=0; i<12; ++i) {
+			const size_t size = 2u << i;
+			this_log() << "test_shmembuf() middle: size=" << size << std::endl;
+			std::vector<T> input(size);
+			std::generate(input.begin(), input.end(), test::randomval<T>);
+			buf1.lock();
+			buf1.sputn(&input.front(), input.size());
+			buf1.unlock();
+			std::vector<T> output(input.size());
+			buf2.lock();
+			buf2.sgetn(&output.front(), output.size());
+			buf2.unlock();
+			test::compare(input, output);
+		}
+	}
+
+	void test_shmembuf_pipe() {
+		std::string content = "Hello world";
+		std::stringstream src;
+		src << content;
+		shmembuf buf("/test-shmem-3", 0600);
+		buf.lock();
+		buf.fill_from(*src.rdbuf());
+		buf.unlock();
+		std::stringstream result;
+		buf.flush_to(*result.rdbuf());
+		test::equal(result.str(), content);
 	}
 
 };
@@ -65,5 +81,6 @@ int main(int argc, char* argv[]) {
 	Test_shmem<char> test;
 	test.test_shmem();
 	test.test_shmembuf();
+	test.test_shmembuf_pipe();
 	return 0;
 }
