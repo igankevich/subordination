@@ -41,7 +41,6 @@ ONE_FILE_TESTS = \
 	test_uint128 \
 	test_uint128_custom \
 	test_kernel \
-	test_discovery \
 	test_poller \
 	test_posix
 

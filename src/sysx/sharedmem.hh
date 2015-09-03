@@ -247,7 +247,7 @@ namespace sysx {
 				<< ",xsize=" << rhs.xsize()
 				<< ",owner=" << rhs.is_owner()
 				<< ",key=" << rhs._key
-				<< ",shmid=" << rhs._shm
+				<< ",shm=" << rhs._shm
 				<< '}';
 		}
 	

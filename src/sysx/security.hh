@@ -103,6 +103,8 @@ namespace sysx {
 		}
 	};
 
+	// NB: disabling sync may lead to ``double free or corruption'' errors
+	// in multi-threaded programme if writing to log is not synchronised.
 	struct Disable_sync_with_stdio {
 		Disable_sync_with_stdio() {
 			std::ios_base::sync_with_stdio(false);

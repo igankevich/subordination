@@ -57,6 +57,7 @@ namespace factory {
 		enum struct server_state {
 			initial,
 			started,
+			stopping,
 			stopped
 		};
 
@@ -65,6 +66,11 @@ namespace factory {
 			virtual void
 			start() {
 				setstate(server_state::started);
+			}
+
+			virtual void
+			shutdown() {
+				setstate(server_state::stopping);
 			}
 
 			virtual void
@@ -81,17 +87,22 @@ namespace factory {
 				return sysx::endpoint();
 			}
 
-			inline void
+			void
 			setstate(server_state rhs) noexcept {
 				_state = rhs;
 			}
 
-			inline bool
+			bool
 			stopped() const noexcept {
 				return _state == server_state::stopped;
 			}
 
-			inline bool
+			bool
+			stopping() const noexcept {
+				return _state == server_state::stopping;
+			}
+
+			bool
 			started() const noexcept {
 				return _state == server_state::started;
 			}

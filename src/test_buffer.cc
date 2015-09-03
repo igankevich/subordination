@@ -292,20 +292,6 @@ private:
 	std::ostream& _stream;
 };
 
-template<class T>
-void
-test_source_sink() {
-	std::string content = "Hello world";
-	std::stringstream src;
-	src << content;
-	stdx::basic_streambuf<T> buf;
-	buf.fill_from(*src.rdbuf());
-	std::stringstream result;
-	buf.flush_to(*result.rdbuf());
-//	result << &buf;
-	test::equal(result.str(), content);
-}
-
 int main(int argc, char* argv[]) {
 	test_buffer<char, LBuffer>();
 	test_buffer<unsigned char, LBuffer>();
@@ -317,6 +303,5 @@ int main(int argc, char* argv[]) {
 	test_kernelbuf<char>();
 	test_kernelbuf_with_stringstream<char>();
 	test_kernelbuf_withvector<char>();
-	test_source_sink<char>();
 	return 0;
 }

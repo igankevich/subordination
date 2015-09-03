@@ -23,7 +23,7 @@ namespace sysx {
 
 		explicit
 		basic_logbuf(std::basic_ostream<Ch,Tr>& s):
-		_stream(s), _bufs() {}
+		_stream(s), _oldbuf(s.rdbuf()), _bufs() {}
 
 		int_type
 		overflow(int_type c = traits_type::eof()) override {
@@ -46,6 +46,11 @@ namespace sysx {
 			return 0;
 		}
 
+		void
+		tee(bool rhs) {
+			_tee = rhs;
+		}
+
 	private:
 
 		void
@@ -53,6 +58,10 @@ namespace sysx {
 			buf_type& buf = this_thread_buf();
 			if (!buf.empty()) {
 				write_syslog(buf.c_str());
+				if (_tee) {
+					_oldbuf->sputn(buf.data(), buf.size());
+					_oldbuf->pubsync();
+				}
 				buf.clear();
 			}
 		}
@@ -69,7 +78,9 @@ namespace sysx {
 
 		mutex_type _mutex;
 		stream_type& _stream;
+		std::basic_streambuf<Ch,Tr>* _oldbuf;
 		std::unordered_map<std::thread::id, buf_type> _bufs;
+		bool _tee = false;
 	};
 
 	struct Install_syslog {
@@ -81,6 +92,11 @@ namespace sysx {
 
 		~Install_syslog() {
 			str.rdbuf(oldbuf);
+		}
+
+		void
+		tee(bool rhs) {
+			newbuf.tee(rhs);
 		}
 
 	private:

@@ -64,7 +64,7 @@ namespace factory {
 			static void
 			stop_root_server() {
 				if (_root) {
-					_root->stop();
+					_root->shutdown();
 				}
 			}
 

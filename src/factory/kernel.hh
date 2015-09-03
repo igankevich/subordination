@@ -13,6 +13,8 @@ namespace factory {
 
 	namespace components {
 
+		struct kernel_category {};
+
 		typedef uint16_t result_type;
 
 		enum struct Result: result_type {
@@ -358,8 +360,7 @@ namespace factory {
 							if (!_parent) {
 								delete this;
 								this_log() << "SHUTDOWN" << std::endl;
-								this_server.root()->stop();
-//								stop_all_factories();
+								this_server.factory()->shutdown();
 							}
 						} else {
 							this_log() << "Principal is not null" << std::endl;
@@ -372,7 +373,9 @@ namespace factory {
 								_principal->error(this_server, this);
 							}
 							if (del) {
-								this_log() << "Deleting kernel " << *this << std::endl;
+								this_log() << "Deleting kernel "
+									<< std::this_thread::get_id() << ' '
+									<< (void*)this << ' ' << *this << std::endl;
 								delete this;
 							}
 						}
@@ -431,6 +434,7 @@ namespace factory {
 			void
 			mark_as_deleted(It result) noexcept {
 				if (!this->isset(Flag::DELETED)) {
+					this_log() << "marked for death " << *this << std::endl;
 					this->setf(Flag::DELETED);
 					if (this->_parent) {
 						this->_parent->mark_as_deleted(result);
@@ -448,6 +452,17 @@ namespace factory {
 	}
 
 	using components::Result;
+
+}
+
+namespace stdx {
+
+	template<class T>
+	struct type_traits<factory::components::Principal<T>> {
+		static constexpr const char*
+		short_name() { return "kernel"; }
+		typedef factory::components::kernel_category category;
+	};
 
 }
 #else

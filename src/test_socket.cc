@@ -1,5 +1,6 @@
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
+#include <factory/server/timer_server.hh>
 
 #include "datum.hh"
 
@@ -28,7 +29,7 @@ namespace factory {
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
-			typedef components::No_server<config> timer_server;
+			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::No_server<config> principal_server;
 			typedef components::No_server<config> external_server;
@@ -48,7 +49,7 @@ namespace factory {
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::Sub_Iserver<config> remote_server;
-			typedef components::No_server<config> timer_server;
+			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::No_server<config> principal_server;
 			typedef components::No_server<config> external_server;
@@ -75,9 +76,10 @@ namespace stdx {
 sysx::endpoint server_endpoint("127.0.0.1", 10000);
 sysx::endpoint client_endpoint({127,0,0,1}, 20000);
 
-const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+//const std::vector<size_t> POWERS = {1,2,3,4,16,17};
+const std::vector<size_t> POWERS = {1};
 //const std::vector<size_t> POWERS = {16,17};
-const uint32_t NUM_KERNELS = 1;
+const uint32_t NUM_KERNELS = 7;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 //const uint32_t NUM_SIZES = 1;
 //const uint32_t NUM_KERNELS = 2;
@@ -163,9 +165,9 @@ struct Sender: public Kernel, public Identifiable_tag {
 	using typename Kernel::server_type;
 
 	Sender(uint32_t n, uint32_t s):
-		_vector_size(n),
-		_input(_vector_size),
-		_sleep(s) {}
+	_vector_size(n),
+	_input(_vector_size),
+	_sleep(s) {}
 
 	void act(Server& this_server) override {
 		this_log() << "Sender "
@@ -174,7 +176,6 @@ struct Sender: public Kernel, public Identifiable_tag {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(this_server.remote_server(), new Test_socket(_input));
 //			this_log() << " Sender id = " << this->id() << std::endl;
 		}
@@ -193,7 +194,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 		for (size_t i=0; i<_input.size(); ++i) {
 			if (_input[i] != output[i]) {
 				std::stringstream msg;
-				msg << "test_socket. Input and output does not match: ";
+				msg << "test_socket. Input and output does not match: i=" << i << ", ";
 				msg << _input[i] << " != " << output[i];
 				throw std::runtime_error(msg.str());
 			}
@@ -221,45 +222,18 @@ struct Main: public Kernel {
 
 	Main(Server& this_server, int argc, char* argv[]) {
 		auto& __factory = *this_server.factory();
-		if (argc <= 1) {
-			this_log()
-				<< "server=" << server_endpoint
-				<< ",client=" << client_endpoint
-				<< std::endl;
-			uint32_t sleep = 0;
-			sysx::procgroup procs;
-			procs.add([&argv, sleep] () {
-				sysx::this_process::env("START_ID", 1000);
-				return sysx::this_process::execute(argv[0], 'x', sleep);
-			});
-			// wait for master to start
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			procs.add([&argv, sleep] () {
-				sysx::this_process::env("START_ID", 2000);
-				return sysx::this_process::execute(argv[0], 'y', sleep);
-			});
-			this_log() << "sysx::proc group = " << procs << std::endl;
-			procs.wait([] (const sysx::proc& proc, sysx::proc_info stat) {
-				this_log() << "proc exited proc=" << proc
-					<< ",status=" << stat.exit_code() << std::endl;
-			});
-			this_log() << "sysx::log test " << std::endl;
-			_role = 'm';
-//			retval = procs.wait();
-		} else {
-			__factory.types().register_type(Test_socket::static_type());
-			__factory.dump_hierarchy(std::cout);
-			if (argc != 3)
-				throw std::runtime_error("Wrong number of arguments.");
-			if (argv[1][0] == 'x') {
-				__factory.remote_server()->socket(server_endpoint);
-				_role = 'x';
-			}
-			if (argv[1][0] == 'y') {
-				__factory.remote_server()->socket(client_endpoint);
-				__factory.remote_server()->peer(server_endpoint);
-				_role = 'y';
-			}
+		__factory.types().register_type(Test_socket::static_type());
+		__factory.dump_hierarchy(std::cout);
+		if (argc != 3)
+			throw std::runtime_error("Wrong number of arguments.");
+		if (argv[1][0] == 'x') {
+			__factory.remote_server()->socket(server_endpoint);
+			_role = 'x';
+		}
+		if (argv[1][0] == 'y') {
+			__factory.remote_server()->socket(client_endpoint);
+			__factory.remote_server()->peer(server_endpoint);
+			_role = 'y';
 		}
 	}
 
@@ -269,9 +243,6 @@ struct Main: public Kernel {
 				size_t sz = 1 << POWERS[i];
 				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(sz, _sleep));
 			}
-		}
-		if (_role == 'm') {
-			commit(this_server.local_server());
 		}
 	}
 
@@ -292,5 +263,35 @@ private:
 int
 main(int argc, char* argv[]) {
 	using namespace factory;
-	return factory_main<Main,config>(argc, argv);
+	struct mainfunc {};
+	typedef stdx::log<mainfunc> this_log;
+	int retval = 0;
+	if (argc <= 1) {
+		this_log()
+			<< "server=" << server_endpoint
+			<< ",client=" << client_endpoint
+			<< std::endl;
+		uint32_t sleep = 0;
+		sysx::procgroup procs;
+		procs.add([&argv, sleep] () {
+			sysx::this_process::env("START_ID", 1000);
+			return sysx::this_process::execute(argv[0], 'x', sleep);
+		});
+		// wait for master to start
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		procs.add([&argv, sleep] () {
+			sysx::this_process::env("START_ID", 2000);
+			return sysx::this_process::execute(argv[0], 'y', sleep);
+		});
+		this_log() << "sysx::proc group = " << procs << std::endl;
+		procs.wait([&retval] (const sysx::proc& proc, sysx::proc_info stat) {
+			this_log() << "proc exited proc=" << proc
+				<< ",status=" << stat.exit_code() << std::endl;
+			retval |= stat.exit_code();
+		});
+		this_log() << "sysx::log test " << std::endl;
+	} else {
+		retval = factory_main<Main,config>(argc, argv);
+	}
+	return retval;
 }

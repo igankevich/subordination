@@ -66,8 +66,12 @@ namespace factory {
 
 			void act(server_type& this_server) override {
 				this_log() << "broadcasting shutdown message" << std::endl;
-				delete this;
-				this_server.factory()->stop();
+//				delete this;
+				if (this_server.factory()->stopping()) {
+					this_server.factory()->stop();
+				} else {
+					this_server.factory()->shutdown();
+				}
 			}
 
 			const Type<Kernel>
@@ -96,8 +100,8 @@ namespace factory {
 			private sysx::Auto_check_endiannes,
 			private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
 			private sysx::Auto_open_standard_file_descriptors,
-			private Auto_set_terminate_handler<Server<Config>>//,
-//			private sysx::Install_syslog
+			private Auto_set_terminate_handler<Basic_factory<Config>>,
+			public sysx::Install_syslog
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
@@ -110,13 +114,14 @@ namespace factory {
 			typedef Shutdown<Config> shutdown_type;
 
 			Basic_factory(Global_thread_context& context):
-				Auto_set_terminate_handler<Server<Config>>(this),
-//				Install_syslog(std::clog),
+				Auto_set_terminate_handler<Basic_factory>(this),
+				Install_syslog(std::clog),
 				_local_server(),
 				_remote_server(),
 				_ext_server(),
 				_timer_server()
 			{
+				Install_syslog::tee(true);
 				this->setfactory(this);
 				init_parents();
 				init_names();
@@ -149,7 +154,7 @@ namespace factory {
 			void
 			stop() override {
 				base_server::stop();
-				_remote_server.send(new shutdown_type);
+//				_remote_server.send(new shutdown_type);
 				_local_server.stop();
 				_remote_server.stop();
 				_ext_server.stop();
@@ -161,6 +166,15 @@ namespace factory {
 				_remote_server.wait();
 				_ext_server.wait();
 				_timer_server.wait();
+			}
+
+			void
+			shutdown() override {
+				base_server::shutdown();
+				_remote_server.send(new shutdown_type);
+				shutdown_type* kernel = new shutdown_type;
+				kernel->after(std::chrono::milliseconds(500));
+				_timer_server.send(kernel);
 			}
 
 			void send(kernel_type* k) override { this->_local_server.send(k); }

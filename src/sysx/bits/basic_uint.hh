@@ -1,6 +1,8 @@
 #ifndef SYSX_BITS_BASIC_UINT_HH
 #define SYSX_BITS_BASIC_UINT_HH
 
+#include <limits>
+
 namespace sysx {
 
 	namespace bits {

@@ -276,7 +276,9 @@ namespace factory {
 				});
 				if (pos != _buffer.end()) {
 					this_log() << "Kernel erased " << k->id() << std::endl;
-					delete *pos;
+					// TODO: kernel will be deleted by its parent,
+					// no need to delete it here
+					// delete *pos;
 					this->_buffer.erase(pos);
 					this_log() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {

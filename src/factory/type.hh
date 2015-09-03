@@ -235,8 +235,6 @@ namespace factory {
 		template<class T>
 		struct Instances {
 
-			Instances(): _instances(), _mutex() {}
-
 			T* lookup(Id id) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _instances.find(id);
