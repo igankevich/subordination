@@ -94,7 +94,6 @@ namespace factory {
 			}
 
 			void send(kernel_type* kernel) {
-				this_log() << "Remote_Rserver::send()" << std::endl;
 				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
 					this_log() << "poll send error: tellp=" << _stream.tellp() << std::endl;
 				}
@@ -107,7 +106,6 @@ namespace factory {
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
 					erase_kernel = false;
-					this_log() << "Buffer size = " << _buffer.size() << std::endl;
 				}
 				this->write_kernel(*kernel);
 				this->_dirty = true;
@@ -201,6 +199,8 @@ namespace factory {
 			void read_and_send_kernel() {
 				app_type app;
 				this->_stream >> app;
+				this_log() << "recv ok" << std::endl;
+				this_log() << "recv app=" << app << std::endl;
 				if (!this->_stream) return;
 				if (app != Application::ROOT) {
 					this->app_server()->forward(app, this->_vaddr, this->_kernelbuf);

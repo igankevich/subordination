@@ -87,7 +87,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Kernel {
+struct Test_socket: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Test_socket> this_log;
 	using typename Kernel::server_type;
@@ -176,8 +176,8 @@ struct Sender: public Kernel, public Identifiable_tag {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			upstream(this_server.remote_server(), new Test_socket(_input));
-//			this_log() << " Sender id = " << this->id() << std::endl;
+			upstream(this_server.remote_server(),
+				this_server.factory()->new_kernel<Test_socket>(_input));
 		}
 	}
 

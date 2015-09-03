@@ -116,8 +116,7 @@ namespace sysx {
 			sock.close();
 			sock._fd = bits::check(::accept(this->_fd, addr.sockaddr(), &len),
 				__FILE__, __LINE__, __func__);
-			sock.setf(sysx::fd::non_blocking | sysx::fd::close_on_exec);
-			sock.setf(close_on_exec);
+			bits::set_mandatory_flags(sock._fd);
 			std::clog << "Accepted connection from " << addr << std::endl;
 		}
 

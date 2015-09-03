@@ -66,7 +66,7 @@ namespace factory {
 
 			void act(server_type& this_server) override {
 				this_log() << "broadcasting shutdown message" << std::endl;
-//				delete this;
+				delete this;
 				if (this_server.factory()->stopping()) {
 					this_server.factory()->stop();
 				} else {

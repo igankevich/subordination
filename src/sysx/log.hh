@@ -6,6 +6,8 @@
 
 #include <syslog.h>
 
+#include <sysx/process.hh>
+
 namespace sysx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
@@ -59,6 +61,11 @@ namespace sysx {
 			if (!buf.empty()) {
 				write_syslog(buf.c_str());
 				if (_tee) {
+					_oldbuf->sputc('[');
+					const std::string pid = std::to_string(sysx::this_process::id());
+					_oldbuf->sputn(pid.data(), pid.size());
+					_oldbuf->sputc(']');
+					_oldbuf->sputc(' ');
 					_oldbuf->sputn(buf.data(), buf.size());
 					_oldbuf->pubsync();
 				}

@@ -146,7 +146,6 @@ namespace factory {
 					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 				out << type.id();
-				this_log() << "Type::write_object: kernel=" << kernel << std::endl;
 				kernel.write(out);
 			}
 

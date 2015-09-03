@@ -174,11 +174,6 @@ namespace factory {
 			write(sysx::packstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
-				this_log()
-					<< "writing kernel " 
-					"id=" << this->_id
-					<< ",rslt=" << this->result()
-					<< ",app=" << this->_app << std::endl;
 				out << r << this->_id;
 			}
 
@@ -283,7 +278,6 @@ namespace factory {
 				}
 				Id parent_id;
 				in >> parent_id;
-				this_log() << "READING PARENT " << parent_id << std::endl;
 				if (parent_id != ROOT_ID) {
 					_parent = parent_id;
 				}
@@ -293,7 +287,6 @@ namespace factory {
 				}
 				Id principal_id;
 				in >> principal_id;
-				this_log() << "READING PRINCIPAL " << principal_id << std::endl;
 				_principal = principal_id;
 			}
 
