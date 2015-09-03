@@ -96,7 +96,7 @@ namespace factory {
 
 		template<class Config>
 		struct Basic_factory: public Managed_set<Server<Config>>,
-			private sysx::Disable_sync_with_stdio,
+//			private sysx::Disable_sync_with_stdio,
 			private sysx::Auto_check_endiannes,
 			private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
 			private sysx::Auto_open_standard_file_descriptors,

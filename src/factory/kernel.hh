@@ -314,6 +314,7 @@ namespace factory {
 					msg << tp;
 				} else {
 					msg << "unknown type";
+					msg << " typeid=" << typeid(*this).name();
 				}
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
@@ -359,16 +360,17 @@ namespace factory {
 							this_log() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
-								this_log() << "Principal react" << std::endl;
+								this_log() << "react: pr="
+									<< ",kernel=" << *this
+									<< std::endl;
 								_principal->react(this_server, this);
+								this_log() << "Principal end react" << std::endl;
 							} else {
 								this_log() << "Principal error" << std::endl;
 								_principal->error(this_server, this);
 							}
 							if (del) {
-								this_log() << "Deleting kernel "
-									<< std::this_thread::get_id() << ' '
-									<< (void*)this << ' ' << *this << std::endl;
+								this_log() << "delete " << *this << std::endl;
 								delete this;
 							}
 						}

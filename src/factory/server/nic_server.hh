@@ -223,8 +223,7 @@ namespace factory {
 					<< std::endl;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
-				}
-				if (k->principal()) {
+				} else if (k->principal()) {
 					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
 					if (p == nullptr) {
 						k->result(Result::NO_PRINCIPAL_FOUND);
@@ -264,10 +263,14 @@ namespace factory {
 			}
 
 			void recover_kernel(kernel_type* k, server_type* root) {
-				k->from(k->to());
-				k->result(Result::ENDPOINT_NOT_CONNECTED);
-				k->principal(k->parent());
-				root->send(k);
+				if (k->moves_everywhere()) {
+					delete k;
+				} else {
+					k->from(k->to());
+					k->result(Result::ENDPOINT_NOT_CONNECTED);
+					k->principal(k->parent());
+					root->send(k);
+				}
 			}
 
 			void clear_kernel_buffer(kernel_type* k) {
@@ -276,6 +279,9 @@ namespace factory {
 				});
 				if (pos != _buffer.end()) {
 					this_log() << "Kernel erased " << k->id() << std::endl;
+					kernel_type* orig = *pos;
+					k->parent(orig->parent().ptr());
+					k->principal(k->parent());
 					// TODO: kernel will be deleted by its parent,
 					// no need to delete it here
 					// delete *pos;

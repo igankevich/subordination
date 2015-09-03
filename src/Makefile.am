@@ -31,7 +31,6 @@ ONE_FILE_TESTS = \
 	test_buffer \
 	test_marshaling \
 	test_socket \
-	test_offline \
 	test_websocket \
 	test_shmem \
 	test_spinlock \
@@ -41,13 +40,14 @@ ONE_FILE_TESTS = \
 	test_uint128 \
 	test_uint128_custom \
 	test_kernel \
-	test_poller \
-	test_posix
+	test_offline \
+	test_poller
 
 check_PROGRAMS = \
 	$(ONE_FILE_TESTS) \
 	test_appserver_app \
-	test_appserver_srv
+	test_appserver_srv \
+	test_posix
 
 TESTS = \
 	$(ONE_FILE_TESTS) \
@@ -59,6 +59,9 @@ test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128
 
 test_websocket_SOURCES = test_socket.cc
 test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_WEBSOCKET
+
+test_offline_SOURCES = test_socket.cc
+test_offline_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_OFFLINE
 
 test_appserver_srv_SOURCES = test_appserver.cc
 test_appserver_srv_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_SERVER \

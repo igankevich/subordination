@@ -86,6 +86,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 //const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
+std::atomic<uint32_t> shutdown_counter(0);
 
 struct Test_socket: public Kernel, public Identifiable_tag {
 
@@ -104,7 +105,15 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 	}
 
 	void act(Server& this_server) override {
+		#if defined(FACTORY_TEST_OFFLINE)
+		// Delete kernel for Valgrind memory checker.
+		delete this;
+		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
+			this_server.factory()->stop();
+		}
+		#else
 		commit(this_server.remote_server());
+		#endif
 	}
 
 	void
@@ -285,9 +294,11 @@ main(int argc, char* argv[]) {
 		});
 		this_log() << "sysx::proc group = " << procs << std::endl;
 		procs.wait([&retval] (const sysx::proc& proc, sysx::proc_info stat) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			this_log() << "proc exited proc=" << proc
 				<< ",status=" << stat.exit_code() << std::endl;
 			retval |= stat.exit_code();
+			retval |= stat.term_signal();
 		});
 		this_log() << "sysx::log test " << std::endl;
 	} else {

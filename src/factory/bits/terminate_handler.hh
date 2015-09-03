@@ -46,7 +46,7 @@ namespace factory {
 					this_log() << String_message("terminate called without an active exception",
 						__FILE__, __LINE__, __func__) << std::endl;
 				}
-				stop_root_server();
+				stop_root_server(EXIT_FAILURE);
 			}
 
 			void
@@ -57,13 +57,14 @@ namespace factory {
 			}
 
 			static void
-			emergency_shutdown(int) noexcept {
-				stop_root_server();
+			emergency_shutdown(int sig) noexcept {
+				stop_root_server(sig);
 			}
 
 			static void
-			stop_root_server() {
+			stop_root_server(int retval) {
 				if (_root) {
+					_root->set_exit_code(retval);
 					_root->shutdown();
 				}
 			}
