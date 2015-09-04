@@ -165,7 +165,6 @@ namespace factory {
 				Raw_result r;
 				in >> r;
 				this->result(static_cast<Result>(r));
-				this_log() << "Reading result = " << r << std::endl;
 				in >> _id;
 			}
 

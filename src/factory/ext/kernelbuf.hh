@@ -21,9 +21,9 @@ namespace factory {
 			typedef stdx::log<basic_ikernelbuf> this_log;
 
 			enum struct State {
-				READING_SIZE,
-				BUFFERING_PAYLOAD,
-				READING_PAYLOAD
+				initial,
+				header_is_ready,
+				payload_is_ready
 			};
 
 			basic_ikernelbuf() = default;
@@ -34,30 +34,72 @@ namespace factory {
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 				"bad base class for ibasic_kernelbuf");
 
-			int_type underflow() {
-				int_type ret = this->Base::underflow();
+			int_type
+			underflow() override {
+				int_type ret = Base::underflow();
 				this->update_state();
-				if (this->_rstate == State::READING_PAYLOAD && this->egptr() != this->gptr()) {
+				if (this->_rstate == State::payload_is_ready && this->egptr() != this->gptr()) {
 					return *this->gptr();
 				}
 				return traits_type::eof();
 			}
 
-			std::streamsize xsgetn(char_type* s, std::streamsize n) {
+			std::streamsize
+			xsgetn(char_type* s, std::streamsize n) override {
 				if (this->egptr() == this->gptr()) {
-					this->Base::underflow();
+					Base::underflow();
 				}
 				this->update_state();
-				if (this->egptr() == this->gptr() || this->state() != State::READING_PAYLOAD) {
+				if (this->egptr() == this->gptr() || _rstate != State::payload_is_ready) {
 					return std::streamsize(0);
 				}
-				return this->Base::xsgetn(s, n);
+				return Base::xsgetn(s, n);
+			}
+
+			void
+			try_to_buffer_payload() {
+				const pos_type old_offset = this->gptr() - this->eback();
+				int_type c;
+				do {
+					this->setg(this->eback(), this->egptr(), this->egptr());
+					c = Base::underflow();
+				} while (c != traits_type::eof());
+				if (old_offset != this->gptr() - this->eback()) {
+					dumpstate();
+				}
+				this->setg(this->eback(), this->eback() + old_offset, this->egptr());
+				update_state();
+			}
+
+			bool
+			payload_is_ready() const {
+				return _rstate == State::payload_is_ready;
 			}
 
 //			template<class X> friend class basic_okernelbuf;
 			template<class X> friend void append_payload(std::streambuf& buf, basic_ikernelbuf<X>& kbuf);
 
 		private:
+
+			char_type*
+			packet_begin() const {
+				return this->eback() + _packetpos;
+			}
+
+			char_type*
+			packet_end() const {
+				return packet_begin() + _packetsize;
+			}
+
+			char_type*
+			payload_begin() const {
+				return packet_begin() + hdrsize();
+			}
+
+			char_type*
+			payload_end() const {
+				return payload_begin() + payloadsize();
+			}
 
 			pos_type packetpos() const { return this->_packetpos; }
 			pos_type payloadpos() const { return this->_packetpos + static_cast<pos_type>(this->hdrsize()); }
@@ -67,28 +109,28 @@ namespace factory {
 			}
 
 			void update_state() {
-				this->dumpstate();
-				State old_state = this->state();
-				switch (this->state()) {
-					case State::READING_SIZE: this->read_kernel_packetsize(); break;
-					case State::BUFFERING_PAYLOAD: this->buffer_payload(); break;
-					case State::READING_PAYLOAD: this->read_payload(); break;
+				State old_state = _rstate;
+				switch (_rstate) {
+					case State::initial: this->read_kernel_packetsize(); break;
+					case State::header_is_ready: this->buffer_payload(); break;
+					case State::payload_is_ready: this->read_payload(); break;
 				}
-				if (old_state != this->state()) {
+				if (old_state != _rstate) {
+					this->dumpstate();
 					this->update_state();
 				}
 			}
 
 			void read_kernel_packetsize() {
 				size_type count = this->egptr() - this->gptr();
-				if (count >= this->hdrsize()) {
+				if (!(count < this->hdrsize())) {
 					sysx::Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
 					size.to_host_format();
+					_packetpos = this->gptr() - this->eback();
+					_packetsize = size;
 					this->gbump(this->hdrsize());
-					this->setpos(this->readoff());
-					this->setsize(size);
 					this->dumpstate();
-					this->sets(State::BUFFERING_PAYLOAD);
+					this->sets(State::header_is_ready);
 				}
 			}
 
@@ -97,29 +139,30 @@ namespace factory {
 				if (this->_oldendpos < endpos) {
 					this->_oldendpos = endpos;
 				}
-				if (this->readend() - this->packetpos() >= this->payloadsize()) {
-					char_type* pos = this->eback() + this->packetpos();
-					this->setg(this->eback(), pos, pos + this->payloadsize());
-					this->sets(State::READING_PAYLOAD);
+				if (this->egptr() >= packet_end()) {
+					this->setg(this->eback(), payload_begin(), payload_end());
+					this->sets(State::payload_is_ready);
 				} else {
+					// TODO: remove if try_to_buffer_payload() is used
 					this->setg(this->eback(), this->egptr(), this->egptr());
 				}
 			}
 
 			void read_payload() {
-				pos_type off = this->readoff();
-				if (off - this->packetpos() == this->payloadsize()) {
+				if (this->gptr() == payload_end()) {
 					pos_type endpos = this->egptr() - this->eback();
 					if (this->_oldendpos > endpos) {
 						this->setg(this->eback(), this->gptr(), this->eback() + this->_oldendpos);
 					}
-					this->_oldendpos = 0;
-					this->sets(State::READING_SIZE);
+					_packetpos = 0;
+					_packetsize = 0;
+					_oldendpos = 0;
+					this->sets(State::initial);
 				}
 			}
 
 			void dumpstate() {
-				this_log() << std::setw(20) << std::left << this->state()
+				this_log() << std::setw(20) << std::left << _rstate
 					<< "pptr=" << this->pptr() - this->pbase()
 					<< ",epptr=" << this->epptr() - this->pbase()
 					<< ",gptr=" << this->gptr() - this->eback()
@@ -130,39 +173,38 @@ namespace factory {
 					<< std::endl;
 			}
 
-			friend std::ostream& operator<<(std::ostream& out, State rhs) {
+			friend std::ostream&
+			operator<<(std::ostream& out, State rhs) {
 				switch (rhs) {
-					case State::READING_SIZE: out << "READING_SIZE"; break;
-					case State::BUFFERING_PAYLOAD: out << "BUFFERING_PAYLOAD"; break;
-					case State::READING_PAYLOAD: out << "READING_PAYLOAD"; break;
+					case State::initial: out << "initial"; break;
+					case State::header_is_ready: out << "header_is_ready"; break;
+					case State::payload_is_ready: out << "payload_is_ready"; break;
 					default: break;
 				}
 				return out;
 			}
 
-			void sets(State rhs) {
+			void
+			sets(State rhs) {
 				this_log() << "oldstate=" << this->_rstate
 					<< ",newstate=" << rhs << std::endl;
 				this->_rstate = rhs;
 			}
-			State state() const { return this->_rstate; }
-			pos_type readoff() {
-				return this->seekoff(0, std::ios_base::cur, std::ios_base::in);
+
+			size_type
+			payloadsize() const {
+				return this->_packetsize - this->hdrsize();
 			}
-			pos_type readend() {
-				return this->egptr() - this->eback();
-//				return this->seekoff(0, std::ios_base::end, std::ios_base::in);
+
+			static constexpr size_type
+			hdrsize() {
+				return sizeof(_packetsize);
 			}
-			void setsize(size_type rhs) { this->_packetsize = rhs; }
-			size_type payloadsize() const { return this->_packetsize - this->hdrsize(); }
-			static constexpr
-			size_type hdrsize() { return sizeof(_packetsize); }
-			void setpos(pos_type rhs) { this->_packetpos = rhs; }
 
 			size_type _packetsize = 0;
 			pos_type _packetpos = 0;
 			pos_type _oldendpos = 0;
-			State _rstate = State::READING_SIZE;
+			State _rstate = State::initial;
 		};
 
 		template<class X>
@@ -204,19 +246,19 @@ namespace factory {
 			}
 
 			int_type overflow(int_type c) {
-				int_type ret = this->Base::overflow(c);
+				int_type ret = Base::overflow(c);
 				this->begin_packet();
 				return ret;
 			}
 
 			std::streamsize xsputn(const char_type* s, std::streamsize n) {
 				this->begin_packet();
-				return this->Base::xsputn(s, n);
+				return Base::xsputn(s, n);
 			}
 
 //			template<class X>
 //			void append_packet(basic_ikernelbuf<X>& rhs) {
-//				this->Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
+//				Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
 //				rhs.gbump(rhs.packetsize());
 //			}
 
@@ -260,7 +302,7 @@ namespace factory {
 				int ret = -1;
 				if (this->state() == State::FINALISING) {
 					this_log() << "finalise()" << std::endl;
-					ret = this->Base::sync();
+					ret = Base::sync();
 					if (ret == 0) {
 						this->sets(State::WRITING_SIZE);
 					}
@@ -271,7 +313,7 @@ namespace factory {
 			void putsize(size_type s) {
 				sysx::Bytes<size_type> pckt_size(s);
 				pckt_size.to_network_format();
-				this->Base::xsputn(pckt_size.begin(), pckt_size.size());
+				Base::xsputn(pckt_size.begin(), pckt_size.size());
 			}
 
 			void setbeg(pos_type rhs) { this->_begin = rhs; }
@@ -343,11 +385,14 @@ namespace factory {
 
 namespace stdx {
 
+	struct temp_cat {};
+
 	template<class Base>
 	struct type_traits<factory::components::basic_ikernelbuf<Base>> {
 		static constexpr const char*
 		short_name() { return "ikernelbuf"; }
-		typedef factory::components::buffer_category category;
+//		typedef factory::components::buffer_category category;
+		typedef temp_cat category;
 	};
 
 	template<class Base>
