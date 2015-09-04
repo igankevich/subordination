@@ -52,6 +52,7 @@ src/test_appserver_srv
 src/*.html
 src/*.xml
 src/.libs
+src/tags
 doxygen-doc/*
 src/version.hh
 *-coverage.info
