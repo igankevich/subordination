@@ -39,7 +39,6 @@ ONE_FILE_TESTS = \
 	test_timer \
 	test_uint128 \
 	test_uint128_custom \
-	test_kernel \
 	test_offline \
 	test_poller
 

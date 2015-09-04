@@ -282,9 +282,7 @@ namespace factory {
 					kernel_type* orig = *pos;
 					k->parent(orig->parent());
 					k->principal(k->parent());
-					// TODO: kernel will be deleted by its parent,
-					// no need to delete it here
-					// delete *pos;
+					delete *pos;
 					this->_buffer.erase(pos);
 					this_log() << "Buffer size = " << _buffer.size() << std::endl;
 				} else {

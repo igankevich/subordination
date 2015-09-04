@@ -77,7 +77,7 @@ sysx::endpoint server_endpoint("127.0.0.1", 10000);
 sysx::endpoint client_endpoint({127,0,0,1}, 20000);
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
-const std::vector<size_t> POWERS = {1};
+const std::vector<size_t> POWERS = {1,2,3,4};
 //const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 7;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
@@ -94,6 +94,7 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 	using typename Kernel::server_type;
 
 	Test_socket(): _data() {
+		++kernel_count;
 	}
 
 	explicit Test_socket(std::vector<Datum> x): _data(x) {
@@ -303,6 +304,15 @@ main(int argc, char* argv[]) {
 		this_log() << "sysx::log test " << std::endl;
 	} else {
 		retval = factory_main<Main,config>(argc, argv);
+	}
+	std::cout << "KERNEL count = " << kernel_count << std::endl;
+	if (kernel_count > 0) {
+		throw components::Error("some kernels were not deleted",
+			__FILE__, __LINE__, __func__);
+	}
+	if (kernel_count < 0) {
+		throw components::Error("some kernels were deleted multiple times",
+			__FILE__, __LINE__, __func__);
 	}
 	return retval;
 }
