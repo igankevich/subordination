@@ -223,8 +223,8 @@ namespace factory {
 					<< std::endl;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
-				} else if (k->principal()) {
-					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
+				} else if (k->principal_id()) {
+					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
 					if (p == nullptr) {
 						k->result(Result::NO_PRINCIPAL_FOUND);
 						throw No_principal_found<kernel_type>(k);
@@ -280,7 +280,7 @@ namespace factory {
 				if (pos != _buffer.end()) {
 					this_log() << "Kernel erased " << k->id() << std::endl;
 					kernel_type* orig = *pos;
-					k->parent(orig->parent().ptr());
+					k->parent(orig->parent());
 					k->principal(k->parent());
 					// TODO: kernel will be deleted by its parent,
 					// no need to delete it here

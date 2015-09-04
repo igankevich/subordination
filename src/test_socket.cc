@@ -248,7 +248,7 @@ struct Main: public Kernel {
 
 	void act(Server& this_server) override {
 		if (_role == 'y') {
-			for (uint32_t i=0; i<=POWERS.size(); ++i) {
+			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
 				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(sz, _sleep));
 			}

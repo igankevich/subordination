@@ -4,7 +4,6 @@
 #include <bitset>
 
 #include <factory/server/basic_server.hh>
-#include <factory/bits/kernel.hh>
 #include <sysx/process.hh>
 #include <sysx/packstream.hh>
 
@@ -240,27 +239,57 @@ namespace factory {
 		struct Principal: public Mobile_kernel {
 
 			typedef Mobile_kernel base_kernel;
-			typedef Kernel_ref<Principal> Ref;
 			typedef Basic_kernel::Flag Flag;
 			typedef stdx::log<Principal> this_log;
 //			typedef Managed_object<Server<Principal>> server_type;
 			typedef typename Config::server server_type;
 
-			const Ref& principal() const { return _principal; }
-			Ref principal() { return _principal; }
-			void principal(Ref rhs) { _principal = rhs; }
-			void principal(Principal* rhs) { _principal = rhs; }
-
-			size_t hash() const {
-				return _principal && _principal->identifiable()
-					? _principal->id()
-					: size_t(_principal.ptr()) / alignof(size_t);
+			const Principal*
+			principal() const {
+				return _principal;
 			}
 
-			const Ref& parent() const { return _parent; }
-			Ref parent() { return _parent; }
-			void parent(Ref p) { _parent = p; }
-			void parent(Principal* p) { _parent = p; }
+			Principal*
+			principal() {
+				return _principal;
+			}
+
+			Id
+			principal_id() const {
+				return _principal_id;
+			}
+
+			void
+			principal(Principal* rhs) {
+				_principal = rhs;
+			}
+
+			const Principal*
+			parent() const {
+				return _parent;
+			}
+
+			Principal*
+			parent() {
+				return _parent;
+			}
+
+			Id
+			parent_id() const {
+				return _parent_id;
+			}
+
+			void
+			parent(Principal* p) {
+				_parent = p;
+			}
+
+			size_t
+			hash() const {
+				return _principal && _principal->identifiable()
+					? _principal->id()
+					: size_t(_principal) / alignof(size_t);
+			}
 
 			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
 			bool moves_downstream() const { return this->result() != Result::UNDEFINED && _principal && _parent; }
@@ -276,25 +305,23 @@ namespace factory {
 					s << _parent;
 					throw Error(s.str(), __FILE__, __LINE__, __func__);
 				}
-				Id parent_id;
-				in >> parent_id;
-				if (parent_id != ROOT_ID) {
-					_parent = parent_id;
-				}
-				if (_principal.ptr() != nullptr) {
+				in >> _parent_id;
+				if (_principal) {
 					throw Error("Principal kernel is not null while reading from the data stream.",
 						__FILE__, __LINE__, __func__);
 				}
-				Id principal_id;
-				in >> principal_id;
-				_principal = principal_id;
+				in >> _principal_id;
 			}
 
 			void
 			write(sysx::packstream& out) override {
 				base_kernel::write(out);
-				out << (!_parent ? ROOT_ID : _parent->id());
-				out << (!_principal ? ROOT_ID : _principal->id());
+				if (moves_downstream()) {
+					out << _parent_id << _principal_id;
+				} else {
+					out << (!_parent ? ROOT_ID : _parent->id());
+					out << (!_principal ? ROOT_ID : _principal->id());
+				}
 			}
 
 			virtual void
@@ -360,9 +387,6 @@ namespace factory {
 							this_log() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::SUCCESS) {
-								this_log() << "react: pr="
-									<< ",kernel=" << *this
-									<< std::endl;
 								_principal->react(this_server, this);
 								this_log() << "Principal end react" << std::endl;
 							} else {
@@ -440,8 +464,14 @@ namespace factory {
 			}
 
 		private:
-			Kernel_ref<Principal> _parent = nullptr;
-			Kernel_ref<Principal> _principal = nullptr;
+			union {
+				Principal* _parent = nullptr;
+				Id _parent_id;
+			};
+			union {
+				Principal* _principal = nullptr;
+				Id _principal_id;
+			};
 		};
 
 	}
