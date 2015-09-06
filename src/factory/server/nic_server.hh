@@ -243,13 +243,15 @@ namespace factory {
 //				}
 			}
 
-			void write_kernel(kernel_type& kernel) {
+			void
+			write_kernel(kernel_type& kernel) {
 				typedef sysx::packstream::pos_type pos_type;
 				pos_type old_pos = _stream.tellp();
+				_kernelbuf.begin_packet();
 				_stream << kernel.app();
 				Type<kernel_type>::write_object(kernel, _stream);
+				_kernelbuf.end_packet();
 				pos_type new_pos = _stream.tellp();
-				_stream << end_packet();
 				this_log() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="

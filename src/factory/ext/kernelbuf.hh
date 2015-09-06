@@ -227,18 +227,13 @@ namespace factory {
 			using base_type::gptr;
 			using base_type::eback;
 			using base_type::egptr;
+			using base_type::pbump;
 			using typename base_type::int_type;
 			using typename base_type::traits_type;
 			using typename base_type::char_type;
 			using typename base_type::pos_type;
 			typedef uint32_t size_type;
 			typedef stdx::log<basic_okernelbuf> this_log;
-
-			enum struct State {
-				WRITING_SIZE,
-				WRITING_PAYLOAD,
-				FINALISING
-			};
 
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 				"bad base class for basic_okernelbuf");
@@ -248,114 +243,59 @@ namespace factory {
 			basic_okernelbuf(basic_okernelbuf&&) = default;
 			virtual ~basic_okernelbuf() { this->end_packet(); }
 
-			int
-			sync() override {
-				int ret = this->finalise();
-				this->end_packet();
-				return ret;
-			}
-
-			int_type
-			overflow(int_type c) override {
-				int_type ret = Base::overflow(c);
-				this->begin_packet();
-				return ret;
-			}
-
-			std::streamsize
-			xsputn(const char_type* s, std::streamsize n) override {
-				this->begin_packet();
-				return Base::xsputn(s, n);
-			}
-
 			bool
 			dirty() const {
 				return pptr() != epptr();
 			}
 
-//			template<class X>
-//			void append_packet(basic_ikernelbuf<X>& rhs) {
-//				Base::xsputn(rhs.eback() + rhs.packetpos(), rhs.packetsize());
-//				rhs.gbump(rhs.packetsize());
-//			}
+			void
+			begin_packet() {
+				_packetpos = pptr() - pbase();
+				putsize(0);
+				this_log() << "begin_packet()     "
+					<< "pbase=" << (void*)this->pbase()
+					<< ", pptr=" << (void*)this->pptr()
+					<< ", eback=" << (void*)eback()
+					<< ", gptr=" << (void*)gptr()
+					<< ", egptr=" << (void*)egptr()
+					<< std::endl;
+			}
+
+			void
+			end_packet() {
+				const pos_type end = pptr() - pbase();
+				const size_type s = end - _packetpos;
+				if (s == header_size()) {
+					pbump(-std::streamsize(s));
+				} else {
+					overwrite_size(s);
+				}
+				this_log() << "end_packet(): size=" << s << std::endl;
+			}
 
 		private:
 
-			void begin_packet() {
-				if (this->state() == State::FINALISING) {
-					this->sets(State::WRITING_SIZE);
-				}
-				if (this->state() == State::WRITING_SIZE) {
-					this->sets(State::WRITING_PAYLOAD);
-					this->setbeg(this->writepos());
-					this->putsize(0);
-					this_log() << "begin_packet()     "
-						<< "pbase=" << (void*)this->pbase()
-						<< ", pptr=" << (void*)this->pptr()
-						<< ", eback=" << (void*)eback()
-						<< ", gptr=" << (void*)gptr()
-						<< ", egptr=" << (void*)egptr()
-						<< std::endl;
-				}
-			}
-
-			void end_packet() {
-				if (this->state() == State::WRITING_PAYLOAD) {
-					pos_type end = this->writepos();
-					size_type s = end - this->_begin;
-					if (s == sizeof(size_type)) {
-						this->pbump(-static_cast<std::make_signed<size_type>::type>(s));
-					} else {
-						this->seekpos(this->_begin, std::ios_base::out);
-						this->putsize(s);
-						this->seekpos(end, std::ios_base::out);
-					}
-					this_log() << "end_packet(): size=" << s << std::endl;
-					this->sets(State::FINALISING);
-				}
-			}
-
-			int finalise() {
-				int ret = -1;
-				if (this->state() == State::FINALISING) {
-					this_log() << "finalise()" << std::endl;
-					ret = Base::sync();
-					if (ret == 0) {
-						this->sets(State::WRITING_SIZE);
-					}
-				}
-				return ret;
-			}
-
-			void putsize(size_type s) {
+			void
+			putsize(size_type s) {
 				sysx::Bytes<size_type> pckt_size(s);
 				pckt_size.to_network_format();
 				Base::xsputn(pckt_size.begin(), pckt_size.size());
 			}
 
-			void setbeg(pos_type rhs) { this->_begin = rhs; }
-			pos_type writepos() {
-				return this->seekoff(0, std::ios_base::cur, std::ios_base::out);
+			void
+			overwrite_size(size_type s) {
+				sysx::Bytes<size_type> pckt_size(s);
+				pckt_size.to_network_format();
+				traits_type::copy(pbase() + _packetpos,
+					pckt_size.begin(), pckt_size.size());
 			}
 
-			void sets(State rhs) {
-				this_log() << "oldstate=" << this->_state << ",newstate=" << rhs << std::endl;
-				this->_state = rhs;
-			}
-			State state() const { return this->_state; }
-
-			friend std::ostream& operator<<(std::ostream& out, State rhs) {
-				switch (rhs) {
-					case State::WRITING_SIZE: out << "WRITING_SIZE"; break;
-					case State::WRITING_PAYLOAD: out << "WRITING_PAYLOAD"; break;
-					case State::FINALISING: out << "FINALISING"; break;
-					default: break;
-				}
-				return out;
+			static constexpr std::streamsize
+			header_size() {
+				return sizeof(size_type);
 			}
 
-			pos_type _begin = 0;
-			State _state = State::WRITING_SIZE;
+			pos_type _packetpos = 0;
 		};
 
 		template<class Base1, class Base2=Base1>
@@ -374,13 +314,13 @@ namespace factory {
 		};
 
 
-		struct end_packet {
-			friend std::ostream&
-			operator<<(std::ostream& out, end_packet) {
-				out.rdbuf()->pubsync();
-				return out;
-			}
-		};
+//		struct end_packet {
+//			friend std::ostream&
+//			operator<<(std::ostream& out, end_packet) {
+//				out.rdbuf()->pubsync();
+//				return out;
+//			}
+//		};
 
 	//	struct underflow {
 	//		friend std::istream&
