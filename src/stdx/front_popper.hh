@@ -134,6 +134,12 @@ namespace stdx {
 		return front_pop_iterator<C>(cont);
 	}
 
+	template<class C>
+	inline front_pop_iterator<C>
+	front_popper_end(C& cont) noexcept {
+		return front_pop_iterator<C>();
+	}
+
 }
 
 #endif // STDX_FRONT_POPPER_HH

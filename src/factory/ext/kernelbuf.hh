@@ -382,17 +382,17 @@ namespace factory {
 			}
 		};
 
-		struct underflow {
-			friend std::istream&
-			operator>>(std::istream& in, underflow) {
-				// TODO: loop until source is exhausted
-				std::istream::pos_type old_pos = in.rdbuf()->pubseekoff(0, std::ios_base::cur, std::ios_base::in);
-				in.rdbuf()->pubseekoff(0, std::ios_base::end, std::ios_base::in);
-				in.rdbuf()->sgetc(); // underflows the stream buffer
-				in.rdbuf()->pubseekpos(old_pos);
-				return in;
-			}
-		};
+	//	struct underflow {
+	//		friend std::istream&
+	//		operator>>(std::istream& in, underflow) {
+	//			// TODO: loop until source is exhausted
+	//			std::istream::pos_type old_pos = in.rdbuf()->pubseekoff(0, std::ios_base::cur, std::ios_base::in);
+	//			in.rdbuf()->pubseekoff(0, std::ios_base::end, std::ios_base::in);
+	//			in.rdbuf()->sgetc(); // underflows the stream buffer
+	//			in.rdbuf()->pubseekpos(old_pos);
+	//			return in;
+	//		}
+	//	};
 
 	}
 

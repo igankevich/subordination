@@ -94,13 +94,19 @@ namespace stdx {
 
 	template<size_t No, class F>
 	struct Apply_to {
-		constexpr explicit Apply_to(F&& f): func(f) {}
+
+		constexpr explicit
+		Apply_to(F&& f):
+		func(std::forward<F>(f))
+		{}
+
 		template<class Arg>
 		auto operator()(const Arg& rhs) ->
 			typename std::result_of<F&(decltype(std::get<No>(rhs)))>::type
 		{
 			return func(std::get<No>(rhs));
 		}
+
 	private:
 		F&& func;
 	};
@@ -108,7 +114,7 @@ namespace stdx {
 	template<size_t No, class F>
 	constexpr Apply_to<No,F>
 	apply_to(F&& f) {
-		return Apply_to<No,F>(f);
+		return Apply_to<No,F>(std::forward<F>(f));
 	}
 
 }
