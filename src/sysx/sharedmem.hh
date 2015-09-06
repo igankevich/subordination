@@ -244,7 +244,6 @@ namespace sysx {
 			return out << "{addr=" << rhs.ptr()
 				<< ",path=" << rhs._path
 				<< ",size=" << rhs.size()
-				<< ",xsize=" << rhs.xsize()
 				<< ",owner=" << rhs.is_owner()
 				<< ",key=" << rhs._key
 				<< ",shm=" << rhs._shm

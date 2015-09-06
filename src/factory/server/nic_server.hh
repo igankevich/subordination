@@ -199,7 +199,7 @@ namespace factory {
 			void read_and_send_kernel() {
 				_kernelbuf.try_to_buffer_payload();
 				if (!_kernelbuf.payload_is_ready()) {
-//					return;
+					return;
 				}
 				app_type app;
 				this->_stream >> app;

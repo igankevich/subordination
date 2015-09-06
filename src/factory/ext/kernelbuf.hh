@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <sysx/network_format.hh>
 #include <factory/ext/intro.hh>
+#include <stdx/streambuf.hh>
 
 namespace factory {
 

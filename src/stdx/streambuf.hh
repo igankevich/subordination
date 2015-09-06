@@ -5,17 +5,17 @@
 
 namespace stdx {
 
-	template<class Ch, class Tr=std::char_traits<Ch>>
-	struct basic_streambuf: public std::basic_streambuf<Ch,Tr> {
+	template<class Base>
+	struct pipebuf: public Base {
 
-		typedef std::basic_streambuf<Ch,Tr> base_type;
+		typedef Base base_type;
 		using typename base_type::char_type;
 		using typename base_type::traits_type;
 
 		template<class Source>
 		void
 		fill_from(Source& src) {
-			ssize_t n = 0;
+			std::streamsize n = 0;
 			while (true) {
 				if (pfirst() == plast()) {
 					pgrow();
@@ -32,7 +32,7 @@ namespace stdx {
 		template<class Sink>
 		void
 		flush_to(Sink& sink) {
-			ssize_t n = 0;
+			std::streamsize n = 0;
 			while (true) {
 				if (gfirst() == glast()) {
 					this->underflow();
@@ -74,6 +74,10 @@ namespace stdx {
 		}
 
 	};
+
+	template<class Ch, class Tr=std::char_traits<Ch>>
+	struct basic_streambuf: public pipebuf<std::basic_streambuf<Ch,Tr>>
+	{};
 
 }
 
