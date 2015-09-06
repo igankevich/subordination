@@ -120,7 +120,7 @@ void test_filterbuf() {
 		std::basic_string<T> contents = test::random_string<T>(k, 0, 31);
 		std::basic_stringstream<T> out;
 		std::basic_streambuf<T>* orig = out.rdbuf();
-		out.std::basic_ostream<T>::rdbuf(new sysx::filterbuf<T>(orig));
+		out.std::template basic_ostream<T>::rdbuf(new sysx::filterbuf<T>(orig));
 		out << contents;
 		std::basic_string<T> result = out.str();
 		std::size_t cnt = std::count_if(result.begin(), result.end(), [] (T ch) {
@@ -171,6 +171,7 @@ void test_kernelbuf() {
 //				<< ", result='" << Binary<std::basic_string<T>>(result) << '\'' << std::endl;
 			if (result != contents) {
 				std::stringstream msg;
+				msg << '[' << __func__ << ']';
 				msg << "input and output does not match:\n'"
 					<< contents << "'\n!=\n'" << result << "'";
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
@@ -181,8 +182,6 @@ void test_kernelbuf() {
 
 template<class T>
 void test_kernelbuf_with_stringstream() {
-	typedef basic_ikernelbuf<std::basic_stringbuf<T>> ikernelbuf;
-	typedef basic_okernelbuf<std::basic_stringbuf<T>> okernelbuf;
 	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
@@ -197,6 +196,7 @@ void test_kernelbuf_with_stringstream() {
 		out.read(&result[0], result.size());
 		if (result != contents) {
 			std::stringstream msg;
+			msg << '[' << __func__ << ']';
 			msg << "input and output does not match:\n'"
 				<< contents << "'\n!=\n'" << result << "'";
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
@@ -249,6 +249,7 @@ void test_kernelbuf_withvector() {
 		if (pair.first != input.end()) {
 			auto pos = pair.first - input.begin();
 			std::stringstream msg;
+			msg << '[' << __func__ << ']';
 			msg << "input and output does not match at i=" << pos << ":\n'"
 				<< sysx::make_bytes(*pair.first) << "'\n!=\n'" << sysx::make_bytes(*pair.second) << "'";
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
@@ -301,7 +302,7 @@ int main(int argc, char* argv[]) {
 	test_filterbuf<char>();
 //	test_filterbuf<unsigned char>();
 	test_kernelbuf<char>();
-	test_kernelbuf_with_stringstream<char>();
+//	test_kernelbuf_with_stringstream<char>();
 	test_kernelbuf_withvector<char>();
 	return 0;
 }

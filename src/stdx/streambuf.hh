@@ -45,6 +45,18 @@ namespace stdx {
 			}
 		}
 
+		std::streamsize
+		pubfill() {
+			return fill();
+		}
+
+	protected:
+		
+		virtual std::streamsize
+		fill() {
+			return 0;
+		}
+
 	private:
 
 		void

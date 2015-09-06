@@ -137,7 +137,8 @@ namespace factory {
 				if (event.in()) {
 					this_log() << "recv rdstate="
 						<< stdx::debug_stream(_stream) << ",event=" << event << std::endl;
-					while (this->_stream) {
+					_kernelbuf.pubfill();
+					while (_kernelbuf.update_state()) {
 						try {
 							this->read_and_send_kernel();
 						} catch (No_principal_found<kernel_type>& err) {
@@ -172,7 +173,7 @@ namespace factory {
 			const socket_type& socket() const { return this->_kernelbuf.fd(); }
 			socket_type& socket() { return this->_kernelbuf.fd(); }
 			void socket(sysx::socket&& rhs) {
-				this->_stream >> underflow();
+				_kernelbuf.pubfill();
 				this->_stream.clear();
 				this->_kernelbuf.setfd(socket_type(std::move(rhs)));
 			}
@@ -197,7 +198,6 @@ namespace factory {
 		private:
 
 			void read_and_send_kernel() {
-				_kernelbuf.try_to_buffer_payload();
 				if (!_kernelbuf.payload_is_ready()) {
 					return;
 				}

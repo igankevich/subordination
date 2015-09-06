@@ -14,10 +14,14 @@ namespace factory {
 		struct basic_ikernelbuf: public Base {
 
 			typedef Base base_type;
-			using typename Base::int_type;
-			using typename Base::traits_type;
-			using typename Base::char_type;
-			using typename Base::pos_type;
+			using base_type::gptr;
+			using base_type::eback;
+			using base_type::egptr;
+			using base_type::setg;
+			using typename base_type::int_type;
+			using typename base_type::traits_type;
+			using typename base_type::char_type;
+			using typename base_type::pos_type;
 			typedef uint32_t size_type;
 			typedef stdx::log<basic_ikernelbuf> this_log;
 
@@ -35,41 +39,50 @@ namespace factory {
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
 				"bad base class for ibasic_kernelbuf");
 
-			int_type
-			underflow() override {
-				int_type ret = Base::underflow();
-				this->update_state();
-				if (this->_rstate == State::payload_is_ready && this->egptr() != this->gptr()) {
-					return *this->gptr();
-				}
-				return traits_type::eof();
-			}
+//			int_type
+//			underflow() override {
+//				assert(gptr() == egptr());
+//				int_type ret = Base::underflow();
+//				this->update_state();
+//				if (this->_rstate == State::payload_is_ready && egptr() != gptr()) {
+//					return *gptr();
+//				}
+//				return traits_type::eof();
+//			}
+//
+//			std::streamsize
+//			xsgetn(char_type* s, std::streamsize n) override {
+//				if (egptr() == gptr()) {
+//					Base::underflow();
+//				}
+//				this->update_state();
+//				if (egptr() == gptr() || _rstate != State::payload_is_ready) {
+//					return std::streamsize(0);
+//				}
+//				return Base::xsgetn(s, n);
+//			}
 
-			std::streamsize
-			xsgetn(char_type* s, std::streamsize n) override {
-				if (this->egptr() == this->gptr()) {
-					Base::underflow();
-				}
-				this->update_state();
-				if (this->egptr() == this->gptr() || _rstate != State::payload_is_ready) {
-					return std::streamsize(0);
-				}
-				return Base::xsgetn(s, n);
-			}
+//			void
+//			pubunderflow() {
+//				const pos_type old_offset = gptr() - eback();
+//				setg(eback(), egptr(), egptr());
+//				Base::underflow();
+//				setg(eback(), eback() + old_offset, egptr());
+//			}
 
-			void
-			try_to_buffer_payload() {
-				const pos_type old_offset = this->gptr() - this->eback();
-				int_type c;
-				do {
-					this->setg(this->eback(), this->egptr(), this->egptr());
-					c = Base::underflow();
-				} while (c != traits_type::eof());
-				if (old_offset != this->gptr() - this->eback()) {
-					dumpstate();
+			bool
+			update_state() {
+				const State old_state = _rstate;
+				switch (_rstate) {
+					case State::initial: this->read_kernel_packetsize(); break;
+					case State::header_is_ready: this->buffer_payload(); break;
+					case State::payload_is_ready: this->read_payload(); break;
 				}
-				this->setg(this->eback(), this->eback() + old_offset, this->egptr());
-				update_state();
+				if (old_state != _rstate) {
+					this->dumpstate();
+					this->update_state();
+				}
+				return payload_is_ready();
 			}
 
 			bool
@@ -84,7 +97,7 @@ namespace factory {
 
 			char_type*
 			packet_begin() const {
-				return this->eback() + _packetpos;
+				return eback() + _packetpos;
 			}
 
 			char_type*
@@ -106,28 +119,15 @@ namespace factory {
 			pos_type payloadpos() const { return this->_packetpos + static_cast<pos_type>(this->hdrsize()); }
 			size_type packetsize() const { return this->_packetsize; }
 			size_type bytes_left_until_the_end_of_the_packet() const {
-				return this->_packetsize - (this->gptr() - (this->eback() + this->payloadpos()));
-			}
-
-			void update_state() {
-				State old_state = _rstate;
-				switch (_rstate) {
-					case State::initial: this->read_kernel_packetsize(); break;
-					case State::header_is_ready: this->buffer_payload(); break;
-					case State::payload_is_ready: this->read_payload(); break;
-				}
-				if (old_state != _rstate) {
-					this->dumpstate();
-					this->update_state();
-				}
+				return this->_packetsize - (gptr() - (eback() + this->payloadpos()));
 			}
 
 			void read_kernel_packetsize() {
-				size_type count = this->egptr() - this->gptr();
+				size_type count = egptr() - gptr();
 				if (!(count < this->hdrsize())) {
-					sysx::Bytes<size_type> size(this->gptr(), this->gptr() + this->hdrsize());
+					sysx::Bytes<size_type> size(gptr(), gptr() + this->hdrsize());
 					size.to_host_format();
-					_packetpos = this->gptr() - this->eback();
+					_packetpos = gptr() - eback();
 					_packetsize = size;
 					this->gbump(this->hdrsize());
 					this->dumpstate();
@@ -136,24 +136,24 @@ namespace factory {
 			}
 
 			void buffer_payload() {
-				pos_type endpos = this->egptr() - this->eback();
+				pos_type endpos = egptr() - eback();
 				if (this->_oldendpos < endpos) {
 					this->_oldendpos = endpos;
 				}
-				if (this->egptr() >= packet_end()) {
-					this->setg(this->eback(), payload_begin(), payload_end());
+				if (egptr() >= packet_end()) {
+					this->setg(eback(), payload_begin(), payload_end());
 					this->sets(State::payload_is_ready);
 				} else {
 					// TODO: remove if try_to_buffer_payload() is used
-					this->setg(this->eback(), this->egptr(), this->egptr());
+					this->setg(eback(), egptr(), egptr());
 				}
 			}
 
 			void read_payload() {
-				if (this->gptr() == payload_end()) {
-					pos_type endpos = this->egptr() - this->eback();
+				if (gptr() == payload_end()) {
+					pos_type endpos = egptr() - eback();
 					if (this->_oldendpos > endpos) {
-						this->setg(this->eback(), this->gptr(), this->eback() + this->_oldendpos);
+						this->setg(eback(), gptr(), eback() + this->_oldendpos);
 					}
 					_packetpos = 0;
 					_packetsize = 0;
@@ -166,8 +166,8 @@ namespace factory {
 				this_log() << std::setw(20) << std::left << _rstate
 					<< "pptr=" << this->pptr() - this->pbase()
 					<< ",epptr=" << this->epptr() - this->pbase()
-					<< ",gptr=" << this->gptr() - this->eback()
-					<< ",egptr=" << this->egptr() - this->eback()
+					<< ",gptr=" << gptr() - eback()
+					<< ",egptr=" << egptr() - eback()
 					<< ",size=" << this->packetsize()
 					<< ",start=" << this->packetpos()
 					<< ",oldpos=" << this->_oldendpos
@@ -219,10 +219,18 @@ namespace factory {
 		template<class Base>
 		struct basic_okernelbuf: public Base {
 
-			using typename Base::int_type;
-			using typename Base::traits_type;
-			using typename Base::char_type;
-			using typename Base::pos_type;
+			typedef Base base_type;
+			using base_type::pptr;
+			using base_type::pbase;
+			using base_type::epptr;
+			using base_type::setp;
+			using base_type::gptr;
+			using base_type::eback;
+			using base_type::egptr;
+			using typename base_type::int_type;
+			using typename base_type::traits_type;
+			using typename base_type::char_type;
+			using typename base_type::pos_type;
 			typedef uint32_t size_type;
 			typedef stdx::log<basic_okernelbuf> this_log;
 
@@ -240,21 +248,29 @@ namespace factory {
 			basic_okernelbuf(basic_okernelbuf&&) = default;
 			virtual ~basic_okernelbuf() { this->end_packet(); }
 
-			int sync() {
+			int
+			sync() override {
 				int ret = this->finalise();
 				this->end_packet();
 				return ret;
 			}
 
-			int_type overflow(int_type c) {
+			int_type
+			overflow(int_type c) override {
 				int_type ret = Base::overflow(c);
 				this->begin_packet();
 				return ret;
 			}
 
-			std::streamsize xsputn(const char_type* s, std::streamsize n) {
+			std::streamsize
+			xsputn(const char_type* s, std::streamsize n) override {
 				this->begin_packet();
 				return Base::xsputn(s, n);
+			}
+
+			bool
+			dirty() const {
+				return pptr() != epptr();
 			}
 
 //			template<class X>
@@ -276,9 +292,9 @@ namespace factory {
 					this_log() << "begin_packet()     "
 						<< "pbase=" << (void*)this->pbase()
 						<< ", pptr=" << (void*)this->pptr()
-						<< ", eback=" << (void*)this->eback()
-						<< ", gptr=" << (void*)this->gptr()
-						<< ", egptr=" << (void*)this->egptr()
+						<< ", eback=" << (void*)eback()
+						<< ", gptr=" << (void*)gptr()
+						<< ", egptr=" << (void*)egptr()
 						<< std::endl;
 				}
 			}

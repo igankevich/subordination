@@ -106,6 +106,8 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 	}
 
 	void act(Server& this_server) override {
+		this_log() << "act: kernel no. "
+			<< kernel_count << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
 		// Delete kernel for Valgrind memory checker.
 		delete this;

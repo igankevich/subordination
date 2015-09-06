@@ -2,9 +2,11 @@
 #define FACTORY_EXT_FDBUF_HH
 
 #include <vector>
+#include <cassert>
 
 #include <factory/ext/intro.hh>
 #include <sysx/fildes.hh>
+#include <stdx/streambuf.hh>
 #include <stdx/log.hh>
 
 namespace factory {
@@ -12,8 +14,19 @@ namespace factory {
 	namespace components {
 
 		template<class T, class Fd=sysx::fd>
-		struct basic_fdbuf: public std::basic_streambuf<T> {
+		struct basic_fdbuf: public stdx::basic_streambuf<T> {
 
+			typedef std::basic_streambuf<T> base_type;
+			using base_type::gptr;
+			using base_type::eback;
+			using base_type::egptr;
+			using base_type::pptr;
+			using base_type::pbase;
+			using base_type::epptr;
+			using base_type::setg;
+			using base_type::setp;
+			using base_type::gbump;
+			using base_type::pbump;
 			using typename std::basic_streambuf<T>::int_type;
 			using typename std::basic_streambuf<T>::traits_type;
 			using typename std::basic_streambuf<T>::char_type;
@@ -23,209 +36,162 @@ namespace factory {
 			typedef std::ios_base::seekdir seekdir;
 			typedef Fd fd_type;
 			typedef stdx::log<basic_fdbuf> this_log;
+			typedef typename std::vector<char_type>::size_type size_type;
 
 			basic_fdbuf(): basic_fdbuf(std::move(fd_type()), 512, 512) {}
 
-			basic_fdbuf(fd_type&& fd, std::size_t gbufsize, std::size_t pbufsize):
-				_fd(std::move(fd)),
-				_gbuf(gbufsize),
-				_pbuf(pbufsize)
+			basic_fdbuf(fd_type&& fd, size_type gbufsize, size_type pbufsize):
+			_fd(std::move(fd)), _gbuf(gbufsize), _pbuf(pbufsize)
 			{
-				char_type* end = &_gbuf.front();
-				this->setg(end, end, end);
-				char_type* beg = &this->_pbuf.front();
-				this->setp(beg, beg + this->_pbuf.size());
+				char_type* end = _gbuf.data();
+				setg(end, end, end);
+				char_type* beg = _pbuf.data();
+				setp(beg, beg + _pbuf.size());
 			}
 
-
-//			basic_fdbuf& operator=(basic_fdbuf&) = delete;
-//			basic_fdbuf(basic_fdbuf&) = delete;
 			basic_fdbuf(basic_fdbuf&& rhs) = default;
 
-			virtual ~basic_fdbuf() {
-				// TODO: for now full sync is not guaranteed for non-blocking I/O
+			virtual
+			~basic_fdbuf() {
+				// NB: for now full sync is not guaranteed for non-blocking I/O
 				// as it may result in infinite loop
-				this->sync();
+				sync();
 			}
 
-			int_type underflow() {
-				if (this->gptr() != this->egptr()) {
-					return traits_type::to_int_type(*this->gptr());
-				}
-//				if (this->eback() == this->gptr()) {
-//					char_type* base = &this->_gbuf.front();
-//					ssize_t n = this->_fd.read(base, this->_gbuf.size());
-//					this_log() << "Reading fd=" << _fd << ",n=" << n << std::endl;
-//					if (n <= 0) {
-//						return traits_type::eof();
-//					}
-//					this->setg(base, base, base + n);
-//				} else
-				{
-//					this->growgbuf(this->_gbuf.size() * 2);
-					ssize_t n = 0;
-					pos_type old_pos = this->gptr() - this->eback();
-					pos_type pos = this->egptr() - this->eback();
-					while ((n = this->_fd.read(this->eback() + pos, this->_gbuf.size() - pos)) > 0) {
-						pos += n;
-						if (pos == this->_gbuf.size()) {
-							this->growgbuf(this->_gbuf.size() * 2);
-						}
-					}
-					if (pos == old_pos) {
-						return traits_type::eof();
-					}
-					char_type* base = this->eback();
-					this->setg(base, base + old_pos, base + pos);
-				}
-				return traits_type::to_int_type(*this->gptr());
+			int_type
+			underflow() override {
+				assert(gptr() == egptr());
+				return fill_from_fd(0) == 0
+					? traits_type::eof()
+					: traits_type::to_int_type(*gptr());
 			}
 
-			int_type overflow(int_type c = traits_type::eof()) {
+			int_type
+			overflow(int_type c) override {
+				assert(pptr() == epptr());
 				if (c != traits_type::eof()) {
-					if (this->pptr() == this->epptr()) {
-						this->growpbuf(this->_pbuf.size() * 2);
-					// TODO: do we need sync???
-//						if (this->sync() == -1) {
-//						}
-					}
-					if (this->pptr() != this->epptr()) {
-						*this->pptr() = c;
-						this->pbump(1);
-						return traits_type::to_int_type(c);
+					pgrow();
+					if (pptr() != epptr()) {
+						*pptr() = c;
+						pbump(1);
 					}
 				} else {
-					// TODO: do we need sync???
-//					this->sync();
+					sync();
 				}
-				return traits_type::eof();
+				return c;
 			}
 
-			int sync() {
-				this_log() << "Sync" << std::endl;
-				if (this->pptr() == this->pbase()) return 0;
-				ssize_t n = this->_fd.write(this->pbase(), this->pptr() - this->pbase());
-				if (n <= 0) {
-					return -1;
-				}
-				this->pbump(-n);
-				this_log() << "Writing fd=" << this->_fd << ",n=" << n << std::endl;
-				return this->pptr() == this->pbase() ? 0 : -1;
+			std::streamsize
+			fill() override {
+				return fill_from_fd(gptr()-eback());
 			}
 
-			pos_type seekoff(off_type off, seekdir way,
-				openmode which = std::ios_base::in | std::ios_base::out)
-			{
+			int
+			sync() override {
+				const std::streamsize m = pptr() - pbase();
+				const std::streamsize n = _fd.write(pbase(), m);
+				if (n > 0) {
+					pbump(-n);
+				}
+				return n == m && m!=0 ? 0 : -1;
+			}
+
+			pos_type
+			seekoff(off_type off, seekdir way, openmode which) override {
+				pos_type ret(off_type(-1));
 				if (way == std::ios_base::beg) {
 					this_log() << "seekoff way=beg,off=" << off << std::endl;
-					return this->seekpos(off, which);
+					ret = seekpos(off, which);
 				}
 				if (way == std::ios_base::cur) {
 					this_log() << "seekoff way=cur,off=" << off << std::endl;
-					pos_type pos = which & std::ios_base::in
-						? static_cast<pos_type>(this->gptr() - this->eback())
-						: static_cast<pos_type>(this->pptr() - this->pbase());
-					return off == 0 ? pos 
-						: this->seekpos(pos + off, which);
+					const pos_type pos = which & std::ios_base::in
+						? static_cast<pos_type>(gptr() - eback())
+						: static_cast<pos_type>(pptr() - pbase());
+					ret = off == 0 ? pos : seekpos(pos + off, which);
 				}
 				if (way == std::ios_base::end) {
 					this_log() << "seekoff way=end,off=" << off << std::endl;
-					pos_type pos = which & std::ios_base::in
-						? static_cast<pos_type>(this->egptr() - this->eback())
-						: static_cast<pos_type>(this->epptr() - this->pbase());
-					return this->seekpos(pos + off, which);
+					const pos_type pos = which & std::ios_base::in
+						? static_cast<pos_type>(egptr() - eback())
+						: static_cast<pos_type>(epptr() - pbase());
+					ret = seekpos(pos + off, which);
 				}
-				return pos_type(off_type(-1));
+				return ret;
 			}
 
-			pos_type seekpos(pos_type pos,
-				openmode mode = std::ios_base::in | std::ios_base::out)
-			{
-				this_log() << "seekpos " << pos << std::endl;
+			pos_type
+			seekpos(pos_type pos, openmode mode) override {
+				pos_type ret(off_type(-1));
 				if (mode & std::ios_base::in) {
-					std::size_t size = this->egptr() - this->eback();
+					const std::streamsize size = egptr() - eback();
 					if (pos >= 0 && pos <= size) {
-						char_type* beg = this->eback();
-						char_type* end = this->egptr();
-						char_type* xgptr = beg+pos;
-						this->setg(beg, xgptr, end);
+						setg(eback(), eback()+pos, egptr());
+						ret = pos;
 					}
-					// always return current position
-					return static_cast<pos_type>(this->gptr() - this->eback());
 				}
 				if (mode & std::ios_base::out) {
-					std::size_t size = this->_pbuf.size();
-					if (pos >= 0 && pos <= size) {
-						std::ptrdiff_t off = this->pptr() - this->pbase();
-						this->pbump(static_cast<std::ptrdiff_t>(pos)-off);
+					if (pos >= 0 && pos <= psize()) {
+						setp(pbase(), epptr());
+						pbump(pos);
+						ret = pos;
 					}
-//					// enlarge buffer
-//					if (pos > size) {
-//						this_log() << "GROW: pos=" << pos << std::endl;
-//						this->growpbuf(pos);
-//						this->pbump(this->epptr() - this->pptr());
-//					}
-					// always return current position
-					return static_cast<pos_type>(this->pptr() - this->pbase());
 				}
-				return pos_type(off_type(-1));
+				return ret;
 			}
 
 			void
 			setfd(fd_type&& rhs) {
-				this->_fd = std::move(rhs);
+				_fd = std::move(rhs);
 			}
 
 			const fd_type&
 			fd() const {
-				return this->_fd;
+				return _fd;
 			}
 
 			fd_type&
 			fd() {
-				return this->_fd;
+				return _fd;
 			}
 		
 		private:
-			static
-			std::size_t calc_size(std::size_t target_size, std::size_t base_size) {
-				while (base_size < target_size
-					&& base_size <= std::numeric_limits<std::size_t>::max()/2)
-				{
-					base_size *= 2;
+
+			std::streamsize
+			fill_from_fd(std::streamsize offset) {
+				std::streamsize n = 0, nread = offset;
+				while ((n = _fd.read(_gbuf.data() + nread, _gbuf.size() - nread)) > 0) {
+					nread += n;
+					if (nread == _gbuf.size()) {
+						ggrow();
+					}
 				}
-				return base_size;
+				char_type* base = _gbuf.data();
+				setg(base, base + offset, base + nread);
+				return nread - offset;
 			}
 
 		protected:
 
-			void growgbuf(std::size_t target_size) {
-				if (target_size <= this->_gbuf.size()) return;
-				std::size_t size = this->_gbuf.size();
-				std::size_t new_size = calc_size(target_size, size);
-				std::ptrdiff_t off = this->gptr() - this->eback();
-				std::ptrdiff_t n = this->egptr() - this->eback();
-				this->_gbuf.resize(new_size);
-				this_log() << "Resize gbuf size="
-					<< this->_gbuf.size() << std::endl;
-				char_type* base = &this->_gbuf.front();
-				this->setg(base, base + off, base + n);
+			void
+			ggrow() {
+				_gbuf.resize(_gbuf.size() * 2);
 			}
 
-			void growpbuf(std::size_t target_size) {
-				if (target_size <= this->_pbuf.size()) return;
-				std::size_t size = this->_pbuf.size();
-				std::size_t new_size = calc_size(target_size, size);
-				std::ptrdiff_t off = this->pptr() - this->pbase();
-				std::ptrdiff_t n = this->epptr() - this->pbase();
-				this->_pbuf.resize(new_size);
-				this_log() << "Resize pbuf size=" << new_size << std::endl;
-				char_type* base = &this->_pbuf.front();
-				this->setp(base, base + new_size);
-				this->pbump(off);
+			void
+			pgrow() {
+				const pos_type off = pptr() - pbase();
+				const pos_type n = epptr() - pbase();
+				_pbuf.resize(_pbuf.size() * 2);
+				char_type* base = _pbuf.data();
+				setp(base, base + _pbuf.size());
+				pbump(off);
 			}
 
-			std::size_t pbufsize() const { return this->_pbuf.size(); }
+			size_type
+			psize() const {
+				return _pbuf.size();
+			}
 
 			fd_type _fd;
 			std::vector<char_type> _gbuf;
@@ -237,7 +203,7 @@ namespace factory {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_istream<Ch,Tr> istream_type;
 			explicit basic_ifdstream(Fd&& fd): istream_type(nullptr),
-				_fdbuf(std::move(fd), 512, 0) { this->init(&this->_fdbuf); }
+				_fdbuf(std::move(fd), 512, 0) { this->init(&_fdbuf); }
 		private:
 			fdbuf_type _fdbuf;
 		};
@@ -247,7 +213,7 @@ namespace factory {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_ostream<Ch,Tr> ostream_type;
 			explicit basic_ofdstream(Fd&& fd): ostream_type(nullptr),
-				_fdbuf(std::move(fd), 0, 512) { this->init(&this->_fdbuf); }
+				_fdbuf(std::move(fd), 0, 512) { this->init(&_fdbuf); }
 		private:
 			fdbuf_type _fdbuf;
 		};
@@ -257,7 +223,7 @@ namespace factory {
 			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
 			typedef std::basic_iostream<Ch,Tr> iostream_type;
 			explicit basic_fdstream(Fd&& fd): iostream_type(nullptr),
-				_fdbuf(std::move(fd), 512, 512) { this->init(&this->_fdbuf); }
+				_fdbuf(std::move(fd), 512, 512) { this->init(&_fdbuf); }
 		private:
 			fdbuf_type _fdbuf;
 		};
