@@ -36,6 +36,7 @@ namespace sysx {
 		xsputn(const char_type* s, std::streamsize n) override {
 			char_type* first = const_cast<char_type*>(s);
 			char_type* last = first + n;
+			// TODO: optimise for ``good'' chars
 			while (first != last) {
 				if (!isbadchar(*first)) {
 					if (this->_orig->sputc(*first) == traits_type::eof()) {

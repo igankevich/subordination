@@ -12,7 +12,7 @@
 #include <sysx/packstream.hh>
 
 #include <factory/managed_object.hh>
-#include <factory/ext/kernelbuf.hh>
+#include <factory/ext/packetbuf.hh>
 #include <factory/ext/shmembuf.hh>
 
 namespace factory {
@@ -264,7 +264,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(basic_ikernelbuf<X>& buf, const sysx::endpoint& from) {
+			void forward(basic_ipacketbuf<X>& buf, const sysx::endpoint& from) {
 				olock_type lock(this->_obuf);
 				this->_ostream.rdbuf(&this->_obuf);
 				this->_ostream << from;
@@ -342,7 +342,7 @@ namespace factory {
 			}
 
 			template<class X>
-			void forward(key_type app, const sysx::endpoint& from, basic_ikernelbuf<X>& buf) {
+			void forward(key_type app, const sysx::endpoint& from, basic_ipacketbuf<X>& buf) {
 				typename map_type::iterator result = this->_apps.find(app);
 				if (result == this->_apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);

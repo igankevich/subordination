@@ -1,6 +1,6 @@
 #include <sysx/security.hh>
 #include <factory/ext/fdbuf.hh>
-#include <factory/ext/kernelbuf.hh>
+#include <factory/ext/packetbuf.hh>
 #include <factory/ext/lbuffer.hh>
 #include <factory/error.hh>
 
@@ -13,9 +13,9 @@ using namespace factory;
 using factory::components::Error;
 using factory::components::basic_ofdstream;
 using factory::components::basic_ifdstream;
-using factory::components::basic_okernelbuf;
-using factory::components::basic_ikernelbuf;
-using factory::components::basic_kernelbuf;
+using factory::components::basic_opacketbuf;
+using factory::components::basic_ipacketbuf;
+using factory::components::basic_packetbuf;
 using factory::components::basic_fdbuf;
 using factory::components::basic_kstream;
 using factory::components::LBuffer;
@@ -136,27 +136,27 @@ void test_filterbuf() {
 }
 
 template<class T, class Fd=sysx::fd>
-void test_kernelbuf() {
-	std::clog << "Checking kernelbuf" << std::endl;
+void test_packetbuf() {
+	std::clog << "Checking packetbuf" << std::endl;
 	std::string filename = "/tmp/"
 		+ test::random_string<char>(16, 'a', 'z')
 		+ ".factory";
-	typedef basic_ikernelbuf<basic_fdbuf<T,Fd>> ikernelbuf;
-	typedef basic_okernelbuf<basic_fdbuf<T,Fd>> okernelbuf;
+	typedef basic_ipacketbuf<basic_fdbuf<T,Fd>> ipacketbuf;
+	typedef basic_opacketbuf<basic_fdbuf<T,Fd>> opacketbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		sysx::tmpfile tfile(filename);
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
 			sysx::file file(filename, sysx::file::write_only);
-			okernelbuf buf;
+			opacketbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_ostream<T> out(&buf);
 			out << contents;
 		}
 		{
 			sysx::file file(filename, sysx::file::read_only);
-			ikernelbuf buf;
+			ipacketbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
@@ -181,14 +181,14 @@ void test_kernelbuf() {
 }
 
 template<class T>
-void test_kernelbuf_with_stringstream() {
-	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
+void test_packetbuf_with_stringstream() {
+	typedef basic_packetbuf<std::basic_stringbuf<T>> packetbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		std::basic_stringstream<T> out;
 		std::basic_streambuf<T>* orig = out.rdbuf();
-		kernelbuf buf;
+		packetbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
 		out.write(contents.data(), contents.size());
 		out << end_packet() << std::flush;
@@ -206,14 +206,14 @@ void test_kernelbuf_with_stringstream() {
 }
 
 template<class T>
-void test_kernelbuf_withvector() {
+void test_packetbuf_withvector() {
 
 	typedef std::size_t I;
-	typedef basic_kernelbuf<std::basic_stringbuf<T>> kernelbuf;
+	typedef basic_packetbuf<std::basic_stringbuf<T>> packetbuf;
 	typedef basic_kstream<std::basic_stringbuf<T>> kstream;
 
 	const I MAX_SIZE_POWER = 12;
-	std::clog << "test_kernelbuf_withvector()" << std::endl;
+	std::clog << "test_packetbuf_withvector()" << std::endl;
 
 	for (I k=0; k<=10; ++k) {
 		I size = I(1) << k;
@@ -301,8 +301,8 @@ int main(int argc, char* argv[]) {
 //	test_fdbuf<char, Socket>();
 	test_filterbuf<char>();
 //	test_filterbuf<unsigned char>();
-	test_kernelbuf<char>();
-//	test_kernelbuf_with_stringstream<char>();
-	test_kernelbuf_withvector<char>();
+	test_packetbuf<char>();
+//	test_packetbuf_with_stringstream<char>();
+	test_packetbuf_withvector<char>();
 	return 0;
 }

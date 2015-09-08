@@ -13,7 +13,7 @@
 
 #include <factory/server/intro.hh>
 #include <factory/ext/fdbuf.hh>
-#include <factory/ext/kernelbuf.hh>
+#include <factory/ext/packetbuf.hh>
 
 namespace factory {
 
@@ -23,7 +23,7 @@ namespace factory {
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef char Ch;
-			typedef basic_kernelbuf<basic_fdbuf<Ch,Socket>> Kernelbuf;
+			typedef basic_packetbuf<basic_fdbuf<Ch,Socket>> Kernelbuf;
 			typedef sysx::basic_packstream<Ch> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
@@ -35,12 +35,12 @@ namespace factory {
 
 			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr):
 				_vaddr(vaddr),
-				_kernelbuf(),
-				_stream(&_kernelbuf),
+				_packetbuf(),
+				_stream(&_packetbuf),
 				_buffer(),
 				_link(nullptr)
 			{
-				_kernelbuf.setfd(std::move(sock));
+				_packetbuf.setfd(std::move(sock));
 			}
 
 			Remote_Rserver(const Remote_Rserver&) = delete;
@@ -49,12 +49,12 @@ namespace factory {
 			Remote_Rserver(Remote_Rserver&& rhs):
 				base_server(std::move(rhs)),
 				_vaddr(rhs._vaddr),
-				_kernelbuf(std::move(rhs._kernelbuf)),
-				_stream(&_kernelbuf),
+				_packetbuf(std::move(rhs._packetbuf)),
+				_stream(&_packetbuf),
 				_buffer(std::move(rhs._buffer)) ,
 				_link(rhs._link)
 			{
-				this_log() << "fd after move ctr " << _kernelbuf.fd() << std::endl;
+				this_log() << "fd after move ctr " << _packetbuf.fd() << std::endl;
 				this_log() << "root after move ctr " << this->root()
 					<< ",this=" << this << std::endl;
 			}
@@ -125,8 +125,8 @@ namespace factory {
 				if (event.in()) {
 					this_log() << "recv rdstate="
 						<< stdx::debug_stream(_stream) << ",event=" << event << std::endl;
-					_kernelbuf.pubfill();
-					while (_kernelbuf.update_state()) {
+					_packetbuf.pubfill();
+					while (_packetbuf.update_state()) {
 						read_and_send_kernel();
 					}
 				}
@@ -148,24 +148,24 @@ namespace factory {
 
 			bool
 			dirty() const {
-				return _kernelbuf.dirty() || !socket().empty();
+				return _packetbuf.dirty() || !socket().empty();
 			}
 
 			const socket_type&
 			socket() const {
-				return _kernelbuf.fd();
+				return _packetbuf.fd();
 			}
 
 			socket_type&
 			socket() {
-				return _kernelbuf.fd();
+				return _packetbuf.fd();
 			}
 
 			void
 			socket(sysx::socket&& rhs) {
-				_kernelbuf.pubfill();
+				_packetbuf.pubfill();
 				_stream.clear();
-				_kernelbuf.setfd(socket_type(std::move(rhs)));
+				_packetbuf.setfd(socket_type(std::move(rhs)));
 			}
 
 			const sysx::endpoint& vaddr() const { return _vaddr; }
@@ -194,7 +194,7 @@ namespace factory {
 				this_log() << "recv app=" << app << std::endl;
 				if (!_stream) return;
 				if (app != Application::ROOT) {
-					this->app_server()->forward(app, _vaddr, _kernelbuf);
+					this->app_server()->forward(app, _vaddr, _packetbuf);
 				} else {
 					Type<kernel_type>::read_object(this->factory()->types(), _stream,
 						[this,app] (kernel_type* k) {
@@ -247,10 +247,10 @@ namespace factory {
 			write_kernel(kernel_type& kernel) {
 				typedef sysx::packstream::pos_type pos_type;
 				pos_type old_pos = _stream.tellp();
-				_kernelbuf.begin_packet();
+				_packetbuf.begin_packet();
 				_stream << kernel.app();
 				Type<kernel_type>::write_object(kernel, _stream);
-				_kernelbuf.end_packet();
+				_packetbuf.end_packet();
 				pos_type new_pos = _stream.tellp();
 				this_log() << "send bytes="
 					<< new_pos-old_pos
@@ -288,7 +288,7 @@ namespace factory {
 			}
 			
 			sysx::endpoint _vaddr;
-			Kernelbuf _kernelbuf;
+			Kernelbuf _packetbuf;
 			stream_type _stream;
 			pool_type _buffer;
 

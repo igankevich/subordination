@@ -11,7 +11,7 @@ namespace factory {
 	namespace components {
 
 		template<class Base>
-		struct basic_ikernelbuf: public Base {
+		struct basic_ipacketbuf: public Base {
 
 			typedef Base base_type;
 			using base_type::gptr;
@@ -23,7 +23,7 @@ namespace factory {
 			using typename base_type::char_type;
 			using typename base_type::pos_type;
 			typedef uint32_t size_type;
-			typedef stdx::log<basic_ikernelbuf> this_log;
+			typedef stdx::log<basic_ipacketbuf> this_log;
 
 			enum struct State {
 				initial,
@@ -31,44 +31,13 @@ namespace factory {
 				payload_is_ready
 			};
 
-			basic_ikernelbuf() = default;
-			basic_ikernelbuf(basic_ikernelbuf&&) = default;
-			basic_ikernelbuf(const basic_ikernelbuf&) = delete;
-			virtual ~basic_ikernelbuf() = default;
+			basic_ipacketbuf() = default;
+			basic_ipacketbuf(basic_ipacketbuf&&) = default;
+			basic_ipacketbuf(const basic_ipacketbuf&) = delete;
+			virtual ~basic_ipacketbuf() = default;
 
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
-				"bad base class for ibasic_kernelbuf");
-
-//			int_type
-//			underflow() override {
-//				assert(gptr() == egptr());
-//				int_type ret = Base::underflow();
-//				this->update_state();
-//				if (this->_rstate == State::payload_is_ready && egptr() != gptr()) {
-//					return *gptr();
-//				}
-//				return traits_type::eof();
-//			}
-//
-//			std::streamsize
-//			xsgetn(char_type* s, std::streamsize n) override {
-//				if (egptr() == gptr()) {
-//					Base::underflow();
-//				}
-//				this->update_state();
-//				if (egptr() == gptr() || _rstate != State::payload_is_ready) {
-//					return std::streamsize(0);
-//				}
-//				return Base::xsgetn(s, n);
-//			}
-
-//			void
-//			pubunderflow() {
-//				const pos_type old_offset = gptr() - eback();
-//				setg(eback(), egptr(), egptr());
-//				Base::underflow();
-//				setg(eback(), eback() + old_offset, egptr());
-//			}
+				"bad base class for ibasic_packetbuf");
 
 			bool
 			update_state() {
@@ -90,8 +59,8 @@ namespace factory {
 				return _rstate == State::payload_is_ready;
 			}
 
-//			template<class X> friend class basic_okernelbuf;
-			template<class X> friend void append_payload(std::streambuf& buf, basic_ikernelbuf<X>& kbuf);
+//			template<class X> friend class basic_opacketbuf;
+			template<class X> friend void append_payload(std::streambuf& buf, basic_ipacketbuf<X>& kbuf);
 
 		private:
 
@@ -107,7 +76,7 @@ namespace factory {
 
 			char_type*
 			payload_begin() const {
-				return packet_begin() + hdrsize();
+				return packet_begin() + header_size();
 			}
 
 			char_type*
@@ -115,21 +84,24 @@ namespace factory {
 				return payload_begin() + payloadsize();
 			}
 
-			pos_type packetpos() const { return this->_packetpos; }
-			pos_type payloadpos() const { return this->_packetpos + static_cast<pos_type>(this->hdrsize()); }
-			size_type packetsize() const { return this->_packetsize; }
-			size_type bytes_left_until_the_end_of_the_packet() const {
-				return this->_packetsize - (gptr() - (eback() + this->payloadpos()));
+			pos_type
+			payloadpos() const {
+				return _packetpos + pos_type(header_size());
+			}
+
+			size_type
+			bytes_left_until_the_end_of_the_packet() const {
+				return _packetsize - (gptr() - (eback() + payloadpos()));
 			}
 
 			void read_kernel_packetsize() {
 				size_type count = egptr() - gptr();
-				if (!(count < this->hdrsize())) {
-					sysx::Bytes<size_type> size(gptr(), gptr() + this->hdrsize());
+				if (!(count < this->header_size())) {
+					sysx::Bytes<size_type> size(gptr(), gptr() + this->header_size());
 					size.to_host_format();
 					_packetpos = gptr() - eback();
 					_packetsize = size;
-					this->gbump(this->hdrsize());
+					this->gbump(this->header_size());
 					this->dumpstate();
 					this->sets(State::header_is_ready);
 				}
@@ -137,8 +109,8 @@ namespace factory {
 
 			void buffer_payload() {
 				pos_type endpos = egptr() - eback();
-				if (this->_oldendpos < endpos) {
-					this->_oldendpos = endpos;
+				if (_oldendpos < endpos) {
+					_oldendpos = endpos;
 				}
 				if (egptr() >= packet_end()) {
 					this->setg(eback(), payload_begin(), payload_end());
@@ -152,8 +124,8 @@ namespace factory {
 			void read_payload() {
 				if (gptr() == payload_end()) {
 					pos_type endpos = egptr() - eback();
-					if (this->_oldendpos > endpos) {
-						this->setg(eback(), gptr(), eback() + this->_oldendpos);
+					if (_oldendpos > endpos) {
+						this->setg(eback(), gptr(), eback() + _oldendpos);
 					}
 					_packetpos = 0;
 					_packetsize = 0;
@@ -168,9 +140,9 @@ namespace factory {
 					<< ",epptr=" << this->epptr() - this->pbase()
 					<< ",gptr=" << gptr() - eback()
 					<< ",egptr=" << egptr() - eback()
-					<< ",size=" << this->packetsize()
-					<< ",start=" << this->packetpos()
-					<< ",oldpos=" << this->_oldendpos
+					<< ",size=" << _packetsize
+					<< ",start=" << _packetpos
+					<< ",oldpos=" << _oldendpos
 					<< std::endl;
 			}
 
@@ -187,18 +159,18 @@ namespace factory {
 
 			void
 			sets(State rhs) {
-				this_log() << "oldstate=" << this->_rstate
+				this_log() << "oldstate=" << _rstate
 					<< ",newstate=" << rhs << std::endl;
-				this->_rstate = rhs;
+				_rstate = rhs;
 			}
 
 			size_type
 			payloadsize() const {
-				return this->_packetsize - this->hdrsize();
+				return _packetsize - header_size();
 			}
 
 			static constexpr size_type
-			hdrsize() {
+			header_size() {
 				return sizeof(_packetsize);
 			}
 
@@ -209,15 +181,15 @@ namespace factory {
 		};
 
 		template<class X>
-		void append_payload(std::streambuf& buf, basic_ikernelbuf<X>& rhs) {
-			typedef typename basic_ikernelbuf<X>::size_type size_type;
+		void append_payload(std::streambuf& buf, basic_ipacketbuf<X>& rhs) {
+			typedef typename basic_ipacketbuf<X>::size_type size_type;
 			const size_type n = rhs.bytes_left_until_the_end_of_the_packet();
 			buf.sputn(rhs.gptr(), n);
 			rhs.gbump(n);
 		}
 
 		template<class Base>
-		struct basic_okernelbuf: public Base {
+		struct basic_opacketbuf: public Base {
 
 			typedef Base base_type;
 			using base_type::pptr;
@@ -233,15 +205,15 @@ namespace factory {
 			using typename base_type::char_type;
 			using typename base_type::pos_type;
 			typedef uint32_t size_type;
-			typedef stdx::log<basic_okernelbuf> this_log;
+			typedef stdx::log<basic_opacketbuf> this_log;
 
 			static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
-				"bad base class for basic_okernelbuf");
+				"bad base class for basic_opacketbuf");
 
-			basic_okernelbuf() = default;
-			basic_okernelbuf(const basic_okernelbuf&) = delete;
-			basic_okernelbuf(basic_okernelbuf&&) = default;
-			virtual ~basic_okernelbuf() { this->end_packet(); }
+			basic_opacketbuf() = default;
+			basic_opacketbuf(const basic_opacketbuf&) = delete;
+			basic_opacketbuf(basic_opacketbuf&&) = default;
+			virtual ~basic_opacketbuf() { this->end_packet(); }
 
 			bool
 			dirty() const {
@@ -299,18 +271,18 @@ namespace factory {
 		};
 
 		template<class Base1, class Base2=Base1>
-		struct basic_kernelbuf: public basic_okernelbuf<basic_ikernelbuf<Base1>> {};
+		struct basic_packetbuf: public basic_opacketbuf<basic_ipacketbuf<Base1>> {};
 
 		template<class Base>
 		struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
-			typedef basic_kernelbuf<Base> kernelbuf_type;
+			typedef basic_packetbuf<Base> packetbuf_type;
 			typedef typename Base::char_type Ch;
 			typedef typename Base::traits_type Tr;
 			typedef std::basic_iostream<Ch,Tr> iostream_type;
-			basic_kstream(): iostream_type(nullptr), _kernelbuf()
-				{ this->init(&this->_kernelbuf); }
+			basic_kstream(): iostream_type(nullptr), _packetbuf()
+				{ this->init(&_packetbuf); }
 		private:
-			kernelbuf_type _kernelbuf;
+			packetbuf_type _packetbuf;
 		};
 
 
@@ -345,17 +317,17 @@ namespace stdx {
 	struct temp_cat {};
 
 	template<class Base>
-	struct type_traits<factory::components::basic_ikernelbuf<Base>> {
+	struct type_traits<factory::components::basic_ipacketbuf<Base>> {
 		static constexpr const char*
-		short_name() { return "ikernelbuf"; }
+		short_name() { return "ipacketbuf"; }
 //		typedef factory::components::buffer_category category;
 		typedef temp_cat category;
 	};
 
 	template<class Base>
-	struct type_traits<factory::components::basic_okernelbuf<Base>> {
+	struct type_traits<factory::components::basic_opacketbuf<Base>> {
 		static constexpr const char*
-		short_name() { return "okernelbuf"; }
+		short_name() { return "opacketbuf"; }
 		typedef factory::components::buffer_category category;
 	};
 
