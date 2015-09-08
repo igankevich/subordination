@@ -469,7 +469,7 @@ struct Profiler: public Mobile<Profiler> {
 		commit(remote_server());
 	}
 
-	void write_impl(packstream& out) {
+	void write_impl(packetstream& out) {
 		if (_state == 0) {
 			_time = current_time_nano();
 		}
@@ -480,7 +480,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 	}
 
-	void read_impl(packstream& in) {
+	void read_impl(packetstream& in) {
 		in >> _state >> _time;
 		if (_state == 1) {
 			_time = current_time_nano() - _time;
@@ -528,8 +528,8 @@ struct Ping: public Mobile<Ping> {
 
 	void act() { commit(remote_server()); }
 
-	void write_impl(packstream&) { }
-	void read_impl(packstream&) { }
+	void write_impl(packetstream&) { }
+	void read_impl(packetstream&) { }
 
 	static void init_type(Type* t) {
 		t->id(7);
@@ -726,12 +726,12 @@ struct Negotiator: public Mobile<Negotiator> {
 		remote_server()->send(this);
 	}
 	
-	void write_impl(packstream& out) {
+	void write_impl(packetstream& out) {
 		// TODO: if moves_upstream
 		out << _old_principal << _new_principal << _stop;
 	}
 
-	void read_impl(packstream& in) {
+	void read_impl(packetstream& in) {
 		in >> _old_principal >> _new_principal >> _stop;
 	}
 

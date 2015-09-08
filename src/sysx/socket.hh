@@ -122,9 +122,6 @@ namespace sysx {
 
 		void shutdown(shutdown_how how) {
 			if (*this) {
-				std::clog
-					<< "Closing socket "
-					<< this->_fd << std::endl;
 				bits::check_if_not<std::errc::not_connected>(
 					::shutdown(this->_fd, how),
 					__FILE__, __LINE__, __func__);
@@ -172,14 +169,16 @@ namespace sysx {
 			return ret;
 		}
 
-		endpoint bind_addr() const {
+		endpoint
+		bind_addr() const {
 			endpoint addr;
 			socklen_type len = sizeof(endpoint);
 			int ret = ::getsockname(this->_fd, addr.sockaddr(), &len);
 			return ret == -1 ? endpoint() : addr;
 		}
 
-		endpoint name() const {
+		endpoint
+		name() const {
 			endpoint addr;
 			socklen_type len = sizeof(endpoint);
 			bits::check(::getsockname(this->_fd, addr.sockaddr(), &len),

@@ -22,7 +22,7 @@
 #include <sysx/process.hh>
 #include <sysx/log.hh>
 #include <sysx/cpu_bind.hh>
-#include <sysx/packstream.hh>
+#include <sysx/packetstream.hh>
 
 #include <factory/bits/terminate_handler.hh>
 #include <factory/kernel.hh>
@@ -84,7 +84,7 @@ namespace factory {
 				return Type<Kernel>{
 					SHUTDOWN_ID,
 					"Shutdown",
-					[] (sysx::packstream& in) {
+					[] (sysx::packetstream& in) {
 						Shutdown* k = new Shutdown;
 						k->read(in);
 						return k;

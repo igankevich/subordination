@@ -4,7 +4,7 @@
 #include <limits>
 
 #include <sysx/bits/uint128_parse.hh>
-#include <sysx/packstream.hh>
+#include <sysx/packetstream.hh>
 
 namespace sysx {
 
@@ -117,13 +117,13 @@ namespace sysx {
 				: family_type::inet;
 		};
 
-		packstream&
-		operator<<(packstream& out, family_type rhs) {
+		packetstream&
+		operator<<(packetstream& out, family_type rhs) {
 			return out << static_cast<raw_family_type>(map_family_type(rhs));
 		}
 		
-		packstream&
-		operator>>(packstream& in, family_type& rhs) {
+		packetstream&
+		operator>>(packetstream& in, family_type& rhs) {
 			raw_family_type raw;
 			in >> raw;
 			rhs = map_family_type(static_cast<portable_family_type>(raw));

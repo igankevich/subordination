@@ -5,7 +5,7 @@
 
 #include <factory/server/basic_server.hh>
 #include <sysx/process.hh>
-#include <sysx/packstream.hh>
+#include <sysx/packetstream.hh>
 
 #ifndef FACTORY_CONFIGURATION
 namespace factory {
@@ -160,7 +160,7 @@ namespace factory {
 		struct Mobile_kernel: public Basic_kernel {
 
 			virtual void
-			read(sysx::packstream& in) { 
+			read(sysx::packetstream& in) { 
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r;
 				in >> r;
@@ -169,7 +169,7 @@ namespace factory {
 			}
 
 			virtual void
-			write(sysx::packstream& out) {
+			write(sysx::packetstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
 				out << r << this->_id;
@@ -296,7 +296,7 @@ namespace factory {
 			bool moves_everywhere() const { return !_principal && !_parent; }
 
 			void
-			read(sysx::packstream& in) override {
+			read(sysx::packetstream& in) override {
 				base_kernel::read(in);
 				if (_parent) {
 					std::stringstream s;
@@ -313,7 +313,7 @@ namespace factory {
 			}
 
 			void
-			write(sysx::packstream& out) override {
+			write(sysx::packetstream& out) override {
 				base_kernel::write(out);
 				if (moves_downstream()) {
 					out << _parent_id << _principal_id;

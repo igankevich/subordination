@@ -1,5 +1,5 @@
-#ifndef FACTORY_EXT_KERNELBUF_HH
-#define FACTORY_EXT_KERNELBUF_HH
+#ifndef FACTORY_EXT_PACKETBUF_HH
+#define FACTORY_EXT_PACKETBUF_HH
 
 #include <iomanip>
 #include <sysx/network_format.hh>
@@ -223,14 +223,7 @@ namespace factory {
 			void
 			begin_packet() {
 				_packetpos = pptr() - pbase();
-				putsize(0);
-				this_log() << "begin_packet()     "
-					<< "pbase=" << (void*)this->pbase()
-					<< ", pptr=" << (void*)this->pptr()
-					<< ", eback=" << (void*)eback()
-					<< ", gptr=" << (void*)gptr()
-					<< ", egptr=" << (void*)egptr()
-					<< std::endl;
+				put_header(0);
 			}
 
 			void
@@ -240,26 +233,25 @@ namespace factory {
 				if (s == header_size()) {
 					pbump(-std::streamsize(s));
 				} else {
-					overwrite_size(s);
+					overwrite_header(s);
 				}
-				this_log() << "end_packet(): size=" << s << std::endl;
 			}
 
 		private:
 
 			void
-			putsize(size_type s) {
-				sysx::Bytes<size_type> pckt_size(s);
-				pckt_size.to_network_format();
-				Base::xsputn(pckt_size.begin(), pckt_size.size());
+			put_header(size_type s) {
+				sysx::Bytes<size_type> hdr(s);
+				hdr.to_network_format();
+				Base::xsputn(hdr.begin(), hdr.size());
 			}
 
 			void
-			overwrite_size(size_type s) {
-				sysx::Bytes<size_type> pckt_size(s);
-				pckt_size.to_network_format();
+			overwrite_header(size_type s) {
+				sysx::Bytes<size_type> hdr(s);
+				hdr.to_network_format();
 				traits_type::copy(pbase() + _packetpos,
-					pckt_size.begin(), pckt_size.size());
+					hdr.begin(), hdr.size());
 			}
 
 			static constexpr std::streamsize
@@ -284,27 +276,6 @@ namespace factory {
 		private:
 			packetbuf_type _packetbuf;
 		};
-
-
-//		struct end_packet {
-//			friend std::ostream&
-//			operator<<(std::ostream& out, end_packet) {
-//				out.rdbuf()->pubsync();
-//				return out;
-//			}
-//		};
-
-	//	struct underflow {
-	//		friend std::istream&
-	//		operator>>(std::istream& in, underflow) {
-	//			// TODO: loop until source is exhausted
-	//			std::istream::pos_type old_pos = in.rdbuf()->pubseekoff(0, std::ios_base::cur, std::ios_base::in);
-	//			in.rdbuf()->pubseekoff(0, std::ios_base::end, std::ios_base::in);
-	//			in.rdbuf()->sgetc(); // underflows the stream buffer
-	//			in.rdbuf()->pubseekpos(old_pos);
-	//			return in;
-	//		}
-	//	};
 
 	}
 
@@ -333,4 +304,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_EXT_KERNELBUF_HH
+#endif // FACTORY_EXT_PACKETBUF_HH

@@ -92,7 +92,7 @@ struct Test_socket: public Kernel {
 		commit(this_server.remote_server());
 	}
 
-	void write(sysx::packstream& out) {
+	void write(sysx::packetstream& out) {
 		this_log() << "Test_socket::write()" << std::endl;
 		Kernel::write(out);
 		out << uint32_t(_data.size());
@@ -100,7 +100,7 @@ struct Test_socket: public Kernel {
 			out << _data[i];
 	}
 
-	void read(sysx::packstream& in) {
+	void read(sysx::packetstream& in) {
 		this_log() << "Test_socket::read()" << std::endl;
 		Kernel::read(in);
 		uint32_t sz;
@@ -128,7 +128,7 @@ struct Test_socket: public Kernel {
 		return Type<Kernel>{
 			1,
 			"Test_socket",
-			[] (sysx::packstream& in) {
+			[] (sysx::packetstream& in) {
 				Test_socket* k = new Test_socket;
 				k->read(in);
 				return k;

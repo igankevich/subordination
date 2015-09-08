@@ -175,7 +175,7 @@ struct Test_endpoint {
 
 		// write
 		std::stringbuf buf;
-		sysx::packstream os(&buf);
+		sysx::packetstream os(&buf);
 		std::for_each(addrs.begin(), addrs.end(), [&os] (const sysx::endpoint& rhs) {
 			os << rhs;
 		});

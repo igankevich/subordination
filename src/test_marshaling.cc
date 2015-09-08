@@ -1,4 +1,4 @@
-#include <sysx/packstream.hh>
+#include <sysx/packetstream.hh>
 #include <sstream>
 #include <vector>
 #include <random>
@@ -15,7 +15,7 @@ void test_marshaling() {
 	test::randomise(input.begin(), input.end(), rng);
 
 	std::stringbuf buf;
-	sysx::packstream stream(&buf);
+	sysx::packetstream stream(&buf);
 	for (size_t i=0; i<input.size(); ++i)
 		stream << input[i];
 

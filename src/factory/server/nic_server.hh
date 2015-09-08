@@ -9,7 +9,7 @@
 
 #include <sysx/event.hh>
 #include <sysx/socket.hh>
-#include <sysx/packstream.hh>
+#include <sysx/packetstream.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/ext/fdbuf.hh>
@@ -24,7 +24,7 @@ namespace factory {
 
 			typedef char Ch;
 			typedef basic_packetbuf<basic_fdbuf<Ch,Socket>> Kernelbuf;
-			typedef sysx::basic_packstream<Ch> stream_type;
+			typedef sysx::basic_packetstream<Ch> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
 			typedef Kernels pool_type;
@@ -245,7 +245,7 @@ namespace factory {
 
 			void
 			write_kernel(kernel_type& kernel) {
-				typedef sysx::packstream::pos_type pos_type;
+				typedef sysx::packetstream::pos_type pos_type;
 				pos_type old_pos = _stream.tellp();
 				_packetbuf.begin_packet();
 				_stream << kernel.app();
