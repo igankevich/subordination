@@ -93,7 +93,7 @@ namespace factory {
 				if (n > 0) {
 					pbump(-n);
 				}
-				return n == m && m!=0 ? 0 : -1;
+				return n == m ? 0 : -1;
 			}
 
 			pos_type

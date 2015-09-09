@@ -273,6 +273,22 @@ namespace factory {
 			typedef std::basic_iostream<Ch,Tr> iostream_type;
 			basic_kstream(): iostream_type(nullptr), _packetbuf()
 				{ this->init(&_packetbuf); }
+
+			void
+			begin_packet() {
+				_packetbuf.begin_packet();
+			}
+
+			void
+			end_packet() {
+				_packetbuf.end_packet();
+			}
+
+			bool
+			update_state() {
+				return _packetbuf.update_state();
+			}
+
 		private:
 			packetbuf_type _packetbuf;
 		};

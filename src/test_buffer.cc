@@ -19,7 +19,6 @@ using factory::components::basic_packetbuf;
 using factory::components::basic_fdbuf;
 using factory::components::basic_kstream;
 using factory::components::LBuffer;
-using factory::components::end_packet;
 
 std::random_device rng;
 
@@ -152,7 +151,9 @@ void test_packetbuf() {
 			opacketbuf buf;
 			buf.setfd(std::move(file));
 			std::basic_ostream<T> out(&buf);
+			buf.begin_packet();
 			out << contents;
+			buf.end_packet();
 		}
 		{
 			sysx::file file(filename, sysx::file::read_only);
@@ -160,9 +161,12 @@ void test_packetbuf() {
 			buf.setfd(std::move(file));
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
+			buf.fill();
+			buf.update_state();
 			in.read(&result[0], k);
 			if (in.gcount() < k) {
 				in.clear();
+				buf.update_state();
 				in.read(&result[0], k);
 			}
 //			std::clog << "Result: "
@@ -190,9 +194,11 @@ void test_packetbuf_with_stringstream() {
 		std::basic_streambuf<T>* orig = out.rdbuf();
 		packetbuf buf;
 		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
+		buf.begin_packet();
 		out.write(contents.data(), contents.size());
-		out << end_packet() << std::flush;
+		buf.end_packet();
 		std::basic_string<T> result(contents.size(), '_');
+		buf.update_state();
 		out.read(&result[0], result.size());
 		if (result != contents) {
 			std::stringstream msg;
@@ -226,7 +232,9 @@ void test_packetbuf_withvector() {
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
-			str << rhs << end_packet();
+			str.begin_packet();
+			str << rhs;
+			str.end_packet();
 		});
 		if (str.tellg() != 0) {
 			std::stringstream msg;
@@ -236,6 +244,7 @@ void test_packetbuf_withvector() {
 		}
 		std::vector<Datum> output(size);
 		std::for_each(output.begin(), output.end(), [&str] (Datum& rhs) {
+			str.update_state();
 			str >> rhs;
 		});
 		if (str.tellg() != str.tellp()) {
@@ -256,42 +265,6 @@ void test_packetbuf_withvector() {
 		}
 	}
 }
-
-struct Stream_source {
-
-	explicit
-	Stream_source(std::istream& s):
-	_stream(s)
-	{}
-
-	ssize_t
-	sgetn(char* buf, size_t n) const noexcept {
-		_stream.read(static_cast<char*>(buf), n);
-		return _stream.gcount();
-	}
-
-private:
-	std::istream& _stream;
-};
-
-struct Stream_sink {
-
-	explicit
-	Stream_sink(std::ostream& s):
-	_stream(s)
-	{}
-
-	ssize_t
-	sputn(const char* buf, size_t n) const noexcept {
-		const std::streampos p0 = _stream.tellp();
-		_stream.write(buf, n);
-		const std::streampos p1 = _stream.tellp();
-		return p1-p0;
-	}
-
-private:
-	std::ostream& _stream;
-};
 
 int main(int argc, char* argv[]) {
 	test_buffer<char, LBuffer>();

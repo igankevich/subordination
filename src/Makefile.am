@@ -52,7 +52,6 @@ check_PROGRAMS = \
 
 TESTS = \
 	$(ONE_FILE_TESTS) \
-	test_appserver_srv \
 	test_static
 
 test_uint128_custom_SOURCES = test_uint128.cc

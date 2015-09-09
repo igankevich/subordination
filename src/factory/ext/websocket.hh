@@ -79,7 +79,7 @@ namespace factory {
 			_rng()
 			{}
 
-//		explicit Web_socket(sysx::fildes_type fd):
+//		explicit Web_socket(sysx::fd_type fd):
 //			sysx::socket(fd),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
@@ -109,7 +109,7 @@ namespace factory {
 			_rng()
 			{}
 
-		explicit Web_socket(sysx::fildes_type rhs):
+		explicit Web_socket(sysx::fd_type rhs):
 			sysx::socket(rhs),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
@@ -440,7 +440,7 @@ namespace factory {
 //		using typename std::basic_streambuf<T>::int_type;
 //		using typename std::basic_streambuf<T>::traits_type;
 //		using typename std::basic_streambuf<T>::char_type;
-//		using typename basic_fdbuf<T>::sysx::fildes_type;
+//		using typename basic_fdbuf<T>::sysx::fd_type;
 //
 //		typedef basic_fdbuf<T> basebuf_type;
 //
