@@ -135,7 +135,7 @@ void test_filterbuf() {
 	}
 }
 
-template<class T, class Fd=sysx::fd>
+template<class T, class Fd=sysx::fildes>
 void test_packetbuf() {
 	std::clog << "Checking packetbuf" << std::endl;
 	std::string filename = "/tmp/"

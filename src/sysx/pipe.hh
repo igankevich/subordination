@@ -38,22 +38,22 @@ namespace sysx {
 		inline
 		~pipe() {}
 
-		inline fd&
+		inline fildes&
 		in() noexcept {
 			return this->_fds[0];
 		}
 
-		inline fd&
+		inline fildes&
 		out() noexcept {
 			return this->_fds[1];
 		}
 
-		inline const fd&
+		inline const fildes&
 		in() const noexcept {
 			return this->_fds[0];
 		}
 
-		inline const fd&
+		inline const fildes&
 		out() const noexcept {
 			return this->_fds[1];
 		}
@@ -70,10 +70,10 @@ namespace sysx {
 		}
 
 	private:
-		sysx::fd _fds[2] = {};
+		sysx::fildes _fds[2] = {};
 		fd_type _rawfds[2];
 
-		static_assert(sizeof(_fds) == sizeof(_rawfds), "bad sysx::fd size");
+		static_assert(sizeof(_fds) == sizeof(_rawfds), "bad sysx::fildes size");
 	};
 
 }

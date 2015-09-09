@@ -25,7 +25,7 @@ namespace sysx {
 
 	struct fd_flag;
 
-	struct fd {
+	struct fildes {
 
 		enum status_flag: flag_type {
 			non_blocking = O_NONBLOCK,
@@ -50,25 +50,25 @@ namespace sysx {
 		static const fd_type
 		bad = -1;
 
-		fd() = default;
-		fd(const fd&) = delete;
-		fd& operator=(const fd&) = delete;
+		fildes() = default;
+		fildes(const fildes&) = delete;
+		fildes& operator=(const fildes&) = delete;
 
 		inline explicit
-		fd(fd_type rhs) noexcept:
+		fildes(fd_type rhs) noexcept:
 			_fd(rhs) {}
 
 		inline
-		fd(fd&& rhs) noexcept: _fd(rhs._fd) {
+		fildes(fildes&& rhs) noexcept: _fd(rhs._fd) {
 			rhs._fd = bad;
 		}
 
-		~fd() {
+		~fildes() {
 			this->close();
 		}
 
 		inline
-		fd& operator=(fd&& rhs) {
+		fildes& operator=(fildes&& rhs) {
 			_fd = rhs._fd;
 			rhs._fd = bad;
 			return *this;
@@ -134,7 +134,7 @@ namespace sysx {
 		inline void setf(fd_flag fls);
 
 		inline bool
-		operator==(const fd& rhs) const noexcept {
+		operator==(const fildes& rhs) const noexcept {
 			return this->_fd == rhs._fd;
 		}
 
@@ -154,12 +154,12 @@ namespace sysx {
 		}
 
 		friend inline bool
-		operator==(fd_type lhs, const fd& rhs) noexcept {
+		operator==(fd_type lhs, const fildes& rhs) noexcept {
 			return rhs._fd == lhs;
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const fd& rhs) {
+		operator<<(std::ostream& out, const fildes& rhs) {
 			return out << "{fd=" << rhs._fd << '}';
 		}
 
@@ -181,16 +181,16 @@ namespace sysx {
 		fd_type _fd = bad;
 	};
 
-	static_assert(sizeof(fd) == sizeof(fd_type), "bad fd size");
+	static_assert(sizeof(fildes) == sizeof(fd_type), "bad fd size");
 
 	struct fd_flag {
 
 		constexpr
-		fd_flag(fd::status_flag x, fd::flag y) noexcept:
+		fd_flag(fildes::status_flag x, fildes::flag y) noexcept:
 			f1(x), f2(y) {}
 
 		constexpr
-		fd_flag(fd::flag x, fd::status_flag y) noexcept:
+		fd_flag(fildes::flag x, fildes::status_flag y) noexcept:
 			f1(y), f2(x) {}
 
 		constexpr
@@ -199,13 +199,13 @@ namespace sysx {
 		constexpr
 		fd_flag() noexcept = default;
 
-		void set(fd& f) const {
+		void set(fildes& f) const {
 			f.setf(f1);
 			f.set_flags(f2);
 		}
 
 		static inline fd_flag
-		flags(const fd& f) {
+		flags(const fildes& f) {
 			return fd_flag(f.status_flags(), f.fd_flags());
 		}
 
@@ -255,27 +255,27 @@ namespace sysx {
 	};
 
 	constexpr fd_flag
-	operator|(fd::status_flag lhs, fd::flag rhs) noexcept {
+	operator|(fildes::status_flag lhs, fildes::flag rhs) noexcept {
 		return fd_flag(lhs, rhs);
 	}
 
 	constexpr fd_flag
-	operator|(fd::flag lhs, fd::status_flag rhs) noexcept {
+	operator|(fildes::flag lhs, fildes::status_flag rhs) noexcept {
 		return fd_flag(lhs, rhs);
 	}
 
 
 	fd_flag
-	fd::flags() const {
+	fildes::flags() const {
 		return fd_flag::flags(*this);
 	}
 
 	void
-	fd::setf(fd_flag f) {
+	fildes::setf(fd_flag f) {
 		f.set(*this);
 	}
 
-	struct file: public sysx::fd {
+	struct file: public sysx::fildes {
 
 		enum openmode {
 			read_only=O_RDONLY,
@@ -287,12 +287,12 @@ namespace sysx {
 
 		explicit
 		file(file&& rhs) noexcept:
-			sysx::fd(std::move(rhs)) {}
+			sysx::fildes(std::move(rhs)) {}
 
 		explicit
 		file(const std::string& filename, openmode flags,
 			sysx::flag_type flags2=0, mode_type mode=S_IRUSR|S_IWUSR):
-			sysx::fd(bits::check(safe_open(filename.c_str(), flags|flags2, mode),
+			sysx::fildes(bits::check(safe_open(filename.c_str(), flags|flags2, mode),
 				__FILE__, __LINE__, __func__)) {}
 
 		~file() {
@@ -352,7 +352,7 @@ namespace sysx {
 		}
 
 	private:
-		sysx::fd& _fd;
+		sysx::fildes& _fd;
 	};
 
 }

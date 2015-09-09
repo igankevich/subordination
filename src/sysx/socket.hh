@@ -33,7 +33,7 @@ namespace sysx {
 
 	}
 
-	struct socket: public fd {
+	struct socket: public fildes {
 
 		typedef int opt_type;
 
@@ -57,7 +57,7 @@ namespace sysx {
 
 		explicit
 		socket(socket&& rhs) noexcept:
-			sysx::fd(std::move(rhs)) {}
+			sysx::fildes(std::move(rhs)) {}
 
 		/// Bind on @bind_addr and listen.
 		explicit
@@ -79,7 +79,7 @@ namespace sysx {
 
 		socket&
 		operator=(socket&& rhs) {
-			sysx::fd::operator=(std::move(static_cast<sysx::fd&&>(rhs)));
+			sysx::fildes::operator=(std::move(static_cast<sysx::fildes&&>(rhs)));
 			return *this;
 		}
 
@@ -130,7 +130,7 @@ namespace sysx {
 
 		void close() {
 			this->shutdown(shut_read_write);
-			this->sysx::fd::close();
+			this->sysx::fildes::close();
 		}
 
 		void setopt(option opt) {
@@ -220,7 +220,7 @@ namespace sysx {
 
 		explicit
 		socket(fd_type sock) noexcept:
-			sysx::fd(sock) {}
+			sysx::fildes(sock) {}
 
 	};
 
