@@ -22,9 +22,10 @@ namespace sysx {
 	typedef int code_type;
 	typedef ::siginfo_t siginfo_type;
 	typedef struct ::sigaction sigaction_type;
+	typedef int signal_type;
 
 	struct Action: public sigaction_type {
-		inline
+		Action() {}
 		Action(void (*func)(int)) noexcept {
 			this->sa_handler = func;
 		}

@@ -101,7 +101,8 @@ namespace factory {
 			private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
 			private sysx::Auto_open_standard_file_descriptors,
 			private Auto_set_terminate_handler<Basic_factory<Config>>,
-			public sysx::Install_syslog
+			public sysx::Install_syslog,
+			private sysx::init_signal_semaphore<SIGUSR1>
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
