@@ -397,7 +397,8 @@ namespace factory {
 			std::stringstream request;
 			request
 				<< "GET / HTTP/1.1" << HTTP_FIELD_SEPARATOR
-				<< "User-Agent: Factory/" << VERSION << HTTP_FIELD_SEPARATOR
+				// TODO: version
+				<< "User-Agent: Factory/" << "0.2" << HTTP_FIELD_SEPARATOR
 				<< "Connection: Upgrade" << HTTP_FIELD_SEPARATOR
 				<< "Upgrade: websocket" << HTTP_FIELD_SEPARATOR
 				<< "Sec-WebSocket-Protocol: binary" << HTTP_FIELD_SEPARATOR

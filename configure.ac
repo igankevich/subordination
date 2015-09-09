@@ -5,7 +5,7 @@ AC_CONFIG_SRCDIR([src/test_buffer.cc])
 AC_CONFIG_HEADERS([config.h])
 
 # Automake initialisation.
-AM_INIT_AUTOMAKE([-Wall])
+AM_INIT_AUTOMAKE([foreign -Wall])
 #AM_SILENT_RULES([yes])
 
 # Check for arguments.
