@@ -183,8 +183,8 @@ namespace factory {
 		template<class X>
 		void append_payload(std::streambuf& buf, basic_ipacketbuf<X>& rhs) {
 			typedef typename basic_ipacketbuf<X>::size_type size_type;
-			const size_type n = rhs.bytes_left_until_the_end_of_the_packet();
-			buf.sputn(rhs.gptr(), n);
+			const size_type n = rhs.payloadsize();
+			buf.sputn(rhs.payload_begin(), n);
 			rhs.gbump(n);
 		}
 

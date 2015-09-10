@@ -234,6 +234,7 @@ namespace factory {
 
 			void
 			stop() override {
+				lock_type lock(_mutex);
 				base_server::stop();
 				_semaphore.notify_all();
 			}
@@ -267,6 +268,7 @@ namespace factory {
 			template<class It>
 			void
 			collect_kernels(It sack) {
+				using namespace std::placeholders;
 				stdx::front_pop_iterator<kernel_pool> it_end;
 				std::for_each(stdx::front_popper(_kernels), it_end,
 					[sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); });
@@ -295,7 +297,7 @@ namespace factory {
 
 			static inline std::thread
 			new_thread(Server_with_pool* rhs) noexcept {
-				return std::thread(std::mem_fn(&Server_with_pool::run), rhs,
+				return std::thread(&Server_with_pool::run, rhs,
 					rhs->global_context());
 			}
 			

@@ -6,6 +6,7 @@
 #include <stdx/for_each.hh>
 #include <stdx/field_iterator.hh>
 #include <stdx/front_popper.hh>
+#include <stdx/unlock_guard.hh>
 
 #include <sysx/event.hh>
 #include <sysx/socket.hh>
@@ -90,7 +91,7 @@ namespace factory {
 				using namespace std::placeholders;
 				std::for_each(stdx::front_popper(_buffer),
 					stdx::front_popper_end(_buffer),
-					std::bind(std::mem_fn(&Remote_Rserver::recover_kernel),
+					std::bind(&Remote_Rserver::recover_kernel,
 					this, _1));
 			}
 
@@ -337,14 +338,12 @@ namespace factory {
 			void
 			do_run() override {
 				// start processing as early as possible
-				this->process_kernels();
-//				while (!this->stopped() && _stop_iterations < MAX_STOP_ITERATIONS) {
+				poller().notify_one();
+				lock_type lock(this->_mutex);
 				while (!this->stopped()) {
 					cleanup_and_check_if_dirty();
-					lock_type lock(this->_mutex);
-					this->_semaphore.wait(lock,
-						[this] () { return this->stopped(); });
-					lock.unlock();
+					this->_semaphore.wait(lock);
+					stdx::unlock_guard<lock_type> g(lock);
 					check_and_process_kernels();
 					check_and_accept_connections();
 					read_and_write_kernels();

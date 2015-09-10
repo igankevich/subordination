@@ -35,7 +35,7 @@ ONE_FILE_TESTS = \
 	test_socket \
 	test_websocket \
 	test_shmem \
-	test_spinlock \
+	test_locks \
 	test_endpoint \
 	test_encoding \
 	test_timer \

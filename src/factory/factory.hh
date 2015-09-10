@@ -102,7 +102,7 @@ namespace factory {
 			private sysx::Auto_open_standard_file_descriptors,
 			private Auto_set_terminate_handler<Basic_factory<Config>>,
 			public sysx::Install_syslog,
-			private sysx::init_signal_semaphore<SIGUSR1>
+			private sysx::init_signal_semaphore
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
@@ -117,6 +117,7 @@ namespace factory {
 			Basic_factory(Global_thread_context& context):
 				Auto_set_terminate_handler<Basic_factory>(this),
 				Install_syslog(std::clog),
+				sysx::init_signal_semaphore(SIGUSR1),
 				_local_server(),
 				_remote_server(),
 				_ext_server(),

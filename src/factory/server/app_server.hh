@@ -6,6 +6,7 @@
 #include <random>
 
 #include <stdx/n_random_bytes.hh>
+#include <stdx/unlock_guard.hh>
 
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
@@ -14,6 +15,7 @@
 #include <factory/managed_object.hh>
 #include <factory/ext/packetbuf.hh>
 #include <factory/ext/shmembuf.hh>
+#include <factory/server/basic_server.hh>
 
 namespace factory {
 	namespace components {
@@ -287,16 +289,21 @@ namespace factory {
 		};
 
 		template<class T>
-		struct Sub_Iserver: public Managed_object<Server<T>> {
+		struct Sub_Iserver: public Standard_server_with_pool<T> {
 
-			typedef Server<T> base_server;
+			typedef Standard_server_with_pool<T> base_server;
 			using typename base_server::kernel_type;
+			using typename base_server::lock_type;
 			typedef Application app_type;
 			typedef Sub_Rserver<T> rserver_type;
 			typedef typename app_type::id_type key_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef typename map_type::value_type pair_type;
 			typedef stdx::log<Sub_Iserver> this_log;
+
+			Sub_Iserver():
+			_signalsem(sysx::this_process::id(), SIGUSR1)
+			{}
 
 			Category
 			category() const noexcept override {
@@ -308,18 +315,17 @@ namespace factory {
 
 			void
 			add(const app_type& app) {
-				if (this->_apps.count(app.id()) > 0) {
+				if (_apps.count(app.id()) > 0) {
 					throw Error("trying to add an existing app",
 						__FILE__, __LINE__, __func__);
 				}
-				this_log() << "starting app="
-					<< app << std::endl;
-				std::unique_lock<std::mutex> lock(this->_mutex);
+				this_log() << "starting app=" << app << std::endl;
+				lock_type lock(this->_mutex);
 				sysx::proc& p = _processes.add([&app,this] () {
 					_globalsem.wait();
 					return app.execute();
 				});
-				this->_apps.emplace(app.id(), rserver_type(p.id()));
+				_apps.emplace(app.id(), rserver_type(p.id()));
 				_globalsem.notify_one();
 			}
 			
@@ -343,46 +349,57 @@ namespace factory {
 
 			template<class X>
 			void forward(key_type app, const sysx::endpoint& from, basic_ipacketbuf<X>& buf) {
-				typename map_type::iterator result = this->_apps.find(app);
-				if (result == this->_apps.end()) {
+				typename map_type::iterator result = _apps.find(app);
+				if (result == _apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);
 				}
 				result->second.forward(buf, from);
 			}
 
 			void
-			stop() override {
-				base_server::stop();
-				this->_semaphore.notify_one();
-			}
-
-			void
-			wait() override {
-				base_server::wait();
-				while (!this->stopped() || !this->_apps.empty()) {
-					bool empty = false;
-					{
-						std::unique_lock<std::mutex> lock(this->_mutex);
-						this->_semaphore.wait(lock, [this] () {
-							return !this->_apps.empty() || this->stopped();
-						});
-						empty = this->_apps.empty();
-					}
-					if (!empty) {
-						using namespace std::placeholders;
-						_processes.wait(std::bind(std::mem_fn(&Sub_Iserver::on_process_exit), this, _1, _2));
-					}
-				}
+			do_run() override {
+				std::thread waiting_thread{
+					&Sub_Iserver::wait_for_all_processes_to_finish,
+					this
+				};
+//				handle_notifications_from_child_procs();
+				waiting_thread.join();
 			}
 
 		private:
 
+			bool
+			apps_are_running() const {
+				return !(this->stopped() and _apps.empty());
+			}
+
+			void
+			handle_notifications_from_child_procs() {
+				lock_type lock(this->_mutex);
+				while (apps_are_running()) {
+					_signalsem.wait(lock);
+				}
+			}
+
+			void
+			wait_for_all_processes_to_finish() {
+				lock_type lock(this->_mutex);
+				while (apps_are_running()) {
+					this->_semaphore.wait(lock);
+					if (!_apps.empty()) {
+						stdx::unlock_guard<lock_type> g(lock);
+						using namespace std::placeholders;
+						_processes.wait(std::bind(&Sub_Iserver::on_process_exit, this, _1, _2));
+					}
+				}
+			}
+
 			void
 			on_process_exit(sysx::proc& p, sysx::proc_info status) {
 				sysx::pid_type pid = p.id();
-				std::unique_lock<std::mutex> lock(this->_mutex);
+				lock_type lock(this->_mutex);
 				typename map_type::iterator
-				result = std::find_if(this->_apps.begin(), this->_apps.end(),
+				result = std::find_if(_apps.begin(), _apps.end(),
 					[pid] (const pair_type& rhs) {
 						return rhs.second.proc() == pid;
 					}
@@ -399,9 +416,8 @@ namespace factory {
 
 			map_type _apps;
 			sysx::procgroup _processes;
-			std::mutex _mutex;
-			std::condition_variable _semaphore;
 			Global_semaphore _globalsem;
+			sysx::signal_semaphore _signalsem;
 		};
 
 	}

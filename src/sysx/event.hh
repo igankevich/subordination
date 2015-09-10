@@ -7,6 +7,7 @@
 #endif
 
 #include <stdx/paired_iterator.hh>
+#include <stdx/unlock_guard.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/pipe.hh>
@@ -202,27 +203,32 @@ namespace sysx {
 			_specials(std::move(rhs._specials))
 			{}
 	
-		inline void
+		void
 		notify_one() noexcept {
 			char c = '!';
 			this->_pipe.out().write(&c, sizeof(char));
 		}
 	
-		inline void
+		void
 		notify_all() noexcept {
 			notify_one();
 		}
 	
 		template<class Lock, class Pred>
-		inline void
+		void
 		wait(Lock& lock, Pred pred) {
 			insert_pending_specials();
 			bool success = false;
 			while (!success && !pred()) {
-				lock.unlock();
+				stdx::unlock_guard<Lock> g(lock);
 				success = do_wait();
-				lock.lock();
 			}
+		}
+	
+		template<class Lock>
+		void
+		wait(Lock& lock) {
+			wait(lock, [] () { return false; });
 		}
 
 		inline fd_type

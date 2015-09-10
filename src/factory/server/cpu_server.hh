@@ -1,6 +1,7 @@
 #ifndef FACTORY_SERVER_CPU_SERVER_HH
 #define FACTORY_SERVER_CPU_SERVER_HH
 
+#include <stdx/unlock_guard.hh>
 #include <factory/server/intro.hh>
 #include <factory/managed_object.hh>
 
@@ -49,18 +50,16 @@ namespace factory {
 
 			void
 			do_run() override {
-				while (!this->stopped()) {
-					lock_type lock(this->_mutex);
-					this->_semaphore.wait(lock, [this] () {
-						return this->stopped() || !this->_kernels.empty();
-					});
-					if (!this->stopped()) {
+				lock_type lock(this->_mutex);
+				this->_semaphore.wait(lock, [this,&lock] () {
+					while (!this->_kernels.empty()) {
 						kernel_type* kernel = stdx::front(this->_kernels);
 						stdx::pop(this->_kernels);
-						lock.unlock();
+						stdx::unlock_guard<lock_type> g(lock);
 						kernel->run_act(*this);
 					}
-				}
+					return this->stopped();
+				});
 			}
 			
 		};
