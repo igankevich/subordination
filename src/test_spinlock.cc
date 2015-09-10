@@ -6,12 +6,14 @@
 #include <iostream>
 
 #include <stdx/spin_mutex.hh>
+#include <sysx/semaphore.hh>
+
 #include "test.hh"
 using namespace factory;
 
 template<class Mutex>
 void
-counter_test(unsigned nthreads, unsigned increment) {
+test_counter(unsigned nthreads, unsigned increment) {
 	volatile unsigned counter = 0;
 	Mutex m;
 	std::vector<std::thread> threads;
@@ -35,7 +37,7 @@ counter_test(unsigned nthreads, unsigned increment) {
 }
 
 template<class I, class Func>
-void test_lock(Func func, I min_threads, I npowers) {
+void run_multiple_times(Func func, I min_threads, I npowers) {
 	I max_threads = std::max(I(std::thread::hardware_concurrency()), I(2)*min_threads);
 	for (I j=min_threads; j<=max_threads; ++j) {
 		for (I i=0; i<npowers; ++i) {
@@ -44,7 +46,7 @@ void test_lock(Func func, I min_threads, I npowers) {
 	}
 }
 
-template<class Q, class Mutex>
+template<class Q, class Mutex, class Semaphore=std::condition_variable>
 struct Thread_pool {
 
 	Thread_pool():
@@ -94,9 +96,9 @@ private:
 	Q sum = 0;
 };
 
-template<class I, class M>
-void spinlock_queue(I nthreads, I max) {
-	typedef Thread_pool<I, M> Pool;
+template<class I, class Mutex, class Semaphore=std::condition_variable>
+void test_queue(I nthreads, I max) {
+	typedef Thread_pool<I, Mutex, Semaphore> Pool;
 	std::vector<Pool*> thread_pool(nthreads);
 	std::for_each(thread_pool.begin(), thread_pool.end(), [] (Pool*& ptr) {
 		ptr = new Pool;
@@ -132,11 +134,11 @@ void spinlock_queue(I nthreads, I max) {
 template<class Integer>
 void test_perf_x(Integer m) {
 	Time t0 = current_time_nano();
-	test_lock<Integer>(spinlock_queue<Integer, stdx::spin_mutex>, 1, m);
-	test_lock<Integer>(spinlock_queue<Integer, stdx::spin_mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, stdx::spin_mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, stdx::spin_mutex>, 1, m);
 	Time t1 = current_time_nano();
-	test_lock<Integer>(spinlock_queue<Integer, std::mutex>, 1, m);
-	test_lock<Integer>(spinlock_queue<Integer, std::mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, std::mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, std::mutex>, 1, m);
 	Time t2 = current_time_nano();
 	std::cout << "Time(stdx::spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
 	std::cout << "Time(std::mutex, " << m << ") = " << t2-t1 << "ns" << std::endl;
@@ -146,8 +148,8 @@ template<class Mutex, class Integer=uint64_t>
 void
 test_perf(Integer m) {
 	Time t0 = current_time_nano();
-	test_lock<Integer>(spinlock_queue<Integer, Mutex>, 1, m);
-	test_lock<Integer>(spinlock_queue<Integer, Mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, Mutex>, 1, m);
+	run_multiple_times<Integer>(test_queue<Integer, Mutex>, 1, m);
 	Time t1 = current_time_nano();
 	std::cout
 		<< "mutex=" << typeid(Mutex).name()
@@ -156,12 +158,20 @@ test_perf(Integer m) {
 		<< std::endl;
 }
 
+struct self_signal_semaphore: public sysx::signal_semaphore {
+	self_signal_semaphore():
+	sysx::signal_semaphore(sysx::this_process::id(), SIGUSR1)
+	{}
+};
+
 int main() {
+	sysx::init_signal_semaphore init(SIGUSR1);
 	try {
-		test_lock<unsigned>(counter_test<stdx::spin_mutex>, 2, 10);
+		run_multiple_times<unsigned>(test_counter<stdx::spin_mutex>, 2, 10);
 		test_perf<stdx::spin_mutex>(10);
 		test_perf<std::mutex>(10);
-//		test_lock<unsigned>(counter_test<bits::global_mutex>, 2, 2);
+		run_multiple_times<unsigned>(test_queue<unsigned,std::mutex,self_signal_semaphore>, 1, 10);
+//		run_multiple_times<unsigned>(test_counter<bits::global_mutex>, 2, 2);
 	} catch (std::exception& e) {
 		std::cerr << "Error. " << e.what() << std::endl;
 		return 1;

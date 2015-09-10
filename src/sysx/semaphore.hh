@@ -236,13 +236,13 @@ namespace sysx {
 
 	private:
 
-		inline void
+		void
 		destroy() {
 			bits::check(::sem_destroy(&_sem),
 				__FILE__, __LINE__, __func__);
 		}
 
-		inline void
+		void
 		init_sem() {
 			bits::check(::sem_init(&_sem, 0, 0),
 				__FILE__, __LINE__, __func__);
@@ -267,6 +267,46 @@ namespace sysx {
 				__FILE__, __LINE__, __func__);
 		}
 
+		template<class F>
+		void for_each(F func) {
+			for (signal_type s=1; s<=31; ++s) {
+				if (bits::check(::sigismember(this, s),
+					__FILE__, __LINE__, __func__))
+				{
+					func(s);
+				}
+			}
+		}
+
+	};
+
+	struct signal_lock {
+
+		explicit
+		signal_lock(sigset_type s):
+		_signals(s)
+		{ lock(); }
+
+		~signal_lock() {
+			unlock();
+		}
+
+		void lock() {
+			change_mask(SIG_BLOCK);
+		}
+
+		void unlock() {
+			change_mask(SIG_UNBLOCK);
+		}
+
+	private:
+
+		void change_mask(int how) {
+			bits::check(::sigprocmask(how, &_signals, 0),
+				__FILE__, __LINE__, __func__);
+		}
+
+		sigset_type _signals;
 	};
 
 	struct signal_semaphore {
@@ -291,6 +331,7 @@ namespace sysx {
 
 		void wait() {
 			sigset_type sigs(_sig);
+			signal_lock lock(sigs);
 			siginfo_type result;
 			bits::check_if_not<std::errc::interrupted>(
 				::sigwaitinfo(&sigs, &result),
@@ -313,6 +354,11 @@ namespace sysx {
 			}
 		}
 
+		pid_type
+		last_notifier() {
+			return _lastnotifier;
+		}
+
 	private:
 
 		pid_type _owner;
@@ -320,30 +366,42 @@ namespace sysx {
 		pid_type _lastnotifier;
 	};
 
-	template<int SIGNAL>
 	struct init_signal_semaphore {
 
-		init_signal_semaphore() {
-			// block signal in all threads
-			// (this object should be constructed
-			// before launching any threads, so
-			// that they inherit sigmask from
-			// the main thread)
-			sigset_type signals(SIGNAL);
-			bits::check(::sigprocmask(SIG_BLOCK, &signals, 0),
-				__FILE__, __LINE__, __func__);
+		/// Block signals from set @s in all threads
+		/// (this object should be constructed
+		/// before launching any threads, so
+		/// that they inherit sigmask from
+		/// the main thread).
+		explicit
+		init_signal_semaphore(sigset_type s):
+		_lock(s)
+		{ install_empty_signal_handler(s); }
 
-			// install empty signal handler
-			// to make signal queueable
+		explicit
+		init_signal_semaphore(signal_type s):
+		init_signal_semaphore(sigset_type(s))
+		{}
+
+	private:
+
+		/// install empty signal handler
+		/// to make signal queueable
+		void
+		install_empty_signal_handler(sigset_type s) {
 			Action action{};
 			action.sa_handler = &init_signal_semaphore::no_handler;
 			action.sa_flags = SA_SIGINFO;
 			action.sa_mask = sigset_type{};
-			this_process::bind_signal(SIGNAL, action);
+			s.for_each([this,&action](signal_type sig) {
+				this_process::bind_signal(sig, action);
+			});
 		}
 
-	private:
 		static void no_handler(int) {}
+
+		/// block/unblock signal on construction/destruction
+		signal_lock _lock;
 	};
 
 }
