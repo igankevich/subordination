@@ -320,7 +320,9 @@ namespace sysx {
 
 		void
 		notify_one() {
-			bits::check(::kill(_owner, _sig),
+			// notifying non-existent process is not an error
+			bits::check_if_not<std::errc::no_such_process>(
+				::kill(_owner, _sig),
 				__FILE__, __LINE__, __func__);
 		}
 
@@ -333,6 +335,7 @@ namespace sysx {
 			sigset_type sigs(_sig);
 			signal_lock lock(sigs);
 			siginfo_type result;
+			std::cerr << "Waiting for signal sig=" << _sig << std::endl;
 			bits::check_if_not<std::errc::interrupted>(
 				::sigwaitinfo(&sigs, &result),
 				__FILE__, __LINE__, __func__);
@@ -376,7 +379,9 @@ namespace sysx {
 		explicit
 		init_signal_semaphore(sigset_type s):
 		_lock(s)
-		{ install_empty_signal_handler(s); }
+		{
+//			install_empty_signal_handler(s);
+		}
 
 		explicit
 		init_signal_semaphore(signal_type s):
@@ -398,7 +403,9 @@ namespace sysx {
 			});
 		}
 
-		static void no_handler(int) {}
+		static void no_handler(int) {
+			std::cerr << "no_handler() is called !!!" << std::endl;
+		}
 
 		/// block/unblock signal on construction/destruction
 		signal_lock _lock;

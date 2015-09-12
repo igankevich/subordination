@@ -57,6 +57,14 @@ namespace factory {
 using namespace factory::app_config;
 #endif
 
+namespace stdx {
+
+	template<>
+	struct disable_log_category<factory::components::buffer_category>:
+	public std::integral_constant<bool, true> {};
+
+}
+
 using namespace factory;
 using factory::components::Application;
 
@@ -225,7 +233,7 @@ struct Main: public Kernel {
 		kernel->from(server_endpoint);
 		kernel->setapp(MY_APP_ID);
 		kernel->parent(this);
-		this_server.remote_server()->send(kernel);
+		upstream(this_server.remote_server(), kernel);
 		sleep(3);
 		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)

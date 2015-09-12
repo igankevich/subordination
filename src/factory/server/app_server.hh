@@ -62,6 +62,9 @@ namespace factory {
 			}
 		};
 
+		constexpr const sysx::signal_type
+		APP_SEMAPHORE_SIGNAL = SIGUSR1;
+
 		template<class T>
 		struct Principal_server: public Managed_object<Server<T>> {
 
@@ -74,6 +77,7 @@ namespace factory {
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
+			typedef sysx::signal_semaphore osem_type;
 			typedef Application::id_type app_type;
 			typedef stdx::log<Principal_server> this_log;
 
@@ -83,7 +87,7 @@ namespace factory {
 			_istream(&this->_ibuf),
 			_ostream(&this->_obuf),
 			_isem(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'i')),
-			_osem(generate_sem_name(sysx::this_process::id(), sysx::this_process::parent_id(), 'o')),
+			_osem(sysx::this_process::parent_id(), APP_SEMAPHORE_SIGNAL),
 			_thread(),
 			_app(sysx::this_process::getenv("APP_ID", Application::ROOT))
 			{}
@@ -134,9 +138,10 @@ namespace factory {
 
 			void send(kernel_type* k) {
 				olock_type lock(this->_obuf);
-				this->_ostream << this->_app << k->to();
+				_ostream << this->_app << k->to();
 				Type<kernel_type>::write_object(*k, this->_ostream);
-				this->_osem.notify_one();
+				_osem.notify_one();
+				this_log() << "notify_one app=" << _app << std::endl;
 			}
 
 //			void setapp(app_type app) { this->_app = app; }
@@ -207,7 +212,7 @@ namespace factory {
 			stream_type _istream;
 			stream_type _ostream;
 			sem_type _isem;
-			sem_type _osem;
+			osem_type _osem;
 			std::thread _thread;
 			app_type _app;
 		};
@@ -223,14 +228,15 @@ namespace factory {
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
+			typedef sysx::signal_semaphore isem_type;
 			typedef sysx::basic_packetstream<char> stream_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
 			explicit
-			Sub_Rserver(sysx::pid_type pid):
+			Sub_Rserver(sysx::pid_type pid, isem_type& sem):
 			_proc(pid),
-			_osem(generate_sem_name(pid, sysx::this_process::id(), 'o'), 0666),
-			_isem(generate_sem_name(pid, sysx::this_process::id(), 'i'), 0666),
+			_osem(generate_sem_name(pid, sysx::this_process::id(), 'i'), 0666),
+			_isem(sem),
 			_ibuf(generate_shmem_id(pid, sysx::this_process::id(), 0), 0666),
 			_obuf(generate_shmem_id(pid, sysx::this_process::id(), 1), 0666),
 			_ostream(&this->_obuf)
@@ -239,7 +245,7 @@ namespace factory {
 			Sub_Rserver(Sub_Rserver&& rhs):
 			_proc(rhs._proc),
 			_osem(std::move(rhs._osem)),
-			_isem(std::move(rhs._isem)),
+			_isem(rhs._isem),
 			_ibuf(std::move(rhs._ibuf)),
 			_obuf(std::move(rhs._obuf)),
 			_ostream(&this->_obuf)
@@ -282,7 +288,7 @@ namespace factory {
 		private:
 			sysx::pid_type _proc;
 			sem_type _osem;
-			sem_type _isem;
+			isem_type& _isem;
 			ibuf_type _ibuf;
 			obuf_type _obuf;
 			stream_type _ostream;
@@ -302,7 +308,8 @@ namespace factory {
 			typedef stdx::log<Sub_Iserver> this_log;
 
 			Sub_Iserver():
-			_signalsem(sysx::this_process::id(), SIGUSR1)
+			base_server(1u),
+			_signalsem(sysx::this_process::id(), APP_SEMAPHORE_SIGNAL)
 			{}
 
 			Category
@@ -325,18 +332,18 @@ namespace factory {
 					_globalsem.wait();
 					return app.execute();
 				});
-				_apps.emplace(app.id(), rserver_type(p.id()));
+				_apps.emplace(app.id(), rserver_type(p.id(), _signalsem));
 				_globalsem.notify_one();
 			}
 			
 			void
 			send(kernel_type* k) {
 				if (k->moves_everywhere()) {
-//					std::for_each(this->_apps.begin(), this->_apps.end(),
-//						[k] (pair_type& rhs) {
-//							rhs.second.send(k);
-//						}
-//					);
+					std::for_each(_apps.begin(), _apps.end(),
+						[k] (pair_type& rhs) {
+							rhs.second.send(k);
+						}
+					);
 				} else {
 					typename map_type::iterator
 					result = _apps.find(k->app());
@@ -362,8 +369,14 @@ namespace factory {
 					&Sub_Iserver::wait_for_all_processes_to_finish,
 					this
 				};
-//				handle_notifications_from_child_procs();
+				handle_notifications_from_child_procs();
 				waiting_thread.join();
+			}
+
+			void
+			stop() override {
+				base_server::stop();
+				_signalsem.notify_all();
 			}
 
 		private:
@@ -378,6 +391,9 @@ namespace factory {
 				lock_type lock(this->_mutex);
 				while (apps_are_running()) {
 					_signalsem.wait(lock);
+					this_log() << "notify_one pid="
+						<< _signalsem.last_notifier()
+						<< std::endl;
 				}
 			}
 
@@ -392,6 +408,7 @@ namespace factory {
 						_processes.wait(std::bind(&Sub_Iserver::on_process_exit, this, _1, _2));
 					}
 				}
+				_signalsem.notify_all();
 			}
 
 			void
