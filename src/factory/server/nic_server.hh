@@ -13,8 +13,8 @@
 #include <sysx/packetstream.hh>
 
 #include <factory/server/intro.hh>
-#include <factory/ext/fdbuf.hh>
-#include <factory/ext/packetbuf.hh>
+#include <sysx/fdbuf.hh>
+#include <sysx/packetbuf.hh>
 
 namespace factory {
 
@@ -24,7 +24,7 @@ namespace factory {
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef char Ch;
-			typedef basic_packetbuf<basic_fdbuf<Ch,Socket>> Kernelbuf;
+			typedef sysx::basic_packetbuf<sysx::basic_fdbuf<Ch,Socket>> Kernelbuf;
 			typedef sysx::basic_packetstream<Ch> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;

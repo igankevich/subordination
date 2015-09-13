@@ -11,10 +11,10 @@
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
 #include <sysx/packetstream.hh>
+#include <sysx/packetbuf.hh>
+#include <sysx/shmembuf.hh>
 
 #include <factory/managed_object.hh>
-#include <factory/ext/packetbuf.hh>
-#include <factory/ext/shmembuf.hh>
 #include <factory/server/basic_server.hh>
 
 namespace factory {

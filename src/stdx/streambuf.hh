@@ -11,6 +11,17 @@ namespace stdx {
 		typedef Base base_type;
 		using typename base_type::char_type;
 		using typename base_type::traits_type;
+		using base_type::setg;
+		using base_type::setp;
+		using base_type::pbump;
+
+		// TODO: delete this for newer versions of stdc++
+		pipebuf() = default;
+		pipebuf(pipebuf&& rhs) {
+			setg(rhs.eback(), rhs.gptr(), rhs.egptr());
+			setp(rhs.pbase(), rhs.epptr());
+			pbump(rhs.pptr()-rhs.pbase());
+		}
 
 		template<class Source>
 		void

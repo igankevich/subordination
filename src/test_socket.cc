@@ -68,7 +68,7 @@ using namespace factory::this_config;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<factory::components::buffer_category>:
+	struct disable_log_category<sysx::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
