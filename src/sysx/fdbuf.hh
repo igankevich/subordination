@@ -1,17 +1,15 @@
-#ifndef FACTORY_EXT_FDBUF_HH
-#define FACTORY_EXT_FDBUF_HH
+#ifndef SYSX_FDBUF_HH
+#define SYSX_FDBUF_HH
 
 #include <vector>
 #include <cassert>
 
-#include <factory/ext/intro.hh>
+#include <sysx/bits/buffer_category.hh>
 #include <sysx/fildes.hh>
 #include <stdx/streambuf.hh>
 #include <stdx/log.hh>
 
-namespace factory {
-
-	namespace components {
+namespace sysx {
 
 		template<class T, class Fd=sysx::fildes>
 		struct basic_fdbuf: public stdx::basic_streambuf<T> {
@@ -228,23 +226,21 @@ namespace factory {
 			fdbuf_type _fdbuf;
 		};
 
-	}
-
-	typedef components::basic_fdbuf<char> fdbuf;
-	typedef components::basic_ifdstream<char> ifdstream;
-	typedef components::basic_ofdstream<char> ofdstream;
+	typedef basic_fdbuf<char> fdbuf;
+	typedef basic_ifdstream<char> ifdstream;
+	typedef basic_ofdstream<char> ofdstream;
 
 }
 
 namespace stdx {
 
 	template<class T, class Fd>
-	struct type_traits<factory::components::basic_fdbuf<T,Fd>> {
+	struct type_traits<sysx::basic_fdbuf<T,Fd>> {
 		static constexpr const char*
 		short_name() { return "fdbuf"; }
-		typedef factory::components::buffer_category category;
+		typedef sysx::buffer_category category;
 	};
 
 }
 
-#endif // FACTORY_EXT_FDBUF_HH
+#endif // SYSX_FDBUF_HH

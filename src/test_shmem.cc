@@ -1,5 +1,5 @@
 #include <sysx/sharedmem.hh>
-#include <factory/ext/shmembuf.hh>
+#include <sysx/shmembuf.hh>
 
 using namespace factory;
 using sysx::shared_mem;

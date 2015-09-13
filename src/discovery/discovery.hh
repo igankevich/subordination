@@ -1,5 +1,5 @@
-#ifndef DISCOVERY_HH
-#define DISCOVERY_HH
+#ifndef DISCOVERY_DISCOVERY_HH
+#define DISCOVERY_DISCOVERY_HH
 
 namespace factory {
 
@@ -95,4 +95,4 @@ namespace factory {
 
 }
 
-#endif // DISCOVERY_HH
+#endif // DISCOVERY_DISCOVERY_HH

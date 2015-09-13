@@ -33,7 +33,6 @@ ONE_FILE_TESTS = \
 	test_buffer \
 	test_marshaling \
 	test_socket \
-	test_websocket \
 	test_shmem \
 	test_locks \
 	test_endpoint \
@@ -57,8 +56,8 @@ TESTS = \
 test_uint128_custom_SOURCES = test_uint128.cc
 test_uint128_custom_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_FORCE_CUSTOM_UINT128
 
-test_websocket_SOURCES = test_socket.cc
-test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_WEBSOCKET
+#test_websocket_SOURCES = test_socket.cc
+#test_websocket_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_WEBSOCKET
 
 test_offline_SOURCES = test_socket.cc
 test_offline_CPPFLAGS = $(AM_CPPFLAGS) -DFACTORY_TEST_OFFLINE

@@ -6,7 +6,7 @@
 
 #if defined(FACTORY_TEST_WEBSOCKET)
 #include <factory/server/nic_server.hh>
-#include <factory/ext/websocket.hh>
+#include <web/websocket.hh>
 #define FACTORY_SOCKET_TYPE factory::components::Web_socket
 #endif
 

@@ -1,5 +1,5 @@
-#ifndef FACTORY_EXT_LBUFFER_HH
-#define FACTORY_EXT_LBUFFER_HH
+#ifndef WEB_LBUFFER_HH
+#define WEB_LBUFFER_HH
 
 namespace factory {
 
@@ -152,4 +152,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_EXT_LBUFFER_HH
+#endif // WEB_LBUFFER_HH

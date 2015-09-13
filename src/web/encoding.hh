@@ -1,5 +1,5 @@
-#ifndef FACTORY_EXT_ENCODING_HH
-#define FACTORY_EXT_ENCODING_HH
+#ifndef WEB_ENCODING_HH
+#define WEB_ENCODING_HH
 
 #include <cstddef> // offsetof
 
@@ -697,4 +697,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_EXT_ENCODING_HH
+#endif // WEB_ENCODING_HH

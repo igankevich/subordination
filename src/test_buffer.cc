@@ -1,7 +1,7 @@
 #include <sysx/security.hh>
-#include <factory/ext/fdbuf.hh>
-#include <factory/ext/packetbuf.hh>
-#include <factory/ext/lbuffer.hh>
+#include <sysx/fdbuf.hh>
+#include <sysx/packetbuf.hh>
+#include <web/lbuffer.hh>
 #include <factory/error.hh>
 
 #include <stdx/streambuf.hh>
@@ -11,13 +11,13 @@
 
 using namespace factory;
 using factory::components::Error;
-using factory::components::basic_ofdstream;
-using factory::components::basic_ifdstream;
-using factory::components::basic_opacketbuf;
-using factory::components::basic_ipacketbuf;
-using factory::components::basic_packetbuf;
-using factory::components::basic_fdbuf;
-using factory::components::basic_kstream;
+using sysx::basic_ofdstream;
+using sysx::basic_ifdstream;
+using sysx::basic_opacketbuf;
+using sysx::basic_ipacketbuf;
+using sysx::basic_packetbuf;
+using sysx::basic_fdbuf;
+using sysx::basic_kstream;
 using factory::components::LBuffer;
 
 std::random_device rng;

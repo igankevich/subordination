@@ -1,6 +1,6 @@
 #include <iomanip>
 
-#include <factory/ext/encoding.hh>
+#include <web/encoding.hh>
 #include "test.hh"
 
 using namespace factory;
