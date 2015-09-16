@@ -24,7 +24,7 @@ namespace factory {
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef char Ch;
-			typedef sysx::basic_packetbuf<sysx::basic_fdbuf<Ch,Socket>> Kernelbuf;
+			typedef sysx::basic_packetbuf<sysx::basic_fdbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
 			typedef sysx::basic_packetstream<Ch> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
@@ -124,22 +124,18 @@ namespace factory {
 			void
 			on_event(sysx::poll_event event) {
 				if (event.in()) {
-					this_log() << "recv rdstate="
-						<< stdx::debug_stream(_stream) << ",event=" << event << std::endl;
-					_packetbuf.pubfill();
-					while (_packetbuf.update_state()) {
+					_stream.fill();
+					while (_stream.read_packet()) {
 						read_and_send_kernel();
 					}
 				}
 				if (event.out() && !event.hup()) {
-					this_log() << "Send rdstate=" << stdx::debug_stream(_stream) << std::endl;
 					_stream.flush();
 					socket().flush();
 					if (!dirty()) {
 						this_log() << "Flushed." << std::endl;
 					}
 				}
-				_stream.clear();
 			}
 
 			bool
@@ -165,7 +161,6 @@ namespace factory {
 			void
 			socket(sysx::socket&& rhs) {
 				_packetbuf.pubfill();
-				_stream.clear();
 				_packetbuf.setfd(socket_type(std::move(rhs)));
 			}
 
@@ -193,7 +188,6 @@ namespace factory {
 				_stream >> app;
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
-				if (!_stream) return;
 				if (app != Application::ROOT) {
 					this->app_server()->forward(app, _vaddr, _packetbuf);
 				} else {
@@ -212,7 +206,6 @@ namespace factory {
 				k->setapp(app);
 				this_log()
 					<< "recv kernel=" << *k
-					<< ",rdstate=" << stdx::debug_stream(_stream)
 					<< std::endl;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
@@ -246,13 +239,12 @@ namespace factory {
 
 			void
 			write_kernel(kernel_type& kernel) {
-				typedef sysx::packetstream::pos_type pos_type;
-				pos_type old_pos = _stream.tellp();
-				_packetbuf.begin_packet();
+				std::streamsize old_pos = _stream.tellp();
+				_stream.begin_packet();
 				_stream << kernel.app();
 				Type<kernel_type>::write_object(kernel, _stream);
-				_packetbuf.end_packet();
-				pos_type new_pos = _stream.tellp();
+				_stream.end_packet();
+				std::streamsize new_pos = _stream.tellp();
 				this_log() << "send bytes="
 					<< new_pos-old_pos
 					<< ",stream="

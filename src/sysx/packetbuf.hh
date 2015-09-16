@@ -3,6 +3,7 @@
 
 #include <iomanip>
 
+#include <stdx/log.hh>
 #include <stdx/streambuf.hh>
 #include <sysx/network_format.hh>
 #include <sysx/bits/buffer_category.hh>
@@ -10,19 +11,25 @@
 namespace sysx {
 
 	template<class Base>
-	struct basic_ipacketbuf: public Base {
+	struct basic_packetbuf: public Base {
 
 		typedef Base base_type;
 		using base_type::gptr;
 		using base_type::eback;
 		using base_type::egptr;
 		using base_type::setg;
+		using base_type::pptr;
+		using base_type::pbase;
+		using base_type::epptr;
+		using base_type::setp;
+		using base_type::pbump;
+		using base_type::xsputn;
 		using typename base_type::int_type;
 		using typename base_type::traits_type;
 		using typename base_type::char_type;
 		using typename base_type::pos_type;
 		typedef uint32_t size_type;
-		typedef stdx::log<basic_ipacketbuf> this_log;
+		typedef stdx::log<basic_packetbuf> this_log;
 
 		enum struct State {
 			initial,
@@ -30,16 +37,13 @@ namespace sysx {
 			payload_is_ready
 		};
 
-		basic_ipacketbuf() = default;
-		basic_ipacketbuf(basic_ipacketbuf&&) = default;
-		basic_ipacketbuf(const basic_ipacketbuf&) = delete;
-		virtual ~basic_ipacketbuf() = default;
-
-		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
-			"bad base class for ibasic_packetbuf");
+		basic_packetbuf() = default;
+		basic_packetbuf(basic_packetbuf&&) = default;
+		basic_packetbuf(const basic_packetbuf&) = delete;
+		virtual ~basic_packetbuf() = default;
 
 		bool
-		update_state() {
+		read_packet() override {
 			const State old_state = _rstate;
 			switch (_rstate) {
 				case State::initial: this->read_kernel_packetsize(); break;
@@ -48,7 +52,7 @@ namespace sysx {
 			}
 			if (old_state != _rstate) {
 				this->dumpstate();
-				this->update_state();
+				this->read_packet();
 			}
 			return payload_is_ready();
 		}
@@ -58,14 +62,36 @@ namespace sysx {
 			return _rstate == State::payload_is_ready;
 		}
 
+		bool
+		dirty() const {
+			return pptr() != epptr();
+		}
+
+		void
+		begin_packet() override {
+			_packetpos = pptr() - pbase();
+			put_header(0);
+		}
+
+		void
+		end_packet() override {
+			const pos_type end = pptr() - pbase();
+			const size_type s = end - _packetpos;
+			if (s == header_size()) {
+				pbump(-std::streamsize(s));
+			} else {
+				overwrite_header(s);
+			}
+		}
+
 //		template<class X> friend class basic_opacketbuf;
-		template<class X> friend void append_payload(std::streambuf& buf, basic_ipacketbuf<X>& kbuf);
+		template<class X> friend void append_payload(std::streambuf& buf, basic_packetbuf<X>& kbuf);
 
 	private:
 
 		char_type*
 		packet_begin() const {
-			return eback() + _packetpos;
+			return eback() + _ipacketpos;
 		}
 
 		char_type*
@@ -85,7 +111,7 @@ namespace sysx {
 
 		pos_type
 		payloadpos() const {
-			return _packetpos + pos_type(header_size());
+			return _ipacketpos + pos_type(header_size());
 		}
 
 		size_type
@@ -98,7 +124,7 @@ namespace sysx {
 			if (!(count < this->header_size())) {
 				sysx::Bytes<size_type> size(gptr(), gptr() + this->header_size());
 				size.to_host_format();
-				_packetpos = gptr() - eback();
+				_ipacketpos = gptr() - eback();
 				_packetsize = size;
 				this->gbump(this->header_size());
 				this->dumpstate();
@@ -126,7 +152,7 @@ namespace sysx {
 				if (_oldendpos > endpos) {
 					this->setg(eback(), gptr(), eback() + _oldendpos);
 				}
-				_packetpos = 0;
+				_ipacketpos = 0;
 				_packetsize = 0;
 				_oldendpos = 0;
 				this->sets(State::initial);
@@ -140,7 +166,7 @@ namespace sysx {
 				<< ",gptr=" << gptr() - eback()
 				<< ",egptr=" << egptr() - eback()
 				<< ",size=" << _packetsize
-				<< ",start=" << _packetpos
+				<< ",start=" << _ipacketpos
 				<< ",oldpos=" << _oldendpos
 				<< std::endl;
 		}
@@ -168,81 +194,12 @@ namespace sysx {
 			return _packetsize - header_size();
 		}
 
-		static constexpr size_type
-		header_size() {
-			return sizeof(_packetsize);
-		}
-
-		size_type _packetsize = 0;
-		pos_type _packetpos = 0;
-		pos_type _oldendpos = 0;
-		State _rstate = State::initial;
-	};
-
-	template<class X>
-	void append_payload(std::streambuf& buf, basic_ipacketbuf<X>& rhs) {
-		typedef typename basic_ipacketbuf<X>::size_type size_type;
-		const size_type n = rhs.payloadsize();
-		buf.sputn(rhs.payload_begin(), n);
-		rhs.gbump(n);
-	}
-
-	template<class Base>
-	struct basic_opacketbuf: public Base {
-
-		typedef Base base_type;
-		using base_type::pptr;
-		using base_type::pbase;
-		using base_type::epptr;
-		using base_type::setp;
-		using base_type::gptr;
-		using base_type::eback;
-		using base_type::egptr;
-		using base_type::pbump;
-		using typename base_type::int_type;
-		using typename base_type::traits_type;
-		using typename base_type::char_type;
-		using typename base_type::pos_type;
-		typedef uint32_t size_type;
-		typedef stdx::log<basic_opacketbuf> this_log;
-
-		static_assert(std::is_base_of<std::basic_streambuf<char_type>, Base>::value,
-			"bad base class for basic_opacketbuf");
-
-		basic_opacketbuf() = default;
-		basic_opacketbuf(const basic_opacketbuf&) = delete;
-		basic_opacketbuf(basic_opacketbuf&&) = default;
-		virtual ~basic_opacketbuf() { this->end_packet(); }
-
-		bool
-		dirty() const {
-			return pptr() != epptr();
-		}
-
-		void
-		begin_packet() {
-			_packetpos = pptr() - pbase();
-			put_header(0);
-		}
-
-		void
-		end_packet() {
-			const pos_type end = pptr() - pbase();
-			const size_type s = end - _packetpos;
-			if (s == header_size()) {
-				pbump(-std::streamsize(s));
-			} else {
-				overwrite_header(s);
-			}
-		}
-
-	private:
-
+		// output buffer
 		void
 		put_header(size_type s) {
 			sysx::Bytes<size_type> hdr(s);
 			hdr.to_network_format();
-			Base::xsputn(hdr.begin(), hdr.size());
+			xsputn(hdr.begin(), hdr.size());
 		}
 
 		void
@@ -253,16 +210,25 @@ namespace sysx {
 				hdr.begin(), hdr.size());
 		}
 
-		static constexpr std::streamsize
+		static constexpr size_type
 		header_size() {
-			return sizeof(size_type);
+			return sizeof(_packetsize);
 		}
 
+		size_type _packetsize = 0;
+		pos_type _ipacketpos = 0;
+		pos_type _oldendpos = 0;
+		State _rstate = State::initial;
 		pos_type _packetpos = 0;
 	};
 
-	template<class Base1, class Base2=Base1>
-	struct basic_packetbuf: public basic_opacketbuf<basic_ipacketbuf<Base1>> {};
+	template<class X>
+	void append_payload(std::streambuf& buf, basic_packetbuf<X>& rhs) {
+		typedef typename basic_packetbuf<X>::size_type size_type;
+		const size_type n = rhs.payloadsize();
+		buf.sputn(rhs.payload_begin(), n);
+		rhs.gbump(n);
+	}
 
 	template<class Base>
 	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
@@ -302,18 +268,11 @@ namespace stdx {
 	struct temp_cat {};
 
 	template<class Base>
-	struct type_traits<sysx::basic_ipacketbuf<Base>> {
+	struct type_traits<sysx::basic_packetbuf<Base>> {
 		static constexpr const char*
-		short_name() { return "ipacketbuf"; }
+		short_name() { return "packetbuf"; }
 //		typedef sysx::buffer_category category;
 		typedef temp_cat category;
-	};
-
-	template<class Base>
-	struct type_traits<sysx::basic_opacketbuf<Base>> {
-		static constexpr const char*
-		short_name() { return "opacketbuf"; }
-		typedef sysx::buffer_category category;
 	};
 
 }

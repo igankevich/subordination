@@ -154,7 +154,6 @@ namespace factory {
 			read_object(Types<Type>& types, sysx::packetstream& packet, Func callback) {
 				id_type id;
 				packet >> id;
-				if (!packet) return;
 				const Type* type = types.lookup(id);
 				if (type == nullptr) {
 					std::stringstream msg;

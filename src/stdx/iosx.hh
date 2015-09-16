@@ -32,30 +32,37 @@ namespace stdx {
 		std::ios::char_type oldfill;
 	};
 
-	struct debug_stream {
+	template<class T>
+	struct debug_stream_t {
 
 		constexpr explicit
-		debug_stream(const std::ios& s) noexcept:
+		debug_stream_t(const T& s) noexcept:
 		str(s) {}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const debug_stream& rhs) {
-			std::ostream::sentry s(out);
-			if (s) {
-				out
-					<< (rhs.str.good() ? 'g' : '-')
-					<< (rhs.str.bad()  ? 'b' : '-')
-					<< (rhs.str.fail() ? 'f' : '-')
-					<< (rhs.str.eof()  ? 'e' : '-');
-			}
+		operator<<(std::ostream& out, const debug_stream_t& rhs) {
+			//std::ostream::sentry s(out);
+			//if (s) {
+			//	out
+			//		<< (rhs.str.good() ? 'g' : '-')
+			//		<< (rhs.str.bad()  ? 'b' : '-')
+			//		<< (rhs.str.fail() ? 'f' : '-')
+			//		<< (rhs.str.eof()  ? 'e' : '-');
+			//}
 			return out;
 		}
 
 	private:
 
-		const std::ios& str;
+		const T& str;
 
 	};
+
+	template<class T>
+	constexpr debug_stream_t<T>
+	debug_stream(const T& str) {
+		return debug_stream_t<T>(str);
+	}
 
 }
 

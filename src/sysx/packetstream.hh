@@ -5,26 +5,60 @@
 #include <ostream>
 
 #include <sysx/network_format.hh>
+#include <stdx/packetbuf.hh>
 
 namespace sysx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
-	struct basic_packetstream: public std::basic_iostream<Ch,Tr> {
+	struct basic_packetstream {
 
-		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		typedef std::basic_streambuf<Ch,Tr> streambuf_type;
+		typedef stdx::basic_packetbuf<Ch,Tr> streambuf_type;
 		typedef Ch char_type;
 		typedef basic_packetstream<Ch,Tr,Size> this_type;
 
-		explicit
-		basic_packetstream(streambuf_type* str):
-		iostream_type(str) {}
+		basic_packetstream() = default;
+		basic_packetstream(streambuf_type* buf): _buf(buf) {}
 
-		basic_packetstream(basic_packetstream&& rhs):
-		iostream_type(rhs.rdbuf()) {}
+		// TODO: delete this
+		void flush() { _buf->pubsync(); }
+		std::streamsize tellp() { return _buf->pubseekoff(0, std::ios_base::cur, std::ios_base::out); }
 
-		basic_packetstream(const basic_packetstream&) = delete;
-		basic_packetstream() = delete;
+		streambuf_type*
+		rdbuf() {
+			return _buf;
+		}
+
+		const streambuf_type*
+		rdbuf() const {
+			return _buf;
+		}
+
+		streambuf_type*
+		rdbuf(streambuf_type* rhs) {
+			streambuf_type* old = _buf;
+			_buf = rhs;
+			return old;
+		}
+
+		void
+		fill() {
+			_buf->pubfill();
+		}
+
+		void
+		begin_packet() {
+			_buf->begin_packet();
+		}
+
+		void
+		end_packet() {
+			_buf->end_packet();
+		}
+
+		bool
+		read_packet() {
+			return _buf->read_packet();
+		}
 
 		basic_packetstream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }
 		basic_packetstream& operator<<(char rhs) { return write(rhs); }
@@ -71,12 +105,12 @@ namespace sysx {
 		}
 
 		this_type& write(const Ch* buf, std::streamsize n) {
-			this->iostream_type::write(buf, n);
+			_buf->sputn(buf, n);
 			return *this;
 		}
 
 		this_type& read(Ch* buf, std::streamsize n) {
-			this->iostream_type::read(buf, n);
+			_buf->sgetn(buf, n);
 			return *this;
 		}
 
@@ -105,14 +139,14 @@ namespace sysx {
 		basic_packetstream& write(const std::string& rhs) {
 			Size length = static_cast<Size>(rhs.size());
 			write(length);
-			this->iostream_type::write(rhs.c_str(), length);
+			_buf->sputn(rhs.c_str(), length);
 			return *this;
 		}
 
 		template<class T>
 		basic_packetstream& read(T& rhs) {
 			sysx::Bytes<T> val;
-			this->iostream_type::read(val.begin(), val.size());
+			_buf->sgetn(val.begin(), val.size());
 			val.to_host_format();
 			rhs = val;
 			return *this;
@@ -122,12 +156,13 @@ namespace sysx {
 			Size length;
 			read(length);
 			std::string::value_type* bytes = new std::string::value_type[length];
-			this->iostream_type::read(bytes, length);
+			_buf->sgetn(bytes, length);
 			rhs.assign(bytes, bytes + length);
 			delete[] bytes;
 			return *this;
 		}
 
+		streambuf_type* _buf = nullptr;
 	};
 
 	typedef basic_packetstream<char> packetstream;

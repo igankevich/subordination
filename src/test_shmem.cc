@@ -62,18 +62,18 @@ struct Test_shmem {
 		}
 	}
 
-	void test_shmembuf_pipe() {
-		std::string content = "Hello world";
-		std::stringstream src;
-		src << content;
-		shmembuf buf("/test-shmem-3", 0600);
-		buf.lock();
-		buf.fill_from(*src.rdbuf());
-		buf.unlock();
-		std::stringstream result;
-		buf.flush_to(*result.rdbuf());
-		test::equal(result.str(), content);
-	}
+//	void test_shmembuf_pipe() {
+//		std::string content = "Hello world";
+//		std::stringstream src;
+//		src << content;
+//		shmembuf buf("/test-shmem-3", 0600);
+//		buf.lock();
+//		buf.fill_from(*src.rdbuf());
+//		buf.unlock();
+//		std::stringstream result;
+//		buf.flush_to(*result.rdbuf());
+//		test::equal(result.str(), content);
+//	}
 
 };
 
@@ -81,6 +81,6 @@ int main(int argc, char* argv[]) {
 	Test_shmem<char> test;
 	test.test_shmem();
 	test.test_shmembuf();
-	test.test_shmembuf_pipe();
+//	test.test_shmembuf_pipe();
 	return 0;
 }

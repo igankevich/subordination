@@ -59,6 +59,10 @@ namespace sysx {
 		socket(socket&& rhs) noexcept:
 			sysx::fildes(std::move(rhs)) {}
 
+		explicit
+		socket(fildes&& rhs) noexcept:
+			sysx::fildes(std::move(rhs)) {}
+
 		/// Bind on @bind_addr and listen.
 		explicit
 		socket(const endpoint& bind_addr) {

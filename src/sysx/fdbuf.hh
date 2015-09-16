@@ -6,15 +6,15 @@
 
 #include <sysx/bits/buffer_category.hh>
 #include <sysx/fildes.hh>
-#include <stdx/streambuf.hh>
+#include <stdx/packetbuf.hh>
 #include <stdx/log.hh>
 
 namespace sysx {
 
-		template<class T, class Fd=sysx::fildes>
-		struct basic_fdbuf: public stdx::basic_streambuf<T> {
+		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
+		struct basic_fdbuf: public stdx::basic_packetbuf<Ch,Tr> {
 
-			typedef std::basic_streambuf<T> base_type;
+			typedef stdx::basic_packetbuf<Ch> base_type;
 			using base_type::gptr;
 			using base_type::eback;
 			using base_type::egptr;
@@ -25,11 +25,11 @@ namespace sysx {
 			using base_type::setp;
 			using base_type::gbump;
 			using base_type::pbump;
-			using typename std::basic_streambuf<T>::int_type;
-			using typename std::basic_streambuf<T>::traits_type;
-			using typename std::basic_streambuf<T>::char_type;
-			using typename std::basic_streambuf<T>::pos_type;
-			using typename std::basic_streambuf<T>::off_type;
+			using typename base_type::int_type;
+			using typename base_type::traits_type;
+			using typename base_type::char_type;
+			using typename base_type::pos_type;
+			using typename base_type::off_type;
 			typedef std::ios_base::openmode openmode;
 			typedef std::ios_base::seekdir seekdir;
 			typedef Fd fd_type;
