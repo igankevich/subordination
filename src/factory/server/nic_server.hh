@@ -15,6 +15,7 @@
 #include <factory/server/intro.hh>
 #include <sysx/fildesbuf.hh>
 #include <factory/kernelbuf.hh>
+#include <factory/kernel_stream.hh>
 
 namespace factory {
 
@@ -23,14 +24,14 @@ namespace factory {
 		template<class T, class Socket, class Kernels=std::deque<typename Server<T>::kernel_type*>>
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
+			typedef Managed_object<Server<T>> base_server;
+			using typename base_server::kernel_type;
 			typedef char Ch;
 			typedef sysx::basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
-			typedef sysx::basic_packetstream<Ch> stream_type;
+			typedef Kernel_stream<kernel_type> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
 			typedef Kernels pool_type;
-			typedef Managed_object<Server<T>> base_server;
-			using typename base_server::kernel_type;
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
@@ -240,10 +241,7 @@ namespace factory {
 			void
 			write_kernel(kernel_type& kernel) {
 				std::streamsize old_pos = _stream.tellp();
-				_stream.begin_packet();
-				_stream << kernel.app();
-				Type<kernel_type>::write_object(kernel, _stream);
-				_stream.end_packet();
+				_stream << kernel;
 				std::streamsize new_pos = _stream.tellp();
 				this_log() << "send bytes="
 					<< new_pos-old_pos

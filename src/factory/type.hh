@@ -137,6 +137,7 @@ namespace factory {
 				return out << rhs.name() << '(' << rhs.id() << ')';
 			}
 
+			// TODO: delme
 			static
 			void write_object(kernel_type& kernel, sysx::packetstream& out) {
 				const Type type = kernel.type();
