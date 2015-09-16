@@ -20,6 +20,7 @@ namespace stdx {
 		read_packet() { return false; }
 
 	};
+
 	typedef basic_packetbuf<char> packetbuf;
 
 }

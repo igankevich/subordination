@@ -1,5 +1,5 @@
-#ifndef SYSX_PACKETBUF_HH
-#define SYSX_PACKETBUF_HH
+#ifndef FACTORY_KERNELBUF_HH
+#define FACTORY_KERNELBUF_HH
 
 #include <iomanip>
 
@@ -11,7 +11,7 @@
 namespace sysx {
 
 	template<class Base>
-	struct basic_packetbuf: public Base {
+	struct basic_kernelbuf: public Base {
 
 		typedef Base base_type;
 		using base_type::gptr;
@@ -29,7 +29,7 @@ namespace sysx {
 		using typename base_type::char_type;
 		using typename base_type::pos_type;
 		typedef uint32_t size_type;
-		typedef stdx::log<basic_packetbuf> this_log;
+		typedef stdx::log<basic_kernelbuf> this_log;
 
 		enum struct State {
 			initial,
@@ -37,10 +37,10 @@ namespace sysx {
 			payload_is_ready
 		};
 
-		basic_packetbuf() = default;
-		basic_packetbuf(basic_packetbuf&&) = default;
-		basic_packetbuf(const basic_packetbuf&) = delete;
-		virtual ~basic_packetbuf() = default;
+		basic_kernelbuf() = default;
+		basic_kernelbuf(basic_kernelbuf&&) = default;
+		basic_kernelbuf(const basic_kernelbuf&) = delete;
+		virtual ~basic_kernelbuf() = default;
 
 		bool
 		read_packet() override {
@@ -84,8 +84,8 @@ namespace sysx {
 			}
 		}
 
-//		template<class X> friend class basic_opacketbuf;
-		template<class X> friend void append_payload(std::streambuf& buf, basic_packetbuf<X>& kbuf);
+//		template<class X> friend class basic_okernelbuf;
+		template<class X> friend void append_payload(std::streambuf& buf, basic_kernelbuf<X>& kbuf);
 
 	private:
 
@@ -223,8 +223,8 @@ namespace sysx {
 	};
 
 	template<class X>
-	void append_payload(std::streambuf& buf, basic_packetbuf<X>& rhs) {
-		typedef typename basic_packetbuf<X>::size_type size_type;
+	void append_payload(std::streambuf& buf, basic_kernelbuf<X>& rhs) {
+		typedef typename basic_kernelbuf<X>::size_type size_type;
 		const size_type n = rhs.payloadsize();
 		buf.sputn(rhs.payload_begin(), n);
 		rhs.gbump(n);
@@ -232,30 +232,30 @@ namespace sysx {
 
 	template<class Base>
 	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
-		typedef basic_packetbuf<Base> packetbuf_type;
+		typedef basic_kernelbuf<Base> kernelbuf_type;
 		typedef typename Base::char_type Ch;
 		typedef typename Base::traits_type Tr;
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		basic_kstream(): iostream_type(nullptr), _packetbuf()
-			{ this->init(&_packetbuf); }
+		basic_kstream(): iostream_type(nullptr), _kernelbuf()
+			{ this->init(&_kernelbuf); }
 
 		void
 		begin_packet() {
-			_packetbuf.begin_packet();
+			_kernelbuf.begin_packet();
 		}
 
 		void
 		end_packet() {
-			_packetbuf.end_packet();
+			_kernelbuf.end_packet();
 		}
 
 		bool
 		update_state() {
-			return _packetbuf.update_state();
+			return _kernelbuf.update_state();
 		}
 
 	private:
-		packetbuf_type _packetbuf;
+		kernelbuf_type _kernelbuf;
 	};
 
 
@@ -268,13 +268,13 @@ namespace stdx {
 	struct temp_cat {};
 
 	template<class Base>
-	struct type_traits<sysx::basic_packetbuf<Base>> {
+	struct type_traits<sysx::basic_kernelbuf<Base>> {
 		static constexpr const char*
-		short_name() { return "packetbuf"; }
+		short_name() { return "kernelbuf"; }
 //		typedef sysx::buffer_category category;
 		typedef temp_cat category;
 	};
 
 }
 
-#endif // SYSX_PACKETBUF_HH
+#endif // FACTORY_KERNELBUF_HH

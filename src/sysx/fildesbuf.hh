@@ -1,5 +1,5 @@
-#ifndef SYSX_FDBUF_HH
-#define SYSX_FDBUF_HH
+#ifndef SYSX_FILDESBUF_HH
+#define SYSX_FILDESBUF_HH
 
 #include <vector>
 #include <cassert>
@@ -12,7 +12,7 @@
 namespace sysx {
 
 		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
-		struct basic_fdbuf: public stdx::basic_packetbuf<Ch,Tr> {
+		struct basic_fildesbuf: public stdx::basic_packetbuf<Ch,Tr> {
 
 			typedef stdx::basic_packetbuf<Ch> base_type;
 			using base_type::gptr;
@@ -33,12 +33,12 @@ namespace sysx {
 			typedef std::ios_base::openmode openmode;
 			typedef std::ios_base::seekdir seekdir;
 			typedef Fd fd_type;
-			typedef stdx::log<basic_fdbuf> this_log;
+			typedef stdx::log<basic_fildesbuf> this_log;
 			typedef typename std::vector<char_type>::size_type size_type;
 
-			basic_fdbuf(): basic_fdbuf(std::move(fd_type()), 512, 512) {}
+			basic_fildesbuf(): basic_fildesbuf(std::move(fd_type()), 512, 512) {}
 
-			basic_fdbuf(fd_type&& fd, size_type gbufsize, size_type pbufsize):
+			basic_fildesbuf(fd_type&& fd, size_type gbufsize, size_type pbufsize):
 			_fd(std::move(fd)), _gbuf(gbufsize), _pbuf(pbufsize)
 			{
 				char_type* end = _gbuf.data();
@@ -47,10 +47,10 @@ namespace sysx {
 				setp(beg, beg + _pbuf.size());
 			}
 
-			basic_fdbuf(basic_fdbuf&& rhs) = default;
+			basic_fildesbuf(basic_fildesbuf&& rhs) = default;
 
 			virtual
-			~basic_fdbuf() {
+			~basic_fildesbuf() {
 				// NB: for now full sync is not guaranteed for non-blocking I/O
 				// as it may result in infinite loop
 				sync();
@@ -198,35 +198,35 @@ namespace sysx {
 
 		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
 		struct basic_ifdstream: public std::basic_istream<Ch> {
-			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef basic_fildesbuf<Ch,Fd> fildesbuf_type;
 			typedef std::basic_istream<Ch,Tr> istream_type;
 			explicit basic_ifdstream(Fd&& fd): istream_type(nullptr),
-				_fdbuf(std::move(fd), 512, 0) { this->init(&_fdbuf); }
+				_fildesbuf(std::move(fd), 512, 0) { this->init(&_fildesbuf); }
 		private:
-			fdbuf_type _fdbuf;
+			fildesbuf_type _fildesbuf;
 		};
 
 		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
 		struct basic_ofdstream: public std::basic_ostream<Ch> {
-			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef basic_fildesbuf<Ch,Fd> fildesbuf_type;
 			typedef std::basic_ostream<Ch,Tr> ostream_type;
 			explicit basic_ofdstream(Fd&& fd): ostream_type(nullptr),
-				_fdbuf(std::move(fd), 0, 512) { this->init(&_fdbuf); }
+				_fildesbuf(std::move(fd), 0, 512) { this->init(&_fildesbuf); }
 		private:
-			fdbuf_type _fdbuf;
+			fildesbuf_type _fildesbuf;
 		};
 
 		template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
 		struct basic_fdstream: public std::basic_iostream<Ch> {
-			typedef basic_fdbuf<Ch,Fd> fdbuf_type;
+			typedef basic_fildesbuf<Ch,Fd> fildesbuf_type;
 			typedef std::basic_iostream<Ch,Tr> iostream_type;
 			explicit basic_fdstream(Fd&& fd): iostream_type(nullptr),
-				_fdbuf(std::move(fd), 512, 512) { this->init(&_fdbuf); }
+				_fildesbuf(std::move(fd), 512, 512) { this->init(&_fildesbuf); }
 		private:
-			fdbuf_type _fdbuf;
+			fildesbuf_type _fildesbuf;
 		};
 
-	typedef basic_fdbuf<char> fdbuf;
+	typedef basic_fildesbuf<char> fildesbuf;
 	typedef basic_ifdstream<char> ifdstream;
 	typedef basic_ofdstream<char> ofdstream;
 
@@ -234,13 +234,13 @@ namespace sysx {
 
 namespace stdx {
 
-	template<class T, class Fd>
-	struct type_traits<sysx::basic_fdbuf<T,Fd>> {
+	template<class Ch, class Tr, class Fd>
+	struct type_traits<sysx::basic_fildesbuf<Ch,Tr,Fd>> {
 		static constexpr const char*
-		short_name() { return "fdbuf"; }
+		short_name() { return "fildesbuf"; }
 		typedef sysx::buffer_category category;
 	};
 
 }
 
-#endif // SYSX_FDBUF_HH
+#endif // SYSX_FILDESBUF_HH

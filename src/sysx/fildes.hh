@@ -237,26 +237,6 @@ namespace sysx {
 		path_type _path;
 	};
 
-	template<class Ch, class Tr=std::char_traits<Ch>>
-	struct basic_fildesbuf: public std::basic_streambuf<Ch,Tr> {
-
-		typedef std::basic_streambuf<Ch,Tr> base_type;
-		using typename base_type::char_type;
-
-		std::streamsize
-		xsputn(const char_type* s, std::streamsize n) override {
-			return _fd.write(s, n);
-		}
-
-		std::streamsize
-		xsgetn(char_type* s, std::streamsize n) override {
-			return _fd.read(s, n);
-		}
-
-	private:
-		sysx::fildes& _fd;
-	};
-
 }
 
 #endif // SYSX_FILDES_HH
