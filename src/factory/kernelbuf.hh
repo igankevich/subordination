@@ -197,14 +197,6 @@ namespace factory {
 		pos_type _packetpos = 0;
 	};
 
-//	template<class X>
-//	void append_payload(stdx::packetbuf& buf, basic_kernelbuf<X>& rhs) {
-//		typedef typename basic_kernelbuf<X>::size_type size_type;
-//		const size_type n = rhs.payloadsize();
-//		buf.sputn(rhs.payload_begin(), n);
-//		rhs.gbump(n);
-//	}
-
 	template<class Base>
 	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
 		typedef basic_kernelbuf<Base> kernelbuf_type;

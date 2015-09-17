@@ -29,14 +29,14 @@ namespace factory {
 		inline std::ostream&
 		operator<<(std::ostream& out, Result rhs) {
 			switch (rhs) {
-				case Result::SUCCESS: out << "SUCCESS"; break;
-				case Result::UNDEFINED: out << "UNDEFINED"; break;
-				case Result::ENDPOINT_NOT_CONNECTED: out << "ENDPOINT_NOT_CONNECTED"; break;
-				case Result::NO_UPSTREAM_SERVERS_LEFT: out << "NO_UPSTREAM_SERVERS_LEFT"; break;
-				case Result::NO_PRINCIPAL_FOUND: out << "NO_PRINCIPAL_FOUND"; break;
-				case Result::USER_ERROR: out << "USER_ERROR"; break;
-				case Result::FATAL_ERROR: out << "FATAL_ERROR"; break;
-				default: out << "UNKNOWN_RESULT";
+				case Result::SUCCESS: out << "success"; break;
+				case Result::UNDEFINED: out << "undefined"; break;
+				case Result::ENDPOINT_NOT_CONNECTED: out << "endpoint_not_connected"; break;
+				case Result::NO_UPSTREAM_SERVERS_LEFT: out << "no_upstream_servers_left"; break;
+				case Result::NO_PRINCIPAL_FOUND: out << "no_principal_found"; break;
+				case Result::USER_ERROR: out << "user_error"; break;
+				case Result::FATAL_ERROR: out << "fatal_error"; break;
+				default: out << "unknown_result";
 			}
 			return out;
 		}
@@ -413,8 +413,8 @@ namespace factory {
 					<< ",dst=" << rhs.to()
 					<< ",rslt=" << rhs.result()
 					<< ",app=" << rhs.app()
-					<< ",parent=" << rhs._principal
-					<< ",principal=" << rhs._parent
+					<< ",parent=" << rhs._parent
+					<< ",principal=" << rhs._principal
 					<< '}';
 			}
 		

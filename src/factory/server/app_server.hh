@@ -149,13 +149,12 @@ namespace factory {
 					_ostream.begin_packet();
 					_ostream << k->app() << k->to();
 					this_log() << "send from_app=" << _app
-						<< ",krnl=" << *k
+						<< ",kernel=" << *k
 						<< std::endl;
 					Type<kernel_type>::write_object(*k, _ostream);
 					_ostream.end_packet();
 				}
 				_osem.notify_one();
-				this_log() << "notify_one app=" << _app << std::endl;
 			}
 
 		private:
@@ -172,9 +171,6 @@ namespace factory {
 				while (_istream.read_packet()) {
 					app_type app; sysx::endpoint src;
 					_istream >> app >> src;
-					this_log() << "read_and_send_kernel(): src=" << src
-						<< ",rdstate=" << stdx::debug_stream(this->_istream)
-						<< std::endl;
 					Type<kernel_type>::read_object(this->factory()->types(), this->_istream,
 						[this,&src] (kernel_type* k) {
 							k->setapp(_app);
@@ -187,10 +183,6 @@ namespace factory {
 			void
 			send_kernel(kernel_type* k, const sysx::endpoint& src) {
 				k->from(src);
-				this_log()
-					<< "recv kernel=" << *k
-					<< ",rdstate=" << stdx::debug_stream(this->_istream)
-					<< std::endl;
 				if (k->principal()) {
 					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
 					if (p == nullptr) {
@@ -198,12 +190,12 @@ namespace factory {
 						k->result(Result::NO_PRINCIPAL_FOUND);
 						throw No_principal_found<kernel_type>(k);
 					}
+					if (k->principal_id() == k->parent_id()) {
+						k->parent(p);
+					}
 					k->principal(p);
 				}
-				this_log()
-					<< "recv2 kernel=" << *k
-					<< ",rdstate=" << stdx::debug_stream(this->_istream)
-					<< std::endl;
+				this_log() << "recv kernel=" << *k << std::endl;
 				this->root()->send(k);
 			}
 
@@ -265,8 +257,7 @@ namespace factory {
 			void send(kernel_type* k) {
 				{
 					olock_type lock(_obuf);
-					this_log() << "write from " << k->from() << std::endl;
-					this_log() << "send kernel " << *k << std::endl;
+					this_log() << "send kernel=" << *k << std::endl;
 					_ostream.begin_packet();
 					_ostream << k->app() << k->from();
 					Type<kernel_type>::write_object(*k, _ostream);
@@ -281,7 +272,7 @@ namespace factory {
 				while (_istream.read_packet()) {
 					app_type app; sysx::endpoint dst;
 					_istream >> app >> dst;
-					this_log() << "read_and_send_kernel():"
+					this_log() << "read:"
 						<< " dst=" << dst
 						<< ",app=" << app
 						<< std::endl;
@@ -290,6 +281,7 @@ namespace factory {
 						forward_internal(_ibuf, sysx::endpoint());
 					} else if (app == Application::ROOT) {
 						kernel_type* kernel = Type<kernel_type>::read_object(this->factory()->types(), _istream);
+						stdx::unlock_guard<ibuf_type> g(_ibuf);
 						if (kernel) {
 							recv_kernel(kernel);
 						}
@@ -301,10 +293,6 @@ namespace factory {
 
 			void
 			recv_kernel(kernel_type* k) {
-				this_log()
-					<< "recv kernel=" << *k
-					<< ",rdstate=" << stdx::debug_stream(this->_istream)
-					<< std::endl;
 				if (k->principal()) {
 					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
 					if (p == nullptr) {
@@ -313,6 +301,7 @@ namespace factory {
 					}
 					k->principal(p);
 				}
+				this_log() << "recv kernel=" << *k << std::endl;
 				this->root()->send(k);
 			}
 
@@ -453,7 +442,7 @@ namespace factory {
 				lock_type lock(this->_mutex);
 				while (apps_are_running()) {
 					_signalsem.wait(lock);
-					this_log() << "notify_one pid="
+					this_log() << "wait returned: pid="
 						<< _signalsem.last_notifier()
 						<< std::endl;
 					auto result = _pid2app.find(_signalsem.last_notifier());

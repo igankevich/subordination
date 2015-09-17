@@ -2,6 +2,7 @@
 #define STDX_PACKETBUF_HH
 
 #include <queue>
+#include <cassert>
 
 #include <stdx/streambuf.hh>
 
@@ -11,8 +12,11 @@ namespace stdx {
 	struct basic_packetbuf: public basic_streambuf<Ch,Tr> {
 
 		using typename basic_streambuf<Ch,Tr>::pos_type;
+		using typename basic_streambuf<Ch,Tr>::off_type;
 		using typename basic_streambuf<Ch,Tr>::char_type;
 		using basic_streambuf<Ch,Tr>::eback;
+		using basic_streambuf<Ch,Tr>::egptr;
+		using basic_streambuf<Ch,Tr>::setg;
 		typedef std::streamsize size_type;
 
 		virtual void
@@ -71,10 +75,20 @@ namespace stdx {
 			_packetpos = pos1;
 			_payloadpos = pos2;
 			_packetsize = n;
+			assert(_packetpos <= _payloadpos);
+			assert(_payloadpos <= _packetpos + n);
+		}
+
+		void
+		seekpayloadpos(off_type off) {
+			assert(eback() <= payload_begin() + off);
+			assert(payload_begin() + off <= egptr());
+			setg(eback(), payload_begin() + off, egptr());
 		}
 
 		template<class Ch1, class Tr1>
-		friend void append_payload(basic_packetbuf<Ch1,Tr1>& buf, basic_packetbuf<Ch1,Tr1>& rhs);
+		friend void
+		append_payload(basic_packetbuf<Ch1,Tr1>& buf, basic_packetbuf<Ch1,Tr1>& rhs);
 
 	private:
 
@@ -87,7 +101,7 @@ namespace stdx {
 	void append_payload(basic_packetbuf<Ch,Tr>& buf, basic_packetbuf<Ch,Tr>& rhs) {
 		const std::streamsize n = rhs.payloadsize();
 		buf.sputn(rhs.payload_begin(), n);
-		rhs.gbump(n);
+		rhs.seekpayloadpos(n);
 	}
 
 	typedef basic_packetbuf<char> packetbuf;
