@@ -408,11 +408,13 @@ namespace factory {
 					<< (rhs.moves_somewhere()  ? 's' : '-') 
 					<< (rhs.moves_everywhere()  ? 'b' : '-') 
 					<< ",tp=" << rhs.type()
-					<< ",id="
-					<< rhs.id() << ",src="
-					<< rhs.from() << ",dst="
-					<< rhs.to() << ",rslt="
-					<< rhs.result()
+					<< ",id=" << rhs.id()
+					<< ",src=" << rhs.from()
+					<< ",dst=" << rhs.to()
+					<< ",rslt=" << rhs.result()
+					<< ",app=" << rhs.app()
+					<< ",parent=" << rhs._principal
+					<< ",principal=" << rhs._parent
 					<< '}';
 			}
 		

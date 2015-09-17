@@ -2,13 +2,14 @@
 #define FACTORY_KERNELBUF_HH
 
 #include <iomanip>
+#include <type_traits>
 
 #include <stdx/log.hh>
-#include <stdx/streambuf.hh>
+#include <stdx/packetbuf.hh>
 #include <sysx/network_format.hh>
 #include <sysx/bits/buffer_category.hh>
 
-namespace sysx {
+namespace factory {
 
 	template<class Base>
 	struct basic_kernelbuf: public Base {
@@ -24,12 +25,26 @@ namespace sysx {
 		using base_type::setp;
 		using base_type::pbump;
 		using base_type::xsputn;
+		using base_type::setpacket;
+		// packetbuf protected interface
+		using base_type::payload_begin;
+		using base_type::payload_end;
+		using base_type::payloadpos;
+		using base_type::payloadsize;
+		using base_type::packet_begin;
+		using base_type::packet_end;
+		using base_type::packetpos;
+		using base_type::packetsize;
 		using typename base_type::int_type;
 		using typename base_type::traits_type;
 		using typename base_type::char_type;
 		using typename base_type::pos_type;
 		typedef uint32_t size_type;
 		typedef stdx::log<basic_kernelbuf> this_log;
+
+		typedef stdx::basic_packetbuf<char_type,traits_type> good_base_type;
+		static_assert(std::is_base_of<good_base_type, Base>::value,
+			"bad base class");
 
 		enum struct State {
 			initial,
@@ -41,6 +56,10 @@ namespace sysx {
 		basic_kernelbuf(basic_kernelbuf&&) = default;
 		basic_kernelbuf(const basic_kernelbuf&) = delete;
 		virtual ~basic_kernelbuf() = default;
+
+		template<class ... Args>
+		basic_kernelbuf(Args&& ... args):
+		Base(std::forward<Args>(args)...) {}
 
 		bool
 		read_packet() override {
@@ -84,48 +103,15 @@ namespace sysx {
 			}
 		}
 
-//		template<class X> friend class basic_okernelbuf;
-		template<class X> friend void append_payload(std::streambuf& buf, basic_kernelbuf<X>& kbuf);
-
 	private:
-
-		char_type*
-		packet_begin() const {
-			return eback() + _ipacketpos;
-		}
-
-		char_type*
-		packet_end() const {
-			return packet_begin() + _packetsize;
-		}
-
-		char_type*
-		payload_begin() const {
-			return packet_begin() + header_size();
-		}
-
-		char_type*
-		payload_end() const {
-			return payload_begin() + payloadsize();
-		}
-
-		pos_type
-		payloadpos() const {
-			return _ipacketpos + pos_type(header_size());
-		}
-
-		size_type
-		bytes_left_until_the_end_of_the_packet() const {
-			return _packetsize - (gptr() - (eback() + payloadpos()));
-		}
 
 		void read_kernel_packetsize() {
 			size_type count = egptr() - gptr();
 			if (!(count < this->header_size())) {
 				sysx::Bytes<size_type> size(gptr(), gptr() + this->header_size());
 				size.to_host_format();
-				_ipacketpos = gptr() - eback();
-				_packetsize = size;
+				const pos_type p = gptr() - eback();
+				setpacket(p, p + pos_type(header_size()), size);
 				this->gbump(this->header_size());
 				this->dumpstate();
 				this->sets(State::header_is_ready);
@@ -133,16 +119,13 @@ namespace sysx {
 		}
 
 		void buffer_payload() {
-			pos_type endpos = egptr() - eback();
+			const pos_type endpos = egptr() - eback();
 			if (_oldendpos < endpos) {
 				_oldendpos = endpos;
 			}
 			if (egptr() >= packet_end()) {
 				this->setg(eback(), payload_begin(), payload_end());
 				this->sets(State::payload_is_ready);
-			} else {
-				// TODO: remove if try_to_buffer_payload() is used
-				this->setg(eback(), egptr(), egptr());
 			}
 		}
 
@@ -152,8 +135,7 @@ namespace sysx {
 				if (_oldendpos > endpos) {
 					this->setg(eback(), gptr(), eback() + _oldendpos);
 				}
-				_ipacketpos = 0;
-				_packetsize = 0;
+				setpacket(0, 0, 0);
 				_oldendpos = 0;
 				this->sets(State::initial);
 			}
@@ -165,8 +147,8 @@ namespace sysx {
 				<< ",epptr=" << this->epptr() - this->pbase()
 				<< ",gptr=" << gptr() - eback()
 				<< ",egptr=" << egptr() - eback()
-				<< ",size=" << _packetsize
-				<< ",start=" << _ipacketpos
+				<< ",size=" << packetsize()
+				<< ",start=" << packetpos()
 				<< ",oldpos=" << _oldendpos
 				<< std::endl;
 		}
@@ -189,11 +171,6 @@ namespace sysx {
 			_rstate = rhs;
 		}
 
-		size_type
-		payloadsize() const {
-			return _packetsize - header_size();
-		}
-
 		// output buffer
 		void
 		put_header(size_type s) {
@@ -212,23 +189,21 @@ namespace sysx {
 
 		static constexpr size_type
 		header_size() {
-			return sizeof(_packetsize);
+			return sizeof(size_type);
 		}
 
-		size_type _packetsize = 0;
-		pos_type _ipacketpos = 0;
 		pos_type _oldendpos = 0;
 		State _rstate = State::initial;
 		pos_type _packetpos = 0;
 	};
 
-	template<class X>
-	void append_payload(std::streambuf& buf, basic_kernelbuf<X>& rhs) {
-		typedef typename basic_kernelbuf<X>::size_type size_type;
-		const size_type n = rhs.payloadsize();
-		buf.sputn(rhs.payload_begin(), n);
-		rhs.gbump(n);
-	}
+//	template<class X>
+//	void append_payload(stdx::packetbuf& buf, basic_kernelbuf<X>& rhs) {
+//		typedef typename basic_kernelbuf<X>::size_type size_type;
+//		const size_type n = rhs.payloadsize();
+//		buf.sputn(rhs.payload_begin(), n);
+//		rhs.gbump(n);
+//	}
 
 	template<class Base>
 	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
@@ -268,7 +243,7 @@ namespace stdx {
 	struct temp_cat {};
 
 	template<class Base>
-	struct type_traits<sysx::basic_kernelbuf<Base>> {
+	struct type_traits<factory::basic_kernelbuf<Base>> {
 		static constexpr const char*
 		short_name() { return "kernelbuf"; }
 //		typedef sysx::buffer_category category;

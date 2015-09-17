@@ -150,6 +150,28 @@ namespace factory {
 				kernel.write(out);
 			}
 
+			static kernel_type*
+			read_object(Types<Type>& types, sysx::packetstream& packet) {
+				id_type id;
+				packet >> id;
+				const Type* type = types.lookup(id);
+				if (type == nullptr) {
+					std::stringstream msg;
+					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				kernel_type* kernel = nullptr;
+				try {
+					kernel = type->read(packet);
+				} catch (std::bad_alloc& err) {
+					std::stringstream msg;
+					msg << "Allocation error. Demarshalled kernel was prevented"
+						" from allocating too much memory. " << err.what();
+					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+				}
+				return kernel;
+			}
+
 			template<class Func>
 			static void
 			read_object(Types<Type>& types, sysx::packetstream& packet, Func callback) {

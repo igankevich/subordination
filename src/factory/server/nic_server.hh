@@ -27,7 +27,7 @@ namespace factory {
 			typedef Managed_object<Server<T>> base_server;
 			using typename base_server::kernel_type;
 			typedef char Ch;
-			typedef sysx::basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
+			typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
 			typedef Kernel_stream<kernel_type> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;

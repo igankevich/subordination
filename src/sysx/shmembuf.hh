@@ -11,11 +11,11 @@ namespace sysx {
 	template<class Ch, class Tr=std::char_traits<Ch>>
 	struct basic_shmembuf: public stdx::basic_packetbuf<Ch,Tr> {
 
-		using typename std::basic_packetbuf<Ch,Tr>::int_type;
-		using typename std::basic_packetbuf<Ch,Tr>::traits_type;
-		using typename std::basic_packetbuf<Ch,Tr>::char_type;
-		using typename std::basic_packetbuf<Ch,Tr>::pos_type;
-		using typename std::basic_packetbuf<Ch,Tr>::off_type;
+		using typename stdx::basic_packetbuf<Ch,Tr>::int_type;
+		using typename stdx::basic_packetbuf<Ch,Tr>::traits_type;
+		using typename stdx::basic_packetbuf<Ch,Tr>::char_type;
+		using typename stdx::basic_packetbuf<Ch,Tr>::pos_type;
+		using typename stdx::basic_packetbuf<Ch,Tr>::off_type;
 
 		typedef typename sysx::shared_mem<char_type>::size_type size_type;
 		typedef typename sysx::shared_mem<char_type>::path_type path_type;
@@ -180,6 +180,8 @@ namespace sysx {
 
 		constexpr static const char BUFFER_PROJID = 'b';
 	};
+
+	typedef basic_shmembuf<char> shmembuf;
 
 }
 

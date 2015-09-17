@@ -60,7 +60,7 @@ using namespace factory::app_config;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<factory::components::buffer_category>:
+	struct disable_log_category<sysx::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
@@ -80,7 +80,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Kernel {
+struct Test_socket: public Kernel, Identifiable_tag {
 
 	typedef stdx::log<Test_socket> this_log;
 
@@ -208,7 +208,7 @@ private:
 
 const Application::id_type MY_APP_ID = 123;
 
-struct Main: public Kernel {
+struct Main: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Main> this_log;
 
@@ -228,11 +228,9 @@ struct Main: public Kernel {
 	}
 
 	void act(Server& this_server) {
-		#if defined(FACTORY_TEST_SERVER)
-		Test_socket* kernel = new Test_socket;
-		kernel->from(server_endpoint);
+		#if defined(FACTORY_TEST_APP)
+		Test_socket* kernel = this_server.factory()->new_kernel<Test_socket>();
 		kernel->setapp(MY_APP_ID);
-		kernel->parent(this);
 		upstream(this_server.remote_server(), kernel);
 		sleep(3);
 		#endif

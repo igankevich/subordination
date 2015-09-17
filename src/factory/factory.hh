@@ -300,13 +300,15 @@ namespace factory {
 		template<class Main, class Config>
 		struct App: public Basic_factory<Config> {
 
+			typedef Basic_factory<Config> base_type;
+
 			App(Global_thread_context& ctx):
 			Basic_factory<Config>(ctx)
 			{}
 
 			void
 			do_config(int argc, char* argv[]) override {
-				_main = new Main(*this, argc, argv);
+				_main = this->template new_kernel<Main>(*this, argc, argv);
 			}
 
 			void

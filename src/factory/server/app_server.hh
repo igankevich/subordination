@@ -11,9 +11,9 @@
 #include <sysx/semaphore.hh>
 #include <sysx/process.hh>
 #include <sysx/packetstream.hh>
-#include <sysx/packetbuf.hh>
 #include <sysx/shmembuf.hh>
 
+#include <factory/kernelbuf.hh>
 #include <factory/managed_object.hh>
 #include <factory/server/basic_server.hh>
 
@@ -43,6 +43,17 @@ namespace factory {
 			return name;
 		}
 
+		struct principal_shmembuf: public sysx::shmembuf {
+			principal_shmembuf():
+			sysx::shmembuf(generate_shmem_id(sysx::this_process::id(),
+			sysx::this_process::parent_id(), 0)) {}
+		};
+
+		struct app_shmembuf: public sysx::shmembuf {
+			app_shmembuf(sysx::pid_type pid):
+			sysx::shmembuf(generate_shmem_id(pid, sysx::this_process::id(), 0), 0666) {}
+		};
+
 		struct Global_semaphore: public sysx::process_semaphore {
 
 			Global_semaphore():
@@ -71,9 +82,9 @@ namespace factory {
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
 			typedef sysx::proc process_type;
-			typedef basic_shmembuf<char> ibuf_type;
-			typedef basic_shmembuf<char> obuf_type;
-			typedef sysx::basic_packetstream<char> stream_type;
+			typedef basic_kernelbuf<sysx::shmembuf> ibuf_type;
+			typedef basic_kernelbuf<sysx::shmembuf> obuf_type;
+			typedef sysx::packetstream stream_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
@@ -115,10 +126,6 @@ namespace factory {
 			start() override {
 				base_server::start();
 				this_log() << "Principal_server::start()" << std::endl;
-//				this->_ibuf.attach();
-//				this->_obuf.attach();
-//				this->_isem.open();
-//				this->_osem.open();
 				this->_thread = std::thread(std::mem_fn(&Principal_server::serve), this);
 			}
 
@@ -137,14 +144,19 @@ namespace factory {
 			}
 
 			void send(kernel_type* k) {
-				olock_type lock(this->_obuf);
-				_ostream << this->_app << k->to();
-				Type<kernel_type>::write_object(*k, this->_ostream);
+				{
+					olock_type lock(_obuf);
+					_ostream.begin_packet();
+					_ostream << k->app() << k->to();
+					this_log() << "send from_app=" << _app
+						<< ",krnl=" << *k
+						<< std::endl;
+					Type<kernel_type>::write_object(*k, _ostream);
+					_ostream.end_packet();
+				}
 				_osem.notify_one();
 				this_log() << "notify_one app=" << _app << std::endl;
 			}
-
-//			void setapp(app_type app) { this->_app = app; }
 
 		private:
 
@@ -157,32 +169,19 @@ namespace factory {
 
 			void read_and_send_kernel() {
 				ilock_type lock(this->_ibuf);
-				this->_istream.clear();
-				this->_istream.rdbuf(&this->_ibuf);
-				sysx::endpoint src;
-				this->_istream >> src;
-				this_log() << "read_and_send_kernel(): src=" << src
-					<< ",rdstate=" << stdx::debug_stream(this->_istream)
-					<< std::endl;
-				if (!this->_istream) return;
-				Type<kernel_type>::read_object(this->factory()->types(), this->_istream,
-					[this,&src] (kernel_type* k) {
-						send_kernel(k, src);
-					}
-				);
-//				Type<kernel_type>::read_object(this->_istream, [this,&src] (kernel_type* k) {
-//					k->from(src);
-//					this_log()
-//						<< "recv kernel=" << *k
-//						<< ",rdstate=" << bits::debug_stream(this->_istream)
-//						<< std::endl;
-//				}, [this] (kernel_type* k) {
-//					this_log()
-//						<< "recv2 kernel=" << *k
-//						<< ",rdstate=" << bits::debug_stream(this->_istream)
-//						<< std::endl;
-//					this->root()->send(k);
-//				});
+				while (_istream.read_packet()) {
+					app_type app; sysx::endpoint src;
+					_istream >> app >> src;
+					this_log() << "read_and_send_kernel(): src=" << src
+						<< ",rdstate=" << stdx::debug_stream(this->_istream)
+						<< std::endl;
+					Type<kernel_type>::read_object(this->factory()->types(), this->_istream,
+						[this,&src] (kernel_type* k) {
+							k->setapp(_app);
+							send_kernel(k, src);
+						}
+					);
+				}
 			}
 
 			void
@@ -193,8 +192,9 @@ namespace factory {
 					<< ",rdstate=" << stdx::debug_stream(this->_istream)
 					<< std::endl;
 				if (k->principal()) {
-					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
+					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
 					if (p == nullptr) {
+						this_log() << "principal not found: id=" << k->principal_id() << std::endl;
 						k->result(Result::NO_PRINCIPAL_FOUND);
 						throw No_principal_found<kernel_type>(k);
 					}
@@ -220,35 +220,38 @@ namespace factory {
 		template<class T>
 		struct Sub_Rserver: public Managed_object<Server<T>> {
 
+			typedef Managed_object<Server<T>> base_type;
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
 			typedef sysx::proc process_type;
-			typedef basic_shmembuf<char> ibuf_type;
-			typedef basic_shmembuf<char> obuf_type;
+			typedef basic_kernelbuf<sysx::shmembuf> ibuf_type;
+			typedef basic_kernelbuf<sysx::shmembuf> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
 			typedef std::lock_guard<obuf_type> olock_type;
 			typedef sysx::process_semaphore sem_type;
-			typedef sysx::signal_semaphore isem_type;
-			typedef sysx::basic_packetstream<char> stream_type;
+			typedef sysx::packetstream stream_type;
+			typedef typename Application::id_type app_type;
 			typedef stdx::log<Sub_Rserver> this_log;
 
 			explicit
-			Sub_Rserver(sysx::pid_type pid, isem_type& sem):
+			Sub_Rserver(sysx::pid_type pid):
 			_proc(pid),
 			_osem(generate_sem_name(pid, sysx::this_process::id(), 'i'), 0666),
-			_isem(sem),
 			_ibuf(generate_shmem_id(pid, sysx::this_process::id(), 0), 0666),
 			_obuf(generate_shmem_id(pid, sysx::this_process::id(), 1), 0666),
-			_ostream(&this->_obuf)
+			_ostream(&_obuf),
+			_istream(&_ibuf)
 			{}
 
+			// NB: explicitly call move constructor of a base class
 			Sub_Rserver(Sub_Rserver&& rhs):
+			base_type(std::move(rhs)),
 			_proc(rhs._proc),
 			_osem(std::move(rhs._osem)),
-			_isem(rhs._isem),
 			_ibuf(std::move(rhs._ibuf)),
 			_obuf(std::move(rhs._obuf)),
-			_ostream(&this->_obuf)
+			_ostream(&_obuf),
+			_istream(&_ibuf)
 			{}
 
 			Category
@@ -260,24 +263,81 @@ namespace factory {
 			}
 
 			void send(kernel_type* k) {
-				olock_type lock(this->_obuf);
-				stream_type os(&this->_obuf);
-				// TODO: full-featured ostream is not needed here
-//				this->_ostream.rdbuf(&this->_obuf);
-				this_log() << "write from " << k->from() << std::endl;
-				os << k->from();
-				this_log() << "send kernel " << *k << std::endl;
-				Type<kernel_type>::write_object(*k, os);
-				this->_osem.notify_one();
+				{
+					olock_type lock(_obuf);
+					this_log() << "write from " << k->from() << std::endl;
+					this_log() << "send kernel " << *k << std::endl;
+					_ostream.begin_packet();
+					_ostream << k->app() << k->from();
+					Type<kernel_type>::write_object(*k, _ostream);
+					_ostream.end_packet();
+				}
+				_osem.notify_one();
+			}
+
+			void read_and_send_kernel(app_type this_app) {
+				this_log() << "read_and_send_kernel()" << std::endl;
+				ilock_type lock(_ibuf);
+				while (_istream.read_packet()) {
+					app_type app; sysx::endpoint dst;
+					_istream >> app >> dst;
+					this_log() << "read_and_send_kernel():"
+						<< " dst=" << dst
+						<< ",app=" << app
+						<< std::endl;
+					if (app == this_app) {
+						this_log() << "forward to self: app=" << app << std::endl;
+						forward_internal(_ibuf, sysx::endpoint());
+					} else if (app == Application::ROOT) {
+						kernel_type* kernel = Type<kernel_type>::read_object(this->factory()->types(), _istream);
+						if (kernel) {
+							recv_kernel(kernel);
+						}
+					} else {
+						this->app_server()->forward(app, sysx::endpoint(), _ibuf);
+					}
+				}
+			}
+
+			void
+			recv_kernel(kernel_type* k) {
+				this_log()
+					<< "recv kernel=" << *k
+					<< ",rdstate=" << stdx::debug_stream(this->_istream)
+					<< std::endl;
+				if (k->principal()) {
+					kernel_type* p = this->factory()->instances().lookup(k->principal()->id());
+					if (p == nullptr) {
+						k->result(Result::NO_PRINCIPAL_FOUND);
+						throw No_principal_found<kernel_type>(k);
+					}
+					k->principal(p);
+				}
+				this->root()->send(k);
 			}
 
 			template<class X>
-			void forward(basic_ipacketbuf<X>& buf, const sysx::endpoint& from) {
-				olock_type lock(this->_obuf);
-				this->_ostream.rdbuf(&this->_obuf);
-				this->_ostream << from;
-				append_payload(this->_obuf, buf);
-				this->_osem.notify_one();
+			void forward_internal(basic_kernelbuf<X>& buf, const sysx::endpoint& from) {
+				{
+					olock_type lock(_obuf);
+					_ostream.begin_packet();
+					append_payload(_obuf, buf);
+					_ostream.end_packet();
+				}
+				_osem.notify_one();
+			}
+
+			template<class X>
+			void forward(basic_kernelbuf<X>& buf, const sysx::endpoint& from) {
+				{
+					olock_type lock(_obuf);
+					_ostream.begin_packet();
+					// TODO
+					// _ostream << 
+					append_payload(_obuf, buf);
+					_ostream.end_packet();
+				}
+				_osem.notify_one();
 			}
 
 			sysx::pid_type
@@ -288,10 +348,10 @@ namespace factory {
 		private:
 			sysx::pid_type _proc;
 			sem_type _osem;
-			isem_type& _isem;
 			ibuf_type _ibuf;
 			obuf_type _obuf;
 			stream_type _ostream;
+			stream_type _istream;
 		};
 
 		template<class T>
@@ -332,7 +392,10 @@ namespace factory {
 					_globalsem.wait();
 					return app.execute();
 				});
-				_apps.emplace(app.id(), rserver_type(p.id(), _signalsem));
+				_pid2app.emplace(p.id(), app.id());
+				rserver_type child(p.id());
+				child.setparent(this);
+				_apps.emplace(app.id(), std::move(child));
 				_globalsem.notify_one();
 			}
 			
@@ -354,8 +417,7 @@ namespace factory {
 				}
 			}
 
-			template<class X>
-			void forward(key_type app, const sysx::endpoint& from, basic_ipacketbuf<X>& buf) {
+			void forward(key_type app, const sysx::endpoint& from, stdx::packetbuf& buf) {
 				typename map_type::iterator result = _apps.find(app);
 				if (result == _apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);
@@ -394,6 +456,13 @@ namespace factory {
 					this_log() << "notify_one pid="
 						<< _signalsem.last_notifier()
 						<< std::endl;
+					auto result = _pid2app.find(_signalsem.last_notifier());
+					if (result != _pid2app.end()) {
+						auto result2 = _apps.find(result->second);
+						if (result2 != _apps.end()) {
+							result2->second.read_and_send_kernel(result2->first);
+						}
+					}
 				}
 			}
 
@@ -433,11 +502,37 @@ namespace factory {
 
 			map_type _apps;
 			sysx::procgroup _processes;
+			std::unordered_map<sysx::pid_type, key_type> _pid2app;
 			Global_semaphore _globalsem;
 			sysx::signal_semaphore _signalsem;
 		};
 
 	}
+}
+
+namespace stdx {
+
+	template<class T>
+	struct type_traits<factory::components::Sub_Iserver<T>> {
+		static constexpr const char*
+		short_name() { return "sub_iserver"; }
+		typedef factory::components::server_category category;
+	};
+
+	template<class T>
+	struct type_traits<factory::components::Sub_Rserver<T>> {
+		static constexpr const char*
+		short_name() { return "sub_rserver"; }
+		typedef factory::components::server_category category;
+	};
+
+	template<class T>
+	struct type_traits<factory::components::Principal_server<T>> {
+		static constexpr const char*
+		short_name() { return "principal_server"; }
+		typedef factory::components::server_category category;
+	};
+
 }
 
 #endif // FACTORY_SERVER_APP_SERVER_HH
