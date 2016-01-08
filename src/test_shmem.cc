@@ -6,8 +6,17 @@
 
 #include "test.hh"
 
+// disable logs
+namespace stdx {
+
+	template<>
+	struct disable_log_category<sysx::buffer_category>:
+	public std::integral_constant<bool, true> {};
+
+}
+
 template<class T>
-struct Test_shmem {
+struct Test_shmem: public test::Test<Test_shmem<T>> {
 
 	typedef stdx::log<Test_shmem> this_log;
 	typedef typename sysx::shared_mem<T>::size_type size_type;
@@ -19,30 +28,38 @@ struct Test_shmem {
 		return shm.begin() != nullptr && shm.end() != nullptr;
 	}
 
-	void test_shmem() {
+	void xrun() override {
 		const typename sysx::shared_mem<T>::size_type SHMEM_SIZE = 512;
 		const char SHMEMPROJID = 'F';
 		sysx::shared_mem<T> mem1("/test-shmem", SHMEM_SIZE, 0666, SHMEMPROJID);
 		sysx::shared_mem<T> mem2("/test-shmem", SHMEMPROJID);
 		test::invar(shmem_invariant, mem1);
 		test::invar(shmem_invariant, mem2);
-		size_type real_size = mem1.size();
-		std::cout << "mem1: " << mem1 << std::endl;
-		std::cout << "mem2: " << mem2 << std::endl;
-		test::equal(mem1.size(), real_size);
-		test::equal(mem2.size(), real_size);
+		const size_type real_size = mem1.size();
+		test::equal(mem1.size(), real_size, "bad size: mem1=", std::cref(mem1));
+		test::equal(mem2.size(), real_size, "bad size: mem2=", std::cref(mem2));
 		mem2.sync();
-		test::equal(mem2.size(), real_size);
+		test::equal(mem2.size(), real_size, "bad size after sync: mem2=", std::cref(mem2));
 		mem1.resize(real_size * 2);
-		size_type new_size = mem1.size();
-		test::equal(mem1.size(), new_size);
+		const size_type new_size = mem1.size();
+		test::equal(mem1.size(), new_size, "bad size after resize: mem1=", std::cref(mem1));
 		mem2.sync();
-		test::equal(mem2.size(), new_size);
+		test::equal(mem2.size(), new_size, "bad size after sync: mem2=", std::cref(mem2));
 		std::generate(mem1.begin(), mem1.end(), test::randomval<T>);
 		test::compare(mem1, mem2);
 	}
 
-	void test_shmembuf() {
+};
+
+template<class T>
+struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
+
+	typedef stdx::log<Test_shmembuf> this_log;
+	typedef typename sysx::shared_mem<T>::size_type size_type;
+	typedef sysx::shared_mem<T> shmem;
+	typedef sysx::basic_shmembuf<T> shmembuf;
+
+	void xrun() override {
 		shmembuf buf1("/test-shmem-2", 0600);
 		shmembuf buf2("/test-shmem-2");
 		for (int i=0; i<12; ++i) {
@@ -77,9 +94,10 @@ struct Test_shmem {
 };
 
 int main(int argc, char* argv[]) {
-	Test_shmem<char> test;
-	test.test_shmem();
-	test.test_shmembuf();
-//	test.test_shmembuf_pipe();
+	test::Test_suite tests("Test suite: shared memory");
+	tests.add(new Test_shmem<char>);
+	tests.add(new Test_shmem<unsigned char>);
+	tests.add(new Test_shmembuf<char>);
+	tests.run();
 	return 0;
 }

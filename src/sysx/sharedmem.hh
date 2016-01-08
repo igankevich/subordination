@@ -16,7 +16,7 @@ namespace sysx {
 
 	template<class T>
 	struct shared_mem {
-	
+
 		typedef ::key_t key_type;
 		typedef size_t size_type;
 		typedef int shm_type;
@@ -38,7 +38,7 @@ namespace sysx {
 		{
 			do_open(std::move(name), 0, num);
 		}
-	
+
 		shared_mem(shared_mem&& rhs):
 		_path(std::move(rhs._path)),
 		_size(rhs._size),
@@ -66,14 +66,14 @@ namespace sysx {
 		}
 
 		shared_mem() = default;
-	
+
 		~shared_mem() {
 			this->close();
 		}
-	
+
 		shared_mem(const shared_mem&) = delete;
 		shared_mem& operator=(const shared_mem&) = delete;
-	
+
 		addr_type
 		ptr() noexcept {
 			return _addr;
@@ -103,7 +103,7 @@ namespace sysx {
 		end() noexcept {
 			return static_cast<iterator>(_addr) + _size;
 		}
-	
+
 		const_iterator
 		begin() const noexcept {
 			return static_cast<iterator>(_addr);
@@ -238,7 +238,7 @@ namespace sysx {
 			return path_type(this_process::tempdir_path()
 				+ std::forward<path_type>(rhs));
 		}
-		
+
 		friend std::ostream&
 		operator<<(std::ostream& out, const shared_mem& rhs) {
 			return out << "{addr=" << rhs.ptr()
@@ -249,14 +249,14 @@ namespace sysx {
 				<< ",shm=" << rhs._shm
 				<< '}';
 		}
-	
+
 		std::string _path;
 		size_type _size = 0;
 		key_type _key = 0;
 		shm_type _shm = 0;
 		addr_type _addr = nullptr;
 		bool _owner = false;
-	
+
 		constexpr static const char NO_PROJ_ID = 'a';
 	};
 
