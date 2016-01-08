@@ -435,16 +435,6 @@ namespace sysx {
 				return in;
 			}
 
-			unsigned char*
-			begin() {
-				return raw;
-			}
-
-			unsigned char*
-			end() {
-				return raw + sizeof(raw);
-			}
-
 		private:
 
 			constexpr int
@@ -534,13 +524,8 @@ namespace sysx {
 				}
 			}
 
-			union {
-				struct {
-					base_type lo;
-					base_type hi;
-				};
-				unsigned char raw[sizeof(base_type)*2];
-			};
+			base_type lo;
+			base_type hi;
 
 			static const unsigned int NBITS =
 				(sizeof(base_type) + sizeof(base_type))
