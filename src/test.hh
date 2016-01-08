@@ -44,14 +44,14 @@ namespace test {
 		if (pair.first != cnt1.end()) {
 			auto pos = pair.first - cnt1.begin();
 			std::stringstream msg;
-			msg << "input and output does not match at i=" << pos << ":\n'"
-				<< *pair.first << "'\n!=\n'" << *pair.second << "'";
+			msg << "input and output does not match at i=" << pos << ":\n\""
+				<< *pair.first << "\"\n!=\n\"" << *pair.second << "\"";
 			throw std::runtime_error(msg.str());
 		}
 	}
 
 	typedef std::chrono::nanoseconds::rep Time;
-	
+
 	Time time_seed() {
 		return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 	}

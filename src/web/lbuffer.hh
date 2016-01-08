@@ -1,6 +1,9 @@
 #ifndef WEB_LBUFFER_HH
 #define WEB_LBUFFER_HH
 
+#include <iostream>
+#include <iomanip>
+
 namespace factory {
 
 	namespace components {
@@ -8,7 +11,7 @@ namespace factory {
 		// TODO: remove this class
 		template<class T>
 		struct LBuffer {
-			
+
 			typedef T value_type;
 			typedef size_t Size;
 			typedef stdx::log<LBuffer> this_log;
@@ -38,26 +41,26 @@ namespace factory {
 			}
 
 			size_t read(T* buf, size_t sz) {
-				size_t min_sz = std::min(sz, size()); 
+				size_t min_sz = std::min(sz, size());
 				std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
 				advance_read_pos(min_sz);
 				return min_sz;
 			}
 
 			size_t skip(size_t n) {
-				size_t min_n = std::min(n, size()); 
+				size_t min_n = std::min(n, size());
 				advance_read_pos(min_n);
 				return min_n;
 			}
 
 			size_t readsome(T* buf, size_t sz) {
-				size_t min_sz = std::min(sz, size()); 
+				size_t min_sz = std::min(sz, size());
 				std::copy(&_data[read_pos], &_data[read_pos + min_sz], buf);
 				return min_sz;
 			}
 
 			size_t ignore(size_t nbytes) {
-				size_t min_sz = std::min(nbytes, size()); 
+				size_t min_sz = std::min(nbytes, size());
 				advance_read_pos(min_sz);
 				return min_sz;
 			}

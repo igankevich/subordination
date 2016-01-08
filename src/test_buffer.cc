@@ -1,8 +1,9 @@
 #include <sysx/security.hh>
-#include <sysx/fdbuf.hh>
-#include <sysx/packetbuf.hh>
+#include <sysx/fildesbuf.hh>
+#include <sysx/packetstream.hh>
 #include <web/lbuffer.hh>
 #include <factory/error.hh>
+#include <factory/kernelbuf.hh>
 
 #include <stdx/streambuf.hh>
 
@@ -13,12 +14,10 @@ using namespace factory;
 using factory::components::Error;
 using sysx::basic_ofdstream;
 using sysx::basic_ifdstream;
-using sysx::basic_opacketbuf;
-using sysx::basic_ipacketbuf;
-using sysx::basic_packetbuf;
-using sysx::basic_fdbuf;
-using sysx::basic_kstream;
+using sysx::basic_fildesbuf;
 using factory::components::LBuffer;
+
+const char* prefix = "tmp.test_buffer.";
 
 std::random_device rng;
 
@@ -71,25 +70,25 @@ void test_buffer() {
 }
 
 template<class T, class Fd>
-void test_fdbuf() {
+void test_fildesbuf() {
 	typedef std::char_traits<T> Tr;
-	std::string filename = "/tmp/"
-		+ test::random_string<char>(16, 'a', 'z')
-		+ ".factory";
+	typedef basic_ofdstream<T,Tr,Fd> ofdstream;
+	typedef basic_ifdstream<T,Tr,Fd> ifdstream;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
-		sysx::tmpfile tfile(filename);
+		sysx::tmpfile tfile(prefix);
+		std::string filename = tfile.path();
 		// fill file with random contents
 		std::basic_string<T> expected_contents = test::random_string<T>(k, 'a', 'z');
 		{
 			std::clog << "Checking overflow()" << std::endl;
 			sysx::file file(filename, sysx::file::write_only);
-			basic_ofdstream<T,Tr,Fd>(std::move(file)) << expected_contents;
+			ofdstream(std::move(file)) << expected_contents;
 		}
 		{
 			std::clog << "Checking underflow()" << std::endl;
 			sysx::file file(filename, sysx::file::read_only);
-			basic_ifdstream<T,Tr,Fd> in(std::move(file));
+			ifdstream in(std::move(file));
 			std::basic_stringstream<T> contents;
 			contents << in.rdbuf();
 			std::basic_string<T> result = contents.str();
@@ -103,7 +102,7 @@ void test_fdbuf() {
 		{
 			std::clog << "Checking flush()" << std::endl;
 			sysx::file file(filename, sysx::file::write_only);
-			basic_ofdstream<T,Tr,Fd> out(std::move(file));
+			ofdstream out(std::move(file));
 			test::equal(out.eof(), false);
 			out.flush();
 			test::equal(out.tellp(), 0);
@@ -137,14 +136,12 @@ void test_filterbuf() {
 template<class T, class Fd=sysx::fildes>
 void test_packetbuf() {
 	std::clog << "Checking packetbuf" << std::endl;
-	std::string filename = "/tmp/"
-		+ test::random_string<char>(16, 'a', 'z')
-		+ ".factory";
-	typedef basic_ipacketbuf<basic_fdbuf<T,Fd>> ipacketbuf;
-	typedef basic_opacketbuf<basic_fdbuf<T,Fd>> opacketbuf;
+	typedef sysx::basic_fildesbuf<T> ipacketbuf;
+	typedef sysx::basic_fildesbuf<T> opacketbuf;
 	const size_t MAX_K = 1 << 20;
 	for (size_t k=1; k<=MAX_K; k<<=1) {
-		sysx::tmpfile tfile(filename);
+		sysx::tmpfile tfile(prefix);
+		const std::string filename = tfile.path();
 		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
 		{
 			sysx::file file(filename, sysx::file::write_only);
@@ -162,11 +159,11 @@ void test_packetbuf() {
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
 			buf.fill();
-			buf.update_state();
+			buf.read_packet();
 			in.read(&result[0], k);
 			if (in.gcount() < k) {
 				in.clear();
-				buf.update_state();
+				buf.read_packet();
 				in.read(&result[0], k);
 			}
 //			std::clog << "Result: "
@@ -185,97 +182,81 @@ void test_packetbuf() {
 }
 
 template<class T>
-void test_packetbuf_with_stringstream() {
-	typedef basic_packetbuf<std::basic_stringbuf<T>> packetbuf;
-	const size_t MAX_K = 1 << 20;
-	for (size_t k=1; k<=MAX_K; k<<=1) {
-		std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');
-		std::basic_stringstream<T> out;
-		std::basic_streambuf<T>* orig = out.rdbuf();
-		packetbuf buf;
-		static_cast<std::basic_ostream<T>&>(out).rdbuf(&buf);
-		buf.begin_packet();
-		out.write(contents.data(), contents.size());
-		buf.end_packet();
-		std::basic_string<T> result(contents.size(), '_');
-		buf.update_state();
-		out.read(&result[0], result.size());
-		if (result != contents) {
-			std::stringstream msg;
-			msg << '[' << __func__ << ']';
-			msg << "input and output does not match:\n'"
-				<< contents << "'\n!=\n'" << result << "'";
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
-		}
-		static_cast<std::basic_ostream<T>&>(out).rdbuf(orig);
-	}
-}
-
-template<class T>
-void test_packetbuf_withvector() {
+void test_packetstream() {
 
 	typedef std::size_t I;
-	typedef basic_packetbuf<std::basic_stringbuf<T>> packetbuf;
-	typedef basic_kstream<std::basic_stringbuf<T>> kstream;
+	typedef std::char_traits<T> Tr;
+	typedef factory::basic_kernelbuf<sysx::basic_fildesbuf<T,Tr,sysx::file>> basebuf;
 
 	const I MAX_SIZE_POWER = 12;
-	std::clog << "test_packetbuf_withvector()" << std::endl;
+	std::clog << "test_packetstream()" << std::endl;
 
 	for (I k=0; k<=10; ++k) {
-		I size = I(1) << k;
+
+		sysx::tmpfile tfile(prefix);
+		const std::string filename = tfile.path();
+
+		const I size = I(1) << k;
 		std::vector<Datum> input(size);
-		kstream str;
-		if (str.tellp() != 0) {
-			std::stringstream msg;
-			msg << "input buffer is not empty before write: tellp=";
-			msg << str.tellp();
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
-		}
-		std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
-			str.begin_packet();
-			str << rhs;
-			str.end_packet();
-		});
-		if (str.tellg() != 0) {
-			std::stringstream msg;
-			msg << "output buffer is not empty before read: tellg=";
-			msg << str.tellg();
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
-		}
 		std::vector<Datum> output(size);
-		std::for_each(output.begin(), output.end(), [&str] (Datum& rhs) {
-			str.update_state();
-			str >> rhs;
-		});
-		if (str.tellg() != str.tellp()) {
-			std::stringstream msg;
-			msg << "read and write positions does not match after read: tellp=";
-			msg << str.tellp();
-			msg << ", tellg=" << str.tellg();
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+
+		{
+			sysx::file file(filename, sysx::file::write_only);
+			basebuf buf(std::move(file));
+			sysx::packetstream str(&buf);
+
+			if (str.tellp() != 0) {
+				std::stringstream msg;
+				msg << "input buffer is not empty before write: tellp=";
+				msg << str.tellp();
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
+			std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {
+				str.begin_packet();
+				str << rhs;
+				str.end_packet();
+			});
+			if (str.tellg() != 0) {
+				std::stringstream msg;
+				msg << "output buffer is not empty before read: tellg=";
+				msg << str.tellg();
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
 		}
-		auto pair = std::mismatch(input.begin(), input.end(), output.begin());
-		if (pair.first != input.end()) {
-			auto pos = pair.first - input.begin();
-			std::stringstream msg;
-			msg << '[' << __func__ << ']';
-			msg << "input and output does not match at i=" << pos << ":\n'"
-				<< sysx::make_bytes(*pair.first) << "'\n!=\n'" << sysx::make_bytes(*pair.second) << "'";
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+
+		{
+			sysx::file file(filename, sysx::file::read_only);
+			basebuf buf(std::move(file));
+			sysx::packetstream str(&buf);
+
+			str.fill();
+			std::for_each(output.begin(), output.end(), [&str] (Datum& rhs) {
+				str.read_packet();
+				str >> rhs;
+			});
 		}
+
+		test::compare(input, output);
+//		auto pair = std::mismatch(input.begin(), input.end(), output.begin());
+//		if (pair.first != input.end()) {
+//			auto pos = pair.first - input.begin();
+//			std::stringstream msg;
+//			msg << '[' << __func__ << ']';
+//			msg << " input and output does not match at i=" << pos << ":\n'"
+//				<< sysx::make_bytes(*pair.first) << "'\n!=\n'" << sysx::make_bytes(*pair.second) << "'";
+//			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+//		}
 	}
 }
 
 int main(int argc, char* argv[]) {
 	test_buffer<char, LBuffer>();
 	test_buffer<unsigned char, LBuffer>();
-	test_fdbuf<char, sysx::file>();
-//	test_fdbuf<unsigned char, int>();
-//	test_fdbuf<char, Socket>();
+	test_fildesbuf<char, sysx::file>();
+//	test_fildesbuf<unsigned char, int>();
+//	test_fildesbuf<char, Socket>();
 	test_filterbuf<char>();
-//	test_filterbuf<unsigned char>();
 	test_packetbuf<char>();
-//	test_packetbuf_with_stringstream<char>();
-	test_packetbuf_withvector<char>();
+	test_packetstream<char>();
 	return 0;
 }

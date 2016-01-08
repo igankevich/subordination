@@ -197,36 +197,38 @@ namespace factory {
 		pos_type _packetpos = 0;
 	};
 
-	template<class Base>
-	struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
-		typedef basic_kernelbuf<Base> kernelbuf_type;
-		typedef typename Base::char_type Ch;
-		typedef typename Base::traits_type Tr;
-		typedef std::basic_iostream<Ch,Tr> iostream_type;
-		basic_kstream(): iostream_type(nullptr), _kernelbuf()
-			{ this->init(&_kernelbuf); }
+	//template<class Base>
+	//struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
 
-		void
-		begin_packet() {
-			_kernelbuf.begin_packet();
-		}
+	//	typedef basic_kernelbuf<Base> kernelbuf_type;
+	//	typedef typename Base::char_type Ch;
+	//	typedef typename Base::traits_type Tr;
+	//	typedef std::basic_iostream<Ch,Tr> iostream_type;
 
-		void
-		end_packet() {
-			_kernelbuf.end_packet();
-		}
+	//	basic_kstream(): iostream_type(nullptr), _kernelbuf()
+	//	{ this->init(&_kernelbuf); }
 
-		bool
-		update_state() {
-			return _kernelbuf.update_state();
-		}
+	//	void
+	//	begin_packet() {
+	//		_kernelbuf.begin_packet();
+	//	}
 
-	private:
-		kernelbuf_type _kernelbuf;
-	};
+	//	void
+	//	end_packet() {
+	//		_kernelbuf.end_packet();
+	//	}
+
+	//	bool
+	//	update_state() {
+	//		return _kernelbuf.update_state();
+	//	}
+
+	//private:
+	//	kernelbuf_type _kernelbuf;
+	//};
 
 
-	typedef basic_kstream<char> kstream;
+	//typedef basic_kstream<char> kstream;
 
 }
 

@@ -70,7 +70,7 @@ namespace sysx {
 			rhs._fd = bad;
 			return *this;
 		}
-		
+
 		void close() {
 			if (*this) {
 				bits::check(::close(this->_fd),
@@ -201,11 +201,17 @@ namespace sysx {
 			this->close();
 		}
 
+		file&
+		operator=(file&& rhs) {
+			sysx::fildes::operator=(std::move(rhs));
+			return *this;
+		}
+
 	};
 
 	struct tmpfile: public file {
 
-		typedef std::string path_type;
+		typedef std::vector<char> path_type;
 
 		tmpfile() noexcept = default;
 
@@ -216,22 +222,50 @@ namespace sysx {
 		{}
 
 		explicit
-		tmpfile(const path_type& filename, openmode flags=read_write,
+		tmpfile(const std::string& filename, openmode flags=read_write,
 		sysx::flag_type flags2=create|truncate, mode_type mode=S_IRUSR|S_IWUSR):
-		file(filename, flags, flags2, mode),
-		_path(filename)
-		{}
+		sysx::file(),
+		_path(create_template(filename))
+		{
+			_fd = create_temp_file();
+		}
 
 		~tmpfile() {
 			this->close();
 			this->unlink();
 		}
 
+		std::string
+		path() const noexcept {
+			std::string ret;
+			if (!_path.empty()) {
+				std::copy(_path.begin(), _path.end()-1, std::back_inserter(ret));
+			}
+			return ret;
+		}
+
 	private:
+
+		path_type
+		create_template(const std::string& prefix) {
+			static const size_t NUM_X = 6;
+			path_type path(prefix.size() + NUM_X + 1);
+			std::copy(prefix.begin(), prefix.end(), path.begin());
+			std::fill_n(path.begin() + prefix.size(), NUM_X, 'X');
+			path.back() = 0;
+			return path;
+		}
+
+		fd_type
+		create_temp_file() {
+			fd_type fd = bits::check(::mkstemp(_path.data()),
+				__FILE__, __LINE__, __func__);
+			return fd;
+		}
 
 		void
 		unlink() noexcept {
-			::unlink(_path.c_str());
+			::unlink(_path.data());
 		}
 
 		path_type _path;

@@ -16,6 +16,8 @@ syntax: glob
 *.gcda
 *.gcno
 *.tmp
+tmp*
+tags
 *-coverage
 aclocal.m4
 autom4te.cache
@@ -49,6 +51,7 @@ src/test_appserver
 src/test_posix
 src/test_appserver_app
 src/test_appserver_srv
+src/test_locks
 src/*.html
 src/*.xml
 src/.libs

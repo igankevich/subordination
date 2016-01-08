@@ -33,7 +33,7 @@ namespace stdx {
 		}
 
 	protected:
-		
+
 		virtual std::streamsize
 		fill() {
 			return 0;

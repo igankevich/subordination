@@ -14,7 +14,6 @@ namespace sysx {
 
 		typedef stdx::basic_packetbuf<Ch,Tr> streambuf_type;
 		typedef Ch char_type;
-		typedef basic_packetstream<Ch,Tr,Size> this_type;
 
 		basic_packetstream() = default;
 		basic_packetstream(streambuf_type* buf): _buf(buf) {}
@@ -22,6 +21,7 @@ namespace sysx {
 		// TODO: delete this
 		void flush() { _buf->pubsync(); }
 		std::streamsize tellp() { return _buf->pubseekoff(0, std::ios_base::cur, std::ios_base::out); }
+		std::streamsize tellg() { return _buf->pubseekoff(0, std::ios_base::cur, std::ios_base::in); }
 
 		streambuf_type*
 		rdbuf() {
@@ -104,12 +104,12 @@ namespace sysx {
 			return this->read(rhs.begin(), rhs.size());
 		}
 
-		this_type& write(const Ch* buf, std::streamsize n) {
+		basic_packetstream& write(const Ch* buf, std::streamsize n) {
 			_buf->sputn(buf, n);
 			return *this;
 		}
 
-		this_type& read(Ch* buf, std::streamsize n) {
+		basic_packetstream& read(Ch* buf, std::streamsize n) {
 			_buf->sgetn(buf, n);
 			return *this;
 		}
@@ -120,7 +120,7 @@ namespace sysx {
 		basic_packetstream& write(T rhs) {
 		#ifndef IGNORE_ISO_IEC559
 			static_assert(std::is_integral<T>::value
-				|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559), 
+				|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559),
 				"This system does not support ISO IEC 559"
 	            " floating point representation for either float, double or long double"
 	            " types, i.e. there is no portable way of"

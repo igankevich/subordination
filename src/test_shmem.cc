@@ -1,19 +1,18 @@
+#include <iostream>
+#include <iomanip>
+
 #include <sysx/sharedmem.hh>
 #include <sysx/shmembuf.hh>
 
-using namespace factory;
-using sysx::shared_mem;
-using factory::components::basic_shmembuf;
-using factory::components::Error;
 #include "test.hh"
 
 template<class T>
 struct Test_shmem {
 
 	typedef stdx::log<Test_shmem> this_log;
-	typedef typename shared_mem<T>::size_type size_type;
-	typedef shared_mem<T> shmem;
-	typedef basic_shmembuf<T> shmembuf;
+	typedef typename sysx::shared_mem<T>::size_type size_type;
+	typedef sysx::shared_mem<T> shmem;
+	typedef sysx::basic_shmembuf<T> shmembuf;
 
 	static bool
 	shmem_invariant(shmem& shm) {
@@ -21,10 +20,10 @@ struct Test_shmem {
 	}
 
 	void test_shmem() {
-		const typename shared_mem<T>::size_type SHMEM_SIZE = 512;
+		const typename sysx::shared_mem<T>::size_type SHMEM_SIZE = 512;
 		const char SHMEMPROJID = 'F';
-		shared_mem<T> mem1("/test-shmem", SHMEM_SIZE, 0666, SHMEMPROJID);
-		shared_mem<T> mem2("/test-shmem", SHMEMPROJID);
+		sysx::shared_mem<T> mem1("/test-shmem", SHMEM_SIZE, 0666, SHMEMPROJID);
+		sysx::shared_mem<T> mem2("/test-shmem", SHMEMPROJID);
 		test::invar(shmem_invariant, mem1);
 		test::invar(shmem_invariant, mem2);
 		size_type real_size = mem1.size();
@@ -42,7 +41,7 @@ struct Test_shmem {
 		std::generate(mem1.begin(), mem1.end(), test::randomval<T>);
 		test::compare(mem1, mem2);
 	}
-	
+
 	void test_shmembuf() {
 		shmembuf buf1("/test-shmem-2", 0600);
 		shmembuf buf2("/test-shmem-2");
