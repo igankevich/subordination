@@ -10,10 +10,111 @@
 #include <stdexcept>
 #include <chrono>
 #include <type_traits>
+#include <iostream>
+#include <iomanip>
+
+#if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
+#define FACTORY_TEST_HAVE_CXXABI
+#endif
+
+#if defined(FACTORY_TEST_HAVE_CXXABI)
+#include <cxxabi.h>
+#endif
 
 #include <stdx/n_random_bytes.hh>
+#include <stdx/front_popper.hh>
+
+#include <sysx/network_format.hh>
+
+#include <color.hh>
 
 namespace test {
+
+	template<class T>
+	std::string
+	demangle_name() {
+	#if defined(FACTORY_TEST_HAVE_CXXABI)
+		int status;
+		return std::string(abi::__cxa_demangle(typeid(T).name(), 0, 0, &status));
+	#else
+		return std::string(typeid(T).name());
+	#endif
+	}
+
+	struct Basic_test {
+
+		explicit
+		Basic_test(const std::string& name):
+		_testname(name) {}
+
+		virtual void
+		run() {
+			try {
+				std::clog << _testname << ' ' << std::flush;
+				xrun();
+				std::clog << Color::FG_LIGHT_GREEN << "PASSED" << Color::RESET << std::endl;
+			} catch (std::exception& ex) {
+				std::clog << Color::FG_LIGHT_RED << "FAILED" << Color::RESET
+					<< '\n' << ex.what() << std::endl;
+			} catch (...) {
+				std::clog << Color::FG_LIGHT_RED << "FAILED" << Color::RESET << std::endl;
+			}
+		}
+
+		const std::string&
+		name() const {
+			return _testname;
+		}
+
+	protected:
+
+		virtual void xrun() = 0;
+
+	private:
+
+		std::string _testname;
+	};
+
+	template<class X>
+	struct Test: public Basic_test {
+
+		Test():
+		Basic_test(demangle_name<X>()) {}
+
+		explicit
+		Test(const std::string& name):
+		Basic_test(name) {}
+	};
+
+	struct Test_suite: public Test<Test_suite> {
+
+		explicit
+		Test_suite(const std::string& name):
+		Test(name) {}
+
+		void
+		add(Basic_test* tst) {
+			_tests.push(tst);
+		}
+
+		void
+		run() override {
+			std::clog << this->name() << std::endl;
+			std::for_each(stdx::front_popper(_tests),
+				stdx::front_popper_end(_tests),
+				[] (Basic_test* tst) {
+					tst->run();
+					delete tst;
+				}
+			);
+		}
+
+		void xrun() override {}
+
+	private:
+
+		std::queue<Basic_test*> _tests;
+	};
 
 	template<class T>
 	std::basic_string<T> random_string(size_t size, T min = std::numeric_limits<T>::min(),
@@ -28,12 +129,23 @@ namespace test {
 		return ret;
 	}
 
-	template<class X, class Y>
-	void equal(X x, Y y) {
+	void print_args(std::ostream& out) {}
+
+	template<class T, class ... Args>
+	void print_args(std::ostream& out, T&& value, Args&& ... args) {
+		out << value;
+		print_args(out, std::forward<Args>(args)...);
+	}
+
+	template<class X, class Y, class ... Args>
+	void equal(X x, Y y, const char* text="values are not equal", Args&& ... args) {
 		if (!(x == y)) {
 			std::stringstream msg;
-			msg << "values are not equal: x="
-				<< x << ", y=" << y;
+			msg << "ERROR: " << text;
+			print_args(msg, std::forward<Args>(args)...);
+			msg << '\n';
+			msg << "CAUSE: \""
+				<< x << "\" != \"" << y << "\"";
 			throw std::runtime_error(msg.str());
 		}
 	}
@@ -46,6 +158,18 @@ namespace test {
 			std::stringstream msg;
 			msg << "input and output does not match at i=" << pos << ":\n\""
 				<< *pair.first << "\"\n!=\n\"" << *pair.second << "\"";
+			throw std::runtime_error(msg.str());
+		}
+	}
+
+	template<class Container1, class Container2>
+	void compare_bytes(const Container1& cnt1, const Container2& cnt2) {
+		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
+		if (pair.first != cnt1.end()) {
+			auto pos = pair.first - cnt1.begin();
+			std::stringstream msg;
+			msg << "input and output does not match at i=" << pos << ":\n\""
+				<< sysx::make_bytes(*pair.first) << "\"\n!=\n\"" << sysx::make_bytes(*pair.second) << "\"";
 			throw std::runtime_error(msg.str());
 		}
 	}

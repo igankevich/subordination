@@ -104,11 +104,12 @@ namespace factory {
 		}
 
 	private:
+		typedef sysx::Bytes<size_type, char_type> bytes_type;
 
 		void read_kernel_packetsize() {
 			size_type count = egptr() - gptr();
 			if (!(count < this->header_size())) {
-				sysx::Bytes<size_type> size(gptr(), gptr() + this->header_size());
+				bytes_type size(gptr(), gptr() + this->header_size());
 				size.to_host_format();
 				const pos_type p = gptr() - eback();
 				setpacket(p, p + pos_type(header_size()), size);
@@ -174,14 +175,14 @@ namespace factory {
 		// output buffer
 		void
 		put_header(size_type s) {
-			sysx::Bytes<size_type> hdr(s);
+			bytes_type hdr(s);
 			hdr.to_network_format();
 			xsputn(hdr.begin(), hdr.size());
 		}
 
 		void
 		overwrite_header(size_type s) {
-			sysx::Bytes<size_type> hdr(s);
+			bytes_type hdr(s);
 			hdr.to_network_format();
 			traits_type::copy(pbase() + _packetpos,
 				hdr.begin(), hdr.size());
@@ -234,14 +235,11 @@ namespace factory {
 
 namespace stdx {
 
-	struct temp_cat {};
-
 	template<class Base>
 	struct type_traits<factory::basic_kernelbuf<Base>> {
 		static constexpr const char*
 		short_name() { return "kernelbuf"; }
-//		typedef sysx::buffer_category category;
-		typedef temp_cat category;
+		typedef sysx::buffer_category category;
 	};
 
 }

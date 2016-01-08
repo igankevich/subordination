@@ -21,13 +21,13 @@ namespace sysx {
 		 * suitability this software for any purpose. It is provided "as is"
 		 * without express or implied warranty.
 		 */
-		
+
 		/// The code was modified to incorporate ``constexpr''
 		/// and remove ``boost'' dependencies. The code was taken
 		/// from http://www.codef00.com/code/uint128.h
 		template<class T>
 		struct basic_uint {
-		
+
 			typedef T base_type;
 
 			struct xd_pair {
@@ -44,11 +44,10 @@ namespace sysx {
 				std::is_unsigned<base_type>::value &&
 				std::is_integral<base_type>::value,
 				"bad base type");
-		
+
 			// constructors for all basic types
 			constexpr
-			basic_uint() noexcept:
-				lo(0), hi(0) {}
+			basic_uint() noexcept = default;
 
 			constexpr
 			basic_uint(const basic_uint& rhs) noexcept:
@@ -61,7 +60,7 @@ namespace sysx {
 			explicit constexpr
 			basic_uint(base_type l, base_type h) noexcept:
 				lo(l), hi(h) {}
-		
+
 			basic_uint&
 			operator=(const basic_uint& other) noexcept {
 				if (&other != this) {
@@ -70,18 +69,18 @@ namespace sysx {
 				}
 				return *this;
 			}
-		
+
 			// comparison operators
 			constexpr bool
 			operator==(const basic_uint& o) const noexcept {
 				return hi == o.hi && lo == o.lo;
 			}
-		
+
 			constexpr bool
 			operator<(const basic_uint& o) const noexcept {
 				return (hi == o.hi) ? lo < o.lo : hi < o.hi;
 			}
-		
+
 			// derived comparison operators
 			constexpr bool
 			operator!=(const basic_uint& y) const noexcept {
@@ -102,29 +101,29 @@ namespace sysx {
 			operator>=(const basic_uint& y) const noexcept {
 				return !operator<(y);
 			}
-		
+
 			// unary operators
 		    constexpr explicit
 			operator bool() const noexcept {
 				return hi != 0 || lo != 0;
 			}
-		
+
 		    constexpr bool
 			operator!() const noexcept {
 				return !operator bool();
 			}
-		
+
 			constexpr basic_uint
 			operator-() const noexcept {
 				// standard 2's compliment negation
 				return ~(*this) + basic_uint(1);
 			}
-		
+
 		    constexpr basic_uint
 			operator~() const noexcept {
 				return basic_uint(~lo, ~hi);
 			}
-		
+
 			inline basic_uint&
 			operator++() noexcept {
 		    	if (++lo == 0) {
@@ -132,49 +131,49 @@ namespace sysx {
 				}
 		    	return *this;
 			}
-		
+
 			inline basic_uint&
 			operator--() noexcept {
 		    	if (lo-- == 0) { --hi; }
 		    	return *this;
 			}
-		
+
 			// derived increment/decrement operators
 			inline basic_uint
 			operator++(int) const noexcept {
 				return ++basic_uint(*this);
 			}
-		
+
 			inline basic_uint
 			operator--(int) const noexcept {
 				return --basic_uint(*this);
 			}
-		
+
 			// basic math operators
 		    inline basic_uint&
 			operator+=(const basic_uint& rhs) noexcept {
 				const base_type old_lo = lo;
-		
+
 		    	lo += rhs.lo;
 		    	hi += rhs.hi;
-		
+
 				if (lo < old_lo) {
 					++hi;
 				}
-		
+
 		    	return *this;
 			}
-		
+
 		    inline basic_uint&
 			operator-=(const basic_uint& b) noexcept {
 				// it happens to be way easier to write it
 				// this way instead of make a subtraction algorithm
 				return *this += -b;
 		    }
-		
+
 		    basic_uint&
 			operator*=(const basic_uint& b) noexcept {
-		
+
 				// check for multiply by 0
 				// result is always 0 :-P
 				if (b == 0u) {
@@ -182,13 +181,13 @@ namespace sysx {
 					hi = 0;
 				// check we aren't multiplying by 1
 				} else if (b != 1u) {
-		
+
 		    		basic_uint a(*this);
 		    		basic_uint t = b;
-		
+
 		    		lo = 0;
 		    		hi = 0;
-		
+
 		    		for (unsigned int i=0; i<NBITS; ++i) {
 		        		if (t & 1) {
 		            		*this += (a << i);
@@ -196,125 +195,125 @@ namespace sysx {
 		        		t >>= 1;
 		    		}
 				}
-		
+
 		    	return *this;
 			}
-		
+
 		    inline basic_uint&
 			operator|=(const basic_uint& b) noexcept {
 		    	hi |= b.hi;
 		    	lo |= b.lo;
 		    	return *this;
 			}
-		
+
 		    inline basic_uint&
 			operator&=(const basic_uint& b) noexcept {
 		    	hi &= b.hi;
 		    	lo &= b.lo;
 		    	return *this;
 			}
-		
+
 			inline basic_uint&
 			operator^=(const basic_uint& b) noexcept {
 		    	hi ^= b.hi;
 		    	lo ^= b.lo;
 		    	return *this;
 			}
-		
+
 			inline basic_uint&
 			operator/=(const basic_uint& b) {
 				basic_uint remainder;
 				divide(*this, b, *this, remainder);
 				return *this;
 		    }
-		
+
 			inline basic_uint&
 			operator%=(const basic_uint& b) {
 				basic_uint quotient;
 				divide(*this, b, quotient, *this);
 				return *this;
 		    }
-		
+
 		    inline basic_uint&
 			operator<<=(const basic_uint& rhs) noexcept {
-		
+
 				unsigned int n = rhs.to_integer();
-		
+
 				if(n >= NBITS) {
 					hi = 0;
 					lo = 0;
 				} else {
 					const unsigned int halfsize = NBITS / 2;
-		
+
 		    		if(n >= halfsize){
 		        		n -= halfsize;
 		        		hi = lo;
 		        		lo = 0;
 		    		}
-		
+
 		    		if(n != 0) {
 						// shift high half
 		        		hi <<= n;
-		
+
 						const base_type mask(~(base_type(-1) >> n));
-		
+
 						// and add them to high half
 		        		hi |= (lo & mask) >> (halfsize - n);
-		
+
 						// and finally shift also low half
 		        		lo <<= n;
 		    		}
 				}
-		
+
 		    	return *this;
 			}
-		
+
 			inline basic_uint&
 			operator>>=(const basic_uint& rhs) noexcept {
-		
+
 				unsigned int n = rhs.to_integer();
-		
+
 				if(n >= NBITS) {
 					hi = 0;
 					lo = 0;
 				} else {
 					const unsigned int halfsize = NBITS / 2;
-		
+
 		    		if(n >= halfsize) {
 		        		n -= halfsize;
 		        		lo = hi;
 		        		hi = 0;
 		    		}
-		
+
 		    		if(n != 0) {
 						// shift low half
 		        		lo >>= n;
-		
+
 						// get lower N bits of high half
 						const base_type mask(~(base_type(-1) << n));
-		
+
 						// and add them to low qword
 		        		lo |= (hi & mask) << (halfsize - n);
-		
+
 						// and finally shift also high half
 		        		hi >>= n;
 		    		}
 				}
-		
+
 		    	return *this;
 			}
-		
+
 			// constexpr arithmetic operators
 			constexpr basic_uint
 			operator+(const basic_uint& rhs) const noexcept {
 		    	return do_plus(*this, rhs, this->lo + rhs.lo);
 			}
-		
+
 			constexpr basic_uint
 			operator-(const basic_uint& rhs) const noexcept {
 				return *this + (-rhs);
 			}
-		
+
 			constexpr basic_uint
 			operator*(const basic_uint& rhs) const noexcept {
 				return rhs == NOUGHT ? basic_uint() :
@@ -335,23 +334,23 @@ namespace sysx {
 					do_divide_shift({basic_uint(1), rhs}, *this),
 					0).remainder;
 			}
-		
+
 			// derived bit-wise operators
 			constexpr basic_uint
 			operator&(const basic_uint& rhs) const noexcept {
 				return basic_uint(lo & rhs.lo, hi & rhs.hi);
 			}
-		
+
 			constexpr basic_uint
 			operator|(const basic_uint& rhs) const noexcept {
 				return basic_uint(lo | rhs.lo, hi | rhs.hi);
 			}
-		
+
 			constexpr basic_uint
 			operator^(const basic_uint& rhs) const noexcept {
 				return basic_uint(lo ^ rhs.lo, hi ^ rhs.hi);
 			}
-		
+
 			constexpr basic_uint
 			operator<<(const basic_uint& n) const noexcept {
 				return
@@ -360,7 +359,7 @@ namespace sysx {
 					? do_left_shift(basic_uint(NOUGHT, lo), n.lo - NBITS/2, NBITS/2)
 					: do_left_shift(*this, n.lo, NBITS/2);
 			}
-		
+
 			constexpr basic_uint
 			operator>>(const basic_uint& n) const noexcept {
 				return
@@ -369,7 +368,7 @@ namespace sysx {
 					? do_right_shift(basic_uint(hi, NOUGHT), n.lo - NBITS/2, NBITS/2)
 					: do_right_shift(*this, n.lo, NBITS/2);
 			}
-		
+
 			friend std::ostream&
 			operator<<(std::ostream& out, const basic_uint& n) {
 				std::ostream::sentry s(out);
@@ -380,21 +379,21 @@ namespace sysx {
 					// that plus room for null terminator
 			    	char buf[NBITS + 1] = {};
 		//			buf[sizeof(buf) - 1] = '\0';
-			
+
 			    	basic_uint ii(n);
 			    	int i = NBITS - 1;
-			
+
 			    	while (ii != 0 && i) {
 						basic_uint remainder;
 						divide(ii, basic_uint(radix), ii, remainder);
 			        	buf[--i] = "0123456789abcdefghijklmnopqrstuvwxyz"[remainder.to_integer()];
 			    	}
-			
+
 			    	out << buf + i;
 				}
 				return out;
 			}
-		
+
 			friend std::istream&
 			operator>>(std::istream& in, basic_uint& rhs) {
 				std::istream::sentry s(in);
@@ -413,7 +412,7 @@ namespace sysx {
 									n = ch - '0';
 								}
 							} break;
-							case 8:	
+							case 8:
 								if (ch >= '0' && ch <= '7') {
 									n = ch - '0';
 								}
@@ -428,21 +427,31 @@ namespace sysx {
 						if (n == radix) {
 							break;
 						}
-		
+
 						rhs *= radix;
 						rhs += n;
 					}
 				}
 				return in;
 			}
-		
+
+			unsigned char*
+			begin() {
+				return raw;
+			}
+
+			unsigned char*
+			end() {
+				return raw + sizeof(raw);
+			}
+
 		private:
-		
+
 			constexpr int
 			to_integer() const noexcept {
 				return static_cast<int>(lo);
 			}
-		
+
 			static constexpr
 			basic_uint do_plus(const basic_uint& lhs, const basic_uint& rhs, const base_type new_lo) noexcept {
 				return basic_uint(new_lo, lhs.hi + rhs.hi
@@ -453,13 +462,13 @@ namespace sysx {
 			basic_uint do_plus(const basic_uint& lhs, const base_type& rhs, const base_type new_lo) noexcept {
 				return basic_uint(new_lo, lhs.hi + (new_lo < lhs.lo ? base_type(1) : base_type(0)));
 			}
-		
+
 			static constexpr basic_uint
 			do_left_shift(const basic_uint& lhs, base_type n, unsigned int halfsize) noexcept {
 				return n == 0 ? lhs : basic_uint(lhs.lo << n,
 					(lhs.hi << n) | ((lhs.lo & (~(base_type(-1) >> n))) >> (halfsize - n)));
 			}
-		
+
 			static constexpr basic_uint
 			do_right_shift(const basic_uint& lhs, base_type n, unsigned int halfsize) noexcept {
 				return n == 0 ? lhs : basic_uint(
@@ -492,7 +501,7 @@ namespace sysx {
 							: do_divide(n, {pair.x >> 1, pair.d >> 1}, answer)
 					);
 			}
-		
+
 			static void
 			divide(const basic_uint& numerator, const basic_uint& denominator,
 				basic_uint& quotient, basic_uint& remainder)
@@ -504,34 +513,39 @@ namespace sysx {
 					basic_uint d      = denominator;
 					basic_uint x      = 1;
 					basic_uint answer = 0;
-			
+
 					while ((n >= d) && (((d >> (NBITS - 1)) & 1) == 0)) {
 						x <<= 1;
 						d <<= 1;
 					}
-			
+
 					while (x != 0) {
 						if(n >= d) {
 							n -= d;
 							answer |= x;
 						}
-			
+
 						x >>= 1;
 						d >>= 1;
 					}
-			
+
 					quotient = answer;
 					remainder = n;
 				}
 			}
-		
-			base_type lo = 0;
-			base_type hi = 0;
-		
+
+			union {
+				struct {
+					base_type lo;
+					base_type hi;
+				};
+				unsigned char raw[sizeof(base_type)*2];
+			};
+
 			static const unsigned int NBITS =
 				(sizeof(base_type) + sizeof(base_type))
 				* std::numeric_limits<unsigned char>::digits;
-			
+
 			static constexpr const base_type NOUGHT = 0;
 			static constexpr const base_type UNITY = 1;
 		};

@@ -33,13 +33,13 @@ namespace sysx {
 			std::reverse(tmp.y, tmp.y + sizeof(T));
 			return tmp.x;
 		}
-		
+
 		template<>
 		constexpr uint8_t
 		byte_swap<uint8_t>(uint8_t n) noexcept {
 			return n;
 		}
-		
+
 		template<>
 		constexpr uint16_t
 		byte_swap<uint16_t>(uint16_t n) noexcept {
@@ -49,7 +49,7 @@ namespace sysx {
 			return ((n & 0xff00)>>8) | ((n & 0x00ff)<<8);
 			#endif
 		}
-		
+
 		template<>
 		constexpr uint32_t
 		byte_swap<uint32_t>(uint32_t n) noexcept {
@@ -63,7 +63,7 @@ namespace sysx {
 				((n & UINT32_C(0x000000ff)) << 24);
 			#endif
 		}
-		
+
 		template<>
 		constexpr uint64_t
 		byte_swap<uint64_t>(uint64_t n) noexcept {
@@ -139,7 +139,7 @@ namespace sysx {
 			}
 
 		private:
-			Int _intval; 
+			Int _intval;
 		};
 
 		template<class Arr>
@@ -163,7 +163,7 @@ namespace sysx {
 			}
 
 		private:
-			Arr _arr; 
+			Arr _arr;
 		};
 
 		template<size_t bytes>
