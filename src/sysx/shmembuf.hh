@@ -43,7 +43,7 @@ namespace sysx {
 			this->setp(ptr, _sharedmem.end());
 			this->sync_sharedmem();
 			this->debug("basic_shmembuf(int)");
-		} 
+		}
 
 		basic_shmembuf(basic_shmembuf&& rhs):
 		_sharedmem(std::move(rhs._sharedmem)),
@@ -133,14 +133,14 @@ namespace sysx {
 			this->updatebufs();
 			debug("after grow");
 		}
-		
+
 		void
 		sync_sharedmem() {
 			_sharedmem.sync();
 			_sharedpart = static_cast<shmem_header*>(_sharedmem.ptr());
 			this->readoffs();
 		}
-		
+
 		void
 		updatebufs() {
 			const std::ptrdiff_t poff = this->pptr() - this->pbase();

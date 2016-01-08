@@ -39,6 +39,19 @@ namespace sysx {
 			do_open(std::move(name), 0, num);
 		}
 
+		shared_mem(size_type min_sz, mode_type mode):
+		_path(), _size(min_sz), _owner(true)
+		{
+			do_open_private(IPC_PRIVATE, mode|IPC_CREAT);
+		}
+
+		explicit
+		shared_mem(shm_type shm):
+		_shm(shm), _path(), _size(0), _owner(false)
+		{
+			do_open_existing();
+		}
+
 		shared_mem(shared_mem&& rhs):
 		_path(std::move(rhs._path)),
 		_size(rhs._size),
@@ -144,7 +157,34 @@ namespace sysx {
 			_size = xsize();
 		}
 
+		shm_type id() const { return _shm; }
+
 	private:
+
+		void
+		do_open_existing() {
+			_path.clear();
+			_key = getkey();
+			_addr = xattach();
+			if (_owner) {
+				xfill();
+			}
+			_size = xsize();
+		}
+
+		void
+		do_open_private(key_type key, mode_type mode)
+		{
+			_path.clear();
+			_key = key;
+			_shm = xopen(mode);
+			_key = getkey();
+			_addr = xattach();
+			if (_owner) {
+				xfill();
+			}
+			_size = xsize();
+		}
 
 		void
 		do_open(path_type&& name, mode_type mode, char num)
@@ -157,6 +197,14 @@ namespace sysx {
 				xfill();
 			}
 			_size = xsize();
+		}
+
+		key_type
+		getkey() const {
+			struct ::shmid_ds stat;
+			bits::check(::shmctl(_shm, IPC_STAT, &stat),
+				__FILE__, __LINE__, __func__);
+			return stat.shm_perm.__key;
 		}
 
 		void
@@ -211,7 +259,7 @@ namespace sysx {
 
 		void
 		xunlink() const {
-			if (_owner) {
+			if (_owner && !_path.empty()) {
 				bits::check(::unlink(_path.c_str()),
 					__FILE__, __LINE__, __func__);
 			}
