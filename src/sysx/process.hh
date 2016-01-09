@@ -73,32 +73,32 @@ namespace sysx {
 		stopped() const noexcept {
 			return WIFSTOPPED(stat);
 		}
-		
+
 		constexpr bool
 		core_dumped() const noexcept {
 			return static_cast<bool>(WCOREDUMP(stat));
 		}
-		
+
 		constexpr bool
 		trapped() const noexcept {
 			return false;
 		}
-		
+
 		constexpr bool
 		continued() const noexcept {
 			return WIFCONTINUED(stat);
 		}
-		
+
 		constexpr code_type
 		exit_code() const noexcept {
 			return WEXITSTATUS(stat);
 		}
-		
+
 		constexpr code_type
 		term_signal() const noexcept {
 			return WTERMSIG(stat);
 		}
-		
+
 		constexpr code_type
 		stop_signal() const noexcept {
 			return WSTOPSIG(stat);
@@ -145,37 +145,37 @@ namespace sysx {
 		stopped() const noexcept {
 			return stat == st::stopped;
 		}
-		
+
 		constexpr bool
 		core_dumped() const noexcept {
 			return stat == st::core_dumped;
 		}
-		
+
 		constexpr bool
 		trapped() const noexcept {
 			return stat == st::trapped;
 		}
-		
+
 		constexpr bool
 		continued() const noexcept {
 			return stat == st::continued;
 		}
-		
+
 		constexpr code_type
 		exit_code() const noexcept {
 			return code;
 		}
-		
+
 		constexpr code_type
 		term_signal() const noexcept {
 			return code;
 		}
-		
+
 		constexpr code_type
 		stop_signal() const noexcept {
 			return code;
 		}
-		
+
 		constexpr pid_type
 		pid() const noexcept {
 			return _pid;
@@ -287,6 +287,10 @@ namespace sysx {
 				__FILE__, __LINE__, __func__);
 		}
 
+		/// std::thread interface
+		bool joinable() { return true; }
+		void join() { wait(); }
+
 	private:
 
 		inline int
@@ -362,7 +366,7 @@ namespace sysx {
 		}
 
 	private:
-	
+
 		sysx::proc_info
 		do_wait(wait_flags flags) const {
 			sysx::siginfo_type info;
@@ -377,7 +381,7 @@ namespace sysx {
 	};
 
 	namespace this_process {
-	
+
 		inline pid_type
 		id() noexcept { return ::getpid(); }
 
@@ -392,7 +396,7 @@ namespace sysx {
 			bits::check(::setpgid(this_process::id(), rhs),
 				__FILE__, __LINE__, __func__);
 		}
-	
+
 		template<class T>
 		T getenv(const char* key, T dflt) {
 			const char* text = ::getenv(key);
@@ -422,7 +426,7 @@ namespace sysx {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			return bits::check(::execv(argv[0], argv), 
+			return bits::check(::execv(argv[0], argv),
 				__FILE__, __LINE__, __func__);
 		}
 

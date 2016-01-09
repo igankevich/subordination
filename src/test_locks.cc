@@ -64,7 +64,7 @@ struct test_counter: public Parametric_test<test_counter<Mutex>> {
 	}
 };
 
-template<class Q, class Mutex, class Semaphore=std::condition_variable>
+template<class Q, class Mutex, class Semaphore=std::condition_variable, class Thread=std::thread>
 struct Thread_pool {
 
 	Thread_pool():
@@ -82,6 +82,7 @@ struct Thread_pool {
 				queue.pop();
 			}
 			if (val == -1) {
+				std::clog << "Stopping thread pool" << std::endl;
 				stopped = true;
 			} else {
 				sum += val;
@@ -107,10 +108,10 @@ struct Thread_pool {
 
 private:
 	std::queue<Q> queue;
-	std::condition_variable_any cv;
+	Semaphore cv;
 	Mutex mtx;
 	volatile bool stopped = false;
-	std::thread thread;
+	Thread thread;
 	Q sum = 0;
 };
 
@@ -136,7 +137,7 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 			pool->submit(I(-1));
 		}
 		std::for_each(thread_pool.begin(), thread_pool.end(),
-			std::mem_fun(&Pool::wait));
+			std::mem_fn(&Pool::wait));
 		I sum = std::accumulate(thread_pool.begin(), thread_pool.end(), I(0),
 			[] (I sum, Pool* ptr) {
 				return sum + ptr->result();
@@ -194,7 +195,8 @@ int main() {
 	suite1.run();
 
 	test::Test_suite suite("semaphores");
-	suite.add(new test_queue<std::mutex,self_signal_semaphore>(1, 10));
+//	TODO make Thread_pool also a Process pool
+//	suite.add(new test_queue<std::mutex,self_signal_semaphore>(4, 10));
 	suite.add(new test_queue<std::mutex,sysx::sysv_semaphore>(1, 10));
 	suite.run();
 

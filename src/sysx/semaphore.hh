@@ -36,8 +36,9 @@ namespace sysx {
 		typedef int sem_type;
 		typedef struct ::sembuf sembuf_type;
 
-		sysv_semaphore(): _owner(true) {
-			_sem = bits::check(::semget(IPC_PRIVATE, _nsems, 0),
+		explicit
+		sysv_semaphore(mode_type mode=0600): _owner(true) {
+			_sem = bits::check(::semget(IPC_PRIVATE, _nsems, IPC_CREAT|mode),
 				__FILE__, __LINE__, __func__);
 		}
 
@@ -58,6 +59,19 @@ namespace sysx {
 		void wait() { increment(-1); }
 		void notify_one() { increment(1); }
 		void notify_all() { increment(1000); }
+
+		template<class Lock>
+		void wait(Lock& lock) {
+			stdx::unlock_guard<Lock> unlock(lock);
+			wait();
+		}
+
+		template<class Lock, class Pred>
+		void wait(Lock& lock, Pred pred) {
+			while (!pred()) {
+				wait(lock);
+			}
+		}
 
 	private:
 
@@ -365,6 +379,7 @@ namespace sysx {
 	struct signal_semaphore {
 
 		typedef siginfo_t siginfo_type;
+		typedef union ::sigval payload_type;
 
 		explicit
 		signal_semaphore(pid_type owner, signal_type s):
@@ -376,6 +391,13 @@ namespace sysx {
 			// notifying non-existent process is not an error
 			bits::check_if_not<std::errc::no_such_process>(
 				::kill(_owner, _sig),
+				__FILE__, __LINE__, __func__);
+		}
+
+		void
+		notify_one(payload_type payload) {
+			bits::check_if_not<std::errc::no_such_process>(
+				::sigqueue(_owner, _sig, payload),
 				__FILE__, __LINE__, __func__);
 		}
 
@@ -394,6 +416,10 @@ namespace sysx {
 				__FILE__, __LINE__, __func__);
 			if (std::errc(errno) != std::errc::interrupted) {
 				_lastnotifier = result.si_pid;
+				if (result.si_code == SI_QUEUE) {
+					std::clog << "Received sival=" << result.si_value.sival_int << std::endl;
+					_queue.push(result.si_value);
+				}
 			}
 		}
 
@@ -415,11 +441,22 @@ namespace sysx {
 			return _lastnotifier;
 		}
 
+		const std::queue<payload_type>&
+		payload_queue() const {
+			return _queue;
+		}
+
+		std::queue<payload_type>&
+		payload_queue() {
+			return _queue;
+		}
+
 	private:
 
 		pid_type _owner;
 		signal_type _sig;
 		pid_type _lastnotifier;
+		std::queue<payload_type> _queue;
 	};
 
 	struct init_signal_semaphore {
@@ -433,7 +470,7 @@ namespace sysx {
 		init_signal_semaphore(sigset_type s):
 		_lock(s)
 		{
-//			install_empty_signal_handler(s);
+			install_empty_signal_handler(s);
 		}
 
 		explicit
@@ -444,7 +481,8 @@ namespace sysx {
 	private:
 
 		/// install empty signal handler
-		/// to make signal queueable
+		/// to make signal queueable,
+		/// otherwise it kills receiver process
 		void
 		install_empty_signal_handler(sigset_type s) {
 			Action action{};
@@ -456,10 +494,7 @@ namespace sysx {
 			});
 		}
 
-		static void no_handler(int) {
-			// should not be called
-			assert(false);
-		}
+		static void no_handler(int) {}
 
 		/// block/unblock signal on construction/destruction
 		signal_lock _lock;
