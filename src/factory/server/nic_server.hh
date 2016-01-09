@@ -13,6 +13,7 @@
 #include <sysx/packetstream.hh>
 
 #include <factory/server/intro.hh>
+#include <factory/server/proxy_server.hh>
 #include <sysx/fildesbuf.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
@@ -87,7 +88,7 @@ namespace factory {
 					<< "Kernels left: "
 					<< _buffer.size()
 					<< std::endl;
-				
+
 				// recover kernels written to output buffer
 				using namespace std::placeholders;
 				std::for_each(stdx::front_popper(_buffer),
@@ -277,7 +278,7 @@ namespace factory {
 					this_log() << "Kernel not found " << k->id() << std::endl;
 				}
 			}
-			
+
 			sysx::endpoint _vaddr;
 			Kernelbuf _packetbuf;
 			stream_type _stream;
@@ -286,28 +287,22 @@ namespace factory {
 			Remote_Rserver* _link;
 		};
 
-		template<class T, class Socket,
-		class Kernels=std::queue<typename Server<T>::kernel_type*>,
-		class Threads=std::vector<std::thread>>
-		using NIC_server_base = Server_with_pool<T, Kernels, Threads,
-			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
-			sysx::event_poller<Remote_Rserver<T, Socket>*>>;
-
 		template<class T, class Socket>
-		struct NIC_server: public NIC_server_base<T, Socket> {
+		struct NIC_server: public Proxy_server<T,sysx::endpoint,Remote_Rserver<T,Socket>> {
 
-			typedef Remote_Rserver<T, Socket> server_type;
-			typedef std::map<sysx::endpoint, server_type> upstream_type;
 			typedef Socket socket_type;
 
-//			typedef bits::handler_wrapper<bits::pointer_tag> wrapper;
-
-			typedef NIC_server_base<T, Socket> base_server;
+			typedef Proxy_server<T,sysx::endpoint,Remote_Rserver<T,Socket>> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
 			using typename base_server::sem_type;
 			using typename base_server::kernel_pool;
+			using typename base_server::upstream_type;
+			using typename base_server::server_type;
+
+			using base_server::poller;
+			using base_server::_upstream;
 
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
@@ -317,88 +312,12 @@ namespace factory {
 			base_server(std::move(rhs))
 			{}
 
-			NIC_server():
-			base_server(1u)
-			{}
-
+			NIC_server() = default;
 			~NIC_server() = default;
 			NIC_server(const NIC_server&) = delete;
 			NIC_server& operator=(const NIC_server&) = delete;
 
-			void
-			do_run() override {
-				// start processing as early as possible
-				poller().notify_one();
-				lock_type lock(this->_mutex);
-				while (!this->stopped()) {
-					cleanup_and_check_if_dirty();
-					this->_semaphore.wait(lock);
-					stdx::unlock_guard<lock_type> g(lock);
-					check_and_process_kernels();
-					check_and_accept_connections();
-					read_and_write_kernels();
-				}
-				// prevent double free or corruption
-				poller().clear();
-			}
-
-			void cleanup_and_check_if_dirty() {
-				poller().for_each_ordinary_fd(
-					[this] (sysx::poll_event& ev, handler_type& h) {
-						if (!ev) {
-							this->remove_server(h);
-						} else {
-							if (h->dirty()) {
-								ev.setev(sysx::poll_event::Out);
-							} else {
-								ev.unsetev(sysx::poll_event::Out);
-							}
-						}
-					}
-				);
-			}
-
-			void
-			check_and_process_kernels() {
-				if (this->stopped()) {
-					this->try_to_stop_gracefully();
-				} else {
-					poller().for_each_pipe_fd([this] (sysx::poll_event& ev) {
-						if (ev.in()) {
-							this->process_kernels();
-						}
-					});
-				}
-			}
-
-			void
-			check_and_accept_connections() {
-				poller().for_each_special_fd([this] (sysx::poll_event& ev) {
-					if (ev.in()) {
-						this->accept_connection();
-					}
-				});
-			}
-
-			void
-			read_and_write_kernels() {
-				poller().for_each_ordinary_fd(
-					[this] (sysx::poll_event& ev, handler_type& h) {
-//				TODO: It is probably too slow to check error on every event.
-						if (h->fail()) {
-							ev.setrev(sysx::poll_event::Hup);
-						}
-						if (h->dirty()) {
-							ev.setrev(sysx::poll_event::Out);
-						}
-						if (ev) {
-							h->on_event(ev);
-						}
-					}
-				);
-			}
-
-			void remove_server(server_type* ptr) {
+			void remove_server(server_type* ptr) override {
 				// remove from the mapping if it is not linked
 				// with other subordinate server
 				// TODO: occasional ``Bad file descriptor''
@@ -407,6 +326,10 @@ namespace factory {
 				if (!ptr->link()) {
 					_upstream.erase(ptr->vaddr());
 				}
+			}
+
+			void process_special(sysx::poll_event&) override {
+				accept_connection();
 			}
 
 			void accept_connection() {
@@ -465,34 +388,7 @@ namespace factory {
 					<< sock << std::endl;
 			}
 
-			void try_to_stop_gracefully() {
-				this->process_kernels();
-				this->flush_kernels();
-				++_stop_iterations;
-				if (this->empty() || _stop_iterations == MAX_STOP_ITERATIONS) {
-					debug("stopping");
-				} else {
-					debug("not stopping");
-				}
-			}
-
-			bool empty() const {
-				return std::all_of(stdx::field_iter<1>(_upstream.begin()),
-					stdx::field_iter<1>(_upstream.end()),
-					std::mem_fn(&server_type::empty));
-//				typedef typename upstream_type::value_type pair_type;
-//				return std::all_of(_upstream.cbegin(), _upstream.cend(),
-//					[] (const pair_type& rhs)
-//				{
-//					return rhs.second.empty();
-//				});
-			}
-
 			void peer(sysx::endpoint addr) {
-//				if (!this->stopped()) {
-//					throw Error("Can not add upstream server when socket server is running.",
-//						__FILE__, __LINE__, __func__);
-//				}
 				this->connect_to_server(addr, sysx::poll_event::In);
 			}
 
@@ -529,7 +425,7 @@ namespace factory {
 					}
 				};
 			}
-		
+
 		private:
 
 			inline sysx::endpoint
@@ -538,17 +434,7 @@ namespace factory {
 			}
 
 			void
-			flush_kernels() {
-				typedef typename upstream_type::value_type pair_type;
-				std::for_each(_upstream.begin(), _upstream.end(),
-					[] (pair_type& rhs) {
-						rhs.second.on_event(sysx::poll_event::Out);
-					}
-				);
-			}
-
-			void
-			process_kernels() {
+			process_kernels() override {
 				this_log() << "NIC_server::process_kernels()" << std::endl;
 				stdx::front_pop_iterator<kernel_pool> it_end;
 				lock_type lock(this->_mutex);
@@ -649,22 +535,7 @@ namespace factory {
 				poller().emplace(ev, handler_type(sub));
 			}
 
-			inline sem_type&
-			poller() {
-				return this->_semaphore;
-			}
-
-			inline const sem_type&
-			poller() const {
-				return this->_semaphore;
-			}
-
 			socket_type _socket;
-			upstream_type _upstream;
-
-			int _stop_iterations = 0;
-
-			static const int MAX_STOP_ITERATIONS = 13;
 		};
 
 	}
