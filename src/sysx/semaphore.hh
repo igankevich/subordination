@@ -3,6 +3,12 @@
 
 #include <unistd.h>
 #include <signal.h>
+
+// TODO sysv semaphores testing
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+
 #if _POSIX_SEMAPHORES > 0 || defined(__MACH__)
 	#include <semaphore.h>
 #elif _XOPEN_SHM > 0
@@ -16,6 +22,7 @@
 #endif
 
 #include <condition_variable>
+#include <cassert>
 
 #include <stdx/unlock_guard.hh>
 
@@ -23,6 +30,52 @@
 #include <sysx/process.hh>
 
 namespace sysx {
+
+	struct sysv_semaphore {
+
+		typedef int sem_type;
+		typedef struct ::sembuf sembuf_type;
+
+		sysv_semaphore(): _owner(true) {
+			_sem = bits::check(::semget(IPC_PRIVATE, _nsems, 0),
+				__FILE__, __LINE__, __func__);
+		}
+
+		explicit
+		sysv_semaphore(sem_type sem):
+		_sem(sem), _owner(false)
+		{}
+
+		~sysv_semaphore() {
+			if (_owner) {
+				bits::check(::semctl(_sem, IPC_RMID, 0),
+					__FILE__, __LINE__, __func__);
+			}
+		}
+
+		sem_type id() const { return _sem; }
+
+		void wait() { increment(-1); }
+		void notify_one() { increment(1); }
+		void notify_all() { increment(1000); }
+
+	private:
+
+		void
+		increment(int how) {
+			sembuf_type buf;
+			buf.sem_num = 0;
+			buf.sem_op = how;
+			buf.sem_flg = SEM_UNDO;
+			bits::check(::semop(_sem, &buf, _nsems),
+				__FILE__, __LINE__, __func__);
+		}
+
+		sem_type _sem;
+		bool _owner;
+
+		static const int _nsems = 1;
+	};
 
 	struct process_semaphore {
 
@@ -57,7 +110,7 @@ namespace sysx {
 		~process_semaphore() {
 			this->close();
 		}
-	
+
 		process_semaphore(const process_semaphore&) = delete;
 		process_semaphore& operator=(const process_semaphore&) = delete;
 
@@ -107,7 +160,7 @@ namespace sysx {
 				}
 			}
 		}
-	
+
 	private:
 
 		sem_type
@@ -404,7 +457,8 @@ namespace sysx {
 		}
 
 		static void no_handler(int) {
-			std::cerr << "no_handler() is called !!!" << std::endl;
+			// should not be called
+			assert(false);
 		}
 
 		/// block/unblock signal on construction/destruction
