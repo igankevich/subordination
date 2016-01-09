@@ -72,12 +72,12 @@ namespace factory {
 				poller().notify_one();
 				lock_type lock(this->_mutex);
 				while (!this->stopped()) {
-					cleanup_and_check_if_dirty();
-					this->_semaphore.wait(lock);
+					prepare_poll_events();
+					poller().wait(lock);
 					stdx::unlock_guard<lock_type> g(lock);
-					check_and_process_kernels();
-					check_and_process_special();
-					read_and_write_kernels();
+					process_kernels_if_any();
+					accept_connections_if_any();
+					handle_events();
 				}
 				// prevent double free or corruption
 				poller().clear();
@@ -90,29 +90,25 @@ namespace factory {
 			process_kernels() = 0;
 
 			virtual void
-			process_special(sysx::poll_event&) = 0;
+			accept_connection(sysx::poll_event&) = 0;
 
 		private:
 
 			void
-			cleanup_and_check_if_dirty() {
+			prepare_poll_events() {
 				poller().for_each_ordinary_fd(
 					[this] (sysx::poll_event& ev, handler_type& h) {
 						if (!ev) {
 							this->remove_server(h);
 						} else {
-							if (h->dirty()) {
-								ev.setev(sysx::poll_event::Out);
-							} else {
-								ev.unsetev(sysx::poll_event::Out);
-							}
+							h->prepare(ev);
 						}
 					}
 				);
 			}
 
 			void
-			check_and_process_kernels() {
+			process_kernels_if_any() {
 				if (this->stopped()) {
 					this->try_to_stop_gracefully();
 				} else {
@@ -125,47 +121,39 @@ namespace factory {
 			}
 
 			void
-			check_and_process_special() {
+			accept_connections_if_any() {
 				poller().for_each_special_fd([this] (sysx::poll_event& ev) {
 					if (ev.in()) {
-						this->process_special(ev);
+						this->accept_connection(ev);
 					}
 				});
 			}
 
 			void
-			read_and_write_kernels() {
+			handle_events() {
 				poller().for_each_ordinary_fd(
 					[this] (sysx::poll_event& ev, handler_type& h) {
-						// TODO: It is probably too slow to check error on every event.
-						if (h->fail()) {
-							ev.setrev(sysx::poll_event::Hup);
-						}
-						if (h->dirty()) {
-							ev.setrev(sysx::poll_event::Out);
-						}
-						if (ev) {
-							h->on_event(ev);
-						}
+						h->handle(ev);
 					}
 				);
 			}
 
 			void try_to_stop_gracefully() {
 				this->process_kernels();
-				this->flush_kernels();
+				// TODO check if this needed at all
+				//this->flush_kernels();
 				++_stop_iterations;
 			}
 
-			void
-			flush_kernels() {
-				typedef typename upstream_type::value_type pair_type;
-				std::for_each(_upstream.begin(), _upstream.end(),
-					[] (pair_type& rhs) {
-						rhs.second.on_event(sysx::poll_event::Out);
-					}
-				);
-			}
+			//void
+			//flush_kernels() {
+			//	typedef typename upstream_type::value_type pair_type;
+			//	std::for_each(_upstream.begin(), _upstream.end(),
+			//		[] (pair_type& rhs) {
+			//			rhs.second.handle(sysx::poll_event::Out);
+			//		}
+			//	);
+			//}
 
 		protected:
 

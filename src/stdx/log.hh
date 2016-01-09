@@ -45,20 +45,20 @@ namespace stdx {
 
 		basic_log(const basic_log&) = delete;
 		basic_log& operator=(const basic_log&) = delete;
-	
+
 		template<class T>
 		basic_log<Tp>&
 		operator<<(const T& rhs) {
 			std::clog << rhs;
 			return *this;
 		}
-	
+
 		basic_log<Tp>&
 		operator<<(std::ostream& (*rhs)(std::ostream&)) {
 			std::clog << rhs;
 			return *this;
 		}
-	
+
 	private:
 
 		static void
@@ -72,9 +72,31 @@ namespace stdx {
 	#endif
 
 	template<class T>
-	struct log: public 
+	struct log: public
 	std::conditional<disable_log_category<typename type_traits<T>::category>::value,
 	no_log, basic_log<T>>::type {};
+
+	std::ostream&
+	format_fields_impl(std::ostream& out) {
+		return out;
+	}
+
+	template<class K, class V, class ... Args>
+	std::ostream&
+	format_fields_impl(std::ostream& out, const K& key, const V& value, const Args& ... args) {
+		out << ',' << key << '=' << value;
+		return format_fields_impl(out, args...);
+	}
+
+	template<class K, class V, class ... Args>
+	std::ostream&
+	format_fields(std::ostream& out, const K& key, const V& value, const Args& ... args) {
+		out << '{';
+		out << key << '=' << value;
+		format_fields_impl(out, args...);
+		out << '}';
+		return out;
+	}
 
 }
 

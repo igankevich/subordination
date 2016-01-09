@@ -40,8 +40,7 @@ namespace factory {
 				_vaddr(vaddr),
 				_packetbuf(),
 				_stream(&_packetbuf),
-				_buffer(),
-				_link(nullptr)
+				_buffer()
 			{
 				_packetbuf.setfd(std::move(sock));
 			}
@@ -54,8 +53,7 @@ namespace factory {
 				_vaddr(rhs._vaddr),
 				_packetbuf(std::move(rhs._packetbuf)),
 				_stream(&_packetbuf),
-				_buffer(std::move(rhs._buffer)) ,
-				_link(rhs._link)
+				_buffer(std::move(rhs._buffer))
 			{
 				this_log() << "fd after move ctr " << _packetbuf.fd() << std::endl;
 				this_log() << "root after move ctr " << this->root()
@@ -82,7 +80,8 @@ namespace factory {
 
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				on_event(sysx::poll_event::In);
+				sysx::poll_event ev{socket().fd(), sysx::poll_event::In};
+				handle(ev);
 
 				this_log()
 					<< "Kernels left: "
@@ -119,35 +118,35 @@ namespace factory {
 			}
 
 			void
-			on_event(sysx::poll_event::event_type e) {
-				on_event(sysx::poll_event{socket().fd(), e});
-			}
-
-			void
-			on_event(sysx::poll_event event) {
+			handle(sysx::poll_event& event) {
+				// TODO: It is probably too slow to check error on every event.
+				if (socket().error() != 0) {
+					event.setrev(sysx::poll_event::Hup);
+				}
+				if (_packetbuf.dirty()) {
+					event.setrev(sysx::poll_event::Out);
+				}
 				if (event.in()) {
 					_stream.fill();
 					while (_stream.read_packet()) {
-						read_and_send_kernel();
+						read_and_receive_kernel();
 					}
 				}
 				if (event.out() && !event.hup()) {
 					_stream.flush();
-					socket().flush();
-					if (!dirty()) {
+					if (!_packetbuf.dirty()) {
 						this_log() << "Flushed." << std::endl;
 					}
 				}
 			}
 
-			bool
-			fail() const {
-				return socket().error() != 0;
-			}
-
-			bool
-			dirty() const {
-				return _packetbuf.dirty() || !socket().empty();
+			void
+			prepare(sysx::poll_event& event) {
+				if (_packetbuf.dirty()) {
+					event.setev(sysx::poll_event::Out);
+				} else {
+					event.unsetev(sysx::poll_event::Out);
+				}
 			}
 
 			const socket_type&
@@ -169,23 +168,19 @@ namespace factory {
 			const sysx::endpoint& vaddr() const { return _vaddr; }
 			void setvaddr(const sysx::endpoint& rhs) { _vaddr = rhs; }
 
-			bool empty() const { return _buffer.empty(); }
-
-			Remote_Rserver* link() const { return _link; }
-			void link(Remote_Rserver* rhs) { _link = rhs; }
-
 			friend std::ostream&
 			operator<<(std::ostream& out, const Remote_Rserver& rhs) {
-				return out << "{vaddr="
-					<< rhs.vaddr() << ",sock="
-					<< rhs.socket() << ",kernels="
-					<< rhs._buffer.size() << ",str="
-					<< stdx::debug_stream(rhs._stream) << '}';
+				return stdx::format_fields(out,
+					"vaddr", rhs.vaddr(),
+					"socket", rhs.socket(),
+					"kernels", rhs._buffer.size(),
+					"stream", stdx::debug_stream(rhs._stream)
+				);
 			}
 
 		private:
 
-			void read_and_send_kernel() {
+			void read_and_receive_kernel() {
 				app_type app;
 				_stream >> app;
 				this_log() << "recv ok" << std::endl;
@@ -195,14 +190,14 @@ namespace factory {
 				} else {
 					Type<kernel_type>::read_object(this->factory()->types(), _stream,
 						[this,app] (kernel_type* k) {
-							send_kernel(k, app);
+							receive_kernel(k, app);
 						}
 					);
 				}
 			}
 
 			void
-			send_kernel(kernel_type* k, app_type app) {
+			receive_kernel(kernel_type* k, app_type app) {
 				bool ok = true;
 				k->from(_vaddr);
 				k->setapp(app);
@@ -231,12 +226,7 @@ namespace factory {
 					<< "No principal found for "
 					<< *k << std::endl;
 				k->principal(k->parent());
-				// TODO : not safe with bare pointer
-//				if (this->link()) {
-//					this->link()->send(k);
-//				} else {
-					this->send(k);
-//				}
+				this->send(k);
 			}
 
 			void
@@ -283,8 +273,6 @@ namespace factory {
 			Kernelbuf _packetbuf;
 			stream_type _stream;
 			pool_type _buffer;
-
-			Remote_Rserver* _link;
 		};
 
 		template<class T, class Socket>
@@ -318,21 +306,13 @@ namespace factory {
 			NIC_server& operator=(const NIC_server&) = delete;
 
 			void remove_server(server_type* ptr) override {
-				// remove from the mapping if it is not linked
-				// with other subordinate server
 				// TODO: occasional ``Bad file descriptor''
 				this_log() << "Removing server " << *ptr << std::endl;
 				ptr->recover_kernels();
-				if (!ptr->link()) {
-					_upstream.erase(ptr->vaddr());
-				}
+				_upstream.erase(ptr->vaddr());
 			}
 
-			void process_special(sysx::poll_event&) override {
-				accept_connection();
-			}
-
-			void accept_connection() {
+			void accept_connection(sysx::poll_event&) override {
 				sysx::endpoint addr;
 				socket_type sock;
 				_socket.accept(sock, addr);
@@ -359,13 +339,6 @@ namespace factory {
 						this_log()
 							<< "not replacing peer " << s
 							<< std::endl;
-						// create temporary subordinate server
-						// to read kernels until the socket
-						// is closed from the other end
-						server_type* new_s = new server_type(std::move(sock), addr);
-						this->link_server(&s, new_s,
-						sysx::poll_event{new_s->socket().fd(), sysx::poll_event::In});
-						debug("not replacing upstream");
 					} else {
 						this_log log;
 						log << "replacing peer " << s;
@@ -526,13 +499,6 @@ namespace factory {
 					handler_type(&result.first->second));
 				this_log() << "added server " << result.first->second << std::endl;
 				return &result.first->second;
-			}
-
-			void link_server(server_type* par, server_type* sub, sysx::poll_event ev) {
-				sub->setparent(this);
-				sub->setvaddr(par->vaddr());
-				sub->link(par);
-				poller().emplace(ev, handler_type(sub));
 			}
 
 			socket_type _socket;

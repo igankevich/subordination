@@ -100,7 +100,7 @@ namespace sysx {
 			bits::check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
 		}
-		
+
 		void listen() {
 			std::clog << "Listening on " << this->name() << std::endl;
 			bits::check(::listen(this->_fd, SOMAXCONN),
@@ -215,10 +215,6 @@ namespace sysx {
 				<< (rhs.error() == 0 ? "ok" : std::error_code(errno, std::generic_category()).message())
 				<< '}';
 		}
-
-		// TODO: remove this ``boilerplate''
-		bool empty() const { return true; }
-		bool flush() const { return true; }
 
 	protected:
 
