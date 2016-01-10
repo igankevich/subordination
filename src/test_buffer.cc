@@ -216,15 +216,15 @@ struct test_packetstream: public test::Test<test_packetstream<T>> {
 };
 
 int main(int argc, char* argv[]) {
-	test::Test_suite tests("Test buffers");
-	tests.add(new Test_buffer<char, LBuffer>);
-	tests.add(new Test_buffer<unsigned char, LBuffer>);
-	tests.add(new Test_fildesbuf<char, sysx::file>);
-	tests.add(new Test_fildesbuf<unsigned char, sysx::file>);
-	tests.add(new Test_filterbuf<char>);
-	tests.add(new Test_filterbuf<unsigned char>);
-	tests.add(new Test_packetbuf<char, sysx::fildes>);
-	tests.add(new test_packetstream<char>);
-	tests.run();
-	return 0;
+	test::Test_suite tests{"Test buffers", {
+		new Test_buffer<char, LBuffer>,
+		new Test_buffer<unsigned char, LBuffer>,
+		new Test_fildesbuf<char, sysx::file>,
+		new Test_fildesbuf<unsigned char, sysx::file>,
+		new Test_filterbuf<char>,
+		new Test_filterbuf<unsigned char>,
+		new Test_packetbuf<char, sysx::fildes>,
+		new test_packetstream<char>
+	}};
+	return tests.run();
 }

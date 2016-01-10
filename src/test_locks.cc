@@ -188,19 +188,20 @@ struct self_signal_semaphore: public sysx::signal_semaphore {
 };
 
 int main() {
+	int ret = 0;
 	sysx::init_signal_semaphore init(SIGUSR1);
 
 	test::Test_suite suite1("mutexes");
 	suite1.add(new test_counter<stdx::spin_mutex>(2, 10));
-	suite1.run();
+	ret |= suite1.run();
 
 	test::Test_suite suite("semaphores");
 //	TODO make Thread_pool also a Process pool
 //	suite.add(new test_queue<std::mutex,self_signal_semaphore>(4, 10));
 	suite.add(new test_queue<std::mutex,sysx::sysv_semaphore>(1, 10));
-	suite.run();
+	ret |= suite.run();
 
 //	test_perf<stdx::spin_mutex>(10);
 //	test_perf<std::mutex>(10);
-	return 0;
+	return ret;
 }

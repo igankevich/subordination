@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <iostream>
 #include <iomanip>
+#include <memory>
 
 #if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
 #define FACTORY_TEST_HAVE_CXXABI
@@ -47,18 +48,22 @@ namespace test {
 		Basic_test(const std::string& name):
 		_testname(name) {}
 
-		virtual void
+		virtual int
 		run() {
+			int ret = 0;
 			try {
 				std::clog << _testname << ' ' << std::flush;
 				xrun();
 				std::clog << Color::FG_LIGHT_GREEN << "PASSED" << Color::RESET << std::endl;
 			} catch (std::exception& ex) {
+				ret = -1;
 				std::clog << Color::FG_LIGHT_RED << "FAILED" << Color::RESET
 					<< '\n' << ex.what() << std::endl;
 			} catch (...) {
+				ret = -1;
 				std::clog << Color::FG_LIGHT_RED << "FAILED" << Color::RESET << std::endl;
 			}
+			return ret;
 		}
 
 		const std::string&
@@ -88,32 +93,49 @@ namespace test {
 
 	struct Test_suite: public Test<Test_suite> {
 
+		typedef std::shared_ptr<Basic_test> value_type;
+
 		explicit
 		Test_suite(const std::string& name):
 		Test(name) {}
 
-		void
-		add(Basic_test* tst) {
-			_tests.push(tst);
+		Test_suite(const std::string& name, std::initializer_list<Basic_test*> tests):
+		Test(name)
+		{
+			std::transform(
+				tests.begin(),
+				tests.end(),
+				std::back_inserter(_tests),
+				[] (Basic_test* rhs) {
+					return std::shared_ptr<Basic_test>(rhs);
+				}
+			);
 		}
 
 		void
+		add(Basic_test* tst) {
+			_tests.emplace_back(tst);
+		}
+
+		int
 		run() override {
 			std::clog << this->name() << std::endl;
-			std::for_each(stdx::front_popper(_tests),
+			int ret = std::accumulate(
+				stdx::front_popper(_tests),
 				stdx::front_popper_end(_tests),
-				[] (Basic_test* tst) {
-					tst->run();
-					delete tst;
+				0,
+				[] (int sum, const value_type& tst) {
+					return sum |= tst->run();
 				}
 			);
+			return ret;
 		}
 
 		void xrun() override {}
 
 	private:
 
-		std::queue<Basic_test*> _tests;
+		std::deque<value_type> _tests;
 	};
 
 	template<class T>

@@ -98,6 +98,5 @@ int main(int argc, char* argv[]) {
 	tests.add(new Test_shmem<char>);
 	tests.add(new Test_shmem<unsigned char>);
 	tests.add(new Test_shmembuf<char>);
-	tests.run();
-	return 0;
+	return tests.run();
 }
