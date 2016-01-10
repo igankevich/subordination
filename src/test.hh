@@ -91,6 +91,51 @@ namespace test {
 		Basic_test(name) {}
 	};
 
+
+	template<class Testname, class Array>
+	struct Parametric_test: public test::Test<Testname> {
+
+		typedef Array array_type;
+		typedef typename array_type::size_type size_type;
+		typedef typename array_type::value_type value_type;
+
+		Parametric_test(array_type&& minval, array_type&& maxval):
+		_minval(minval),
+		_maxval(maxval)
+		{
+			assert(minval.size() == maxval.size());
+		}
+
+		void xrun() override {
+			const size_type ndim = _minval.size();
+			array_type idx = _minval;
+			for (size_type dim=0; dim<ndim; ++dim) {
+				const value_type x0 = _minval[dim];
+				const value_type x1 = _maxval[dim];
+				for (value_type i=x0; i<=x1; ++i) {
+					idx[dim] = i;
+					parametric_run(idx);
+				}
+			}
+		}
+
+		virtual void parametric_run(value_type i) { assert(false); }
+		virtual void parametric_run(value_type i, value_type j) { assert(false); }
+		virtual void parametric_run(value_type i, value_type j, value_type k) { assert(false); }
+
+		virtual void
+		parametric_run(array_type idx) {
+			if (idx.size() == 1) parametric_run(idx[0]);
+			else if (idx.size() == 2) parametric_run(idx[0], idx[1]);
+			else if (idx.size() == 3) parametric_run(idx[0], idx[1], idx[2]);
+			else assert(false);
+		}
+
+	private:
+		array_type _minval;
+		array_type _maxval;
+	};
+
 	struct Test_suite: public Test<Test_suite> {
 
 		typedef std::shared_ptr<Basic_test> value_type;
@@ -107,7 +152,7 @@ namespace test {
 				tests.end(),
 				std::back_inserter(_tests),
 				[] (Basic_test* rhs) {
-					return std::shared_ptr<Basic_test>(rhs);
+					return value_type(rhs);
 				}
 			);
 		}
@@ -164,36 +209,54 @@ namespace test {
 		if (!(x == y)) {
 			std::stringstream msg;
 			msg << "ERROR: " << text;
-			print_args(msg, std::forward<Args>(args)...);
 			msg << '\n';
-			msg << "CAUSE: \""
-				<< x << "\" != \"" << y << "\"";
+			msg << "CAUSE: values are not equal";
+			msg << '\n';
+			msg << "DEBUG: ";
+			msg << "value=\"" << x << "\", expected=\"" << y << "\", ";
+			print_args(msg, std::forward<Args>(args)...);
 			throw std::runtime_error(msg.str());
 		}
 	}
 
-	template<class Container1, class Container2>
-	void compare(const Container1& cnt1, const Container2& cnt2) {
+	template<class Container1, class Container2, class Func, class ... Args>
+	void do_compare(const Container1& cnt1, const Container2& cnt2, Func format, const char* text="input and output does not match", Args&& ... args) {
 		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
 		if (pair.first != cnt1.end()) {
 			auto pos = pair.first - cnt1.begin();
 			std::stringstream msg;
-			msg << "input and output does not match at i=" << pos << ":\n\""
-				<< *pair.first << "\"\n!=\n\"" << *pair.second << "\"";
+			msg << "ERROR: " << text;
+			msg << '\n';
+			msg << "CAUSE: containers' contents do not match\n";
+			msg << "DEBUG: ";
+			msg << "i=" << pos << ",first=\"" << format(*pair.first) << "\",second=\"" << format(*pair.second) << "\",";
+			print_args(msg, std::forward<Args>(args)...);
 			throw std::runtime_error(msg.str());
 		}
 	}
 
-	template<class Container1, class Container2>
-	void compare_bytes(const Container1& cnt1, const Container2& cnt2) {
-		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
-		if (pair.first != cnt1.end()) {
-			auto pos = pair.first - cnt1.begin();
-			std::stringstream msg;
-			msg << "input and output does not match at i=" << pos << ":\n\""
-				<< sysx::make_bytes(*pair.first) << "\"\n!=\n\"" << sysx::make_bytes(*pair.second) << "\"";
-			throw std::runtime_error(msg.str());
-		}
+	template<class Container1, class Container2, class ... Args>
+	void compare(const Container1& cnt1, const Container2& cnt2, const char* text="input and output does not match", Args&& ... args) {
+		typedef typename Container1::value_type value_type;
+		do_compare(
+			cnt1,
+			cnt2,
+			[] (const value_type& rhs) { return rhs; },
+			text,
+			std::forward<Args>(args)...
+		);
+	}
+
+	template<class Container1, class Container2, class ... Args>
+	void compare_bytes(const Container1& cnt1, const Container2& cnt2, const char* text="input and output does not match", Args&& ... args) {
+		typedef typename Container1::value_type value_type;
+		do_compare(
+			cnt1,
+			cnt2,
+			sysx::make_bytes<value_type>,
+			text,
+			std::forward<Args>(args)...
+		);
 	}
 
 	typedef std::chrono::nanoseconds::rep Time;
@@ -231,7 +294,7 @@ namespace test {
 		if (!invariant(obj)) {
 			std::stringstream msg;
 			msg << "invariant does not hold for "
-				<< typeid(Object).name()
+				<< demangle_name<Object>()
 				<< ": object=" << obj;
 			throw std::runtime_error(msg.str());
 		}

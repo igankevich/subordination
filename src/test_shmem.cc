@@ -94,9 +94,10 @@ struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 };
 
 int main(int argc, char* argv[]) {
-	test::Test_suite tests("Test suite: shared memory");
-	tests.add(new Test_shmem<char>);
-	tests.add(new Test_shmem<unsigned char>);
-	tests.add(new Test_shmembuf<char>);
+	test::Test_suite tests{"Test suite: shared memory", {
+		new Test_shmem<char>,
+		new Test_shmem<unsigned char>,
+		new Test_shmembuf<char>
+	}};
 	return tests.run();
 }

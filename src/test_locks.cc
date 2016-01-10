@@ -25,12 +25,12 @@ struct Parametric_test: public test::Test<Testname> {
 		const I max_threads = std::max(I(std::thread::hardware_concurrency()), I(2)*_minthreads);
 		for (I j=_minthreads; j<=max_threads; ++j) {
 			for (I i=0; i<=_maxpower; ++i) {
-				paramteric_run(j, I(1) << i);
+				parametric_run(j, I(1) << i);
 			}
 		}
 	}
 
-	virtual void paramteric_run(int_type nthreads, int_type increment) = 0;
+	virtual void parametric_run(int_type nthreads, int_type increment) = 0;
 
 private:
 	I _minthreads;
@@ -44,7 +44,7 @@ struct test_counter: public Parametric_test<test_counter<Mutex>> {
 	Parametric_test<test_counter<Mutex>>(minthr, maxpow) {}
 
 	void
-	paramteric_run(unsigned nthreads, unsigned increment) override {
+	parametric_run(unsigned nthreads, unsigned increment) override {
 		volatile unsigned counter = 0;
 		Mutex m;
 		std::vector<std::thread> threads;
@@ -123,7 +123,7 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 	test_queue(I nthreads_, I max_):
 	Parametric_test<this_type>(nthreads_, max_) {}
 
-	void paramteric_run(I nthreads, I max) override {
+	void parametric_run(I nthreads, I max) override {
 		typedef Thread_pool<I, Mutex, Semaphore> Pool;
 		std::vector<Pool*> thread_pool(nthreads);
 		std::for_each(thread_pool.begin(), thread_pool.end(), [] (Pool*& ptr) {
