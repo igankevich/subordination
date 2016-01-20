@@ -81,7 +81,7 @@ namespace factory {
 
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
-			typedef sysx::proc process_type;
+			typedef sysx::process process_type;
 			typedef basic_kernelbuf<sysx::shmembuf> ibuf_type;
 			typedef basic_kernelbuf<sysx::shmembuf> obuf_type;
 			typedef sysx::packetstream stream_type;
@@ -215,7 +215,7 @@ namespace factory {
 			typedef Managed_object<Server<T>> base_type;
 			typedef Server<T> base_server;
 			typedef typename base_server::kernel_type kernel_type;
-			typedef sysx::proc process_type;
+			typedef sysx::process process_type;
 			typedef basic_kernelbuf<sysx::shmembuf> ibuf_type;
 			typedef basic_kernelbuf<sysx::shmembuf> obuf_type;
 			typedef std::lock_guard<ibuf_type> ilock_type;
@@ -322,7 +322,7 @@ namespace factory {
 					olock_type lock(_obuf);
 					_ostream.begin_packet();
 					// TODO
-					// _ostream << 
+					// _ostream <<
 					append_payload(_obuf, buf);
 					_ostream.end_packet();
 				}
@@ -377,7 +377,7 @@ namespace factory {
 				}
 				this_log() << "starting app=" << app << std::endl;
 				lock_type lock(this->_mutex);
-				sysx::proc& p = _processes.add([&app,this] () {
+				sysx::process& p = _processes.add([&app,this] () {
 					_globalsem.wait();
 					return app.execute();
 				});
@@ -387,7 +387,7 @@ namespace factory {
 				_apps.emplace(app.id(), std::move(child));
 				_globalsem.notify_one();
 			}
-			
+
 			void
 			send(kernel_type* k) {
 				if (k->moves_everywhere()) {
@@ -470,7 +470,7 @@ namespace factory {
 			}
 
 			void
-			on_process_exit(sysx::proc& p, sysx::proc_info status) {
+			on_process_exit(sysx::process& p, sysx::proc_info status) {
 				sysx::pid_type pid = p.id();
 				lock_type lock(this->_mutex);
 				typename map_type::iterator
@@ -490,7 +490,7 @@ namespace factory {
 			}
 
 			map_type _apps;
-			sysx::procgroup _processes;
+			sysx::process_group _processes;
 			std::unordered_map<sysx::pid_type, key_type> _pid2app;
 			Global_semaphore _globalsem;
 			sysx::signal_semaphore _signalsem;

@@ -3,7 +3,9 @@
 
 #include <poll.h>
 #if !defined(POLLRDHUP)
-	#define POLLRDHUP 0
+	#define FACTORY_POLLRDHUP 0
+#else
+	#define FACTORY_POLLRDHUP POLLRDHUP
 #endif
 
 #include <stdx/paired_iterator.hh>
@@ -23,10 +25,10 @@ namespace sysx {
 		enum event_type: legacy_event {
 			In = POLLIN,
 			Out = POLLOUT,
-			Hup = POLLHUP | POLLRDHUP,
+			Hup = POLLHUP | FACTORY_POLLRDHUP,
 			Err = POLLERR | POLLNVAL,
 			Inout = POLLIN | POLLOUT,
-			Def = POLLRDHUP
+			Def = FACTORY_POLLRDHUP
 		};
 
 		friend constexpr legacy_event
@@ -72,11 +74,11 @@ namespace sysx {
 		fd() const noexcept {
 			return this->basic_event::fd;
 		}
-		
+
 		constexpr bool
 		bad_fd() const noexcept {
 			return this->fd() < 0;
-		} 
+		}
 
 		constexpr bool
 		in() const noexcept {
@@ -177,10 +179,10 @@ namespace sysx {
 	static_assert(sizeof(poll_event) == sizeof(basic_event),
 		"The size of poll_event does not match the size of ``struct pollfd''.");
 
-	template<class H>
+	template<class Handler>
 	struct event_poller {
 
-		typedef H handler_type;
+		typedef Handler handler_type;
 		typedef std::vector<poll_event> events_type;
 		typedef std::vector<handler_type> handlers_type;
 		typedef events_type::size_type size_type;
@@ -197,23 +199,23 @@ namespace sysx {
 
 		inline
 		event_poller(event_poller&& rhs) noexcept:
-			_pipe(std::move(rhs._pipe)),
-			_events(std::move(rhs._events)),
-			_handlers(std::move(rhs._handlers)),
-			_specials(std::move(rhs._specials))
-			{}
-	
+		_pipe(std::move(rhs._pipe)),
+		_events(std::move(rhs._events)),
+		_handlers(std::move(rhs._handlers)),
+		_specials(std::move(rhs._specials))
+		{}
+
 		void
 		notify_one() noexcept {
 			char c = '!';
 			this->_pipe.out().write(&c, sizeof(char));
 		}
-	
+
 		void
 		notify_all() noexcept {
 			notify_one();
 		}
-	
+
 		template<class Lock, class Pred>
 		void
 		wait(Lock& lock, Pred pred) {
@@ -224,7 +226,7 @@ namespace sysx {
 				success = do_wait();
 			}
 		}
-	
+
 		template<class Lock>
 		void
 		wait(Lock& lock) {
@@ -254,10 +256,10 @@ namespace sysx {
 			this->_events.push_back(ev);
 			this->_handlers.emplace_back(std::move(handler));
 		}
-	
+
 		void
 		disable(fd_type fd) noexcept {
-			events_type::iterator pos = this->find(poll_event{fd}); 
+			events_type::iterator pos = this->find(poll_event{fd});
 			if (pos != this->_events.end()) {
 				std::clog << "ignoring fd=" << pos->fd() << std::endl;
 				pos->disable();
@@ -366,7 +368,7 @@ namespace sysx {
 			nspecials += _specials.size();
 			_specials.clear();
 		}
-	
+
 		bool
 		do_wait() {
 
@@ -389,7 +391,7 @@ namespace sysx {
 				#endif
 				for_each_pipe_fd(&event_poller::consume);
 			}
-			
+
 			return success;
 		}
 
@@ -414,7 +416,7 @@ namespace sysx {
 				while ((c = ::read(ev.fd(), tmp, n)) != -1);
 			}
 		}
-	
+
 		sysx::pipe _pipe;
 		events_type _events;
 		handlers_type _handlers;

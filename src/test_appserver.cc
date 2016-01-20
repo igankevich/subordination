@@ -2,6 +2,7 @@
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 #include <factory/server/app_server.hh>
+#include <factory/server/pipe_server.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
@@ -118,7 +119,7 @@ struct Test_socket: public Kernel, Identifiable_tag {
 			in >> _data[i];
 	}
 
-	std::vector<Datum> data() const { 
+	std::vector<Datum> data() const {
 		this_log()
 			<< "parent.id = " << (parent() ? parent()->id() : 12345)
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
@@ -143,7 +144,7 @@ struct Test_socket: public Kernel, Identifiable_tag {
 			}
 		};
 	}
-	
+
 private:
 	std::vector<Datum> _data;
 };

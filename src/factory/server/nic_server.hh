@@ -62,6 +62,7 @@ namespace factory {
 
 			virtual
 			~Remote_Rserver() {
+				this->recover_kernels();
 				stdx::front_pop_iterator<pool_type> it_end;
 				std::for_each(stdx::front_popper(_buffer),
 					it_end, [] (kernel_type* rhs) { delete rhs; });
@@ -276,22 +277,21 @@ namespace factory {
 		};
 
 		template<class T, class Socket>
-		struct NIC_server: public Proxy_server<T,sysx::endpoint,Remote_Rserver<T,Socket>> {
+		struct NIC_server: public Proxy_server<T,Remote_Rserver<T,Socket>> {
 
 			typedef Socket socket_type;
 
-			typedef Proxy_server<T,sysx::endpoint,Remote_Rserver<T,Socket>> base_server;
+			typedef Proxy_server<T,Remote_Rserver<T,Socket>> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
 			using typename base_server::sem_type;
 			using typename base_server::kernel_pool;
-			using typename base_server::upstream_type;
 			using typename base_server::server_type;
 
 			using base_server::poller;
-			using base_server::_upstream;
 
+			typedef std::map<sysx::endpoint,server_type> upstream_type;
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
 			typedef stdx::log<NIC_server> this_log;
@@ -308,7 +308,6 @@ namespace factory {
 			void remove_server(server_type* ptr) override {
 				// TODO: occasional ``Bad file descriptor''
 				this_log() << "Removing server " << *ptr << std::endl;
-				ptr->recover_kernels();
 				_upstream.erase(ptr->vaddr());
 			}
 
@@ -502,6 +501,7 @@ namespace factory {
 			}
 
 			socket_type _socket;
+			upstream_type _upstream;
 		};
 
 	}

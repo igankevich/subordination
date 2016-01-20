@@ -17,7 +17,7 @@ namespace factory {
 			typedef std::function<value_type(const void*,key_type)> getparam_type;
 
 			name_type _name;
-			construct_type _construct;
+			construct_type _construct = [](){ return nullptr; };
 			params_type _params;
 			getparam_type _getparam;
 
@@ -173,7 +173,7 @@ namespace factory {
 		private:
 			std::unordered_set<Managed_object<T>*> _children;
 		};
-	
+
 	}
 
 }

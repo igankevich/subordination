@@ -156,6 +156,14 @@ namespace sysx {
 			return out << "{fd=" << rhs._fd << '}';
 		}
 
+		void
+		remap(fd_type new_fd) {
+			fd_type ret_fd = bits::check(::dup2(_fd, new_fd),
+				__FILE__, __LINE__, __func__);
+			this->close();
+			_fd = ret_fd;
+		}
+
 	private:
 
 		flag_type

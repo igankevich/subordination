@@ -1,8 +1,6 @@
 #ifndef FACTORY_SERVER_PROXY_SERVER_HH
 #define FACTORY_SERVER_PROXY_SERVER_HH
 
-#include <map>
-
 #include <stdx/for_each.hh>
 #include <stdx/field_iterator.hh>
 #include <stdx/front_popper.hh>
@@ -27,11 +25,10 @@ namespace factory {
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
 			sysx::event_poller<Rserver*>>;
 
-		template<class T, class Key, class Rserver>
+		template<class T, class Rserver>
 		struct Proxy_server: public Proxy_server_base<T,Rserver> {
 
 			typedef Rserver server_type;
-			typedef std::map<Key, server_type> upstream_type;
 			typedef stdx::log<Proxy_server> this_log;
 			typedef server_type* handler_type;
 
@@ -90,7 +87,7 @@ namespace factory {
 			process_kernels() = 0;
 
 			virtual void
-			accept_connection(sysx::poll_event&) = 0;
+			accept_connection(sysx::poll_event&) {}
 
 		private:
 
@@ -157,7 +154,6 @@ namespace factory {
 
 		protected:
 
-			upstream_type _upstream;
 			int _stop_iterations = 0;
 			static const int MAX_STOP_ITERATIONS = 13;
 		};

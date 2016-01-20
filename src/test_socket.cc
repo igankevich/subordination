@@ -137,7 +137,7 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 			in >> _data[i];
 	}
 
-	std::vector<Datum> data() const { 
+	std::vector<Datum> data() const {
 		this_log()
 			<< "parent.id = " << (parent() ? parent()->id() : 12345)
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
@@ -167,7 +167,7 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 //		t->id(1);
 //		t->name("Test_socket");
 //	}
-	
+
 private:
 	std::vector<Datum> _data;
 };
@@ -284,7 +284,7 @@ main(int argc, char* argv[]) {
 			<< ",client=" << client_endpoint
 			<< std::endl;
 		uint32_t sleep = 0;
-		sysx::procgroup procs;
+		sysx::process_group procs;
 		procs.add([&argv, sleep] () {
 			sysx::this_process::env("START_ID", 1000);
 			return sysx::this_process::execute(argv[0], 'x', sleep);
@@ -295,8 +295,8 @@ main(int argc, char* argv[]) {
 			sysx::this_process::env("START_ID", 2000);
 			return sysx::this_process::execute(argv[0], 'y', sleep);
 		});
-		this_log() << "sysx::proc group = " << procs << std::endl;
-		procs.wait([&retval] (const sysx::proc& proc, sysx::proc_info stat) {
+		this_log() << "sysx::process group = " << procs << std::endl;
+		procs.wait([&retval] (const sysx::process& proc, sysx::proc_info stat) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			this_log() << "proc exited proc=" << proc
 				<< ",status=" << stat.exit_code() << std::endl;

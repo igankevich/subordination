@@ -3,42 +3,42 @@
 #include "test.hh"
 
 		std::vector<Address_range> discover_neighbours() {
-		
+
 			struct ::ifaddrs* ifaddr;
 			check(::getifaddrs(&ifaddr),
 				__FILE__, __LINE__, __func__);
-		
+
 			std::set<Address_range> ranges;
-		
+
 			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-	
+
 				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
 					// ignore non-internet networks
 					continue;
 				}
-	
+
 				sysx::endpoint addr(*ifa->ifa_addr);
 				if (addr.address() == sysx::endpoint("127.0.0.1", 0).address()) {
 					// ignore localhost and non-IPv4 addresses
 					continue;
 				}
-	
+
 				sysx::endpoint netmask(*ifa->ifa_netmask);
 				if (netmask.address() == sysx::endpoint("255.255.255.255",0).address()) {
 					// ignore wide-area networks
 					continue;
 				}
-		
+
 				uint32_t addr_long = addr.address();
 				uint32_t mask_long = netmask.address();
-		
+
 				uint32_t start = (addr_long & mask_long) + 1;
 				uint32_t end = (addr_long & mask_long) + (~mask_long);
-		
+
 				ranges.insert(Address_range(start, addr_long));
 				ranges.insert(Address_range(addr_long+1, end));
 			}
-		
+
 			// combine overlaping ranges
 			std::vector<Address_range> sorted_ranges;
 			Address_range prev_range;
@@ -56,27 +56,27 @@
 					}
 				}
 			});
-		
+
 			if (!prev_range.empty()) {
 				sorted_ranges.push_back(prev_range);
 			}
-		
+
 			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
 				[] (const Address_range& range)
 			{
 				std::clog << sysx::ipv4_addr(range.start()) << '-' << sysx::ipv4_addr(range.end()) << '\n';
 			});
-		
+
 			::freeifaddrs(ifaddr);
-		
+
 			return sorted_ranges;
 		}
 		sysx::endpoint get_bind_address() {
 
 			sysx::endpoint ret;
-		
+
 			sysx::ifaddrs addrs;
-			sysx::ifaddrs::iterator result = 
+			sysx::ifaddrs::iterator result =
 			std::find_if(addrs.begin(), addrs.end(), [] (const sysx::ifaddrs::ifaddrs_type& rhs) {
 
 				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
@@ -95,13 +95,13 @@
 					// ignore wide-area networks
 					return false;
 				}
-		
+
 				return true;
 			});
 			if (result != addrs.end()) {
 				ret = sysx::endpoint(*result->ifa_addr);
 			}
-		
+
 			return ret;
 		}
 
@@ -256,7 +256,7 @@ struct Compare_distance {
 //		return lhs.second.metric() < rhs.second.metric();
 //		return lhs.second.metric() < rhs.second.metric()
 //			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
-		
+
 		return std::make_pair(addr_distance(_from, lhs.first), lhs.first)
 			< std::make_pair(addr_distance(_from, rhs.first), rhs.first);
 	}
@@ -270,21 +270,21 @@ private:
 	constexpr static uint32_t abs_sub(uint32_t a, uint32_t b) {
 		return a < b ? b-a : a-b;
 	}
-	
+
 	constexpr static uint32_t lvl_sub(uint32_t a, uint32_t b) {
 		return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
 	}
 
 	static const uint32_t p = 1;
 	static const uint32_t fanout = UINT32_C(1) << p;
-	
+
 	static std::pair<uint32_t, uint32_t> addr_level_num(sysx::endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
 		uint32_t lvl = log(pos, p);
 		uint32_t num = pos - (UINT32_C(1) << (lvl*p));
 		return std::make_pair(lvl, num);
 	}
-	
+
 	static std::pair<uint32_t, uint32_t> addr_distance(sysx::endpoint lhs, sysx::endpoint rhs) {
 		auto p1 = addr_level_num(lhs);
 		auto p2 = addr_level_num(rhs);
@@ -508,7 +508,7 @@ struct Profiler: public Mobile<Profiler> {
 //	uint32_t num_peers() const { return _peers.size(); }
 
 	Time time() const { return _time; }
-	
+
 	static void init_type(Type* t) {
 		t->id(2);
 	}
@@ -597,7 +597,7 @@ private:
 	/// determine addr to check next
 	sysx::endpoint next_scan_addr() {
 		auto res = find(_servers.begin(), _servers.end(), _scan_addr);
-		return (res == _servers.end() || res == _servers.begin()) 
+		return (res == _servers.end() || res == _servers.begin())
 			? _servers.back()
 			: *--res;
 	}
@@ -615,7 +615,7 @@ private:
 		}
 		return st;
 	}
-		
+
 	void try_to_connect(sysx::endpoint addr) {
 		Ping* ping = new Ping;
 		ping->to(addr);
@@ -725,7 +725,7 @@ struct Negotiator: public Mobile<Negotiator> {
 		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
 		remote_server()->send(this);
 	}
-	
+
 	void write_impl(packetstream& out) {
 		// TODO: if moves_upstream
 		out << _old_principal << _new_principal << _stop;
@@ -754,7 +754,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 
 	Master_negotiator(sysx::endpoint old, sysx::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
-	
+
 	void act() {
 		if (_old_principal) {
 			send_negotiator(_old_principal);
@@ -765,7 +765,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 	void react(Kernel* k) {
 		this_log()
 			<< "Negotiator returned from " << k->from()
-			<< " with result=" << k->result() << std::endl; 
+			<< " with result=" << k->result() << std::endl;
 //		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
 		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
 			this->result(k->result());
@@ -823,7 +823,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 //			std::this_thread::sleep_for(amount);
 //			prog_start = current_time_nano();
 //		}
-		exiter = std::thread([this] () { 
+		exiter = std::thread([this] () {
 			std::this_thread::sleep_for(std::chrono::seconds(10));
 			this_log() << "Hail the new king! addr="
 				<< _peers.this_addr()
@@ -859,7 +859,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				run_discovery();
 				_scanner = nullptr;
 			}
-		} else 
+		} else
 		if (_discoverer == k) {
 			if (k->result() == Result::SUCCESS) {
 				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
@@ -902,7 +902,7 @@ private:
 		}
 		upstream(the_server(), _scanner);
 	}
-	
+
 	void run_discovery() {
 		this_log() << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -1040,14 +1040,14 @@ struct App {
 		if (argc <= 2) {
 			try {
 				uint32_t npeers = num_peers();
-				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1"; 
+				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1";
 				generate_all_peers(npeers, base_ip);
 				if (write_cache()) {
 					write_cache_all();
 					return 0;
 				}
 
-				sysx::procgroup processes;
+				sysx::process_group processes;
 				int start_id = 1000;
 				for (sysx::endpoint endpoint : all_peers) {
 					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
@@ -1061,7 +1061,7 @@ struct App {
 				}
 
 				this_log() << "Forked " << processes << std::endl;
-				
+
 				retval = processes.wait();
 
 			} catch (std::exception& e) {

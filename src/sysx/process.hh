@@ -189,34 +189,34 @@ namespace sysx {
 	typedef basic_status<stat_type> proc_status;
 	typedef basic_status<siginfo_type> proc_info;
 
-	struct proc {
+	struct process {
 
 		inline
-		proc() noexcept = default;
+		process() noexcept = default;
 
 		template<class F>
 		explicit inline
-		proc(F f) {
+		process(F f) {
 			run(f);
 		}
 
-		proc(const proc&) = delete;
+		process(const process&) = delete;
 
 		inline
-		proc(proc&& rhs) noexcept:
+		process(process&& rhs) noexcept:
 		_pid(rhs._pid)
 		{
 			rhs._pid = 0;
 		}
 
-		~proc() {
+		~process() {
 			if (_pid > 0) {
 		   		do_kill(SIGHUP);
 			}
 		}
 
 		inline
-		proc& operator=(proc&& rhs) noexcept {
+		process& operator=(process&& rhs) noexcept {
 			_pid = rhs._pid;
 			rhs._pid = 0;
 			return *this;
@@ -264,7 +264,7 @@ namespace sysx {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const proc& rhs) {
+		operator<<(std::ostream& out, const process& rhs) {
 			return out << '{'
 				<< "id=" << rhs.id()
 				<< ",gid=" << rhs.group_id()
@@ -301,12 +301,12 @@ namespace sysx {
 		pid_type _pid = 0;
 	};
 
-	struct procgroup {
+	struct process_group {
 
 		template<class F>
-		proc&
+		process&
 		add(F child_main) {
-			proc p(child_main);
+			process p(child_main);
 			if (_procs.empty()) {
 				_gid = p.id();
 			}
@@ -318,7 +318,7 @@ namespace sysx {
 		int
 		wait() {
 			int ret = 0;
-			for (proc& p : _procs) {
+			for (process& p : _procs) {
 				sysx::proc_status x = p.wait();
 				ret += std::abs(x.exit_code() | x.term_signal());
 			}
@@ -332,7 +332,7 @@ namespace sysx {
 				sysx::proc_info status = do_wait(flags);
 				auto result = std::find_if(
 					_procs.begin(), _procs.end(),
-					[&status] (const proc& p) {
+					[&status] (const process& p) {
 						return p.id() == status.pid();
 					}
 				);
@@ -357,10 +357,10 @@ namespace sysx {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const procgroup& rhs) {
+		operator<<(std::ostream& out, const process_group& rhs) {
 			out << "{gid=" << rhs._gid << ",[";
 			std::copy(rhs._procs.begin(), rhs._procs.end(),
-				stdx::intersperse_iterator<proc>(out, ","));
+				stdx::intersperse_iterator<process>(out, ","));
 			out << "]}";
 			return out;
 		}
@@ -376,7 +376,7 @@ namespace sysx {
 			return sysx::proc_info(info);
 		}
 
-		std::vector<proc> _procs;
+		std::vector<process> _procs;
 		pid_type _gid = 0;
 	};
 
