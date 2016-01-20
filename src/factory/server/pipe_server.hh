@@ -2,6 +2,7 @@
 #define FACTORY_SERVER_PIPE_SERVER_HH
 
 #include <map>
+#include <cassert>
 
 #include <stdx/log.hh>
 #include <stdx/front_popper.hh>
@@ -25,12 +26,14 @@ namespace factory {
 			using typename base_server::kernel_type;
 			typedef basic_kernelbuf<sysx::fildesbuf> kernelbuf_type;
 			typedef Kernel_stream<kernel_type> stream_type;
+			typedef stdx::log<Pipe_rserver> this_log;
 
 			Pipe_rserver(sysx::process&& child, sysx::two_way_pipe&& pipe):
 			_childproc(child),
-			_datapipe(pipe),
 			_outbuf(pipe.parent_out()),
-			_ostream(&_outbuf)
+			_ostream(&_outbuf),
+			_inbuf(pipe.parent_in()),
+			_istream(&_inbuf)
 			{}
 
 			const sysx::process&
@@ -43,12 +46,96 @@ namespace factory {
 				_ostream << *kernel;
 			}
 
+			void
+			prepare(sysx::poll_event& event) {
+				if (event.fd() == _outbuf.fd()) {
+					if (_outbuf.dirty()) {
+						event.setev(sysx::poll_event::Out);
+					} else {
+						event.unsetev(sysx::poll_event::Out);
+					}
+				}
+			}
+
+			void
+			handle(sysx::poll_event& event) {
+				if (event.fd() == _outbuf.fd()) {
+					if (_outbuf.dirty()) {
+						event.setrev(sysx::poll_event::Out);
+					}
+					if (event.out() && !event.hup()) {
+						_ostream.flush();
+						if (!_outbuf.dirty()) {
+							this_log() << "Flushed." << std::endl;
+						}
+					}
+				} else {
+					assert(event.fd() == _inbuf.fd());
+					if (event.in()) {
+						_istream.fill();
+						while (_istream.read_packet()) {
+							read_and_receive_kernel();
+						}
+					}
+				}
+			}
+
 		private:
 
+			void read_and_receive_kernel() {
+				app_type app;
+				_stream >> app;
+				this_log() << "recv ok" << std::endl;
+				this_log() << "recv app=" << app << std::endl;
+				if (app != Application::ROOT) {
+					this->app_server()->forward(app, _vaddr, _packetbuf);
+				} else {
+					Type<kernel_type>::read_object(this->factory()->types(), _stream,
+						[this,app] (kernel_type* k) {
+							receive_kernel(k, app);
+						}
+					);
+				}
+			}
+
+			void
+			receive_kernel(kernel_type* k, app_type app) {
+				bool ok = true;
+				k->from(_vaddr);
+				k->setapp(app);
+				this_log()
+					<< "recv kernel=" << *k
+					<< std::endl;
+				if (k->moves_downstream()) {
+					this->clear_kernel_buffer(k);
+				} else if (k->principal_id()) {
+					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
+					if (p == nullptr) {
+						k->result(Result::NO_PRINCIPAL_FOUND);
+						ok = false;
+					}
+					k->principal(p);
+				}
+				if (!ok) {
+					return_kernel(k);
+				} else {
+					this->root()->send(k);
+				}
+			}
+
+			void return_kernel(kernel_type* k) {
+				this_log()
+					<< "No principal found for "
+					<< *k << std::endl;
+				k->principal(k->parent());
+				this->send(k);
+			}
+
 			sysx::process _childproc;
-			sysx::two_way_pipe _datapipe;
 			kernelbuf_type _outbuf;
 			stream_type _ostream;
+			kernelbuf_type _inbuf;
+			stream_type _istream;
 
 		};
 
@@ -105,10 +192,6 @@ namespace factory {
 
 			void
 			add(const app_type& app) {
-				if (_apps.count(app.id()) > 0) {
-					throw Error("trying to add an existing app",
-						__FILE__, __LINE__, __func__);
-				}
 				this_log() << "starting app=" << app << std::endl;
 				lock_type lock(this->_mutex);
 				sysx::two_way_pipe data_pipe;
@@ -119,11 +202,15 @@ namespace factory {
 					return app.execute();
 				});
 				data_pipe.close_in_parent();
+				sysx::fd_type parent_in = data_pipe.parent_in().get_fd();
+				sysx::fd_type parent_out = data_pipe.parent_out().get_fd();
 				rserver_type child(std::move(p), std::move(data_pipe));
 				child.setparent(this);
-				_apps.emplace(app.id(), std::move(child));
-//				poller().emplace(sysx::poll_event{fd, events, revents},
-//					handler_type(&result.first->second));
+				auto result = _apps.emplace(app.id(), std::move(child));
+				poller().emplace(sysx::poll_event{parent_in, sysx::poll_event::In, 0},
+						handler_type(&result.first->second));
+				poller().emplace(sysx::poll_event{parent_out, 0, 0},
+						handler_type(&result.first->second));
 				_globalsem.notify_one();
 			}
 
