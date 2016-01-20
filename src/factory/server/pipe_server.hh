@@ -10,6 +10,7 @@
 #include <sysx/process.hh>
 #include <sysx/pipe.hh>
 #include <sysx/fildesbuf.hh>
+#include <sysx/packetstream.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>
@@ -25,8 +26,14 @@ namespace factory {
 			typedef Managed_object<Server<T>> base_server;
 			using typename base_server::kernel_type;
 			typedef basic_kernelbuf<sysx::fildesbuf> kernelbuf_type;
-			typedef Kernel_stream<kernel_type> stream_type;
+			typedef sysx::packetstream stream_type;
+			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Pipe_rserver> this_log;
+
+			Category
+			category() const noexcept override {
+				return Category{"pipe_rserver"};
+			}
 
 			Pipe_rserver(sysx::process&& child, sysx::two_way_pipe&& pipe):
 			_childproc(child),
@@ -43,7 +50,10 @@ namespace factory {
 
 			void
 			send(kernel_type* kernel) override {
-				_ostream << *kernel;
+				_ostream.begin_packet();
+				_ostream << kernel->app() << kernel->from();
+				Type<kernel_type>::write_object(*kernel, _ostream);
+				_ostream.end_packet();
 			}
 
 			void
@@ -84,24 +94,23 @@ namespace factory {
 
 			void read_and_receive_kernel() {
 				app_type app;
-				_stream >> app;
+				_istream >> app;
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
-				if (app != Application::ROOT) {
-					this->app_server()->forward(app, _vaddr, _packetbuf);
-				} else {
-					Type<kernel_type>::read_object(this->factory()->types(), _stream,
+				if (app == Application::ROOT) {
+					Type<kernel_type>::read_object(this->factory()->types(), _istream,
 						[this,app] (kernel_type* k) {
 							receive_kernel(k, app);
 						}
 					);
+				} else {
+					// TODO: forward(Kernel_header& hdr, sysx::packetstream&)
 				}
 			}
 
 			void
 			receive_kernel(kernel_type* k, app_type app) {
 				bool ok = true;
-				k->from(_vaddr);
 				k->setapp(app);
 				this_log()
 					<< "recv kernel=" << *k

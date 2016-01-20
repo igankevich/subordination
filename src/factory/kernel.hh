@@ -88,9 +88,8 @@ namespace factory {
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
 			typedef std::bitset<1> Flags;
-			typedef Application::id_type app_type;
 			typedef stdx::log<Basic_kernel> this_log;
-			
+
 			enum struct Flag {
 				DELETED = 0
 			};
@@ -157,10 +156,50 @@ namespace factory {
 			Flags _flags = 0;
 		};
 
-		struct Mobile_kernel: public Basic_kernel {
+		struct Kernel_header {
+
+			typedef Application::id_type app_type;
+
+			virtual sysx::endpoint
+			from() const noexcept {
+				return _src;
+			}
 
 			virtual void
-			read(sysx::packetstream& in) { 
+			from(sysx::endpoint rhs) noexcept {
+				_src = rhs;
+			}
+
+			virtual sysx::endpoint
+			to() const noexcept {
+				return _dst;
+			}
+
+			virtual void
+			to(sysx::endpoint rhs) noexcept {
+				_dst = rhs;
+			}
+
+			app_type
+			app() const noexcept {
+				return this->_app;
+			}
+
+			void
+			setapp(app_type rhs) noexcept {
+				this->_app = rhs;
+			}
+
+		private:
+			sysx::endpoint _src{};
+			sysx::endpoint _dst{};
+			Application::id_type _app = 0;
+		};
+
+		struct Mobile_kernel: public Basic_kernel, public Kernel_header {
+
+			virtual void
+			read(sysx::packetstream& in) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r;
 				in >> r;
@@ -190,48 +229,13 @@ namespace factory {
 				return _id != ROOT_ID;
 			}
 
-			virtual sysx::endpoint
-			from() const noexcept {
-				return _src;
-			}
-
-			virtual void
-			from(sysx::endpoint rhs) noexcept {
-				_src = rhs;
-			}
-
-			virtual sysx::endpoint
-			to() const noexcept {
-				return _dst;
-			}
-
-			virtual void
-			to(sysx::endpoint rhs) noexcept {
-				_dst = rhs;
-			}
-
 			bool
 			operator==(const Mobile_kernel& rhs) const noexcept {
 				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
 			}
 
-			app_type
-			app() const noexcept {
-				return this->_app;
-			} 
-
-			void
-			setapp(app_type rhs) noexcept {
-				this->_app = rhs;
-			}
-
 		private:
-
 			Id _id = ROOT_ID;
-			sysx::endpoint _src{};
-			sysx::endpoint _dst{};
-			Application::id_type _app = 0;
-
 		};
 
 		template<class Config>
@@ -404,9 +408,9 @@ namespace factory {
 			operator<<(std::ostream& out, const Principal& rhs) {
 				return out << '{'
 					<< (rhs.moves_upstream()   ? 'u' : '-')
-					<< (rhs.moves_downstream() ? 'd' : '-') 
-					<< (rhs.moves_somewhere()  ? 's' : '-') 
-					<< (rhs.moves_everywhere()  ? 'b' : '-') 
+					<< (rhs.moves_downstream() ? 'd' : '-')
+					<< (rhs.moves_somewhere()  ? 's' : '-')
+					<< (rhs.moves_everywhere()  ? 'b' : '-')
 					<< ",tp=" << rhs.type()
 					<< ",id=" << rhs.id()
 					<< ",src=" << rhs.from()
@@ -417,7 +421,7 @@ namespace factory {
 					<< ",principal=" << rhs._principal
 					<< '}';
 			}
-		
+
 		public:
 			template<class S>
 			void
@@ -502,9 +506,9 @@ namespace factory {
 	public:
 		Map(F f_, G g_, I a_, I b_, I bs_=1):
 			f(f_), g(g_), a(a_), b(b_), bs(bs_), n(0), m(calc_m()) {}
-	
+
 		bool is_profiled() const { return false; }
-	
+
 		struct Worker: public factory::Kernel {
 			Worker(F& f_, I a_, I b_):
 				f(f_), a(a_), b(b_) {}
@@ -515,28 +519,28 @@ namespace factory {
 			F& f;
 			I a, b;
 		};
-	
+
 		void act() {
 			for (I i=a; i<b; i+=bs) upstream(the_server(), new Worker(f, i, std::min(i+bs, b)));
 		}
-	
+
 		void react(factory::Kernel* kernel) {
 			Worker* w = dynamic_cast<Worker*>(kernel);
 			I x1 = w->a, x2 = w->b;
 			for (I i=x1; i<x2; ++i) g(i);
 			if (++n == m) commit(the_server());
 		}
-	
+
 	private:
 		I calc_m() const { return (b-a)/bs + ((b-a)%bs == 0 ? 0 : 1); }
-	
+
 	private:
 		F f;
 		G g;
 		I a, b, bs, n, m;
 	};
-	
-	
+
+
 	template<class F, class G, class I>
 	Map<F, G, I>* mapreduce(F f, G g, I a, I b, I bs=1) {
 		return new Map<F, G, I>(f, g, a, b, bs);
