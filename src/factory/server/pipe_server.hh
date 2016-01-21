@@ -54,6 +54,9 @@ namespace factory {
 				_ostream << kernel->app() << kernel->from();
 				Type<kernel_type>::write_object(*kernel, _ostream);
 				_ostream.end_packet();
+				this_log() << __func__ << '('
+					<< stdx::format_fields(this_log(), "kernel", *kernel)
+					<< ')' << std::endl;
 			}
 
 			void
@@ -81,6 +84,7 @@ namespace factory {
 					}
 				} else {
 					assert(event.fd() == _inbuf.fd());
+					assert(!event.out() || event.hup());
 					if (event.in()) {
 						_istream.fill();
 						while (_istream.read_packet()) {
@@ -110,11 +114,11 @@ namespace factory {
 
 			void
 			receive_kernel(kernel_type* k, app_type app) {
-				bool ok = true;
 				k->setapp(app);
-				this_log()
-					<< "recv kernel=" << *k
-					<< std::endl;
+				this_log() << __func__ << '('
+					<< stdx::format_fields(this_log(), "kernel", *k)
+					<< ')' << std::endl;
+				bool ok = true;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
 				} else if (k->principal_id()) {
