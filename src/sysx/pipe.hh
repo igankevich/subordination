@@ -3,6 +3,8 @@
 
 #include <unistd.h>
 
+#include <stdx/log.hh>
+
 #include <sysx/bits/check.hh>
 #include <sysx/bits/safe_calls.hh>
 #include <sysx/fildes.hh>
@@ -33,6 +35,10 @@ namespace sysx {
 		inline
 		pipe(pipe&& rhs) noexcept:
 			_fds{std::move(rhs._fds[0]), std::move(rhs._fds[1])}
+		{}
+
+		pipe(fd_type in, fd_type out) noexcept:
+		_fds{sysx::fildes(in), sysx::fildes(out)}
 		{}
 
 		inline
@@ -67,6 +73,12 @@ namespace sysx {
 		void close() {
 			in().close();
 			out().close();
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const pipe& rhs) {
+			return stdx::format_fields(out, "in", rhs.out(),
+				"out", rhs.in());
 		}
 
 	private:
@@ -129,6 +141,23 @@ namespace sysx {
 		void
 		close_unused() {
 			is_owner() ? close_in_parent() : close_in_child();
+		}
+
+		void
+		validate() {
+			if (is_owner()) {
+				parent_in().validate();
+				parent_out().validate();
+			} else {
+				child_in().validate();
+				child_out().validate();
+			}
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const two_way_pipe& rhs) {
+			return stdx::format_fields(out, "pipe1", rhs._pipe1,
+				"pipe2", rhs._pipe2);
 		}
 
 	private:

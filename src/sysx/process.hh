@@ -202,6 +202,10 @@ namespace sysx {
 
 		process(const process&) = delete;
 
+		process(pid_type rhs) noexcept:
+		_pid(rhs)
+		{}
+
 		inline
 		process(process&& rhs) noexcept:
 		_pid(rhs._pid)
@@ -211,7 +215,7 @@ namespace sysx {
 
 		~process() {
 			if (_pid > 0) {
-		   		do_kill(SIGHUP);
+		   		do_kill(SIGTERM);
 			}
 		}
 

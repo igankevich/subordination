@@ -75,9 +75,12 @@ namespace factory {
 					process_kernels_if_any();
 					accept_connections_if_any();
 					handle_events();
+					remove_servers_if_any();
 				}
+				this_log() << "do_run while ended" << std::endl;
 				// prevent double free or corruption
 				poller().clear();
+				this_log() << "do_run ended" << std::endl;
 			}
 
 			virtual void
@@ -95,10 +98,17 @@ namespace factory {
 			prepare_poll_events() {
 				poller().for_each_ordinary_fd(
 					[this] (sysx::poll_event& ev, handler_type& h) {
+						h->prepare(ev);
+					}
+				);
+			}
+
+			void
+			remove_servers_if_any() {
+				poller().for_each_ordinary_fd(
+					[this] (sysx::poll_event& ev, handler_type& h) {
 						if (!ev) {
 							this->remove_server(h);
-						} else {
-							h->prepare(ev);
 						}
 					}
 				);

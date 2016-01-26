@@ -53,7 +53,7 @@ namespace factory {
 			int32_t _saved_nthreads = 0;
 			std::condition_variable _semaphore;
 		};
-	
+
 		enum struct server_state {
 			initial,
 			started,
@@ -134,6 +134,12 @@ namespace factory {
 			typedef typename Config::app_server App_server;
 			typedef typename Config::principal_server Principal_server;
 
+			Server() = default;
+			~Server() = default;
+			Server(Server&&) = default;
+			Server(const Server&) = delete;
+			Server& operator=(Server&) = delete;
+
 			virtual void send(kernel_type*) = 0;
 			virtual void send(kernel_type**, size_t) {}
 
@@ -183,7 +189,7 @@ namespace factory {
 			typedef Lock lock_type;
 			typedef Semaphore sem_type;
 			typedef std::vector<std::unique_ptr<kernel_type>> kernel_sack;
-			
+
 			Server_with_pool() = default;
 
 			explicit
@@ -300,7 +306,7 @@ namespace factory {
 				return std::thread(&Server_with_pool::run, rhs,
 					rhs->global_context());
 			}
-			
+
 		protected:
 			kernel_pool _kernels;
 			thread_pool _threads;

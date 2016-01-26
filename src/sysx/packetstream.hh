@@ -1,6 +1,7 @@
 #ifndef SYSX_PACKETSTREAM_HH
 #define SYSX_PACKETSTREAM_HH
 
+#include <cassert>
 #include <istream>
 #include <ostream>
 
@@ -58,6 +59,13 @@ namespace sysx {
 		bool
 		read_packet() {
 			return _buf->read_packet();
+		}
+
+		void
+		append_payload(basic_packetstream& rhs) {
+			assert(_buf != nullptr);
+			assert(rhs._buf != nullptr);
+			stdx::append_payload(*_buf, *rhs._buf);
 		}
 
 		basic_packetstream& operator<<(bool rhs) { return write(rhs ? char(1) : char(0)); }

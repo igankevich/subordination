@@ -83,7 +83,7 @@ namespace factory {
 
 		bool
 		dirty() const {
-			return pptr() != epptr();
+			return pptr() != pbase();
 		}
 
 		void

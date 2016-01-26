@@ -8,6 +8,8 @@
 	#define FACTORY_POLLRDHUP POLLRDHUP
 #endif
 
+#include <cassert>
+
 #include <stdx/paired_iterator.hh>
 #include <stdx/unlock_guard.hh>
 
@@ -63,6 +65,11 @@ namespace sysx {
 		constexpr legacy_event
 		revents() const noexcept {
 			return this->basic_event::revents;
+		}
+
+		constexpr legacy_event
+		events() const noexcept {
+			return this->basic_event::events;
 		}
 
 		inline void
@@ -166,11 +173,14 @@ namespace sysx {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const poll_event& rhs) {
-			return out << "{fd=" << rhs.fd() << ",ev="
+			return out << "{fd=" << rhs.fd() << ",rev="
 				<< (rhs.in() ? 'r' : '-')
 				<< (rhs.out() ? 'w' : '-')
 				<< (rhs.hup() ? 'c' : '-')
 				<< (rhs.err() ? 'e' : '-')
+				<< ",ev="
+				<< (rhs.events() & poll_event::In ? 'r' : '-')
+				<< (rhs.events() & poll_event::Out ? 'w' : '-')
 				<< '}';
 		}
 
@@ -191,7 +201,9 @@ namespace sysx {
 		event_poller():
 		_pipe(),
 		_events{poll_event{this->_pipe.in().get_fd(), poll_event::In}}
-		{}
+		{
+			assert_invariant();
+		}
 
 		~event_poller() = default;
 		event_poller(const event_poller&) = delete;
@@ -203,7 +215,9 @@ namespace sysx {
 		_events(std::move(rhs._events)),
 		_handlers(std::move(rhs._handlers)),
 		_specials(std::move(rhs._specials))
-		{}
+		{
+			assert_invariant();
+		}
 
 		void
 		notify_one() noexcept {
@@ -241,7 +255,9 @@ namespace sysx {
 		inline void
 		clear() noexcept {
 			this->_events.erase(special_begin(), _events.end());
+			this->_nspecials = 0;
 			this->_handlers.clear();
+			assert_invariant();
 		}
 
 		void
@@ -255,6 +271,7 @@ namespace sysx {
 			std::clog << "event_poller::emplace " << ev << std::endl;
 			this->_events.push_back(ev);
 			this->_handlers.emplace_back(std::move(handler));
+			assert_invariant();
 		}
 
 		void
@@ -269,6 +286,7 @@ namespace sysx {
 		template<class Func>
 		inline void
 		for_each_ordinary_fd(Func func) {
+			assert_invariant();
 			std::for_each(
 				stdx::make_paired(ordinary_begin(), _handlers.begin()),
 				stdx::make_paired(_events.end(), _handlers.end()),
@@ -296,19 +314,39 @@ namespace sysx {
 			return _events.begin();
 		}
 
+		inline events_type::const_iterator
+		pipes_begin() const noexcept {
+			return _events.begin();
+		}
+
 		inline events_type::iterator
 		pipes_end() noexcept {
 			return _events.begin() + NPIPES;
 		}
 
 		inline events_type::const_iterator
+		pipes_end() const noexcept {
+			return _events.begin() + NPIPES;
+		}
+
+		inline events_type::const_iterator
 		ordinary_begin() const noexcept {
-			return _events.begin() + NPIPES + nspecials;
+			return _events.begin() + NPIPES + _nspecials;
 		}
 
 		inline events_type::iterator
 		ordinary_begin() noexcept {
-			return _events.begin() + NPIPES + nspecials;
+			return _events.begin() + NPIPES + _nspecials;
+		}
+
+		inline events_type::const_iterator
+		ordinary_end() const noexcept {
+			return _events.end();
+		}
+
+		inline events_type::iterator
+		ordinary_end() noexcept {
+			return _events.end();
 		}
 
 		inline events_type::iterator
@@ -316,9 +354,19 @@ namespace sysx {
 			return _events.begin() + NPIPES;
 		}
 
+		inline events_type::const_iterator
+		special_begin() const noexcept {
+			return _events.begin() + NPIPES;
+		}
+
 		inline events_type::iterator
 		special_end() noexcept {
-			return _events.begin() + NPIPES + nspecials;
+			return _events.begin() + NPIPES + _nspecials;
+		}
+
+		inline events_type::const_iterator
+		special_end() const noexcept {
+			return _events.begin() + NPIPES + _nspecials;
 		}
 
 		inline events_type::iterator
@@ -333,6 +381,7 @@ namespace sysx {
 			It result = std::remove_if(first, last, pred);
 			_events.erase(result.first(), last.first());
 			_handlers.erase(result.second(), last.second());
+			assert_invariant();
 		}
 
 		template<class It, class Pred>
@@ -349,6 +398,7 @@ namespace sysx {
 				stdx::make_paired(ordinary_begin(), _handlers.begin()),
 				stdx::make_paired(_events.end(), _handlers.end()),
 				stdx::apply_to<0>(pred));
+			assert_invariant();
 		}
 
 		template<class It>
@@ -365,8 +415,9 @@ namespace sysx {
 		void
 		insert_pending_specials() {
 			_events.insert(this->ordinary_begin(), _specials.begin(), _specials.end());
-			nspecials += _specials.size();
+			_nspecials += _specials.size();
 			_specials.clear();
+			assert_invariant();
 		}
 
 		bool
@@ -377,13 +428,13 @@ namespace sysx {
 			remove_fds_if(std::logical_not<poll_event>());
 			insert_pending_specials();
 
-			std::clog << "poll(): size="
-				<< this->_events.size() << std::endl;
+//			std::clog << "before poll(this=" << *this << ")" << std::endl;
 			bits::check_if_not<std::errc::interrupted>(
 				::poll(this->_events.data(),
 				this->_events.size(), no_timeout),
 				__FILE__, __LINE__, __func__);
 			success = errno != EINTR;
+			std::clog << "after poll(this=" << *this << ")" << std::endl;
 
 			if (success) {
 				#if !defined(POLLRDHUP)
@@ -417,11 +468,25 @@ namespace sysx {
 			}
 		}
 
+		inline void
+		assert_invariant() const {
+			assert(pipes_begin() == _events.begin());
+			assert(pipes_end() == special_begin());
+			assert(special_end() == ordinary_begin());
+			assert(ordinary_end() == _events.end());
+			assert(pipes_begin() <= pipes_end());
+			assert(special_begin() <= special_end());
+			assert(ordinary_begin() <= ordinary_end());
+			assert(special_end() - special_begin() == _nspecials);
+			assert(pipes_end() - pipes_begin() == NPIPES);
+			assert(ordinary_end() - ordinary_begin() == _handlers.end() - _handlers.begin());
+		}
+
 		sysx::pipe _pipe;
 		events_type _events;
 		handlers_type _handlers;
 		std::vector<poll_event> _specials;
-		size_type nspecials = 0;
+		size_type _nspecials = 0;
 
 		static constexpr const size_type
 		NPIPES = 1;

@@ -2,7 +2,7 @@
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 #include <factory/server/app_server.hh>
-#include <factory/server/pipe_server.hh>
+#include <factory/server/process_server.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
@@ -17,7 +17,8 @@ namespace factory {
 			typedef components::Managed_object<components::Server<config>> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
-			typedef components::Sub_Iserver<config> remote_server;
+//			typedef components::Sub_Iserver<config> remote_server;
+			typedef components::Process_iserver<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::No_server<config> principal_server;
@@ -42,7 +43,8 @@ namespace factory {
 			typedef components::Managed_object<components::Server<config>> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
-			typedef components::Principal_server<config> remote_server;
+//			typedef components::Principal_server<config> remote_server;
+			typedef components::Process_child_server<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::No_server<config> principal_server;
@@ -231,7 +233,7 @@ struct Main: public Kernel, public Identifiable_tag {
 	void act(Server& this_server) {
 		#if defined(FACTORY_TEST_APP)
 		Test_socket* kernel = this_server.factory()->new_kernel<Test_socket>();
-		kernel->setapp(MY_APP_ID);
+		kernel->setapp(sysx::this_process::id());
 		upstream(this_server.remote_server(), kernel);
 		sleep(3);
 		#endif

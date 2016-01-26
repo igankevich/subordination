@@ -164,6 +164,11 @@ namespace sysx {
 			_fd = ret_fd;
 		}
 
+		void
+		validate() {
+			get_flags(F_GETFD);
+		}
+
 	private:
 
 		flag_type

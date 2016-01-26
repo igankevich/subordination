@@ -63,9 +63,11 @@ namespace factory {
 			virtual
 			~Remote_Rserver() {
 				this->recover_kernels();
-				stdx::front_pop_iterator<pool_type> it_end;
-				std::for_each(stdx::front_popper(_buffer),
-					it_end, [] (kernel_type* rhs) { delete rhs; });
+				std::for_each(
+					stdx::front_popper(_buffer),
+					stdx::front_popper_end(_buffer),
+					[] (kernel_type* rhs) { delete rhs; }
+				);
 			}
 
 			Category
@@ -171,7 +173,7 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Remote_Rserver& rhs) {
-				return stdx::format_fields(out,
+				return out << stdx::make_fields(
 					"vaddr", rhs.vaddr(),
 					"socket", rhs.socket(),
 					"kernels", rhs._buffer.size(),

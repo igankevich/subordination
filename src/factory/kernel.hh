@@ -3,6 +3,8 @@
 
 #include <bitset>
 
+#include <stdx/log.hh>
+
 #include <factory/server/basic_server.hh>
 #include <sysx/process.hh>
 #include <sysx/packetstream.hh>
@@ -72,9 +74,7 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Application& rhs) {
-				return out
-					<< "{exec=" << rhs._execpath
-					<< ",id=" << rhs._id << '}';
+				return stdx::format_fields(out, "exec", rhs._execpath);
 			}
 
 		private:
@@ -188,6 +188,12 @@ namespace factory {
 			void
 			setapp(app_type rhs) noexcept {
 				this->_app = rhs;
+			}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Kernel_header& rhs) {
+				return stdx::format_fields(out, "src", rhs._src,
+					"dst", rhs._dst, "app", rhs._app);
 			}
 
 		private:
