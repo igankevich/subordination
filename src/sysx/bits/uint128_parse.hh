@@ -29,7 +29,7 @@ namespace sysx {
 		constexpr Uint
 		do_parse_uint(It first, It last, Uint val=0) noexcept {
 			return first == last ? val
-				: do_parse_uint<Uint, radix>(first+1, last, 
+				: do_parse_uint<Uint, radix>(first+1, last,
 				val*radix + to_int<radix>(const_tolower(*first)));
 		}
 
@@ -50,10 +50,10 @@ namespace sysx {
 
 			static constexpr const unsigned int
 			MAX_DIGITS_BASE8 = 43;
-			static constexpr const unsigned int
-			MAX_DIGITS_BASE10 = 39;
-			static constexpr const unsigned int
-			MAX_DIGITS_BASE16 = 32;
+			//static constexpr const unsigned int
+			//MAX_DIGITS_BASE10 = 39;
+			//static constexpr const unsigned int
+			//MAX_DIGITS_BASE16 = 32;
 
 			unsigned int radix = get_stream_radix(out);
     		char buf[MAX_DIGITS_BASE8] = {};
@@ -85,7 +85,7 @@ namespace sysx {
 							n = ch - '0';
 						}
 					} break;
-					case 8:	
+					case 8:
 						if (ch >= '0' && ch <= '7') {
 							n = ch - '0';
 						}

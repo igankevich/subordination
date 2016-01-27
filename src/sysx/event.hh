@@ -478,7 +478,7 @@ namespace sysx {
 			assert(pipes_begin() <= pipes_end());
 			assert(special_begin() <= special_end());
 			assert(ordinary_begin() <= ordinary_end());
-			assert(special_end() - special_begin() == _nspecials);
+			assert(special_end() - special_begin() == static_cast<std::make_signed<size_type>::type>(_nspecials));
 			assert(pipes_end() - pipes_begin() == NPIPES);
 			assert(ordinary_end() - ordinary_begin() == _handlers.end() - _handlers.begin());
 		}

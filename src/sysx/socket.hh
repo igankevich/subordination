@@ -12,7 +12,10 @@
 	#define SOCK_CLOEXEC 0
 #endif
 
+#include <stdx/log.hh>
+
 #include <sysx/fildes.hh>
+#include <sysx/endpoint.hh>
 
 
 namespace sysx {
@@ -36,6 +39,7 @@ namespace sysx {
 	struct socket: public fildes {
 
 		typedef int opt_type;
+		typedef stdx::log<socket> this_log;
 
 		enum option: opt_type {
 			reuse_addr = SO_REUSEADDR,
@@ -96,20 +100,20 @@ namespace sysx {
 		void bind(const endpoint& e) {
 			this->create_socket_if_necessary();
 			this->setopt(reuse_addr);
-			std::clog << "Binding to " << e << std::endl;
+			this_log() << "Binding to " << e << std::endl;
 			bits::check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
 		}
 
 		void listen() {
-			std::clog << "Listening on " << this->name() << std::endl;
+			this_log() << "Listening on " << this->name() << std::endl;
 			bits::check(::listen(this->_fd, SOMAXCONN),
 				__FILE__, __LINE__, __func__);
 		}
 
 		void connect(const endpoint& e) {
 			this->create_socket_if_necessary();
-			std::clog << "Connecting to " << e << std::endl;
+			this_log() << "Connecting to " << e << std::endl;
 			bits::check_if_not<std::errc::operation_in_progress>(
 				::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
@@ -121,7 +125,7 @@ namespace sysx {
 			sock._fd = bits::check(::accept(this->_fd, addr.sockaddr(), &len),
 				__FILE__, __LINE__, __func__);
 			bits::set_mandatory_flags(sock._fd);
-			std::clog << "Accepted connection from " << addr << std::endl;
+			this_log() << "Accepted connection from " << addr << std::endl;
 		}
 
 		void shutdown(shutdown_how how) {

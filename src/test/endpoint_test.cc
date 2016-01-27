@@ -7,7 +7,6 @@
 #include "test.hh"
 
 
-using namespace factory;
 using stdx::n_random_bytes;
 using sysx::operator""_ipv4;
 using sysx::ipv4_addr;

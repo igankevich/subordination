@@ -3,9 +3,6 @@
 
 #include "test.hh"
 
-using namespace factory;
-
-
 template<class T>
 void test_paired_iterator() {
 	std::random_device rng;

@@ -160,22 +160,27 @@ namespace factory {
 
 			typedef Application::id_type app_type;
 
-			virtual sysx::endpoint
+			Kernel_header() = default;
+			Kernel_header(const Kernel_header&) = default;
+			Kernel_header& operator=(const Kernel_header&) = default;
+			~Kernel_header() = default;
+
+			sysx::endpoint
 			from() const noexcept {
 				return _src;
 			}
 
-			virtual void
+			void
 			from(sysx::endpoint rhs) noexcept {
 				_src = rhs;
 			}
 
-			virtual sysx::endpoint
+			sysx::endpoint
 			to() const noexcept {
 				return _dst;
 			}
 
-			virtual void
+			void
 			to(sysx::endpoint rhs) noexcept {
 				_dst = rhs;
 			}
@@ -266,6 +271,11 @@ namespace factory {
 			Id
 			principal_id() const {
 				return _principal_id;
+			}
+
+			void
+			set_principal_id(Id id) {
+				_principal_id = id;
 			}
 
 			void

@@ -1,1 +1,2 @@
+subdir('discovery')
 subdir('web')

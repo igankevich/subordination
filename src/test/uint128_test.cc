@@ -2,8 +2,6 @@
 #include <sysx/uint128.hh>
 #include "test.hh"
 
-using namespace factory;
-
 void check_bool(bool x, bool y) {
 	if (x != y) {
 		throw std::runtime_error("Boolean operator failed.");

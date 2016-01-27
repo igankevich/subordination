@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <vector>
+
 #include <sysx/bits/check.hh>
 #include <sysx/bits/safe_calls.hh>
 

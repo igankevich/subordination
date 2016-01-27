@@ -63,6 +63,9 @@ namespace factory {
 
 		struct Resident {
 
+			Resident() = default;
+			virtual ~Resident() = default;
+
 			virtual void
 			start() {
 				setstate(server_state::started);

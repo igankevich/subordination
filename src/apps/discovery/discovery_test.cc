@@ -1,120 +1,52 @@
+#include <sysx/socket.hh>
+
 #include <factory/factory.hh>
+#include <factory/server/cpu_server.hh>
+#include <factory/server/timer_server.hh>
+#include <factory/server/nic_server.hh>
+
 #include "discovery.hh"
 #include "test.hh"
 
-		std::vector<Address_range> discover_neighbours() {
+namespace factory {
+	inline namespace this_config {
 
-			struct ::ifaddrs* ifaddr;
-			check(::getifaddrs(&ifaddr),
-				__FILE__, __LINE__, __func__);
+		struct config {
+			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Principal<config> kernel;
+			typedef components::CPU_server<config> local_server;
+			typedef components::NIC_server<config, sysx::socket> remote_server;
+			typedef components::Timer_server<config> timer_server;
+			typedef components::No_server<config> app_server;
+			typedef components::No_server<config> principal_server;
+			typedef components::No_server<config> external_server;
+			typedef components::Basic_factory<config> factory;
+		};
 
-			std::set<Address_range> ranges;
-
-			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-
-				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
-					// ignore non-internet networks
-					continue;
-				}
-
-				sysx::endpoint addr(*ifa->ifa_addr);
-				if (addr.address() == sysx::endpoint("127.0.0.1", 0).address()) {
-					// ignore localhost and non-IPv4 addresses
-					continue;
-				}
-
-				sysx::endpoint netmask(*ifa->ifa_netmask);
-				if (netmask.address() == sysx::endpoint("255.255.255.255",0).address()) {
-					// ignore wide-area networks
-					continue;
-				}
-
-				uint32_t addr_long = addr.address();
-				uint32_t mask_long = netmask.address();
-
-				uint32_t start = (addr_long & mask_long) + 1;
-				uint32_t end = (addr_long & mask_long) + (~mask_long);
-
-				ranges.insert(Address_range(start, addr_long));
-				ranges.insert(Address_range(addr_long+1, end));
-			}
-
-			// combine overlaping ranges
-			std::vector<Address_range> sorted_ranges;
-			Address_range prev_range;
-			std::for_each(ranges.cbegin(), ranges.cend(),
-				[&sorted_ranges, &prev_range](const Address_range& range)
-			{
-				if (prev_range.empty()) {
-					prev_range = range;
-				} else {
-					if (prev_range.overlaps(range)) {
-						prev_range += range;
-					} else {
-						sorted_ranges.push_back(prev_range);
-						prev_range = range;
-					}
-				}
-			});
-
-			if (!prev_range.empty()) {
-				sorted_ranges.push_back(prev_range);
-			}
-
-			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
-				[] (const Address_range& range)
-			{
-				std::clog << sysx::ipv4_addr(range.start()) << '-' << sysx::ipv4_addr(range.end()) << '\n';
-			});
-
-			::freeifaddrs(ifaddr);
-
-			return sorted_ranges;
-		}
-		sysx::endpoint get_bind_address() {
-
-			sysx::endpoint ret;
-
-			sysx::ifaddrs addrs;
-			sysx::ifaddrs::iterator result =
-			std::find_if(addrs.begin(), addrs.end(), [] (const sysx::ifaddrs::ifaddrs_type& rhs) {
-
-				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
-					// ignore non-internet networks
-					return false;
-				}
-
-				sysx::endpoint addr(*rhs.ifa_addr);
-				if (addr.address() == sysx::endpoint("127.0.0.1", 0).address()) {
-					// ignore localhost and non-IPv4 addresses
-					return false;
-				}
-
-				sysx::endpoint netmask(*rhs.ifa_netmask);
-				if (netmask.address() == sysx::endpoint("255.255.255.255",0).address()) {
-					// ignore wide-area networks
-					return false;
-				}
-
-				return true;
-			});
-			if (result != addrs.end()) {
-				ret = sysx::endpoint(*result->ifa_addr);
-			}
-
-			return ret;
-		}
+		typedef config::kernel Kernel;
+		typedef config::server Server;
+	}
+}
 
 using namespace factory;
+using namespace factory::this_config;
 
-const Port DISCOVERY_PORT = 10000;
+typedef std::chrono::nanoseconds::rep Time;
+Time
+current_time_nano() {
+	using namespace std::chrono;
+	typedef std::chrono::steady_clock Clock;
+	return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+}
+
+const sysx::port_type DISCOVERY_PORT = 10000;
 
 std::vector<sysx::endpoint> all_peers;
 std::thread exiter;
 
 uint32_t my_netmask() {
 	uint32_t npeers = static_cast<uint32_t>(all_peers.size());
-	uint32_t power = factory::log2(npeers);
+	uint32_t power = factory::components::log2(npeers);
 	uint32_t rem = UINT32_C(1) << power;
 	if (rem < npeers) rem <<= 1;
 	return std::numeric_limits<uint32_t>::max() - (rem - 1);
@@ -280,7 +212,7 @@ private:
 
 	static std::pair<uint32_t, uint32_t> addr_level_num(sysx::endpoint addr) {
 		uint32_t pos = addr.position(my_netmask());
-		uint32_t lvl = log(pos, p);
+		uint32_t lvl = factory::components::log(pos, p);
 		uint32_t num = pos - (UINT32_C(1) << (lvl*p));
 		return std::make_pair(lvl, num);
 	}
@@ -442,12 +374,12 @@ struct Peers {
 	}
 
 	void debug() {
-		Logger<Level::DISCOVERY> log;
+		std::ostream& log = std::clog;
 		log << "Principal = " << _principal << ", subordinates = ";
-		std::ostream_iterator<sysx::endpoint> it(log.ostream(), ", ");
+		std::ostream_iterator<sysx::endpoint> it(log, ", ");
 		std::copy(_subordinates.begin(), _subordinates.end(), it);
 		log << " peers = ";
-		write(log.ostream(), ", ");
+		write(log, ", ");
 		log << std::endl;
 	}
 
@@ -458,18 +390,18 @@ private:
 	Set _subordinates;
 };
 
-struct Profiler: public Mobile<Profiler> {
+struct Profiler: public Kernel, public Identifiable_tag {
 
 	typedef uint8_t State;
 
 	Profiler(): _peers() {}
 
-	void act() {
+	void act(Server& this_server) override {
 		_state = 1;
-		commit(remote_server());
+		commit(this_server.remote_server());
 	}
 
-	void write_impl(packetstream& out) {
+	void write_impl(sysx::packetstream& out) {
 		if (_state == 0) {
 			_time = current_time_nano();
 		}
@@ -480,7 +412,7 @@ struct Profiler: public Mobile<Profiler> {
 		}
 	}
 
-	void read_impl(packetstream& in) {
+	void read_impl(sysx::packetstream& in) {
 		in >> _state >> _time;
 		if (_state == 1) {
 			_time = current_time_nano() - _time;
@@ -509,8 +441,14 @@ struct Profiler: public Mobile<Profiler> {
 
 	Time time() const { return _time; }
 
-	static void init_type(Type* t) {
-		t->id(2);
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{2};
 	}
 
 private:
@@ -522,21 +460,28 @@ private:
 };
 
 
-struct Ping: public Mobile<Ping> {
+struct Ping: public Kernel, public Identifiable_tag {
 
 	Ping() {}
 
-	void act() { commit(remote_server()); }
+	void act(Server& this_server) override { commit(this_server.remote_server()); }
 
-	void write_impl(packetstream&) { }
-	void read_impl(packetstream&) { }
+	void write_impl(sysx::packetstream&) { }
+	void read_impl(sysx::packetstream&) { }
 
-	static void init_type(Type* t) {
-		t->id(7);
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
 	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{7};
+	}
+
 };
 
-struct Scanner: public Identifiable<Kernel> {
+struct Scanner: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Scanner> this_log;
 
@@ -548,10 +493,10 @@ struct Scanner: public Identifiable<Kernel> {
 		_discovered_node()
 		{}
 
-	void act() {
+	void act(Server& this_server) override {
 		if (_servers.empty()) {
 //			this_log() << "There are no servers to scan." << std::endl;
-			commit(the_server(), Result::USER_ERROR);
+			commit(this_server.local_server(), Result::USER_ERROR);
 		} else {
 			if (!_scan_addr) {
 				if (_oldaddr) {
@@ -561,22 +506,22 @@ struct Scanner: public Identifiable<Kernel> {
 					_scan_addr = start_addr(all_peers);
 				}
 			}
-			try_to_connect(_scan_addr);
+			try_to_connect(this_server, _scan_addr);
 		}
 	}
 
-	void react(Kernel* k) {
+	void react(Server& this_server, Kernel* k) override {
 		++_num_scanned;
 		if (_num_scanned == _servers.size()) {
 			_num_scanned = 0;
 		}
 		if (k->result() != Result::SUCCESS) {
 			// continue scanning network
-			act();
+			act(this_server);
 		} else {
 			// the scan is complete
 			_discovered_node = _scan_addr;
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 
@@ -616,12 +561,12 @@ private:
 		return st;
 	}
 
-	void try_to_connect(sysx::endpoint addr) {
+	void try_to_connect(Server& this_server, sysx::endpoint addr) {
 		Ping* ping = new Ping;
 		ping->to(addr);
 		ping->parent(this);
 		this_log() << "scanning " << ping->to() << std::endl;
-		remote_server()->send(ping);
+		this_server.remote_server()->send(ping);
 	}
 
 	sysx::endpoint _source;
@@ -633,33 +578,33 @@ private:
 	uint32_t _num_scanned = 0;
 };
 
-struct Discoverer: public Identifiable<Kernel> {
+struct Discoverer: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Discoverer> this_log;
 
 	explicit Discoverer(const Peers& p): _peers(p) {}
 
-	void act() {
+	void act(Server& this_server) override {
 		std::vector<Profiler*> profs;
 		for (auto& pair : _peers) {
 			if (pair.second.needs_update()) {
 				Profiler* prof = new Profiler;
 				prof->to(pair.first);
-				prof->principal(pair.first.address());
+				prof->set_principal_id(pair.first.address());
 				profs.push_back(prof);
 			}
 		}
 		if (profs.empty()) {
-			commit(the_server());
+			commit(this_server.local_server());
 		} else {
 			_num_sent += profs.size();
 			for (Profiler* prof : profs) {
-				upstream(remote_server(), prof);
+				upstream(this_server.remote_server(), prof);
 			}
 		}
 	}
 
-	void react(Kernel* k) {
+	void react(Server& this_server, Kernel* k) override {
 		Profiler* prof = dynamic_cast<Profiler*>(k);
 		Peer& p = _peers[prof->from()];
 		if (k->result() != Result::SUCCESS) {
@@ -671,11 +616,11 @@ struct Discoverer: public Identifiable<Kernel> {
 			Profiler* prof2 = new Profiler;
 			prof2->to(prof->from());
 			++_num_sent;
-			upstream(remote_server(), prof2);
+			upstream(this_server.remote_server(), prof2);
 		}
 		prof->copy_peers_to(_peers);
 		if (--_num_sent == 0) {
-			commit(the_server());
+			commit(this_server.local_server());
 		}
 	}
 
@@ -686,7 +631,7 @@ private:
 	size_t _num_sent = 0;
 };
 
-struct Negotiator: public Mobile<Negotiator> {
+struct Negotiator: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Negotiator> this_log;
 
@@ -696,7 +641,7 @@ struct Negotiator: public Mobile<Negotiator> {
 	Negotiator(sysx::endpoint old, sysx::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 
-	void negotiate(Peers& peers) {
+	void negotiate(Server& this_server, Peers& peers) {
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
 		sysx::endpoint this_addr = peers.this_addr();
@@ -723,23 +668,36 @@ struct Negotiator: public Mobile<Negotiator> {
 			}
 		}
 		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
-		remote_server()->send(this);
+		this_server.remote_server()->send(this);
 	}
 
-	void write_impl(packetstream& out) {
+	void write_impl(sysx::packetstream& out) {
 		// TODO: if moves_upstream
 		out << _old_principal << _new_principal << _stop;
 	}
 
-	void read_impl(packetstream& in) {
+	void read_impl(sysx::packetstream& in) {
 		in >> _old_principal >> _new_principal >> _stop;
 	}
 
 	bool stop() const { return _stop; }
 
-	static void init_type(Type* t) {
-		t->id(8);
-		t->name("Negotiator");
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			8,
+			"Negotiator",
+			[] (sysx::packetstream& in) {
+				Negotiator* k = new Negotiator;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 
 private:
@@ -748,21 +706,21 @@ private:
 	bool _stop = false;
 };
 
-struct Master_negotiator: public Identifiable<Kernel> {
+struct Master_negotiator: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Master_negotiator> this_log;
 
 	Master_negotiator(sysx::endpoint old, sysx::endpoint neww):
 		_old_principal(old), _new_principal(neww) {}
 
-	void act() {
+	void act(Server& this_server) override {
 		if (_old_principal) {
-			send_negotiator(_old_principal);
+			send_negotiator(this_server, _old_principal);
 		}
-		send_negotiator(_new_principal);
+		send_negotiator(this_server, _new_principal);
 	}
 
-	void react(Kernel* k) {
+	void react(Server& this_server, Kernel* k) override {
 		this_log()
 			<< "Negotiator returned from " << k->from()
 			<< " with result=" << k->result() << std::endl;
@@ -776,7 +734,7 @@ struct Master_negotiator: public Identifiable<Kernel> {
 				this->result(Result::SUCCESS);
 			}
 			this->principal(this->parent());
-			the_server()->send(this);
+			this_server.local_server()->send(this);
 		}
 	}
 
@@ -784,12 +742,12 @@ struct Master_negotiator: public Identifiable<Kernel> {
 
 private:
 
-	void send_negotiator(sysx::endpoint addr) {
+	void send_negotiator(Server& this_server, sysx::endpoint addr) {
 		++_num_sent;
 		Negotiator* n = new Negotiator(_old_principal, _new_principal);
-		n->principal(addr.address());
+		n->set_principal_id(addr.address());
 		n->to(addr);
-		upstream(remote_server(), n);
+		upstream(this_server.remote_server(), n);
 	}
 
 	sysx::endpoint _old_principal;
@@ -797,7 +755,7 @@ private:
 	uint8_t _num_sent = 0;
 };
 
-struct Master_discoverer: public Identifiable<Kernel> {
+struct Master_discoverer: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Master_discoverer> this_log;
 
@@ -805,14 +763,15 @@ struct Master_discoverer: public Identifiable<Kernel> {
 	Master_discoverer& operator=(const Master_discoverer&) = delete;
 
 	explicit Master_discoverer(sysx::endpoint this_addr):
-		factory::Identifiable<Kernel>(this_addr.address()),
 		_peers(this_addr),
 		_scanner(nullptr),
 		_discoverer(nullptr),
 		_negotiator(nullptr)
-	{}
+	{
+		this->id(this_addr.address());
+	}
 
-	void act() {
+	void act(Server& this_server) override {
 		prog_start = current_time_nano();
 //		Time start_time = sysx::this_process::getenv("START_TIME", Time(0));
 //		if (start_time > 0) {
@@ -830,7 +789,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				<< ",peers=" << this->_peers
 				<< ",npeers=" << all_peers.size() << std::endl;
 			_peers.debug();
-			__factory.stop();
+			this_server.shutdown();
 		});
 		this_log()
 			<< "startTime.push("
@@ -839,11 +798,11 @@ struct Master_discoverer: public Identifiable<Kernel> {
 			<< _peers.this_addr()
 			<< std::endl;
 		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
-			run_scan();
+			run_scan(this_server);
 		}
 	}
 
-	void react(Kernel* k) {
+	void react(Server& this_server, Kernel* k) override {
 		if (_scanner == k) {
 			if (k->result() != Result::SUCCESS) {
 //				Time wait_time = sysx::this_process::getenv("WAIT_TIME", Time(60000000000UL));
@@ -852,7 +811,7 @@ struct Master_discoverer: public Identifiable<Kernel> {
 //						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
 //					__factory.stop();
 //				}
-				run_scan(_scanner->discovered_node());
+				run_scan(this_server, _scanner->discovered_node());
 			} else {
 				this_log() << "Change 1" << std::endl;
 				change_principal(_scanner->discovered_node());
@@ -888,19 +847,19 @@ struct Master_discoverer: public Identifiable<Kernel> {
 				prof->act();
 			} else if (k->type()->id() == 8) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
-				neg->negotiate(_peers);
+				neg->negotiate(this_server, _peers);
 			}
 		}
 	}
 
 private:
 
-	void run_scan(sysx::endpoint old_addr = sysx::endpoint()) {
+	void run_scan(Server& this_server, sysx::endpoint old_addr = sysx::endpoint()) {
 		_scanner = new Scanner(_peers.this_addr(), old_addr);
 		if (!old_addr) {
 			_peers.add_peer(_scanner->scan_addr());
 		}
-		upstream(the_server(), _scanner);
+		upstream(this_server, the_server(), _scanner);
 	}
 
 	void run_discovery() {

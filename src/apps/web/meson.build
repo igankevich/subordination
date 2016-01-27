@@ -1,2 +1,2 @@
-test('encoding', executable('encoding-test', sources: 'test_encoding.cc', include_directories: [srcdir, testdir]))
-test('web-buffer', executable('web-buffer-test', sources: 'test_buffer.cc', include_directories: [srcdir, testdir]))
+test('encoding', executable('encoding-test', sources: 'encoding_test.cc', include_directories: [srcdir, testdir]))
+test('web-buffer', executable('web-buffer-test', sources: 'buffer_test.cc', include_directories: [srcdir, testdir]))

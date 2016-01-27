@@ -9,7 +9,6 @@
 #include <sysx/semaphore.hh>
 
 #include "test.hh"
-using namespace factory;
 
 template<class Testname, class I=unsigned>
 struct Parametric_test: public test::Test<Testname> {
