@@ -2,6 +2,7 @@
 #define SYSX_EVENT_HH
 
 #include <poll.h>
+#include <sys/socket.h>
 #if !defined(POLLRDHUP)
 	#define FACTORY_POLLRDHUP 0
 #else
