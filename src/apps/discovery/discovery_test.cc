@@ -1,4 +1,7 @@
+#include <fstream>
+
 #include <sysx/socket.hh>
+#include <sysx/cmdline.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
@@ -6,6 +9,7 @@
 #include <factory/server/nic_server.hh>
 
 #include "discovery.hh"
+#include "springy_graph_generator.hh"
 #include "test.hh"
 
 namespace factory {
@@ -51,25 +55,6 @@ uint32_t my_netmask() {
 	if (rem < npeers) rem <<= 1;
 	return std::numeric_limits<uint32_t>::max() - (rem - 1);
 }
-
-struct Node {
-	explicit Node(const sysx::endpoint& rhs): addr(rhs) {}
-	friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
-		return out << "n" << uint64_t(rhs.addr.address()) * uint64_t(rhs.addr.port());
-	}
-private:
-	const sysx::endpoint& addr;
-};
-
-struct Edge {
-	Edge(const sysx::endpoint& a, const sysx::endpoint& b): x(a), y(b) {}
-	friend std::ostream& operator<<(std::ostream& out, const Edge& rhs) {
-		return out << Node(rhs.x) << '_' << Node(rhs.y);
-	}
-private:
-	const sysx::endpoint& x;
-	const sysx::endpoint& y;
-};
 
 struct Peer {
 
@@ -227,6 +212,8 @@ private:
 	sysx::endpoint _from;
 };
 
+springy::Springy_graph graph;
+
 struct Peers {
 
 	typedef std::map<sysx::endpoint, Peer> Map;
@@ -310,17 +297,7 @@ struct Peers {
 	void add_subordinate(sysx::endpoint addr) {
 		this_log() << "Adding subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) == 0) {
-			this_log()
-				<< "log[logline++] = {"
-				<< "redo: function () {"
-				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
-				<< "g." << Node(addr) << ',' << "g." << Node(_this_addr) << ')'
-				<< "}, "
-				<< "undo: function () {"
-				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ")"
-				<< "}}"
-				<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
-				<< std::endl;
+			graph.add_edge(addr, _this_addr);
 		}
 		_subordinates.insert(addr);
 		add_peer(addr);
@@ -329,16 +306,7 @@ struct Peers {
 	void remove_subordinate(sysx::endpoint addr) {
 		this_log() << "Removing subordinate = " << addr << std::endl;
 		if (_subordinates.count(addr) > 0) {
-			this_log()
-				<< "log[logline++] = {"
-				<< "redo: function () {"
-				<< "graph.removeEdge(g." << Edge(addr, _this_addr) << ')'
-				<< "}, undo: function() {"
-				<< "g." << Edge(addr, _this_addr) << " = graph.newEdge("
-				<< "g." << Node(addr) << ',' << "g." << Node(_this_addr) << ')'
-				<< "}}"
-				<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
-				<< std::endl;
+			graph.remove_edge(addr, _this_addr);
 		}
 		_subordinates.erase(addr);
 		_peers.erase(addr);
@@ -782,7 +750,7 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 //			std::this_thread::sleep_for(amount);
 //			prog_start = current_time_nano();
 //		}
-		exiter = std::thread([this] () {
+		exiter = std::thread([this,&this_server] () {
 			std::this_thread::sleep_for(std::chrono::seconds(10));
 			this_log() << "Hail the new king! addr="
 				<< _peers.this_addr()
@@ -814,8 +782,8 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 				run_scan(this_server, _scanner->discovered_node());
 			} else {
 				this_log() << "Change 1" << std::endl;
-				change_principal(_scanner->discovered_node());
-				run_discovery();
+				change_principal(this_server, _scanner->discovered_node());
+				run_discovery(this_server);
 				_scanner = nullptr;
 			}
 		} else
@@ -825,9 +793,9 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 				_peers.update_peers(dsc->peers());
 				_peers.debug();
 				this_log() << "Change 2" << std::endl;
-				change_principal(_peers.best_peer());
+				change_principal(this_server, _peers.best_peer());
 			} else {
-				run_discovery();
+				run_discovery(this_server);
 			}
 		} else
 		if (_negotiator == k) {
@@ -835,17 +803,17 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
 				sysx::endpoint princ = _peers.principal();
 				_peers.revert_principal(neg->old_principal());
-				run_negotiator(princ, _peers.principal());
+				run_negotiator(this_server, princ, _peers.principal());
 			}
 			_peers.debug();
 			_negotiator = nullptr;
 		} else
 		if (k->type()) {
-			if (k->type()->id() == 2) {
+			if (k->type() == Profiler::static_type()) {
 				Profiler* prof = dynamic_cast<Profiler*>(k);
 				prof->copy_peers_from(_peers);
-				prof->act();
-			} else if (k->type()->id() == 8) {
+				prof->act(this_server);
+			} else if (k->type() == Negotiator::static_type()) {
 				Negotiator* neg = dynamic_cast<Negotiator*>(k);
 				neg->negotiate(this_server, _peers);
 			}
@@ -859,25 +827,25 @@ private:
 		if (!old_addr) {
 			_peers.add_peer(_scanner->scan_addr());
 		}
-		upstream(this_server, the_server(), _scanner);
+		upstream(this_server.local_server(), _scanner);
 	}
 
-	void run_discovery() {
+	void run_discovery(Server& this_server) {
 		this_log() << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(the_server(), _discoverer = new Discoverer(_peers));
+		upstream(this_server.local_server(), _discoverer = new Discoverer(_peers));
 	}
 
-	void run_negotiator(sysx::endpoint old_princ, sysx::endpoint new_princ) {
-		upstream(the_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
+	void run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
+		upstream(this_server.local_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
 	}
 
-	void change_principal(sysx::endpoint new_princ) {
+	void change_principal(Server& this_server, sysx::endpoint new_princ) {
 		sysx::endpoint old_princ = _peers.principal();
 		if (!_negotiator && _peers.change_principal(new_princ)) {
 			this_log() << "Changing principal to " << new_princ << std::endl;
 			_peers.debug();
-			run_negotiator(old_princ, new_princ);
+			run_negotiator(this_server, old_princ, new_princ);
 		}
 	}
 
@@ -912,34 +880,33 @@ private:
 };
 
 uint32_t num_peers() {
-	std::stringstream s;
-	s << ::getenv("NUM_PEERS");
-	uint32_t n = 0;
-	s >> n;
+	uint32_t n = sysx::this_process::getenv("NUM_PEERS", 3);
 	if (n <= 1) {
 		n = 3;
 	}
 	return n;
 }
 
-bool write_cache() { return ::getenv("WRITE_CACHE") != NULL; }
+bool write_cache() { return sysx::this_process::getenv("WRITE_CACHE", false); }
 
 struct test_discovery {};
+struct generate_peers {};
 
-void generate_all_peers(uint32_t npeers, std::string base_ip) {
-	typedef stdx::log<test_discovery> this_log;
+void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip) {
+	typedef stdx::log<generate_peers> this_log;
 	all_peers.clear();
-	uint32_t start = sysx::endpoint(base_ip.c_str(), 0).address();
+	uint32_t start = sysx::to_host_format<uint32_t>(base_ip.rep());
 	uint32_t end = start + npeers;
 	for (uint32_t i=start; i<end; ++i) {
-		sysx::endpoint endpoint(i, DISCOVERY_PORT);
+		sysx::endpoint endpoint(sysx::ipv4_addr(sysx::to_network_format<uint32_t>(i)), DISCOVERY_PORT);
 		all_peers.push_back(endpoint);
 	}
 	for (sysx::endpoint addr : all_peers) {
-		auto it = std::min_element(all_peers.begin(), all_peers.end(),
-			Compare_distance(addr));
-		this_log()
-			<< "Best link: " << addr << " -> " << *it << std::endl;
+		auto it = std::min_element(
+			all_peers.begin(), all_peers.end(),
+			Compare_distance(addr)
+		);
+		this_log() << "Best link: " << addr << " -> " << *it << std::endl;
 	}
 //	uint32_t p = 1;
 //	uint32_t fanout = 1 << p;
@@ -979,89 +946,84 @@ void write_cache_all() {
 	}
 }
 
-void write_graph_nodes() {
+
+
+struct Main: public Kernel {
 	typedef stdx::log<test_discovery> this_log;
-	for (sysx::endpoint addr : all_peers) {
-		this_log()
-			<< "log[logline++] = {"
-			<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
-			<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
-			<< ";log[logline-1].time=" << current_time_nano() - prog_start << "*1e-6"
-			<< std::endl;
-	}
-}
-
-
-struct App {
-	typedef stdx::log<test_discovery> this_log;
-	int run(int argc, char* argv[]) {
-		int retval = 0;
-		if (argc <= 2) {
-			try {
-				uint32_t npeers = num_peers();
-				std::string base_ip = argc == 2 ? argv[1] : "127.0.0.1";
-				generate_all_peers(npeers, base_ip);
-				if (write_cache()) {
-					write_cache_all();
-					return 0;
-				}
-
-				sysx::process_group processes;
-				int start_id = 1000;
-				for (sysx::endpoint endpoint : all_peers) {
-					processes.add([endpoint, &argv, start_id, npeers, &base_ip] () {
-						sysx::this_process::env("START_ID", start_id);
-						return sysx::this_process::execute(argv[0],
-							"--bind-addr", endpoint,
-							"--num-peers", npeers,
-							"--base-ip", base_ip);
-					});
-					start_id += 1000;
-				}
-
-				this_log() << "Forked " << processes << std::endl;
-
-				retval = processes.wait();
-
-			} catch (std::exception& e) {
-				std::cerr << e.what() << std::endl;
-				retval = 1;
-			}
-		} else {
-			uint32_t npeers = 3;
-			sysx::endpoint bind_addr(get_bind_address(), DISCOVERY_PORT);
-			std::string base_ip = "127.0.0.1";
-			bits::Command_line cmdline(argc, argv);
-			cmdline.parse([&bind_addr, &npeers, &base_ip](const std::string& arg, std::istream& in) {
-				     if (arg == "--bind-addr") { in >> bind_addr; }
-				else if (arg == "--num-peers") { in >> npeers; }
-				else if (arg == "--base-ip")   { in >> base_ip; }
-			});
-			this_log() << "Bind address " << bind_addr << std::endl;
-			generate_all_peers(npeers, base_ip);
-			if (sysx::endpoint(base_ip,0).address() == bind_addr.address()) {
-				write_graph_nodes();
-			}
-			try {
-				the_server()->add_cpu(0);
-				remote_server()->socket(bind_addr);
-				__factory.start();
-				Time start_delay = sysx::this_process::getenv("START_DELAY", Time(bind_addr == sysx::endpoint("127.0.0.1", 10000) ? 0 : 2));
-				Master_discoverer* master = new Master_discoverer(bind_addr);
-				master->after(std::chrono::seconds(start_delay));
-//				master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
-				timer_server()->send(master);
-				__factory.wait();
-			} catch (std::exception& e) {
-				std::cerr << e.what() << std::endl;
-				retval = 1;
-			}
+	Main(Server& this_server, int argc, char* argv[]):
+	npeers(3),
+	bind_addr(components::get_bind_address(), DISCOVERY_PORT),
+	base_ip{127,0,0,1}
+	{
+		sysx::Command_line cmdline(argc, argv);
+		cmdline.parse([this](const std::string& arg, std::istream& in) {
+			     if (arg == "--bind-addr") { in >> bind_addr; }
+			else if (arg == "--num-peers") { in >> npeers; }
+			else if (arg == "--base-ip")   { in >> base_ip; }
+		});
+		this_log() << "Bind address " << bind_addr << std::endl;
+		generate_all_peers(npeers, base_ip);
+		if (sysx::endpoint(base_ip,0).address() == bind_addr.address()) {
+			graph.add_nodes(all_peers.begin(), all_peers.end());
 		}
-		return retval;
+		auto& __factory = *this_server.factory();
+		this_server.local_server()->add_cpu(0);
+		this_server.remote_server()->socket(bind_addr);
+		__factory.types().register_type(Profiler::static_type());
+		__factory.types().register_type(Ping::static_type());
+		__factory.types().register_type(Negotiator::static_type());
 	}
+
+	void act(Server& this_server) {
+		Time start_delay = sysx::this_process::getenv("START_DELAY", Time(bind_addr == sysx::endpoint("127.0.0.1", 10000) ? 0 : 2));
+		Master_discoverer* master = new Master_discoverer(bind_addr);
+		master->after(std::chrono::seconds(start_delay));
+//		master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
+		this_server.timer_server()->send(master);
+	}
+
+private:
+	uint32_t npeers;
+	sysx::endpoint bind_addr;
+	sysx::ipv4_addr base_ip;
 };
 
 int main(int argc, char* argv[]) {
-	App app;
-	return app.run(argc, argv);
+	int retval = -1;
+	if (argc <= 2) {
+		typedef stdx::log<test_discovery> this_log;
+		uint32_t npeers = num_peers();
+		std::string base_ip_str = argc == 2 ? argv[1] : "127.0.0.1";
+		sysx::ipv4_addr base_ip;
+		std::stringstream str;
+		str << base_ip_str;
+		str >> base_ip;
+		generate_all_peers(npeers, base_ip);
+		if (write_cache()) {
+			write_cache_all();
+			return 0;
+		}
+		std::exit(0);
+
+		sysx::process_group procs;
+		int start_id = 1000;
+		for (sysx::endpoint endpoint : all_peers) {
+			procs.add([endpoint, &argv, start_id, npeers, &base_ip] () {
+				sysx::this_process::env("START_ID", start_id);
+				return sysx::this_process::execute(argv[0],
+					"--bind-addr", endpoint,
+					"--num-peers", npeers,
+					"--base-ip", base_ip);
+			});
+			start_id += 1000;
+		}
+
+		this_log() << "Forked " << procs << std::endl;
+
+		retval = procs.wait();
+	} else {
+		using namespace factory;
+		retval = factory_main<Main,config>(argc, argv);
+	}
+	return retval;
 }

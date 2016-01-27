@@ -22,7 +22,7 @@ namespace factory {
 			const T*
 			lookup(id_type type_name) const noexcept {
 				auto result = this->_types.find(type_name);
-				return result == this->_types.end() ? nullptr : &result->second; 
+				return result == this->_types.end() ? nullptr : &result->second;
 			}
 
 			void
@@ -47,14 +47,14 @@ namespace factory {
 					}
 				);
 			}
-	
+
 			friend std::ostream&
 			operator<<(std::ostream& out, const Types& rhs) {
 				std::ostream_iterator<Entry> it(out, "\n");
 				std::copy(rhs._types.cbegin(), rhs._types.cend(), it);
 				return out;
 			}
-	
+
 		private:
 
 			struct Entry {
@@ -85,7 +85,7 @@ namespace factory {
 			typedef std::function<T* (sysx::packetstream&)> read_type;
 
 			typedef stdx::log<Type> this_log;
-	
+
 //			constexpr
 //			Type() noexcept:
 //				_id(0),
@@ -93,7 +93,7 @@ namespace factory {
 //				construct(),
 //				read()
 //			{}
-//	
+//
 //			constexpr
 //			Type(const Type& rhs) noexcept:
 //				_id(rhs._id),
@@ -130,6 +130,16 @@ namespace factory {
 			constexpr bool
 			operator !() const noexcept {
 				return this->_id == 0;
+			}
+
+			constexpr bool
+			operator==(const Type& rhs) const noexcept {
+				return this->_id == rhs._id;
+			}
+
+			constexpr bool
+			operator!=(const Type& rhs) const noexcept {
+				return !operator==(rhs);
 			}
 
 			friend std::ostream&
@@ -194,7 +204,7 @@ namespace factory {
 				}
 				callback(kernel);
 			}
-	
+
 			id_type _id;
 			std::string _name;
 //			construct_type construct;
@@ -259,7 +269,7 @@ namespace factory {
 			T* lookup(Id id) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _instances.find(id);
-				return result == _instances.end() ? nullptr : result->second; 
+				return result == _instances.end() ? nullptr : result->second;
 			}
 
 			void register_instance(T* inst) {
@@ -271,7 +281,7 @@ namespace factory {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_instances.erase(inst->id());
 			}
-		
+
 			friend std::ostream& operator<<(std::ostream& out, const Instances& rhs) {
 				// TODO: this function is not thread-safe
 				std::ostream_iterator<Entry> it(out, "\n");
@@ -306,7 +316,7 @@ namespace factory {
 			std::unordered_map<Id, T*> _instances;
 			std::mutex _mutex;
 		};
-	
+
 	}
 
 	struct Identifiable_tag {};
