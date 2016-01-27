@@ -144,8 +144,8 @@ namespace factory {
 				return Category{"proc_rserver"};
 			}
 
-			Process_rserver(sysx::process&& child, sysx::two_way_pipe&& pipe):
-			_childproc(std::move(child)),
+			Process_rserver(sysx::pid_type&& child, sysx::two_way_pipe&& pipe):
+			_childpid(child),
 			_outbuf(std::move(pipe.parent_out())),
 			_ostream(&_outbuf),
 			_inbuf(std::move(pipe.parent_in())),
@@ -157,7 +157,7 @@ namespace factory {
 
 			Process_rserver(Process_rserver&& rhs):
 			base_server(std::move(rhs)),
-			_childproc(std::move(rhs._childproc)),
+			_childpid(rhs._childpid),
 			_outbuf(std::move(rhs._outbuf)),
 			_ostream(&_outbuf),
 			_inbuf(std::move(rhs._inbuf)),
@@ -171,16 +171,16 @@ namespace factory {
 
 			explicit
 			Process_rserver(sysx::pipe&& pipe):
-			_childproc(sysx::this_process::id()),
+			_childpid(sysx::this_process::id()),
 			_outbuf(std::move(pipe.out())),
 			_ostream(&_outbuf),
 			_inbuf(std::move(pipe.in())),
 			_istream(&_inbuf)
 			{}
 
-			const sysx::process&
-			childproc() const {
-				return _childproc;
+			const sysx::pid_type&
+			childpid() const {
+				return _childpid;
 			}
 
 			void
@@ -243,7 +243,7 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Process_rserver& rhs) {
-				return stdx::format_fields(out, "childproc", rhs._childproc);
+				return stdx::format_fields(out, "childpid", rhs._childpid);
 			}
 
 		private:
@@ -253,7 +253,7 @@ namespace factory {
 				_istream >> app >> from;
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
-				if (app == Application::ROOT || _childproc.id() == sysx::this_process::id()) {
+				if (app == Application::ROOT || _childpid == sysx::this_process::id()) {
 					Type<kernel_type>::read_object(this->factory()->types(), _istream,
 						[this,app] (kernel_type* k) {
 							receive_kernel(k, app);
@@ -297,7 +297,7 @@ namespace factory {
 				this->send(k);
 			}
 
-			sysx::process _childproc;
+			sysx::pid_type _childpid;
 			kernelbuf_type _outbuf;
 			stream_type _ostream;
 			kernelbuf_type _inbuf;
@@ -350,7 +350,7 @@ namespace factory {
 
 			void
 			remove_server(server_type* ptr) override {
-				_apps.erase(ptr->childproc().id());
+				_apps.erase(ptr->childpid());
 			}
 
 			void
@@ -369,7 +369,7 @@ namespace factory {
 				this_log() << "starting app=" << app << std::endl;
 				lock_type lock(this->_mutex);
 				sysx::two_way_pipe data_pipe;
-				sysx::process& p = _procs.add([&app,this,&data_pipe] () {
+				const sysx::process& p = _procs.add([&app,this,&data_pipe] () {
 					data_pipe.close_in_child();
 					data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 					data_pipe.validate();
@@ -382,14 +382,19 @@ namespace factory {
 				this_log() << "pipe=" << data_pipe << std::endl;
 				sysx::fd_type parent_in = data_pipe.parent_in().get_fd();
 				sysx::fd_type parent_out = data_pipe.parent_out().get_fd();
-				rserver_type child(sysx::process(p.id()), std::move(data_pipe));
+				rserver_type child(p.id(), std::move(data_pipe));
 				child.setparent(this);
+				assert(child.root() != nullptr);
 				this_log() << "starting child process: " << child << std::endl;
 				auto result = _apps.emplace(process_id, std::move(child));
-				poller().emplace(sysx::poll_event{parent_in, sysx::poll_event::In, 0},
-						handler_type(&result.first->second));
-				poller().emplace(sysx::poll_event{parent_out, 0, 0},
-						handler_type(&result.first->second));
+				poller().emplace(
+					sysx::poll_event{parent_in, sysx::poll_event::In, 0},
+					handler_type(&result.first->second)
+				);
+				poller().emplace(
+					sysx::poll_event{parent_out, 0, 0},
+					handler_type(&result.first->second)
+				);
 				_globalsem.notify_one();
 			}
 

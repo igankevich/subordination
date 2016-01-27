@@ -308,7 +308,7 @@ namespace sysx {
 	struct process_group {
 
 		template<class F>
-		process&
+		const process&
 		add(F child_main) {
 			process p(child_main);
 			if (_procs.empty()) {
