@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cppcheck \
+	--enable=all \
+	--quiet \
+	--error-exitcode=1 \
+	--force \
+	-I$MESON_SOURCE_ROOT/src $MESON_SOURCE_ROOT/src

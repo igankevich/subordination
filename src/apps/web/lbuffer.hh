@@ -3,6 +3,10 @@
 
 #include <iostream>
 #include <iomanip>
+#include <vector>
+#include <algorithm>
+
+#include <stdx/log.hh>
 
 namespace factory {
 

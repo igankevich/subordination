@@ -1,0 +1,10 @@
+#!/bin/sh
+
+LCOV_OPTIONS="--no-checksum --rc lcov_branch_coverage=1"
+GENHTML_OPTIONS="--demangle-cpp --css-file=$MESON_SOURCE_ROOT/util/gcov.css"
+
+file1=$MESON_BUILD_ROOT/coverage.info.tmp
+file2=$MESON_BUILD_ROOT/coverage.info
+lcov --directory $MESON_BUILD_ROOT --output-file $file1 $LCOV_OPTIONS --capture
+lcov --directory $MESON_BUILD_ROOT --output-file $file2 --remove $file1 "/usr/include/*" "$MESON_SOURCE_ROOT/src/test/*"
+genhtml --prefix $MESON_BUILD_ROOT --output-directory $MESON_BUILD_ROOT/coveragereport --title "Code coverage" --legend --show-details $GENHTML_OPTIONS $MESON_BUILD_ROOT/coverage.info
