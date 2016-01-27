@@ -73,8 +73,13 @@ namespace stdx {
 
 }
 
+#if defined(FACTORY_TEST_OFFLINE)
 sysx::endpoint server_endpoint("127.0.0.1", 10000);
 sysx::endpoint client_endpoint({127,0,0,1}, 20000);
+#else
+sysx::endpoint server_endpoint("127.0.0.1", 10001);
+sysx::endpoint client_endpoint({127,0,0,1}, 20001);
+#endif
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
 const std::vector<size_t> POWERS = {1,2,3,4};
