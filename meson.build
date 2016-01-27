@@ -7,8 +7,8 @@ srcdir = include_directories('src')
 
 cppcheck = find_program('cppcheck')
 if cppcheck.found()
-	run_target('cppcheck', meson.source_root() + '/scripts/cppcheck')
+	run_target('cppcheck', meson.source_root() + '/scripts/cppcheck-target')
 endif
-run_target('coverage', meson.source_root() + '/scripts/lcov-genhtml')
+run_target('gcov', meson.source_root() + '/scripts/gcov-target')
 
 subdir('src')
