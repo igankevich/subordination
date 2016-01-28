@@ -98,8 +98,8 @@ struct Test_packetbuf: public test::Test<Test_packetbuf<T,Fd>> {
 	void xrun() override {
 		typedef sysx::basic_fildesbuf<T> ipacketbuf;
 		typedef sysx::basic_fildesbuf<T> opacketbuf;
-		const size_t MAX_K = 1 << 20;
-		for (size_t k=1; k<=MAX_K; k<<=1) {
+		const int MAX_K = 1 << 20;
+		for (int k=1; k<=MAX_K; k<<=1) {
 			sysx::tmpfile tfile(prefix);
 			const std::string filename = tfile.path();
 			std::basic_string<T> contents = test::random_string<T>(k, 'a', 'z');

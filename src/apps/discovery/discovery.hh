@@ -1,5 +1,5 @@
-#ifndef DISCOVERY_DISCOVERY_HH
-#define DISCOVERY_DISCOVERY_HH
+#ifndef APPS_DISCOVERY_DISCOVERY_HH
+#define APPS_DISCOVERY_DISCOVERY_HH
 
 #include <set>
 #include <map>
@@ -208,4 +208,4 @@ namespace factory {
 
 }
 
-#endif // DISCOVERY_DISCOVERY_HH
+#endif // APPS_DISCOVERY_DISCOVERY_HH

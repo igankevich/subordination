@@ -23,7 +23,7 @@ namespace factory {
 		base64_max_decoded_size(size_t len) noexcept {
 			return (len / 4u) * 3u;
 		}
-		
+
 		template<class It, class Res>
 		void
 		base64_encode(It first, It last, Res result) {
@@ -33,19 +33,19 @@ namespace factory {
 
 			static_assert(sizeof(*first) == 1,
 				"base64_encode() works for sequences of 1-byte sized types.");
-		
+
 			typedef typename std::remove_reference<decltype(*result)>::type char_type;
-		
+
 			const size_t binlen = static_cast<size_t>(last - first);
 			if (binlen > base64_max_decoded_size(std::numeric_limits<size_t>::max())) {
 				throw std::length_error("Converting too large a string to base64.");
 			}
-		
+
 			Res last_result = result + std::ptrdiff_t(base64_encoded_size(binlen));
-		
+
 			int bits_collected = 0;
 			unsigned int accumulator = 0;
-		
+
 			while (first != last) {
 				const unsigned int ch = static_cast<unsigned int>(*first);
 				accumulator = (accumulator << 8) | (ch & 0xffu);
@@ -71,7 +71,7 @@ namespace factory {
 		//	   assert(outpos <= result.size());
 		//	   return result;
 		}
-		
+
 		template<class It, class Res>
 		size_t
 		base64_decode(It first, It last, Res result) {
@@ -92,12 +92,12 @@ namespace factory {
 				"base64_decode() works for sequences of 1-byte sized types.");
 
 			typedef typename std::remove_reference<decltype(*result)>::type char_type;
-		
+
 			int bits_collected = 0;
 			unsigned int accumulator = 0;
 
 			Res start = result;
-		
+
 			while (first != last) {
 				const int c = *first;
 				++first;
@@ -143,13 +143,13 @@ namespace factory {
 		 *	  Please read the file sha1.cpp for more information.
 		 *
 		 */
-		
+
 		struct SHA1 {
 
 			constexpr SHA1() noexcept:
 				H{0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0},
 				Message_Block{} {}
-		
+
 			template<class It>
 			inline void
 			result(It output) noexcept {
@@ -158,7 +158,7 @@ namespace factory {
 				PadMessage();
 				std::copy(H, H + 5, output);
 			}
-		
+
 			template<class It>
 			void
 			input(It first, It last) {
@@ -189,8 +189,8 @@ namespace factory {
 			}
 
 		private:
-		
-			/*  
+
+			/*
 			 *  ProcessMessageBlock
 			 *
 			 *  Description:
@@ -219,7 +219,7 @@ namespace factory {
 				uint32_t temp;					   // Temporary word value
 				uint32_t W[80];					  // Word sequence
 				uint32_t A, B, C, D, E;			  // Word buffers
-			
+
 				/*
 				 *  Initialize the first 16 words in the array W
 				 */
@@ -229,17 +229,17 @@ namespace factory {
 					W[t] |= ((uint32_t) Message_Block[t * 4 + 2]) << 8;
 					W[t] |= ((uint32_t) Message_Block[t * 4 + 3]);
 				}
-			
+
 				for (int t = 16; t < 80; t++) {
 					W[t] = CircularShift(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16]);
 				}
-			
+
 				A = H[0];
 				B = H[1];
 				C = H[2];
 				D = H[3];
 				E = H[4];
-			
+
 				for (int t = 0; t < 20; t++) {
 					temp = CircularShift(5, A) + ((B & C) | ((~B) & D)) + E + W[t] + K[0];
 					E = D;
@@ -248,7 +248,7 @@ namespace factory {
 					B = A;
 					A = temp;
 				}
-			
+
 				for (int t = 20; t < 40; t++) {
 					temp = CircularShift(5,A) + (B ^ C ^ D) + E + W[t] + K[1];
 					E = D;
@@ -257,7 +257,7 @@ namespace factory {
 					B = A;
 					A = temp;
 				}
-			
+
 				for(int t = 40; t < 60; t++) {
 					temp = CircularShift(5,A) +
 						   ((B & C) | (B & D) | (C & D)) + E + W[t] + K[2];
@@ -267,7 +267,7 @@ namespace factory {
 					B = A;
 					A = temp;
 				}
-			
+
 				for(int t = 60; t < 80; t++) {
 					temp = CircularShift(5,A) + (B ^ C ^ D) + E + W[t] + K[3];
 					E = D;
@@ -276,17 +276,17 @@ namespace factory {
 					B = A;
 					A = temp;
 				}
-			
+
 				H[0] += A;
 				H[1] += B;
 				H[2] += C;
 				H[3] += D;
 				H[4] += E;
-			
+
 				Message_Block_Index = 0;
 			}
-		
-			/*  
+
+			/*
 			 *  PadMessage
 			 *
 			 *  Description:
@@ -318,9 +318,9 @@ namespace factory {
 					while(Message_Block_Index < 64) {
 						Message_Block[Message_Block_Index++] = 0;
 					}
-				
+
 					ProcessMessageBlock();
-				
+
 					while(Message_Block_Index < 56) {
 						Message_Block[Message_Block_Index++] = 0;
 					}
@@ -329,9 +329,9 @@ namespace factory {
 					while(Message_Block_Index < 56) {
 						Message_Block[Message_Block_Index++] = 0;
 					}
-				
+
 				}
-				
+
 				/*
 				 *  Store the message length as the last 8 octets
 				 */
@@ -343,10 +343,10 @@ namespace factory {
 				Message_Block[61] = (Length_Low >> 16) & 0xFF;
 				Message_Block[62] = (Length_Low >> 8) & 0xFF;
 				Message_Block[63] = (Length_Low) & 0xFF;
-				
+
 				ProcessMessageBlock();
 			}
-		
+
 			/*
 			 *  Performs a circular left shift operation
 			 */
@@ -355,12 +355,12 @@ namespace factory {
 			CircularShift(int bits, uint32_t word) noexcept {
 				return (word << bits) | (word >> (32-bits));
 			}
-		
+
 			uint32_t H[5];                   // Message digest buffers
-		
+
 			uint32_t Length_Low = 0;         // Message length in bits
 			uint32_t Length_High = 0;        // Message length in bits
-		
+
 			unsigned char Message_Block[64]; // 512-bit message blocks
 			int Message_Block_Index = 0;     // Index into message block array
 		};
@@ -410,7 +410,7 @@ namespace factory {
 			sha1.input(first, last);
 			sha1.result(result);
 		}
-		
+
 		enum struct Opcode: int8_t {
 			CONT_FRAME   = 0x0,
 			TEXT_FRAME   = 0x1,
@@ -426,7 +426,7 @@ namespace factory {
 			static const uint16_t LEN16_TAG = 126;
 			static const uint16_t LEN64_TAG = 127;
 		}
-		
+
 		union Web_socket_frame {
 
 			typedef uint32_t Mask;
@@ -617,8 +617,6 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Web_socket_frame& rhs) {
-				typedef Web_socket_frame::Len16 Len16;
-				typedef Web_socket_frame::Len64 Len64;
 				typedef Web_socket_frame::Mask Mask;
 				std::ostream::sentry s(out);
 				if (s) {

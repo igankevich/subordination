@@ -47,7 +47,7 @@ namespace sysx {
 
 		explicit
 		shared_mem(shm_type shm):
-		_shm(shm), _path(), _size(0), _owner(false)
+		_path(), _size(0), _shm(shm), _owner(false)
 		{
 			do_open_existing();
 		}

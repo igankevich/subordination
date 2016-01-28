@@ -30,7 +30,6 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 
 	void xrun() override {
 		const typename sysx::shared_mem<T>::size_type SHMEM_SIZE = 512;
-		const char SHMEMPROJID = 'F';
 		sysx::shared_mem<T> mem1(SHMEM_SIZE, 0666);
 		sysx::shared_mem<T> mem2(mem1.id());
 		test::invar(shmem_invariant, mem1);

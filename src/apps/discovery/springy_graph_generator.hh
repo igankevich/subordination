@@ -1,3 +1,6 @@
+#ifndef APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
+#define APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
+
 #include <chrono>
 
 #include <sysx/endpoint.hh>
@@ -96,3 +99,5 @@ namespace springy {
 	};
 
 }
+
+#endif // APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH

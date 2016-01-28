@@ -35,6 +35,7 @@ namespace sysx {
 		typedef Fd fd_type;
 		typedef stdx::log<basic_fildesbuf> this_log;
 		typedef typename std::vector<char_type>::size_type size_type;
+		typedef typename std::make_signed<size_type>::type signed_size_type;
 
 		basic_fildesbuf(): basic_fildesbuf(std::move(fd_type()), 512, 512) {}
 
@@ -163,7 +164,7 @@ namespace sysx {
 			std::streamsize n = 0, nread = offset;
 			while ((n = _fd.read(_gbuf.data() + nread, _gbuf.size() - nread)) > 0) {
 				nread += n;
-				if (nread == _gbuf.size()) {
+				if (nread == gsize()) {
 					ggrow();
 				}
 			}
@@ -189,9 +190,14 @@ namespace sysx {
 			pbump(off);
 		}
 
-		size_type
+		signed_size_type
 		psize() const {
-			return _pbuf.size();
+			return static_cast<signed_size_type>(_pbuf.size());
+		}
+
+		signed_size_type
+		gsize() const {
+			return static_cast<signed_size_type>(_gbuf.size());
 		}
 
 		fd_type _fd;

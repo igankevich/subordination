@@ -66,6 +66,8 @@ struct test_counter: public Parametric_test<test_counter<Mutex>> {
 template<class Q, class Mutex, class Semaphore=std::condition_variable, class Thread=std::thread>
 struct Thread_pool {
 
+	static constexpr const Q sval = std::numeric_limits<Q>::max();
+
 	Thread_pool():
 		queue(),
 		cv(),
@@ -80,7 +82,7 @@ struct Thread_pool {
 				val = queue.front();
 				queue.pop();
 			}
-			if (val == -1) {
+			if (val == sval) {
 				std::clog << "Stopping thread pool" << std::endl;
 				stopped = true;
 			} else {
@@ -133,7 +135,7 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 			thread_pool[i%thread_pool.size()]->submit(i);
 		}
 		for (Pool* pool : thread_pool) {
-			pool->submit(I(-1));
+			pool->submit(Pool::sval);
 		}
 		std::for_each(thread_pool.begin(), thread_pool.end(),
 			std::mem_fn(&Pool::wait));

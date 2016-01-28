@@ -44,8 +44,8 @@ using factory::components::Error;
 
 struct Sleepy_kernel: public Kernel {
 
-	void pos(int p) { position = p; }
-	int pos() const { return position; }
+	void pos(size_t p) { position = p; }
+	size_t pos() const { return position; }
 
 	void act(Server& this_server) {
 		const auto now = current_time_nano();
@@ -58,7 +58,7 @@ struct Sleepy_kernel: public Kernel {
 		commit(this_server.local_server());
 	}
 
-	int position = 0;
+	size_t position = 0;
 };
 
 struct Main: public Kernel {
@@ -67,7 +67,7 @@ struct Main: public Kernel {
 	void act(Server& this_server) {
 		std::vector<Kernel*> kernels(NUM_KERNELS);
 		// send kernels in inverse chronological order
-		for (int i=0; i<NUM_KERNELS; ++i) {
+		for (size_t i=0; i<NUM_KERNELS; ++i) {
 			kernels[i] = new_sleepy_kernel(NUM_KERNELS - i, NUM_KERNELS - i);
 		}
 		this_server.timer_server()->send(kernels.data(), kernels.size());
