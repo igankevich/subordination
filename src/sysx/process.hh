@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <stdx/log.hh>
 #include <stdx/intersperse_iterator.hh>
 
 #include <sysx/bits/check.hh>
@@ -307,6 +308,8 @@ namespace sysx {
 
 	struct process_group {
 
+		typedef stdx::log<process_group> this_log;
+
 		template<class F>
 		const process&
 		add(F child_main) {
@@ -324,6 +327,9 @@ namespace sysx {
 			int ret = 0;
 			for (process& p : _procs) {
 				sysx::proc_status x = p.wait();
+				this_log() << "process terminated:"
+					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal())
+					<< std::endl;
 				ret += std::abs(x.exit_code() | x.term_signal());
 			}
 			return ret;

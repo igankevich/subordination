@@ -54,11 +54,7 @@ namespace factory {
 				_packetbuf(std::move(rhs._packetbuf)),
 				_stream(&_packetbuf),
 				_buffer(std::move(rhs._buffer))
-			{
-				this_log() << "fd after move ctr " << _packetbuf.fd() << std::endl;
-				this_log() << "root after move ctr " << this->root()
-					<< ",this=" << this << std::endl;
-			}
+			{}
 
 			virtual
 			~Remote_Rserver() {
@@ -86,11 +82,6 @@ namespace factory {
 				sysx::poll_event ev{socket().fd(), sysx::poll_event::In};
 				handle(ev);
 
-				this_log()
-					<< "Kernels left: "
-					<< _buffer.size()
-					<< std::endl;
-
 				// recover kernels written to output buffer
 				using namespace std::placeholders;
 				std::for_each(stdx::front_popper(_buffer),
@@ -100,14 +91,10 @@ namespace factory {
 			}
 
 			void send(kernel_type* kernel) {
-				if (kernel->result() == Result::NO_PRINCIPAL_FOUND) {
-					this_log() << "poll send error: tellp=" << _stream.tellp() << std::endl;
-				}
 				bool erase_kernel = true;
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(this->factory()->factory_generate_id());
 					erase_kernel = false;
-					this_log() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
@@ -115,7 +102,6 @@ namespace factory {
 				}
 				this->write_kernel(*kernel);
 				if (erase_kernel && !kernel->moves_everywhere()) {
-					this_log() << "Delete kernel " << *kernel << std::endl;
 					delete kernel;
 				}
 			}
@@ -137,9 +123,6 @@ namespace factory {
 				}
 				if (event.out() && !event.hup()) {
 					_stream.flush();
-					if (!_packetbuf.dirty()) {
-						this_log() << "Flushed." << std::endl;
-					}
 				}
 			}
 
@@ -186,8 +169,6 @@ namespace factory {
 			void read_and_receive_kernel() {
 				app_type app;
 				_stream >> app;
-				this_log() << "recv ok" << std::endl;
-				this_log() << "recv app=" << app << std::endl;
 				if (app != Application::ROOT) {
 					this->app_server()->forward(app, _vaddr, _packetbuf);
 				} else {
@@ -204,9 +185,6 @@ namespace factory {
 				bool ok = true;
 				k->from(_vaddr);
 				k->setapp(app);
-				this_log()
-					<< "recv kernel=" << *k
-					<< std::endl;
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
 				} else if (k->principal_id()) {
@@ -217,6 +195,7 @@ namespace factory {
 					}
 					k->principal(p);
 				}
+				this_log() << "recv kernel=" << *k << std::endl;
 				if (!ok) {
 					return_kernel(k);
 				} else {
@@ -225,9 +204,7 @@ namespace factory {
 			}
 
 			void return_kernel(kernel_type* k) {
-				this_log()
-					<< "No principal found for "
-					<< *k << std::endl;
+				this_log() << "No principal found for " << *k << std::endl;
 				k->principal(k->parent());
 				this->send(k);
 			}
@@ -260,15 +237,11 @@ namespace factory {
 				auto pos = std::find_if(_buffer.begin(), _buffer.end(),
 					[k] (kernel_type* rhs) { return *rhs == *k; });
 				if (pos != _buffer.end()) {
-					this_log() << "Kernel erased " << k->id() << std::endl;
 					kernel_type* orig = *pos;
 					k->parent(orig->parent());
 					k->principal(k->parent());
 					delete orig;
 					_buffer.erase(pos);
-					this_log() << "Buffer size = " << _buffer.size() << std::endl;
-				} else {
-					this_log() << "Kernel not found " << k->id() << std::endl;
 				}
 			}
 
@@ -318,15 +291,10 @@ namespace factory {
 				socket_type sock;
 				_socket.accept(sock, addr);
 				sysx::endpoint vaddr = virtual_addr(addr);
-				this_log()
-					<< "after accept: socket="
-					<< sock << std::endl;
 				auto res = _upstream.find(vaddr);
 				if (res == _upstream.end()) {
 					this->add_connected_server(std::move(sock), vaddr, sysx::poll_event::In);
-					this_log()
-						<< "connected peer "
-						<< vaddr << std::endl;
+					this_log() << "connected peer " << vaddr << std::endl;
 				} else {
 					server_type& s = res->second;
 					const sysx::port_type
@@ -354,12 +322,8 @@ namespace factory {
 							sysx::poll_event{res->second.socket().fd(), sysx::poll_event::Inout, sysx::poll_event::Inout},
 							handler_type(&res->second));
 						log << " with " << res->second << std::endl;
-						debug("replacing upstream");
 					}
 				}
-				this_log()
-					<< "after add: socket="
-					<< sock << std::endl;
 			}
 
 			void peer(sysx::endpoint addr) {
@@ -409,7 +373,6 @@ namespace factory {
 
 			void
 			process_kernels() override {
-				this_log() << "NIC_server::process_kernels()" << std::endl;
 				stdx::front_pop_iterator<kernel_pool> it_end;
 				lock_type lock(this->_mutex);
 				stdx::for_each_thread_safe(lock,
@@ -428,7 +391,6 @@ namespace factory {
 				}
 
 				if (k->moves_everywhere()) {
-					this_log() << "broadcast kernel" << std::endl;
 					for (auto& pair : _upstream) {
 						pair.second.send(k);
 					}
@@ -475,12 +437,6 @@ namespace factory {
 				const upstream_type& map;
 			};
 
-			void debug(const char* msg = "") {
-				this_log()
-					<< msg << " upstream " << print_values(_upstream) << std::endl
-					<< msg << " events " << poller() << std::endl;
-			}
-
 			server_type* connect_to_server(sysx::endpoint addr, sysx::poll_event::legacy_event events) {
 				// bind to server address with ephemeral port
 				sysx::endpoint srv_addr(this->server_addr(), 0);
@@ -498,7 +454,7 @@ namespace factory {
 				poller().emplace(
 					sysx::poll_event{fd, events, revents},
 					handler_type(&result.first->second));
-				this_log() << "added server " << result.first->second << std::endl;
+				this_log() << "add server " << result.first->second << std::endl;
 				return &result.first->second;
 			}
 

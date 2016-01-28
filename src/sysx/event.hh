@@ -263,13 +263,11 @@ namespace sysx {
 
 		void
 		insert_special(poll_event ev) {
-			std::clog << "event_poller::insert_special " << ev << std::endl;
 			_specials.push_back(ev);
 		}
 
 		void
 		emplace(poll_event ev, handler_type&& handler) {
-			std::clog << "event_poller::emplace " << ev << std::endl;
 			this->_events.push_back(ev);
 			this->_handlers.emplace_back(std::move(handler));
 			assert_invariant();
@@ -279,7 +277,6 @@ namespace sysx {
 		disable(fd_type fd) noexcept {
 			events_type::iterator pos = this->find(poll_event{fd});
 			if (pos != this->_events.end()) {
-				std::clog << "ignoring fd=" << pos->fd() << std::endl;
 				pos->disable();
 			}
 		}

@@ -29,7 +29,7 @@ namespace stdx {
 		operator<<(const T&) const { return *this; }
 
 		constexpr const no_log&
-		operator<<(std::ostream& ( *pf )(std::ostream&)) const { return *this; }
+		operator<<(std::ostream& (*pf)(std::ostream&)) const { return *this; }
 	};
 
 	#if defined(FACTORY_DISABLE_LOGS)
@@ -179,8 +179,7 @@ namespace stdx {
 	template<class Out, class ... Args>
 	void
 	log_func(const char* func, const Args& ... args) {
-		Out out;
-		out << make_func(func, args...) << std::endl;
+		Out() << make_func(func, args...) << std::endl;
 	}
 
 }

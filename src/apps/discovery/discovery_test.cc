@@ -13,6 +13,23 @@
 #include "springy_graph_generator.hh"
 #include "test.hh"
 
+// disable logs
+namespace stdx {
+
+	template<>
+	struct disable_log_category<sysx::buffer_category>:
+	public std::integral_constant<bool, true> {};
+
+	template<>
+	struct disable_log_category<factory::components::kernel_category>:
+	public std::integral_constant<bool, true> {};
+
+//	template<>
+//	struct disable_log_category<factory::components::server_category>:
+//	public std::integral_constant<bool, true> {};
+
+}
+
 namespace factory {
 	inline namespace this_config {
 
@@ -417,7 +434,14 @@ struct Profiler: public Kernel, public Identifiable_tag {
 
 	static const Type<Kernel>
 	static_type() noexcept {
-		return Type<Kernel>{2};
+		return Type<Kernel>{2,
+			"Profiler",
+			[] (sysx::packetstream& in) {
+				Profiler* k = new Profiler;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 
 private:
@@ -445,7 +469,14 @@ struct Ping: public Kernel, public Identifiable_tag {
 
 	static const Type<Kernel>
 	static_type() noexcept {
-		return Type<Kernel>{7};
+		return Type<Kernel>{7,
+			"Ping",
+			[] (sysx::packetstream& in) {
+				Ping* k = new Ping;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 
 };
@@ -531,7 +562,7 @@ private:
 	}
 
 	void try_to_connect(Server& this_server, sysx::endpoint addr) {
-		Ping* ping = new Ping;
+		Ping* ping = this_server.factory()->new_kernel<Ping>();
 		ping->to(addr);
 		ping->parent(this);
 		this_log() << "scanning " << ping->to() << std::endl;
@@ -557,7 +588,7 @@ struct Discoverer: public Kernel, public Identifiable_tag {
 		std::vector<Profiler*> profs;
 		for (auto& pair : _peers) {
 			if (pair.second.needs_update()) {
-				Profiler* prof = new Profiler;
+				Profiler* prof = this_server.factory()->new_kernel<Profiler>();
 				prof->to(pair.first);
 				prof->set_principal_id(pair.first.address());
 				profs.push_back(prof);
@@ -582,7 +613,7 @@ struct Discoverer: public Kernel, public Identifiable_tag {
 			p.collect_sample(prof->time());
 		}
 		if (p.needs_update()) {
-			Profiler* prof2 = new Profiler;
+			Profiler* prof2 = this_server.factory()->new_kernel<Profiler>();
 			prof2->to(prof->from());
 			++_num_sent;
 			upstream(this_server.remote_server(), prof2);
@@ -713,7 +744,7 @@ private:
 
 	void send_negotiator(Server& this_server, sysx::endpoint addr) {
 		++_num_sent;
-		Negotiator* n = new Negotiator(_old_principal, _new_principal);
+		Negotiator* n = this_server.factory()->new_kernel<Negotiator>(_old_principal, _new_principal);
 		n->set_principal_id(addr.address());
 		n->to(addr);
 		upstream(this_server.remote_server(), n);
@@ -734,7 +765,7 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	explicit
 	Master_discoverer(sysx::endpoint this_addr):
 	_peers(this_addr),
-	_cache(_peers.this_addr(), _peers),
+//	_cache(_peers.this_addr(), _peers),
 	_scanner(nullptr),
 	_discoverer(nullptr),
 	_negotiator(nullptr)
@@ -760,7 +791,7 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 				<< ",peers=" << this->_peers
 				<< ",npeers=" << all_peers.size() << std::endl;
 			_peers.debug();
-			this_server.shutdown();
+			this_server.factory()->shutdown();
 		});
 		this_log()
 			<< "startTime.push("
@@ -826,7 +857,7 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 private:
 
 	void run_scan(Server& this_server, sysx::endpoint old_addr = sysx::endpoint()) {
-		_scanner = new Scanner(_peers.this_addr(), old_addr);
+		_scanner = this_server.factory()->new_kernel<Scanner>(_peers.this_addr(), old_addr);
 		if (!old_addr) {
 			_peers.add_peer(_scanner->scan_addr());
 		}
@@ -836,11 +867,11 @@ private:
 	void run_discovery(Server& this_server) {
 		this_log() << "Discovering..." << std::endl;
 //		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(this_server.local_server(), _discoverer = new Discoverer(_peers));
+		upstream(this_server.local_server(), _discoverer = this_server.factory()->new_kernel<Discoverer>(_peers));
 	}
 
 	void run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
-		upstream(this_server.local_server(), _negotiator = new Master_negotiator(old_princ, new_princ));
+		upstream(this_server.local_server(), _negotiator = this_server.factory()->new_kernel<Master_negotiator>(old_princ, new_princ));
 	}
 
 	void change_principal(Server& this_server, sysx::endpoint new_princ) {
@@ -853,7 +884,7 @@ private:
 	}
 
 	Peers _peers;
-	discovery::Cache_guard<Peers> _cache;
+//	discovery::Cache_guard<Peers> _cache;
 
 	Scanner* _scanner;
 	Discoverer* _discoverer;
@@ -937,8 +968,12 @@ struct Main: public Kernel {
 	}
 
 	void act(Server& this_server) {
-		Time start_delay = sysx::this_process::getenv("START_DELAY", Time(bind_addr == sysx::endpoint("127.0.0.1", 10000) ? 0 : 2));
-		Master_discoverer* master = new Master_discoverer(bind_addr);
+//		std::clog << "Hello from child process" << std::endl;
+//		commit(this_server.local_server());
+//		std::exit(0);
+		const Time default_delay = (bind_addr == sysx::endpoint("127.0.0.1", DISCOVERY_PORT)) ? 0 : 2;
+		const Time start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
+		Master_discoverer* master = this_server.factory()->new_kernel<Master_discoverer>(bind_addr);
 		master->after(std::chrono::seconds(start_delay));
 //		master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 		this_server.timer_server()->send(master);
@@ -979,8 +1014,6 @@ int main(int argc, char* argv[]) {
 
 		retval = procs.wait();
 	} else {
-		std::clog << "Hello from child process" << std::endl;
-		std::exit(0);
 		using namespace factory;
 		retval = factory_main<Main,config>(argc, argv);
 	}

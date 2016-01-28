@@ -77,10 +77,8 @@ namespace factory {
 					handle_events();
 					remove_servers_if_any();
 				}
-				this_log() << "do_run while ended" << std::endl;
 				// prevent double free or corruption
 				poller().clear();
-				this_log() << "do_run ended" << std::endl;
 			}
 
 			virtual void
