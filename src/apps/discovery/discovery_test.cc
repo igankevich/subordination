@@ -9,6 +9,7 @@
 #include <factory/server/nic_server.hh>
 
 #include "discovery.hh"
+#include "cache_guard.hh"
 #include "springy_graph_generator.hh"
 #include "test.hh"
 
@@ -730,11 +731,13 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	Master_discoverer(const Master_discoverer&) = delete;
 	Master_discoverer& operator=(const Master_discoverer&) = delete;
 
-	explicit Master_discoverer(sysx::endpoint this_addr):
-		_peers(this_addr),
-		_scanner(nullptr),
-		_discoverer(nullptr),
-		_negotiator(nullptr)
+	explicit
+	Master_discoverer(sysx::endpoint this_addr):
+	_peers(this_addr),
+	_cache(_peers.this_addr(), _peers),
+	_scanner(nullptr),
+	_discoverer(nullptr),
+	_negotiator(nullptr)
 	{
 		this->id(this_addr.address());
 	}
@@ -849,28 +852,8 @@ private:
 		}
 	}
 
-	std::string cache_filename() const {
-		std::stringstream s;
-		s << "/tmp/";
-		s << _peers.this_addr() << ".cache";
-		return s.str();
-	}
-
-	bool read_cache() {
-		std::ifstream in(cache_filename());
-		bool success = in.is_open();
-		if (success) {
-			in >> _peers;
-		}
-		return success;
-	}
-
-	void write_cache() {
-		std::ofstream out(cache_filename());
-		out << _peers;
-	}
-
 	Peers _peers;
+	discovery::Cache_guard<Peers> _cache;
 
 	Scanner* _scanner;
 	Discoverer* _discoverer;
@@ -927,27 +910,6 @@ void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip) {
 //	}
 }
 
-std::string cache_filename(sysx::endpoint source) {
-	std::stringstream s;
-	s << "/tmp/" << source << ".cache";
-	return s.str();
-}
-
-void write_cache_all() {
-	std::map<sysx::endpoint,Peer> peers;
-	std::transform(all_peers.begin(), all_peers.end(), std::inserter(peers, peers.begin()),
-		[] (sysx::endpoint addr) {
-			return std::make_pair(addr, Peer());
-		});
-	for (sysx::endpoint& addr : all_peers) {
-		std::ofstream out(cache_filename(addr));
-		std::ostream_iterator<std::pair<sysx::endpoint,Peer>> it(out);
-		std::copy(peers.begin(), peers.end(), it);
-	}
-}
-
-
-
 struct Main: public Kernel {
 	typedef stdx::log<test_discovery> this_log;
 	Main(Server& this_server, int argc, char* argv[]):
@@ -999,11 +961,6 @@ int main(int argc, char* argv[]) {
 		str << base_ip_str;
 		str >> base_ip;
 		generate_all_peers(npeers, base_ip);
-		if (write_cache()) {
-			write_cache_all();
-			return 0;
-		}
-		std::exit(0);
 
 		sysx::process_group procs;
 		int start_id = 1000;
@@ -1022,6 +979,8 @@ int main(int argc, char* argv[]) {
 
 		retval = procs.wait();
 	} else {
+		std::clog << "Hello from child process" << std::endl;
+		std::exit(0);
 		using namespace factory;
 		retval = factory_main<Main,config>(argc, argv);
 	}

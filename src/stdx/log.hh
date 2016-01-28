@@ -180,8 +180,7 @@ namespace stdx {
 	void
 	log_func(const char* func, const Args& ... args) {
 		Out out;
-		out << make_func(func, args...);
-		out << std::endl;
+		out << make_func(func, args...) << std::endl;
 	}
 
 }
