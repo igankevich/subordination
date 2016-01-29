@@ -950,13 +950,27 @@ struct Main: public Kernel {
 	bind_addr(components::get_bind_address(), DISCOVERY_PORT),
 	base_ip{127,0,0,1}
 	{
-		sysx::Command_line cmdline(argc, argv);
-		cmdline.parse([this](const std::string& arg, std::istream& in) {
-			     if (arg == "--bind-addr") { in >> bind_addr; }
-			else if (arg == "--num-peers") { in >> npeers; }
-			else if (arg == "--base-ip")   { in >> base_ip; }
+		sysx::cmdline cmd(argc, argv, {
+			sysx::cmd::ignore_first_arg(),
+			sysx::cmd::make_option({"--bind-addr"}, bind_addr),
+			sysx::cmd::make_option({"--num-peers"}, npeers),
+			sysx::cmd::make_option({"--base-ip"}, base_ip)
 		});
-		this_log() << "Bind address " << bind_addr << std::endl;
+		try {
+			cmd.parse();
+		} catch (sysx::invalid_cmdline_argument& err) {
+			std::cerr << err.what() << ": " << err.arg() << std::endl;
+			std::exit(1);
+		}
+//		cmdline.parse([this](const std::string& arg, std::istream& in) {
+//			     if (arg == "--bind-addr") { in >> bind_addr; }
+//			else if (arg == "--num-peers") { in >> npeers; }
+//			else if (arg == "--base-ip")   { in >> base_ip; }
+//		});
+		this_log() << "Bind address = " << bind_addr << std::endl;
+		this_log() << "Num peers = " << npeers << std::endl;
+		this_log() << "Base ip = " << base_ip << std::endl;
+//		std::exit(0);
 		generate_all_peers(npeers, base_ip);
 		if (sysx::endpoint(base_ip,0).address() == bind_addr.address()) {
 			graph.add_nodes(all_peers.begin(), all_peers.end());
@@ -994,11 +1008,12 @@ int main(int argc, char* argv[]) {
 	if (argc <= 2) {
 		typedef stdx::log<test_discovery> this_log;
 		uint32_t npeers = num_peers();
-		std::string base_ip_str = argc == 2 ? argv[1] : "127.0.0.1";
-		sysx::ipv4_addr base_ip;
-		std::stringstream str;
-		str << base_ip_str;
-		str >> base_ip;
+//		std::string base_ip_str = argc == 2 ? argv[1] : "127.0.0.1";
+//		sysx::ipv4_addr base_ip;
+//		std::stringstream str;
+//		str << base_ip_str;
+//		str >> base_ip;
+		sysx::ipv4_addr base_ip{127,0,0,1};
 		generate_all_peers(npeers, base_ip);
 
 		sysx::process_group procs;
