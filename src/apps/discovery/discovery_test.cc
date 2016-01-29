@@ -24,9 +24,9 @@ namespace stdx {
 	struct disable_log_category<factory::components::kernel_category>:
 	public std::integral_constant<bool, true> {};
 
-//	template<>
-//	struct disable_log_category<factory::components::server_category>:
-//	public std::integral_constant<bool, true> {};
+	template<>
+	struct disable_log_category<factory::components::server_category>:
+	public std::integral_constant<bool, true> {};
 
 }
 
@@ -387,7 +387,8 @@ struct Profiler: public Kernel, public Identifiable_tag {
 		commit(this_server.remote_server());
 	}
 
-	void write_impl(sysx::packetstream& out) {
+	void write(sysx::packetstream& out) {
+		Kernel::write(out);
 		if (_state == 0) {
 			_time = current_time_nano();
 		}
@@ -398,7 +399,8 @@ struct Profiler: public Kernel, public Identifiable_tag {
 		}
 	}
 
-	void read_impl(sysx::packetstream& in) {
+	void read(sysx::packetstream& in) {
+		Kernel::read(in);
 		in >> _state >> _time;
 		if (_state == 1) {
 			_time = current_time_nano() - _time;
@@ -459,8 +461,8 @@ struct Ping: public Kernel, public Identifiable_tag {
 
 	void act(Server& this_server) override { commit(this_server.remote_server()); }
 
-	void write_impl(sysx::packetstream&) { }
-	void read_impl(sysx::packetstream&) { }
+//	void write(sysx::packetstream&) { }
+//	void read(sysx::packetstream&) { }
 
 	const Type<Kernel>
 	type() const noexcept override {
@@ -642,10 +644,12 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 		_old_principal(old), _new_principal(neww) {}
 
 	void negotiate(Server& this_server, Peers& peers) {
+		stdx::log_func<this_log>(__func__, "new_principal", _new_principal);
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
 		sysx::endpoint this_addr = peers.this_addr();
 		if (_new_principal == this_addr) {
+			this_log() << "Hello" << std::endl;
 			// principal becomes subordinate
 			if (this->from() == peers.principal()) {
 				if (_old_principal) {
@@ -671,12 +675,14 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 		this_server.remote_server()->send(this);
 	}
 
-	void write_impl(sysx::packetstream& out) {
+	void write(sysx::packetstream& out) override {
+		Kernel::write(out);
 		// TODO: if moves_upstream
 		out << _old_principal << _new_principal << _stop;
 	}
 
-	void read_impl(sysx::packetstream& in) {
+	void read(sysx::packetstream& in) override {
+		Kernel::read(in);
 		in >> _old_principal >> _new_principal >> _stop;
 	}
 
@@ -815,7 +821,6 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 //				}
 				run_scan(this_server, _scanner->discovered_node());
 			} else {
-				this_log() << "Change 1" << std::endl;
 				change_principal(this_server, _scanner->discovered_node());
 				run_discovery(this_server);
 				_scanner = nullptr;
@@ -826,7 +831,6 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
 				_peers.update_peers(dsc->peers());
 				_peers.debug();
-				this_log() << "Change 2" << std::endl;
 				change_principal(this_server, _peers.best_peer());
 			} else {
 				run_discovery(this_server);
