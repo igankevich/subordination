@@ -770,7 +770,6 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	_discoverer(nullptr),
 	_negotiator(nullptr)
 	{
-		this->id(this_addr.address());
 	}
 
 	void act(Server& this_server) override {
@@ -902,8 +901,6 @@ uint32_t num_peers() {
 	return n;
 }
 
-bool write_cache() { return sysx::this_process::getenv("WRITE_CACHE", false); }
-
 struct test_discovery {};
 struct generate_peers {};
 
@@ -974,7 +971,9 @@ struct Main: public Kernel {
 //		std::exit(0);
 		const Time default_delay = (bind_addr == sysx::endpoint("127.0.0.1", DISCOVERY_PORT)) ? 0 : 2;
 		const Time start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
-		Master_discoverer* master = this_server.factory()->new_kernel<Master_discoverer>(bind_addr);
+		Master_discoverer* master = new Master_discoverer(bind_addr);
+		master->id(bind_addr.address());
+		this_server.factory()->instances().register_instance(master);
 		master->after(std::chrono::seconds(start_delay));
 //		master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 		this_server.timer_server()->send(master);

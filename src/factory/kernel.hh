@@ -335,7 +335,7 @@ namespace factory {
 			void
 			write(sysx::packetstream& out) override {
 				base_kernel::write(out);
-				if (moves_downstream()) {
+				if (moves_downstream() || moves_somewhere()) {
 					out << _parent_id << _principal_id;
 				} else {
 					out << (!_parent ? ROOT_ID : _parent->id());

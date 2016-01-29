@@ -432,7 +432,7 @@ namespace sysx {
 				this->_events.size(), no_timeout),
 				__FILE__, __LINE__, __func__);
 			success = errno != EINTR;
-			std::clog << "after poll(this=" << *this << ")" << std::endl;
+//			std::clog << "after poll(this=" << *this << ")" << std::endl;
 
 			if (success) {
 				#if !defined(POLLRDHUP)
