@@ -412,12 +412,12 @@ namespace factory {
 		}
 
 		enum struct Opcode: int8_t {
-			CONT_FRAME   = 0x0,
-			TEXT_FRAME   = 0x1,
-			BINARY_FRAME = 0x2,
-			CONN_CLOSE   = 0x8,
-			PING		 = 0x9,
-			PONG		 = 0xa
+			cont_frame   = 0x0,
+			text_frame   = 0x1,
+			binary_frame = 0x2,
+			conn_close   = 0x8,
+			ping		 = 0x9,
+			pong		 = 0xa
 		};
 
 		namespace constants {
@@ -506,7 +506,7 @@ namespace factory {
 			constexpr Opcode opcode() const { return static_cast<Opcode>(hdr.opcode); }
 			constexpr bool is_masked() const { return hdr.maskbit == 1; }
 			constexpr bool is_binary() const {
-				return opcode() == Opcode::BINARY_FRAME;
+				return opcode() == Opcode::binary_frame;
 			}
 			constexpr bool has_valid_opcode() const { return hdr.opcode >= 0x0 && hdr.opcode <= 0xf; }
 
@@ -645,7 +645,7 @@ namespace factory {
 			size_t input_size = last - first;
 			if (input_size == 0) return;
 			Web_socket_frame frame;
-			frame.opcode(Opcode::BINARY_FRAME);
+			frame.opcode(Opcode::binary_frame);
 			frame.fin(1);
 			frame.payload_size(input_size);
 			frame.mask(stdx::n_random_bytes<Web_socket_frame::Mask>(rng));
@@ -688,7 +688,7 @@ namespace factory {
 		template<class Res, class Random>
 		void websocket_key(Res key, Random& rng) {
 			sysx::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
-			base64_encode(buf.begin(), buf.begin() + buf.size(), key);
+			base64_encode(buf.begin(), buf.end(), key);
 		}
 
 	}

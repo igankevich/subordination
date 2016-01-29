@@ -784,14 +784,15 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 //			std::this_thread::sleep_for(amount);
 //			prog_start = current_time_nano();
 //		}
-		exiter = std::thread([this,&this_server] () {
+		auto* __factory = this_server.factory();
+		exiter = std::thread([this,__factory] () {
 			std::this_thread::sleep_for(std::chrono::seconds(10));
 			this_log() << "Hail the new king! addr="
 				<< _peers.this_addr()
 				<< ",peers=" << this->_peers
 				<< ",npeers=" << all_peers.size() << std::endl;
 			_peers.debug();
-			this_server.factory()->shutdown();
+			__factory->shutdown();
 		});
 		this_log()
 			<< "startTime.push("
@@ -909,8 +910,8 @@ struct generate_peers {};
 void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip) {
 	typedef stdx::log<generate_peers> this_log;
 	all_peers.clear();
-	uint32_t start = sysx::to_host_format<uint32_t>(base_ip.rep());
-	uint32_t end = start + npeers;
+	const uint32_t start = sysx::to_host_format<uint32_t>(base_ip.rep());
+	const uint32_t end = start + npeers;
 	for (uint32_t i=start; i<end; ++i) {
 		sysx::endpoint endpoint(sysx::ipv4_addr(sysx::to_network_format<uint32_t>(i)), DISCOVERY_PORT);
 		all_peers.push_back(endpoint);
@@ -1016,6 +1017,9 @@ int main(int argc, char* argv[]) {
 	} else {
 		using namespace factory;
 		retval = factory_main<Main,config>(argc, argv);
+		if (exiter.joinable()) {
+			exiter.join();
+		}
 	}
 	return retval;
 }
