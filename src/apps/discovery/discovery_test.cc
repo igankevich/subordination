@@ -64,7 +64,6 @@ current_time_nano() {
 const sysx::port_type DISCOVERY_PORT = 10000;
 
 std::vector<sysx::endpoint> all_peers;
-std::thread exiter;
 
 uint32_t my_netmask() {
 	uint32_t npeers = static_cast<uint32_t>(all_peers.size());
@@ -761,6 +760,29 @@ private:
 	uint8_t _num_sent = 0;
 };
 
+struct Shutdown_after: public Kernel {
+
+	typedef stdx::log<Shutdown_after> this_log;
+
+	explicit
+	Shutdown_after(const Peers& peers) noexcept:
+	_peers(peers)
+	{}
+
+	void act(Server& this_server) override {
+		auto* __factory = this_server.factory();
+		this_log() << "Hail the new king! addr="
+			<< _peers.this_addr()
+			<< ",peers=" << this->_peers
+			<< ",npeers=" << all_peers.size() << std::endl;
+		__factory->shutdown();
+	}
+
+private:
+
+	const Peers& _peers;
+};
+
 struct Master_discoverer: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Master_discoverer> this_log;
@@ -780,25 +802,12 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 
 	void act(Server& this_server) override {
 		prog_start = current_time_nano();
-//		Time start_time = sysx::this_process::getenv("START_TIME", Time(0));
-//		if (start_time > 0) {
-//			using namespace std::chrono;
-//			nanoseconds now = duration_cast<nanoseconds>(system_clock::now().time_since_epoch());
-//			nanoseconds amount = nanoseconds(start_time) - now;
-//			std::clog << "Sleeping for " << amount.count() << "ns" << std::endl;
-//			std::this_thread::sleep_for(amount);
-//			prog_start = current_time_nano();
-//		}
-		auto* __factory = this_server.factory();
-		exiter = std::thread([this,__factory] () {
-			std::this_thread::sleep_for(std::chrono::seconds(10));
-			this_log() << "Hail the new king! addr="
-				<< _peers.this_addr()
-				<< ",peers=" << this->_peers
-				<< ",npeers=" << all_peers.size() << std::endl;
-			_peers.debug();
-			__factory->shutdown();
-		});
+
+		Shutdown_after* shutdowner = new Shutdown_after(_peers);
+		shutdowner->after(std::chrono::seconds(10));
+		shutdowner->parent(this);
+		this_server.timer_server()->send(shutdowner);
+
 		this_log()
 			<< "startTime.push("
 			<< current_time_nano() - prog_start
@@ -896,6 +905,7 @@ private:
 
 	static const uint32_t MIN_SAMPLES = 7;
 };
+
 
 uint32_t num_peers() {
 	uint32_t n = sysx::this_process::getenv("NUM_PEERS", 3);
@@ -1035,9 +1045,6 @@ int main(int argc, char* argv[]) {
 	} else {
 		using namespace factory;
 		retval = factory_main<Main,config>(argc, argv);
-		if (exiter.joinable()) {
-			exiter.join();
-		}
 	}
 	return retval;
 }

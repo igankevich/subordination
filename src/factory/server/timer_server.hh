@@ -3,6 +3,7 @@
 
 #include <sysx/semaphore.hh>
 #include <factory/server/intro.hh>
+#include <factory/server/basic_server.hh>
 
 namespace factory {
 
@@ -20,7 +21,7 @@ namespace factory {
 		using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
 
 		template<class T>
-		using Timer_server_base = Fast_server_with_pool<T, Time_priority_pool<typename Server<T>::kernel_type>>;
+		using Timer_server_base = Standard_server_with_pool<T, Time_priority_pool<typename Server<T>::kernel_type>>;
 
 		template<class T>
 		struct Timer_server: public Timer_server_base<T> {
@@ -38,7 +39,7 @@ namespace factory {
 			Timer_server() noexcept:
 			base_server(1u)
 			{}
-				
+
 			Timer_server(const Timer_server&) = delete;
 			Timer_server& operator=(const Timer_server&) = delete;
 			~Timer_server() = default;
@@ -83,7 +84,7 @@ namespace factory {
 				return this->_semaphore.wait_until(lock, kernel->at(),
 					[this] { return this->stopped(); });
 			}
-			
+
 		};
 
 	}
