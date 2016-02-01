@@ -624,13 +624,15 @@ namespace sysx {
 		sockinet6_type _addr6 = {};
 		sockinet4_type _addr4;
 		sa_type _sockaddr;
+
+		friend ipv4_addr;
 	};
 
 	static_assert(sizeof(endpoint) == sizeof(sockinet6_type), "bad endpoint size");
 	static_assert(sizeof(port_type) == 2, "bad port_type size");
 
 	ipv4_addr::ipv4_addr(const sa_type& rhs) noexcept:
-	addr(sysx::endpoint(rhs).address())
+	inaddr(sysx::endpoint(rhs)._addr4.sin_addr)
 	{}
 
 	struct ifaddrs {

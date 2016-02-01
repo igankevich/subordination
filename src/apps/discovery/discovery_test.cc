@@ -1016,6 +1016,9 @@ private:
 int main(int argc, char* argv[]) {
 	int retval = -1;
 	if (argc <= 2) {
+//		factory::components::Interval_set<sysx::addr4_type> networks = factory::components::enumerate_networks();
+//		networks.for_each([] (sysx::addr4_type rhs) { std::cout << sysx::ipv4_addr(sysx::to_network_format(rhs)) << std::endl; });
+//		exit(0);
 		typedef stdx::log<test_discovery> this_log;
 		uint32_t npeers = num_peers();
 //		std::string base_ip_str = argc == 2 ? argv[1] : "127.0.0.1";

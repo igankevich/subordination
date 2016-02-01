@@ -5,6 +5,8 @@
 #include <map>
 #include <vector>
 #include <chrono>
+#include <cassert>
+#include <algorithm>
 
 #include <stdx/log.hh>
 
@@ -29,6 +31,9 @@ namespace factory {
 			while (x >>= p) n++;
 			return n;
 		}
+
+		template<class I>
+		struct Interval_set;
 
 		template<class I>
 		struct Interval {
@@ -65,9 +70,15 @@ namespace factory {
 
 			inline Interval&
 			operator+=(const Interval& rhs) noexcept {
+				assert(overlaps(rhs));
+				merge(rhs);
+				return *this;
+			}
+
+			void
+			merge(const Interval& rhs) noexcept {
 				_start = std::min(_start, rhs._start);
 				_end = std::max(_end, rhs._end);
-				return *this;
 			}
 
 			constexpr bool
@@ -99,84 +110,68 @@ namespace factory {
 			I _start, _end;
 		};
 
-		typedef Interval<uint32_t> Address_range;
+		template<class I>
+		struct Interval_set {
 
-		std::vector<Address_range> discover_neighbours() {
+			typedef Interval<I> interval_type;
 
-			struct ::ifaddrs* ifaddr;
-			sysx::bits::check(::getifaddrs(&ifaddr),
-				__FILE__, __LINE__, __func__);
-
-			std::set<Address_range> ranges;
-
-			for (struct ::ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-
-				if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
-					// ignore non-internet networks
-					continue;
-				}
-
-				sysx::endpoint addr(*ifa->ifa_addr);
-				if (addr.address() == sysx::endpoint("127.0.0.1", 0).address()) {
-					// ignore localhost and non-IPv4 addresses
-					continue;
-				}
-
-				sysx::endpoint netmask(*ifa->ifa_netmask);
-				if (netmask.address() == sysx::endpoint("255.255.255.255",0).address()) {
-					// ignore wide-area networks
-					continue;
-				}
-
-				uint32_t addr_long = addr.address();
-				uint32_t mask_long = netmask.address();
-
-				uint32_t start = (addr_long & mask_long) + 1;
-				uint32_t end = (addr_long & mask_long) + (~mask_long);
-
-				ranges.insert(Address_range(start, addr_long));
-				ranges.insert(Address_range(addr_long+1, end));
-			}
-
-			// combine overlaping ranges
-			std::vector<Address_range> sorted_ranges;
-			Address_range prev_range;
-			std::for_each(ranges.cbegin(), ranges.cend(),
-				[&sorted_ranges, &prev_range](const Address_range& range)
-			{
-				if (prev_range.empty()) {
-					prev_range = range;
-				} else {
-					if (prev_range.overlaps(range)) {
-						prev_range += range;
-					} else {
-						sorted_ranges.push_back(prev_range);
-						prev_range = range;
+			void
+			insert(const interval_type& rhs) noexcept {
+				auto result = std::find_if(
+					_set.begin(), _set.end(),
+					[&rhs] (const interval_type& x) {
+						return x.overlaps(rhs);
 					}
+				);
+				if (result == _set.end()) {
+					_set.insert(rhs);
+				} else {
+					interval_type acc = rhs;
+					auto first = result;
+					auto last = _set.end();
+					while (first != last && acc.overlaps(*first)) {
+						acc.merge(*first);
+					}
+					const auto it = _set.erase(result, first);
+					_set.insert(it, acc);
 				}
-			});
-
-			if (!prev_range.empty()) {
-				sorted_ranges.push_back(prev_range);
 			}
 
-			std::for_each(sorted_ranges.cbegin(), sorted_ranges.cend(),
-				[] (const Address_range& range)
-			{
-				std::clog << sysx::ipv4_addr(range.start()) << '-' << sysx::ipv4_addr(range.end()) << '\n';
-			});
+			template<class Function>
+			void
+			for_each(Function func) {
+				typedef typename interval_type::int_type int_type;
+				std::for_each(_set.begin(), _set.end(),
+					[&func] (const interval_type& rhs) {
+						for (int_type i=rhs.start(); i<rhs.end(); ++i) {
+							func(i);
+						}
+					}
+				);
+			}
 
-			::freeifaddrs(ifaddr);
+			template<class Set>
+			void
+			flatten(Set& rhs) const noexcept {
+				typedef typename interval_type::int_type int_type;
+				this->for_each(
+					[&rhs] (int_type i) {
+						rhs.insert(i);
+					}
+				);
+			}
 
-			return sorted_ranges;
-		}
+		private:
+
+			std::set<interval_type> _set;
+		};
 
 		enum Network_flags_t {
-			include_loopback = 1 << 0,
-			include_local    = 1 << 1,
-			include_global   = 1 << 2,
-			exclude_right    = 1 << 3,
-			exclude_left     = 1 << 4
+			include_loopback = 0,
+			include_local    = 1,
+			include_global   = 2,
+			exclude_right    = 3,
+			exclude_left     = 4
 		};
 
 		typedef std::bitset<5> Network_flags;
@@ -203,51 +198,23 @@ namespace factory {
 			);
 		}
 
-		std::vector<Interval<sysx::addr4_type>>
-		optimise_ranges(const std::set<Interval<sysx::addr4_type>>& ranges) {
-			// combine overlaping ranges
-			std::vector<Interval<sysx::addr4_type>> sorted_ranges;
-			Interval<sysx::addr4_type> prev_range;
-			std::for_each(
-				ranges.cbegin(), ranges.cend(),
-				[&sorted_ranges, &prev_range](const Interval<sysx::addr4_type>& range) {
-					if (prev_range.empty()) {
-						prev_range = range;
-					} else {
-						if (prev_range.overlaps(range)) {
-							prev_range += range;
-						} else {
-							sorted_ranges.push_back(prev_range);
-							prev_range = range;
-						}
-					}
-				}
-			);
-
-			if (!prev_range.empty()) {
-				sorted_ranges.push_back(prev_range);
-			}
-
-			return sorted_ranges;
-		}
-
-		std::vector<Interval<sysx::addr4_type>>
+		Interval_set<sysx::addr4_type>
 		enumerate_networks(Network_flags flags=0) {
-			std::set<Interval<sysx::addr4_type>> ranges;
+			Interval_set<sysx::addr4_type> ranges;
 			for_each_ifaddr(
 				[&ranges,flags] (sysx::ipv4_addr addr, sysx::ipv4_addr netmask) {
-					const uint32_t addr_long = sysx::to_host_format(addr.rep());
-					const uint32_t mask_long = sysx::to_host_format(netmask.rep());
+					const sysx::addr4_type addr_long = sysx::to_host_format(addr.rep());
+					const sysx::addr4_type mask_long = sysx::to_host_format(netmask.rep());
 
-					const uint32_t start = (addr_long & mask_long) + 1;
-					const uint32_t end = (addr_long & mask_long) + (~mask_long);
+					const sysx::addr4_type start = (addr_long & mask_long) + 1;
+					const sysx::addr4_type end = (addr_long & mask_long) + (~mask_long);
 
 					if (!flags.test(exclude_left)) ranges.insert(Interval<sysx::addr4_type>(start, addr_long));
 					if (!flags.test(exclude_right)) ranges.insert(Interval<sysx::addr4_type>(addr_long+1, end));
 				},
 				flags
 			);
-			return optimise_ranges(ranges);
+			return ranges;
 		}
 
 		sysx::ipv4_addr
