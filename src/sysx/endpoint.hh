@@ -35,9 +35,9 @@ namespace sysx {
 	typedef ::in_port_t port_type;
 
 	union ipv4_addr {
-	
+
 		typedef uint8_t oct_type;
-	
+
 		constexpr
 		ipv4_addr() noexcept:
 			addr(0) {}
@@ -58,7 +58,9 @@ namespace sysx {
 		ipv4_addr(oct_type o1, oct_type o2,
 			oct_type o3, oct_type o4):
 			addr(from_octets(o1, o2, o3, o4)) {}
-	
+
+		ipv4_addr(const sa_type& rhs) noexcept;
+
 		friend std::ostream&
 		operator<<(std::ostream& out, ipv4_addr rhs) {
 			using bits::Dot;
@@ -68,7 +70,7 @@ namespace sysx {
 				<< ((rhs.addr >> 16) & UINT32_C(0xff)) << Dot()
 				<< ((rhs.addr >> 24) & UINT32_C(0xff));
 		}
-	
+
 		friend std::istream&
 		operator>>(std::istream& in, ipv4_addr& rhs) {
 			using bits::Dot; using bits::Octet;
@@ -89,7 +91,7 @@ namespace sysx {
 		operator>>(packetstream& in, ipv4_addr& rhs) {
 			return in >> rhs.raw;
 		}
-	
+
 		constexpr addr4_type rep() const { return addr; }
 
 		constexpr
@@ -121,7 +123,7 @@ namespace sysx {
 		operator !() const noexcept {
 			return addr == 0;
 		}
-	
+
 	private:
 
 		constexpr static addr4_type
@@ -210,7 +212,7 @@ namespace sysx {
 				typedef ipv6_addr::hex_type hex_type;
 				typedef std::ostream::char_type char_type;
 				stdx::ios_guard g(out);
-				out.setf(std::ios::hex, std::ios::basefield); 
+				out.setf(std::ios::hex, std::ios::basefield);
 				std::copy(rhs.begin(), rhs.end(),
 					stdx::intersperse_iterator<hex_type,char_type>(out, ':'));
 			}
@@ -223,7 +225,7 @@ namespace sysx {
 			if (!s) { return in; }
 			typedef ipv6_addr::hex_type hex_type;
 			stdx::ios_guard g(in);
-			in.setf(std::ios::hex, std::ios::basefield); 
+			in.setf(std::ios::hex, std::ios::basefield);
 			int field_no = 0;
 			int zeros_field = -1;
 			std::for_each(rhs.begin(), rhs.end(),
@@ -258,7 +260,7 @@ namespace sysx {
 					++field_no;
 				}
 			});
-			// push fields after :: towards the end 
+			// push fields after :: towards the end
 			if (zeros_field != -1) {
 				in.clear();
 				auto zeros_start = rhs.begin() + zeros_field;
@@ -292,7 +294,7 @@ namespace sysx {
 		hex_type* begin() { return hextets; }
 		hex_type* end() { return hextets + num_fields(); }
 
-		static constexpr 
+		static constexpr
 		int num_fields() { return sizeof(hextets) / sizeof(hex_type); }
 
 		constexpr static addr6_type
@@ -378,7 +380,7 @@ namespace sysx {
 		constexpr
 		endpoint(const ipv6_addr& h, const port_type p) noexcept:
 			_addr6(new_sockinet(family_type::inet6, p, h)) {}
-			
+
 		constexpr
 		endpoint(const sockinet4_type& rhs) noexcept:
 			_addr4(rhs) {}
@@ -395,7 +397,7 @@ namespace sysx {
 		endpoint(const endpoint& rhs, const port_type newport) noexcept:
 			_addr6(
 				rhs.family() == family_type::inet ?
-				new_sockinet<ipv4_addr>(family_type::inet, newport, 
+				new_sockinet<ipv4_addr>(family_type::inet, newport,
 					ipv4_addr(rhs._addr6.sin6_flowinfo)) :
 				new_sockinet<ipv6_addr>(family_type::inet6, newport,
 					ipv6_addr(rhs._addr6.sin6_addr))) {}
@@ -591,7 +593,7 @@ namespace sysx {
 			this->_addr6.sin6_addr = a;
 			this->_addr6.sin6_port = to_network_format<port_type>(p);
 		}
-	
+
 		void addr(const char* host, port_type p) {
 			ipv4_addr a4;
 			std::stringstream tmp(host);
@@ -627,6 +629,10 @@ namespace sysx {
 	static_assert(sizeof(endpoint) == sizeof(sockinet6_type), "bad endpoint size");
 	static_assert(sizeof(port_type) == 2, "bad port_type size");
 
+	ipv4_addr::ipv4_addr(const sa_type& rhs) noexcept:
+	addr(sysx::endpoint(rhs).address())
+	{}
+
 	struct ifaddrs {
 
 		typedef struct ::ifaddrs ifaddrs_type;
@@ -638,7 +644,7 @@ namespace sysx {
 			bits::check(::getifaddrs(&this->_addrs),
 				__FILE__, __LINE__, __func__);
 		}
-		~ifaddrs() noexcept { 
+		~ifaddrs() noexcept {
 			if (this->_addrs) {
 				::freeifaddrs(this->_addrs);
 			}

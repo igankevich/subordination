@@ -170,35 +170,100 @@ namespace factory {
 
 			return sorted_ranges;
 		}
-		sysx::endpoint get_bind_address() {
 
-			sysx::endpoint ret;
+		enum Network_flags_t {
+			include_loopback = 1 << 0,
+			include_local    = 1 << 1,
+			include_global   = 1 << 2,
+			exclude_right    = 1 << 3,
+			exclude_left     = 1 << 4
+		};
 
+		typedef std::bitset<5> Network_flags;
+
+		template<class Function>
+		void
+		for_each_ifaddr(Function func, Network_flags flags) {
 			sysx::ifaddrs addrs;
-			sysx::ifaddrs::iterator result =
-			std::find_if(addrs.begin(), addrs.end(), [] (const sysx::ifaddrs::ifaddrs_type& rhs) {
-
-				if (rhs.ifa_addr == NULL || rhs.ifa_addr->sa_family != AF_INET) {
-					// ignore non-internet networks
-					return false;
+			std::for_each(
+				addrs.begin(), addrs.end(),
+				[flags,&func] (const sysx::ifaddrs::ifaddrs_type& rhs) {
+					if (rhs.ifa_addr != 0 and rhs.ifa_addr->sa_family == AF_INET) {
+						const sysx::ipv4_addr addr(*rhs.ifa_addr);
+						const sysx::ipv4_addr netmask(*rhs.ifa_netmask);
+						if (
+							(flags.test(include_loopback) or addr != sysx::ipv4_addr{127,0,0,1})
+							and
+							(flags.test(include_global) or netmask != sysx::ipv4_addr{255,255,255,255})
+						) {
+							func(addr, netmask);
+						}
+					}
 				}
+			);
+		}
 
-				sysx::endpoint addr(*rhs.ifa_addr);
-				if (addr.address() == sysx::endpoint("127.0.0.1", 0).address()) {
-					// ignore localhost and non-IPv4 addresses
-					return false;
+		std::vector<Interval<sysx::addr4_type>>
+		optimise_ranges(const std::set<Interval<sysx::addr4_type>>& ranges) {
+			// combine overlaping ranges
+			std::vector<Interval<sysx::addr4_type>> sorted_ranges;
+			Interval<sysx::addr4_type> prev_range;
+			std::for_each(
+				ranges.cbegin(), ranges.cend(),
+				[&sorted_ranges, &prev_range](const Interval<sysx::addr4_type>& range) {
+					if (prev_range.empty()) {
+						prev_range = range;
+					} else {
+						if (prev_range.overlaps(range)) {
+							prev_range += range;
+						} else {
+							sorted_ranges.push_back(prev_range);
+							prev_range = range;
+						}
+					}
 				}
+			);
 
-				sysx::endpoint netmask(*rhs.ifa_netmask);
-				if (netmask.address() == sysx::endpoint("255.255.255.255",0).address()) {
-					// ignore wide-area networks
-					return false;
-				}
+			if (!prev_range.empty()) {
+				sorted_ranges.push_back(prev_range);
+			}
 
-				return true;
-			});
-			if (result != addrs.end()) {
-				ret = sysx::endpoint(*result->ifa_addr);
+			return sorted_ranges;
+		}
+
+		std::vector<Interval<sysx::addr4_type>>
+		enumerate_networks(Network_flags flags=0) {
+			std::set<Interval<sysx::addr4_type>> ranges;
+			for_each_ifaddr(
+				[&ranges,flags] (sysx::ipv4_addr addr, sysx::ipv4_addr netmask) {
+					const uint32_t addr_long = sysx::to_host_format(addr.rep());
+					const uint32_t mask_long = sysx::to_host_format(netmask.rep());
+
+					const uint32_t start = (addr_long & mask_long) + 1;
+					const uint32_t end = (addr_long & mask_long) + (~mask_long);
+
+					if (!flags.test(exclude_left)) ranges.insert(Interval<sysx::addr4_type>(start, addr_long));
+					if (!flags.test(exclude_right)) ranges.insert(Interval<sysx::addr4_type>(addr_long+1, end));
+				},
+				flags
+			);
+			return optimise_ranges(ranges);
+		}
+
+		sysx::ipv4_addr
+		get_bind_address(Network_flags flags=0) {
+
+			sysx::ipv4_addr ret;
+			std::vector<sysx::ipv4_addr> result;
+			for_each_ifaddr(
+				[&result] (sysx::ipv4_addr addr, sysx::ipv4_addr network) {
+					result.push_back(addr);
+				},
+				flags
+			);
+
+			if (!result.empty()) {
+				ret = result.front();
 			}
 
 			return ret;
