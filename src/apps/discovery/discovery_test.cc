@@ -9,6 +9,7 @@
 #include <factory/server/nic_server.hh>
 
 #include "discovery.hh"
+#include "distance.hh"
 #include "cache_guard.hh"
 #include "springy_graph_generator.hh"
 #include "test.hh"
@@ -64,14 +65,6 @@ current_time_nano() {
 const sysx::port_type DISCOVERY_PORT = 10000;
 
 std::vector<sysx::endpoint> all_peers;
-
-uint32_t my_netmask() {
-	uint32_t npeers = static_cast<uint32_t>(all_peers.size());
-	uint32_t power = factory::components::log2(npeers);
-	uint32_t rem = UINT32_C(1) << power;
-	if (rem < npeers) rem <<= 1;
-	return std::numeric_limits<uint32_t>::max() - (rem - 1);
-}
 
 struct Peer {
 
@@ -179,55 +172,6 @@ private:
 
 Time prog_start = current_time_nano();
 
-struct Compare_distance {
-
-	typedef stdx::log<Compare_distance> this_log;
-
-	explicit Compare_distance(sysx::endpoint from): _from(from) {}
-
-	bool operator()(const std::pair<const sysx::endpoint,Peer>& lhs, const std::pair<const sysx::endpoint,Peer>& rhs) const {
-//		this_log() << "hoho" << std::endl;
-//		return lhs.second.metric() < rhs.second.metric();
-//		return lhs.second.metric() < rhs.second.metric()
-//			|| (lhs.second.metric() == rhs.second.metric() && lhs.first < rhs.first);
-
-		return std::make_pair(addr_distance(_from, lhs.first), lhs.first)
-			< std::make_pair(addr_distance(_from, rhs.first), rhs.first);
-	}
-
-	bool operator()(const sysx::endpoint& lhs, const sysx::endpoint& rhs) const {
-		return std::make_pair(addr_distance(_from, lhs), lhs)
-			< std::make_pair(addr_distance(_from, rhs), rhs);
-	}
-
-private:
-	constexpr static uint32_t abs_sub(uint32_t a, uint32_t b) {
-		return a < b ? b-a : a-b;
-	}
-
-	constexpr static uint32_t lvl_sub(uint32_t a, uint32_t b) {
-		return a > b ? 2000 : (b-a == 0 ? 1000 : b-a);
-	}
-
-	static const uint32_t p = 1;
-	static const uint32_t fanout = UINT32_C(1) << p;
-
-	static std::pair<uint32_t, uint32_t> addr_level_num(sysx::endpoint addr) {
-		uint32_t pos = addr.position(my_netmask());
-		uint32_t lvl = factory::components::log(pos, p);
-		uint32_t num = pos - (UINT32_C(1) << (lvl*p));
-		return std::make_pair(lvl, num);
-	}
-
-	static std::pair<uint32_t, uint32_t> addr_distance(sysx::endpoint lhs, sysx::endpoint rhs) {
-		auto p1 = addr_level_num(lhs);
-		auto p2 = addr_level_num(rhs);
-		return std::make_pair(lvl_sub(p2.first, p1.first),
-			abs_sub(p2.second, p1.second/fanout));
-	}
-
-	sysx::endpoint _from;
-};
 
 springy::Springy_graph graph;
 
@@ -259,7 +203,7 @@ struct Peers {
 
 	sysx::endpoint best_peer() const {
 		return std::min_element(_peers.begin(), _peers.end(),
-			Compare_distance(_this_addr))->first;
+			discovery::Compare_distance(_this_addr))->first;
 	}
 
 	sysx::endpoint this_addr() const { return _this_addr; }
@@ -550,7 +494,7 @@ private:
 
 	sysx::endpoint start_addr(const std::vector<sysx::endpoint>& peers) const {
 		if (peers.empty()) return sysx::endpoint();
-		auto it = std::min_element(peers.begin(), peers.end(), Compare_distance(_source));
+		auto it = std::min_element(peers.begin(), peers.end(), discovery::Compare_distance(_source));
 		if (*it != _source) {
 			return *it;
 		}
@@ -918,7 +862,7 @@ uint32_t num_peers() {
 struct test_discovery {};
 struct generate_peers {};
 
-void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip) {
+void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip, sysx::ipv4_addr netmask) {
 	typedef stdx::log<generate_peers> this_log;
 	all_peers.clear();
 	const uint32_t start = sysx::to_host_format<uint32_t>(base_ip.rep());
@@ -930,7 +874,7 @@ void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip) {
 	for (sysx::endpoint addr : all_peers) {
 		auto it = std::min_element(
 			all_peers.begin(), all_peers.end(),
-			Compare_distance(addr)
+			discovery::Compare_distance(addr, netmask)
 		);
 		this_log() << "Best link: " << addr << " -> " << *it << std::endl;
 	}
@@ -957,14 +901,16 @@ struct Main: public Kernel {
 	typedef stdx::log<test_discovery> this_log;
 	Main(Server& this_server, int argc, char* argv[]):
 	npeers(3),
-	bind_addr(components::get_bind_address(), DISCOVERY_PORT),
-	base_ip{127,0,0,1}
+	bind_addr(discovery::get_bind_address(), DISCOVERY_PORT),
+	base_ip{127,0,0,1},
+	netmask{255,0,0,0}
 	{
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
 			sysx::cmd::make_option({"--bind-addr"}, bind_addr),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
-			sysx::cmd::make_option({"--base-ip"}, base_ip)
+			sysx::cmd::make_option({"--base-ip"}, base_ip),
+			sysx::cmd::make_option({"--netmask"}, netmask)
 		});
 		try {
 			cmd.parse();
@@ -980,8 +926,9 @@ struct Main: public Kernel {
 		this_log() << "Bind address = " << bind_addr << std::endl;
 		this_log() << "Num peers = " << npeers << std::endl;
 		this_log() << "Base ip = " << base_ip << std::endl;
+		this_log() << "Netmask = " << netmask << std::endl;
 //		std::exit(0);
-		generate_all_peers(npeers, base_ip);
+		generate_all_peers(npeers, base_ip, netmask);
 		if (sysx::endpoint(base_ip,0).address() == bind_addr.address()) {
 			graph.add_nodes(all_peers.begin(), all_peers.end());
 		}
@@ -1011,12 +958,13 @@ private:
 	uint32_t npeers;
 	sysx::endpoint bind_addr;
 	sysx::ipv4_addr base_ip;
+	sysx::ipv4_addr netmask;
 };
 
 int main(int argc, char* argv[]) {
 	int retval = -1;
 	if (argc <= 2) {
-//		factory::components::Interval_set<sysx::addr4_type> networks = factory::components::enumerate_networks();
+//		factory::discovery::Interval_set<sysx::addr4_type> networks = factory::components::enumerate_networks();
 //		networks.for_each([] (sysx::addr4_type rhs) { std::cout << sysx::ipv4_addr(sysx::to_network_format(rhs)) << std::endl; });
 //		exit(0);
 		typedef stdx::log<test_discovery> this_log;
@@ -1027,7 +975,8 @@ int main(int argc, char* argv[]) {
 //		str << base_ip_str;
 //		str >> base_ip;
 		sysx::ipv4_addr base_ip{127,0,0,1};
-		generate_all_peers(npeers, base_ip);
+		sysx::ipv4_addr netmask{255,0,0,0};
+		generate_all_peers(npeers, base_ip, netmask);
 
 		sysx::process_group procs;
 		int start_id = 1000;

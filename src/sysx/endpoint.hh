@@ -37,6 +37,7 @@ namespace sysx {
 	union ipv4_addr {
 
 		typedef uint8_t oct_type;
+		typedef addr4_type rep_type;
 
 		constexpr
 		ipv4_addr() noexcept:
@@ -122,6 +123,21 @@ namespace sysx {
 		constexpr bool
 		operator !() const noexcept {
 			return addr == 0;
+		}
+
+	private:
+
+		template<class Q>
+		constexpr static
+		Q position_helper(Q a, Q netmask) noexcept {
+			return a - (a & netmask);
+		}
+
+	public:
+
+		constexpr addr4_type
+		position(ipv4_addr netmask) const noexcept {
+			return position_helper(to_host_format(rep()), to_host_format(netmask.rep()));
 		}
 
 	private:
@@ -525,18 +541,7 @@ namespace sysx {
 			return static_cast<family_type>(this->_addr6.sin6_family);
 		}
 
-	private:
-		template<class Q>
-		constexpr static
-		Q position_helper(Q a, Q netmask) noexcept {
-			return a - (a & netmask);
-		}
-
 	public:
-		constexpr addr4_type
-		position(addr4_type netmask) const noexcept {
-			return position_helper(address(), netmask);
-		}
 
 		inline sa_type*
 		sockaddr() noexcept {
