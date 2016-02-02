@@ -76,6 +76,8 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		test::equal(sysx::ipv4_addr{127,0,0,1}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(1));
 		test::equal(sysx::ipv4_addr{127,0,0,5}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(5));
 		test::equal(distance_type(sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}, 2), distance_type(1, 1));
+		test::equal(network_type(addr_type{127,0,0,7}, addr_type{255,0,0,0}).is_loopback(), true);
+		test::equal(network_type(addr_type{128,0,0,7}, addr_type{255,0,0,0}).is_loopback(), false);
 	}
 
 	void

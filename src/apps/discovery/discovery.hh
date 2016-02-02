@@ -7,54 +7,20 @@
 #include <cassert>
 #include <algorithm>
 #include <iterator>
-#include <bitset>
 
 #include <stdx/log.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/endpoint.hh>
 
-#include "interval_set.hh"
-
 namespace discovery {
-
-	enum Network_flags_t {
-		include_loopback = 0,
-		include_local    = 1,
-		include_global   = 2,
-		exclude_right    = 3,
-		exclude_left     = 4
-	};
-
-	typedef std::bitset<5> Network_flags;
-
-	template<class Function>
-	void
-	for_each_ifaddr(Function func, Network_flags flags) {
-		sysx::ifaddrs addrs;
-		std::for_each(
-			addrs.begin(), addrs.end(),
-			[flags,&func] (const sysx::ifaddrs::ifaddrs_type& rhs) {
-				if (rhs.ifa_addr != 0 and rhs.ifa_addr->sa_family == AF_INET) {
-					const sysx::ipv4_addr addr(*rhs.ifa_addr);
-					const sysx::ipv4_addr netmask(*rhs.ifa_netmask);
-					if (
-						(flags.test(include_loopback) or addr != sysx::ipv4_addr{127,0,0,1})
-						and
-						(flags.test(include_global) or netmask != sysx::ipv4_addr{255,255,255,255})
-					) {
-						func(addr, netmask);
-					}
-				}
-			}
-		);
-	}
 
 	template<class Addr>
 	struct Network {
 
 		typedef Addr addr_type;
 		typedef typename addr_type::rep_type rep_type;
+		typedef typename sysx::ipaddr_traits<addr_type> traits_type;
 
 		constexpr
 		Network(const addr_type& addr, const addr_type& netmask) noexcept:
@@ -86,14 +52,15 @@ namespace discovery {
 			return (addr_long() & mask_long()) + (~mask_long());
 		}
 
-		bool
+		constexpr bool
 		is_loopback() const noexcept {
-			return _address == sysx::ipv4_addr{127,0,0,1};
+			return _address[0] == traits_type::loopback_first_octet
+				and _netmask == traits_type::loopback_mask();
 		}
 
-		bool
+		constexpr bool
 		is_widearea() const noexcept {
-			return _netmask == sysx::ipv4_addr{255,255,255,255};
+			return _netmask == traits_type::widearea_mask();
 		}
 
 		friend std::ostream&
@@ -132,25 +99,6 @@ namespace discovery {
 				}
 			}
 		);
-	}
-
-	sysx::ipv4_addr
-	get_bind_address(Network_flags flags=0) {
-
-		sysx::ipv4_addr ret;
-		std::vector<sysx::ipv4_addr> result;
-		for_each_ifaddr(
-			[&result] (sysx::ipv4_addr addr, sysx::ipv4_addr network) {
-				result.push_back(addr);
-			},
-			flags
-		);
-
-		if (!result.empty()) {
-			ret = result.front();
-		}
-
-		return ret;
 	}
 
 }

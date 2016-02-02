@@ -125,6 +125,11 @@ namespace sysx {
 			return addr == 0;
 		}
 
+		constexpr oct_type
+		operator[](size_t i) const noexcept {
+			return raw[i];
+		}
+
 	private:
 
 		template<class Q>
@@ -684,6 +689,18 @@ namespace sysx {
 
 	private:
 		ifaddrs_type* _addrs = nullptr;
+	};
+
+	template<class Address>
+	struct ipaddr_traits;
+
+
+	template<>
+	struct ipaddr_traits<ipv4_addr> {
+		typedef ipv4_addr::oct_type oct_type;
+		static constexpr const oct_type loopback_first_octet = 127;
+		static constexpr ipv4_addr loopback_mask() { return ipv4_addr{255,0,0,0}; }
+		static constexpr ipv4_addr widearea_mask() { return ipv4_addr{255,255,255,255}; }
 	};
 
 }
