@@ -54,537 +54,21 @@ namespace factory {
 using namespace factory;
 using namespace factory::this_config;
 
-typedef std::chrono::nanoseconds::rep Time;
-Time
-current_time_nano() {
-	using namespace std::chrono;
-	typedef std::chrono::steady_clock Clock;
-	return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
-}
-
 const sysx::port_type DISCOVERY_PORT = 10000;
-
-std::vector<sysx::endpoint> all_peers;
-
-struct Peer {
-
-	typedef int64_t Metric;
-
-	Peer() {}
-	Peer(const Peer& rhs):
-		_t(rhs._t),
-		_num_samples(rhs._num_samples),
-		_num_errors(rhs._num_errors),
-		_update_time(rhs._update_time) {}
-
-	Metric metric() const { return _t/1000/1000/1000; }
-
-	void collect_sample(Time rhs) {
-		update();
-		if (++_num_samples == MAX_SAMPLES) {
-			_num_samples = 1;
-			_t = 0;
-		}
-		_t = ((_num_samples-1)*_t + rhs) / _num_samples;
-	}
-
-	void collect_error(uint32_t cnt) {
-		update();
-		_num_errors += cnt;
-	}
-
-	bool needs_update() const {
-		return (num_samples() < MIN_SAMPLES && num_errors() < MAX_ERRORS)
-			|| (age() > MAX_AGE && MIN_SAMPLES > 0);
-	}
-
-	bool operator<(const Peer& rhs) const {
-		return metric() < rhs.metric();
-	}
-
-	Peer& operator=(const Peer& rhs) {
-		_t = rhs._t;
-		_num_samples = rhs._num_samples;
-		_num_errors = rhs._num_errors;
-		_update_time = rhs._update_time;
-		return *this;
-	}
-
-	friend std::ostream& operator<<(std::ostream& out, const Peer& rhs) {
-		return out
-			<< rhs._t << ' '
-			<< rhs._num_samples << ' '
-			<< rhs._num_errors << ' '
-			<< rhs._update_time;
-	}
-
-	friend std::istream& operator>>(std::istream& in, Peer& rhs) {
-		return in
-			>> rhs._t
-			>> rhs._num_samples
-			>> rhs._num_errors
-			>> rhs._update_time;
-	}
-
-	friend std::ostream& operator<<(std::ostream& out, const std::pair<sysx::endpoint,Peer>& rhs) {
-		return out
-			<< rhs.first << ' '
-			<< rhs.second._t << ' '
-			<< rhs.second._num_samples << ' '
-			<< rhs.second._num_errors << ' '
-			<< rhs.second._update_time;
-	}
-
-	friend std::istream& operator>>(std::istream& in, std::pair<sysx::endpoint,Peer>& rhs) {
-		return in
-			>> rhs.first
-			>> rhs.second._t
-			>> rhs.second._num_samples
-			>> rhs.second._num_errors
-			>> rhs.second._update_time;
-	}
-
-private:
-
-	uint32_t num_samples() const { return _num_samples; }
-	uint32_t num_errors() const { return _num_errors; }
-
-	Time age() const { return current_time_nano() - _update_time; }
-	void update() {
-		Time old = _update_time;
-		_update_time = current_time_nano();
-		if (_update_time - old > MAX_AGE) {
-			_num_errors = 0;
-		}
-	}
-
-	Time _t = 0;
-	uint32_t _num_samples = 0;
-	uint32_t _num_errors = 0;
-	Time _update_time = 0;
-
-	static const uint32_t MAX_SAMPLES = 1000;
-	static const uint32_t MIN_SAMPLES = 0;
-	static const uint32_t MAX_ERRORS  = 3;
-
-	static const Time MAX_AGE = std::chrono::milliseconds(100000).count();
-};
-
-Time prog_start = current_time_nano();
-
-
-springy::Springy_graph graph;
-
-struct Peers {
-
-	typedef std::map<sysx::endpoint, Peer> Map;
-	typedef std::set<sysx::endpoint> Set;
-	typedef stdx::log<Peers> this_log;
-
-	explicit Peers(sysx::endpoint addr):
-		_peers(),
-		_this_addr(addr),
-		_principal(),
-		_subordinates()
-	{}
-
-	Peers(const Peers& rhs):
-		_peers(rhs._peers),
-		_this_addr(rhs._this_addr),
-		_principal(rhs._principal),
-		_subordinates(rhs._subordinates) {}
-
-	void add_peer(sysx::endpoint addr) {
-		if (!addr || addr == _this_addr) return;
-		if (_peers.count(addr) == 0) {
-			_peers[addr];
-		}
-	}
-
-	sysx::endpoint best_peer() const {
-		return std::min_element(_peers.begin(), _peers.end(),
-			discovery::Compare_distance(_this_addr))->first;
-	}
-
-	sysx::endpoint this_addr() const { return _this_addr; }
-	sysx::endpoint principal() const { return _principal; }
-
-	void remove_principal() {
-		_peers.erase(_principal);
-		_principal = sysx::endpoint();
-	}
-
-	bool change_principal(sysx::endpoint new_princ) {
-		sysx::endpoint old_princ = _principal;
-		bool success = false;
-		if (old_princ != new_princ) {
-			_principal = new_princ;
-			add_peer(_principal);
-			_peers.erase(old_princ);
-			_subordinates.erase(new_princ);
-			success = true;
-		}
-		return success;
-	}
-
-	void revert_principal(sysx::endpoint old_princ) {
-		this_log() << "Reverting principal to " << old_princ << std::endl;
-		_peers.erase(_principal);
-		if (old_princ) {
-			add_peer(old_princ);
-		}
-		_principal = old_princ;
-		debug();
-	}
-
-	void connected_peers(Set& peers) const {
-		peers.insert(_subordinates.begin(), _subordinates.end());
-		if (_principal) {
-			peers.insert(_principal);
-		}
-	}
-
-	void update_peers(const Peers& rhs) {
-		for (const auto& p : rhs._peers) {
-			auto it = _peers.find(p.first);
-			if (it == _peers.end()) {
-				_peers.insert(p);
-			} else {
-				it->second = p.second;
-			}
-		}
-	}
-
-	void add_subordinate(sysx::endpoint addr) {
-		this_log() << "Adding subordinate = " << addr << std::endl;
-		if (_subordinates.count(addr) == 0) {
-			graph.add_edge(addr, _this_addr);
-		}
-		_subordinates.insert(addr);
-		add_peer(addr);
-	}
-
-	void remove_subordinate(sysx::endpoint addr) {
-		this_log() << "Removing subordinate = " << addr << std::endl;
-		if (_subordinates.count(addr) > 0) {
-			graph.remove_edge(addr, _this_addr);
-		}
-		_subordinates.erase(addr);
-		_peers.erase(addr);
-	}
-
-	size_t num_subordinates() const { return _subordinates.size(); }
-
-	Map::iterator begin() { return _peers.begin(); }
-	Map::iterator end() { return _peers.end(); }
-	Map::const_iterator begin() const { return _peers.begin(); }
-	Map::const_iterator end() const { return _peers.end(); }
-
-	Peer& operator[](const sysx::endpoint& rhs) { return _peers[rhs]; }
-
-	friend std::ostream& operator<<(std::ostream& out, const Peers& rhs) {
-		rhs.write(out, "\n");
-		return out;
-	}
-
-	friend std::istream& operator>>(std::istream& in, Peers& rhs) {
-		sysx::endpoint addr;
-		Peer p;
-		while (in >> addr >> p) {
-			in.get();
-			rhs._peers[addr] = p;
-		}
-		return in;
-	}
-
-	void write(std::ostream& out, const char* sep = "\n") const {
-		std::ostream_iterator<std::pair<sysx::endpoint,Peer>> it(out, sep);
-		std::copy(_peers.begin(), _peers.end(), it);
-	}
-
-	void debug() {
-		std::ostream& log = std::clog;
-		log << "Principal = " << _principal << ", subordinates = ";
-		std::ostream_iterator<sysx::endpoint> it(log, ", ");
-		std::copy(_subordinates.begin(), _subordinates.end(), it);
-		log << " peers = ";
-		write(log, ", ");
-		log << std::endl;
-	}
-
-private:
-	Map _peers;
-	sysx::endpoint _this_addr;
-	sysx::endpoint _principal;
-	Set _subordinates;
-};
-
-struct Profiler: public Kernel, public Identifiable_tag {
-
-	typedef uint8_t State;
-
-	Profiler(): _peers() {}
-
-	void act(Server& this_server) override {
-		_state = 1;
-		commit(this_server.remote_server());
-	}
-
-	void write(sysx::packetstream& out) {
-		Kernel::write(out);
-		if (_state == 0) {
-			_time = current_time_nano();
-		}
-		out << _state << _time;
-		out << uint32_t(_peers.size());
-		for (const sysx::endpoint& sub : _peers) {
-			out << sub;
-		}
-	}
-
-	void read(sysx::packetstream& in) {
-		Kernel::read(in);
-		in >> _state >> _time;
-		if (_state == 1) {
-			_time = current_time_nano() - _time;
-		}
-		uint32_t n = 0;
-		in >> n;
-		_peers.clear();
-		for (uint32_t i=0; i<n; ++i) {
-			sysx::endpoint addr;
-			in >> addr;
-			_peers.insert(addr);
-		}
-	}
-
-	void copy_peers_from(const Peers& peers) {
-		peers.connected_peers(_peers);
-	}
-
-	void copy_peers_to(Peers& peers) {
-		for (const sysx::endpoint& addr : _peers) {
-			peers.add_peer(addr);
-		}
-	}
-
-//	uint32_t num_peers() const { return _peers.size(); }
-
-	Time time() const { return _time; }
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{2,
-			"Profiler",
-			[] (sysx::packetstream& in) {
-				Profiler* k = new Profiler;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
-private:
-
-	Time _time = 0;
-	State _state = 0;
-
-	std::set<sysx::endpoint> _peers;
-};
-
-
-struct Ping: public Kernel, public Identifiable_tag {
-
-	Ping() {}
-
-	void act(Server& this_server) override { commit(this_server.remote_server()); }
-
-//	void write(sysx::packetstream&) { }
-//	void read(sysx::packetstream&) { }
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{7,
-			"Ping",
-			[] (sysx::packetstream& in) {
-				Ping* k = new Ping;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
-};
-
-struct Scanner: public Kernel, public Identifiable_tag {
-
-	typedef stdx::log<Scanner> this_log;
-
-	explicit Scanner(sysx::endpoint addr, sysx::endpoint st_addr):
-		_source(addr),
-		_oldaddr(st_addr),
-		_scan_addr(),
-		_servers(create_servers(all_peers)),
-		_discovered_node()
-		{}
-
-	void act(Server& this_server) override {
-		if (_servers.empty()) {
-//			this_log() << "There are no servers to scan." << std::endl;
-			commit(this_server.local_server(), Result::USER_ERROR);
-		} else {
-			if (!_scan_addr) {
-				if (_oldaddr) {
-					_scan_addr = _oldaddr;
-					_scan_addr = next_scan_addr();
-				} else {
-					_scan_addr = start_addr(all_peers);
-				}
-			}
-			try_to_connect(this_server, _scan_addr);
-		}
-	}
-
-	void react(Server& this_server, Kernel* k) override {
-		++_num_scanned;
-		if (_num_scanned == _servers.size()) {
-			_num_scanned = 0;
-		}
-		if (k->result() != Result::SUCCESS) {
-			// continue scanning network
-			act(this_server);
-		} else {
-			// the scan is complete
-			_discovered_node = _scan_addr;
-			commit(this_server.local_server());
-		}
-	}
-
-	sysx::endpoint discovered_node() const { return _discovered_node; }
-	sysx::endpoint scan_addr() const { return _scan_addr; }
-
-private:
-
-	std::vector<sysx::endpoint> create_servers(std::vector<sysx::endpoint> servers) {
-		std::vector<sysx::endpoint> tmp;
-		std::copy_if(servers.cbegin(), servers.cend(),
-			std::back_inserter(tmp), [this] (sysx::endpoint addr) {
-				return addr < this->_source;
-			});
-		return tmp;
-	}
-
-	/// determine addr to check next
-	sysx::endpoint next_scan_addr() {
-		auto res = find(_servers.begin(), _servers.end(), _scan_addr);
-		return (res == _servers.end() || res == _servers.begin())
-			? _servers.back()
-			: *--res;
-	}
-
-	sysx::endpoint start_addr(const std::vector<sysx::endpoint>& peers) const {
-		if (peers.empty()) return sysx::endpoint();
-		auto it = std::min_element(peers.begin(), peers.end(), discovery::Compare_distance(_source));
-		if (*it != _source) {
-			return *it;
-		}
-		auto res = find(peers.begin(), peers.end(), _source);
-		sysx::endpoint st = peers.front();
-		if (res != peers.end()) {
-			st = *res;
-		}
-		return st;
-	}
-
-	void try_to_connect(Server& this_server, sysx::endpoint addr) {
-		Ping* ping = this_server.factory()->new_kernel<Ping>();
-		ping->to(addr);
-		ping->parent(this);
-		this_log() << "scanning " << ping->to() << std::endl;
-		this_server.remote_server()->send(ping);
-	}
-
-	sysx::endpoint _source;
-	sysx::endpoint _oldaddr;
-	sysx::endpoint _scan_addr;
-	std::vector<sysx::endpoint> _servers;
-	sysx::endpoint _discovered_node;
-
-	uint32_t _num_scanned = 0;
-};
-
-struct Discoverer: public Kernel, public Identifiable_tag {
-
-	typedef stdx::log<Discoverer> this_log;
-
-	explicit Discoverer(const Peers& p): _peers(p) {}
-
-	void act(Server& this_server) override {
-		std::vector<Profiler*> profs;
-		for (auto& pair : _peers) {
-			if (pair.second.needs_update()) {
-				Profiler* prof = this_server.factory()->new_kernel<Profiler>();
-				prof->to(pair.first);
-				prof->set_principal_id(pair.first.address());
-				profs.push_back(prof);
-			}
-		}
-		if (profs.empty()) {
-			commit(this_server.local_server());
-		} else {
-			_num_sent += profs.size();
-			for (Profiler* prof : profs) {
-				upstream(this_server.remote_server(), prof);
-			}
-		}
-	}
-
-	void react(Server& this_server, Kernel* k) override {
-		Profiler* prof = dynamic_cast<Profiler*>(k);
-		Peer& p = _peers[prof->from()];
-		if (k->result() != Result::SUCCESS) {
-			p.collect_error(1);
-		} else {
-			p.collect_sample(prof->time());
-		}
-		if (p.needs_update()) {
-			Profiler* prof2 = this_server.factory()->new_kernel<Profiler>();
-			prof2->to(prof->from());
-			++_num_sent;
-			upstream(this_server.remote_server(), prof2);
-		}
-		prof->copy_peers_to(_peers);
-		if (--_num_sent == 0) {
-			commit(this_server.local_server());
-		}
-	}
-
-	const Peers& peers() const { return _peers; }
-
-private:
-	Peers _peers;
-	size_t _num_sent = 0;
-};
 
 struct Negotiator: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Negotiator> this_log;
 
-	Negotiator():
-		_old_principal(), _new_principal() {}
+	Negotiator() noexcept:
+	_old_principal(),
+	_new_principal()
+	{}
 
-	Negotiator(sysx::endpoint old, sysx::endpoint neww):
-		_old_principal(old), _new_principal(neww) {}
+	Negotiator(sysx::endpoint old, sysx::endpoint neww) noexcept:
+	_old_principal(old),
+	_new_principal(neww)
+	{}
 
 	void negotiate(Server& this_server, Peers& peers) {
 		stdx::log_func<this_log>(__func__, "new_principal", _new_principal);
@@ -738,57 +222,22 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	Master_discoverer(sysx::endpoint this_addr):
 	_peers(this_addr),
 //	_cache(_peers.this_addr(), _peers),
-	_scanner(nullptr),
-	_discoverer(nullptr),
 	_negotiator(nullptr)
-	{
-	}
+	{}
 
 	void act(Server& this_server) override {
-		prog_start = current_time_nano();
 
 		Shutdown_after* shutdowner = new Shutdown_after(_peers);
 		shutdowner->after(std::chrono::seconds(10));
 		shutdowner->parent(this);
 		this_server.timer_server()->send(shutdowner);
 
-		this_log()
-			<< "startTime.push("
-			<< current_time_nano() - prog_start
-			<< "*1e-6); // "
-			<< _peers.this_addr()
-			<< std::endl;
 		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
 			run_scan(this_server);
 		}
 	}
 
 	void react(Server& this_server, Kernel* k) override {
-		if (_scanner == k) {
-			if (k->result() != Result::SUCCESS) {
-//				Time wait_time = sysx::this_process::getenv("WAIT_TIME", Time(60000000000UL));
-//				if (current_time_nano() - prog_start > wait_time) {
-//					this_log() << "Hail the new king "
-//						<< _peers.this_addr() << "! npeers = " << all_peers.size() << std::endl;
-//					__factory.stop();
-//				}
-				run_scan(this_server, _scanner->discovered_node());
-			} else {
-				change_principal(this_server, _scanner->discovered_node());
-				run_discovery(this_server);
-				_scanner = nullptr;
-			}
-		} else
-		if (_discoverer == k) {
-			if (k->result() == Result::SUCCESS) {
-				Discoverer* dsc = dynamic_cast<Discoverer*>(k);
-				_peers.update_peers(dsc->peers());
-				_peers.debug();
-				change_principal(this_server, _peers.best_peer());
-			} else {
-				run_discovery(this_server);
-			}
-		} else
 		if (_negotiator == k) {
 			if (k->result() != Result::SUCCESS) {
 				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
@@ -799,33 +248,13 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 			_peers.debug();
 			_negotiator = nullptr;
 		} else
-		if (k->type()) {
-			if (k->type() == Profiler::static_type()) {
-				Profiler* prof = dynamic_cast<Profiler*>(k);
-				prof->copy_peers_from(_peers);
-				prof->act(this_server);
-			} else if (k->type() == Negotiator::static_type()) {
-				Negotiator* neg = dynamic_cast<Negotiator*>(k);
-				neg->negotiate(this_server, _peers);
-			}
+		if (k->type() == Negotiator::static_type()) {
+			Negotiator* neg = dynamic_cast<Negotiator*>(k);
+			neg->negotiate(this_server, _peers);
 		}
 	}
 
 private:
-
-	void run_scan(Server& this_server, sysx::endpoint old_addr = sysx::endpoint()) {
-		_scanner = this_server.factory()->new_kernel<Scanner>(_peers.this_addr(), old_addr);
-		if (!old_addr) {
-			_peers.add_peer(_scanner->scan_addr());
-		}
-		upstream(this_server.local_server(), _scanner);
-	}
-
-	void run_discovery(Server& this_server) {
-		this_log() << "Discovering..." << std::endl;
-//		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-		upstream(this_server.local_server(), _discoverer = this_server.factory()->new_kernel<Discoverer>(_peers));
-	}
 
 	void run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
 		upstream(this_server.local_server(), _negotiator = this_server.factory()->new_kernel<Master_negotiator>(old_princ, new_princ));
@@ -840,14 +269,11 @@ private:
 		}
 	}
 
-	Peers _peers;
+	discovery::Hierarchy<sysx::ipv4_addr> _peers;
 //	discovery::Cache_guard<Peers> _cache;
 
-	Scanner* _scanner;
-	Discoverer* _discoverer;
 	Master_negotiator* _negotiator;
-
-	static const uint32_t MIN_SAMPLES = 7;
+	springy::Springy_graph _graph;
 };
 
 
@@ -862,9 +288,10 @@ uint32_t num_peers() {
 struct test_discovery {};
 struct generate_peers {};
 
-void generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip, sysx::ipv4_addr netmask) {
+void
+generate_all_peers(uint32_t npeers, sysx::ipv4_addr base_ip, sysx::ipv4_addr netmask) {
 	typedef stdx::log<generate_peers> this_log;
-	all_peers.clear();
+	std::vector<sysx::endpoint> all_peers;
 	const uint32_t start = sysx::to_host_format<uint32_t>(base_ip.rep());
 	const uint32_t end = start + npeers;
 	for (uint32_t i=start; i<end; ++i) {

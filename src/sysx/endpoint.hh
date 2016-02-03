@@ -546,6 +546,13 @@ namespace sysx {
 			return static_cast<family_type>(this->_addr6.sin6_family);
 		}
 
+		void
+		reset() noexcept {
+			_addr4.sin_family = 0;
+			_addr4.sin_port = 0;
+			_addr4.sin_addr = 0;
+		}
+
 	public:
 
 		inline sa_type*

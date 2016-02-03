@@ -34,7 +34,17 @@ namespace springy {
 
 		Springy_graph():
 		_start(now())
-		{}
+		{ start(); }
+
+		void
+		start() {
+			this_log()
+				<< "startTime.push("
+				<< now() - _start
+				<< "*1e-6); // "
+				<< _peers.this_addr()
+				<< std::endl;
+		}
 
 		void
 		add_edge(sysx::endpoint addr, sysx::endpoint principal_addr) {
