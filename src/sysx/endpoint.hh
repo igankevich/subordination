@@ -550,7 +550,7 @@ namespace sysx {
 		reset() noexcept {
 			_addr4.sin_family = 0;
 			_addr4.sin_port = 0;
-			_addr4.sin_addr = 0;
+			_addr4.sin_addr.s_addr = 0;
 		}
 
 	public:

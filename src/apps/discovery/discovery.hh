@@ -18,6 +18,7 @@ namespace discovery {
 	template<class Addr>
 	struct Network {
 
+		typedef sysx::bits::Const_char<'/'> Slash;
 		typedef Addr addr_type;
 		typedef typename addr_type::rep_type rep_type;
 		typedef typename sysx::ipaddr_traits<addr_type> traits_type;
@@ -63,9 +64,24 @@ namespace discovery {
 			return _netmask == traits_type::widearea_mask();
 		}
 
+		constexpr bool
+		operator==(const Network& rhs) const noexcept {
+			return _address == rhs._address && _netmask == rhs._netmask;
+		}
+
+		constexpr bool
+		operator!=(const Network& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
 		friend std::ostream&
 		operator<<(std::ostream& out, const Network& rhs) {
-			return out << stdx::make_fields("address", rhs._address, "netmask", rhs._netmask);
+			return out << rhs._address << Slash() << rhs._netmask;
+		}
+
+		friend std::istream&
+		operator>>(std::istream& in, Network& rhs) {
+			return in >> rhs._address >> Slash() >> rhs._netmask;
 		}
 
 	private:

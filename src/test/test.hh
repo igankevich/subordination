@@ -305,6 +305,40 @@ namespace test {
 		}
 	}
 
+	template<class T>
+	void
+	io_single(const T& expected) {
+		T addr2;
+		std::stringstream s;
+		s << expected;
+		s >> addr2;
+		equal(addr2, expected);
+	}
+
+	template<class T, class Generator>
+	void
+	io_multiple(Generator gen) {
+		std::vector<T> addrs(10);
+		std::generate(addrs.begin(), addrs.end(), [&gen] () { return gen(); });
+
+		// write
+		std::stringstream os;
+		std::copy(
+			addrs.begin(), addrs.end(),
+			std::ostream_iterator<T>(os, "\n")
+		);
+
+		// read
+		std::vector<T> addrs2;
+		std::copy(
+			std::istream_iterator<T>(os),
+			std::istream_iterator<T>(),
+			std::back_inserter(addrs2)
+		);
+
+		test::compare(addrs, addrs2);
+	}
+
 }
 
 namespace std {

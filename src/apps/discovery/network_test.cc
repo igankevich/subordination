@@ -2,11 +2,14 @@
 #include <iterator>
 #include <map>
 #include <algorithm>
+#include <random>
+
+#include <stdx/n_random_bytes.hh>
+#include <test.hh>
 
 #include "discovery.hh"
 #include "distance.hh"
 
-#include <test.hh>
 
 namespace std {
 
@@ -25,9 +28,11 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 	typedef discovery::Network<addr_type> network_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef typename network_type::rep_type rep_type;
+	typedef std::random_device engine_type;
 
 	void xrun() override {
 		test_addr_calculus();
+		test_io();
 		std::vector<network_type> networks;
 		discovery::enumerate_networks<sysx::ipv4_addr>(std::back_inserter(networks));
 		std::copy(
@@ -92,6 +97,26 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		}
 	}
 
+	void
+	test_io() {
+		network_type loopback({127,0,0,1}, {255,0,0,0});
+		test::io_single(loopback);
+		test::io_multiple<network_type>(std::bind(&Test_network::random_network, this));
+	}
+
+private:
+
+	addr_type
+	random_addr() {
+		return addr_type(stdx::n_random_bytes<rep_type>(generator));
+	}
+
+	network_type
+	random_network() {
+		return network_type(random_addr(), random_addr());
+	}
+
+	engine_type generator;
 };
 
 
