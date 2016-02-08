@@ -21,15 +21,15 @@ namespace stdx {
 
 	template<>
 	struct disable_log_category<sysx::buffer_category>:
-	public std::integral_constant<bool, true> {};
+	public std::true_type {};
 
 	template<>
 	struct disable_log_category<factory::components::kernel_category>:
-	public std::integral_constant<bool, true> {};
+	public std::true_type {};
 
 	template<>
 	struct disable_log_category<factory::components::server_category>:
-	public std::integral_constant<bool, true> {};
+	public std::true_type {};
 
 }
 
@@ -57,137 +57,148 @@ using namespace factory;
 using namespace factory::this_config;
 
 
-//struct Negotiator: public Kernel, public Identifiable_tag {
-//
-//	typedef stdx::log<Negotiator> this_log;
-//
-//	Negotiator() noexcept:
-//	_old_principal(),
-//	_new_principal()
-//	{}
-//
-//	Negotiator(sysx::endpoint old, sysx::endpoint neww) noexcept:
-//	_old_principal(old),
-//	_new_principal(neww)
-//	{}
-//
-//	void negotiate(Server& this_server, Peers& peers) {
-//		stdx::log_func<this_log>(__func__, "new_principal", _new_principal);
-//		this->principal(this->parent());
-//		this->result(Result::SUCCESS);
-//		sysx::endpoint this_addr = peers.this_addr();
-//		if (_new_principal == this_addr) {
-//			this_log() << "Hello" << std::endl;
-//			// principal becomes subordinate
-//			if (this->from() == peers.principal()) {
-//				if (_old_principal) {
-//					peers.remove_principal();
-//				} else {
-//					// root tries to swap with its subordinate
-//					this->result(Result::USER_ERROR);
-//				}
-//			}
-//			if (this->result() != Result::USER_ERROR) {
-//				peers.add_subordinate(this->from());
-//			}
-//		} else
-//		if (_old_principal == this_addr) {
-//			// something fancy is going on
-//			if (this->from() == peers.principal()) {
-//				this->result(Result::USER_ERROR);
-//			} else {
-//				peers.remove_subordinate(this->from());
-//			}
-//		}
-//		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
-//		this_server.remote_server()->send(this);
-//	}
-//
-//	void write(sysx::packetstream& out) override {
-//		Kernel::write(out);
-//		// TODO: if moves_upstream
-//		out << _old_principal << _new_principal << _stop;
-//	}
-//
-//	void read(sysx::packetstream& in) override {
-//		Kernel::read(in);
-//		in >> _old_principal >> _new_principal >> _stop;
-//	}
-//
-//	bool stop() const { return _stop; }
-//
-//	const Type<Kernel>
-//	type() const noexcept override {
-//		return static_type();
-//	}
-//
-//	static const Type<Kernel>
-//	static_type() noexcept {
-//		return Type<Kernel>{
-//			8,
-//			"Negotiator",
-//			[] (sysx::packetstream& in) {
-//				Negotiator* k = new Negotiator;
-//				k->read(in);
-//				return k;
-//			}
-//		};
-//	}
-//
-//private:
-//	sysx::endpoint _old_principal;
-//	sysx::endpoint _new_principal;
-//	bool _stop = false;
-//};
-//
-//struct Master_negotiator: public Kernel, public Identifiable_tag {
-//
-//	typedef stdx::log<Master_negotiator> this_log;
-//
-//	Master_negotiator(sysx::endpoint old, sysx::endpoint neww):
-//		_old_principal(old), _new_principal(neww) {}
-//
-//	void act(Server& this_server) override {
-//		if (_old_principal) {
-//			send_negotiator(this_server, _old_principal);
-//		}
-//		send_negotiator(this_server, _new_principal);
-//	}
-//
-//	void react(Server& this_server, Kernel* k) override {
-//		this_log()
-//			<< "Negotiator returned from " << k->from()
-//			<< " with result=" << k->result() << std::endl;
-////		if (k->from() == _new_principal && k->result() != Result::SUCCESS) {
-//		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
-//			this->result(k->result());
-//		}
-////		Negotiator* neg = dynamic_cast<Negotiator*>(k);
-//		if (--_num_sent == 0) {
-//			if (this->result() == Result::UNDEFINED) {
-//				this->result(Result::SUCCESS);
-//			}
-//			this->principal(this->parent());
-//			this_server.local_server()->send(this);
-//		}
-//	}
-//
-//	sysx::endpoint old_principal() const { return _old_principal; }
-//
-//private:
-//
-//	void send_negotiator(Server& this_server, sysx::endpoint addr) {
-//		++_num_sent;
-//		Negotiator* n = this_server.factory()->new_kernel<Negotiator>(_old_principal, _new_principal);
-//		n->set_principal_id(addr.address());
-//		n->to(addr);
-//		upstream(this_server.remote_server(), n);
-//	}
-//
-//	sysx::endpoint _old_principal;
-//	sysx::endpoint _new_principal;
-//	uint8_t _num_sent = 0;
-//};
+struct Negotiator: public Kernel, public Identifiable_tag {
+
+	typedef stdx::log<Negotiator> this_log;
+
+	Negotiator() noexcept:
+	_oldprinc(),
+	_newprinc()
+	{}
+
+	Negotiator(sysx::endpoint old, sysx::endpoint neww) noexcept:
+	_oldprinc(old),
+	_newprinc(neww)
+	{}
+
+	void
+	negotiate(Server& this_server, Peers& peers) {
+		stdx::log_func<this_log>(__func__, "new_principal", _newprinc);
+		this->principal(this->parent());
+		this->result(Result::SUCCESS);
+		sysx::endpoint this_addr = peers.this_addr();
+		if (_newprinc == this_addr) {
+			this_log() << "Hello" << std::endl;
+			// principal becomes subordinate
+			if (this->from() == peers.principal()) {
+				if (_oldprinc) {
+					peers.remove_principal();
+				} else {
+					// root tries to swap with its subordinate
+					this->result(Result::USER_ERROR);
+				}
+			}
+			if (this->result() != Result::USER_ERROR) {
+				peers.add_subordinate(this->from());
+			}
+		} else
+		if (_oldprinc == this_addr) {
+			// something fancy is going on
+			if (this->from() == peers.principal()) {
+				this->result(Result::USER_ERROR);
+			} else {
+				peers.remove_subordinate(this->from());
+			}
+		}
+		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
+		this_server.remote_server()->send(this);
+	}
+
+	void write(sysx::packetstream& out) override {
+		Kernel::write(out);
+		// TODO: if moves_upstream
+		out << _oldprinc << _newprinc << _stop;
+	}
+
+	void read(sysx::packetstream& in) override {
+		Kernel::read(in);
+		in >> _oldprinc >> _newprinc >> _stop;
+	}
+
+	bool stop() const { return _stop; }
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			8,
+			"Negotiator",
+			[] (sysx::packetstream& in) {
+				Negotiator* k = new Negotiator;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+private:
+
+	sysx::endpoint _oldprinc;
+	sysx::endpoint _newprinc;
+	bool _stop = false;
+
+};
+
+struct Master_negotiator: public Kernel, public Identifiable_tag {
+
+	typedef stdx::log<Master_negotiator> this_log;
+
+	Master_negotiator(sysx::endpoint oldp, sysx::endpoint newp):
+	_oldprinc(oldp),
+	_newprinc(newp)
+	{}
+
+	void
+	act(Server& this_server) override {
+		if (_oldprinc) {
+			send_negotiator(this_server, _oldprinc);
+		}
+		send_negotiator(this_server, _newprinc);
+	}
+
+	void
+	react(Server& this_server, Kernel* k) override {
+		this_log()
+			<< "Negotiator returned from " << k->from()
+			<< " with result=" << k->result() << std::endl;
+//		if (k->from() == _newprinc && k->result() != Result::SUCCESS) {
+		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
+			this->result(k->result());
+		}
+//		Negotiator* neg = dynamic_cast<Negotiator*>(k);
+		if (--_numsent == 0) {
+			if (this->result() == Result::UNDEFINED) {
+				this->result(Result::SUCCESS);
+			}
+			this->principal(this->parent());
+			this_server.local_server()->send(this);
+		}
+	}
+
+	sysx::endpoint
+	old_principal() const noexcept {
+		return _oldprinc;
+	}
+
+private:
+
+	void
+	send_negotiator(Server& this_server, sysx::endpoint addr) {
+		++_numsent;
+		Negotiator* n = this_server.factory()->new_kernel<Negotiator>(_oldprinc, _newprinc);
+		n->set_principal_id(addr.address());
+		n->to(addr);
+		upstream(this_server.remote_server(), n);
+	}
+
+	sysx::endpoint _oldprinc;
+	sysx::endpoint _newprinc;
+	uint32_t _numsent = 0;
+};
 
 template<class Address>
 struct Delayed_shutdown: public Kernel {
@@ -201,7 +212,8 @@ struct Delayed_shutdown: public Kernel {
 	_hierarchy(peers)
 	{}
 
-	void act(Server& this_server) override {
+	void
+	act(Server& this_server) override {
 		this_log() << "Hail the king! His hoes: " << _hierarchy << std::endl;
 		this_server.factory()->shutdown();
 	}
@@ -242,15 +254,6 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 //		}
 	}
 
-	template<class Time>
-	void
-	schedule_shutdown_after(Time delay, Server& this_server) {
-		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(_hierarchy);
-		shutdowner->after(delay);
-		shutdowner->parent(this);
-		this_server.timer_server()->send(shutdowner);
-	}
-
 	void react(Server& this_server, Kernel* k) override {
 //		if (_negotiator == k) {
 //			if (k->result() != Result::SUCCESS) {
@@ -270,9 +273,20 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 
 private:
 
-//	void run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
-//		upstream(this_server.local_server(), _negotiator = this_server.factory()->new_kernel<Master_negotiator>(old_princ, new_princ));
-//	}
+	template<class Time>
+	void
+	schedule_shutdown_after(Time delay, Server& this_server) {
+		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(_hierarchy);
+		shutdowner->after(delay);
+		shutdowner->parent(this);
+		this_server.timer_server()->send(shutdowner);
+	}
+
+	void
+	run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
+		_negotiator = this_server.factory()->new_kernel<Master_negotiator>(_network.principal(), new_princ);
+		upstream(this_server.local_server(), _negotiator);
+	}
 //
 //	void change_principal(Server& this_server, sysx::endpoint new_princ) {
 //		sysx::endpoint old_princ = _hierarchy.principal();
@@ -287,7 +301,7 @@ private:
 	sysx::port_type _port;
 //	discovery::Cache_guard<Peers> _cache;
 
-//	Master_negotiator* _negotiator;
+	Master_negotiator* _negotiator;
 	springy::Springy_graph _graph;
 };
 
@@ -334,7 +348,7 @@ struct Main: public Kernel {
 			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 2;
 			const auto start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
 			Master_discoverer<sysx::ipv4_addr>* master = new Master_discoverer<sysx::ipv4_addr>(_network, _port);
-			master->id(_network.address().rep());
+			master->id(sysx::to_host_format(_network.address().rep()));
 			this_server.factory()->instances().register_instance(master);
 			master->after(std::chrono::seconds(start_delay));
 //			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
