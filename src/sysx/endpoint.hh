@@ -553,6 +553,11 @@ namespace sysx {
 			_addr4.sin_addr.s_addr = 0;
 		}
 
+		constexpr ipv4_addr
+		addr4() const {
+			return ipv4_addr(this->_addr4.sin_addr);
+		}
+
 	public:
 
 		inline sa_type*
@@ -577,11 +582,6 @@ namespace sysx {
 		constexpr sa_family_type
 		sa_family() const noexcept {
 			return this->_addr6.sin6_family;
-		}
-
-		constexpr ipv4_addr
-		addr4() const {
-			return ipv4_addr(this->_addr4.sin_addr);
 		}
 
 		constexpr port_type

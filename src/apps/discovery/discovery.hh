@@ -43,6 +43,11 @@ namespace discovery {
 			return _netmask;
 		}
 
+		constexpr const addr_type&
+		gateway() const noexcept {
+			return addr_type(start());
+		}
+
 		constexpr rep_type
 		start() const noexcept {
 			return (addr_long() & mask_long()) + 1;
@@ -62,6 +67,16 @@ namespace discovery {
 		constexpr bool
 		is_widearea() const noexcept {
 			return _netmask == traits_type::widearea_mask();
+		}
+
+		explicit constexpr
+		operator bool() const noexcept {
+			return static_cast<bool>(_address) and static_cast<bool>(_netmask);
+		}
+
+		constexpr bool
+		operator !() const noexcept {
+			return !operator bool();
 		}
 
 		constexpr bool

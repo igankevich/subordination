@@ -57,6 +57,12 @@ namespace sysx {
 		_arg(arg)
 		{}
 
+		explicit
+		invalid_cmdline_argument(const arg_type& arg):
+		_what("bad command line argument"),
+		_arg(arg)
+		{}
+
 		const arg_type&
 		arg() const noexcept {
 			return _arg;
@@ -106,7 +112,7 @@ namespace sysx {
 				++first;
 			}
 			if (first == last && !_rules.empty()) {
-				throw invalid_cmdline_argument("bad command line argument", arg);
+				throw invalid_cmdline_argument(arg);
 			}
 		}
 
