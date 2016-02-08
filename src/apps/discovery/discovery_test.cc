@@ -11,7 +11,9 @@
 #include "discovery.hh"
 #include "distance.hh"
 #include "cache_guard.hh"
+#include "hierarchy.hh"
 #include "springy_graph_generator.hh"
+#include "hierarchy_with_graph.hh"
 #include "test.hh"
 
 // disable logs
@@ -186,100 +188,111 @@ using namespace factory::this_config;
 //	sysx::endpoint _new_principal;
 //	uint8_t _num_sent = 0;
 //};
-//
-//struct Shutdown_after: public Kernel {
-//
-//	typedef stdx::log<Shutdown_after> this_log;
-//
-//	explicit
-//	Shutdown_after(const Peers& peers) noexcept:
-//	_peers(peers)
-//	{}
-//
-//	void act(Server& this_server) override {
-//		auto* __factory = this_server.factory();
-//		this_log() << "Hail the new king! addr="
-//			<< _peers.this_addr()
-//			<< ",peers=" << this->_peers
-//			<< ",npeers=" << all_peers.size() << std::endl;
-//		__factory->shutdown();
-//	}
-//
-//private:
-//
-//	const Peers& _peers;
-//};
-//
-//struct Master_discoverer: public Kernel, public Identifiable_tag {
-//
-//	typedef stdx::log<Master_discoverer> this_log;
-//
-//	Master_discoverer(const Master_discoverer&) = delete;
-//	Master_discoverer& operator=(const Master_discoverer&) = delete;
-//
-//	explicit
-//	Master_discoverer(sysx::endpoint this_addr):
-//	_peers(this_addr),
-////	_cache(_peers.this_addr(), _peers),
+
+template<class Address>
+struct Delayed_shutdown: public Kernel {
+
+	typedef Address addr_type;
+	typedef discovery::Hierarchy<addr_type> hierarchy_type;
+	typedef stdx::log<Delayed_shutdown> this_log;
+
+	explicit
+	Delayed_shutdown(const hierarchy_type& peers) noexcept:
+	_hierarchy(peers)
+	{}
+
+	void act(Server& this_server) override {
+		this_log() << "Hail the king! His hoes: " << _hierarchy << std::endl;
+		this_server.factory()->shutdown();
+	}
+
+private:
+
+	const hierarchy_type& _hierarchy;
+
+};
+
+
+template<class Address>
+struct Master_discoverer: public Kernel, public Identifiable_tag {
+
+	typedef Address addr_type;
+	typedef discovery::Network<addr_type> network_type;
+	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
+	typedef stdx::log<Master_discoverer> this_log;
+
+	Master_discoverer(const network_type& network, const sysx::port_type port):
+	_hierarchy(network),
+	_port(port),
+	_graph()
+//	_cache(_hierarchy.this_addr(), _hierarchy),
 //	_negotiator(nullptr)
-//	{}
-//
-//	void act(Server& this_server) override {
-//
-//		Shutdown_after* shutdowner = new Shutdown_after(_peers);
-//		shutdowner->after(std::chrono::seconds(10));
-//		shutdowner->parent(this);
-//		this_server.timer_server()->send(shutdowner);
-//
-//		if (!all_peers.empty() && _peers.this_addr() != all_peers[0]) {
+	{
+		_hierarchy.set_graph(_graph);
+	}
+
+	Master_discoverer(const Master_discoverer&) = delete;
+	Master_discoverer& operator=(const Master_discoverer&) = delete;
+
+	void
+	act(Server& this_server) override {
+		schedule_shutdown_after(std::chrono::seconds(10), this_server);
+//		if (!all_peers.empty() && _hierarchy.this_addr() != all_peers[0]) {
 //			run_scan(this_server);
 //		}
-//	}
-//
-//	void react(Server& this_server, Kernel* k) override {
+	}
+
+	template<class Time>
+	void
+	schedule_shutdown_after(Time delay, Server& this_server) {
+		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(_hierarchy);
+		shutdowner->after(delay);
+		shutdowner->parent(this);
+		this_server.timer_server()->send(shutdowner);
+	}
+
+	void react(Server& this_server, Kernel* k) override {
 //		if (_negotiator == k) {
 //			if (k->result() != Result::SUCCESS) {
 //				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
-//				sysx::endpoint princ = _peers.principal();
-//				_peers.revert_principal(neg->old_principal());
-//				run_negotiator(this_server, princ, _peers.principal());
+//				sysx::endpoint princ = _hierarchy.principal();
+//				_hierarchy.revert_principal(neg->old_principal());
+//				run_negotiator(this_server, princ, _hierarchy.principal());
 //			}
-//			_peers.debug();
+//			_hierarchy.debug();
 //			_negotiator = nullptr;
 //		} else
 //		if (k->type() == Negotiator::static_type()) {
 //			Negotiator* neg = dynamic_cast<Negotiator*>(k);
-//			neg->negotiate(this_server, _peers);
+//			neg->negotiate(this_server, _hierarchy);
 //		}
-//	}
-//
-//private:
-//
+	}
+
+private:
+
 //	void run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
 //		upstream(this_server.local_server(), _negotiator = this_server.factory()->new_kernel<Master_negotiator>(old_princ, new_princ));
 //	}
 //
 //	void change_principal(Server& this_server, sysx::endpoint new_princ) {
-//		sysx::endpoint old_princ = _peers.principal();
-//		if (!_negotiator && _peers.change_principal(new_princ)) {
+//		sysx::endpoint old_princ = _hierarchy.principal();
+//		if (!_negotiator && _hierarchy.change_principal(new_princ)) {
 //			this_log() << "Changing principal to " << new_princ << std::endl;
-//			_peers.debug();
+//			_hierarchy.debug();
 //			run_negotiator(this_server, old_princ, new_princ);
 //		}
 //	}
-//
-//	discovery::Hierarchy<sysx::ipv4_addr> _peers;
-////	discovery::Cache_guard<Peers> _cache;
-//
+
+	hierarchy_type _hierarchy;
+	sysx::port_type _port;
+//	discovery::Cache_guard<Peers> _cache;
+
 //	Master_negotiator* _negotiator;
-//	springy::Springy_graph _graph;
-//};
-//
-//
-//
+	springy::Springy_graph _graph;
+};
+
 struct test_discovery {};
-//struct generate_peers {};
-//
+
 template<class Result>
 void
 enumerate_hosts(discovery::Network<sysx::ipv4_addr> network, uint32_t npeers, sysx::port_type discovery_port, Result result) {
@@ -293,7 +306,9 @@ enumerate_hosts(discovery::Network<sysx::ipv4_addr> network, uint32_t npeers, sy
 }
 
 struct Main: public Kernel {
+
 	typedef stdx::log<test_discovery> this_log;
+
 	Main(Server& this_server, int argc, char* argv[]):
 	_network(),
 	_port(),
@@ -304,7 +319,33 @@ struct Main: public Kernel {
 		sysx::cmd::make_option({"--network"}, _network),
 		sysx::cmd::make_option({"--port"}, _port)
 	})
-	{
+	{}
+
+	void
+	act(Server& this_server) {
+		parse_cmdline_args(this_server);
+//		this_server.factory()->types().register_type(Negotiator::static_type());
+		if (this_server.factory()->exit_code()) {
+			commit(this_server.local_server());
+		} else {
+			const sysx::endpoint bind_addr(_network.address(), _port);
+			this_server.remote_server()->socket(bind_addr);
+			std::clog << "Hello from child process" << std::endl;
+			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 2;
+			const auto start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
+			Master_discoverer<sysx::ipv4_addr>* master = new Master_discoverer<sysx::ipv4_addr>(_network, _port);
+			master->id(_network.address().rep());
+			this_server.factory()->instances().register_instance(master);
+			master->after(std::chrono::seconds(start_delay));
+//			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
+			this_server.timer_server()->send(master);
+		}
+	}
+
+private:
+
+	void
+	parse_cmdline_args(Server& this_server) {
 		try {
 			_cmdline.parse();
 			if (!_network) {
@@ -315,28 +356,6 @@ struct Main: public Kernel {
 			this_server.factory()->set_exit_code(1);
 		}
 	}
-
-	void act(Server& this_server) {
-//		this_server.factory()->types().register_type(Negotiator::static_type());
-		if (this_server.factory()->exit_code()) {
-			commit(this_server.local_server());
-		} else {
-			const sysx::endpoint bind_addr(_network.address(), _port);
-			this_server.remote_server()->socket(bind_addr);
-			std::clog << "Hello from child process" << std::endl;
-			commit(this_server.local_server());
-		}
-//		const Time default_delay = (bind_addr == sysx::endpoint("127.0.0.1", DISCOVERY_PORT)) ? 0 : 2;
-//		const Time start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
-//		Master_discoverer* master = new Master_discoverer(bind_addr);
-//		master->id(bind_addr.address());
-//		this_server.factory()->instances().register_instance(master);
-//		master->after(std::chrono::seconds(start_delay));
-////		master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
-//		this_server.timer_server()->send(master);
-	}
-
-private:
 
 	discovery::Network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;

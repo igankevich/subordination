@@ -30,7 +30,7 @@ namespace discovery {
 		Hierarchy(const Hierarchy&) = default;
 		Hierarchy(Hierarchy&&) = default;
 
-		const sysx::endpoint&
+		const network_type&
 		network() const noexcept {
 			return _network;
 		}
@@ -55,18 +55,12 @@ namespace discovery {
 		void
 		add_subordinate(const sysx::endpoint& addr) {
 			this_log() << "Adding subordinate = " << addr << std::endl;
-			if (_subordinates.count(addr) == 0) {
-				graph.add_edge(addr, _network.address());
-			}
 			_subordinates.insert(addr);
 		}
 
 		void
 		remove_subordinate(const sysx::endpoint& addr) {
 			this_log() << "Removing subordinate = " << addr << std::endl;
-			if (_subordinates.count(addr) > 0) {
-				graph.remove_edge(addr, _network.address());
-			}
 			_subordinates.erase(addr);
 		}
 
@@ -75,10 +69,25 @@ namespace discovery {
 			return _subordinates.size();
 		}
 
-	private:
-		Network<addr_type> _network;
+		friend std::ostream&
+		operator<<(std::ostream& out, const Hierarchy& rhs) {
+			out << "network=" << rhs._network << ',';
+			out << "principal=" << rhs._principal << ',';
+			out << "subordinates=";
+			std::copy(
+				rhs._subordinates.begin(),
+				rhs._subordinates.end(),
+				std::ostream_iterator<sysx::endpoint>(out, ",")
+			);
+			return out;
+		}
+
+	protected:
+
+		network_type _network;
 		sysx::endpoint _principal;
 		std::set<sysx::endpoint> _subordinates;
+
 	};
 
 }
