@@ -150,13 +150,39 @@ namespace sysx {
 		}
 
 		struct ignore_first_arg {
+
 			typedef basic_cmdline::pos_type pos_type;
 			typedef basic_cmdline::arg_type arg_type;
 			typedef basic_cmdline::stream_type stream_type;
+
 			bool
 			operator()(const arg_type&, pos_type pos, stream_type&) {
 				return pos == 0;
 			}
+
+		};
+
+		struct ignore_arg {
+
+			typedef basic_cmdline::pos_type pos_type;
+			typedef basic_cmdline::arg_type arg_type;
+			typedef basic_cmdline::stream_type stream_type;
+
+			explicit
+			ignore_arg(std::string&& key):
+			_key(std::move(key))
+			{}
+
+			bool
+			operator()(const arg_type& arg, pos_type, stream_type& str) {
+				std::string dummy;
+				return arg == _key and str >> dummy;
+			}
+
+		private:
+
+			std::string _key;
+
 		};
 
 	}

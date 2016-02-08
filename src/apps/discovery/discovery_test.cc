@@ -296,19 +296,17 @@ struct Main: public Kernel {
 	typedef stdx::log<test_discovery> this_log;
 	Main(Server& this_server, int argc, char* argv[]):
 	_network(),
-	_port()
+	_port(),
+	_cmdline(argc, argv, {
+		sysx::cmd::ignore_first_arg(),
+		sysx::cmd::ignore_arg("--num-peers"),
+		sysx::cmd::ignore_arg("--role"),
+		sysx::cmd::make_option({"--network"}, _network),
+		sysx::cmd::make_option({"--port"}, _port)
+	})
 	{
 		try {
-			uint32_t npeers = 0;
-			std::string role = "slave";
-			sysx::cmdline cmd(argc, argv, {
-				sysx::cmd::ignore_first_arg(),
-				sysx::cmd::make_option({"--network"}, _network),
-				sysx::cmd::make_option({"--num-peers"}, npeers),
-				sysx::cmd::make_option({"--role"}, role),
-				sysx::cmd::make_option({"--port"}, _port)
-			});
-			cmd.parse();
+			_cmdline.parse();
 			if (!_network) {
 				throw sysx::invalid_cmdline_argument("--network");
 			}
@@ -316,15 +314,14 @@ struct Main: public Kernel {
 			std::cerr << err.what() << ": " << err.arg() << std::endl;
 			this_server.factory()->set_exit_code(1);
 		}
-		this_server.local_server()->add_cpu(0);
-//		this_server.factory()->types().register_type(Negotiator::static_type());
 	}
 
 	void act(Server& this_server) {
+//		this_server.factory()->types().register_type(Negotiator::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
-			sysx::endpoint bind_addr(_network.address(), _port);
+			const sysx::endpoint bind_addr(_network.address(), _port);
 			this_server.remote_server()->socket(bind_addr);
 			std::clog << "Hello from child process" << std::endl;
 			commit(this_server.local_server());
@@ -340,8 +337,11 @@ struct Main: public Kernel {
 	}
 
 private:
+
 	discovery::Network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
+	sysx::cmdline _cmdline;
+
 };
 
 int main(int argc, char* argv[]) {
