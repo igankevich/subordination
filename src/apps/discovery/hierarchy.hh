@@ -8,7 +8,7 @@
 
 #include <sysx/endpoint.hh>
 
-#include "discovery.hh"
+#include "network.hh"
 
 namespace discovery {
 

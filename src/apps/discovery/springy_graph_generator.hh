@@ -94,6 +94,11 @@ namespace springy {
 			);
 		}
 
+		void
+		push_back(const sysx::endpoint& rhs) {
+			add_node(rhs);
+		}
+
 	private:
 
 		Time

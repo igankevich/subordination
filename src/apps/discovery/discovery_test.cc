@@ -8,7 +8,7 @@
 #include <factory/server/timer_server.hh>
 #include <factory/server/nic_server.hh>
 
-#include "discovery.hh"
+#include "network.hh"
 #include "distance.hh"
 #include "cache_guard.hh"
 #include "hierarchy.hh"
@@ -307,18 +307,6 @@ private:
 
 struct test_discovery {};
 
-template<class Result>
-void
-enumerate_hosts(discovery::Network<sysx::ipv4_addr> network, uint32_t npeers, sysx::port_type discovery_port, Result result) {
-	typedef sysx::ipv4_addr::rep_type rep_type;
-	const rep_type start = network.start();
-	const rep_type end = start + npeers;
-	for (rep_type i=start; i<end; ++i) {
-		*result = sysx::endpoint(sysx::ipv4_addr(sysx::to_network_format(i)), discovery_port);
-		++result;
-	}
-}
-
 struct Main: public Kernel {
 
 	typedef stdx::log<test_discovery> this_log;
@@ -416,10 +404,13 @@ int main(int argc, char* argv[]) {
 		this_log() << "start,end = " << network.start() << ',' << network.end() << std::endl;
 
 		std::vector<sysx::endpoint> hosts;
-		enumerate_hosts(
-			network, npeers,
-			discovery_port,
-			std::back_inserter(hosts)
+		std::transform(
+			network.begin(),
+			network.begin() + npeers,
+			std::back_inserter(hosts),
+			[discovery_port] (const sysx::ipv4_addr& addr) {
+				return sysx::endpoint(addr, discovery_port);
+			}
 		);
 		springy::Springy_graph graph;
 		graph.add_nodes(hosts.begin(), hosts.end());

@@ -1,5 +1,5 @@
-#ifndef APPS_DISCOVERY_DISCOVERY_HH
-#define APPS_DISCOVERY_DISCOVERY_HH
+#ifndef APPS_DISCOVERY_NETWORK_HH
+#define APPS_DISCOVERY_NETWORK_HH
 
 #include <map>
 #include <vector>
@@ -13,6 +13,8 @@
 #include <sysx/bits/check.hh>
 #include <sysx/endpoint.hh>
 
+#include "network_iterator.hh"
+
 namespace discovery {
 
 	template<class Addr>
@@ -22,6 +24,7 @@ namespace discovery {
 		typedef Addr addr_type;
 		typedef typename addr_type::rep_type rep_type;
 		typedef typename sysx::ipaddr_traits<addr_type> traits_type;
+		typedef network_iterator<addr_type> iterator;
 
 		constexpr
 		Network(const addr_type& addr, const addr_type& netmask) noexcept:
@@ -45,17 +48,22 @@ namespace discovery {
 
 		constexpr const addr_type&
 		gateway() const noexcept {
-			return addr_type(start());
+			return addr_type(first());
 		}
 
-		constexpr rep_type
-		start() const noexcept {
-			return (addr_long() & mask_long()) + 1;
+		constexpr iterator
+		begin() const noexcept {
+			return iterator(first());
 		}
 
-		constexpr rep_type
+		constexpr iterator
+		middle() const noexcept {
+			return iterator(_address);
+		}
+
+		constexpr iterator
 		end() const noexcept {
-			return (addr_long() & mask_long()) + (~mask_long());
+			return iterator(last());
 		}
 
 		constexpr bool
@@ -101,6 +109,16 @@ namespace discovery {
 
 	private:
 
+		constexpr rep_type
+		first() const noexcept {
+			return (addr_long() & mask_long()) + 1;
+		}
+
+		constexpr rep_type
+		last() const noexcept {
+			return (addr_long() & mask_long()) + (~mask_long());
+		}
+
 		constexpr const rep_type
 		addr_long() const noexcept {
 			return sysx::to_host_format(_address.rep());
@@ -134,4 +152,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_DISCOVERY_HH
+#endif // APPS_DISCOVERY_NETWORK_HH

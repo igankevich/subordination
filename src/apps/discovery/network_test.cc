@@ -7,7 +7,7 @@
 #include <stdx/n_random_bytes.hh>
 #include <test.hh>
 
-#include "discovery.hh"
+#include "network.hh"
 #include "distance.hh"
 
 
@@ -55,15 +55,21 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		std::for_each(
 			networks.begin(), networks.end(),
 			[&ranked_hosts,fanout] (const network_type& rhs) {
-//				if (!rhs.is_loopback() && !rhs.is_widearea()) {
-					const addr_type from(rhs.address());
-					const rep_type end = sysx::to_host_format(from.rep());
-					for (rep_type i=rhs.start(); i<end; ++i) {
-						const addr_type to(sysx::to_network_format(i));
-						const distance_type dist = distance_type(from, to, rhs.netmask(), fanout);
-						ranked_hosts.emplace(dist, to);
-					}
+//				const addr_type from(rhs.address());
+//				const rep_type end = sysx::to_host_format(from.rep());
+//				for (rep_type i=rhs.start(); i<end; ++i) {
+//					const addr_type to(sysx::to_network_format(i));
+//					const distance_type dist = distance_type(from, to, rhs.netmask(), fanout);
+//					ranked_hosts.emplace(dist, to);
 //				}
+				std::transform(
+					rhs.begin(), rhs.middle(),
+					std::inserter(ranked_hosts, ranked_hosts.end()),
+					[&rhs,fanout] (const addr_type& to) {
+						const distance_type dist = distance_type(rhs.address(), to, rhs.netmask(), fanout);
+						return std::make_pair(dist, to);
+					}
+				);
 			}
 		);
 		std::clog << "Expecting " << expected << " be the first in the following list." << std::endl;
