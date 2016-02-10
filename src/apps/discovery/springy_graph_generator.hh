@@ -69,8 +69,9 @@ namespace springy {
 				<< "}, undo: function() {"
 				<< "g." << Edge(addr, principal_addr) << " = graph.newEdge("
 				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
-				<< "}}"
-				<< ";log[logline-1].time=" << now() - _start << "*1e-6"
+				<< "},"
+				<< "time: " << now() - _start << "*1e-6"
+				<< "};"
 				<< std::endl;
 		}
 
@@ -79,8 +80,9 @@ namespace springy {
 			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
-				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")}}"
-				<< ";log[logline-1].time=" << now() - _start << "*1e-6"
+				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")},"
+				<< "time: " << now() - _start << "*1e-6"
+				<< "};"
 				<< std::endl;
 		}
 

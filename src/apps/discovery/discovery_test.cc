@@ -179,26 +179,21 @@ struct Master_negotiator: public Kernel, public Identifiable_tag {
 
 	void
 	act(Server& this_server) override {
-		if (_oldprinc) {
-			send_negotiator(this_server, _oldprinc);
-		}
 		send_negotiator(this_server, _newprinc);
 	}
 
 	void
 	react(Server& this_server, Kernel* k) override {
-		this_log()
-			<< "Negotiator returned from " << k->from()
-			<< " with result=" << k->result() << std::endl;
-//		if (k->from() == _newprinc && k->result() != Result::SUCCESS) {
-		if (this->result() == Result::UNDEFINED && k->result() != Result::SUCCESS) {
+		bool finished = true;
+		if (_numsent == 1) {
+			this_log() << "Tried " << k->from() << ": " << k->result() << std::endl;
 			this->result(k->result());
-		}
-//		Negotiator* neg = dynamic_cast<Negotiator*>(k);
-		if (--_numsent == 0) {
-			if (this->result() == Result::UNDEFINED) {
-				this->result(Result::SUCCESS);
+			if (k->result() == Result::SUCCESS and _oldprinc) {
+				finished = false;
+				send_negotiator(this_server, _oldprinc);
 			}
+		}
+		if (finished) {
 			this->principal(this->parent());
 			this_server.local_server()->send(this);
 		}

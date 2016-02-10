@@ -130,7 +130,7 @@ namespace factory {
 				init_context(&context);
 				types().register_type(shutdown_type::static_type());
 				std::cout << std::endl;
-				this->dump_hierarchy(std::cout);
+//				this->dump_hierarchy(std::cout);
 				std::cout << std::endl;
 			}
 
