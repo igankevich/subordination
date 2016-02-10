@@ -16,7 +16,7 @@ namespace discovery {
 			T layer = 0;
 			T n = 1; // no. of nodes in layer
 			while (offset > n) { offset -= n; ++layer; n *= fanout; }
-			return std::make_pair(layer, offset);
+			return std::make_pair(layer, offset-1);
 		}
 
 	}
@@ -80,6 +80,7 @@ namespace discovery {
 
 		constexpr static pair_type
 		pair_sub(rep_type fanout, pair_type a, pair_type b) noexcept {
+			const rep_type k = a.first < b.first ? b.first-a.first : 0;
 			return std::make_pair(
 				lvl_sub(a.first, b.first),
 				abs_sub(a.second, b.second/fanout)

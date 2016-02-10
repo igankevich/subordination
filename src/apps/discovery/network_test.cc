@@ -31,6 +31,8 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 	typedef std::random_device engine_type;
 
 	void xrun() override {
+		debug_addrs();
+		debug_addrs();
 		test_addr_calculus();
 		test_io();
 		std::vector<network_type> networks;
@@ -43,6 +45,11 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		test_ranking_algorithm({network_type(addr_type{127,0,0,2}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,1});
 		test_ranking_algorithm({network_type(addr_type{127,0,0,3}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,1});
 		test_ranking_algorithm({network_type(addr_type{127,0,0,4}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,2});
+		test_ranking_algorithm({network_type(addr_type{127,0,0,5}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,2});
+		test_ranking_algorithm({network_type(addr_type{127,0,0,6}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,3});
+		test_ranking_algorithm({network_type(addr_type{127,0,0,7}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,3});
+		test_ranking_algorithm({network_type(addr_type{127,0,0,8}, addr_type{255,0,0,0})}, 2, addr_type{127,0,0,4});
+
 		test_ranking_algorithm({network_type(addr_type{127,0,0,4}, addr_type{255,0,0,0})}, 4, addr_type{127,0,0,1});
 		test_ranking_algorithm({network_type(addr_type{127,0,0,5}, addr_type{255,0,0,0})}, 4, addr_type{127,0,0,1});
 		test_ranking_algorithm({network_type(addr_type{127,0,0,6}, addr_type{255,0,0,0})}, 4, addr_type{127,0,0,2});
@@ -86,7 +93,7 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		typedef sysx::ipv4_addr::rep_type rep_type;
 		test::equal(sysx::ipv4_addr{127,0,0,1}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(1));
 		test::equal(sysx::ipv4_addr{127,0,0,5}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(5));
-		test::equal(distance_type(sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}, 2), distance_type(1, 1));
+		test::equal(distance_type(sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}, 2), distance_type(1, 0));
 		test::equal(network_type(addr_type{127,0,0,7}, addr_type{255,0,0,0}).is_loopback(), true);
 		test::equal(network_type(addr_type{128,0,0,7}, addr_type{255,0,0,0}).is_loopback(), false);
 	}
@@ -99,7 +106,7 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,4}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
 		for (unsigned char i=1; i<23; ++i) {
 			const sysx::ipv4_addr addr{127,0,0,i};
-			std::clog << addr << "   " << distance_type(4, addr, sysx::ipv4_addr{255,0,0,0}) << std::endl;
+			std::clog << addr << "   " << distance_type(2, addr, sysx::ipv4_addr{255,0,0,0}) << std::endl;
 		}
 	}
 
