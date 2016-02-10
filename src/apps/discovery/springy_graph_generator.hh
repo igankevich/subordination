@@ -29,8 +29,7 @@ namespace springy {
 	struct Springy_graph {
 
 		typedef std::chrono::nanoseconds::rep Time;
-		struct graph_log {};
-		typedef stdx::log<graph_log> this_log;
+		typedef stdx::log<Springy_graph> this_log;
 
 		Springy_graph():
 		_start(now())
@@ -55,8 +54,9 @@ namespace springy {
 				<< "}, "
 				<< "undo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ")"
-				<< "}}"
-				<< ";log[logline-1].time=" << now() - _start << "*1e-6"
+				<< "},"
+				<< "time: " << now() - _start << "*1e-6"
+				<< "};"
 				<< std::endl;
 		}
 

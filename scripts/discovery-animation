@@ -1,0 +1,21 @@
+#!/bin/sh
+
+logfile="$MESON_BUILD_ROOT/discovery.log"
+outfile="$MESON_BUILD_ROOT/discovery.html"
+srcdir="$MESON_SOURCE_ROOT/$MESON_SUBDIR"
+
+echo "Input file: $logfile"
+echo "Output file: $outfile"
+
+if ! test -f "$logfile"; then
+	echo "Error: input file does not exist."
+	exit 1
+fi
+
+{
+	cat "$srcdir/html/graph-head.html"
+	grep 'Springy_graph' "$logfile" |
+	perl -pne 's/.*Springy_graph(.*)/\1/p'
+	cat "$srcdir/html/graph-tail.html"
+} > "$outfile"
+cp -r "$srcdir/js" "$MESON_BUILD_ROOT/"

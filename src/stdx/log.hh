@@ -5,7 +5,26 @@
 #include <type_traits>
 #include <iostream>
 
+#if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
+#define FACTORY_TEST_HAVE_CXXABI
+#endif
+
+#if defined(FACTORY_TEST_HAVE_CXXABI)
+#include <cxxabi.h>
+#endif
+
 namespace stdx {
+
+	template<class T>
+	std::string
+	demangle_name() {
+	#if defined(FACTORY_TEST_HAVE_CXXABI)
+		int status;
+		return std::string(abi::__cxa_demangle(typeid(T).name(), 0, 0, &status));
+	#else
+		return std::string(typeid(T).name());
+	#endif
+	}
 
 	struct no_category {};
 
@@ -13,10 +32,15 @@ namespace stdx {
 	struct type_traits {
 		static constexpr const char*
 		short_name() noexcept {
-			return typeid(T).name();
+			return _name.data();
 		}
 		typedef no_category category;
+	private:
+		static std::string _name;
 	};
+
+	template<class T>
+	std::string type_traits<T>::_name = demangle_name<T>();
 
 	template<class Category>
 	struct disable_log_category:

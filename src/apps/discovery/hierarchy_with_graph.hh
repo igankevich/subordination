@@ -9,7 +9,7 @@ namespace discovery {
 	struct Hierarchy_with_graph: public Base {
 
 		typedef Base base_type;
-		using base_type::_network;
+		using base_type::_bindaddr;
 		using base_type::_subordinates;
 
 		template<class ... Args>
@@ -21,7 +21,7 @@ namespace discovery {
 		void
 		add_subordinate(const sysx::endpoint& addr) {
 			if (_subordinates.count(addr) == 0) {
-				_graph.add_edge(addr, _network.address());
+				_graph.add_edge(addr, _bindaddr);
 			}
 			base_type::add_subordinate(addr);
 		}
@@ -29,7 +29,7 @@ namespace discovery {
 		void
 		remove_subordinate(const sysx::endpoint& addr) {
 			if (_subordinates.count(addr) > 0) {
-				_graph.remove_edge(addr, _network.address());
+				_graph.remove_edge(addr, _bindaddr);
 			}
 			base_type::remove_subordinate(addr);
 		}

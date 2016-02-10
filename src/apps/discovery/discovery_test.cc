@@ -98,13 +98,13 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 	_newprinc(neww)
 	{}
 
+	template<class Hierarchy>
 	void
-	negotiate(Server& this_server, hierarchy_type& hierarchy, const sysx::endpoint& this_addr) {
-		stdx::log_func<this_log>(__func__, "new_principal", _newprinc);
+	negotiate(Server& this_server, Hierarchy& hierarchy) {
+		const sysx::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
 		if (_newprinc == this_addr) {
-			this_log() << "Hello" << std::endl;
 			// principal becomes subordinate
 			if (this->from() == hierarchy.principal()) {
 				if (_oldprinc) {
@@ -132,15 +132,13 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 	void write(sysx::packetstream& out) override {
 		Kernel::write(out);
 		// TODO: if moves_upstream
-		out << _oldprinc << _newprinc << _stop;
+		out << _oldprinc << _newprinc;
 	}
 
 	void read(sysx::packetstream& in) override {
 		Kernel::read(in);
-		in >> _oldprinc >> _newprinc >> _stop;
+		in >> _oldprinc >> _newprinc;
 	}
-
-	bool stop() const { return _stop; }
 
 	const Type<Kernel>
 	type() const noexcept override {
@@ -164,7 +162,6 @@ private:
 
 	sysx::endpoint _oldprinc;
 	sysx::endpoint _newprinc;
-	bool _stop = false;
 
 };
 
@@ -247,13 +244,13 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	typedef stdx::log<Master_discoverer> this_log;
 
 	Master_discoverer(const network_type& network, const sysx::port_type port):
-	_hierarchy(network),
+	_hierarchy(network, port),
 	_port(port),
 	_rankedhosts(),
 	_currenthost(),
+	_negotiator(nullptr),
 	_graph()
 //	_cache(_hierarchy.this_addr(), _hierarchy),
-//	_negotiator(nullptr)
 	{
 		_hierarchy.set_graph(_graph);
 		generate_ranked_hosts(network);
@@ -280,8 +277,7 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 		} else
 		if (k->type() == negotiator_type::static_type()) {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
-			const sysx::endpoint this_addr(_hierarchy.network().address(), _port);
-			neg->negotiate(this_server, _hierarchy, this_addr);
+			neg->negotiate(this_server, _hierarchy);
 		}
 	}
 

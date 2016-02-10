@@ -1,0 +1,69 @@
+// END OF GENERATED CODE
+
+function toPrecision(x, n) {
+	var m = Math.pow(10, n)
+	return Math.floor(x * m) / m
+}
+
+function showLineNo() {
+	$('#time').html('Time: ' + toPrecision(log[currentLine].time, 2) + 'ms')
+	$('#lineno').html('Line: ' + (currentLine + 1) + '/' + log.length)
+}
+
+function gotoLine(targetLine) {
+	if (targetLine == currentLine) return;
+	if (targetLine > currentLine) {
+		for (var i=currentLine+1; i<=targetLine; ++i) {
+			log[i].redo()
+		}
+	}
+	if (targetLine < currentLine) {
+		for (var i=currentLine; i>targetLine; --i) {
+			log[i].undo()
+		}
+	}
+	currentLine = targetLine
+	showLineNo()
+}
+
+function changeLogLine() {
+	var targetLine = $('#logSlider').slider("value")
+	gotoLine(targetLine)
+}
+
+function resizeCanvas() {
+	var canvas = document.getElementById('springydemo');
+	canvas.width = window.innerWidth
+	canvas.height = window.innerHeight
+}
+
+$(window).resize(function () {
+	resizeCanvas()
+});
+
+$(document).ready(function(){
+	showLineNo()
+	resizeCanvas()
+	var springy = $('#springydemo').springy({
+		graph: graph
+	});
+	$('#logSlider').slider({
+		value: 0,
+		max: logline-1,
+		range: "min",
+		change: changeLogLine,
+		slide: changeLogLine
+	});
+});
+</script>
+
+	<div class="hud">
+		<div id="legend">
+			<span id="time">1</span><br/>
+			<span id="lineno">1</span>
+		</div>
+		<div id="logSlider"></div>
+	</div>
+	<canvas id="springydemo" width="800" height="600" />
+</body>
+</html>

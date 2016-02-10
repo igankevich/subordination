@@ -21,8 +21,9 @@ namespace discovery {
 		typedef stdx::log<Hierarchy> this_log;
 
 		explicit
-		Hierarchy(const network_type& net):
+		Hierarchy(const network_type& net, const sysx::port_type port):
 		_network(net),
+		_bindaddr(net.address(), port),
 		_principal(),
 		_subordinates()
 		{}
@@ -33,6 +34,11 @@ namespace discovery {
 		const network_type&
 		network() const noexcept {
 			return _network;
+		}
+
+		const sysx::endpoint&
+		bindaddr() const noexcept {
+			return _bindaddr;
 		}
 
 		const sysx::endpoint&
@@ -85,6 +91,7 @@ namespace discovery {
 	protected:
 
 		network_type _network;
+		sysx::endpoint _bindaddr;
 		sysx::endpoint _principal;
 		std::set<sysx::endpoint> _subordinates;
 
