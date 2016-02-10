@@ -22,7 +22,7 @@ namespace sysx {
 				return in;
 			}
 		};
-	
+
 		template<class Base, class Rep>
 		struct Num {
 			constexpr Num(): n(0) {}
@@ -121,13 +121,21 @@ namespace sysx {
 		operator<<(packetstream& out, family_type rhs) {
 			return out << static_cast<raw_family_type>(map_family_type(rhs));
 		}
-		
+
 		packetstream&
 		operator>>(packetstream& in, family_type& rhs) {
 			raw_family_type raw;
 			in >> raw;
 			rhs = map_family_type(static_cast<portable_family_type>(raw));
 			return in;
+		}
+
+		void
+		pad_stream(std::ostream& out, const std::streamsize padding) {
+			const char ch = out.fill();
+			for (std::streamsize i=0; i<padding; ++i) {
+				out.put(ch);
+			}
 		}
 
 	}

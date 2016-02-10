@@ -65,11 +65,19 @@ namespace sysx {
 		friend std::ostream&
 		operator<<(std::ostream& out, ipv4_addr rhs) {
 			using bits::Dot;
-			return out
-				<< ((rhs.addr >> 0)  & UINT32_C(0xff)) << Dot()
+			const std::streamsize padding = out.width(0) - rhs.width();
+			const bool pad_left = (out.flags() & std::ios_base::adjustfield) != std::ios_base::left;
+			if (padding > 0 and pad_left) {
+				bits::pad_stream(out, padding);
+			}
+			out << ((rhs.addr >> 0)  & UINT32_C(0xff)) << Dot()
 				<< ((rhs.addr >> 8)  & UINT32_C(0xff)) << Dot()
 				<< ((rhs.addr >> 16) & UINT32_C(0xff)) << Dot()
 				<< ((rhs.addr >> 24) & UINT32_C(0xff));
+			if (padding > 0 and not pad_left) {
+				bits::pad_stream(out, padding);
+			}
+			return  out;
 		}
 
 		friend std::istream&
@@ -156,6 +164,24 @@ namespace sysx {
 				((o2 << 8)  & UINT32_C(0xff00)) |
 				((o3 << 16) & UINT32_C(0xff0000)) |
 				((o4 << 24) & UINT32_C(0xff000000)));
+		}
+
+		constexpr static int
+		num_digits(oct_type rhs) noexcept {
+			return
+				rhs >= 100 ? 3 :
+				rhs >= 10  ? 2 :
+				1;
+		}
+
+		constexpr std::streamsize
+		width() noexcept {
+			return
+				num_digits(raw[0]) +
+				num_digits(raw[1]) +
+				num_digits(raw[2]) +
+				num_digits(raw[3]) +
+				3;
 		}
 
 		addr4_type addr;

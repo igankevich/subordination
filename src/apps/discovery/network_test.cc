@@ -32,7 +32,6 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 
 	void xrun() override {
 		debug_addrs();
-		debug_addrs();
 		test_addr_calculus();
 		test_io();
 		std::vector<network_type> networks;
@@ -104,9 +103,18 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
 		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,3}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
 		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,4}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
+		std::clog
+			<< std::setw(20) << "address"
+			<< std::setw(20) << "position"
+			<< std::setw(20) << "position in tree"
+			<< std::endl;
+		std::clog << std::right;
 		for (unsigned char i=1; i<23; ++i) {
 			const sysx::ipv4_addr addr{127,0,0,i};
-			std::clog << addr << "   " << distance_type(2, addr, sysx::ipv4_addr{255,0,0,0}) << std::endl;
+			std::clog
+				<< std::setw(20) << addr
+				<< std::setw(20) << addr.position(sysx::ipv4_addr{255,0,0,0})
+				<< std::setw(20) << distance_type(2, addr, sysx::ipv4_addr{255,0,0,0}) << std::endl;
 		}
 	}
 
