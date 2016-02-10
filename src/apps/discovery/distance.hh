@@ -10,13 +10,13 @@ namespace discovery {
 
 	namespace bits {
 
-		template<class I>
-		std::pair<I,I>
-		position_in_tree(I pos, I fanout) {
-			I n = 0;
-			I sub = I(1);
-			while (pos > sub) { pos -= sub; n++; sub *= fanout; }
-			return std::make_pair(n, pos);
+		template<class T>
+		std::pair<T,T>
+		position_in_tree(T offset, T fanout) noexcept {
+			T layer = 0;
+			T n = 1; // no. of nodes in layer
+			while (offset > n) { offset -= n; ++layer; n *= fanout; }
+			return std::make_pair(layer, offset);
 		}
 
 	}

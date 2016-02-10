@@ -1,4 +1,5 @@
 #include <fstream>
+#include <map>
 
 #include <sysx/socket.hh>
 #include <sysx/cmdline.hh>
@@ -56,9 +57,35 @@ namespace factory {
 using namespace factory;
 using namespace factory::this_config;
 
+template<class Address>
+struct Delayed_shutdown: public Kernel {
 
+	typedef Address addr_type;
+	typedef discovery::Hierarchy<addr_type> hierarchy_type;
+	typedef stdx::log<Delayed_shutdown> this_log;
+
+	explicit
+	Delayed_shutdown(const hierarchy_type& peers) noexcept:
+	_hierarchy(peers)
+	{}
+
+	void
+	act(Server& this_server) override {
+		this_log() << "Hail the king! His hoes: " << _hierarchy << std::endl;
+		this_server.factory()->shutdown();
+	}
+
+private:
+
+	const hierarchy_type& _hierarchy;
+
+};
+
+template<class Address>
 struct Negotiator: public Kernel, public Identifiable_tag {
 
+	typedef Address addr_type;
+	typedef discovery::Hierarchy<addr_type> hierarchy_type;
 	typedef stdx::log<Negotiator> this_log;
 
 	Negotiator() noexcept:
@@ -72,35 +99,33 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 	{}
 
 	void
-	negotiate(Server& this_server, Peers& peers) {
+	negotiate(Server& this_server, hierarchy_type& hierarchy, const sysx::endpoint& this_addr) {
 		stdx::log_func<this_log>(__func__, "new_principal", _newprinc);
 		this->principal(this->parent());
 		this->result(Result::SUCCESS);
-		sysx::endpoint this_addr = peers.this_addr();
 		if (_newprinc == this_addr) {
 			this_log() << "Hello" << std::endl;
 			// principal becomes subordinate
-			if (this->from() == peers.principal()) {
+			if (this->from() == hierarchy.principal()) {
 				if (_oldprinc) {
-					peers.remove_principal();
+					hierarchy.unset_principal();
 				} else {
 					// root tries to swap with its subordinate
 					this->result(Result::USER_ERROR);
 				}
 			}
 			if (this->result() != Result::USER_ERROR) {
-				peers.add_subordinate(this->from());
+				hierarchy.add_subordinate(this->from());
 			}
 		} else
 		if (_oldprinc == this_addr) {
 			// something fancy is going on
-			if (this->from() == peers.principal()) {
+			if (this->from() == hierarchy.principal()) {
 				this->result(Result::USER_ERROR);
 			} else {
-				peers.remove_subordinate(this->from());
+				hierarchy.remove_subordinate(this->from());
 			}
 		}
-		_stop = !peers.principal() && peers.num_subordinates() == all_peers.size()-1;
 		this_server.remote_server()->send(this);
 	}
 
@@ -128,7 +153,7 @@ struct Negotiator: public Kernel, public Identifiable_tag {
 			8,
 			"Negotiator",
 			[] (sysx::packetstream& in) {
-				Negotiator* k = new Negotiator;
+				Negotiator<Address>* k = new Negotiator<Address>;
 				k->read(in);
 				return k;
 			}
@@ -143,8 +168,11 @@ private:
 
 };
 
+template<class Address>
 struct Master_negotiator: public Kernel, public Identifiable_tag {
 
+	typedef Address addr_type;
+	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<Master_negotiator> this_log;
 
 	Master_negotiator(sysx::endpoint oldp, sysx::endpoint newp):
@@ -179,9 +207,14 @@ struct Master_negotiator: public Kernel, public Identifiable_tag {
 		}
 	}
 
-	sysx::endpoint
+	const sysx::endpoint&
 	old_principal() const noexcept {
 		return _oldprinc;
+	}
+
+	const sysx::endpoint&
+	new_principal() const noexcept {
+		return _newprinc;
 	}
 
 private:
@@ -189,7 +222,7 @@ private:
 	void
 	send_negotiator(Server& this_server, sysx::endpoint addr) {
 		++_numsent;
-		Negotiator* n = this_server.factory()->new_kernel<Negotiator>(_oldprinc, _newprinc);
+		negotiator_type* n = this_server.factory()->new_kernel<negotiator_type>(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
 		n->to(addr);
 		upstream(this_server.remote_server(), n);
@@ -200,30 +233,6 @@ private:
 	uint32_t _numsent = 0;
 };
 
-template<class Address>
-struct Delayed_shutdown: public Kernel {
-
-	typedef Address addr_type;
-	typedef discovery::Hierarchy<addr_type> hierarchy_type;
-	typedef stdx::log<Delayed_shutdown> this_log;
-
-	explicit
-	Delayed_shutdown(const hierarchy_type& peers) noexcept:
-	_hierarchy(peers)
-	{}
-
-	void
-	act(Server& this_server) override {
-		this_log() << "Hail the king! His hoes: " << _hierarchy << std::endl;
-		this_server.factory()->shutdown();
-	}
-
-private:
-
-	const hierarchy_type& _hierarchy;
-
-};
-
 
 template<class Address>
 struct Master_discoverer: public Kernel, public Identifiable_tag {
@@ -231,16 +240,23 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	typedef Address addr_type;
 	typedef discovery::Network<addr_type> network_type;
 	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
+	typedef discovery::Distance_in_tree<addr_type> distance_type;
+	typedef std::multimap<distance_type,addr_type> rankedlist_type;
+	typedef typename rankedlist_type::iterator rankedlist_iterator;
+	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<Master_discoverer> this_log;
 
 	Master_discoverer(const network_type& network, const sysx::port_type port):
 	_hierarchy(network),
 	_port(port),
+	_rankedhosts(),
+	_currenthost(),
 	_graph()
 //	_cache(_hierarchy.this_addr(), _hierarchy),
 //	_negotiator(nullptr)
 	{
 		_hierarchy.set_graph(_graph);
+		generate_ranked_hosts(network);
 	}
 
 	Master_discoverer(const Master_discoverer&) = delete;
@@ -249,29 +265,70 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 	void
 	act(Server& this_server) override {
 		schedule_shutdown_after(std::chrono::seconds(10), this_server);
-//		if (!all_peers.empty() && _hierarchy.this_addr() != all_peers[0]) {
-//			run_scan(this_server);
-//		}
+		try_next_host(this_server);
 	}
 
-	void react(Server& this_server, Kernel* k) override {
-//		if (_negotiator == k) {
-//			if (k->result() != Result::SUCCESS) {
-//				Master_negotiator* neg = dynamic_cast<Master_negotiator*>(k);
-//				sysx::endpoint princ = _hierarchy.principal();
-//				_hierarchy.revert_principal(neg->old_principal());
-//				run_negotiator(this_server, princ, _hierarchy.principal());
-//			}
-//			_hierarchy.debug();
-//			_negotiator = nullptr;
-//		} else
-//		if (k->type() == Negotiator::static_type()) {
-//			Negotiator* neg = dynamic_cast<Negotiator*>(k);
-//			neg->negotiate(this_server, _hierarchy);
-//		}
+	void
+	react(Server& this_server, Kernel* k) override {
+		if (_negotiator == k) {
+			if (k->result() == Result::SUCCESS) {
+				_hierarchy.set_principal(_negotiator->new_principal());
+				_negotiator = nullptr;
+			} else {
+				try_next_host(this_server);
+			}
+		} else
+		if (k->type() == negotiator_type::static_type()) {
+			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
+			const sysx::endpoint this_addr(_hierarchy.network().address(), _port);
+			neg->negotiate(this_server, _hierarchy, this_addr);
+		}
 	}
 
 private:
+
+	void
+	generate_ranked_hosts(const network_type& rhs) {
+		const auto fanout = 2;
+		_rankedhosts.clear();
+		std::transform(
+			rhs.begin(), rhs.middle(),
+			std::inserter(_rankedhosts, _rankedhosts.end()),
+			[&rhs,fanout] (const addr_type& to) {
+				const distance_type dist = distance_type(rhs.address(), to, rhs.netmask(), fanout);
+				return std::make_pair(dist, to);
+			}
+		);
+		_currenthost = _rankedhosts.end();
+	}
+
+	void
+	try_next_host(Server& this_server) {
+		advance_through_ranked_list();
+		run_negotiator(this_server);
+	}
+
+	void
+	advance_through_ranked_list() {
+		wrap_around();
+		skip_this_host();
+	}
+
+	void
+	wrap_around() {
+		if (_currenthost == _rankedhosts.end()) {
+			_currenthost = _rankedhosts.begin();
+		} else {
+			++_currenthost;
+		}
+	}
+
+	void
+	skip_this_host() {
+		if (_currenthost != _rankedhosts.end() and _currenthost->second == _hierarchy.network().address()) {
+			++_currenthost;
+		}
+	}
 
 	template<class Time>
 	void
@@ -283,32 +340,32 @@ private:
 	}
 
 	void
-	run_negotiator(Server& this_server, sysx::endpoint old_princ, sysx::endpoint new_princ) {
-		_negotiator = this_server.factory()->new_kernel<Master_negotiator>(_network.principal(), new_princ);
-		upstream(this_server.local_server(), _negotiator);
+	run_negotiator(Server& this_server) {
+		if (_currenthost != _rankedhosts.end()) {
+			const sysx::endpoint new_princ(_currenthost->second, _port);
+			this_log() << "trying " << new_princ << std::endl;
+			_negotiator = this_server.factory()->new_kernel<Master_negotiator<addr_type>>(_hierarchy.principal(), new_princ);
+			upstream(this_server.local_server(), _negotiator);
+		}
 	}
-//
-//	void change_principal(Server& this_server, sysx::endpoint new_princ) {
-//		sysx::endpoint old_princ = _hierarchy.principal();
-//		if (!_negotiator && _hierarchy.change_principal(new_princ)) {
-//			this_log() << "Changing principal to " << new_princ << std::endl;
-//			_hierarchy.debug();
-//			run_negotiator(this_server, old_princ, new_princ);
-//		}
-//	}
 
 	hierarchy_type _hierarchy;
 	sysx::port_type _port;
+	rankedlist_type _rankedhosts;
+	rankedlist_iterator _currenthost;
 //	discovery::Cache_guard<Peers> _cache;
 
-	Master_negotiator* _negotiator;
+	Master_negotiator<addr_type>* _negotiator;
 	springy::Springy_graph _graph;
 };
 
 struct test_discovery {};
 
+template<class Address>
 struct Main: public Kernel {
 
+	typedef Address addr_type;
+	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<test_discovery> this_log;
 
 	Main(Server& this_server, int argc, char* argv[]):
@@ -326,7 +383,7 @@ struct Main: public Kernel {
 	void
 	act(Server& this_server) {
 		parse_cmdline_args(this_server);
-//		this_server.factory()->types().register_type(Negotiator::static_type());
+		this_server.factory()->types().register_type(negotiator_type::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -401,7 +458,7 @@ int main(int argc, char* argv[]) {
 		this_log() << "Network = " << network << std::endl;
 		this_log() << "Num peers = " << npeers << std::endl;
 		this_log() << "Role = " << role << std::endl;
-		this_log() << "start,end = " << network.start() << ',' << network.end() << std::endl;
+		this_log() << "start,end = " << *network.begin() << ',' << *network.end() << std::endl;
 
 		std::vector<sysx::endpoint> hosts;
 		std::transform(
@@ -436,7 +493,7 @@ int main(int argc, char* argv[]) {
 		retval = procs.wait();
 	} else {
 		using namespace factory;
-		retval = factory_main<Main,config>(argc, argv);
+		retval = factory_main<Main<sysx::ipv4_addr>,config>(argc, argv);
 	}
 
 	return retval;
