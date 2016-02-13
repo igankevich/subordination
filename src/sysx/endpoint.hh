@@ -8,7 +8,8 @@
 #include <istream>
 #include <sstream>
 #include <tuple>
-
+#include <bitset>
+#include <limits>
 
 #include <sysx/uint128.hh>
 #include <sysx/packetstream.hh>
@@ -33,6 +34,10 @@ namespace sysx {
 	typedef ::in_addr_t addr4_type;
 	typedef std::uint128_t addr6_type;
 	typedef ::in_port_t port_type;
+	typedef unsigned int prefix_type;
+
+	template<class Address>
+	struct ipaddr_traits;
 
 	union ipv4_addr {
 
@@ -93,12 +98,12 @@ namespace sysx {
 
 		friend packetstream&
 		operator<<(packetstream& out, const ipv4_addr& rhs) {
-			return out << rhs.raw;
+			return out << rhs._bytes;
 		}
 
 		friend packetstream&
 		operator>>(packetstream& in, ipv4_addr& rhs) {
-			return in >> rhs.raw;
+			return in >> rhs._bytes;
 		}
 
 		constexpr addr4_type rep() const { return addr; }
@@ -135,8 +140,16 @@ namespace sysx {
 
 		constexpr oct_type
 		operator[](size_t i) const noexcept {
-			return raw[i];
+			return _bytes[i];
 		}
+
+		prefix_type
+		to_prefix() const noexcept {
+			return bits::bit_count(addr);
+		}
+
+		static ipv4_addr
+		from_prefix(prefix_type prefix) noexcept;
 
 	private:
 
@@ -177,22 +190,37 @@ namespace sysx {
 		constexpr std::streamsize
 		width() noexcept {
 			return
-				num_digits(raw[0]) +
-				num_digits(raw[1]) +
-				num_digits(raw[2]) +
-				num_digits(raw[3]) +
+				num_digits(_bytes[0]) +
+				num_digits(_bytes[1]) +
+				num_digits(_bytes[2]) +
+				num_digits(_bytes[3]) +
 				3;
 		}
 
+		static const size_t nbits = sizeof(addr4_type)
+			* std::numeric_limits<unsigned char>::digits;
+
 		addr4_type addr;
 		inet4_type inaddr;
-		Bytes<addr4_type> raw;
+		Bytes<addr4_type> _bytes;
+
+		static_assert(sizeof(addr) == sizeof(inaddr)
+			and sizeof(addr) == sizeof(_bytes),
+			"bad ipv4_addr size");
 	};
 
 	constexpr ipv4_addr
 	operator"" _ipv4(const char* arr, std::size_t n) noexcept {
 		return ipv4_addr(bits::do_parse_ipv4_addr<addr4_type>(arr, arr+n));
 	}
+
+	template<>
+	struct ipaddr_traits<ipv4_addr> {
+		typedef ipv4_addr::oct_type oct_type;
+		static constexpr const oct_type loopback_first_octet = 127;
+		static constexpr ipv4_addr loopback_mask() { return ipv4_addr{255,0,0,0}; }
+		static constexpr ipv4_addr widearea_mask() { return ipv4_addr{255,255,255,255}; }
+	};
 
 	union ipv6_addr {
 
@@ -678,6 +706,14 @@ namespace sysx {
 	inaddr(sysx::endpoint(rhs)._addr4.sin_addr)
 	{}
 
+	ipv4_addr
+	ipv4_addr::from_prefix(prefix_type prefix) noexcept {
+		typedef addr4_type T;
+		return nbits == prefix
+			? ipaddr_traits<ipv4_addr>::widearea_mask()
+			: ipv4_addr((T(1) << prefix) - T(1));
+	}
+
 	struct ifaddrs {
 
 		typedef struct ::ifaddrs ifaddrs_type;
@@ -722,18 +758,6 @@ namespace sysx {
 
 	private:
 		ifaddrs_type* _addrs = nullptr;
-	};
-
-	template<class Address>
-	struct ipaddr_traits;
-
-
-	template<>
-	struct ipaddr_traits<ipv4_addr> {
-		typedef ipv4_addr::oct_type oct_type;
-		static constexpr const oct_type loopback_first_octet = 127;
-		static constexpr ipv4_addr loopback_mask() { return ipv4_addr{255,0,0,0}; }
-		static constexpr ipv4_addr widearea_mask() { return ipv4_addr{255,255,255,255}; }
 	};
 
 }

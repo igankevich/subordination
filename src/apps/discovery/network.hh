@@ -31,6 +31,11 @@ namespace discovery {
 		_address(addr), _netmask(netmask)
 		{}
 
+		constexpr
+		Network(const addr_type& addr, const sysx::prefix_type prefix) noexcept:
+		_address(addr), _netmask(addr_type::from_prefix(prefix))
+		{}
+
 		constexpr Network() noexcept = default;
 		constexpr Network(const Network&) noexcept = default;
 		constexpr Network(Network&&) noexcept = default;
@@ -44,6 +49,11 @@ namespace discovery {
 		constexpr const addr_type&
 		netmask() const noexcept {
 			return _netmask;
+		}
+
+		sysx::prefix_type
+		prefix() const noexcept {
+			return _netmask.to_prefix();
 		}
 
 		constexpr const addr_type&
@@ -99,12 +109,15 @@ namespace discovery {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Network& rhs) {
-			return out << rhs._address << Slash() << rhs._netmask;
+			return out << rhs._address << Slash() << rhs._netmask.to_prefix();
 		}
 
 		friend std::istream&
 		operator>>(std::istream& in, Network& rhs) {
-			return in >> rhs._address >> Slash() >> rhs._netmask;
+			sysx::prefix_type prefix = 0;
+			in >> rhs._address >> Slash() >> prefix;
+			rhs._netmask = addr_type::from_prefix(prefix);
+			return in;
 		}
 
 	private:

@@ -95,6 +95,9 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		test::equal(distance_type(sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}, 2), distance_type(1, 0));
 		test::equal(network_type(addr_type{127,0,0,7}, addr_type{255,0,0,0}).is_loopback(), true);
 		test::equal(network_type(addr_type{128,0,0,7}, addr_type{255,0,0,0}).is_loopback(), false);
+		test::equal(addr_type{255,255,255,0}.to_prefix(), sysx::prefix_type(24));
+		test::equal(addr_type{255,255,0,0}.to_prefix(), sysx::prefix_type(16));
+		test::equal(addr_type{255,0,0,0}.to_prefix(), sysx::prefix_type(8));
 	}
 
 	void
@@ -120,7 +123,7 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 
 	void
 	test_io() {
-		network_type loopback({127,0,0,1}, {255,0,0,0});
+		network_type loopback({127,0,0,1}, 8);
 		test::io_single(loopback);
 		test::io_multiple<network_type>(std::bind(&Test_network::random_network, this));
 	}
@@ -132,9 +135,19 @@ private:
 		return addr_type(stdx::n_random_bytes<rep_type>(generator));
 	}
 
+	sysx::prefix_type
+	random_prefix() {
+		static std::default_random_engine generator(
+			std::chrono::high_resolution_clock::now().time_since_epoch().count()
+		);
+		std::uniform_int_distribution<sysx::prefix_type> dist(0, 32);
+		auto gen = std::bind(dist, generator);
+		return gen();
+	}
+
 	network_type
 	random_network() {
-		return network_type(random_addr(), random_addr());
+		return network_type(random_addr(), random_prefix());
 	}
 
 	engine_type generator;
