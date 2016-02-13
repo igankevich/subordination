@@ -70,6 +70,16 @@ namespace discovery {
 			return network_iterator(_idx + rhs);
 		}
 
+		constexpr network_iterator
+		operator-(difference_type rhs) const noexcept {
+			return network_iterator(_idx - rhs);
+		}
+
+		constexpr difference_type
+		operator-(const network_iterator& rhs) const noexcept {
+			return rhs._idx - _idx;
+		}
+
 	private:
 
 		addr_type

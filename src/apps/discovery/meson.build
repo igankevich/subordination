@@ -28,3 +28,12 @@ run_target(
 	'discovery-animation',
 	meson.source_root() + '/scripts/discovery-animation'
 )
+
+test('csv',
+	executable(
+		'csv-test',
+		sources: 'csv_test.cc',
+		include_directories: [srcdir, testdir],
+		dependencies: threads
+	)
+)
