@@ -49,11 +49,16 @@ namespace stdx {
 	struct no_log {
 
 		template<class T>
-		constexpr const no_log&
-		operator<<(const T&) const { return *this; }
+		inline constexpr const no_log&
+		operator<<(const T&) const noexcept {
+			return *this;
+		}
 
-		constexpr const no_log&
-		operator<<(std::ostream& (*pf)(std::ostream&)) const { return *this; }
+		inline constexpr const no_log&
+		operator<<(std::ostream& (*pf)(std::ostream&)) const noexcept {
+			return *this;
+		}
+
 	};
 
 	#if defined(FACTORY_DISABLE_LOGS)

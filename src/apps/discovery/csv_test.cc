@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <fstream>
+#include <iterator>
 
 #include <test.hh>
 
@@ -15,13 +16,11 @@ struct Test_csv: public test::Test<Test_csv<Addr>> {
 	void xrun() override {
 		using namespace discovery;
 		std::ifstream in("city.csv");
-		typedef csv_iterator<uint32_t,uint32_t> iterator;
-		std::for_each(
-			iterator(in, ','),
-			iterator(),
-			[] (const iterator::reference rhs) {
-				std::clog << std::get<0>(rhs) << std::endl;
-			}
+		typedef csv_tuple<',',std::string> mytuple;
+		std::copy(
+			std::istream_iterator<mytuple>(in),
+			std::istream_iterator<mytuple>(),
+			std::ostream_iterator<mytuple>(std::clog, "\n")
 		);
 	}
 

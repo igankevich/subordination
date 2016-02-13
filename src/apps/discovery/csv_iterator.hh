@@ -9,140 +9,116 @@
 
 namespace discovery {
 
-	namespace bits {
-
-		template<class Tuple, size_t idx>
-		struct read_tuple: public read_tuple<Tuple, idx-1> {
-
-			typedef read_tuple<Tuple, idx-1> base_type;
-			using read_tuple<Tuple, idx-1>::_tuple;
-			static constexpr const size_t nfields = std::tuple_size<Tuple>::value;
-
-			explicit
-			read_tuple(Tuple& rhs):
-			base_type(rhs)
-			{}
-
-			void
-			operator()(std::istream& in) {
-//				typedef typename std::tuple_element<idx,value_type>::type element_type;
-//				typedef typename std::decay<element_type>::type decay_type;
-//				if (std::is_same<decay_type, std::string>::value) {
-//					std::getline(*_in, std::get<idx>(_row), _sep);
-//				} else
-				in >> std::ws >> std::get<nfields-1-idx>(_tuple);
-				char ch;
-				in >> std::ws >> ch;
-				if (ch != ',') in.putback(ch);
-				base_type::operator()(in);
-			}
-
-		};
-
-		template<class Tuple>
-		struct read_tuple<Tuple,0> {
-			static constexpr const size_t nfields = std::tuple_size<Tuple>::value;
-			explicit
-			read_tuple(Tuple& rhs): _tuple(rhs) {}
-			void operator()(std::istream& in) {
-				in >> std::ws >> std::get<nfields-1>(_tuple);
-			}
-			Tuple& _tuple;
-		};
-
-	}
-
-
 	struct ignore_field {
 
-		friend std::istream&
-		operator>>(std::istream& in, ignore_field& rhs) {
-			char ch;
-			while (in >> ch and ch != ',' and ch != '\n');
-			return in;
-		}
-
-		friend std::ostream&
-		operator<<(std::ostream& out, const ignore_field& rhs) {
+		friend constexpr std::ostream&
+		operator<<(std::ostream& out, const ignore_field&) {
 			return out;
 		}
 
-		static const char _sep = ',';
+	};
+
+	namespace bits {
+
+		template<class T>
+		void
+		read_field(std::istream& in, T& rhs, char) {
+			in >> rhs;
+		}
+
+		template<>
+		void
+		read_field<ignore_field>(std::istream& in, ignore_field&, char sep) {
+			char ch;
+			while (in.get(ch) and ch != sep and ch != '\n');
+			if (in) in.putback(ch);
+		}
+
+		template<>
+		void
+		read_field<std::string>(std::istream& in, std::string& rhs, char sep) {
+			std::istream::sentry s(in);
+			if (s) {
+				rhs.clear();
+				char ch;
+				while (in.get(ch) and ch != sep and ch != '\n') {
+					rhs.push_back(ch);
+				}
+				if (ch == sep) in.putback(ch);
+			}
+		}
+
+	}
+
+	template<class Tuple, size_t first, size_t last, class Char, Char separator>
+	struct basic_csvtuple: public basic_csvtuple<Tuple, first+1, last, Char, separator> {
+
+		typedef basic_csvtuple<Tuple, first+1, last, Char, separator> base_type;
+
+		template<class ... Args2>
+		explicit
+		basic_csvtuple(Args2&& ... args):
+		base_type(std::forward<Args2>(args)...)
+		{}
+
+		friend std::istream&
+		operator>>(std::istream& in, basic_csvtuple& rhs) {
+			bits::read_field(in, std::get<first>(rhs), separator);
+			in >> std::ws;
+			if (in.get() != separator) in.setstate(std::ios::failbit);
+			return operator>>(in, static_cast<base_type&>(rhs));
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const basic_csvtuple& rhs) {
+			return out << std::get<first>(rhs) << separator
+				<< static_cast<const base_type&>(rhs);
+		}
 
 	};
 
-	template<class ... Fields>
-	struct csv_iterator: public std::iterator<std::input_iterator_tag,std::tuple<Fields...>> {
+	template<class Tuple, size_t last, class Char, Char separator>
+	struct basic_csvtuple<Tuple,last,last, Char, separator>: public Tuple {
 
-		typedef std::tuple<Fields...> value_type;
-		typedef value_type* pointer;
-		typedef value_type& reference;
-		typedef std::istream::char_type char_type;
-
+		template<class ... Args2>
 		explicit
-		csv_iterator(std::istream& in, char_type sep=',') noexcept:
-		_in(&in),
-		_sep(sep)
+		basic_csvtuple(Args2&& ... args):
+		Tuple(std::forward<Args2>(args)...)
 		{}
 
-		csv_iterator() = default;
-		csv_iterator(const csv_iterator&) = default;
-		csv_iterator& operator=(const csv_iterator&) = default;
-		csv_iterator(csv_iterator&&) = default;
-		~csv_iterator() = default;
-
-		bool
-		operator==(const csv_iterator& rhs) const noexcept {
-			return _in->eof();
+		friend std::istream&
+		operator>>(std::istream& in, basic_csvtuple& rhs) {
+			bits::read_field(in, std::get<last>(rhs), separator);
+			return in.ignore(1024*1024, '\n');
 		}
 
-		bool
-		operator!=(const csv_iterator& rhs) const noexcept {
-			return !operator==(rhs);
+		friend std::ostream&
+		operator<<(std::ostream& out, const basic_csvtuple& rhs) {
+			return out << std::get<last>(rhs);
 		}
 
-		const reference
-		operator*() const noexcept {
-			return _row;
+	};
+
+	template<char separator, class ... Args>
+	struct csv_tuple: public basic_csvtuple<std::tuple<Args...>, 0, sizeof...(Args)-1, char, separator> {
+
+		typedef basic_csvtuple<std::tuple<Args...>, 0, sizeof...(Args)-1, char, separator> base_type;
+
+		template<class ... Args2>
+		explicit
+		csv_tuple(Args2&& ... args):
+		base_type(std::forward<Args2>(args)...)
+		{}
+
+		friend std::istream&
+		operator>>(std::istream& in, csv_tuple& rhs) {
+			std::istream::sentry s(in);
+			if (s) {
+				operator>>(in, static_cast<base_type&>(rhs));
+			}
+			return in;
 		}
 
-		reference
-		operator*() noexcept {
-			return _row;
-		}
-
-		const pointer
-		operator->() const noexcept {
-			return &_row;
-		}
-
-		pointer
-		operator->() noexcept {
-			return &_row;
-		}
-
-		csv_iterator&
-		operator++() noexcept {
-		std::clog << "operator++" << std::endl;
-			bits::read_tuple<value_type,nfields-1> r(_row);
-			r(*_in);
-			return *this;
-		}
-
-		csv_iterator&
-		operator++(int) noexcept {
-			csv_iterator tmp(*this);
-			operator++();
-			return tmp;
-		}
-
-	private:
-
-		value_type _row;
-		std::istream* _in = nullptr;
-		char_type _sep = ',';
-
-		static constexpr const size_t nfields = std::tuple_size<value_type>::value;
 	};
 
 }
