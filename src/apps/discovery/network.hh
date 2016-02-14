@@ -76,6 +76,11 @@ namespace discovery {
 			return iterator(last());
 		}
 
+		constexpr rep_type
+		count() const noexcept {
+			return last() - first();
+		}
+
 		constexpr bool
 		is_loopback() const noexcept {
 			return _address[0] == traits_type::loopback_first_octet
