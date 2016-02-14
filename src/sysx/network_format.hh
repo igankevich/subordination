@@ -95,15 +95,20 @@ namespace sysx {
 		}
 
 		// compile-time unit tests for byte swapping
-		static_assert(byte_swap<uint16_t>(
-			UINT16_C(0xABCD)) == UINT16_C(0xCDAB),
-			"byte swap failed for u16");
-		static_assert(byte_swap<uint32_t>(
-			UINT32_C(0xABCDDCBA)) == UINT32_C(0xBADCCDAB),
-			"byte swap failed for u32");
-		static_assert(byte_swap<uint64_t>(
-			UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB),
-			"byte swap failed for u64");
+		static_assert(
+			byte_swap<uint16_t>(UINT16_C(0xABCD)) == UINT16_C(0xCDAB),
+			"byte swap failed for u16"
+		);
+
+		static_assert(
+			byte_swap<uint32_t>(UINT32_C(0xABCDDCBA)) == UINT32_C(0xBADCCDAB),
+			"byte swap failed for u32"
+		);
+
+		static_assert(
+			byte_swap<uint64_t>(UINT64_C(0xABCDDCBA12344321)) == UINT64_C(0x21433412BADCCDAB),
+			"byte swap failed for u64"
+		);
 		/// @}
 
 		constexpr bool
@@ -277,8 +282,10 @@ namespace sysx {
 		integral_type _intval;
 		value_type _bytes[sizeof(T)];
 
-		static_assert(sizeof(decltype(_val)) == sizeof(decltype(_intval)),
-			"bad integral type");
+		static_assert(
+			sizeof(decltype(_val)) == sizeof(decltype(_intval)),
+			"bad integral type"
+		);
 	};
 
 	template<class T>

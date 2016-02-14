@@ -204,9 +204,8 @@ namespace sysx {
 		inet4_type inaddr;
 		Bytes<addr4_type> _bytes;
 
-		static_assert(sizeof(addr) == sizeof(inaddr)
-			and sizeof(addr) == sizeof(_bytes),
-			"bad ipv4_addr size");
+		static_assert(sizeof(addr) == sizeof(inaddr), "bad ipv4_addr size");
+		static_assert(sizeof(addr) == sizeof(_bytes), "bad ipv4_addr size");
 	};
 
 	constexpr ipv4_addr
@@ -321,7 +320,7 @@ namespace sysx {
 				if (in >> h) {
 					char ch = in.peek();
 					// if prefixed with ::ffff:
-					if (field_no >= 1 && rhs.hextets[0] == 0xffff && zeros_field == 0) {
+					if (field_no >= 1 && rhs._hextets[0] == 0xffff && zeros_field == 0) {
 						in >> bits::Dot();
 					} else {
 						in >> bits::Colon();
@@ -347,30 +346,30 @@ namespace sysx {
 				std::fill(rhs.begin(), rhs.end(), 0);
 			} else {
 				// we do not need to change byte order here
-				// rhs.raw.to_network_format();
+				// rhs._bytes.to_network_format();
 			}
 			return in;
 		}
 
 		friend packetstream&
 		operator<<(packetstream& out, const ipv6_addr& rhs) {
-			return out << rhs.raw;
+			return out << rhs._bytes;
 		}
 
 		friend packetstream&
 		operator>>(packetstream& in, ipv6_addr& rhs) {
-			return in >> rhs.raw;
+			return in >> rhs._bytes;
 		}
 
 	private:
-		constexpr const hex_type* begin() const { return hextets; }
-		constexpr const hex_type* end() const { return hextets + num_fields(); }
+		constexpr const hex_type* begin() const { return _hextets; }
+		constexpr const hex_type* end() const { return _hextets + num_fields(); }
 
-		hex_type* begin() { return hextets; }
-		hex_type* end() { return hextets + num_fields(); }
+		hex_type* begin() { return _hextets; }
+		hex_type* end() { return _hextets + num_fields(); }
 
 		static constexpr
-		int num_fields() { return sizeof(hextets) / sizeof(hex_type); }
+		int num_fields() { return sizeof(_hextets) / sizeof(hex_type); }
 
 		constexpr static addr6_type
 		from_hextets(addr6_type h1, addr6_type h2,
@@ -392,13 +391,12 @@ namespace sysx {
 
 		addr6_type addr;
 		inet6_type inaddr;
-		hex_type hextets[8];
-		Bytes<inet6_type> raw;
+		hex_type _hextets[8];
+		Bytes<inet6_type> _bytes;
 
-		static_assert(sizeof(addr) == sizeof(inaddr)
-			and sizeof(addr) == sizeof(hextets)
-			and sizeof(addr) == sizeof(raw),
-			"bad ipv6_addr size");
+		static_assert(sizeof(addr) == sizeof(inaddr), "bad ipv6_addr size");
+		static_assert(sizeof(addr) == sizeof(_hextets), "bad ipv6_addr size");
+		static_assert(sizeof(addr) == sizeof(_bytes), "bad ipv6_addr size");
 	};
 
 	template<class Addr>

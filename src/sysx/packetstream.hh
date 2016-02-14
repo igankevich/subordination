@@ -127,8 +127,11 @@ namespace sysx {
 		template<class T>
 		basic_packetstream& write(T rhs) {
 		#ifndef IGNORE_ISO_IEC559
-			static_assert(std::is_integral<T>::value
-				|| (std::is_floating_point<T>::value && std::numeric_limits<T>::is_iec559),
+			static_assert(
+				std::is_integral<T>::value or (
+					std::is_floating_point<T>::value and
+					std::numeric_limits<T>::is_iec559
+				),
 				"This system does not support ISO IEC 559"
 	            " floating point representation for either float, double or long double"
 	            " types, i.e. there is no portable way of"
@@ -136,7 +139,8 @@ namespace sysx {
 	            " without precision loss. If all computers in the network do not"
 	            " conform to this standard but represent floating point"
 	            " numbers exactly in the same way, you can ignore this assertion"
-	            " by defining IGNORE_ISO_IEC559.");
+	            " by defining IGNORE_ISO_IEC559."
+			);
 		#endif
 			sysx::Bytes<T> val = rhs;
 			val.to_network_format();

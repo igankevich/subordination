@@ -40,10 +40,8 @@ namespace sysx {
 				basic_uint remainder;
 			};
 
-			static_assert(
-				std::is_unsigned<base_type>::value &&
-				std::is_integral<base_type>::value,
-				"bad base type");
+			static_assert(std::is_unsigned<base_type>::value, "bad base type");
+			static_assert(std::is_integral<base_type>::value, "bad base type");
 
 			// constructors for all basic types
 			constexpr
