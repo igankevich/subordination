@@ -14,6 +14,48 @@ namespace stdx {
 
 namespace discovery {
 
+	namespace bits {
+
+#define TO_RAD (3.1415926536 / 180)
+double dist(double th1, double ph1, double th2, double ph2)
+{
+	double dx, dy, dz;
+	ph1 -= ph2;
+	ph1 *= TO_RAD, th1 *= TO_RAD, th2 *= TO_RAD;
+
+	dz = sin(th1) - sin(th2);
+	dx = cos(ph1) * cos(th1) - cos(th2);
+	dy = sin(ph1) * cos(th1);
+	return asin(sqrt(dx * dx + dy * dy + dz * dz) / 2);
+}
+
+		template<class T>
+		constexpr T
+		to_radians(T degrees) {
+			return degrees * M_PI / T(180);
+		}
+
+		/// @see https://www.math.ksu.edu/~dbski/writings/haversine.pdf
+		template<class T>
+		constexpr T
+		haversin(T alpha) {
+			return T(0.5) * (T(1) - std::cos(alpha));
+		}
+
+		template<class T>
+		constexpr T
+		distance_on_sphere(T lat1, T lon1, T lat2, T lon2) {
+			const T h = haversin(lat1-lat2) +
+				std::cos(lat1) * std::cos(lat2)
+				* haversin(lon1-lon2);
+//			const T h = stdx::pow2(std::sin(T(0.5)*(lat2-lat1))) +
+//				std::cos(lat1) * std::cos(lat2) *
+//				stdx::pow2(std::sin(T(0.5)*(lon2-lon1)));
+			return std::asin(std::sqrt(h));
+		}
+
+	}
+
 	struct Location {
 
 		typedef float float_type;
@@ -73,13 +115,12 @@ namespace discovery {
 
 	constexpr Location::float_type
 	distance(const Location& lhs, const Location& rhs) noexcept {
-		return std::sqrt(
-			stdx::pow2(lhs._latitude - rhs._latitude)
-			+
-			stdx::pow2(lhs._longitude - rhs._longitude)
+		return bits::distance_on_sphere(
+			bits::to_radians(lhs._latitude), bits::to_radians(lhs._longitude),
+			bits::to_radians(rhs._latitude), bits::to_radians(rhs._longitude)
 		)
-		* lhs._nhosts
-		/ rhs._nhosts;
+		* (Location::float_type(lhs._nhosts) / Location::float_type(rhs._nhosts))
+		;
 	}
 
 }

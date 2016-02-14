@@ -88,7 +88,7 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 				locs.begin(),
 				locs.end(),
 				[&loc_a] (val_type lhs, val_type rhs) {
-					return lhs.second != loc_a and rhs.second != loc_a and
+					return lhs.second != loc_a and
 					discovery::distance(loc_a, lhs.second)
 						< discovery::distance(loc_a, rhs.second);
 				}
