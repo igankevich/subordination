@@ -88,7 +88,7 @@ double dist(double th1, double ph1, double th2, double ph2)
 
 		constexpr bool
 		operator<(const Location& rhs) const noexcept {
-			return _id < rhs._id;
+			return _nhosts < rhs._nhosts;
 		}
 
 		friend std::ostream&
@@ -119,7 +119,7 @@ double dist(double th1, double ph1, double th2, double ph2)
 			bits::to_radians(lhs._latitude), bits::to_radians(lhs._longitude),
 			bits::to_radians(rhs._latitude), bits::to_radians(rhs._longitude)
 		)
-		* (Location::float_type(lhs._nhosts) / Location::float_type(rhs._nhosts))
+//		* (Location::float_type(lhs._nhosts) / Location::float_type(rhs._nhosts))
 		;
 	}
 

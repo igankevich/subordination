@@ -22,8 +22,12 @@ namespace discovery {
 
 		template<class T>
 		void
-		read_field(std::istream& in, T& rhs, char) {
-			in >> rhs;
+		read_field(std::istream& in, T& rhs, char sep) {
+			if (!(in >> rhs)) {
+				in.clear();
+				ignore_field tmp;
+				read_field(in, tmp, sep);
+			}
 		}
 
 		template<>
