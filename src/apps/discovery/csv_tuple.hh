@@ -1,5 +1,5 @@
-#ifndef APPS_DISCOVERY_CSV_ITERATOR_HH
-#define APPS_DISCOVERY_CSV_ITERATOR_HH
+#ifndef APPS_DISCOVERY_CSV_TUPLE_HH
+#define APPS_DISCOVERY_CSV_TUPLE_HH
 
 #include <iterator>
 #include <tuple>
@@ -23,10 +23,16 @@ namespace discovery {
 		template<class T>
 		void
 		read_field(std::istream& in, T& rhs, char sep) {
-			if (!(in >> rhs)) {
+			in >> rhs;
+			// tolerate empty and erroneous CSV fields
+			if (in.rdstate() & std::ios::failbit) {
+				rhs = T();
 				in.clear();
 				ignore_field tmp;
 				read_field(in, tmp, sep);
+			}
+			if (in.rdstate() & (std::ios::eofbit | std::ios::failbit)) {
+				in.clear();
 			}
 		}
 
@@ -127,4 +133,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_CSV_ITERATOR_HH
+#endif // APPS_DISCOVERY_CSV_TUPLE_HH
