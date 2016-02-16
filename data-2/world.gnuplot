@@ -8,7 +8,7 @@ unset border
 set dummy u, v
 set angles degrees
 set parametric
-set view 60, 150, 1.22, 1.26
+set view 40, 150, 1.22, 1.26
 set samples 64, 64
 set isosamples 13, 13
 set mapping spherical

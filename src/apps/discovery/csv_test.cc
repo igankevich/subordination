@@ -47,10 +47,11 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 	static T
 	encode_as_number(Iterator first, Iterator last) {
 		constexpr const T radix('Z' - 'A');
+		T mult(1);
 		T result(0);
 		while (first != last) {
-			result += T(std::toupper(*first));
-			result *= radix;
+			result += T(std::toupper(*first)) * mult;
+			mult *= radix;
 			++first;
 		}
 		return result;
@@ -74,8 +75,11 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 			[&countries] (const mytuple& rhs) {
 				const city_type city = std::get<0>(rhs);
 				const std::string country_str = std::get<4>(rhs);
-				const country_type country = encode_as_number<country_type>(country_str.begin(), country_str.end());
-				countries.emplace(city, country);
+				if (country_str == "RU") {
+					const country_type country = encode_as_number<country_type>(country_str.begin(), country_str.end());
+					countries.emplace(city, country);
+//					std::clog << country_str << std::endl;
+				}
 			}
 		);
 		std::clog << "No. of cities = " << countries.size() << std::endl;
@@ -83,15 +87,15 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 
 	void xrun() override {
 		using namespace discovery;
-		typedef std::tuple<country_type,city_type,float_type,float_type> location_tuple;
-		typedef std::vector<location_tuple> locations_type;
+//		typedef std::tuple<country_type,city_type,float_type,float_type> location_tuple;
+		typedef std::set<City> locations_type;
 		typedef std::unordered_map<city_type,uint_type> hostmap_type;
-		typedef std::set<Location> locationset_type;
+		typedef std::multiset<Location> locationset_type;
 		typedef std::unordered_map<country_type,locationset_type> locationmap_type;
 		typedef csv_tuple<',',
 			network_type,
 			city_type,
-			ignore_field,
+			country_type,
 			ignore_field,
 			ignore_field,
 			ignore_field,
@@ -116,7 +120,7 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 				const country_type country = countries[city];
 				if (city and country) {
 					nhosts[city] += net.count();
-					locs.emplace_back(country, city, lat, lon);
+					locs.emplace(City{country, city, lat, lon});
 				}
 			}
 		);
@@ -126,12 +130,12 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 		std::for_each(
 			locs.begin(),
 			locs.end(),
-			[&sorted_locs,&nhosts] (const location_tuple& rhs) {
-				const country_type country = std::get<0>(rhs);
-				const city_type city = std::get<1>(rhs);
-				const float_type lat = std::get<2>(rhs);
-				const float_type lon = std::get<3>(rhs);
-				sorted_locs[country].emplace(city, lat, lon, nhosts[city]);
+			[&sorted_locs,&nhosts] (const City& rhs) {
+//				const country_type country = std::get<0>(rhs);
+//				const city_type city = std::get<1>(rhs);
+//				const float_type lat = std::get<2>(rhs);
+//				const float_type lon = std::get<3>(rhs);
+				sorted_locs[rhs._country].emplace(rhs._city, rhs._latitude, rhs._longitude, nhosts[rhs._city]);
 			}
 		);
 
@@ -139,12 +143,13 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 			sorted_locs.begin(),
 			sorted_locs.end(),
 			[] (const typename locationmap_type::value_type& rhs) {
+				std::clog << "sorted_locs.size = " << rhs.second.size() << std::endl;
 				const auto last = rhs.second.end();
 				for (auto it=rhs.second.begin(); it!=last; ++it) {
 					const Location& loc_a = *it;
-//					auto first = it;
-//					++first;
-					auto first = rhs.second.begin();
+					auto first = it;
+					++first;
+//					auto first = rhs.second.begin();
 					auto result = std::min_element(
 						first,
 						last,
@@ -154,7 +159,7 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 						}
 					);
 					if (result != last) {
-						std::cout << loc_a << '\n' << *result << "\n\n";
+						std::cout << loc_a << '\n' << *result << "\n\n\n";
 					}
 				}
 			}

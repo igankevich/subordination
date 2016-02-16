@@ -123,6 +123,33 @@ double dist(double th1, double ph1, double th2, double ph2)
 		;
 	}
 
+	struct City {
+
+		typedef float float_type;
+		typedef uint32_t id_type;
+
+		constexpr bool
+		operator<(const City& rhs) const noexcept {
+			return _city < rhs._city;// and _country == rhs._country;
+		}
+
+		constexpr bool
+		operator==(const City& rhs) const noexcept {
+			return _city == rhs._city;
+		}
+
+		constexpr bool
+		operator!=(const City& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
+		id_type _country;
+		id_type _city;
+		float_type _latitude;
+		float_type _longitude;
+
+	};
+
 }
 
 #endif // APPS_DISCOVERY_LOCATION_HH
