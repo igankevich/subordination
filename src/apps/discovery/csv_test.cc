@@ -139,10 +139,12 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 			}
 		);
 
+		std::ofstream vectors("vectors.dat");
+		std::ofstream graph("graph.dat");
 		std::for_each(
 			sorted_locs.begin(),
 			sorted_locs.end(),
-			[] (const typename locationmap_type::value_type& rhs) {
+			[&graph,&vectors] (const typename locationmap_type::value_type& rhs) {
 				std::clog << "sorted_locs.size = " << rhs.second.size() << std::endl;
 				const auto last = rhs.second.end();
 				for (auto it=rhs.second.begin(); it!=last; ++it) {
@@ -158,30 +160,14 @@ struct Test_location: public test::Test<Test_location<Addr>> {
 								< discovery::distance(loc_a, rhs);
 						}
 					);
+					const Location& loc_b = *result;
 					if (result != last) {
-						std::cout << loc_a << '\n' << *result << "\n\n\n";
+						graph << loc_a << '\n' << loc_b << "\n\n\n";
+						vectors << loc_a.point() << ' ' << (loc_b.point() - loc_a.point())*float_type(2)/float_type(3) << '\n';
 					}
 				}
 			}
 		);
-//		typedef const std::map<id_type,Location>::value_type& val_type;
-////		for (auto it=locs.begin(); it!=locs.end(); ++it) {
-////			std::cout << it->second << '\n';
-////		}
-//		for (auto it=locs.begin(); it!=locs.end(); ++it) {
-//			Location loc_a = it->second;
-//			auto result = std::min_element(
-//				locs.begin(),
-//				locs.end(),
-//				[&loc_a] (val_type lhs, val_type rhs) {
-//					return lhs.second != loc_a and
-//					discovery::distance(loc_a, lhs.second)
-//						< discovery::distance(loc_a, rhs.second);
-//				}
-//			);
-////			std::cout << it->first << " -- " << result->first << ";\n";
-//			std::cout << it->second << '\n' << result->second << "\n\n";
-//		}
 	}
 
 };
