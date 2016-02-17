@@ -37,3 +37,11 @@ test('csv',
 		dependencies: threads
 	)
 )
+
+executable(
+	'discover-topology',
+	sources: 'discover_topology.cc',
+	include_directories: [srcdir, testdir],
+	dependencies: threads,
+	link_args: '-rdynamic'
+)
