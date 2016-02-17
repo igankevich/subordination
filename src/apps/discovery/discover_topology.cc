@@ -61,9 +61,10 @@ struct Topology {
 	typedef stdx::log<Topology> this_log;
 
 	Topology(const std::string& location_file, const std::string& block_file, const std::string& country):
-	_coords()
+	_coords(),
+	_country(country)
 	{
-		load_countries(location_file, country);
+		load_countries(location_file, _country);
 		load_city_coordinates(block_file);
 		load_sub_networks(block_file);
 	}
@@ -193,11 +194,25 @@ struct Topology {
 
 	}
 
+	std::string
+	output_filename(const char* prefix) const noexcept {
+		std::stringstream str;
+		str << prefix << '-';
+		std::transform(
+			_country.begin(),
+			_country.end(),
+			std::ostream_iterator<char>(str),
+			[] (char ch) { return std::tolower(ch); }
+		);
+		str << '.' << file_extension;
+		return str.str();
+	}
+
 	void
 	save() {
 		using namespace discovery;
-		std::ofstream vectors("vectors.dat");
-		std::ofstream graph("graph.dat");
+		std::ofstream vectors(output_filename("vectors"));
+		std::ofstream graph(output_filename("graph"));
 		std::for_each(
 			sorted_locs.begin(),
 			sorted_locs.end(),
@@ -233,7 +248,9 @@ private:
 	countrymap_type _countries;
 	locationmap_type sorted_locs;
 	coordinate_container _coords;
+	std::string _country;
 
+	static constexpr const char* file_extension = "dat";
 };
 
 int
