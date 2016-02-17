@@ -30,7 +30,7 @@ set ylabel 'Latitude'
 
 plot \
 '../data-2/world_110m.txt' with lines ls 8 notitle, \
-'../data-2/backbone-ru.dat' with lines ls 2 title 'Internet backbone', \
+'../data-2/backbone-ru.dat' with lines ls 2 title 'Backbone network', \
 '../data-2/terrestrial-ru.dat' with lines ls 1 title 'Terrestrial network', \
 'graph-ru.dat' with lines linestyle 9 title 'Computed topology', \
 '< sort graph-ru.dat | uniq' with points linestyle 9 notitle, \
