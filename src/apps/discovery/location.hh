@@ -49,6 +49,11 @@ namespace discovery {
 		typedef Float float_type;
 
 		constexpr Point
+		operator+(const Point& rhs) const noexcept {
+			return Point{_x + rhs._x, _y + rhs._y};
+		}
+
+		constexpr Point
 		operator-(const Point& rhs) const noexcept {
 			return Point{_x - rhs._x, _y - rhs._y};
 		}

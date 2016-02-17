@@ -24,6 +24,9 @@ set style arrow 1 head back filled linestyle 9 size graph 0.005,15.000,45.000
 set xrange [   18 : 180 ]
 set yrange [   30 : 90  ]
 
+set xlabel 'Longitude'
+set ylabel 'Latitude'
+
 plot \
 '../data-2/world_110m.txt' with lines ls 8 notitle, \
 '../data-2/backbone-ru.dat' with lines ls 2 title 'Internet backbone', \

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iterator>
 #include <fstream>
+#include <valarray>
 
 #include <stdx/log.hh>
 
@@ -56,10 +57,14 @@ struct Topology {
 	typedef std::unordered_map<city_type,uint_type> hostmap_type;
 	typedef std::multiset<discovery::Location> locationset_type;
 	typedef std::unordered_map<country_type,locationset_type> locationmap_type;
+	typedef std::unordered_map<city_type,discovery::Point<float_type>> coordinate_container;
 	typedef stdx::log<Topology> this_log;
 
-	Topology(const std::string& location_file, const std::string& block_file, const std::string& country) {
+	Topology(const std::string& location_file, const std::string& block_file, const std::string& country):
+	_coords()
+	{
 		load_countries(location_file, country);
+		load_city_coordinates(block_file);
 		load_sub_networks(block_file);
 	}
 
@@ -84,18 +89,63 @@ struct Topology {
 				const std::string country_str = std::get<4>(rhs);
 				if (not filter_country.empty() and country_str == filter_country) {
 					const country_type country = encode_as_number<country_type>(country_str.begin(), country_str.end());
-					countries.emplace(city, country);
-//					std::clog << country_str << std::endl;
+					_countries.emplace(city, country);
 				}
 			}
 		);
-		this_log() << "Total no. of cities = " << countries.size() << std::endl;
+		this_log() << "Total no. of cities = " << _countries.size() << std::endl;
+	}
+
+	void
+	load_city_coordinates(const std::string& filename) {
+		this_log() << "Reading city coordinates from " << filename << std::endl;
+		using namespace discovery;
+		typedef csv_tuple<',',
+			ignore_field,
+			city_type,
+			ignore_field,
+			ignore_field,
+			ignore_field,
+			ignore_field,
+			ignore_field,
+			float_type,
+			float_type
+		> mytuple;
+
+		std::unordered_map<city_type,std::valarray<float_type>> coords;
+
+		std::ifstream in(filename);
+		in.ignore(1024*1024, '\n');
+		std::for_each(
+			std::istream_iterator<mytuple>(in),
+			std::istream_iterator<mytuple>(),
+			[&coords,this] (const mytuple& rhs) {
+				const city_type city = std::get<1>(rhs);
+				const float_type lat = std::get<7>(rhs);
+				const float_type lon = std::get<8>(rhs);
+				const country_type country = _countries[city];
+				if (city and country) {
+					std::valarray<float_type>& x = coords[city];
+					if (x.size() != 3) x.resize(3);
+					x += {lat, lon, float_type(1)};
+				}
+			}
+		);
+		_coords.clear();
+		std::transform(
+			coords.begin(),
+			coords.end(),
+			std::inserter(_coords, _coords.begin()),
+			[] (const std::pair<const city_type,std::valarray<float_type>>& rhs) {
+				const float_type n = rhs.second[2];
+				return std::make_pair(rhs.first, Point<float_type>{rhs.second[0]/n, rhs.second[1]/n});
+			}
+		);
 	}
 
 	void load_sub_networks(const std::string& filename) {
 		this_log() << "Reading sub-networks from " << filename << std::endl;
 		using namespace discovery;
-//		typedef std::tuple<country_type,city_type,float_type,float_type> location_tuple;
 		typedef csv_tuple<',',
 			network_type,
 			city_type,
@@ -109,7 +159,7 @@ struct Topology {
 		> mytuple;
 		hostmap_type nhosts;
 		locations_type locs;
-//		load_countries(countries);
+//		load_countries(_countries);
 		std::ifstream in(filename);
 		in.ignore(1024*1024, '\n');
 		std::for_each(
@@ -120,10 +170,11 @@ struct Topology {
 				const city_type city = std::get<1>(rhs);
 				const float_type lat = std::get<7>(rhs);
 				const float_type lon = std::get<8>(rhs);
-				const country_type country = countries[city];
+				const country_type country = _countries[city];
 				if (city and country) {
 					nhosts[city] += net.count();
-					locs.emplace(City{country, city, lat, lon});
+					const Point<float_type> pt = _coords[city];
+					locs.emplace(City{country, city, pt._x, pt._y});
 				}
 			}
 		);
@@ -179,8 +230,9 @@ struct Topology {
 
 private:
 
-	countrymap_type countries;
+	countrymap_type _countries;
 	locationmap_type sorted_locs;
+	coordinate_container _coords;
 
 };
 
