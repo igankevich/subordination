@@ -449,7 +449,7 @@ int main(int argc, char* argv[]) {
 		this_log() << "Network = " << network << std::endl;
 		this_log() << "Num peers = " << npeers << std::endl;
 		this_log() << "Role = " << role << std::endl;
-		this_log() << "start,end = " << *network.begin() << ',' << *network.end() << std::endl;
+		this_log() << "start,mid = " << *network.begin() << ',' << *network.middle() << std::endl;
 
 		std::vector<sysx::endpoint> hosts;
 		std::transform(

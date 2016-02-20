@@ -267,12 +267,15 @@ namespace factory {
 			using base_server::poller;
 
 			typedef std::map<sysx::endpoint,server_type> upstream_type;
+			typedef typename upstream_type::iterator iterator_type;
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
 			typedef stdx::log<NIC_server> this_log;
 
 			NIC_server(NIC_server&& rhs) noexcept:
-			base_server(std::move(rhs))
+			base_server(std::move(rhs)),
+			_upstream(),
+			_iterator(_upstream.end())
 			{}
 
 			NIC_server() = default;
@@ -283,7 +286,10 @@ namespace factory {
 			void remove_server(server_type* ptr) override {
 				// TODO: occasional ``Bad file descriptor''
 				this_log() << "Removing server " << *ptr << std::endl;
-				_upstream.erase(ptr->vaddr());
+				auto result = _upstream.find(ptr->vaddr());
+				if (result != _upstream.end()) {
+					remove_valid_server(result);
+				}
 			}
 
 			void accept_connection(sysx::poll_event&) override {
@@ -315,7 +321,8 @@ namespace factory {
 						server_type new_s(std::move(s));
 						new_s.setparent(this);
 						new_s.socket(std::move(sock));
-						_upstream.erase(res);
+						remove_valid_server(res);
+//						_upstream.erase(res);
 						_upstream.emplace(vaddr, std::move(new_s));
 //						_upstream.emplace(vaddr, std::move(*new_s));
 						poller().emplace(
@@ -366,6 +373,30 @@ namespace factory {
 
 		private:
 
+			void
+			remove_valid_server(iterator_type result) noexcept {
+				if (result == _iterator) {
+					advance_upstream_iterator();
+				}
+				_upstream.erase(result);
+			}
+
+			void
+			advance_upstream_iterator() noexcept {
+				if (++_iterator == _upstream.end()) {
+					_iterator = _upstream.begin();
+				}
+			}
+
+			std::pair<iterator_type,bool>
+			emplace_server(const sysx::endpoint& vaddr, server_type&& s) {
+				auto result = _upstream.emplace(vaddr, std::move(s));
+				if (_upstream.size() == 1) {
+					_iterator = _upstream.begin();
+				}
+				return result;
+			}
+
 			inline sysx::endpoint
 			virtual_addr(sysx::endpoint addr) const {
 				return sysx::endpoint(addr, server_addr().port());
@@ -400,9 +431,9 @@ namespace factory {
 					if (_upstream.empty()) {
 						throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
 					}
-					// TODO: round robin
-					auto result = _upstream.begin();
-					result->second.send(k);
+					// round robin over upstream hosts
+					_iterator->second.send(k);
+					advance_upstream_iterator();
 				} else {
 					// create endpoint if necessary, and send kernel
 					if (!k->to()) {
@@ -450,7 +481,7 @@ namespace factory {
 				sysx::fd_type fd = sock.fd();
 				server_type s(std::move(sock), vaddr);
 				s.setparent(this);
-				auto result = _upstream.emplace(vaddr, std::move(s));
+				auto result = emplace_server(vaddr, std::move(s));
 				poller().emplace(
 					sysx::poll_event{fd, events, revents},
 					handler_type(&result.first->second));
@@ -460,6 +491,7 @@ namespace factory {
 
 			socket_type _socket;
 			upstream_type _upstream;
+			iterator_type _iterator;
 		};
 
 	}

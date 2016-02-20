@@ -10,7 +10,7 @@ test(
 	args: [
 		'--role', 'master',
 		'--num-peers', '2',
-		'--network', '127.0.0.1/255.0.0.0'
+		'--network', '127.0.0.1/8'
 	]
 )
 
