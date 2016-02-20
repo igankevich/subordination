@@ -217,6 +217,7 @@ namespace sysx {
 	struct ipaddr_traits<ipv4_addr> {
 		typedef ipv4_addr::oct_type oct_type;
 		static constexpr const oct_type loopback_first_octet = 127;
+		static constexpr ipv4_addr localhost() { return ipv4_addr{127,0,0,1}; }
 		static constexpr ipv4_addr loopback_mask() { return ipv4_addr{255,0,0,0}; }
 		static constexpr ipv4_addr widearea_mask() { return ipv4_addr{255,255,255,255}; }
 	};

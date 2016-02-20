@@ -330,7 +330,7 @@ namespace sysx {
 				this_log() << "process terminated:"
 					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal())
 					<< std::endl;
-				ret += std::abs(x.exit_code() | x.term_signal());
+				ret |= x.exit_code() | x.term_signal();
 			}
 			return ret;
 		}

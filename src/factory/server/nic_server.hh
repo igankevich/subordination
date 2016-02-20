@@ -415,10 +415,11 @@ namespace factory {
 			void
 			process_kernel(kernel_type* k) {
 				if (this->server_addr() && k->to() == this->server_addr()) {
-					std::ostringstream msg;
-					msg << "Kernel is sent to local node. From="
-						<< this->server_addr() << ", to=" << k->to();
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+					this->root()->send(k);
+//					std::ostringstream msg;
+//					msg << "Kernel is sent to local node. From="
+//						<< this->server_addr() << ", to=" << k->to();
+//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 
 				if (k->moves_everywhere()) {
@@ -429,11 +430,18 @@ namespace factory {
 					delete k;
 				} else if (k->moves_upstream() && k->to() == sysx::endpoint()) {
 					if (_upstream.empty()) {
-						throw Error("No upstream servers found.", __FILE__, __LINE__, __func__);
+						// short-circuit kernels when no upstream servers are available
+						this->root()->send(k);
+					} else {
+						// round robin over upstream hosts
+						_iterator->second.send(k);
+						advance_upstream_iterator();
 					}
-					// round robin over upstream hosts
-					_iterator->second.send(k);
-					advance_upstream_iterator();
+				} else if (k->moves_downstream() and not k->from()) {
+					// kernel @k was sent to local node
+					// because no upstream servers had
+					// been available
+					this->root()->send(k);
 				} else {
 					// create endpoint if necessary, and send kernel
 					if (!k->to()) {

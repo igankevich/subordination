@@ -225,6 +225,114 @@ private:
 	uint32_t _numsent = 0;
 };
 
+struct Ping: public Kernel, Identifiable_tag {
+
+	typedef stdx::log<Ping> this_log;
+
+	Ping(): _data() {}
+
+	explicit
+	Ping(int x): _data(x) {
+	}
+
+	void act(Server& this_server) {
+		this_log() << "act()" << std::endl;
+		commit(this_server.remote_server());
+	}
+
+	void write(sysx::packetstream& out) {
+		Kernel::write(out);
+		out << _data;
+	}
+
+	void read(sysx::packetstream& in) {
+		this_log() << "Ping::read()" << std::endl;
+		Kernel::read(in);
+		in >> _data;
+	}
+
+	int
+	get_x() const noexcept {
+		return _data;
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			111,
+			"Ping",
+			[] (sysx::packetstream& in) {
+				Ping* k = new Ping;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+private:
+
+	int _data;
+
+};
+
+struct Ping_pong: public Kernel, public Identifiable_tag {
+
+	typedef stdx::log<Ping_pong> this_log;
+
+	void
+	act(Server& this_server) override {
+		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
+		int x = 1;
+		_expectedsum += x;
+		upstream(this_server.remote_server(), this_server.factory()->new_kernel<Ping>(x));
+		if (++_currentkernel < _numkernels) {
+			this->after(std::chrono::seconds(1));
+			this_server.timer_server()->send(this);
+		}
+	}
+
+	void
+	react(Server& this_server, Kernel* child) {
+		Ping* ping = dynamic_cast<Ping*>(child);
+		this_log() << "ping returned from " << ping->from() << " with " << ping->result() << std::endl;
+		_realsum += ping->get_x();
+		if (
+			not _some_kernels_came_from_a_remote_server
+			and not ping->from()
+		) {
+			_some_kernels_came_from_a_remote_server = true;
+		}
+		if (++_numreceived == _numkernels) {
+			this_log() << stdx::make_fields(
+				"num_kernels", _numkernels,
+				"expected_sum", _expectedsum,
+				"real_sum", _realsum,
+				"representative", _some_kernels_came_from_a_remote_server
+			) << std::endl;
+			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
+			this_server.factory()->set_exit_code(success ? EXIT_SUCCESS : EXIT_FAILURE);
+			commit(this_server.local_server());
+			// TODO 2016-02-20 why do we need this line???
+			this_server.factory()->shutdown();
+		}
+	}
+
+private:
+
+	int _expectedsum = 0;
+	int _realsum = 0;
+	int _numkernels = 5;
+	int _numreceived = 0;
+	int _currentkernel = 0;
+	bool _some_kernels_came_from_a_remote_server = false;
+
+};
+
 
 template<class Address>
 struct Master_discoverer: public Kernel, public Identifiable_tag {
@@ -256,7 +364,6 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 
 	void
 	act(Server& this_server) override {
-		schedule_shutdown_after(std::chrono::seconds(10), this_server);
 		try_next_host(this_server);
 	}
 
@@ -274,6 +381,11 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(this_server, _hierarchy);
 		}
+	}
+
+	const hierarchy_type&
+	hierarchy() const noexcept {
+		return _hierarchy;
 	}
 
 private:
@@ -321,15 +433,6 @@ private:
 		}
 	}
 
-	template<class Time>
-	void
-	schedule_shutdown_after(Time delay, Server& this_server) {
-		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(_hierarchy);
-		shutdowner->after(delay);
-		shutdowner->parent(this);
-		this_server.timer_server()->send(shutdowner);
-	}
-
 	void
 	run_negotiator(Server& this_server) {
 		if (_currenthost != _rankedhosts.end()) {
@@ -356,6 +459,7 @@ template<class Address>
 struct Main: public Kernel {
 
 	typedef Address addr_type;
+	typedef typename sysx::ipaddr_traits<addr_type> traits_type;
 	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<test_discovery> this_log;
 
@@ -375,6 +479,7 @@ struct Main: public Kernel {
 	act(Server& this_server) {
 		parse_cmdline_args(this_server);
 		this_server.factory()->types().register_type(negotiator_type::static_type());
+		this_server.factory()->types().register_type(Ping::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -389,10 +494,33 @@ struct Main: public Kernel {
 			master->after(std::chrono::seconds(start_delay));
 //			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 			this_server.timer_server()->send(master);
+
+			if (_network.address() == traits_type::localhost()) {
+				schedule_pingpong_after(std::chrono::seconds(0), this_server);
+			}
+
+			schedule_shutdown_after(std::chrono::seconds(20), master, this_server);
 		}
 	}
 
 private:
+
+	template<class Time>
+	void
+	schedule_pingpong_after(Time delay, Server& this_server) {
+		Ping_pong* p = this_server.factory()->new_kernel<Ping_pong>();
+		p->after(delay);
+		this_server.timer_server()->send(p);
+	}
+
+	template<class Time>
+	void
+	schedule_shutdown_after(Time delay, Master_discoverer<addr_type>* master, Server& this_server) {
+		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy());
+		shutdowner->after(delay);
+		shutdowner->parent(this);
+		this_server.timer_server()->send(shutdowner);
+	}
 
 	void
 	parse_cmdline_args(Server& this_server) {
@@ -480,7 +608,6 @@ int main(int argc, char* argv[]) {
 		}
 
 		this_log() << "Forked " << procs << std::endl;
-
 		retval = procs.wait();
 	} else {
 		using namespace factory;
