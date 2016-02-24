@@ -293,6 +293,8 @@ struct Ping_pong: public Kernel, public Identifiable_tag {
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
 			this_server.timer_server()->send(this);
+		} else {
+			this_log() << "finished sending pings" << std::endl;
 		}
 	}
 
@@ -317,8 +319,9 @@ struct Ping_pong: public Kernel, public Identifiable_tag {
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
 			this_server.factory()->set_exit_code(success ? EXIT_SUCCESS : EXIT_FAILURE);
 			commit(this_server.local_server());
-			// TODO 2016-02-20 why do we need this line???
+			// TODO 2016-02-20 why do we need this and the following lines???
 			this_server.factory()->shutdown();
+			this_server.factory()->stop();
 		}
 	}
 
@@ -326,7 +329,7 @@ private:
 
 	int _expectedsum = 0;
 	int _realsum = 0;
-	int _numkernels = 5;
+	int _numkernels = 10;
 	int _numreceived = 0;
 	int _currentkernel = 0;
 	bool _some_kernels_came_from_a_remote_server = false;
@@ -594,7 +597,7 @@ int main(int argc, char* argv[]) {
 		sysx::process_group procs;
 		int start_id = 1000;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.add([endpoint, &argv, start_id, npeers, &network, discovery_port] () {
+			procs.emplace([endpoint, &argv, start_id, npeers, &network, discovery_port] () {
 				sysx::this_process::env("START_ID", start_id);
 				return sysx::this_process::execute(
 					argv[0],
@@ -608,7 +611,22 @@ int main(int argc, char* argv[]) {
 		}
 
 		this_log() << "Forked " << procs << std::endl;
+		using namespace std::chrono;
+		std::this_thread::sleep_for(seconds(3));
+		auto time_slept = seconds(0);
+		const auto tick = seconds(1);
+		auto first = procs.begin();
+		auto last = procs.end();
+		++first;
+		while (first != last) {
+			std::this_thread::sleep_for(tick);
+			time_slept += tick;
+			this_log() << "Killing process " << first->id() << std::endl;
+			first->signal(SIGKILL);
+			++first;
+		}
 		retval = procs.wait();
+
 	} else {
 		using namespace factory;
 		retval = factory_main<Main<sysx::ipv4_addr>,config>(argc, argv);

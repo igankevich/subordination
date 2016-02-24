@@ -240,8 +240,13 @@ namespace sysx {
 
 		inline void
 		stop() {
+			signal(SIGTERM);
+		}
+
+		inline void
+		signal(int sig) {
 			if (_pid > 0) {
-		    	bits::check(do_kill(SIGHUP),
+		    	bits::check(do_kill(sig),
 					__FILE__, __LINE__, __func__);
 			}
 		}
@@ -309,6 +314,7 @@ namespace sysx {
 	struct process_group {
 
 		typedef stdx::log<process_group> this_log;
+		typedef std::vector<process>::iterator iterator;
 
 		template<class F>
 		const process&
@@ -320,6 +326,17 @@ namespace sysx {
 			p.set_group_id(_gid);
 			_procs.push_back(std::move(p));
 			return _procs.back();
+		}
+
+		template<class F>
+		void
+		emplace(F&& childmain) {
+			_procs.emplace_back(std::forward<F>(childmain));
+			process& proc = _procs.back();
+			if (_procs.size() == 1) {
+				_gid = proc.id();
+			}
+			proc.set_group_id(_gid);
 		}
 
 		int
@@ -356,7 +373,7 @@ namespace sysx {
 		inline void
 		stop() {
 			if (_gid > 0) {
-		    	bits::check(::kill(_gid, SIGHUP),
+		    	bits::check(::kill(_gid, SIGTERM),
 					__FILE__, __LINE__, __func__);
 			}
 		}
@@ -364,6 +381,31 @@ namespace sysx {
 		inline pid_type
 		id() const noexcept {
 			return _gid;
+		}
+
+		const process&
+		operator[](size_t i) const noexcept {
+			return _procs[i];
+		}
+
+		process&
+		operator[](size_t i) noexcept {
+			return _procs[i];
+		}
+
+		size_t
+		size() const noexcept {
+			return _procs.size();
+		}
+
+		iterator
+		begin() noexcept {
+			return _procs.begin();
+		}
+
+		iterator
+		end() noexcept {
+			return _procs.end();
 		}
 
 		friend std::ostream&
