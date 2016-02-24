@@ -613,18 +613,19 @@ int main(int argc, char* argv[]) {
 		this_log() << "Forked " << procs << std::endl;
 		using namespace std::chrono;
 		std::this_thread::sleep_for(seconds(3));
-		auto time_slept = seconds(0);
+		this_log() << "Start killing spree" << std::endl;
 		const auto tick = seconds(1);
 		auto first = procs.begin();
-		auto last = procs.end();
+		const auto last = procs.end();
+		// skip master
 		++first;
 		while (first != last) {
 			std::this_thread::sleep_for(tick);
-			time_slept += tick;
 			this_log() << "Killing process " << first->id() << std::endl;
 			first->signal(SIGKILL);
 			++first;
 		}
+		this_log() << "Finished killing spree" << std::endl;
 		retval = procs.wait();
 
 	} else {
