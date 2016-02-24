@@ -84,10 +84,11 @@ namespace factory {
 
 				// recover kernels written to output buffer
 				using namespace std::placeholders;
-				std::for_each(stdx::front_popper(_buffer),
+				std::for_each(
+					stdx::front_popper(_buffer),
 					stdx::front_popper_end(_buffer),
-					std::bind(&Remote_Rserver::recover_kernel,
-					this, _1));
+					std::bind(&Remote_Rserver::recover_kernel, this, _1)
+				);
 			}
 
 			void send(kernel_type* kernel) {

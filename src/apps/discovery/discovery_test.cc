@@ -284,6 +284,13 @@ struct Ping_pong: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Ping_pong> this_log;
 
+	Ping_pong() = default;
+
+	explicit
+	Ping_pong(int n):
+	_numkernels(n)
+	{}
+
 	void
 	act(Server& this_server) override {
 		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
@@ -469,12 +476,14 @@ struct Main: public Kernel {
 	Main(Server& this_server, int argc, char* argv[]):
 	_network(),
 	_port(),
+	_numpings(),
 	_cmdline(argc, argv, {
 		sysx::cmd::ignore_first_arg(),
 		sysx::cmd::ignore_arg("--num-peers"),
 		sysx::cmd::ignore_arg("--role"),
 		sysx::cmd::make_option({"--network"}, _network),
-		sysx::cmd::make_option({"--port"}, _port)
+		sysx::cmd::make_option({"--port"}, _port),
+		sysx::cmd::make_option({"--ping"}, _numpings)
 	})
 	{}
 
@@ -511,7 +520,7 @@ private:
 	template<class Time>
 	void
 	schedule_pingpong_after(Time delay, Server& this_server) {
-		Ping_pong* p = this_server.factory()->new_kernel<Ping_pong>();
+		Ping_pong* p = this_server.factory()->new_kernel<Ping_pong>(_numpings);
 		p->after(delay);
 		this_server.timer_server()->send(p);
 	}
@@ -540,6 +549,7 @@ private:
 
 	discovery::Network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
+	uint32_t _numpings;
 	sysx::cmdline _cmdline;
 
 };
@@ -549,6 +559,8 @@ int main(int argc, char* argv[]) {
 	const std::string role_master = "master";
 	const std::string role_slave = "slave";
 	sysx::port_type discovery_port = 10000;
+	uint32_t num_pings = 10;
+	uint32_t kill_every = std::numeric_limits<uint32_t>::max();
 
 	typedef stdx::log<test_discovery> this_log;
 	int retval = 0;
@@ -561,7 +573,9 @@ int main(int argc, char* argv[]) {
 			sysx::cmd::make_option({"--network"}, network),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
 			sysx::cmd::make_option({"--role"}, role),
-			sysx::cmd::make_option({"--port"}, discovery_port)
+			sysx::cmd::make_option({"--port"}, discovery_port),
+			sysx::cmd::make_option({"--ping"}, num_pings),
+			sysx::cmd::make_option({"--kill"}, kill_every)
 		});
 		cmd.parse();
 		if (role != role_master and role != role_slave) {
@@ -597,35 +611,38 @@ int main(int argc, char* argv[]) {
 		sysx::process_group procs;
 		int start_id = 1000;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, start_id, npeers, &network, discovery_port] () {
+			procs.emplace([endpoint, &argv, start_id, npeers, &network, discovery_port, num_pings] () {
 				sysx::this_process::env("START_ID", start_id);
 				return sysx::this_process::execute(
 					argv[0],
 					"--network", discovery::Network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
-					"--num-peers", 0
+					"--num-peers", 0,
+					"--ping", num_pings
 				);
 			});
 			start_id += 1000;
 		}
 
 		this_log() << "Forked " << procs << std::endl;
-		using namespace std::chrono;
-		std::this_thread::sleep_for(seconds(3));
-		this_log() << "Start killing spree" << std::endl;
-		const auto tick = seconds(1);
-		auto first = procs.begin();
-		const auto last = procs.end();
-		// skip master
-		++first;
-		while (first != last) {
-			std::this_thread::sleep_for(tick);
-			this_log() << "Killing process " << first->id() << std::endl;
-			first->signal(SIGKILL);
+		if (kill_every < std::numeric_limits<uint32_t>::max()) {
+			using namespace std::chrono;
+			std::this_thread::sleep_for(seconds(3));
+			this_log() << "Start killing spree" << std::endl;
+			const auto tick = seconds(kill_every);
+			auto first = procs.begin();
+			const auto last = procs.end();
+			// skip master
 			++first;
+			while (first != last) {
+				std::this_thread::sleep_for(tick);
+				this_log() << "Killing process " << first->id() << std::endl;
+				first->signal(SIGKILL);
+				++first;
+			}
+			this_log() << "Finished killing spree" << std::endl;
 		}
-		this_log() << "Finished killing spree" << std::endl;
 		retval = procs.wait();
 
 	} else {
