@@ -101,7 +101,7 @@ struct Variance_WN: public Kernel {
 	void act() {
 		int bs = 64;
 		int n = ar_coefs.size();
-		upstream(the_server(), mapreduce([](int) {}, [this](int i){
+		upstream(local_server(), mapreduce([](int) {}, [this](int i){
 			sum += ar_coefs[i]*acf[i];
 		}, 0, n, bs));
 
@@ -109,7 +109,7 @@ struct Variance_WN: public Kernel {
 
 	void react(factory::Kernel*) {
 		sum = acf[0] - sum;
-		commit(the_server());
+		commit(local_server());
 	}
 
 private:
@@ -139,7 +139,7 @@ struct Yule_walker: public Kernel {
 		int block_size = 16*4;
 		int m = b.size();
 		auto identity = [](int){};
-		upstream(the_server(), mapreduce([this](int i) {
+		upstream(local_server(), mapreduce([this](int i) {
 			const int n = acf.size()-1;
 			const Index<3> id(acf_size);
 			const Index<2> ida(size2(n, n));
@@ -157,7 +157,7 @@ struct Yule_walker: public Kernel {
 				a[i1] = acf[i2];
 			}
 		}, identity, 0, n, block_size));
-		upstream(the_server(), mapreduce([this](int i) {
+		upstream(local_server(), mapreduce([this](int i) {
 			const Index<3> id(acf_size);
 			b[i] = acf[id( id.t(i+1), id.x(i+1), id.y(i+1) )];
 		}, identity, 0, m, block_size));
@@ -165,7 +165,7 @@ struct Yule_walker: public Kernel {
 
 	void react(factory::Kernel*) {
 		if (++count == 2) {
-			commit(the_server());
+			commit(local_server());
 		}
 	}
 
@@ -289,12 +289,12 @@ struct ACF_generator: public Kernel {
 //				}
 //			}
 //		}
-//		commit(the_server());
+//		commit(local_server());
 
 		int bs = 2;
 		int n = acf_size[0];
 		auto identity = [](int){};
-		upstream(the_server(), mapreduce([this](int t) {
+		upstream(local_server(), mapreduce([this](int t) {
 			const Index<3> id(acf_size);
 			int x1 = acf_size[1];
 			int y1 = acf_size[2];
@@ -309,7 +309,7 @@ struct ACF_generator: public Kernel {
 		}, identity, 0, n, bs));
 	}
 
-	void react(factory::Kernel*) { commit(the_server()); }
+	void react(factory::Kernel*) { commit(local_server()); }
 
 private:
 	const T alpha;
@@ -336,7 +336,7 @@ private:
 //				p.acf[id(t, x, y)] = p.gamm*exp(-p.alpha*k1)*cos(p.beta*t*p.delta[0])*cos(p.beta*x*p.delta[1]);//*cos(beta*y*delta[2]);
 //			}
 //		}
-//		commit(the_server());
+//		commit(local_server());
 //	}
 //private:
 //	ACF<T>& p;
@@ -386,7 +386,7 @@ struct Solve_Yule_Walker: public Kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
 		}
-		commit(the_server());
+		commit(local_server());
 	}
 
 private:
@@ -410,13 +410,13 @@ struct Autoreg_coefs: public Kernel {
 	const char* name() const { return "AC"; }
 
 	void act() {
-		upstream(the_server(), new Yule_walker<T>(acf_model, acf_size, a, b));
+		upstream(local_server(), new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
 	void react(factory::Kernel*) {
 		state++;
-		if (state == 1) upstream(the_server(), new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
-		else commit(the_server());
+		if (state == 1) upstream(local_server(), new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+		else commit(local_server());
 	}
 
 private:
@@ -746,9 +746,9 @@ public:
 		generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
 		if (left_neighbour != nullptr) {
 //			cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
-			downstream(the_server(), new Note(), left_neighbour);
+			downstream(local_server(), new Note(), left_neighbour);
 		}
-		downstream(the_server(), this, this);
+		downstream(local_server(), this, this);
 	}
 
 	void react(factory::Kernel*) {
@@ -758,9 +758,9 @@ public:
 //			cout << "release part = " << part.part() << endl;
 			weave(phi, fsize, zeta2, zsize2, part2, interval);
 			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
-//			commit(the_server());
-//			commit(the_io_server() == nullptr ? the_server() : the_io_server());
-			iostream(the_server(), this, parent());
+//			commit(local_server());
+//			commit(the_io_server() == nullptr ? local_server() : the_io_server());
+			downstream(local_server(), this, parent());
 		}
 	}
 
@@ -807,7 +807,6 @@ struct Wave_surface_generator: public Kernel {
 	bool is_profiled() const { return false; }
 
 	void act() {
-		log_user_event("G_0");
 		std::size_t num_parts = grid.num_parts();
 		std::stringstream tmp;
 		tmp << "Num. of parts = " << num_parts << std::endl;
@@ -827,20 +826,17 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			upstream(the_server(), generators[i]);
+			upstream(local_server(), generators[i]);
 		}
 		delete[] generators;
 	}
 
 	void react(factory::Kernel* child) {
-		if (count == 0) log_user_event("W_0");
 		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
 		write(generator->get_part());
 //		cout << "Completed " << count+1 << " of " << grid.num_parts() << endl;
 		if (++count == grid.num_parts()) {
-			log_user_event("W_1");
-			log_user_event("G_1");
-			commit(the_server());
+			commit(local_server());
 		}
 	}
 

@@ -19,7 +19,6 @@ std::valarray<T> extract_surface(const std::valarray<T>& z, const size3& zsize, 
 	return s;
 }
 
-Timer my_timer;
 
 template<class T>
 class Autoreg_model: public Kernel {
@@ -63,7 +62,7 @@ public:
 		write_log("Interval:"   , interval);
 		write_log("Size factor:", size_factor());
 
-		upstream(the_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
+		upstream(local_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
 //		do_it();
 	}
 
@@ -169,7 +168,7 @@ private:
 			interpolation_coefs<T>(nit_x0, nit_x1, INTERPOLATION_NODES, interp_coefs, cdf);
 			transform_acf<T>(interp_coefs, MAX_NIT_COEFS, acf_model);
 		}
-		upstream(the_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
+		upstream(local_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
 	}
 
 	size3 zsize;
@@ -214,27 +213,25 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-		upstream(the_server(), new Variance_WN<T>(ar_coefs, acf_model));
+		upstream(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
 	}
 	typedef Non_uniform_grid Grid;
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->sum;
 		std::clog << "var_acf=" << var_acf(acf_model) << std::endl;
 		std::clog << "var_wn=" << var_wn << std::endl;
-		my_timer.seconds();
 		std::size_t max_num_parts = zsize[0] / part_size();
 		std::size_t modulo = homogeneous ? 1 : 2;
 		Grid grid_2(zsize2[0], max_num_parts, modulo);
 		Grid grid(zsize[0], max_num_parts, modulo);
-		upstream(the_server(), new Wave_surface_generator<T, Grid>(ar_coefs, fsize, var_wn,
+		upstream(local_server(), new Wave_surface_generator<T, Grid>(ar_coefs, fsize, var_wn,
 						                             zsize2, interval, zsize, zdelta, grid, grid_2));
 	}
 	if (typeid(*child) == typeid(Wave_surface_generator<T, Grid>)) {
-		write_log("Generation time:", my_timer.seconds());
 		const std::valarray<T>& water_surface
 			= reinterpret_cast<Wave_surface_generator<T, Grid>*>(child)->get_water_surface();
-		commit(the_server());
-//		upstream(the_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
+		commit(local_server());
+//		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);
 //		}
@@ -294,7 +291,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			}
 		}
 
-		commit(the_server());
+		commit(local_server());
 	}
 
 }

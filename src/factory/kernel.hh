@@ -9,7 +9,6 @@
 #include <sysx/process.hh>
 #include <sysx/packetstream.hh>
 
-#ifndef FACTORY_CONFIGURATION
 namespace factory {
 
 	namespace components {
@@ -257,6 +256,7 @@ namespace factory {
 			typedef stdx::log<Principal> this_log;
 //			typedef Managed_object<Server<Principal>> server_type;
 			typedef typename Config::server server_type;
+			typedef typename Config::factory factory_type;
 
 			const Principal*
 			principal() const {
@@ -310,10 +310,25 @@ namespace factory {
 					: size_t(_principal) / alignof(size_t);
 			}
 
-			bool moves_upstream() const { return this->result() == Result::UNDEFINED && !_principal && _parent; }
-			bool moves_downstream() const { return this->result() != Result::UNDEFINED && _principal && _parent; }
-			bool moves_somewhere() const { return this->result() == Result::UNDEFINED && _principal && _parent; }
-			bool moves_everywhere() const { return !_principal && !_parent; }
+			bool
+			moves_upstream() const noexcept {
+				return this->result() == Result::UNDEFINED && !_principal && _parent;
+			}
+
+			bool
+			moves_downstream() const noexcept {
+				return this->result() != Result::UNDEFINED && _principal && _parent;
+			}
+
+			bool
+			moves_somewhere() const noexcept {
+				return this->result() == Result::UNDEFINED && _principal && _parent;
+			}
+
+			bool
+			moves_everywhere() const noexcept {
+				return !_principal && !_parent;
+			}
 
 			void
 			read(sysx::packetstream& in) override {
@@ -352,7 +367,12 @@ namespace factory {
 			act() {}
 
 			virtual void
-			react(server_type&, Principal*) {
+			react(server_type&, Principal* child) {
+				react(child);
+			}
+
+			virtual void
+			react(Principal*) {
 				std::stringstream msg;
 				msg << "Empty react in ";
 				const Type<Principal> tp = type();
@@ -377,6 +397,7 @@ namespace factory {
 
 			void
 			run_act(server_type& this_server) {
+				_server = &this_server;
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
@@ -426,7 +447,7 @@ namespace factory {
 					<< (rhs.moves_upstream()   ? 'u' : '-')
 					<< (rhs.moves_downstream() ? 'd' : '-')
 					<< (rhs.moves_somewhere()  ? 's' : '-')
-					<< (rhs.moves_everywhere()  ? 'b' : '-')
+					<< (rhs.moves_everywhere() ? 'b' : '-')
 					<< ",tp=" << rhs.type()
 					<< ",id=" << rhs.id()
 					<< ",src=" << rhs.from()
@@ -439,6 +460,17 @@ namespace factory {
 			}
 
 		public:
+
+			factory_type*
+			factory() noexcept {
+				return _server->factory();
+			}
+
+			server_type*
+			local_server() noexcept {
+				return _server->local_server();
+			}
+
 			template<class S>
 			void
 			upstream(S* this_server, Principal* a) {
@@ -485,6 +517,7 @@ namespace factory {
 			}
 
 		private:
+
 			union {
 				Principal* _parent = nullptr;
 				Id _parent_id;
@@ -493,6 +526,8 @@ namespace factory {
 				Principal* _principal = nullptr;
 				Id _principal_id;
 			};
+			server_type* _server = nullptr;
+
 		};
 
 	}
@@ -511,59 +546,5 @@ namespace stdx {
 	};
 
 }
-#else
-/*
-namespace factory {
-
-	class Notification: public Kernel {};
-
-	template<class F, class G, class I>
-	class Map: public Kernel {
-	public:
-		Map(F f_, G g_, I a_, I b_, I bs_=1):
-			f(f_), g(g_), a(a_), b(b_), bs(bs_), n(0), m(calc_m()) {}
-
-		bool is_profiled() const { return false; }
-
-		struct Worker: public factory::Kernel {
-			Worker(F& f_, I a_, I b_):
-				f(f_), a(a_), b(b_) {}
-			void act() {
-				for (I i=a; i<b; ++i) f(i);
-				commit(the_server());
-			}
-			F& f;
-			I a, b;
-		};
-
-		void act() {
-			for (I i=a; i<b; i+=bs) upstream(the_server(), new Worker(f, i, std::min(i+bs, b)));
-		}
-
-		void react(factory::Kernel* kernel) {
-			Worker* w = dynamic_cast<Worker*>(kernel);
-			I x1 = w->a, x2 = w->b;
-			for (I i=x1; i<x2; ++i) g(i);
-			if (++n == m) commit(the_server());
-		}
-
-	private:
-		I calc_m() const { return (b-a)/bs + ((b-a)%bs == 0 ? 0 : 1); }
-
-	private:
-		F f;
-		G g;
-		I a, b, bs, n, m;
-	};
-
-
-	template<class F, class G, class I>
-	Map<F, G, I>* mapreduce(F f, G g, I a, I b, I bs=1) {
-		return new Map<F, G, I>(f, g, a, b, bs);
-	}
-
-}
-*/
-#endif
 
 #endif // FACTORY_KERNEL_HH

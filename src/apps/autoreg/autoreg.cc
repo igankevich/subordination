@@ -39,6 +39,7 @@ namespace factory {
 using namespace factory;
 using namespace factory::this_config;
 
+#include "mapreduce.hh"
 #include "mersenne.hh"
 #include "ssysv.hh"
 #include "domain.hh"
@@ -51,37 +52,18 @@ using namespace factory::this_config;
 using namespace autoreg;
 
 
-typedef float T;
-typedef REAL_TYPE Real;
+typedef float Real;
 
 
-class Autoreg_app: public Kernel {
-public:
+struct Autoreg_app: public Kernel {
 
-	Autoreg_app(int argc, char** argv):
-		model_filename("autoreg.model"),
-		homogeneous(true)
-	{
-		std::stringstream ln;
-		for (int i=0; i<argc; i++)
-			ln << argv[i] << ' ';
-		cmdline(ln);
-	}
-
-	bool is_profiled() const { return false; }
-
-	const char* name() const { return "A_1"; }
-
-	void cmdline(istream& in) {
-		std::string arg;
-		while (!(in >> arg).eof()) {
-			if (arg == "--homogeneous-model") homogeneous = true;
-			else if (arg == "--heterogeneous-model") homogeneous = false;
-		}
-	}
+	template<class XXX>
+	Autoreg_app(XXX&, int, char**):
+	model_filename("autoreg.model")
+	{}
 
 	void act() {
-		Autoreg_model<Real>* model = new Autoreg_model<Real>(homogeneous);
+		Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
 		try {
 			std::ifstream cfg(model_filename.c_str());
 			cfg >> *model;
@@ -89,89 +71,21 @@ public:
 			std::cerr << e.what();
 			exit(1);
 		}
-		upstream(the_server(), model);
+		upstream(local_server(), model);
 	}
 
 	void react(factory::Kernel*) {
-		commit(the_server());
+		commit(local_server());
 	}
 
 private:
+
 	std::string model_filename;
-	bool homogeneous;
+
 };
 
-Server* heterogeneous_computer() {
-	std::clog << std::setw(20) << std::left << "Case: heterogeneous_computer" << std::endl;
-	typedef Stochastic_round_robin U;
-	typedef Simple_hashing D;
-	std::size_t cpu_id = 0;
-	return new Iserver<U, D>({
-		new Iserver<U, D>(server_array<U>(std::max(1, total_threads()-1), cpu_id, total_vthreads())),
-		new Rserver<U>(cpu_id)
-	});
-	cpu_id += total_vthreads();
-}
 
-Server* tetris(std::size_t cpu_id = 0) {
-	std::clog << std::setw(20) << std::left << "Case: tetris" << std::endl;
-	typedef Tetris U;
-	typedef Simple_hashing D;
-	return new Iserver<U, D>(server_array<U>(total_threads(), cpu_id, total_vthreads()));
-}
-
-Server* homogeneous_computer(std::size_t cpu_id = 0) {
-	std::clog << std::setw(20) << std::left << "Case: homogeneous_computer" << std::endl;
-	typedef Stochastic_round_robin U;
-	typedef Simple_hashing D;
-	return new Iserver<U, D>(server_array<U>(total_threads(), cpu_id, total_vthreads()));
-}
-
-Server* round_robin(std::size_t cpu_id = 0) {
-	std::clog << std::setw(20) << std::left << "Case: homogeneous_computer (Round-robin)" << std::endl;
-	typedef Round_robin U;
-	typedef Simple_hashing D;
-	return new Iserver<U, D>(server_array<U>(total_threads(), cpu_id, total_vthreads()));
-}
-
-int main(int argc, char** argv) {
-	log_user_event("");
-
-	std::stringstream cmdline;
-	for (int i=0; i<argc; i++)
-		cmdline << argv[i] << ' ';
-
-	Server* root = nullptr;
-	Server* downstream = nullptr;
-	Server* io = nullptr;
-	std::string arg;
-	while (!(cmdline >> arg).eof()) {
-		if (arg == "--homogeneous-computer") {
-			root = homogeneous_computer();
-			downstream = homogeneous_computer();
-			io = new Rserver<Round_robin>(total_threads()-1);
-		} else if (arg == "--heterogeneous-computer") {
-			root = heterogeneous_computer();
-		} else if (arg == "--tetris") {
-			root = tetris();
-//			downstream = tetris();
-			io = new Rserver<Round_robin>(total_threads()-1);
-		} else if (arg == "--round-robin") {
-			root = round_robin();
-			io = new Rserver<Round_robin>(total_threads()-1);
-		}
-		cmdline >> std::ws;
-	}
-
-	if (root == nullptr) {
-		root = round_robin();
-		downstream = round_robin();
-		io = new Rserver<Round_robin>(total_threads()-1);
-	}
-	construct(root, downstream, io);
-	std::clog << *the_server() << std::endl;
-	the_server()->send(new Autoreg_app(argc, argv));
-	the_server()->wait();
-	log_user_event("");
-	return 0;
+int
+main(int argc, char** argv) {
+	return factory_main<Autoreg_app,config>(argc, argv);
 }

@@ -8,6 +8,6 @@ executable(
 	sources: 'autoreg.cc',
 	include_directories: [srcdir],
 	dependencies: [libpthread, librt, libgsl, liblapack, libblas],
-	link_args: ['-rdynamic', '-fopenmp'],
+	link_args: ['-rdynamic', '-fopenmp', '-lgfortran'],
 	cpp_args: '-fopenmp'
 )
