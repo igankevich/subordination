@@ -820,7 +820,7 @@ struct Wave_surface_generator: public Kernel {
 			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, zeta, zeta2, grid_2);
 			sum += part.part_size();
 		}
-		std::clog << tmp.str() << std::flush;
+		std::clog << tmp.rdbuf() << std::flush;
 		std::clog << "Checksum: " << sum - zsize[0] << std::endl;
 		for (std::size_t i=1; i<num_parts; ++i) {
 			generators[i]->set_neighbour(generators[i-1]);

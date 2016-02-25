@@ -471,6 +471,11 @@ namespace factory {
 				return _server->local_server();
 			}
 
+			server_type*
+			remote_server() noexcept {
+				return _server->remote_server();
+			}
+
 			template<class S>
 			void
 			upstream(S* this_server, Principal* a) {
