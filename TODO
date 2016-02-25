@@ -52,3 +52,4 @@ Add thread names to write to logs. Probably store them in thread pool.
 Shred environment on startup (no whitelist).
 Close fds other than 0, 1, 2 on startup (use getrlimit to determine maximum count and poll to process them in batches).
 Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
+Get rid of shutdown function and Shutdown kernel. Use stop() instead.
