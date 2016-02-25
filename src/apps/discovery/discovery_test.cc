@@ -560,7 +560,8 @@ int main(int argc, char* argv[]) {
 	const std::string role_slave = "slave";
 	sysx::port_type discovery_port = 10000;
 	uint32_t num_pings = 10;
-	uint32_t kill_every = std::numeric_limits<uint32_t>::max();
+	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
+	uint32_t kill_every = do_not_kill;
 
 	typedef stdx::log<test_discovery> this_log;
 	int retval = 0;
@@ -626,7 +627,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		this_log() << "Forked " << procs << std::endl;
-		if (kill_every < std::numeric_limits<uint32_t>::max()) {
+		if (kill_every != do_not_kill) {
 			using namespace std::chrono;
 			std::this_thread::sleep_for(seconds(3));
 			this_log() << "Start killing spree" << std::endl;
@@ -641,7 +642,7 @@ int main(int argc, char* argv[]) {
 				first->signal(SIGKILL);
 				++first;
 			}
-			this_log() << "Finished killing spree" << std::endl;
+			this_log() << "Finish killing spree" << std::endl;
 		}
 		retval = procs.wait();
 
