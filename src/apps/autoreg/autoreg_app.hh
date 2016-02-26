@@ -34,9 +34,13 @@ typedef float Real;
 
 struct Autoreg_app: public Kernel {
 
+	Autoreg_app():
+	model_filename("autoreg.model")
+	{}
+
 	template<class XXX>
 	Autoreg_app(XXX&, int, char**):
-	model_filename("autoreg.model")
+	Autoreg_app()
 	{}
 
 	void act() {

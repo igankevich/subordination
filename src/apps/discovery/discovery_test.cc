@@ -494,6 +494,7 @@ struct Main: public Kernel {
 		parse_cmdline_args(this_server);
 		this_server.factory()->types().register_type(negotiator_type::static_type());
 		this_server.factory()->types().register_type(Ping::static_type());
+		this_server.factory()->types().register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -511,6 +512,7 @@ struct Main: public Kernel {
 
 			if (_network.address() == traits_type::localhost()) {
 				schedule_pingpong_after(std::chrono::seconds(0), this_server);
+				schedule_autoreg_app(this_server);
 			}
 
 			schedule_shutdown_after(std::chrono::seconds(20), master, this_server);
@@ -534,6 +536,13 @@ private:
 		shutdowner->after(delay);
 		shutdowner->parent(this);
 		this_server.timer_server()->send(shutdowner);
+	}
+
+	void
+	schedule_autoreg_app(Server& this_server) {
+		Autoreg_app* app = new Autoreg_app;
+		app->after(std::chrono::seconds(5));
+		this_server.timer_server()->send(app);
 	}
 
 	void

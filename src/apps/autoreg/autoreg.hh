@@ -79,8 +79,9 @@ private:
 
 };
 
-class Uniform_grid {
-public:
+struct Uniform_grid {
+
+	Uniform_grid() = default;
 
 	Uniform_grid(uint32_t sz, uint32_t npts):
 		size(sz), nparts(npts) {}
@@ -768,8 +769,11 @@ void trim_zeta(const std::valarray<T>& zeta2,
 namespace autoreg {
 
 template<class T, class Grid>
-class Generator1: public Kernel {
-public:
+struct Generator1: public Kernel, public Identifiable_tag {
+
+	typedef stdx::log<Generator1> this_log;
+
+	Generator1() = default;
 
 	Generator1(Surface_part part_, Surface_part part2_,
 		const std::valarray<T>& phi_,
@@ -796,6 +800,7 @@ public:
 	const Surface_part& get_part() const { return part; }
 
 	void act() {
+		this_log() << "running" << std::endl;
 		std::valarray<T> zeta(zsize);
 		std::valarray<T> zeta2(zsize2);
 //		cout << "compute part = " << part.part() << endl;
@@ -872,6 +877,24 @@ public:
 		in >> grid_2;
 	}
 
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			10001,
+			"Generator",
+			[] (sysx::packetstream& in) {
+				Generator1* k = new Generator1;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
 private:
 
 	struct Note: public factory::Kernel {};
@@ -890,7 +913,7 @@ private:
 };
 
 template<class T, class Grid>
-struct Wave_surface_generator: public Kernel {
+struct Wave_surface_generator: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Wave_surface_generator> this_log;
 
@@ -926,7 +949,7 @@ struct Wave_surface_generator: public Kernel {
 			Surface_part part2 = grid_2.part(i);
 //	    	Surface_part part(zsize, i, num_parts), part2(zsize2, i, num_parts);
 			tmp << "Part " << i << ": " << part << endl;
-			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
+			generators[i] = factory()->template new_kernel<Generator1<T, Grid>>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
 			sum += part.part_size();
 		}
 		std::clog << tmp.rdbuf() << std::flush;
@@ -941,6 +964,7 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void react(factory::Kernel* child) {
+		this_log() << "generator returned from " << child->from() << std::endl;
 //		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
 //		write(generator->get_part());
 		this_log() << "Completed " << count+1 << " of " << grid.num_parts() << std::endl;
