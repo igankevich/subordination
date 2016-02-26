@@ -215,15 +215,15 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
 		upstream(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
 	}
-	typedef Non_uniform_grid Grid;
+	typedef Uniform_grid Grid;
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->sum;
 		std::clog << "var_acf=" << var_acf(acf_model) << std::endl;
 		std::clog << "var_wn=" << var_wn << std::endl;
 		std::size_t max_num_parts = zsize[0] / part_size();
-		std::size_t modulo = homogeneous ? 1 : 2;
-		Grid grid_2(zsize2[0], max_num_parts, modulo);
-		Grid grid(zsize[0], max_num_parts, modulo);
+//		std::size_t modulo = homogeneous ? 1 : 2;
+		Grid grid_2(zsize2[0], max_num_parts);
+		Grid grid(zsize[0], max_num_parts);
 		upstream(local_server(), new Wave_surface_generator<T, Grid>(ar_coefs, fsize, var_wn,
 						                             zsize2, interval, zsize, zdelta, grid, grid_2));
 	}

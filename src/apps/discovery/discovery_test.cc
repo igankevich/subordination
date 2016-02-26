@@ -57,6 +57,8 @@ namespace factory {
 using namespace factory;
 using namespace factory::this_config;
 
+#include "apps/autoreg/autoreg_app.hh"
+
 template<class Address>
 struct Delayed_shutdown: public Kernel {
 

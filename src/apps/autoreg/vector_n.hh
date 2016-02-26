@@ -84,6 +84,19 @@ public:
 
 	template <class A, size_t m> friend ostream& operator<<(ostream &out, const Vector<A, m> &v);
 	template <class A, size_t m> friend istream& operator>>(istream &in, Vector<A, m> &v);
+
+	friend sysx::packetstream&
+	operator<<(sysx::packetstream& out, const Vector& rhs) {
+		for (size_t i=0; i<n; ++i) out << rhs.coord[i];
+		return out;
+	}
+
+	friend sysx::packetstream&
+	operator>>(sysx::packetstream& in, Vector& rhs) {
+		for (size_t i=0; i<n; ++i) in >> rhs.coord[i];
+		return in;
+	}
+
 private:
 	template <class BinOp> inline Vector<T, n> trans(const Vector<T, n> &v, BinOp op) const;
 	template <class UnOp> inline void trans(UnOp op) { std::transform(coord, coord+n, coord, op); }

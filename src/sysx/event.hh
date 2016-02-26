@@ -474,6 +474,7 @@ namespace sysx {
 			assert(ordinary_end() == _events.end());
 			assert(pipes_begin() <= pipes_end());
 			assert(special_begin() <= special_end());
+			// TODO 2016-02-26 sometimes it fails on the following line
 			assert(ordinary_begin() <= ordinary_end());
 			assert(special_end() - special_begin() == static_cast<std::make_signed<size_type>::type>(_nspecials));
 			assert(pipes_end() - pipes_begin() == NPIPES);

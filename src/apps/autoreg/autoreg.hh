@@ -3,6 +3,32 @@
 
 #include <stdx/log.hh>
 
+namespace std {
+
+	template<class T>
+	sysx::packetstream&
+	operator<<(sysx::packetstream& out, const std::valarray<T>& rhs) {
+		out << uint32_t(rhs.size());
+		for (size_t i=0; i<rhs.size(); ++i) {
+			out << rhs[i];
+		}
+		return out;
+	}
+
+	template<class T>
+	sysx::packetstream&
+	operator>>(sysx::packetstream& in, std::valarray<T>& rhs) {
+		uint32_t n = 0;
+		in >> n;
+		rhs.resize(n);
+		for (size_t i=0; i<rhs.size(); ++i) {
+			in >> rhs[i];
+		}
+		return in;
+	}
+
+}
+
 namespace autoreg {
 
 template<class T>
@@ -19,13 +45,13 @@ class Surface_part {
 public:
     Surface_part(): part_(0), t0_(0), t1_(0) {}
 
-	Surface_part(std::size_t i, std::size_t t0__, std::size_t t1__):
+	Surface_part(uint32_t i, uint32_t t0__, uint32_t t1__):
 		part_(i), t0_(t0__), t1_(t1__) {}
 
-    std::size_t part()      const { return part_; }
-    std::size_t t0()        const { return t0_; }
-    std::size_t t1()        const { return t1_; }
-    std::size_t part_size() const { return t1()-t0(); }
+    uint32_t part()      const { return part_; }
+    uint32_t t0()        const { return t0_; }
+    uint32_t t1()        const { return t1_; }
+    uint32_t part_size() const { return t1()-t0(); }
 
     friend ostream& operator<<(ostream& out, const Surface_part& p) {
         out << "part=" << p.part() << ", ";
@@ -35,29 +61,54 @@ public:
         return out;
     }
 
+	friend sysx::packetstream&
+	operator<<(sysx::packetstream& out, const Surface_part& rhs) {
+		return out << rhs.part_ << rhs.t0_ << rhs.t1_;
+	}
+
+	friend sysx::packetstream&
+	operator>>(sysx::packetstream& in, Surface_part& rhs) {
+		return in >> rhs.part_ >> rhs.t0_ >> rhs.t1_;
+	}
+
 private:
-    std::size_t part_;
-    std::size_t t0_;
-    std::size_t t1_;
+
+    uint32_t part_;
+    uint32_t t0_;
+    uint32_t t1_;
+
 };
 
 class Uniform_grid {
 public:
 
-	Uniform_grid(std::size_t sz, std::size_t npts):
+	Uniform_grid(uint32_t sz, uint32_t npts):
 		size(sz), nparts(npts) {}
 
-	Surface_part part(std::size_t i) const {
+	Surface_part part(uint32_t i) const {
 		return Surface_part(i, i*part_size(),
 			(i == num_parts() - 1) ? size : (i+1)*part_size());
 	}
 
-	std::size_t num_parts() const { return nparts; }
+	uint32_t num_parts() const { return nparts; }
+
+	friend sysx::packetstream&
+	operator<<(sysx::packetstream& stream, const Uniform_grid& rhs) {
+		return stream << rhs.size << rhs.nparts;
+	}
+
+	friend sysx::packetstream&
+	operator>>(sysx::packetstream& stream, Uniform_grid& rhs) {
+		return stream >> rhs.size >> rhs.nparts;
+	}
 
 private:
-	std::size_t part_size() const { return size / num_parts(); }
-    std::size_t size;
-	std::size_t nparts;
+
+	uint32_t part_size() const { return size / num_parts(); }
+
+    uint32_t size;
+	uint32_t nparts;
+
 };
 
 class Non_uniform_grid {
@@ -101,11 +152,15 @@ struct Variance_WN: public Kernel {
 	const char* name() const { return "VWN"; }
 
 	void act() {
-		int bs = 64;
+//		int bs = 64;
 		int n = ar_coefs.size();
-		upstream(local_server(), mapreduce([](int) {}, [this](int i){
+		for (int i=0; i<n; ++i) {
 			sum += ar_coefs[i]*acf[i];
-		}, 0, n, bs));
+		}
+		downstream(local_server(), this, this);
+//		upstream(local_server(), mapreduce([](int) {}, [this](int i){
+//			sum += ar_coefs[i]*acf[i];
+//		}, 0, n, bs));
 
 	}
 
@@ -723,13 +778,11 @@ public:
 	  const size3& zsize2_,
 	  const std::size_t interval_,
 	  const size3& zsize_,
-	  std::valarray<T>& zeta_,
-	  std::valarray<T>& zeta2_,
 	  const Grid& grid_2_
 	): part(part_), part2(part2_),
 	phi(phi_), fsize(fsize_), var_eps(var_eps_),
 	zsize2(zsize2_), interval(interval_), zsize(zsize_),
-	zeta(zeta_), zeta2(zeta2_), grid_2(grid_2_), left_neighbour(nullptr), count(0)
+	grid_2(grid_2_), left_neighbour(nullptr), count(0)
 	{}
 
 	~Generator1() {}
@@ -743,6 +796,8 @@ public:
 	const Surface_part& get_part() const { return part; }
 
 	void act() {
+		std::valarray<T> zeta(zsize);
+		std::valarray<T> zeta2(zsize2);
 //		cout << "compute part = " << part.part() << endl;
 		generate_white_noise(zeta2, zsize2, var_eps, part2);
 		generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
@@ -754,6 +809,8 @@ public:
 			}
 			downstream(local_server(), this, this);
 		} else {
+			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
+			write_part_to_file(zeta);
 			commit(remote_server());
 		}
 	}
@@ -761,15 +818,58 @@ public:
 	void react(factory::Kernel*) {
 		count++;
 		// received two kernels or last part
-		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
-//			cout << "release part = " << part.part() << endl;
-			weave(phi, fsize, zeta2, zsize2, part2, interval);
-			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
-//			commit(local_server());
-//			commit(the_io_server() == nullptr ? local_server() : the_io_server());
-//			downstream(local_server(), this, parent());
-			commit(remote_server());
+//		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
+////			cout << "release part = " << part.part() << endl;
+//			weave(phi, fsize, zeta2, zsize2, part2, interval);
+//			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
+////			commit(local_server());
+////			commit(the_io_server() == nullptr ? local_server() : the_io_server());
+////			downstream(local_server(), this, parent());
+//			commit(remote_server());
+//		}
+	}
+
+	void
+	write_part_to_file(const std::valarray<T>& zeta) {
+		std::stringstream filename;
+		filename << "zeta-" << std::setw(2) << std::setfill('0') << part.part();
+		std::ofstream out(filename.str());
+		const Index<3> idz(zsize);
+		const int t0 = part.t0();
+		const int t1 = part.t1();
+		const int x1 = zsize[1];
+		const int y1 = zsize[2];
+	    for (int t=t0; t<t1; t++) {
+	        for (int x=0; x<x1; x++) {
+	            for (int y=0; y<y1; y++) {
+//					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
+					out << zeta[idz(t, x, y)] << ' ';
+				}
+				out << '\n';
+			}
 		}
+	}
+
+	void
+	write(sysx::packetstream& out) override {
+		out << part << part2;
+		out << phi << fsize;
+		out << var_eps;
+		out << zsize2;
+		out << interval;
+		out << zsize;
+		out << grid_2;
+	}
+
+	void
+	read(sysx::packetstream& in) override {
+		in >> part >> part2;
+		in >> phi >> fsize;
+		in >> var_eps;
+		in >> zsize2;
+		in >> interval;
+		in >> zsize;
+		in >> grid_2;
 	}
 
 private:
@@ -777,17 +877,15 @@ private:
 	struct Note: public factory::Kernel {};
 
 	Surface_part part, part2;
-	const std::valarray<T>& phi;
-	const size3& fsize;
-	const T var_eps;
-	const size3& zsize2;
-	const std::size_t interval;
-	const size3& zsize;
-	std::valarray<T>& zeta;
-	std::valarray<T>& zeta2;
-	const Grid& grid_2;
+	std::valarray<T> phi;
+	size3 fsize;
+	T var_eps;
+	size3 zsize2;
+	uint32_t interval;
+	size3 zsize;
+	Grid grid_2;
 	Generator1<T, Grid>* left_neighbour;
-	std::size_t count;
+	uint32_t count;
 	const bool _noweave = true;
 };
 
@@ -828,7 +926,7 @@ struct Wave_surface_generator: public Kernel {
 			Surface_part part2 = grid_2.part(i);
 //	    	Surface_part part(zsize, i, num_parts), part2(zsize2, i, num_parts);
 			tmp << "Part " << i << ": " << part << endl;
-			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, zeta, zeta2, grid_2);
+			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
 			sum += part.part_size();
 		}
 		std::clog << tmp.rdbuf() << std::flush;
@@ -843,8 +941,8 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void react(factory::Kernel* child) {
-		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
-		write(generator->get_part());
+//		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
+//		write(generator->get_part());
 		this_log() << "Completed " << count+1 << " of " << grid.num_parts() << std::endl;
 		if (++count == grid.num_parts()) {
 			commit(local_server());
@@ -871,10 +969,10 @@ struct Wave_surface_generator: public Kernel {
 	    for (int t=t0; t<t1; t++) {
 	        for (int x=0; x<x1; x++) {
 	            for (int y=0; y<y1; y++) {
-//					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
-					out2 << zeta[idz(t, x, y)] << ' ';
+					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
+//					out2 << zeta[idz(t, x, y)] << ' ';
 				}
-				out2 << '\n';
+//				out2 << '\n';
 			}
 		}
 	}
