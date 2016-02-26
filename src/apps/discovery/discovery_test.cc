@@ -511,7 +511,7 @@ struct Main: public Kernel {
 			this_server.timer_server()->send(master);
 
 			if (_network.address() == traits_type::localhost()) {
-				schedule_pingpong_after(std::chrono::seconds(0), this_server);
+//				schedule_pingpong_after(std::chrono::seconds(0), this_server);
 				schedule_autoreg_app(this_server);
 			}
 
@@ -640,7 +640,6 @@ int main(int argc, char* argv[]) {
 		this_log() << "Forked " << procs << std::endl;
 		if (kill_every != do_not_kill) {
 			using namespace std::chrono;
-			std::this_thread::sleep_for(seconds(3));
 			this_log() << "Start killing spree" << std::endl;
 			const auto tick = seconds(kill_every);
 			auto first = procs.begin();

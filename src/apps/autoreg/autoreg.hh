@@ -857,6 +857,7 @@ struct Generator1: public Kernel, public Identifiable_tag {
 
 	void
 	write(sysx::packetstream& out) override {
+		Kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
 		out << var_eps;
@@ -868,6 +869,7 @@ struct Generator1: public Kernel, public Identifiable_tag {
 
 	void
 	read(sysx::packetstream& in) override {
+		Kernel::read(in);
 		in >> part >> part2;
 		in >> phi >> fsize;
 		in >> var_eps;

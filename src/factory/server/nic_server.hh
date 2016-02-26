@@ -226,6 +226,8 @@ namespace factory {
 			void recover_kernel(kernel_type* k) {
 				if (k->moves_everywhere()) {
 					delete k;
+				} else if (k->moves_upstream()) {
+					this->parent()->send(k);
 				} else {
 					k->from(k->to());
 					k->result(Result::ENDPOINT_NOT_CONNECTED);
