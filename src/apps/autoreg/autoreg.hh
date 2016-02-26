@@ -1,6 +1,8 @@
 #ifndef APPS_AUTOREG_AUTOREG_HH
 #define APPS_AUTOREG_AUTOREG_HH
 
+#include <stdx/log.hh>
+
 namespace autoreg {
 
 template<class T>
@@ -373,9 +375,9 @@ struct Solve_Yule_Walker: public Kernel {
 			msg << "Process is not stationary: |f(i)| > 1\n";
 //			int n = ar_coefs.size();
 			Index<3> idx(_acf_size);
-			for (int i=0; i<_acf_size[0]; ++i)
-				for (int j=0; j<_acf_size[1]; ++j)
-					for (int k=0; k<_acf_size[2]; ++k)
+			for (size_t i=0; i<_acf_size[0]; ++i)
+				for (size_t j=0; j<_acf_size[1]; ++j)
+					for (size_t k=0; k<_acf_size[2]; ++k)
 						if (std::abs(ar_coefs[idx(i, j, k)]) > T(1))
 							msg << "ar_coefs[" << i << ',' << j << ',' << k << "] = " << ar_coefs[idx(i, j, k)] << '\n';
 			throw std::runtime_error(msg.str());
@@ -744,11 +746,16 @@ public:
 //		cout << "compute part = " << part.part() << endl;
 		generate_white_noise(zeta2, zsize2, var_eps, part2);
 		generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
-		if (left_neighbour != nullptr) {
-//			cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
-			downstream(local_server(), new Note(), left_neighbour);
+		// TODO 2016-02-26 weaving is disabled for benchmarks
+		if (not _noweave) {
+			if (left_neighbour != nullptr) {
+//				cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
+				downstream(local_server(), new Note(), left_neighbour);
+			}
+			downstream(local_server(), this, this);
+		} else {
+			commit(remote_server());
 		}
-		downstream(local_server(), this, this);
 	}
 
 	void react(factory::Kernel*) {
@@ -760,7 +767,8 @@ public:
 			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
 //			commit(local_server());
 //			commit(the_io_server() == nullptr ? local_server() : the_io_server());
-			downstream(local_server(), this, parent());
+//			downstream(local_server(), this, parent());
+			commit(remote_server());
 		}
 	}
 
@@ -780,10 +788,13 @@ private:
 	const Grid& grid_2;
 	Generator1<T, Grid>* left_neighbour;
 	std::size_t count;
+	const bool _noweave = true;
 };
 
 template<class T, class Grid>
 struct Wave_surface_generator: public Kernel {
+
+	typedef stdx::log<Wave_surface_generator> this_log;
 
 	const char* name() const { return "G_0"; }
 
@@ -826,7 +837,7 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			upstream(local_server(), generators[i]);
+			upstream(remote_server(), generators[i]);
 		}
 		delete[] generators;
 	}
@@ -834,7 +845,7 @@ struct Wave_surface_generator: public Kernel {
 	void react(factory::Kernel* child) {
 		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
 		write(generator->get_part());
-//		cout << "Completed " << count+1 << " of " << grid.num_parts() << endl;
+		this_log() << "Completed " << count+1 << " of " << grid.num_parts() << std::endl;
 		if (++count == grid.num_parts()) {
 			commit(local_server());
 		}
@@ -846,21 +857,21 @@ struct Wave_surface_generator: public Kernel {
 		const int t1 = part.t1();
 		const int x1 = zsize[1];
 		const int y1 = zsize[2];
-		std::ofstream slice("zeta_slice.csv");
-		for (int t=t0; t<t1; t++) {
-			for (int x=0; x<x1; x++) {
-				for (int y=0; y<y1; y++) {
-					slice << x/(x1-1.) << ',';
-					slice << y/(y1-1.) << ',';
-					slice << t << ',';
-					slice << zeta[idz(t, x, y)] << '\n';
-				}
-			}
-		}
+//		std::ofstream slice("zeta_slice.csv");
+//		for (int t=t0; t<t1; t++) {
+//			for (int x=0; x<x1; x++) {
+//				for (int y=0; y<y1; y++) {
+//					slice << x/(x1-1.) << ',';
+//					slice << y/(y1-1.) << ',';
+//					slice << t << ',';
+//					slice << zeta[idz(t, x, y)] << '\n';
+//				}
+//			}
+//		}
 	    for (int t=t0; t<t1; t++) {
 	        for (int x=0; x<x1; x++) {
 	            for (int y=0; y<y1; y++) {
-					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
+//					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
 					out2 << zeta[idz(t, x, y)] << ' ';
 				}
 				out2 << '\n';

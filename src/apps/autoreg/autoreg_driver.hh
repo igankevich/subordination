@@ -78,8 +78,8 @@ public:
 private:
 
 	T   size_factor() const { return T(zsize2[0]) / T(zsize[0]); }
-//	int part_size()       const { return floor(2 * fsize[0]); }
-	int part_size()       const { return zsize[0]; }
+	int part_size()       const { return floor(2 * fsize[0]); }
+//	int part_size()       const { return zsize[0]; }
 
 	void read_acf(std::istream& in) {
 		in >> acf_size;
@@ -228,8 +228,8 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 						                             zsize2, interval, zsize, zdelta, grid, grid_2));
 	}
 	if (typeid(*child) == typeid(Wave_surface_generator<T, Grid>)) {
-		const std::valarray<T>& water_surface
-			= reinterpret_cast<Wave_surface_generator<T, Grid>*>(child)->get_water_surface();
+//		const std::valarray<T>& water_surface
+//			= reinterpret_cast<Wave_surface_generator<T, Grid>*>(child)->get_water_surface();
 		commit(local_server());
 //		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
