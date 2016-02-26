@@ -3,7 +3,6 @@
 
 /* \file */
 
-#pragma once
 #include <istream>
 #include <ostream>
 #include <stdlib.h>

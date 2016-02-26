@@ -1,9 +1,6 @@
 #ifndef APPS_AUTOREG_SSYSV_HH
 #define APPS_AUTOREG_SSYSV_HH
 
-//#pragma once
-//#include <valarray>
-
 #ifdef USE_MKL
 #include "mkl.h"
 //typedef long long Lapack_int;

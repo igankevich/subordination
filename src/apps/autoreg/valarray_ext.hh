@@ -1,8 +1,6 @@
 #ifndef APPS_AUTOREG_VALARRAY_EXT_HH
 #define APPS_AUTOREG_VALARRAY_EXT_HH
 
-#pragma once
-
 #include <valarray>
 #include <ostream>
 #include <list>

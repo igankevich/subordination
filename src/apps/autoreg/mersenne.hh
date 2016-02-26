@@ -1,8 +1,6 @@
 #ifndef APPS_AUTOREG_MERSENNE_HH
 #define APPS_AUTOREG_MERSENNE_HH
 
-#pragma once
-
 #include "exceptions.hh"
 
 namespace autoreg {

@@ -1,7 +1,6 @@
 #ifndef APPS_AUTOREG_EMATH_HH
 #define APPS_AUTOREG_EMATH_HH
 
-#pragma once
 #include <cmath>
 #include <valarray>
 #include <iostream>

@@ -1,8 +1,6 @@
 #ifndef APPS_AUTOREG_VECTOR_N_HH
 #define APPS_AUTOREG_VECTOR_N_HH
 
-#pragma once
-
 namespace autoreg {
 
 using std::ostream;

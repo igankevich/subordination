@@ -1,7 +1,6 @@
 #ifndef APPS_AUTOREG_NONLINEAR_OMP_HH
 #define APPS_AUTOREG_NONLINEAR_OMP_HH
 
-#pragma once
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_cdf.h>
 #include "emath.hh"

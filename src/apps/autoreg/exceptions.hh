@@ -1,7 +1,6 @@
 #ifndef APPS_AUTOREG_EXCEPTIONS_HH
 #define APPS_AUTOREG_EXCEPTIONS_HH
 
-#pragma once
 #include <string>
 
 namespace autoreg {
