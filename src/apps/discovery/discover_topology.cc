@@ -43,6 +43,18 @@ decode_as_string(T number) {
 	return result;
 }
 
+
+template<class Iterator>
+void
+transform_to_upper_case(Iterator first, Iterator last) {
+	std::transform(
+		first,
+		last,
+		first,
+		[] (char ch) { return std::toupper(ch); }
+	);
+}
+
 template<class Addr>
 struct Topology {
 
@@ -60,23 +72,34 @@ struct Topology {
 	typedef std::unordered_map<city_type,discovery::Point<float_type>> coordinate_container;
 	typedef stdx::log<Topology> this_log;
 
-	Topology(const std::string& location_file, const std::string& block_file, const std::string& country):
+	Topology(
+		const std::string& location_file,
+		const std::string& block_file,
+		const std::string& country,
+		const std::string& continent
+	):
 	_coords(),
-	_country(country)
+	_country(country),
+	_continent(continent)
 	{
-		load_countries(location_file, _country);
+		load_countries(location_file, _country, _continent);
 		load_city_coordinates(block_file);
 		load_sub_networks(block_file);
 	}
 
 	void
-	load_countries(const std::string& filename, const std::string& filter_country) {
+	load_countries(
+		const std::string& filename,
+		const std::string& filter_country,
+		const std::string& filter_continent
+	)
+	{
 		this_log() << "Reading locations from " << filename << std::endl;
 		using namespace discovery;
 		typedef csv_tuple<',',
 			city_type,
 			ignore_field,
-			ignore_field,
+			std::string,
 			ignore_field,
 			std::string
 		> mytuple;
@@ -85,10 +108,14 @@ struct Topology {
 		std::for_each(
 			std::istream_iterator<mytuple>(in),
 			std::istream_iterator<mytuple>(),
-			[this,&filter_country] (const mytuple& rhs) {
+			[this,&filter_country,&filter_continent] (const mytuple& rhs) {
 				const city_type city = std::get<0>(rhs);
+				const std::string continent_str = std::get<2>(rhs);
 				const std::string country_str = std::get<4>(rhs);
-				if (not filter_country.empty() and country_str == filter_country) {
+				if ((not filter_country.empty() and country_str == filter_country)
+					or
+					(not filter_continent.empty() and continent_str == filter_continent)
+				) {
 					const country_type country = encode_as_number<country_type>(country_str.begin(), country_str.end());
 					_countries.emplace(city, country);
 				}
@@ -194,16 +221,30 @@ struct Topology {
 
 	}
 
+	template<class Result>
+	static void
+	transform_location_code(const std::string& code, Result result) {
+		std::transform(
+			code.begin(),
+			code.end(),
+			result,
+			[] (char ch) { return std::tolower(ch); }
+		);
+	}
+
 	std::string
 	output_filename(const char* prefix) const noexcept {
 		std::stringstream str;
-		str << prefix << '-';
-		std::transform(
-			_country.begin(),
-			_country.end(),
-			std::ostream_iterator<char>(str),
-			[] (char ch) { return std::tolower(ch); }
-		);
+		str << prefix;
+		std::ostream_iterator<char> it(str);
+		if (not _country.empty()) {
+			str << '-';
+			transform_location_code(_country, it);
+		}
+		if (not _continent.empty()) {
+			str << '-';
+			transform_location_code(_continent, it);
+		}
 		str << '.' << file_extension;
 		return str.str();
 	}
@@ -249,6 +290,7 @@ private:
 	locationmap_type sorted_locs;
 	coordinate_container _coords;
 	std::string _country;
+	std::string _continent;
 
 	static constexpr const char* file_extension = "dat";
 };
@@ -260,25 +302,29 @@ main(int argc, char* argv[]) {
 
 	std::string
 		country = "",
+		continent = "",
 		locations = "GeoLite2-City-Locations-en.csv",
 		blocks = "GeoLite2-City-Blocks-IPv4.csv";
 
 	sysx::cmdline cmd(argc, argv, {
 		sysx::cmd::ignore_first_arg(),
 		sysx::cmd::make_option({"--country"}, country),
+		sysx::cmd::make_option({"--continent"}, continent),
 		sysx::cmd::make_option({"--locations"}, locations),
 		sysx::cmd::make_option({"--blocks"}, blocks),
 	});
 
 	try {
 		cmd.parse();
+		transform_to_upper_case(country.begin(), country.end());
+		transform_to_upper_case(continent.begin(), continent.end());
 	} catch (sysx::invalid_cmdline_argument& err) {
 		std::cerr << err.what() << ": " << err.arg() << std::endl;
 		retval = -1;
 	}
 
 	if (retval == 0) {
-		Topology<sysx::ipv4_addr> topo(locations, blocks, country);
+		Topology<sysx::ipv4_addr> topo(locations, blocks, country, continent);
 		topo.save();
 	}
 
