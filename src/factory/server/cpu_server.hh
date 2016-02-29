@@ -21,9 +21,11 @@ namespace factory {
 			{}
 
 			CPU_server() noexcept:
-			base_server(std::thread::hardware_concurrency())
+//			base_server(std::thread::hardware_concurrency())
+			// TODO 2016-02-29 FIX THIS
+			base_server(1u)
 			{}
-				
+
 			CPU_server(const CPU_server&) = delete;
 			CPU_server& operator=(const CPU_server&) = delete;
 			~CPU_server() = default;
@@ -61,7 +63,7 @@ namespace factory {
 					return this->stopped();
 				});
 			}
-			
+
 		};
 
 	}

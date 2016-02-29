@@ -404,7 +404,7 @@ private:
 
 	void
 	generate_ranked_hosts(const network_type& rhs) {
-		const auto fanout = 2;
+		const auto fanout = 64;
 		_rankedhosts.clear();
 		std::transform(
 			rhs.begin(), rhs.middle(),
@@ -515,7 +515,7 @@ struct Main: public Kernel {
 				schedule_autoreg_app(this_server);
 			}
 
-			schedule_shutdown_after(std::chrono::seconds(20), master, this_server);
+			schedule_shutdown_after(std::chrono::seconds(60), master, this_server);
 		}
 	}
 
@@ -646,12 +646,12 @@ int main(int argc, char* argv[]) {
 			const auto last = procs.end();
 			// skip master
 			++first;
-			while (first != last) {
+//			while (first != last) {
 				std::this_thread::sleep_for(tick);
 				this_log() << "Killing process " << first->id() << std::endl;
 				first->signal(SIGKILL);
 				++first;
-			}
+//			}
 			this_log() << "Finish killing spree" << std::endl;
 		}
 		retval = procs.wait();
