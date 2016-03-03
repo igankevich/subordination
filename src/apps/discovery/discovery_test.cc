@@ -643,7 +643,7 @@ int main(int argc, char* argv[]) {
 			this_log() << "Start killing spree" << std::endl;
 			const auto tick = seconds(kill_every);
 			auto first = procs.begin();
-			const auto last = procs.end();
+//			const auto last = procs.end();
 			// skip master
 			++first;
 //			while (first != last) {

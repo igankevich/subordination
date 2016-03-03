@@ -198,7 +198,11 @@ namespace factory {
 			explicit
 			Server_with_pool(unsigned concurrency) noexcept:
 			_kernels(),
-			_threads(concurrency == 0u ? 1u : concurrency),
+			#ifdef FACTORY_SINGLE_THREAD
+			_threads(1u),
+			#else
+			_threads(std::max(1u, concurrency)),
+			#endif
 			_mutex(),
 			_semaphore()
 			{}
@@ -237,8 +241,10 @@ namespace factory {
 			void
 			start() override {
 				base_server::start();
-				std::generate(_threads.begin(), _threads.end(),
-					std::bind(&Server_with_pool::new_thread, this));
+				std::generate(
+					_threads.begin(), _threads.end(),
+					std::bind(&Server_with_pool::new_thread, this)
+				);
 			}
 
 			void
@@ -251,9 +257,11 @@ namespace factory {
 			void
 			wait() override {
 				base_server::wait();
-				stdx::for_each_if(_threads.begin(), _threads.end(),
+				stdx::for_each_if(
+					_threads.begin(), _threads.end(),
 					std::mem_fn(&std::thread::joinable),
-					std::mem_fn(&std::thread::join));
+					std::mem_fn(&std::thread::join)
+				);
 			}
 
 		protected:
@@ -278,9 +286,11 @@ namespace factory {
 			void
 			collect_kernels(It sack) {
 				using namespace std::placeholders;
-				stdx::front_pop_iterator<kernel_pool> it_end;
-				std::for_each(stdx::front_popper(_kernels), it_end,
-					[sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); });
+				std::for_each(
+					stdx::front_popper(_kernels),
+					stdx::front_popper_end(_kernels),
+					[sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); }
+				);
 			}
 
 			void
@@ -306,8 +316,10 @@ namespace factory {
 
 			static inline std::thread
 			new_thread(Server_with_pool* rhs) noexcept {
-				return std::thread(&Server_with_pool::run, rhs,
-					rhs->global_context());
+				return std::thread(
+					&Server_with_pool::run, rhs,
+					rhs->global_context()
+				);
 			}
 
 		protected:

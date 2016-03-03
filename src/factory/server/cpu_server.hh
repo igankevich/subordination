@@ -3,7 +3,7 @@
 
 #include <stdx/unlock_guard.hh>
 #include <factory/server/intro.hh>
-#include <factory/managed_object.hh>
+#include <factory/server/basic_server.hh>
 
 namespace factory {
 
@@ -21,16 +21,12 @@ namespace factory {
 			{}
 
 			CPU_server() noexcept:
-//			base_server(std::thread::hardware_concurrency())
-			// TODO 2016-02-29 FIX THIS
-			base_server(1u)
+			base_server(std::thread::hardware_concurrency())
 			{}
 
 			CPU_server(const CPU_server&) = delete;
 			CPU_server& operator=(const CPU_server&) = delete;
 			~CPU_server() = default;
-
-			void add_cpu(size_t) {}
 
 			Category
 			category() const noexcept override {

@@ -147,34 +147,42 @@ using namespace autoreg;
 
 template<class T>
 struct Variance_WN: public Kernel {
-	Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
-		ar_coefs(ar_coefs_), acf(acf_), sum(0) {}
 
-	const char* name() const { return "VWN"; }
+	typedef stdx::log<Variance_WN> this_log;
+
+	Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
+		ar_coefs(ar_coefs_), acf(acf_), _sum(0) {}
 
 	void act() {
-//		int bs = 64;
+		int bs = 64;
 		int n = ar_coefs.size();
-		for (int i=0; i<n; ++i) {
-			sum += ar_coefs[i]*acf[i];
-		}
-		downstream(local_server(), this, this);
-//		upstream(local_server(), mapreduce([](int) {}, [this](int i){
-//			sum += ar_coefs[i]*acf[i];
-//		}, 0, n, bs));
+//		for (int i=0; i<n; ++i) {
+//			_sum += ar_coefs[i]*acf[i];
+//		}
+//		downstream(local_server(), this, this);
+		upstream(local_server(), mapreduce([](int) {}, [this](int i){
+			this_log() << "thread=" << std::this_thread::get_id() << std::endl;
+			_sum += ar_coefs[i]*acf[i];
+		}, 0, n, bs));
 
 	}
 
 	void react(factory::Kernel*) {
-		sum = acf[0] - sum;
+		_sum = acf[0] - _sum;
 		commit(local_server());
 	}
 
+	T
+	get_sum() const noexcept {
+		return _sum;
+	}
+
 private:
+
 	const std::valarray<T>& ar_coefs;
 	const std::valarray<T>& acf;
-public:
-	T sum;
+	T _sum;
+
 };
 
 template<class T> T var_acf(std::valarray<T>& acf) { return acf[0]; }

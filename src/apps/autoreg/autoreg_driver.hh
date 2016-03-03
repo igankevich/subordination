@@ -217,7 +217,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	}
 	typedef Uniform_grid Grid;
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
-		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->sum;
+		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
 		std::clog << "var_acf=" << var_acf(acf_model) << std::endl;
 		std::clog << "var_wn=" << var_wn << std::endl;
 		std::size_t max_num_parts = zsize[0] / part_size();

@@ -12,7 +12,7 @@ test(
 #		link_args: '-rdynamic'
 		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
 		link_args: ['-rdynamic', '-fopenmp', '-lgfortran'],
-		cpp_args: '-fopenmp'
+		cpp_args: ['-fopenmp', '-DFACTORY_SINGLE_THREAD']
 	),
 	args: [
 		'--role', 'master',
