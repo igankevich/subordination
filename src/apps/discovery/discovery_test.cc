@@ -197,7 +197,7 @@ struct Master_negotiator: public Kernel, public Identifiable_tag {
 		}
 		if (finished) {
 			this->principal(this->parent());
-			this_server.local_server()->send(this);
+			local_server()->send(this);
 		}
 	}
 
