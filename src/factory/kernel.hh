@@ -463,16 +463,19 @@ namespace factory {
 
 			factory_type*
 			factory() noexcept {
+				assert(_server != nullptr);
 				return _server->factory();
 			}
 
 			server_type*
 			local_server() noexcept {
+				assert(_server != nullptr);
 				return _server->local_server();
 			}
 
 			server_type*
 			remote_server() noexcept {
+				assert(_server != nullptr);
 				return _server->remote_server();
 			}
 

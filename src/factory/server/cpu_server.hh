@@ -126,7 +126,10 @@ namespace factory {
 				std::for_each(
 					_servers.begin(),
 					_servers.end(),
-					std::mem_fn(&server_pool::value_type::start)
+					[this] (base_server& rhs) {
+						rhs.setparent(this);
+						rhs.start();
+					}
 				);
 			}
 

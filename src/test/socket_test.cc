@@ -117,10 +117,10 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 		// Delete kernel for Valgrind memory checker.
 		delete this;
 		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
-			this_server.factory()->stop();
+			factory()->stop();
 		}
 		#else
-		commit(this_server.remote_server());
+		commit(remote_server());
 		#endif
 	}
 
@@ -193,8 +193,8 @@ struct Sender: public Kernel, public Identifiable_tag {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			upstream(this_server.remote_server(),
-				this_server.factory()->new_kernel<Test_socket>(_input));
+			upstream(remote_server(),
+				factory()->new_kernel<Test_socket>(_input));
 		}
 	}
 
@@ -219,7 +219,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 
 		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
-			commit(this_server.local_server());
+			commit(local_server());
 		}
 	}
 
@@ -238,27 +238,25 @@ struct Main: public Kernel {
 	using typename Kernel::server_type;
 
 	Main(Server& this_server, int argc, char* argv[]) {
-		auto& __factory = *this_server.factory();
-		__factory.types().register_type(Test_socket::static_type());
-		__factory.dump_hierarchy(std::cout);
 		if (argc != 3)
 			throw std::runtime_error("Wrong number of arguments.");
-		if (argv[1][0] == 'x') {
-			__factory.remote_server()->socket(server_endpoint);
-			_role = 'x';
+		_role = argv[1][0];
+		if (_role == 'x') {
+			this_server.factory()->remote_server()->socket(server_endpoint);
 		}
-		if (argv[1][0] == 'y') {
-			__factory.remote_server()->socket(client_endpoint);
-			__factory.remote_server()->peer(server_endpoint);
-			_role = 'y';
+		if (_role == 'y') {
+			this_server.factory()->remote_server()->socket(client_endpoint);
+			this_server.factory()->remote_server()->peer(server_endpoint);
 		}
 	}
 
 	void act(Server& this_server) override {
+		factory()->types().register_type(Test_socket::static_type());
+		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
-				upstream(this_server.local_server(), this_server.factory()->new_kernel<Sender>(sz, _sleep));
+				upstream(local_server(), factory()->new_kernel<Sender>(sz, _sleep));
 			}
 		}
 	}
@@ -267,7 +265,7 @@ struct Main: public Kernel {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == POWERS.size()) {
-			commit(this_server.local_server());
+			commit(local_server());
 		}
 	}
 

@@ -212,15 +212,7 @@ namespace factory {
 
 			void
 			write_kernel(kernel_type& kernel) {
-				std::streamsize old_pos = _stream.tellp();
 				_stream << kernel;
-				std::streamsize new_pos = _stream.tellp();
-				this_log() << "send bytes="
-					<< new_pos-old_pos
-					<< ",stream="
-					<< stdx::debug_stream(_stream)
-					<< ",krnl=" << kernel
-					<< std::endl;
 			}
 
 			void recover_kernel(kernel_type* k) {
