@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <queue>
+#include <cassert>
 
 #include <factory/managed_object.hh>
 #include <factory/type.hh>
@@ -234,6 +235,14 @@ namespace factory {
 			void
 			send(kernel_type** kernels, size_t n) override {
 				lock_type lock(_mutex);
+				#ifndef NDEBUG
+				assert(
+					not std::any_of(
+						kernels, kernels+n,
+						std::mem_fn(&kernel_type::moves_downstream)
+					)
+				);
+				#endif
 				std::copy_n(kernels, n, stdx::back_inserter(_kernels));
 				_semaphore.notify_one();
 			}
