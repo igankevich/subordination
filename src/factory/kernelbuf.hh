@@ -79,7 +79,7 @@ namespace factory {
 		void
 		skip_packet() override {
 			if (_rstate == State::payload_is_ready) {
-				reset_packet();
+				this->setg(eback(), payload_end(), egptr());
 			}
 		}
 
@@ -152,6 +152,7 @@ namespace factory {
 			setpacket(0, 0, 0);
 			_oldendpos = 0;
 			this->sets(State::initial);
+			this->dumpstate();
 		}
 
 		void dumpstate() {

@@ -6,6 +6,7 @@
 #include <stdx/log.hh>
 #include <sysx/packetstream.hh>
 #include <factory/type.hh>
+#include <factory/error.hh>
 
 namespace factory {
 
@@ -91,6 +92,11 @@ namespace factory {
 			_rdstate = rhs;
 		}
 
+		state
+		rdstate() const noexcept {
+			return _rdstate;
+		}
+
 		explicit
 		operator bool() const noexcept {
 			return good();
@@ -123,7 +129,17 @@ namespace factory {
 
 	private:
 
-		app_type _thisapp = components::Application::ROOT;
+		friend std::ostream&
+		operator<<(std::ostream& out, state rhs) {
+			switch (rhs) {
+				case state::good: out << "good"; break;
+				case state::partial_packet: out << "partial_packet"; break;
+				case state::bad_kernel: out << "bad_kernel"; break;
+			}
+			return out;
+		}
+
+		app_type _thisapp = 0;
 		forward_func _doforward;
 		types* _types = nullptr;
 		state _rdstate = state::good;
