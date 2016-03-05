@@ -108,6 +108,7 @@ namespace factory {
 			typedef Managed_set<Server<Config>> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::for_each_func_type;
+			typedef typename kernel_type::app_type app_type;
 			typedef typename Config::local_server Local_server;
 			typedef typename Config::remote_server Remote_server;
 			typedef typename Config::external_server External_server;
@@ -243,6 +244,11 @@ namespace factory {
 			write_recursively(std::ostream& out) const override {
 				base_server::write_recursively(out);
 				this->write_foreign(_types, "types", out);
+			}
+
+			app_type
+			app() const noexcept {
+				return Application::ROOT;
 			}
 
 		private:

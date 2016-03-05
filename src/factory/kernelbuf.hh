@@ -63,17 +63,24 @@ namespace factory {
 
 		bool
 		read_packet() override {
-			const State old_state = _rstate;
-			switch (_rstate) {
-				case State::initial: this->read_kernel_packetsize(); break;
-				case State::header_is_ready: this->buffer_payload(); break;
-				case State::payload_is_ready: this->read_payload(); break;
-			}
-			if (old_state != _rstate) {
+			State old_state;
+			do {
+				old_state = _rstate;
+				switch (_rstate) {
+					case State::initial: this->read_kernel_packetsize(); break;
+					case State::header_is_ready: this->buffer_payload(); break;
+					case State::payload_is_ready: this->read_payload(); break;
+				}
 				this->dumpstate();
-				this->read_packet();
-			}
+			} while (old_state != _rstate);
 			return payload_is_ready();
+		}
+
+		void
+		skip_packet() override {
+			if (_rstate == State::payload_is_ready) {
+				reset_packet();
+			}
 		}
 
 		bool
@@ -132,14 +139,19 @@ namespace factory {
 
 		void read_payload() {
 			if (gptr() == payload_end()) {
-				pos_type endpos = egptr() - eback();
-				if (_oldendpos > endpos) {
-					this->setg(eback(), gptr(), eback() + _oldendpos);
-				}
-				setpacket(0, 0, 0);
-				_oldendpos = 0;
-				this->sets(State::initial);
+				reset_packet();
 			}
+		}
+
+		void
+		reset_packet() {
+			const pos_type endpos = egptr() - eback();
+			if (_oldendpos > endpos) {
+				this->setg(eback(), payload_end(), eback() + _oldendpos);
+			}
+			setpacket(0, 0, 0);
+			_oldendpos = 0;
+			this->sets(State::initial);
 		}
 
 		void dumpstate() {

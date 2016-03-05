@@ -95,9 +95,10 @@ struct Test_filterbuf: public test::Test<Test_filterbuf<T>> {
 template<class T, class Fd=sysx::fildes>
 struct Test_packetbuf: public test::Test<Test_packetbuf<T,Fd>> {
 
+	typedef sysx::basic_fildesbuf<T> ipacketbuf;
+	typedef sysx::basic_fildesbuf<T> opacketbuf;
+
 	void xrun() override {
-		typedef sysx::basic_fildesbuf<T> ipacketbuf;
-		typedef sysx::basic_fildesbuf<T> opacketbuf;
 		const int MAX_K = 1 << 20;
 		for (int k=1; k<=MAX_K; k<<=1) {
 			sysx::tmpfile tfile(prefix);

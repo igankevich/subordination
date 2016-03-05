@@ -28,6 +28,9 @@ namespace stdx {
 		virtual bool
 		read_packet() { return false; }
 
+		virtual void
+		skip_packet() {}
+
 	protected:
 
 		char_type*

@@ -27,6 +27,7 @@ namespace factory {
 
 			typedef Managed_object<Server<T>> base_server;
 			using typename base_server::kernel_type;
+			using typename base_server::factory_type;
 			typedef char Ch;
 			typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
 			typedef Kernel_stream<kernel_type> stream_type;
@@ -36,12 +37,19 @@ namespace factory {
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
-			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr):
-				_vaddr(vaddr),
-				_packetbuf(),
-				_stream(&_packetbuf),
-				_buffer()
+			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr, factory_type* factory):
+			_vaddr(vaddr),
+			_packetbuf(),
+			_stream(&_packetbuf),
+			_buffer()
 			{
+				_stream.setapp(factory->app());
+				_stream.settypes(&factory->types());
+				_stream.setforward(
+					[this] (app_type app, stream_type&) {
+						this->app_server()->forward(app, _vaddr, _packetbuf);
+					}
+				);
 				_packetbuf.setfd(std::move(sock));
 			}
 
@@ -117,6 +125,7 @@ namespace factory {
 					event.setrev(sysx::poll_event::Out);
 				}
 				if (event.in()) {
+					_stream.clear();
 					_stream.fill();
 					while (_stream.read_packet()) {
 						read_and_receive_kernel();
@@ -482,7 +491,7 @@ namespace factory {
 				sysx::poll_event::legacy_event revents=0)
 			{
 				sysx::fd_type fd = sock.fd();
-				server_type s(std::move(sock), vaddr);
+				server_type s(std::move(sock), vaddr, this->factory());
 				s.setparent(this);
 				auto result = emplace_server(vaddr, std::move(s));
 				poller().emplace(

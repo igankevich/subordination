@@ -2,24 +2,24 @@ libgsl = dependency('gsl')
 liblapack = find_library('lapack')
 libblas = find_library('blas')
 
-#test(
-#	'discovery',
-#	executable(
-#		'discovery-test',
-#		sources: 'discovery_test.cc',
-#		include_directories: [srcdir, testdir],
-##		dependencies: threads,
-##		link_args: '-rdynamic'
-#		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
-#		link_args: ['-rdynamic', '-fopenmp', '-lgfortran'],
-#		cpp_args: ['-fopenmp', '-DFACTORY_SINGLE_THREAD']
-#	),
-#	args: [
-#		'--role', 'master',
-#		'--num-peers', '2',
-#		'--network', '127.0.0.1/8'
-#	]
-#)
+test(
+	'discovery',
+	executable(
+		'discovery-test',
+		sources: 'discovery_test.cc',
+		include_directories: [srcdir, testdir],
+#		dependencies: threads,
+#		link_args: '-rdynamic'
+		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
+		link_args: ['-rdynamic', '-fopenmp', '-lgfortran'],
+		cpp_args: ['-fopenmp', '-DFACTORY_SINGLE_THREAD']
+	),
+	args: [
+		'--role', 'master',
+		'--num-peers', '2',
+		'--network', '127.0.0.1/8'
+	]
+)
 
 test('network',
 	executable(
