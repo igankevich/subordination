@@ -26,6 +26,15 @@ namespace stdx {
 		}
 	}
 
+	template<class It>
+	void
+	delete_each(It first, It last) {
+		while (first != last) {
+			delete *first;
+			++first;
+		}
+	}
+
 }
 
 #endif // STDX_FOR_EACH_HH

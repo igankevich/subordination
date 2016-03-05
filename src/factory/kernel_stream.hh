@@ -35,7 +35,7 @@ namespace factory {
 		Kernel_stream&
 		operator<<(kernel_type& kernel) {
 			const Type<kernel_type> type = kernel.type();
-			if (!type) {
+			if (not type) {
 				std::stringstream msg;
 				msg << "Can not find type for kernel id=" << kernel.id();
 				throw components::Error(msg.str(), __FILE__, __LINE__, __func__);
@@ -60,6 +60,7 @@ namespace factory {
 					assert(_types != nullptr);
 					try {
 						kernel = Type<kernel_type>::read_object(*_types, *this);
+						kernel->setapp(app);
 					} catch (components::Marshalling_error& err) {
 						setstate(state::bad_kernel);
 						this_log() << err << std::endl;

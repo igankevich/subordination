@@ -2,6 +2,7 @@
 #define FACTORY_SERVER_NIC_SERVER_HH
 
 #include <map>
+#include <type_traits>
 
 #include <stdx/for_each.hh>
 #include <stdx/field_iterator.hh>
@@ -37,6 +38,11 @@ namespace factory {
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
+			static_assert(
+				std::is_move_constructible<stream_type>::value,
+				"bad stream_type"
+			);
+
 			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr, factory_type* factory):
 			_vaddr(vaddr),
 			_packetbuf(),
@@ -57,20 +63,21 @@ namespace factory {
 			Remote_Rserver& operator=(const Remote_Rserver&) = delete;
 
 			Remote_Rserver(Remote_Rserver&& rhs):
-				base_server(std::move(rhs)),
-				_vaddr(rhs._vaddr),
-				_packetbuf(std::move(rhs._packetbuf)),
-				_stream(&_packetbuf),
-				_buffer(std::move(rhs._buffer))
-			{}
+			base_server(std::move(rhs)),
+			_vaddr(rhs._vaddr),
+			_packetbuf(std::move(rhs._packetbuf)),
+			_stream(std::move(rhs._stream)),
+			_buffer(std::move(rhs._buffer))
+			{
+				_stream.rdbuf(&_packetbuf);
+			}
 
 			virtual
 			~Remote_Rserver() {
 				this->recover_kernels();
-				std::for_each(
+				stdx::delete_each(
 					stdx::front_popper(_buffer),
-					stdx::front_popper_end(_buffer),
-					[] (kernel_type* rhs) { delete rhs; }
+					stdx::front_popper_end(_buffer)
 				);
 			}
 
@@ -127,8 +134,9 @@ namespace factory {
 				if (event.in()) {
 					_stream.clear();
 					_stream.fill();
-					while (_stream.read_packet()) {
-						read_and_receive_kernel();
+					kernel_type* kernel = nullptr;
+					while (_stream >> kernel) {
+						receive_kernel(kernel);
 					}
 				}
 				if (event.out() && !event.hup()) {
@@ -176,25 +184,10 @@ namespace factory {
 
 		private:
 
-			void read_and_receive_kernel() {
-				app_type app;
-				_stream >> app;
-				if (app != Application::ROOT) {
-					this->app_server()->forward(app, _vaddr, _packetbuf);
-				} else {
-					Type<kernel_type>::read_object(this->factory()->types(), _stream,
-						[this,app] (kernel_type* k) {
-							receive_kernel(k, app);
-						}
-					);
-				}
-			}
-
 			void
-			receive_kernel(kernel_type* k, app_type app) {
+			receive_kernel(kernel_type* k) {
 				bool ok = true;
 				k->from(_vaddr);
-				k->setapp(app);
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
 				} else if (k->principal_id()) {
@@ -275,6 +268,11 @@ namespace factory {
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
 			typedef stdx::log<NIC_server> this_log;
+
+			static_assert(
+				std::is_move_constructible<server_type>::value,
+				"bad server_type"
+			);
 
 			NIC_server(NIC_server&& rhs) noexcept:
 			base_server(std::move(rhs)),
