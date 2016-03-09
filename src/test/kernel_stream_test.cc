@@ -97,12 +97,12 @@ private:
 
 };
 
-struct Bad_kernel: public Good_kernel {
+struct Kernel_that_writes_more_than_reads: public Good_kernel {
 
 	void
 	write(sysx::packetstream& out) override {
 		Good_kernel::write(out);
-		// fill stream with trash object
+		// push dummy object to the stream
 		out << Datum();
 	}
 
@@ -115,9 +115,39 @@ struct Bad_kernel: public Good_kernel {
 	static_type() noexcept {
 		return Type<Kernel>{
 			2,
-			"Bad_kernel",
+			"Kernel_that_writes_more_than_reads",
 			[] (sysx::packetstream& in) {
-				Bad_kernel* k = new Bad_kernel;
+				Kernel_that_writes_more_than_reads* k = new Kernel_that_writes_more_than_reads;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+};
+
+struct Kernel_that_reads_more_than_writes: public Good_kernel {
+
+	void
+	read(sysx::packetstream& in) override {
+		Good_kernel::read(in);
+		Datum dummy;
+		// read dummy object from the stream
+		in >> dummy;
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			3,
+			"Kernel_that_reads_more_than_writes",
+			[] (sysx::packetstream& in) {
+				Kernel_that_reads_more_than_writes* k = new Kernel_that_reads_more_than_writes;
 				k->read(in);
 				return k;
 			}
@@ -141,7 +171,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,C
 
 	void
 	xrun() override {
-		for (size_t i=2; i<=10; ++i) {
+		for (size_t i=1; i<=10; ++i) {
 			do_one_iteration(i);
 		}
 	}
@@ -195,7 +225,8 @@ private:
 int main() {
 	test::Test_suite tests{"Test buffers", {
 		new Test_kernel_stream<Kernel, Good_kernel>,
-		new Test_kernel_stream<Kernel, Bad_kernel>
+		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
+		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>
 	}};
 	return tests.run();
 }
