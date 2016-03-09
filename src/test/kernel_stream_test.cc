@@ -162,14 +162,15 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 };
 
-struct Good_kernel_that_carries_parent: public Kernel {
+struct Kernel_that_carries_its_parent: public Kernel {
 
-	Good_kernel_that_carries_parent() {
+	Kernel_that_carries_its_parent() {
 		this->setf(Kernel::Flag::carries_parent);
 		this->parent(&_carry);
+		assert(parent());
 	}
 
-	Good_kernel_that_carries_parent(int) {}
+	Kernel_that_carries_its_parent(int) {}
 
 	void
 	write(sysx::packetstream& out) override {
@@ -192,9 +193,9 @@ struct Good_kernel_that_carries_parent: public Kernel {
 	static_type() noexcept {
 		return Type<Kernel>{
 			4,
-			"Good_kernel_that_carries_parent",
+			"Kernel_that_carries_its_parent",
 			[] (sysx::packetstream& in) {
-				Good_kernel_that_carries_parent* k = new Good_kernel_that_carries_parent(0);
+				Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
 				k->read(in);
 				assert(k->carries_parent());
 				return k;
@@ -203,19 +204,25 @@ struct Good_kernel_that_carries_parent: public Kernel {
 	}
 
 	bool
-	operator==(const Good_kernel_that_carries_parent& rhs) const noexcept {
+	operator==(const Kernel_that_carries_its_parent& rhs) const noexcept {
 		return _data == rhs._data and parent() and rhs.parent()
 			and *good_parent() == *rhs.good_parent();
 	}
 
 	bool
-	operator!=(const Good_kernel_that_carries_parent& rhs) const noexcept {
+	operator!=(const Kernel_that_carries_its_parent& rhs) const noexcept {
 		return !operator==(rhs);
 	}
 
 	friend std::ostream&
-	operator<<(std::ostream& out, const Good_kernel_that_carries_parent& rhs) {
-		return out << sysx::make_bytes(rhs._data) << ' ' << sysx::make_bytes(rhs.good_parent()->data());
+	operator<<(std::ostream& out, const Kernel_that_carries_its_parent& rhs) {
+		out << sysx::make_bytes(rhs._data) << ' ';
+		if (rhs.good_parent()) {
+			out << sysx::make_bytes(rhs.good_parent()->data());
+		} else {
+			out << "nullptr";
+		}
+		return out;
 	}
 
 	const Good_kernel*
@@ -239,7 +246,7 @@ struct Dummy_kernel: public Kernel {
 };
 
 template<class Kernel, class Carrier, class Parent=Dummy_kernel, class Ch=char>
-struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,Dummy_kernel,Ch>> {
+struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,Parent,Ch>> {
 
 	typedef Kernel kernel_type;
 	typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::file>> buffer_type;
@@ -308,12 +315,11 @@ private:
 };
 
 int main() {
-	test::Test_suite tests{"Test Kernel_stream", {
+	return test::Test_suite{
 		new Test_kernel_stream<Kernel, Good_kernel>,
 		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
 		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>,
-		new Test_kernel_stream<Kernel, Good_kernel_that_carries_parent, Good_kernel>,
+		new Test_kernel_stream<Kernel, Kernel_that_carries_its_parent, Good_kernel>,
 		new Test_kernel_stream<Kernel, Big_kernel<100>>
-	}};
-	return tests.run();
+	}.run();
 }

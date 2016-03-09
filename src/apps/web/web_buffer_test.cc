@@ -18,7 +18,7 @@ namespace stdx {
 
 }
 
-const char* prefix = "tmp.test_buffer.";
+const char* prefix = "tmp.web_buffer_test.";
 
 std::random_device rng;
 
@@ -50,10 +50,9 @@ struct Test_buffer: public test::Parametric_test<Test_buffer<T,B>,std::array<siz
 
 };
 
-int main(int argc, char* argv[]) {
-	test::Test_suite tests{"Test web buffers", {
+int main() {
+	return test::Test_suite{
 		new Test_buffer<char, LBuffer>{{1,0}, {133, 12}},
 		new Test_buffer<unsigned char, LBuffer>{{1,0}, {133, 12}}
-	}};
-	return tests.run();
+	}.run();
 }

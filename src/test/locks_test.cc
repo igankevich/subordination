@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include <stdx/spin_mutex.hh>
+#include <stdx/for_each.hh>
 #include <sysx/semaphore.hh>
 
 #include "test.hh"
@@ -37,10 +38,10 @@ private:
 };
 
 template<class Mutex>
-struct test_counter: public Parametric_test<test_counter<Mutex>> {
+struct Test_mutex: public Parametric_test<Test_mutex<Mutex>> {
 
-	test_counter(unsigned minthr, unsigned maxpow):
-	Parametric_test<test_counter<Mutex>>(minthr, maxpow) {}
+	Test_mutex(unsigned minthr, unsigned maxpow):
+	Parametric_test<Test_mutex<Mutex>>(minthr, maxpow) {}
 
 	void
 	parametric_run(unsigned nthreads, unsigned increment) override {
@@ -83,7 +84,7 @@ struct Thread_pool {
 				queue.pop();
 			}
 			if (val == sval) {
-				std::clog << "Stopping thread pool" << std::endl;
+//				std::clog << "Stopping thread pool" << std::endl;
 				stopped = true;
 			} else {
 				sum += val;
@@ -117,11 +118,11 @@ private:
 };
 
 template<class Mutex, class Semaphore=std::condition_variable, class I=unsigned>
-struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
+struct Test_semaphore: public Parametric_test<Test_semaphore<Mutex,Semaphore,I>> {
 
-	typedef test_queue<Mutex, Semaphore, I> this_type;
+	typedef Test_semaphore<Mutex, Semaphore, I> this_type;
 
-	test_queue(I nthreads_, I max_):
+	Test_semaphore(I nthreads_, I max_):
 	Parametric_test<this_type>(nthreads_, max_) {}
 
 	void parametric_run(I nthreads, I max) override {
@@ -137,9 +138,15 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 		for (Pool* pool : thread_pool) {
 			pool->submit(Pool::sval);
 		}
-		std::for_each(thread_pool.begin(), thread_pool.end(),
-			std::mem_fn(&Pool::wait));
-		I sum = std::accumulate(thread_pool.begin(), thread_pool.end(), I(0),
+		std::for_each(
+			thread_pool.begin(),
+			thread_pool.end(),
+			std::mem_fn(&Pool::wait)
+		);
+		I sum = std::accumulate(
+			thread_pool.begin(),
+			thread_pool.end(),
+			I(0),
 			[] (I sum, Pool* ptr) {
 				return sum + ptr->result();
 			}
@@ -148,9 +155,7 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 	//		std::cout << pool->result() << std::endl;
 	//	}
 	//	std::cout << max << ": " << sum << std::endl;
-		std::for_each(thread_pool.begin(), thread_pool.end(), [] (Pool* ptr) {
-			delete ptr;
-		});
+		stdx::delete_each(thread_pool.begin(), thread_pool.end());
 		test::equal(sum, expected_sum, "bad sum");
 	}
 };
@@ -158,11 +163,11 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 //template<class Integer>
 //void test_perf_x(Integer m) {
 //	Time t0 = current_time_nano();
-//	run_multiple_times<Integer>(test_queue<Integer, stdx::spin_mutex>, 1, m);
-//	run_multiple_times<Integer>(test_queue<Integer, stdx::spin_mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, stdx::spin_mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, stdx::spin_mutex>, 1, m);
 //	Time t1 = current_time_nano();
-//	run_multiple_times<Integer>(test_queue<Integer, std::mutex>, 1, m);
-//	run_multiple_times<Integer>(test_queue<Integer, std::mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, std::mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, std::mutex>, 1, m);
 //	Time t2 = current_time_nano();
 //	std::cout << "Time(stdx::spin_mutex, " << m << ") = " << t1-t0 << "ns" << std::endl;
 //	std::cout << "Time(std::mutex, " << m << ") = " << t2-t1 << "ns" << std::endl;
@@ -172,8 +177,8 @@ struct test_queue: public Parametric_test<test_queue<Mutex,Semaphore,I>> {
 //void
 //test_perf(Integer m) {
 //	Time t0 = current_time_nano();
-//	run_multiple_times<Integer>(test_queue<Integer, Mutex>, 1, m);
-//	run_multiple_times<Integer>(test_queue<Integer, Mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, Mutex>, 1, m);
+//	run_multiple_times<Integer>(Test_semaphore<Integer, Mutex>, 1, m);
 //	Time t1 = current_time_nano();
 //	std::cout
 //		<< "mutex=" << typeid(Mutex).name()
@@ -189,20 +194,9 @@ struct self_signal_semaphore: public sysx::signal_semaphore {
 };
 
 int main() {
-	int ret = 0;
-	sysx::init_signal_semaphore init(SIGUSR1);
-
-	test::Test_suite suite1("mutexes");
-	suite1.add(new test_counter<stdx::spin_mutex>(2, 10));
-	ret |= suite1.run();
-
-	test::Test_suite suite("semaphores");
-//	TODO make Thread_pool also a Process pool
-//	suite.add(new test_queue<std::mutex,self_signal_semaphore>(4, 10));
-	suite.add(new test_queue<std::mutex,sysx::sysv_semaphore>(1, 10));
-	ret |= suite.run();
-
-//	test_perf<stdx::spin_mutex>(10);
-//	test_perf<std::mutex>(10);
-	return ret;
+//	sysx::init_signal_semaphore init(SIGUSR1);
+	return test::Test_suite{
+		new Test_mutex<stdx::spin_mutex>(2, 10),
+		new Test_semaphore<std::mutex,sysx::sysv_semaphore>(1, 10)
+	}.run();
 }

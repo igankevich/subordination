@@ -28,7 +28,7 @@
 
 #include <sysx/network_format.hh>
 
-#include <color.hh>
+#include "color.hh"
 
 namespace test {
 
@@ -143,24 +143,21 @@ namespace test {
 
 	struct Test_suite: public Test<Test_suite> {
 
-		typedef std::shared_ptr<Basic_test> value_type;
+		typedef std::unique_ptr<Basic_test> value_type;
 
 		explicit
 		Test_suite(const std::string& name):
-		Test(name) {}
+		Test(name)
+		{}
 
 		Test_suite(const std::string& name, std::initializer_list<Basic_test*> tests):
 		Test(name)
-		{
-			std::transform(
-				tests.begin(),
-				tests.end(),
-				std::back_inserter(_tests),
-				[] (Basic_test* rhs) {
-					return value_type(rhs);
-				}
-			);
-		}
+		{ init_tests(tests); }
+
+		explicit
+		Test_suite(std::initializer_list<Basic_test*> tests):
+		Test("")
+		{ init_tests(tests); }
 
 		void
 		add(Basic_test* tst) {
@@ -169,7 +166,9 @@ namespace test {
 
 		int
 		run() override {
-			std::clog << this->name() << std::endl;
+			if (not this->name().empty()) {
+				std::clog << this->name() << std::endl;
+			}
 			int ret = std::accumulate(
 				stdx::front_popper(_tests),
 				stdx::front_popper_end(_tests),
@@ -184,6 +183,18 @@ namespace test {
 		void xrun() override {}
 
 	private:
+
+		void
+		init_tests(std::initializer_list<Basic_test*> tests) {
+			std::transform(
+				tests.begin(),
+				tests.end(),
+				std::back_inserter(_tests),
+				[] (Basic_test* rhs) {
+					return value_type(rhs);
+				}
+			);
+		}
 
 		std::deque<value_type> _tests;
 	};

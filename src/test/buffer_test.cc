@@ -184,14 +184,13 @@ struct test_packetstream: public test::Test<test_packetstream<T>> {
 	}
 };
 
-int main(int argc, char* argv[]) {
-	test::Test_suite tests{"Test buffers", {
+int main() {
+	return test::Test_suite{
 		new Test_fildesbuf<char, sysx::file>,
 		new Test_fildesbuf<unsigned char, sysx::file>,
 		new Test_filterbuf<char>,
 		new Test_filterbuf<unsigned char>,
 		new Test_packetbuf<char, sysx::fildes>,
 		new test_packetstream<char>
-	}};
-	return tests.run();
+	}.run();
 }

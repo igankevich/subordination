@@ -17,7 +17,7 @@ void test_paired_iterator() {
 	test::compare(y, w);
 }
 
-int main(int argc, char* argv[]) {
+int main() {
 	test_paired_iterator<uint32_t>();
 	return 0;
 }
