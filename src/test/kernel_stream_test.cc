@@ -42,6 +42,8 @@ namespace factory {
 using namespace factory;
 using namespace factory::this_config;
 
+#include "big_kernel.hh"
+
 struct Good_kernel: public Kernel {
 
 	void
@@ -171,7 +173,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,C
 
 	void
 	xrun() override {
-		for (size_t i=1; i<=10; ++i) {
+		for (size_t i=1; i<=100; ++i) {
 			do_one_iteration(i);
 		}
 	}
@@ -226,7 +228,8 @@ int main() {
 	test::Test_suite tests{"Test buffers", {
 		new Test_kernel_stream<Kernel, Good_kernel>,
 		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
-		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>
+		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>,
+		new Test_kernel_stream<Kernel, Big_kernel<100>>
 	}};
 	return tests.run();
 }

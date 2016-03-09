@@ -911,7 +911,7 @@ private:
 	Grid grid_2;
 	Generator1<T, Grid>* left_neighbour;
 	uint32_t count;
-	const bool _noweave = true;
+	static const bool _noweave = true;
 };
 
 template<class T, class Grid>

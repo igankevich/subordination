@@ -5,6 +5,7 @@
 #include <cassert>
 
 #include <stdx/streambuf.hh>
+#include <stdx/log.hh>
 
 namespace stdx {
 
@@ -44,12 +45,12 @@ namespace stdx {
 		}
 
 		pos_type
-		payloadpos() {
+		payloadpos() const {
 			return _payloadpos;
 		}
 
 		size_type
-		payloadsize() {
+		payloadsize() const {
 			return _packetsize - (_payloadpos - _packetpos);
 		}
 
@@ -64,12 +65,12 @@ namespace stdx {
 		}
 
 		pos_type
-		packetpos() {
+		packetpos() const {
 			return _packetpos;
 		}
 
 		size_type
-		packetsize() {
+		packetsize() const {
 			return _packetsize;
 		}
 
@@ -78,6 +79,13 @@ namespace stdx {
 			_packetpos = pos1;
 			_payloadpos = pos2;
 			_packetsize = n;
+			if (not (_payloadpos <= _packetpos + n)) {
+				typedef stdx::log<basic_packetbuf> this_log;
+				this_log() << "packet " << _packetpos
+					<< ',' << _payloadpos
+					<< ',' << _packetsize
+					<< std::endl;
+			}
 			assert(_packetpos <= _payloadpos);
 			assert(_payloadpos <= _packetpos + n);
 		}
@@ -98,6 +106,7 @@ namespace stdx {
 		pos_type _packetpos = 0;
 		pos_type _payloadpos = 0;
 		size_type _packetsize = 0;
+
 	};
 
 	template<class Ch, class Tr>

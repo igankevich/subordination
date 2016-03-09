@@ -63,7 +63,8 @@ namespace sysx {
 		int_type
 		underflow() override {
 			assert(gptr() == egptr());
-			return fill_from_fd(0) == 0
+			setg(eback(), eback(), eback());
+			return do_fill() == 0
 				? traits_type::eof()
 				: traits_type::to_int_type(*gptr());
 		}
@@ -85,7 +86,7 @@ namespace sysx {
 
 		std::streamsize
 		fill() override {
-			return fill_from_fd(gptr()-eback());
+			return do_fill();
 		}
 
 		int
@@ -160,24 +161,51 @@ namespace sysx {
 	private:
 
 		std::streamsize
-		fill_from_fd(std::streamsize offset) {
-			std::streamsize n = 0, nread = offset;
-			while ((n = _fd.read(_gbuf.data() + nread, _gbuf.size() - nread)) > 0) {
-				nread += n;
-				if (nread == gsize()) {
+		do_fill() {
+			// TODO 2016-03-09 this is not optimal solution,
+			// but i don't know a better alternative
+			std::streamsize old_egptr_offset = egptr() - eback();
+			char_type* first = egptr();
+			char_type* last = glast();
+			std::streamsize n = 0;
+			while ((n = _fd.read(first, last-first)) > 0) {
+				first += n;
+				setg(eback(), gptr(), first);
+				if (first == last) {
 					ggrow();
+					first = egptr();
+					last = glast();
 				}
 			}
-			char_type* base = _gbuf.data();
-			setg(base, base + offset, base + nread);
-			return nread - offset;
+			return first - (eback() + old_egptr_offset);
 		}
 
 	protected:
 
+		char_type*
+		gfirst() noexcept {
+			return _gbuf.data();
+		}
+
+		char_type*
+		glast() noexcept {
+			return _gbuf.data() + _gbuf.size();
+		}
+
+		void
+		rebase() noexcept {
+			char_type* base = _gbuf.data();
+			setg(
+				base,
+				base + (gptr()-eback()),
+				base + (egptr()-eback())
+			);
+		}
+
 		void
 		ggrow() {
 			_gbuf.resize(_gbuf.size() * 2);
+			rebase();
 		}
 
 		void

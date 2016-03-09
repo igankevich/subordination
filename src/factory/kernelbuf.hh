@@ -61,6 +61,13 @@ namespace factory {
 		basic_kernelbuf(Args&& ... args):
 		Base(std::forward<Args>(args)...) {}
 
+		std::streamsize
+		fill() override {
+			std::streamsize ret = Base::fill();
+			this->debug_state(__func__);
+			return ret;
+		}
+
 		bool
 		read_packet() override {
 			State old_state;
@@ -71,7 +78,6 @@ namespace factory {
 					case State::header_is_ready: this->buffer_payload(); break;
 					case State::payload_is_ready: this->read_payload(); break;
 				}
-				this->dumpstate();
 			} while (old_state != _rstate);
 			return payload_is_ready();
 		}
@@ -79,7 +85,8 @@ namespace factory {
 		void
 		skip_packet() override {
 			if (_rstate == State::payload_is_ready) {
-				this->setg(eback(), payload_end(), egptr());
+				reset_packet();
+//				this->setg(eback(), payload_end(), egptr());
 			}
 		}
 
@@ -114,15 +121,18 @@ namespace factory {
 		typedef sysx::Bytes<size_type, char_type> bytes_type;
 
 		void read_kernel_packetsize() {
-			size_type count = egptr() - gptr();
+			const size_type count = egptr() - gptr();
 			if (!(count < this->header_size())) {
 				bytes_type size(gptr(), gptr() + this->header_size());
 				size.to_host_format();
-				const pos_type p = gptr() - eback();
-				setpacket(p, p + pos_type(header_size()), size);
-				this->gbump(this->header_size());
-				this->dumpstate();
-				this->sets(State::header_is_ready);
+				if (size.value() >= header_size()) {
+					const pos_type p = gptr() - eback();
+					setpacket(p, p + pos_type(header_size()), size);
+					this->gbump(this->header_size());
+					this->sets(State::header_is_ready, __func__);
+				} else {
+					this->gbump(this->header_size());
+				}
 			}
 		}
 
@@ -133,7 +143,7 @@ namespace factory {
 			}
 			if (egptr() >= packet_end()) {
 				this->setg(eback(), payload_begin(), payload_end());
-				this->sets(State::payload_is_ready);
+				this->sets(State::payload_is_ready, __func__);
 			}
 		}
 
@@ -151,20 +161,7 @@ namespace factory {
 			}
 			setpacket(0, 0, 0);
 			_oldendpos = 0;
-			this->sets(State::initial);
-			this->dumpstate();
-		}
-
-		void dumpstate() {
-			this_log() << std::setw(20) << std::left << _rstate
-				<< "pptr=" << this->pptr() - this->pbase()
-				<< ",epptr=" << this->epptr() - this->pbase()
-				<< ",gptr=" << gptr() - eback()
-				<< ",egptr=" << egptr() - eback()
-				<< ",size=" << packetsize()
-				<< ",start=" << packetpos()
-				<< ",oldpos=" << _oldendpos
-				<< std::endl;
+			this->sets(State::initial, __func__);
 		}
 
 		friend std::ostream&
@@ -179,9 +176,30 @@ namespace factory {
 		}
 
 		void
-		sets(State rhs) {
-			this_log() << "oldstate=" << _rstate
-				<< ",newstate=" << rhs << std::endl;
+		debug_state(const char* where=nullptr) {
+			sets(_rstate, where);
+		}
+
+		void
+		sets(State rhs, const char* where=nullptr) {
+			#ifndef NDEBUG
+			std::stringstream tmp;
+			tmp << _rstate << "->" << rhs;
+			this_log log;
+			if (where) {
+				log << std::setw(40) << std::left << where;
+			}
+			log << std::setw(40) << tmp.str()
+				<< "put={" << pptr() - pbase() << ',' << epptr() - pbase() << '}'
+				<< ",get={" << gptr() - eback() << ',' << egptr() - eback() << '}'
+				<< ",packet={"
+				<< packet_begin() - eback() << ','
+				<< payload_begin() - eback() << ','
+				<< packet_end() - eback()
+				<< '}'
+				<< ",save_egptr=" << _oldendpos
+				<< std::endl;
+			#endif
 			_rstate = rhs;
 		}
 
