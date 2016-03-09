@@ -43,6 +43,14 @@ namespace factory {
 			begin_packet();
 			*this << kernel.app() << type.id();
 			kernel.write(*this);
+			if (kernel.carries_parent()) {
+				// embed parent into the current kernel
+				kernel_type* parent = kernel.parent();
+				assert(parent and "Trying to embed non-existent parent kernel.");
+				assert(parent->type() and "Trying to embed parent kernel with undefined type.");
+				*this << parent->type().id();
+				parent->write(*this);
+			}
 			end_packet();
 			return *this;
 		}
@@ -61,6 +69,11 @@ namespace factory {
 					try {
 						kernel = Type<kernel_type>::read_object(*_types, *this);
 						kernel->setapp(app);
+						if (kernel->carries_parent()) {
+							kernel_type* parent = Type<kernel_type>::read_object(*_types, *this);
+							parent->setapp(app);
+							kernel->parent(parent);
+						}
 					} catch (components::Marshalling_error& err) {
 						setstate(state::bad_kernel);
 						this_log() << err << std::endl;

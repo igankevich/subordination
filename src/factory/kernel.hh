@@ -86,11 +86,12 @@ namespace factory {
 			typedef std::chrono::steady_clock Clock;
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
-			typedef std::bitset<1> Flags;
+			typedef std::bitset<2> Flags;
 			typedef stdx::log<Basic_kernel> this_log;
 
 			enum struct Flag {
-				DELETED = 0
+				DELETED = 0,
+				carries_parent = 1
 			};
 
 			virtual
@@ -148,11 +149,17 @@ namespace factory {
 				return _flags.test(static_cast<size_t>(f));
 			}
 
+			bool
+			carries_parent() const noexcept {
+				return this->isset(Flag::carries_parent);
+			}
+
 		private:
 
 			Result _result = Result::UNDEFINED;
 			Time_point _at = Time_point(Duration::zero());
 			Flags _flags = 0;
+
 		};
 
 		struct Kernel_header {
@@ -333,28 +340,26 @@ namespace factory {
 			void
 			read(sysx::packetstream& in) override {
 				base_kernel::read(in);
-				if (_parent) {
-					std::stringstream s;
-					s << "Parent is not null while reading from the data stream. Parent=";
-					s << _parent;
-					throw Error(s.str(), __FILE__, __LINE__, __func__);
+				bool b = false;
+				in >> b;
+				if (b) {
+					this->setf(Flag::carries_parent);
 				}
+				assert(not _parent and "Parent is not null while reading from the data stream.");
 				in >> _parent_id;
-				if (_principal) {
-					throw Error("Principal kernel is not null while reading from the data stream.",
-						__FILE__, __LINE__, __func__);
-				}
+				assert(not _principal and "Principal kernel is not null while reading from the data stream.");
 				in >> _principal_id;
 			}
 
 			void
 			write(sysx::packetstream& out) override {
 				base_kernel::write(out);
-				if (moves_downstream() || moves_somewhere()) {
+				out << carries_parent();
+				if (moves_downstream() or moves_somewhere()) {
 					out << _parent_id << _principal_id;
 				} else {
-					out << (!_parent ? ROOT_ID : _parent->id());
-					out << (!_principal ? ROOT_ID : _principal->id());
+					out << (not _parent ? ROOT_ID : _parent->id());
+					out << (not _principal ? ROOT_ID : _principal->id());
 				}
 			}
 
