@@ -47,7 +47,7 @@ namespace factory {
 			_vaddr(vaddr),
 			_packetbuf(),
 			_stream(&_packetbuf),
-			_buffer()
+			_sentupstream()
 			{
 				_stream.setapp(factory->app());
 				_stream.settypes(&factory->types());
@@ -67,7 +67,7 @@ namespace factory {
 			_vaddr(rhs._vaddr),
 			_packetbuf(std::move(rhs._packetbuf)),
 			_stream(std::move(rhs._stream)),
-			_buffer(std::move(rhs._buffer))
+			_sentupstream(std::move(rhs._sentupstream))
 			{
 				_stream.rdbuf(&_packetbuf);
 			}
@@ -75,10 +75,7 @@ namespace factory {
 			virtual
 			~Remote_Rserver() {
 				this->recover_kernels();
-				stdx::delete_each(
-					stdx::front_popper(_buffer),
-					stdx::front_popper_end(_buffer)
-				);
+				this->delete_kernels();
 			}
 
 			Category
@@ -97,27 +94,28 @@ namespace factory {
 				sysx::poll_event ev{socket().fd(), sysx::poll_event::In};
 				handle(ev);
 
-				// recover kernels written to output buffer
-				using namespace std::placeholders;
-				std::for_each(
-					stdx::front_popper(_buffer),
-					stdx::front_popper_end(_buffer),
-					std::bind(&Remote_Rserver::recover_kernel, this, _1)
-				);
+				// recover kernels from upstream and downstream buffer
+				do_recover_kernels(_sentupstream);
+				do_recover_kernels(_sentdownstream);
 			}
 
-			void send(kernel_type* kernel) {
-				bool erase_kernel = true;
-				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
+			void
+			send(kernel_type* kernel) {
+				bool delete_kernel = false;
+				if (kernel_goes_in_upstream_buffer(kernel)) {
 					kernel->id(this->factory()->factory_generate_id());
-					erase_kernel = false;
+					_sentupstream.push_back(kernel);
+				} else
+				if (kernel_goes_in_downstream_buffer(kernel)) {
+					_sentdownstream.push_back(kernel);
+				} else
+				if (not kernel->moves_everywhere()) {
+					delete_kernel = true;
 				}
-				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
-					_buffer.push_back(kernel);
-					erase_kernel = false;
-				}
-				this->write_kernel(*kernel);
-				if (erase_kernel && !kernel->moves_everywhere()) {
+				_stream << kernel;
+				// The kernel is deleted if it goes downstream
+				// and does not carry its parent.
+				if (delete_kernel) {
 					delete kernel;
 				}
 			}
@@ -177,12 +175,46 @@ namespace factory {
 				return out << stdx::make_fields(
 					"vaddr", rhs.vaddr(),
 					"socket", rhs.socket(),
-					"kernels", rhs._buffer.size(),
+					"kernels", rhs._sentupstream.size(),
 					"stream", stdx::debug_stream(rhs._stream)
 				);
 			}
 
 		private:
+
+			void
+			do_recover_kernels(pool_type& rhs) noexcept {
+				using namespace std::placeholders;
+				std::for_each(
+					stdx::front_popper(rhs),
+					stdx::front_popper_end(rhs),
+					std::bind(&Remote_Rserver::recover_kernel, this, _1)
+				);
+			}
+
+			void
+			delete_kernels() {
+				do_delete_kernels(_sentupstream);
+				do_delete_kernels(_sentdownstream);
+			}
+
+			void
+			do_delete_kernels(pool_type& rhs) noexcept {
+				stdx::delete_each(
+					stdx::front_popper(rhs),
+					stdx::front_popper_end(rhs)
+				);
+			}
+
+			static bool
+			kernel_goes_in_upstream_buffer(const kernel_type* rhs) noexcept {
+				return rhs->moves_upstream() or rhs->moves_somewhere();
+			}
+
+			static bool
+			kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
+				return rhs->moves_downstream() and rhs->carries_parent();
+			}
 
 			void
 			receive_kernel(kernel_type* k) {
@@ -212,40 +244,44 @@ namespace factory {
 				this->send(k);
 			}
 
-			void
-			write_kernel(kernel_type& kernel) {
-				_stream << kernel;
-			}
-
 			void recover_kernel(kernel_type* k) {
-				if (k->moves_everywhere()) {
-					delete k;
-				} else if (k->moves_upstream()) {
+				if (k->moves_upstream()) {
 					this->parent()->send(k);
-				} else {
+				} else if (k->moves_somewhere()) {
 					k->from(k->to());
 					k->result(Result::ENDPOINT_NOT_CONNECTED);
 					k->principal(k->parent());
 					this->root()->send(k);
+				} else if (k->moves_downstream() and k->carries_parent()) {
+//					kernel_type* parent = k->parent();
+//					k->principal(k->parent());
+					this->parent()->send(k);
+					this_log() << "Hello" << std::endl;
+				} else {
+					assert(false and "Bad kernel in sent buffer");
 				}
 			}
 
 			void clear_kernel_buffer(kernel_type* k) {
-				auto pos = std::find_if(_buffer.begin(), _buffer.end(),
-					[k] (kernel_type* rhs) { return *rhs == *k; });
-				if (pos != _buffer.end()) {
+				auto pos = std::find_if(
+					_sentupstream.begin(),
+					_sentupstream.end(),
+					[k] (kernel_type* rhs) { return *rhs == *k; }
+				);
+				if (pos != _sentupstream.end()) {
 					kernel_type* orig = *pos;
 					k->parent(orig->parent());
 					k->principal(k->parent());
 					delete orig;
-					_buffer.erase(pos);
+					_sentupstream.erase(pos);
 				}
 			}
 
 			sysx::endpoint _vaddr;
 			Kernelbuf _packetbuf;
 			stream_type _stream;
-			pool_type _buffer;
+			pool_type _sentupstream;
+			pool_type _sentdownstream;
 		};
 
 		template<class T, class Socket>

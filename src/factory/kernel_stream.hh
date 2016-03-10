@@ -33,6 +33,11 @@ namespace factory {
 		Kernel_stream(Kernel_stream&&) = default;
 
 		Kernel_stream&
+		operator<<(kernel_type* kernel) {
+			return operator<<(*kernel);
+		}
+
+		Kernel_stream&
 		operator<<(kernel_type& kernel) {
 			const Type<kernel_type> type = kernel.type();
 			if (not type) {
