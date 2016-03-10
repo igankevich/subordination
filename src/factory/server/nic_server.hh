@@ -96,7 +96,9 @@ namespace factory {
 
 				// recover kernels from upstream and downstream buffer
 				do_recover_kernels(_sentupstream);
-				do_recover_kernels(_sentdownstream);
+				if (socket().error()) {
+					do_recover_kernels(_sentdownstream);
+				}
 			}
 
 			void
@@ -107,6 +109,7 @@ namespace factory {
 					_sentupstream.push_back(kernel);
 				} else
 				if (kernel_goes_in_downstream_buffer(kernel)) {
+					std::clog << "Put kernel into downstream buffer" << std::endl;
 					_sentdownstream.push_back(kernel);
 				} else
 				if (not kernel->moves_everywhere()) {
@@ -253,10 +256,8 @@ namespace factory {
 					k->principal(k->parent());
 					this->root()->send(k);
 				} else if (k->moves_downstream() and k->carries_parent()) {
-//					kernel_type* parent = k->parent();
-//					k->principal(k->parent());
-					this->parent()->send(k);
-					this_log() << "Hello" << std::endl;
+					std::clog << "Reviving parent kernel on a subordinate node" << std::endl;
+					this->root()->send(k);
 				} else {
 					assert(false and "Bad kernel in sent buffer");
 				}

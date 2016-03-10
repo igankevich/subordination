@@ -24,32 +24,31 @@ template<class T>
 class Autoreg_model: public Kernel {
 public:
 
-	explicit Autoreg_model(bool b = true):
-		zsize(768, 24, 24),
-		zdelta(1, 1, 1),
-		acf_size(10, 10, 10),
-		acf_delta(zdelta),
-		fsize(acf_size),
-		linear(false),
-		skewness(0),
-		kurtosis(0),
-		interval(0),
-		zsize2(zsize),
-		acf_model(acf_size),
-		acf_pure(acf_size),
-		ar_coefs(fsize),
-		homogeneous(b),
-		alpha(0.05),
-		beta(0.8),
-		gamm(1.0)
+	explicit
+	Autoreg_model(bool b = true):
+	zsize(768, 24, 24),
+	zdelta(1, 1, 1),
+	acf_size(10, 10, 10),
+	acf_delta(zdelta),
+	fsize(acf_size),
+	linear(false),
+	skewness(0),
+	kurtosis(0),
+	interval(0),
+	zsize2(zsize),
+	acf_model(acf_size),
+	acf_pure(acf_size),
+	ar_coefs(fsize),
+	homogeneous(b),
+	alpha(0.05),
+	beta(0.8),
+	gamm(1.0)
 	{
 		validate_parameters();
 	}
 
-	const char* name() const { return "A_2"; }
 
-	bool is_profiled() const { return false; }
-	void act() {
+	void act() override {
 
 		std::clog << std::left << std::boolalpha;
 		write_log("ACF size:"   , acf_size);
@@ -62,8 +61,70 @@ public:
 		write_log("Interval:"   , interval);
 		write_log("Size factor:", size_factor());
 
-		upstream(local_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
+		upstream_carry(local_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
 //		do_it();
+	}
+
+	void
+	write(sysx::packetstream& out) override {
+		Kernel::write(out);
+		out << zsize;
+		out << zdelta;
+		out << acf_size;
+		out << acf_delta;
+		out << fsize;
+		out << linear;
+		out << skewness;
+		out << kurtosis;
+		out << interval;
+		out << zsize2;
+		out << acf_model;
+		out << acf_pure;
+		out << ar_coefs;
+		out << homogeneous;
+		out << alpha;
+		out << beta;
+		out << gamm;
+	}
+
+	void
+	read(sysx::packetstream& in) override {
+		Kernel::read(in);
+		in >> zsize;
+		in >> zdelta;
+		in >> acf_size;
+		in >> acf_delta;
+		in >> fsize;
+		in >> linear;
+		in >> skewness;
+		in >> kurtosis;
+		in >> interval;
+		in >> zsize2;
+		in >> acf_model;
+		in >> acf_pure;
+		in >> ar_coefs;
+		in >> homogeneous;
+		in >> alpha;
+		in >> beta;
+		in >> gamm;
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			10000,
+			"Autoreg_model",
+			[] (sysx::packetstream& in) {
+				Autoreg_model* k = new Autoreg_model;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 
 	void react(factory::Kernel* child);
@@ -168,7 +229,7 @@ private:
 			interpolation_coefs<T>(nit_x0, nit_x1, INTERPOLATION_NODES, interp_coefs, cdf);
 			transform_acf<T>(interp_coefs, MAX_NIT_COEFS, acf_model);
 		}
-		upstream(local_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
+		upstream_carry(local_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
 	}
 
 	size3 zsize;
@@ -207,13 +268,14 @@ namespace autoreg {
 
 template<class T>
 void Autoreg_model<T>::react(factory::Kernel* child) {
+	std::clog << "react: child=" << typeid(*child).name() << std::endl;
 	if (typeid(*child) == typeid(ACF_generator<T>)) {
 		do_it();
 	}
 	if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-		upstream(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
+		upstream_carry(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
 	}
 	typedef Uniform_grid Grid;
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
@@ -224,14 +286,16 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 //		std::size_t modulo = homogeneous ? 1 : 2;
 		Grid grid_2(zsize2[0], max_num_parts);
 		Grid grid(zsize[0], max_num_parts);
-		upstream(local_server(), factory()->template new_kernel<Wave_surface_generator<T, Grid>>(ar_coefs, fsize, var_wn,
+		upstream_carry(remote_server(), factory()->template new_kernel<Wave_surface_generator<T, Grid>>(ar_coefs, fsize, var_wn,
 						                             zsize2, interval, zsize, zdelta, grid, grid_2));
 	}
 	if (typeid(*child) == typeid(Wave_surface_generator<T, Grid>)) {
+		std::clog << "react: done" << std::endl;
+		this->parent(nullptr);
 //		const std::valarray<T>& water_surface
 //			= reinterpret_cast<Wave_surface_generator<T, Grid>*>(child)->get_water_surface();
 		commit(local_server());
-//		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
+//		upstream_carry(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);
 //		}

@@ -495,6 +495,8 @@ struct Main: public Kernel {
 		this_server.factory()->types().register_type(negotiator_type::static_type());
 		this_server.factory()->types().register_type(Ping::static_type());
 		this_server.factory()->types().register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
+		this_server.factory()->types().register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
+		this_server.factory()->types().register_type(autoreg::Autoreg_model<float>::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -645,7 +647,7 @@ int main(int argc, char* argv[]) {
 			auto first = procs.begin();
 //			const auto last = procs.end();
 			// skip master
-			++first;
+//			++first;
 //			while (first != last) {
 				std::this_thread::sleep_for(tick);
 				this_log() << "Killing process " << first->id() << std::endl;

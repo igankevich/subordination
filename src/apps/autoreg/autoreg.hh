@@ -887,7 +887,7 @@ struct Generator1: public Kernel, public Identifiable_tag {
 	static const Type<Kernel>
 	static_type() noexcept {
 		return Type<Kernel>{
-			10001,
+			10002,
 			"Generator",
 			[] (sysx::packetstream& in) {
 				Generator1* k = new Generator1;
@@ -919,7 +919,7 @@ struct Wave_surface_generator: public Kernel, public Identifiable_tag {
 
 	typedef stdx::log<Wave_surface_generator> this_log;
 
-	const char* name() const { return "G_0"; }
+	Wave_surface_generator() = default;
 
 	Wave_surface_generator(const std::valarray<T>& phi_,
 						   const size3& fsize_,
@@ -930,17 +930,16 @@ struct Wave_surface_generator: public Kernel, public Identifiable_tag {
 						   const Vector<T, 3>& /*zdelta*/,
 						   const Grid& grid_,
 						   const Grid& grid_2_):
-		phi(phi_), fsize(fsize_), var_eps(var_eps_),
-		zsize2(zsize2_), interval(interval_), zsize(zsize_), zeta(zsize), zeta2(zsize2),
-		grid(grid_), grid_2(grid_2_), count(0), out(OUTPUT_FILENAME), out2(OUTPUT_FILENAME_2)
+	phi(phi_), fsize(fsize_), var_eps(var_eps_),
+	zsize2(zsize2_), interval(interval_), zsize(zsize_),
+	grid(grid_), grid_2(grid_2_), count(0)
 	{
-		if (!out.is_open()) throw File_not_found(OUTPUT_FILENAME);
+//		if (!out.is_open()) throw File_not_found(OUTPUT_FILENAME);
 //		out << Domain<T, 3>(zdelta, zsize) << std::endl;
 	}
 
-	bool is_profiled() const { return false; }
-
-	void act() {
+	void
+	act() override {
 		std::size_t num_parts = grid.num_parts();
 		std::stringstream tmp;
 		tmp << "Num. of parts = " << num_parts << std::endl;
@@ -965,73 +964,102 @@ struct Wave_surface_generator: public Kernel, public Identifiable_tag {
 		delete[] generators;
 	}
 
-	void react(factory::Kernel* child) {
-		this_log() << "generator returned from " << child->from() << std::endl;
-//		Generator1<T, Grid>* generator = reinterpret_cast<Generator1<T, Grid>*>(child);
-//		write(generator->get_part());
-		this_log() << "Completed " << count+1 << " of " << grid.num_parts() << std::endl;
+	void react(Kernel* child) override {
+		this_log() << "generator returned from " << child->from()
+			<< ", completed " << count+1 << " of " << grid.num_parts()
+			<< std::endl;
 		if (++count == grid.num_parts()) {
-			commit(local_server());
+			commit(remote_server());
 		}
 	}
 
-	void write(const Surface_part& part) {
-		const Index<3> idz(zsize);
-		const int t0 = part.t0();
-		const int t1 = part.t1();
-		const int x1 = zsize[1];
-		const int y1 = zsize[2];
-//		std::ofstream slice("zeta_slice.csv");
-//		for (int t=t0; t<t1; t++) {
-//			for (int x=0; x<x1; x++) {
-//				for (int y=0; y<y1; y++) {
-//					slice << x/(x1-1.) << ',';
-//					slice << y/(y1-1.) << ',';
-//					slice << t << ',';
-//					slice << zeta[idz(t, x, y)] << '\n';
+	void
+	write(sysx::packetstream& out) override {
+		Kernel::write(out);
+		out << phi;
+		out << fsize;
+		out << var_eps;
+		out << zsize2;
+		out << interval;
+		out << zsize;
+		out << grid;
+		out << grid_2;
+		out << count;
+	}
+
+	void
+	read(sysx::packetstream& in) override {
+		Kernel::read(in);
+		in >> phi;
+		in >> fsize;
+		in >> var_eps;
+		in >> zsize2;
+		in >> interval;
+		in >> zsize;
+		in >> grid;
+		in >> grid_2;
+		in >> count;
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			10001,
+			"Wave_surface_generator",
+			[] (sysx::packetstream& in) {
+				Wave_surface_generator* k = new Wave_surface_generator;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+//	void write(const Surface_part& part) {
+//		const Index<3> idz(zsize);
+//		const int t0 = part.t0();
+//		const int t1 = part.t1();
+//		const int x1 = zsize[1];
+//		const int y1 = zsize[2];
+////		std::ofstream slice("zeta_slice.csv");
+////		for (int t=t0; t<t1; t++) {
+////			for (int x=0; x<x1; x++) {
+////				for (int y=0; y<y1; y++) {
+////					slice << x/(x1-1.) << ',';
+////					slice << y/(y1-1.) << ',';
+////					slice << t << ',';
+////					slice << zeta[idz(t, x, y)] << '\n';
+////				}
+////			}
+////		}
+//	    for (int t=t0; t<t1; t++) {
+//	        for (int x=0; x<x1; x++) {
+//	            for (int y=0; y<y1; y++) {
+//					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
+////					out2 << zeta[idz(t, x, y)] << ' ';
 //				}
+////				out2 << '\n';
 //			}
 //		}
-	    for (int t=t0; t<t1; t++) {
-	        for (int x=0; x<x1; x++) {
-	            for (int y=0; y<y1; y++) {
-					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
-//					out2 << zeta[idz(t, x, y)] << ' ';
-				}
-//				out2 << '\n';
-			}
-		}
-	}
-
-	const std::valarray<T>& get_water_surface() const {
-		return zeta;
-	}
+//	}
 
 private:
-	const std::valarray<T>& phi;
-	const size3& fsize;
-	const T var_eps;
-	const size3& zsize2;
-	const std::size_t interval;
-	const size3& zsize;
-	std::valarray<T> zeta;
-	std::valarray<T> zeta2;
+
+	std::valarray<T> phi;
+	size3 fsize;
+	T var_eps;
+	size3 zsize2;
+	uint32_t interval;
+	size3 zsize;
 	Grid grid;
 	Grid grid_2;
-	std::size_t count;
-	std::ofstream out;
-	std::ofstream out2;
+	uint32_t count;
 
-	static const char* OUTPUT_FILENAME;
-	static const char* OUTPUT_FILENAME_2;
 };
-
-template<class T, class G>
-const char* Wave_surface_generator<T, G>::OUTPUT_FILENAME = "zeta";
-
-template<class T, class G>
-const char* Wave_surface_generator<T, G>::OUTPUT_FILENAME_2 = "zeta.txt";
-
 
 }
 

@@ -403,6 +403,9 @@ namespace factory {
 			void
 			run_act(server_type& this_server) {
 				_server = &this_server;
+				if (_principal) {
+					_principal->_server = &this_server;
+				}
 				switch (this->result()) {
 					case Result::UNDEFINED:
 						if (_principal) {
@@ -488,6 +491,14 @@ namespace factory {
 			void
 			upstream(S* this_server, Principal* a) {
 				a->parent(this);
+				this_server->send(a);
+			}
+
+			template<class S>
+			void
+			upstream_carry(S* this_server, Principal* a) {
+				a->parent(this);
+				a->setf(Flag::carries_parent);
 				this_server->send(a);
 			}
 
