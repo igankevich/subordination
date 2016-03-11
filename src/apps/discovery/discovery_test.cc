@@ -707,7 +707,7 @@ int main(int argc, char* argv[]) {
 //			while (first != last) {
 				std::this_thread::sleep_for(tick);
 				this_log() << "Killing process " << first->id() << std::endl;
-				first->signal(SIGKILL);
+				first->kill();
 				++first;
 //			}
 			this_log() << "Finish killing spree" << std::endl;

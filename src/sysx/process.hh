@@ -230,13 +230,16 @@ namespace sysx {
 
 	struct process {
 
-		inline
-		process() noexcept = default;
+		process() = default;
 
 		template<class F>
 		explicit inline
 		process(F f) {
-			run(f);
+			_pid = safe_fork();
+			if (_pid == 0) {
+				int ret = f();
+				std::exit(ret);
+			}
 		}
 
 		process(const process&) = delete;
@@ -254,34 +257,22 @@ namespace sysx {
 
 		~process() {
 			if (_pid > 0) {
-		   		do_kill(SIGTERM);
+				this->do_kill(sysx::signal::terminate);
 			}
 		}
 
-		inline
-		process& operator=(process&& rhs) noexcept {
+		inline process&
+		operator=(process&& rhs) noexcept {
 			_pid = rhs._pid;
 			rhs._pid = 0;
 			return *this;
 		}
 
-
-		template<class F>
-		void
-		run(F f) {
-			_pid = ::fork();
-			if (_pid == 0) {
-				int ret = f();
-				std::exit(ret);
-			}
-		}
-
-		inline void stop() { signal(SIGSTOP); }
-		inline void resume() { signal(SIGCONT); }
-		inline void terminate() { signal(SIGTERM); }
+		inline void terminate() { this->signal(sysx::signal::terminate); }
+		inline void kill() { this->signal(sysx::signal::kill); }
 
 		inline void
-		signal(int sig) {
+		signal(sysx::signal sig) {
 			if (_pid > 0) {
 		    	bits::check(do_kill(sig),
 					__FILE__, __LINE__, __func__);
@@ -302,7 +293,7 @@ namespace sysx {
 
 		explicit inline
 		operator bool() const noexcept {
-			return _pid > 0 && do_kill(0) != -1;
+			return _pid > 0 && do_kill(sysx::signal(0)) != -1;
 		}
 
 		inline bool
@@ -312,10 +303,7 @@ namespace sysx {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const process& rhs) {
-			return out << '{'
-				<< "id=" << rhs.id()
-				<< ",gid=" << rhs.group_id()
-				<< '}';
+			return out << stdx::make_fields("id", rhs.id(), "gid", rhs.group_id());
 		}
 
 		pid_type
@@ -341,11 +329,12 @@ namespace sysx {
 	private:
 
 		inline int
-		do_kill(int sig) const {
-		   	return ::kill(_pid, sig);
+		do_kill(sysx::signal sig) const noexcept {
+		   	return ::kill(_pid, signal_type(sig));
 		}
 
 		pid_type _pid = 0;
+
 	};
 
 	struct process_group {
@@ -408,7 +397,7 @@ namespace sysx {
 		}
 
 		inline void
-		stop() {
+		terminate() {
 			if (_gid > 0) {
 		    	bits::check(::kill(_gid, SIGTERM),
 					__FILE__, __LINE__, __func__);
