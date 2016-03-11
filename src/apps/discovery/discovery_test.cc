@@ -227,6 +227,40 @@ private:
 	uint32_t _numsent = 0;
 };
 
+/**
+An agent that returns to its principal only when the node where it was sent
+fails, or in case of network failure.
+*/
+struct Secret_agent: public Kernel, Identifiable_tag {
+
+	typedef stdx::log<Secret_agent> this_log;
+
+	void
+	act() override {
+		this_log() << "is deployed" << std::endl;
+		delete this;
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			112,
+			"Secret_agent",
+			[] (sysx::packetstream& in) {
+				Secret_agent* k = new Secret_agent;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+};
+
 struct Ping: public Kernel, Identifiable_tag {
 
 	typedef stdx::log<Ping> this_log;
@@ -384,14 +418,24 @@ struct Master_discoverer: public Kernel, public Identifiable_tag {
 		if (_negotiator == k) {
 			if (k->result() == Result::SUCCESS) {
 				_hierarchy.set_principal(_negotiator->new_principal());
+				this_log() << "hierarchy: " << _hierarchy << std::endl;
 				_negotiator = nullptr;
+				deploy_secret_agent();
 			} else {
+				try_next_host(this_server);
+			}
+		} else
+		if (_secretagent == k) {
+			if (k->result() == Result::ENDPOINT_NOT_CONNECTED) {
+				_hierarchy.unset_principal();
+				this_log() << "hierarchy: " << _hierarchy << std::endl;
 				try_next_host(this_server);
 			}
 		} else
 		if (k->type() == negotiator_type::static_type()) {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(this_server, _hierarchy);
+			this_log() << "hierarchy: " << _hierarchy << std::endl;
 		}
 	}
 
@@ -455,6 +499,16 @@ private:
 		}
 	}
 
+	void
+	deploy_secret_agent() {
+		_secretagent = new Secret_agent;
+		_secretagent->to(_hierarchy.principal());
+		_secretagent->id(factory()->factory_generate_id());
+		_secretagent->parent(this);
+		_secretagent->set_principal_id(_secretagent->to().address());
+		remote_server()->send(_secretagent);
+	}
+
 	hierarchy_type _hierarchy;
 	sysx::port_type _port;
 	rankedlist_type _rankedhosts;
@@ -462,6 +516,7 @@ private:
 //	discovery::Cache_guard<Peers> _cache;
 
 	Master_negotiator<addr_type>* _negotiator;
+	Secret_agent* _secretagent = nullptr;
 	springy::Springy_graph _graph;
 };
 
@@ -497,6 +552,7 @@ struct Main: public Kernel {
 		this_server.factory()->types().register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
 		this_server.factory()->types().register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
 		this_server.factory()->types().register_type(autoreg::Autoreg_model<float>::static_type());
+		this_server.factory()->types().register_type(Secret_agent::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {

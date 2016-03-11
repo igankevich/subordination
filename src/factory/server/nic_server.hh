@@ -417,6 +417,7 @@ namespace factory {
 				if (result == _iterator) {
 					advance_upstream_iterator();
 				}
+				result->second.stop();
 				_upstream.erase(result);
 			}
 
@@ -472,6 +473,13 @@ namespace factory {
 						// short-circuit kernels when no upstream servers are available
 						this->root()->send(k);
 					} else {
+						// skip stopped hosts
+						iterator_type old_iterator = _iterator;
+						if (_iterator->second.stopped()) {
+							do {
+								advance_upstream_iterator();
+							} while (_iterator->second.stopped() and old_iterator != _iterator);
+						}
 						// round robin over upstream hosts
 						_iterator->second.send(k);
 						advance_upstream_iterator();
