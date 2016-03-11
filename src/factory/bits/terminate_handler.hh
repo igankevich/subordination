@@ -53,7 +53,7 @@ namespace factory {
 			init_signal_handlers() noexcept {
 				sysx::this_process::bind_signal(sysx::signal::terminate, normal_shutdown);
 				sysx::this_process::bind_signal(sysx::signal::keyboard_interrupt, normal_shutdown);
-				sysx::this_process::bind_signal(sysx::signal::broken_pipe, SIG_IGN);
+				sysx::this_process::ignore_signal(sysx::signal::broken_pipe);
 			}
 
 			static void

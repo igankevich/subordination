@@ -107,8 +107,15 @@ namespace sysx {
 
 		inline void
 		bind_signal(signal sig, const signal_action& action) {
-			bits::check(::sigaction(signal_type(sig), &action, 0),
-				__FILE__, __LINE__, __func__);
+			bits::check(
+				::sigaction(signal_type(sig), &action, 0),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+		inline void
+		ignore_signal(signal sig) {
+			bind_signal(sig, SIG_IGN);
 		}
 
 	}
