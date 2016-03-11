@@ -8,7 +8,7 @@ test(
 )
 
 test(
-	'kernel_stream',
+	'kernel-stream',
 	executable(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
@@ -17,20 +17,20 @@ test(
 )
 
 test(
-	'socket',
+	'nic-server',
 	executable(
-		'socket-test',
-		sources: 'socket_test.cc',
+		'nic-server-test',
+		sources: 'nic_server_test.cc',
 		dependencies: threads,
 		include_directories: srcdir
 	)
 )
 
 test(
-	'offline',
+	'nic-server-offline',
 	executable(
-		'offline-test',
-		sources: 'socket_test.cc',
+		'nic-server-offline-test',
+		sources: 'nic_server_test.cc',
 		dependencies: threads,
 		cpp_args: '-DFACTORY_TEST_OFFLINE',
 		include_directories: srcdir
@@ -58,7 +58,7 @@ test(
 )
 
 test(
-	'endpoint',
+	'sysx::endpoint',
 	executable(
 		'endpoint-test',
 		sources: 'endpoint_test.cc',
@@ -67,17 +67,17 @@ test(
 )
 
 test(
-	'timer',
+	'timer-server',
 	executable(
-		'timer-test',
-		sources: 'timer_test.cc',
+		'timer-server-test',
+		sources: 'timer_server_test.cc',
 		dependencies: threads,
 		include_directories: srcdir
 	)
 )
 
 test(
-	'uint128-builtin',
+	'std::uint128 (builtin)',
 	executable(
 		'uint128-test',
 		sources: 'uint128_test.cc',
@@ -86,7 +86,7 @@ test(
 )
 
 test(
-	'uint128-emulate',
+	'std::uint128 (emulate)',
 	executable(
 		'uint128-emulate-test',
 		sources: 'uint128_test.cc',
@@ -106,22 +106,22 @@ test(
 
 
 app_exe = executable(
-	'app-test',
-	sources: 'appserver_test.cc',
+	'process-server-test-app',
+	sources: 'process_server_test.cc',
 	dependencies: threads,
 	include_directories: srcdir,
 	cpp_args: '-DFACTORY_TEST_APP'
 )
 
 srv_exe = executable(
-	'srv-test',
-	sources: 'appserver_test.cc',
+	'process-server-test',
+	sources: 'process_server_test.cc',
 	dependencies: threads,
 	include_directories: srcdir,
-	cpp_args: ['-DFACTORY_TEST_SERVER', '-DFACTORY_APP_PATH=./src/test/app-test']
+	cpp_args: ['-DFACTORY_TEST_SERVER', '-DFACTORY_APP_PATH=./src/test/process-server-test-app']
 )
 
-test('app', srv_exe)
+test('process-server', srv_exe)
 
 executable(
 	'posix-compliance',

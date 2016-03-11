@@ -1,7 +1,6 @@
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
-#include <factory/server/app_server.hh>
 #include <factory/server/process_server.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
@@ -98,12 +97,12 @@ struct Test_socket: public Kernel, Identifiable_tag {
 		--kernel_count;
 	}
 
-	void act(Server& this_server) {
+	void act() override {
 		std::cout << "Test_socket::act(): It works!" << std::endl;
-		commit(this_server.remote_server());
+		commit(remote_server());
 	}
 
-	void write(sysx::packetstream& out) {
+	void write(sysx::packetstream& out) override {
 		this_log() << "Test_socket::write()" << std::endl;
 		Kernel::write(out);
 		out << uint32_t(_data.size());
@@ -111,7 +110,7 @@ struct Test_socket: public Kernel, Identifiable_tag {
 			out << _data[i];
 	}
 
-	void read(sysx::packetstream& in) {
+	void read(sysx::packetstream& in) override {
 		this_log() << "Test_socket::read()" << std::endl;
 		Kernel::read(in);
 		uint32_t sz;
@@ -230,25 +229,25 @@ struct Main: public Kernel, public Identifiable_tag {
 		#endif
 	}
 
-	void act(Server& this_server) {
+	void act() override {
 		#if defined(FACTORY_TEST_APP)
-		Test_socket* kernel = this_server.factory()->new_kernel<Test_socket>();
+		Test_socket* kernel = factory()->new_kernel<Test_socket>();
 		kernel->setapp(sysx::this_process::id());
-		upstream(this_server.remote_server(), kernel);
+		upstream(remote_server(), kernel);
 		#endif
 		#if defined(FACTORY_TEST_SERVER)
 		std::this_thread::sleep_for(std::chrono::seconds(5));
 		commit(local_server());
 		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-//			upstream(this_server.local_server(), new Sender(i, _sleep));
+//			upstream(local_server(), new Sender(i, _sleep));
 	}
 
-	void react(Server& this_server, Kernel*) {
+	void react(Kernel*) override {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
-			commit(this_server.local_server());
+			commit(local_server());
 		}
 	}
 

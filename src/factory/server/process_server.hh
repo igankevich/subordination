@@ -116,10 +116,9 @@ namespace factory {
 
 			void
 			delete_remaining_kernels() {
-				std::for_each(
+				stdx::delete_each(
 					stdx::front_popper(_buffer),
-					stdx::front_popper_end(_buffer),
-					[] (kernel_type* rhs) { delete rhs; }
+					stdx::front_popper_end(_buffer)
 				);
 			}
 
@@ -377,7 +376,6 @@ namespace factory {
 					data_pipe.close_in_child();
 					data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 					data_pipe.validate();
-					_globalsem.wait();
 					return app.execute();
 				});
 				sysx::pid_type process_id = p.id();
@@ -399,7 +397,6 @@ namespace factory {
 					sysx::poll_event{parent_out, 0, 0},
 					handler_type(&result.first->second)
 				);
-				_globalsem.notify_one();
 			}
 
 			void
@@ -474,7 +471,6 @@ namespace factory {
 
 			map_type _apps;
 			sysx::process_group _procs;
-			Global_semaphore _globalsem;
 		};
 
 		template<class T>

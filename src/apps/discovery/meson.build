@@ -22,10 +22,10 @@ libblas = find_library('blas')
 #	]
 #)
 
-test('network',
+test('discovery-ranking',
 	executable(
-		'network-test',
-		sources: 'network_test.cc',
+		'discovery-ranking-test',
+		sources: 'discovery_ranking_test.cc',
 		include_directories: [srcdir, testdir],
 		dependencies: threads,
 		link_args: '-rdynamic'

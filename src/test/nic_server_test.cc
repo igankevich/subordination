@@ -110,7 +110,7 @@ struct Test_socket: public Kernel, public Identifiable_tag {
 		--kernel_count;
 	}
 
-	void act(Server& this_server) override {
+	void act() override {
 		this_log() << "act: kernel no. "
 			<< kernel_count << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
@@ -186,7 +186,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 	_input(_vector_size),
 	_sleep(s) {}
 
-	void act(Server& this_server) override {
+	void act() override {
 		this_log() << "Sender "
 			<< "id = " << id()
 			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
@@ -198,7 +198,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 		}
 	}
 
-	void react(Server& this_server, Kernel* child) override {
+	void react(Kernel* child) override {
 
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
@@ -250,7 +250,8 @@ struct Main: public Kernel {
 		}
 	}
 
-	void act(Server& this_server) override {
+	void
+	act() override {
 		factory()->types().register_type(Test_socket::static_type());
 //		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
@@ -261,7 +262,8 @@ struct Main: public Kernel {
 		}
 	}
 
-	void react(Server& this_server, Kernel*) override {
+	void
+	react(Kernel*) override {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == POWERS.size()) {
