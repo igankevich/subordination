@@ -32,14 +32,14 @@ namespace factory {
 	namespace components {
 
 		template<class Config>
-		struct Basic_factory: public Managed_set<Server<Config>>,
-//			private sysx::Disable_sync_with_stdio,
-			private sysx::Auto_check_endiannes,
-			private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
-			private sysx::Auto_open_standard_file_descriptors,
-			private Auto_set_terminate_handler<Basic_factory<Config>>,
-			public sysx::Install_syslog,
-			private sysx::init_signal_semaphore
+		struct Basic_factory:
+		public Managed_set<Server<Config>>,
+//		private sysx::Disable_sync_with_stdio,
+		private sysx::Auto_check_endiannes,
+		private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
+		private sysx::Auto_open_standard_file_descriptors,
+		private Auto_set_terminate_handler<Basic_factory<Config>>,
+		public sysx::Install_syslog
 		{
 
 			typedef Managed_set<Server<Config>> base_server;
@@ -52,22 +52,18 @@ namespace factory {
 			typedef typename Config::timer_server Timer_server;
 
 			Basic_factory(Global_thread_context& context):
-				Auto_set_terminate_handler<Basic_factory>(this),
-				Install_syslog(std::clog),
-				sysx::init_signal_semaphore(SIGUSR1),
-				_local_server(),
-				_remote_server(),
-				_ext_server(),
-				_timer_server()
+			Auto_set_terminate_handler<Basic_factory>(this),
+			Install_syslog(std::clog),
+			_local_server(),
+			_remote_server(),
+			_ext_server(),
+			_timer_server()
 			{
 				Install_syslog::tee(true);
 				this->setfactory(this);
 				init_parents();
 				init_names();
 				init_context(&context);
-				std::cout << std::endl;
-//				this->dump_hierarchy(std::cout);
-				std::cout << std::endl;
 			}
 
 			virtual ~Basic_factory() {}

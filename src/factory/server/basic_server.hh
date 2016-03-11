@@ -17,8 +17,6 @@ namespace factory {
 
 	namespace components {
 
-		constexpr const Id SHUTDOWN_ID = 123;
-
 		struct Global_thread_context {
 
 			typedef std::mutex slowmutex_type;

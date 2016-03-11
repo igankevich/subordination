@@ -18,10 +18,12 @@ DONE [] Close all Socket in destructor (use rvalue references).
 DONE [] User defined literals for uint128.
 DONE [] Replace std::mutex with Spin_mutex in server queues.
 DONE [all new/delete operations were removed from NIC_server, pointers are needed to store poll() handlers] Minimise the use of bare pointers (use reference_wrappers, unique_ptrs etc.).
+DONE [617:5083d16fa163] Get rid of shutdown function and Shutdown kernel. Use stop() instead.
 
 ??? [needs more testing] Make Factory::stop() reliable.
 ??? [needs perf tests] Filter out chars <= 31 and != \r\n on std::cout stream.
 ??? [needs testing on real socket] Increase fdbuf size to fit whole Kernel object (use seekg and tellg to fill internal buffer).
+??? [needs unit test] Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.
 
 NOT NEEDED [complicates current API] Specialise Bytes class for fixed size arrays.
 NOT NEEDED [OS will do better] Implement thread affinity through pthread library with fall back to native OS calls.
@@ -30,26 +32,29 @@ NOT NEEDED [type_traits is faster to compile] User defined literals for class me
 NOT NEEDED [there many tools to access and filter logs (e.g. journalctl, grep /var/log/syslog etc.), so we forward our logs to them] Make logs machine-readable (prepend process ID, thread ID. date and time, object the log record refers to) and accessible through --verbose (-v) option.
 NOT NEEDED [use syslog and custom streambuf for std::clog instead] Create log server to minimise lock contention when writing to log.
 NOT NEEDED [thread-safe containers are not flexible enough for factory servers, use templated base class for all servers instead] Make locks mutable.
+NOT NEEDED [now event-based approach is employed] Remove stale connections from Socket_server. Remove stale peers from Peers. Limit number of peers to reduce number of persistent connections.
 
 Make Buffer and LBuffer a subclass of std::streambuf.
 Handle cases when a machine has multiple IP addresses.
 
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
-Remove stale connections from Socket_server.
-Remove stale peers from Peers.
-Limit number of peers to reduce number of persistent connections.
 Manually align structures.
 Add macros to generate code for parallel and distributed framework versions.
-Test web socket and socket with random input to cover parsing and other errors.
+Test web socket and socket with random input to cover parsing and other errors. Kernel_stream handles read errors, but we need to update Remote_Rserver to skip malformed packets.
 Reduce amount of debug information in logs.
 Add support for provenance.
 Add common header to source files.
 Add license.
 Implement generic state machine for use in kernelbuf and websocketbuf. State machine is needed for input streams only.
-Replace *all* global variables with singletons to make possible to include factory.hh into multiple compilaation units.
-Ignore all useless signals.
 Add thread names to write to logs. Probably store them in thread pool.
-Shred environment on startup (no whitelist).
-Close fds other than 0, 1, 2 on startup (use getrlimit to determine maximum count and poll to process them in batches).
-Add Kernel flag ASYNC_IO to read/write foreign streams asynchronously.
-Get rid of shutdown function and Shutdown kernel. Use stop() instead.
+Add Kernel flag ASYNC_IO to read/write packet streams asynchronously.
+
+Factory daemon
+- Ignore all useless signals.
+- Shred environment on startup (no whitelist).
+- Close fds other than 0, 1, 2 on startup (use getrlimit to determine maximum count and poll to process them in batches).
+
+Current
+- Hierarchical logs.
+- Hierarchical kernel IDs. Kernel carries min and max id assigned to it.
+- Move to GIT.
