@@ -122,3 +122,9 @@ srv_exe = executable(
 )
 
 test('app', srv_exe)
+
+executable(
+	'posix-compliance',
+	sources: 'posix_test.cc',
+	include_directories: srcdir
+)

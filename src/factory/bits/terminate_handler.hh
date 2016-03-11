@@ -51,9 +51,14 @@ namespace factory {
 
 			void
 			init_signal_handlers() noexcept {
-				sysx::this_process::bind_signal(SIGTERM, emergency_shutdown);
-				sysx::this_process::bind_signal(SIGINT, emergency_shutdown);
-				sysx::this_process::bind_signal(SIGPIPE, SIG_IGN);
+				sysx::this_process::bind_signal(sysx::signal::terminate, normal_shutdown);
+				sysx::this_process::bind_signal(sysx::signal::keyboard_interrupt, normal_shutdown);
+				sysx::this_process::bind_signal(sysx::signal::broken_pipe, SIG_IGN);
+			}
+
+			static void
+			normal_shutdown(int) noexcept {
+				stop_root_server(EXIT_SUCCESS);
 			}
 
 			static void
@@ -78,6 +83,6 @@ namespace factory {
 		Auto_set_terminate_handler<Server>::_root = nullptr;
 
 	}
-	
+
 }
 #endif // FACTORY_BITS_TERMINATE_HANDLER_HH

@@ -2,7 +2,6 @@
 #define SYSX_PROCESS_HH
 
 #include <unistd.h>
-#include <signal.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 
@@ -16,21 +15,14 @@
 #include <sysx/bits/to_string.hh>
 #include <sysx/bits/safe_calls.hh>
 
+#include <sysx/signal.hh>
+
 namespace sysx {
 
 	typedef ::pid_t pid_type;
 	typedef int stat_type;
 	typedef int code_type;
 	typedef ::siginfo_t siginfo_type;
-	typedef struct ::sigaction sigaction_type;
-	typedef int signal_type;
-
-	struct Action: public sigaction_type {
-		Action() {}
-		Action(void (*func)(int)) noexcept {
-			this->sa_handler = func;
-		}
-	};
 
 	pid_type
 	safe_fork() {
@@ -99,29 +91,31 @@ namespace sysx {
 			return WEXITSTATUS(stat);
 		}
 
-		constexpr code_type
+		constexpr signal
 		term_signal() const noexcept {
-			return WTERMSIG(stat);
+			return signal(WTERMSIG(stat));
 		}
 
-		constexpr code_type
+		constexpr signal
 		stop_signal() const noexcept {
-			return WSTOPSIG(stat);
+			return signal(WSTOPSIG(stat));
 		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const basic_status& rhs) {
 			if (rhs.exited()) {
 				out << stdx::make_fields("status", "exited", "exit_code", rhs.exit_code());
-			}
+			} else
 			if (rhs.killed()) {
 				out << stdx::make_fields("status", "killed", "term_signal", rhs.term_signal());
-			}
+			} else
 			if (rhs.stopped()) {
 				out << stdx::make_fields("status", "stopped", "stop_signal", rhs.stop_signal());
-			}
+			} else
 			if (rhs.continued()) {
 				out << stdx::make_fields("status", "continued");
+			} else {
+				out << stdx::make_fields("status", "unknown");
 			}
 			return out;
 		}
@@ -159,7 +153,7 @@ namespace sysx {
 		}
 
 		constexpr bool
-		signaled() const noexcept {
+		killed() const noexcept {
 			return stat == st::killed;
 		}
 
@@ -188,19 +182,42 @@ namespace sysx {
 			return code;
 		}
 
-		constexpr code_type
+		constexpr signal
 		term_signal() const noexcept {
-			return code;
+			return signal(code);
 		}
 
-		constexpr code_type
+		constexpr signal
 		stop_signal() const noexcept {
-			return code;
+			return signal(code);
 		}
 
 		constexpr pid_type
 		pid() const noexcept {
 			return _pid;
+		}
+
+		constexpr const char*
+		status_string() const noexcept {
+			return exited() ? "exited" :
+				killed() ? "killed" :
+				core_dumped() ? "core_dumped" :
+				stopped() ? "stopped" :
+				continued() ? "continued" :
+				trapped() ? "trapped" :
+				"unknown";
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const basic_status& rhs) {
+			out << "pid=" << rhs.pid() << ',';
+			out << "status=" << rhs.status_string() << ',';
+			if (rhs.exited()) {
+				out << "exit_code=" << rhs.exit_code();
+			} else {
+				out << "signal=" << rhs.term_signal();
+			}
+			return out;
 		}
 
 		st stat = static_cast<st>(0);
@@ -367,7 +384,7 @@ namespace sysx {
 				this_log() << "process terminated:"
 					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal())
 					<< std::endl;
-				ret |= x.exit_code() | x.term_signal();
+				ret |= x.exit_code() | signal_type(x.term_signal());
 			}
 			return ret;
 		}
@@ -519,12 +536,6 @@ namespace sysx {
 			}
 			argv[argc] = 0;
 			return bits::check(::execv(argv[0], argv),
-				__FILE__, __LINE__, __func__);
-		}
-
-		inline void
-		bind_signal(int signum, const Action& action) {
-			bits::check(::sigaction(signum, &action, 0),
 				__FILE__, __LINE__, __func__);
 		}
 

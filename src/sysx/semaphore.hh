@@ -485,12 +485,12 @@ namespace sysx {
 		/// otherwise it kills receiver process
 		void
 		install_empty_signal_handler(sigset_type s) {
-			Action action{};
+			signal_action action{};
 			action.sa_handler = &init_signal_semaphore::no_handler;
 			action.sa_flags = SA_SIGINFO;
 			action.sa_mask = sigset_type{};
 			s.for_each([this,&action](signal_type sig) {
-				this_process::bind_signal(sig, action);
+				this_process::bind_signal(signal(sig), action);
 			});
 		}
 
