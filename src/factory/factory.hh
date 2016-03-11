@@ -31,69 +31,6 @@ namespace factory {
 
 	namespace components {
 
-		template<class Server>
-		struct Daemon {
-
-			explicit
-			Daemon(Server& rhs) noexcept:
-			_server(rhs)
-			{
-				std::cerr << "Starting daemon" << std::endl;
-				_server.start();
-				_server.wait();
-			}
-
-			~Daemon() {
-				if (!_server.stopped()) {
-					std::cerr << "Stopping daemon" << std::endl;
-					_server.stop();
-					_server.wait();
-				} else {
-					std::cerr << "Daemon is stopped" << std::endl;
-				}
-			}
-
-		private:
-			Server& _server;
-		};
-
-		template<class Config>
-		struct Shutdown: public Config::kernel {
-
-			typedef stdx::log<Shutdown> this_log;
-			typedef typename Config::server server_type;
-			typedef typename Config::kernel Kernel;
-
-			void act(server_type& this_server) override {
-				this_log() << "broadcasting shutdown message" << std::endl;
-				delete this;
-				if (this_server.factory()->stopping()) {
-					this_server.factory()->stop();
-				} else {
-					this_server.factory()->shutdown();
-				}
-			}
-
-			const Type<Kernel>
-			type() const noexcept override {
-				return static_type();
-			}
-
-			static const Type<Kernel>
-			static_type() noexcept {
-				return Type<Kernel>{
-					SHUTDOWN_ID,
-					"Shutdown",
-					[] (sysx::packetstream& in) {
-						Shutdown* k = new Shutdown;
-						k->read(in);
-						return k;
-					}
-				};
-			}
-
-		};
-
 		template<class Config>
 		struct Basic_factory: public Managed_set<Server<Config>>,
 //			private sysx::Disable_sync_with_stdio,
@@ -113,7 +50,6 @@ namespace factory {
 			typedef typename Config::remote_server Remote_server;
 			typedef typename Config::external_server External_server;
 			typedef typename Config::timer_server Timer_server;
-			typedef Shutdown<Config> shutdown_type;
 
 			Basic_factory(Global_thread_context& context):
 				Auto_set_terminate_handler<Basic_factory>(this),
@@ -129,7 +65,6 @@ namespace factory {
 				init_parents();
 				init_names();
 				init_context(&context);
-				types().register_type(shutdown_type::static_type());
 				std::cout << std::endl;
 //				this->dump_hierarchy(std::cout);
 				std::cout << std::endl;
@@ -157,7 +92,6 @@ namespace factory {
 			void
 			stop() override {
 				base_server::stop();
-//				_remote_server.send(new shutdown_type);
 				_local_server.stop();
 				_remote_server.stop();
 				_ext_server.stop();
@@ -174,10 +108,11 @@ namespace factory {
 			void
 			shutdown() override {
 				base_server::shutdown();
-				_remote_server.send(new shutdown_type);
-				shutdown_type* kernel = new shutdown_type;
-				kernel->after(std::chrono::milliseconds(500));
-				_timer_server.send(kernel);
+				_local_server.shutdown();
+				_remote_server.shutdown();
+				_ext_server.shutdown();
+				_timer_server.shutdown();
+				stop();
 			}
 
 			void send(kernel_type* k) override { this->_local_server.send(k); }

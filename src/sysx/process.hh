@@ -77,7 +77,11 @@ namespace sysx {
 
 		constexpr bool
 		core_dumped() const noexcept {
+			#ifdef WCOREDUMP
 			return static_cast<bool>(WCOREDUMP(stat));
+			#else
+			return false;
+			#endif
 		}
 
 		constexpr bool
@@ -103,6 +107,23 @@ namespace sysx {
 		constexpr code_type
 		stop_signal() const noexcept {
 			return WSTOPSIG(stat);
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const basic_status& rhs) {
+			if (rhs.exited()) {
+				out << stdx::make_fields("status", "exited", "exit_code", rhs.exit_code());
+			}
+			if (rhs.killed()) {
+				out << stdx::make_fields("status", "killed", "term_signal", rhs.term_signal());
+			}
+			if (rhs.stopped()) {
+				out << stdx::make_fields("status", "stopped", "stop_signal", rhs.stop_signal());
+			}
+			if (rhs.continued()) {
+				out << stdx::make_fields("status", "continued");
+			}
+			return out;
 		}
 
 		stat_type stat = 0;
@@ -238,10 +259,9 @@ namespace sysx {
 			}
 		}
 
-		inline void
-		stop() {
-			signal(SIGTERM);
-		}
+		inline void stop() { signal(SIGSTOP); }
+		inline void resume() { signal(SIGCONT); }
+		inline void terminate() { signal(SIGTERM); }
 
 		inline void
 		signal(int sig) {
@@ -406,6 +426,26 @@ namespace sysx {
 		iterator
 		end() noexcept {
 			return _procs.end();
+		}
+
+		const process&
+		front() const noexcept {
+			return _procs.front();
+		}
+
+		process&
+		front() noexcept {
+			return _procs.front();
+		}
+
+		const process&
+		back() const noexcept {
+			return _procs.back();
+		}
+
+		process&
+		back() noexcept {
+			return _procs.back();
 		}
 
 		friend std::ostream&

@@ -222,7 +222,11 @@ namespace factory {
 						}
 					}
 				} else {
-					assert(event.fd() == _inbuf.fd());
+					assert(
+						event.fd() == _inbuf.fd()
+						or !_inbuf.fd()
+						or !event.bad_fd()
+					);
 					assert(!event.out() || event.hup());
 					if (event.in()) {
 						_istream.fill();

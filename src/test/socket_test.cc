@@ -252,7 +252,7 @@ struct Main: public Kernel {
 
 	void act(Server& this_server) override {
 		factory()->types().register_type(Test_socket::static_type());
-		factory()->dump_hierarchy(std::cout);
+//		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
@@ -292,21 +292,17 @@ main(int argc, char* argv[]) {
 			sysx::this_process::env("START_ID", 1000);
 			return sysx::this_process::execute(argv[0], 'x', sleep);
 		});
-		// wait for master to start
+		// wait for the child to start
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		procs.add([&argv, sleep] () {
 			sysx::this_process::env("START_ID", 2000);
 			return sysx::this_process::execute(argv[0], 'y', sleep);
 		});
 		this_log() << "sysx::process group = " << procs << std::endl;
-		procs.wait([&retval] (const sysx::process& proc, sysx::proc_info stat) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-			this_log() << "proc exited proc=" << proc
-				<< ",status=" << stat.exit_code() << std::endl;
-			retval |= stat.exit_code();
-			retval |= stat.term_signal();
-		});
-		this_log() << "sysx::log test " << std::endl;
+		const sysx::proc_status stat = procs.back().wait();
+		this_log() << "master process terminated: " << stat << std::endl;
+		procs.front().terminate();
+		this_log() << "child process terminated: " << procs.front().wait() << std::endl;
 	} else {
 		retval = factory_main<Main,config>(argc, argv);
 	}

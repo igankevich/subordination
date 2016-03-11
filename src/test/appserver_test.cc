@@ -235,7 +235,10 @@ struct Main: public Kernel, public Identifiable_tag {
 		Test_socket* kernel = this_server.factory()->new_kernel<Test_socket>();
 		kernel->setapp(sysx::this_process::id());
 		upstream(this_server.remote_server(), kernel);
-		sleep(3);
+		#endif
+		#if defined(FACTORY_TEST_SERVER)
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+		commit(local_server());
 		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
 //			upstream(this_server.local_server(), new Sender(i, _sleep));
