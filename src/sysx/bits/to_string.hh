@@ -15,12 +15,13 @@ namespace sysx {
 			return s.str();
 		}
 
+		/// @deprecated too inefficient
 		struct To_string {
 
 			template<class T>
 			inline
 			To_string(T rhs):
-				_s(to_string(rhs)) {}
+			_s(to_string(rhs)) {}
 
 			const char*
 			c_str() const noexcept {

@@ -1,19 +1,19 @@
 #ifndef SYSX_NETWORK_FORMAT_HH
 #define SYSX_NETWORK_FORMAT_HH
 
-#define FACTORY_GCC_VERSION_GE(major, minor) \
-	((__GNUC__ > major) || (__GNUC__ == major && __GNUC_MINOR__ >= minor))
-#if FACTORY_GCC_VERSION_GE(4, 3)
-	#define FACTORY_HAVE_BUILTIN_SWAP16
-	#define FACTORY_HAVE_BUILTIN_SWAP32
-	#define FACTORY_HAVE_BUILTIN_SWAP64
-#endif
-
 #include <algorithm>
 
 #include <stdx/intersperse_iterator.hh>
 #include <stdx/iosx.hh>
+
 #include <sysx/uint128.hh>
+#include <sysx/bits/macros.hh>
+
+#if SYSX_GCC_VERSION_AT_LEAST(4, 3)
+	#define FACTORY_HAVE_BUILTIN_SWAP16
+	#define FACTORY_HAVE_BUILTIN_SWAP32
+	#define FACTORY_HAVE_BUILTIN_SWAP64
+#endif
 
 namespace sysx {
 

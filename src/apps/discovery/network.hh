@@ -12,6 +12,7 @@
 
 #include <sysx/bits/check.hh>
 #include <sysx/endpoint.hh>
+#include <sysx/ifaddrs.hh>
 
 #include "network_iterator.hh"
 
@@ -157,7 +158,7 @@ namespace discovery {
 		sysx::ifaddrs addrs;
 		std::for_each(
 			addrs.begin(), addrs.end(),
-			[&result] (const sysx::ifaddrs::ifaddrs_type& rhs) {
+			[&result] (const sysx::ifaddrs_type& rhs) {
 				if (rhs.ifa_addr != 0 and rhs.ifa_addr->sa_family == AF_INET) {
 					const Addr addr(*rhs.ifa_addr);
 					const Addr netmask(*rhs.ifa_netmask);

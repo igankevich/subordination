@@ -15,8 +15,8 @@
 #include <sysx/packetstream.hh>
 
 #include <sysx/bits/check.hh>
-#include <sysx/bits/endpoint.hh>
-#include <sysx/bits/ifaddrs.hh>
+#include <sysx/bits/endpoint_parse.hh>
+#include <sysx/bits/bit_count.hh>
 #include <sysx/network_format.hh>
 #include <stdx/iosx.hh>
 
@@ -712,52 +712,6 @@ namespace sysx {
 			? ipaddr_traits<ipv4_addr>::widearea_mask()
 			: ipv4_addr((T(1) << prefix) - T(1));
 	}
-
-	struct ifaddrs {
-
-		typedef struct ::ifaddrs ifaddrs_type;
-		typedef ifaddrs_type value_type;
-		typedef bits::ifaddrs_iterator<ifaddrs_type> iterator;
-		typedef std::size_t size_type;
-
-		ifaddrs() {
-			bits::check(::getifaddrs(&this->_addrs),
-				__FILE__, __LINE__, __func__);
-		}
-		~ifaddrs() noexcept {
-			if (this->_addrs) {
-				::freeifaddrs(this->_addrs);
-			}
-		}
-
-		iterator
-		begin() noexcept {
-			return iterator(this->_addrs);
-		}
-
-		iterator
-		begin() const noexcept {
-			return iterator(this->_addrs);
-		}
-
-		static constexpr iterator
-		end() noexcept {
-			return iterator();
-		}
-
-		bool
-		empty() const noexcept {
-			return this->begin() == this->end();
-		}
-
-		size_type
-		size() const noexcept {
-			return std::distance(this->begin(), this->end());
-		}
-
-	private:
-		ifaddrs_type* _addrs = nullptr;
-	};
 
 }
 
