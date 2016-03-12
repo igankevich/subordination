@@ -58,3 +58,5 @@ Current
 - Hierarchical logs.
 - Hierarchical kernel IDs. Kernel carries min and max id assigned to it.
 - Move to GIT.
+- We need Kernel allocator!
+- We need interval-based kernel IDs allocator.
