@@ -50,6 +50,7 @@ namespace factory {
 			typedef typename Config::remote_server Remote_server;
 			typedef typename Config::external_server External_server;
 			typedef typename Config::timer_server Timer_server;
+			typedef typename kernel_type::id_type id_type;
 
 			Basic_factory(Global_thread_context& context):
 			Auto_set_terminate_handler<Basic_factory>(this),
@@ -158,7 +159,7 @@ namespace factory {
 				return k;
 			}
 
-			Id
+			id_type
 			factory_generate_id() {
 				return _counter++;
 			}
@@ -184,19 +185,19 @@ namespace factory {
 
 		private:
 
-			Id
+			id_type
 			factory_start_id() noexcept {
 
 				struct factory_start_id_t{};
 				typedef stdx::log<factory_start_id_t> this_log;
 
-				constexpr static const Id
+				constexpr static const id_type
 				DEFAULT_START_ID = 1000;
 
-				Id i = sysx::this_process::getenv("START_ID", DEFAULT_START_ID);
-				if (i == ROOT_ID) {
+				id_type i = sysx::this_process::getenv("START_ID", DEFAULT_START_ID);
+				if (i == kernel_type::no_id) {
+					this_log() << "Bad START_ID value: " << i << std::endl;
 					i = DEFAULT_START_ID;
-					this_log() << "Bad START_ID value: " << ROOT_ID << std::endl;
 				}
 				this_log() << "START_ID = " << i << std::endl;
 				return i;
@@ -229,7 +230,7 @@ namespace factory {
 			External_server _ext_server;
 			Timer_server _timer_server;
 			int _exitcode = 0;
-			std::atomic<Id> _counter{factory_start_id()};
+			std::atomic<id_type> _counter{factory_start_id()};
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;
 		};

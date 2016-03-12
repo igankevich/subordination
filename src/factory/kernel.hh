@@ -215,6 +215,9 @@ namespace factory {
 
 		struct Mobile_kernel: public Basic_kernel, public Kernel_header {
 
+			typedef uint32_t id_type;
+			static constexpr const id_type no_id = 0;
+
 			virtual void
 			read(sysx::packetstream& in) {
 				typedef std::underlying_type<Result>::type Raw_result;
@@ -231,28 +234,39 @@ namespace factory {
 				out << r << this->_id;
 			}
 
-			Id
+			id_type
 			id() const noexcept {
 				return _id;
 			}
 
 			void
-			id(Id rhs) noexcept {
+			id(id_type rhs) noexcept {
 				_id = rhs;
 			}
 
 			bool
 			identifiable() const noexcept {
-				return _id != ROOT_ID;
+				return _id != no_id;
+			}
+
+			void
+			set_id(id_type rhs) noexcept {
+				_id = rhs;
 			}
 
 			bool
 			operator==(const Mobile_kernel& rhs) const noexcept {
-				return this == &rhs || (id() != ROOT_ID && rhs.id() != ROOT_ID && id() == rhs.id());
+				return this == &rhs or (
+					id() == rhs.id()
+					and identifiable()
+					and rhs.identifiable()
+				);
 			}
 
 		private:
-			Id _id = ROOT_ID;
+
+			id_type _id = no_id;
+
 		};
 
 		template<class Config>
@@ -264,6 +278,7 @@ namespace factory {
 //			typedef Managed_object<Server<Principal>> server_type;
 			typedef typename Config::server server_type;
 			typedef typename Config::factory factory_type;
+			using Mobile_kernel::id_type;
 
 			const Principal*
 			principal() const {
@@ -275,13 +290,13 @@ namespace factory {
 				return _principal;
 			}
 
-			Id
+			id_type
 			principal_id() const {
 				return _principal_id;
 			}
 
 			void
-			set_principal_id(Id id) {
+			set_principal_id(id_type id) {
 				_principal_id = id;
 			}
 
@@ -300,7 +315,7 @@ namespace factory {
 				return _parent;
 			}
 
-			Id
+			id_type
 			parent_id() const {
 				return _parent_id;
 			}
@@ -358,8 +373,8 @@ namespace factory {
 				if (moves_downstream() or moves_somewhere()) {
 					out << _parent_id << _principal_id;
 				} else {
-					out << (not _parent ? ROOT_ID : _parent->id());
-					out << (not _principal ? ROOT_ID : _principal->id());
+					out << (not _parent ? Mobile_kernel::no_id : _parent->id());
+					out << (not _principal ? Mobile_kernel::no_id : _principal->id());
 				}
 			}
 
@@ -544,11 +559,11 @@ namespace factory {
 
 			union {
 				Principal* _parent = nullptr;
-				Id _parent_id;
+				id_type _parent_id;
 			};
 			union {
 				Principal* _principal = nullptr;
-				Id _principal_id;
+				id_type _principal_id;
 			};
 			server_type* _server = nullptr;
 

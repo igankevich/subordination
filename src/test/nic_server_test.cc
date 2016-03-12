@@ -93,7 +93,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
-struct Test_socket: public Kernel, public Identifiable_tag {
+struct Test_socket: public Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
 	using typename Kernel::server_type;

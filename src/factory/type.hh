@@ -8,9 +8,7 @@
 
 namespace factory {
 
-	typedef uint32_t Id;
-
-	const Id ROOT_ID = 0;
+//	typedef uint32_t Id;
 
 	namespace components {
 
@@ -266,18 +264,22 @@ namespace factory {
 		template<class T>
 		struct Instances {
 
-			T* lookup(Id id) {
+			typedef T kernel_type;
+			typedef typename kernel_type::id_type id_type;
+
+			kernel_type*
+			lookup(id_type id) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _instances.find(id);
 				return result == _instances.end() ? nullptr : result->second;
 			}
 
-			void register_instance(T* inst) {
+			void register_instance(kernel_type* inst) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_instances[inst->id()] = inst;
 			}
 
-			void free_instance(T* inst) {
+			void free_instance(kernel_type* inst) {
 				std::unique_lock<std::mutex> lock(_mutex);
 				_instances.erase(inst->id());
 			}
@@ -292,7 +294,7 @@ namespace factory {
 		private:
 
 			struct Entry {
-				Entry(const std::pair<const Id, T*>& k): _kernel(k.second) {}
+				Entry(const std::pair<const id_type, kernel_type*>& k): _kernel(k.second) {}
 
 				friend std::ostream& operator<<(std::ostream& out, const Entry& rhs) {
 					return out
@@ -310,10 +312,10 @@ namespace factory {
 						: _kernel->type().name();
 				}
 
-				T* _kernel;
+				kernel_type* _kernel;
 			};
 
-			std::unordered_map<Id, T*> _instances;
+			std::unordered_map<id_type, kernel_type*> _instances;
 			std::mutex _mutex;
 		};
 

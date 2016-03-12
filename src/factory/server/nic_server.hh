@@ -102,10 +102,12 @@ namespace factory {
 			}
 
 			void
-			send(kernel_type* kernel) {
+			send(kernel_type* kernel) override {
 				bool delete_kernel = false;
 				if (kernel_goes_in_upstream_buffer(kernel)) {
-					kernel->id(this->factory()->factory_generate_id());
+					if (not kernel->identifiable()) {
+						kernel->set_id(this->factory()->factory_generate_id());
+					}
 					_sentupstream.push_back(kernel);
 				} else
 				if (kernel_goes_in_downstream_buffer(kernel)) {
@@ -116,8 +118,8 @@ namespace factory {
 					delete_kernel = true;
 				}
 				_stream << kernel;
-				// The kernel is deleted if it goes downstream
-				// and does not carry its parent.
+				/// The kernel is deleted if it goes downstream
+				/// and does not carry its parent.
 				if (delete_kernel) {
 					delete kernel;
 				}
