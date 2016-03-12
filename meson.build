@@ -10,5 +10,6 @@ if cppcheck.found()
 	run_target('cppcheck', meson.source_root() + '/scripts/cppcheck-target')
 endif
 run_target('gcov', meson.source_root() + '/scripts/gcov-target')
+run_target('iwyu', meson.source_root() + '/scripts/iwyu-target')
 
 subdir('src')
