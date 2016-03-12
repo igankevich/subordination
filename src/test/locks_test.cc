@@ -3,7 +3,6 @@
 #include <condition_variable>
 #include <vector>
 #include <queue>
-#include <iostream>
 
 #include <stdx/spin_mutex.hh>
 #include <stdx/for_each.hh>

@@ -221,12 +221,10 @@ namespace test {
 	}
 
 	template<class X, class Y, class ... Args>
-	void equal(X x, Y y, const char* text="values are not equal", Args&& ... args) {
+	void equal(X x, Y y, Args&& ... args) {
 		if (!(x == y)) {
 			std::stringstream msg;
-			msg << "ERROR: " << text;
-			msg << '\n';
-			msg << "CAUSE: values are not equal";
+			msg << "ERROR: values are not equal";
 			msg << '\n';
 			msg << "DEBUG: ";
 			msg << "value=\"" << x << "\", expected=\"" << y << "\", ";

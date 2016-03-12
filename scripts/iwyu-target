@@ -1,4 +1,4 @@
 #!/bin/sh
 
 cd $MESON_SOURCE_ROOT/src
-find $MESON_SOURCE_ROOT/src -name '*.cc' -exec iwyu -I. -Itest -std=c++14 \{\} \;
+find . -name '*.cc' -exec iwyu -I. -Itest -std=c++14 \{\} \;

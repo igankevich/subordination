@@ -180,7 +180,7 @@ struct Spectrum_app {
 		}
 		write_acf(std::cout, acf);
 	}
-	
+
 	// TODO: old style
 	void write_acf(std::ostream& out, ACF& acf) {
 		auto size = acf.size();
@@ -219,9 +219,9 @@ private:
 	I _m;
 	typename autoreg::Discrete_function<T,2>::V _size;
 
-	static constexpr T G = 9.8;
-	static constexpr T PI = std::acos(T(-1));
-	static constexpr T _2PI = PI * T(2);
+	const T G = 9.8;
+	const T PI = std::acos(T(-1));
+	const T _2PI = std::acos(T(-1)) * T(2);
 };
 
 int main(int argc, char* argv[]) {

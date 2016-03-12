@@ -31,9 +31,8 @@ namespace factory {
 
 }
 using namespace factory::daemon_config;
-#endif
-
-#if defined(FACTORY_TEST_APP)
+#else
+//#elif defined(FACTORY_TEST_APP)
 namespace factory {
 
 	inline namespace app_config {

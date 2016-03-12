@@ -1,6 +1,3 @@
-#include <iostream>
-#include <iomanip>
-
 #include <sysx/sharedmem.hh>
 #include <sysx/shmembuf.hh>
 

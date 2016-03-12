@@ -151,7 +151,7 @@ struct Variance_WN: public Kernel {
 	Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
 		ar_coefs(ar_coefs_), acf(acf_), _sum(0) {}
 
-	void act() {
+	void act() override {
 		int bs = 64;
 		int n = ar_coefs.size();
 		upstream(local_server(), mapreduce([](int) {}, [this](int i){
@@ -159,7 +159,7 @@ struct Variance_WN: public Kernel {
 		}, 0, n, bs));
 	}
 
-	void react(factory::Kernel*) {
+	void react(factory::Kernel*) override {
 		_sum = acf[0] - _sum;
 		commit(local_server());
 	}
@@ -188,11 +188,7 @@ struct Yule_walker: public Kernel {
 				 std::valarray<T>& b_):
 		acf(acf_), acf_size(acf_size_), a(a_), b(b_), count(0) {}
 
-	const char* name() const { return "YW"; }
-
-	bool is_profiled() const { return false; }
-
-	void act() {
+	void act() override {
 		int n = acf.size() - 1;
 		int block_size = 16*4;
 		int m = b.size();
@@ -221,7 +217,7 @@ struct Yule_walker: public Kernel {
 		}, identity, 0, m, block_size));
 	}
 
-	void react(factory::Kernel*) {
+	void react(factory::Kernel*) override {
 		if (++count == 2) {
 			commit(local_server());
 		}
@@ -291,9 +287,7 @@ struct ACF_generator: public Kernel {
 		delta(delta_), acf_size(acf_size_), acf(acf_)
 	{}
 
-	const char* name() const { return "ACF"; }
-
-	void act() {
+	void act() override {
 //		Spectrum spec{
 //			{64, 64},
 //			{T(-0.3), T(0)},
@@ -367,7 +361,7 @@ struct ACF_generator: public Kernel {
 		}, identity, 0, n, bs));
 	}
 
-	void react(factory::Kernel*) { commit(local_server()); }
+	void react(factory::Kernel*) override { commit(local_server()); }
 
 private:
 	const T alpha;
@@ -377,8 +371,8 @@ private:
 	const size3& acf_size;
 	std::valarray<T>& acf;
 
-	static constexpr T G = 9.8;
-	static constexpr T PI = std::acos(T(-1));
+	const T G = 9.8;
+	const T PI = std::acos(T(-1));
 };
 
 //template<class T>
@@ -467,11 +461,11 @@ struct Autoreg_coefs: public Kernel {
 	bool is_profiled() const { return false; }
 	const char* name() const { return "AC"; }
 
-	void act() {
+	void act() override {
 		upstream(local_server(), new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
-	void react(factory::Kernel*) {
+	void react(factory::Kernel*) override {
 		state++;
 		if (state == 1) upstream(local_server(), new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
 		else commit(local_server());
@@ -799,7 +793,7 @@ struct Generator1: public Kernel, public Identifiable_tag {
 
 	const Surface_part& get_part() const { return part; }
 
-	void act() {
+	void act() override {
 		this_log() << "running" << std::endl;
 		std::valarray<T> zeta(zsize);
 		std::valarray<T> zeta2(zsize2);
@@ -820,7 +814,7 @@ struct Generator1: public Kernel, public Identifiable_tag {
 		}
 	}
 
-	void react(factory::Kernel*) {
+	void react(factory::Kernel*) override {
 		count++;
 		// received two kernels or last part
 //		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {

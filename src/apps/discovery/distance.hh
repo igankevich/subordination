@@ -28,6 +28,8 @@ namespace discovery {
 		typedef typename addr_type::rep_type rep_type;
 		typedef std::pair<rep_type,rep_type> pair_type;
 
+		Distance_in_tree(): _pair() {}
+
 		Distance_in_tree(rep_type fanout, const addr_type& addr, const addr_type& netmask) noexcept:
 		_pair(bits::position_in_tree(addr.position(netmask), fanout))
 		{}

@@ -43,6 +43,8 @@ namespace factory {
 				"bad stream_type"
 			);
 
+			Remote_Rserver() = default;
+
 			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr, factory_type* factory):
 			_vaddr(vaddr),
 			_packetbuf(),

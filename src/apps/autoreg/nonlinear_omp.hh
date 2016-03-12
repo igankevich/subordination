@@ -155,7 +155,7 @@ std::valarray<T> determine_nit_coefs(const std::valarray<T>& a,
 		// calc error
 		sum_c += c[m]*c[m]/f;
 		f *= (m+1);
-		T e = abs(acf[0] - sum_c);
+		T e = std::abs(acf[0] - sum_c);
 		// критерий возможно правильно писать так: abs(T(1) - sum_c)
 
 		// determine minimum error

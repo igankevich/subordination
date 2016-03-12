@@ -3,6 +3,7 @@
 #include <factory/server/timer_server.hh>
 
 #include "test.hh"
+#include "stdx/log.hh"
 
 namespace factory {
 	typedef std::chrono::nanoseconds::rep Time;
@@ -74,13 +75,7 @@ struct Main: public Kernel {
 	}
 	void react(Server& this_server, Kernel* child) {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
-		if (last_pos + 1 != k->pos()) {
-			std::stringstream msg;
-			msg << "Invalid order of timed kernels: pos="
-				<< k->pos() << ",valid_pos=" << last_pos + 1;
-			throw Error(msg.str(),
-				__FILE__, __LINE__, __func__);
-		}
+		test::equal(k->pos(), last_pos+1, "Invalid order of timed kernels");
 		++last_pos;
 		if (++count == NUM_KERNELS) {
 			commit(this_server.local_server());

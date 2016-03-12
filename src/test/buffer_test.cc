@@ -4,8 +4,6 @@
 #include <factory/error.hh>
 #include <factory/kernelbuf.hh>
 
-#include <stdx/streambuf.hh>
-
 #include "test.hh"
 #include "datum.hh"
 
