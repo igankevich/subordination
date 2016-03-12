@@ -139,6 +139,7 @@ namespace factory {
 					while (_stream >> kernel) {
 						receive_kernel(kernel);
 					}
+					this_log() << "finished receiving kernels: " << _stream.rdstate() << std::endl;
 				}
 				if (event.out() && !event.hup()) {
 					_stream.flush();
