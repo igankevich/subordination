@@ -107,9 +107,7 @@ namespace factory {
 			send(kernel_type* kernel) override {
 				bool delete_kernel = false;
 				if (kernel_goes_in_upstream_buffer(kernel)) {
-					if (not kernel->identifiable()) {
-						kernel->set_id(this->factory()->factory_generate_id());
-					}
+					ensure_identity(kernel);
 					_sentupstream.push_back(kernel);
 				} else
 				if (kernel_goes_in_downstream_buffer(kernel)) {
@@ -212,6 +210,13 @@ namespace factory {
 					stdx::front_popper(rhs),
 					stdx::front_popper_end(rhs)
 				);
+			}
+
+			void
+			ensure_identity(kernel_type* kernel) {
+				if (not kernel->identifiable()) {
+					kernel->set_id(this->factory()->factory_generate_id());
+				}
 			}
 
 			static bool

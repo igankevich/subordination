@@ -286,7 +286,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 //		std::size_t modulo = homogeneous ? 1 : 2;
 		Grid grid_2(zsize2[0], max_num_parts);
 		Grid grid(zsize[0], max_num_parts);
-		upstream_carry(remote_server(), factory()->template new_kernel<Wave_surface_generator<T, Grid>>(ar_coefs, fsize, var_wn,
+		upstream_carry(remote_server(), new Wave_surface_generator<T, Grid>(ar_coefs, fsize, var_wn,
 						                             zsize2, interval, zsize, zdelta, grid, grid_2));
 	}
 	if (typeid(*child) == typeid(Wave_surface_generator<T, Grid>)) {

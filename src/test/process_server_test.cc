@@ -81,7 +81,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Kernel, Identifiable_tag {
+struct Test_socket: public Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
 
@@ -150,7 +150,7 @@ private:
 };
 
 /*
-struct Sender: public Kernel, public Identifiable_tag {
+struct Sender: public Kernel {
 
 	typedef stdx::log<Sender> this_log;
 
@@ -209,7 +209,7 @@ private:
 
 const Application::id_type MY_APP_ID = 123;
 
-struct Main: public Kernel, public Identifiable_tag {
+struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
 
@@ -230,7 +230,7 @@ struct Main: public Kernel, public Identifiable_tag {
 
 	void act() override {
 		#if defined(FACTORY_TEST_APP)
-		Test_socket* kernel = factory()->new_kernel<Test_socket>();
+		Test_socket* kernel = new Test_socket;
 		kernel->setapp(sysx::this_process::id());
 		upstream(remote_server(), kernel);
 		#endif

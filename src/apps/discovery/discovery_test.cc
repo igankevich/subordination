@@ -83,7 +83,7 @@ private:
 };
 
 template<class Address>
-struct Negotiator: public Kernel, public Identifiable_tag {
+struct Negotiator: public Kernel {
 
 	typedef Address addr_type;
 	typedef discovery::Hierarchy<addr_type> hierarchy_type;
@@ -167,7 +167,7 @@ private:
 };
 
 template<class Address>
-struct Master_negotiator: public Kernel, public Identifiable_tag {
+struct Master_negotiator: public Kernel {
 
 	typedef Address addr_type;
 	typedef Negotiator<addr_type> negotiator_type;
@@ -215,7 +215,7 @@ private:
 	void
 	send_negotiator(Server& this_server, sysx::endpoint addr) {
 		++_numsent;
-		negotiator_type* n = this_server.factory()->new_kernel<negotiator_type>(_oldprinc, _newprinc);
+		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
 		n->to(addr);
 		upstream(this_server.remote_server(), n);
@@ -230,7 +230,7 @@ private:
 An agent that returns to its principal only when the node where it was sent
 fails, or in case of network failure.
 */
-struct Secret_agent: public Kernel, Identifiable_tag {
+struct Secret_agent: public Kernel {
 
 	typedef stdx::log<Secret_agent> this_log;
 
@@ -260,7 +260,7 @@ struct Secret_agent: public Kernel, Identifiable_tag {
 
 };
 
-struct Ping: public Kernel, Identifiable_tag {
+struct Ping: public Kernel {
 
 	typedef stdx::log<Ping> this_log;
 
@@ -315,7 +315,7 @@ private:
 
 };
 
-struct Ping_pong: public Kernel, public Identifiable_tag {
+struct Ping_pong: public Kernel {
 
 	typedef stdx::log<Ping_pong> this_log;
 
@@ -331,7 +331,7 @@ struct Ping_pong: public Kernel, public Identifiable_tag {
 		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
 		int x = 1;
 		_expectedsum += x;
-		upstream(this_server.remote_server(), this_server.factory()->new_kernel<Ping>(x));
+		upstream(this_server.remote_server(), new Ping(x));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
 			this_server.timer_server()->send(this);
@@ -380,7 +380,7 @@ private:
 
 
 template<class Address>
-struct Master_discoverer: public Kernel, public Identifiable_tag {
+struct Master_discoverer: public Kernel {
 
 	typedef Address addr_type;
 	typedef discovery::Network<addr_type> network_type;
@@ -493,7 +493,7 @@ private:
 		if (_currenthost != _rankedhosts.end()) {
 			const sysx::endpoint new_princ(_currenthost->second, _port);
 			this_log() << "trying " << new_princ << std::endl;
-			_negotiator = this_server.factory()->new_kernel<Master_negotiator<addr_type>>(_hierarchy.principal(), new_princ);
+			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
 			upstream(this_server.local_server(), _negotiator);
 		}
 	}
@@ -581,7 +581,7 @@ private:
 	template<class Time>
 	void
 	schedule_pingpong_after(Time delay, Server& this_server) {
-		Ping_pong* p = this_server.factory()->new_kernel<Ping_pong>(_numpings);
+		Ping_pong* p = new Ping_pong(_numpings);
 		p->after(delay);
 		this_server.timer_server()->send(p);
 	}

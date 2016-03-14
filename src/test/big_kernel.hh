@@ -4,7 +4,7 @@
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel: public Kernel, public Identifiable_tag {
+struct Big_kernel: public Kernel {
 
 	Big_kernel():
 	_data(Size)

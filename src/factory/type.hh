@@ -321,7 +321,6 @@ namespace factory {
 
 	}
 
-	struct Identifiable_tag {};
 	using components::Type;
 
 }

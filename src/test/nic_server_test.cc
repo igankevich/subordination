@@ -177,7 +177,7 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public Kernel, public Identifiable_tag {
+struct Sender: public Kernel {
 	typedef stdx::log<Sender> this_log;
 	using typename Kernel::server_type;
 
@@ -193,8 +193,7 @@ struct Sender: public Kernel, public Identifiable_tag {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			upstream(remote_server(),
-				factory()->new_kernel<Test_socket>(_input));
+			upstream(remote_server(), new Test_socket(_input));
 		}
 	}
 
@@ -257,7 +256,7 @@ struct Main: public Kernel {
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
-				upstream(local_server(), factory()->new_kernel<Sender>(sz, _sleep));
+				upstream(local_server(), new Sender(sz, _sleep));
 			}
 		}
 	}

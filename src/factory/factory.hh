@@ -148,17 +148,6 @@ namespace factory {
 				_exitcode = rhs;
 			}
 
-			template<class Kernel, class ... Args>
-			Kernel*
-			new_kernel(Args&& ... args) {
-				Kernel* k = new Kernel(std::forward<Args>(args)...);
-				if (std::is_convertible<Kernel, Identifiable_tag>::value) {
-					k->id(factory_generate_id());
-					instances().register_instance(k);
-				}
-				return k;
-			}
-
 			id_type
 			factory_generate_id() {
 				return _counter++;
@@ -246,7 +235,7 @@ namespace factory {
 
 			void
 			do_config(int argc, char* argv[]) override {
-				_main = this->template new_kernel<Main>(*this, argc, argv);
+				_main = new Main(*this, argc, argv);
 			}
 
 			void

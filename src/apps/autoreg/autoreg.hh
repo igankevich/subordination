@@ -763,7 +763,7 @@ void trim_zeta(const std::valarray<T>& zeta2,
 namespace autoreg {
 
 template<class T, class Grid>
-struct Generator1: public Kernel, public Identifiable_tag {
+struct Generator1: public Kernel {
 
 	typedef stdx::log<Generator1> this_log;
 
@@ -909,7 +909,7 @@ private:
 };
 
 template<class T, class Grid>
-struct Wave_surface_generator: public Kernel, public Identifiable_tag {
+struct Wave_surface_generator: public Kernel {
 
 	typedef stdx::log<Wave_surface_generator> this_log;
 
@@ -944,7 +944,7 @@ struct Wave_surface_generator: public Kernel, public Identifiable_tag {
 			Surface_part part2 = grid_2.part(i);
 //	    	Surface_part part(zsize, i, num_parts), part2(zsize2, i, num_parts);
 			tmp << "Part " << i << ": " << part << endl;
-			generators[i] = factory()->template new_kernel<Generator1<T, Grid>>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
+			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
 			sum += part.part_size();
 		}
 		std::clog << tmp.rdbuf() << std::flush;
