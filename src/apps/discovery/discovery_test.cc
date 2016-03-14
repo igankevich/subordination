@@ -678,10 +678,8 @@ int main(int argc, char* argv[]) {
 		graph.add_nodes(hosts.begin(), hosts.end());
 
 		sysx::process_group procs;
-		int start_id = 1000;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, start_id, npeers, &network, discovery_port, num_pings] () {
-				sysx::this_process::env("START_ID", start_id);
+			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings] () {
 				return sysx::this_process::execute(
 					argv[0],
 					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
@@ -691,7 +689,6 @@ int main(int argc, char* argv[]) {
 					"--ping", num_pings
 				);
 			});
-			start_id += 1000;
 		}
 
 		this_log() << "Forked " << procs << std::endl;

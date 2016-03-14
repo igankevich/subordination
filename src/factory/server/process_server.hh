@@ -184,10 +184,13 @@ namespace factory {
 
 			void
 			send(kernel_type* kernel) override {
+				/*
+				TODO we need IDs only when forwarding kernels to other hosts
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 					kernel->id(this->factory()->factory_generate_id());
 					this_log() << "Kernel generate id = " << kernel->id() << std::endl;
 				}
+				*/
 				_ostream.begin_packet();
 				_ostream << kernel->app() << kernel->from();
 				Type<kernel_type>::write_object(*kernel, _ostream);

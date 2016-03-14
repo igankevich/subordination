@@ -291,13 +291,11 @@ main(int argc, char* argv[]) {
 		uint32_t sleep = 0;
 		sysx::process_group procs;
 		procs.add([&argv, sleep] () {
-			sysx::this_process::env("START_ID", 1000);
 			return sysx::this_process::execute(argv[0], 'x', sleep);
 		});
 		// wait for the child to start
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		procs.add([&argv, sleep] () {
-			sysx::this_process::env("START_ID", 2000);
 			return sysx::this_process::execute(argv[0], 'y', sleep);
 		});
 		this_log() << "sysx::process group = " << procs << std::endl;

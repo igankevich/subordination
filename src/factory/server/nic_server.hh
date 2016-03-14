@@ -313,12 +313,18 @@ namespace factory {
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
 			typedef sysx::network<sysx::ipv4_addr> network_type;
+			typedef network_type::rep_type rep_type;
 			typedef Mobile_kernel::id_type id_type;
 			typedef stdx::log<NIC_server> this_log;
 
 			static_assert(
 				std::is_move_constructible<server_type>::value,
 				"bad server_type"
+			);
+
+			static_assert(
+				sizeof(rep_type) <= sizeof(id_type),
+				"bad id_type"
 			);
 
 			NIC_server(NIC_server&& rhs) noexcept:
@@ -390,7 +396,7 @@ namespace factory {
 			void
 			bind(const sysx::endpoint& rhs, sysx::ipv4_addr netmask) {
 				_network = network_type(rhs.addr4(), netmask);
-				_counter = _network.position();
+				_counter = determine_initial_id();
 				socket(rhs);
 			}
 
@@ -432,9 +438,19 @@ namespace factory {
 
 			id_type
 			generate_id() noexcept {
-				id_type id = _counter++;
-				this_log() << "generate id=" << id << std::endl;
-				return id;
+				return _counter++;
+			}
+
+			id_type
+			determine_initial_id() noexcept {
+				const id_type x0 = _network.begin()->position(_network.netmask());
+				const id_type x1 = _network.end()->position(_network.netmask());
+				const id_type min_id = std::numeric_limits<id_type>::min();
+				const id_type max_id = std::numeric_limits<id_type>::max();
+				const id_type chunk_size = (max_id-min_id) / (x1-x0);
+				id_type initial_id = (_network.position()-x0+1) * chunk_size;
+				if (initial_id == 0) ++initial_id;
+				return initial_id;
 			}
 
 			void

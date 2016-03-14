@@ -215,7 +215,7 @@ namespace factory {
 
 		struct Mobile_kernel: public Basic_kernel, public Kernel_header {
 
-			typedef uint32_t id_type;
+			typedef uint64_t id_type;
 			static constexpr const id_type no_id = 0;
 
 			virtual void

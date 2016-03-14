@@ -148,11 +148,6 @@ namespace factory {
 				_exitcode = rhs;
 			}
 
-			id_type
-			factory_generate_id() {
-				return _counter++;
-			}
-
 			Instances<kernel_type>& instances() {
 				return _instances;
 			}
@@ -173,24 +168,6 @@ namespace factory {
 			}
 
 		private:
-
-			id_type
-			factory_start_id() noexcept {
-
-				struct factory_start_id_t{};
-				typedef stdx::log<factory_start_id_t> this_log;
-
-				constexpr static const id_type
-				DEFAULT_START_ID = 1000;
-
-				id_type i = sysx::this_process::getenv("START_ID", DEFAULT_START_ID);
-				if (i == kernel_type::no_id) {
-					this_log() << "Bad START_ID value: " << i << std::endl;
-					i = DEFAULT_START_ID;
-				}
-				this_log() << "START_ID = " << i << std::endl;
-				return i;
-			}
 
 			void init_parents() {
 				this->_local_server.setparent(this);
@@ -219,7 +196,6 @@ namespace factory {
 			External_server _ext_server;
 			Timer_server _timer_server;
 			int _exitcode = 0;
-			std::atomic<id_type> _counter{factory_start_id()};
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;
 		};
