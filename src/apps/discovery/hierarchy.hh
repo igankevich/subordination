@@ -7,8 +7,7 @@
 #include <stdx/log.hh>
 
 #include <sysx/endpoint.hh>
-
-#include "network.hh"
+#include <sysx/network.hh>
 
 namespace discovery {
 
@@ -16,7 +15,7 @@ namespace discovery {
 	struct Hierarchy {
 
 		typedef Addr addr_type;
-		typedef Network<addr_type> network_type;
+		typedef sysx::network<addr_type> network_type;
 		typedef std::set<sysx::endpoint>::size_type size_type;
 		typedef stdx::log<Hierarchy> this_log;
 

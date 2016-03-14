@@ -73,6 +73,7 @@ namespace stdx {
 
 }
 
+const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
 sysx::endpoint server_endpoint("127.0.0.1", 10001);
 sysx::endpoint client_endpoint({127,0,0,1}, 20001);
@@ -241,10 +242,10 @@ struct Main: public Kernel {
 			throw std::runtime_error("Wrong number of arguments.");
 		_role = argv[1][0];
 		if (_role == 'x') {
-			this_server.factory()->remote_server()->socket(server_endpoint);
+			this_server.factory()->remote_server()->bind(server_endpoint, netmask);
 		}
 		if (_role == 'y') {
-			this_server.factory()->remote_server()->socket(client_endpoint);
+			this_server.factory()->remote_server()->bind(client_endpoint, netmask);
 			this_server.factory()->remote_server()->peer(server_endpoint);
 		}
 	}
@@ -303,7 +304,10 @@ main(int argc, char* argv[]) {
 		const sysx::proc_status stat = procs.back().wait();
 		this_log() << "master process terminated: " << stat << std::endl;
 		procs.front().terminate();
-		this_log() << "child process terminated: " << procs.front().wait() << std::endl;
+		const sysx::proc_status stat2 = procs.front().wait();
+		this_log() << "child process terminated: " << stat2 << std::endl;
+		retval |= stat.exit_code() | sysx::signal_type(stat.term_signal());
+		retval |= stat2.exit_code() | sysx::signal_type(stat2.term_signal());
 	} else {
 		retval = factory_main<Main,config>(argc, argv);
 	}

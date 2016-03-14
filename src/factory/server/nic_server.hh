@@ -12,6 +12,8 @@
 #include <sysx/event.hh>
 #include <sysx/socket.hh>
 #include <sysx/packetstream.hh>
+#include <sysx/endpoint.hh>
+#include <sysx/network.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>
@@ -23,7 +25,11 @@ namespace factory {
 
 	namespace components {
 
-		template<class T, class Socket, class Kernels=std::deque<typename Server<T>::kernel_type*>>
+		template<
+		class T,
+		class Socket,
+		class Kernels=std::deque<typename Server<T>::kernel_type*>
+		>
 		struct Remote_Rserver: public Managed_object<Server<T>> {
 
 			typedef Managed_object<Server<T>> base_server;
@@ -107,7 +113,6 @@ namespace factory {
 			send(kernel_type* kernel) override {
 				bool delete_kernel = false;
 				if (kernel_goes_in_upstream_buffer(kernel)) {
-					ensure_identity(kernel);
 					_sentupstream.push_back(kernel);
 				} else
 				if (kernel_goes_in_downstream_buffer(kernel)) {
@@ -212,13 +217,6 @@ namespace factory {
 				);
 			}
 
-			void
-			ensure_identity(kernel_type* kernel) {
-				if (not kernel->identifiable()) {
-					kernel->set_id(this->factory()->factory_generate_id());
-				}
-			}
-
 			static bool
 			kernel_goes_in_upstream_buffer(const kernel_type* rhs) noexcept {
 				return rhs->moves_upstream() or rhs->moves_somewhere();
@@ -314,6 +312,8 @@ namespace factory {
 			typedef typename upstream_type::iterator iterator_type;
 			typedef server_type* handler_type;
 			typedef sysx::event_poller<handler_type> poller_type;
+			typedef sysx::network<sysx::ipv4_addr> network_type;
+			typedef Mobile_kernel::id_type id_type;
 			typedef stdx::log<NIC_server> this_log;
 
 			static_assert(
@@ -324,7 +324,8 @@ namespace factory {
 			NIC_server(NIC_server&& rhs) noexcept:
 			base_server(std::move(rhs)),
 			_upstream(),
-			_iterator(_upstream.end())
+			_iterator(_upstream.end()),
+			_counter(rhs._counter)
 			{}
 
 			NIC_server() = default;
@@ -387,6 +388,13 @@ namespace factory {
 			}
 
 			void
+			bind(const sysx::endpoint& rhs, sysx::ipv4_addr netmask) {
+				_network = network_type(rhs.addr4(), netmask);
+				_counter = _network.position();
+				socket(rhs);
+			}
+
+			void
 			socket(const sysx::endpoint& addr) {
 				_socket.bind(addr);
 				_socket.listen();
@@ -421,6 +429,26 @@ namespace factory {
 			}
 
 		private:
+
+			id_type
+			generate_id() noexcept {
+				id_type id = _counter++;
+				this_log() << "generate id=" << id << std::endl;
+				return id;
+			}
+
+			void
+			ensure_identity_helper(kernel_type* kernel) {
+				if (not kernel->identifiable()) {
+					kernel->set_id(generate_id());
+				}
+			}
+
+			void
+			ensure_identity(kernel_type* kernel) {
+				ensure_identity_helper(kernel);
+				ensure_identity_helper(kernel->parent());
+			}
 
 			void
 			remove_valid_server(iterator_type result) noexcept {
@@ -491,6 +519,7 @@ namespace factory {
 							} while (_iterator->second.stopped() and old_iterator != _iterator);
 						}
 						// round robin over upstream hosts
+						ensure_identity(k);
 						_iterator->second.send(k);
 						advance_upstream_iterator();
 					}
@@ -501,8 +530,11 @@ namespace factory {
 					this->root()->send(k);
 				} else {
 					// create endpoint if necessary, and send kernel
-					if (!k->to()) {
+					if (not k->to()) {
 						k->to(k->from());
+					}
+					if (k->moves_somewhere()) {
+						ensure_identity(k);
 					}
 					this->find_or_create_peer(k->to(), sysx::poll_event::Inout)->send(k);
 				}
@@ -554,9 +586,11 @@ namespace factory {
 				return &result.first->second;
 			}
 
+			network_type _network;
 			socket_type _socket;
 			upstream_type _upstream;
 			iterator_type _iterator;
+			std::atomic<id_type> _counter{0};
 		};
 
 	}

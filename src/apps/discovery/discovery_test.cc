@@ -2,13 +2,13 @@
 
 #include <sysx/socket.hh>
 #include <sysx/cmdline.hh>
+#include <sysx/network.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 #include <factory/server/nic_server.hh>
 
-#include "network.hh"
 #include "distance.hh"
 #include "cache_guard.hh"
 #include "hierarchy.hh"
@@ -383,7 +383,7 @@ template<class Address>
 struct Master_discoverer: public Kernel {
 
 	typedef Address addr_type;
-	typedef discovery::Network<addr_type> network_type;
+	typedef sysx::network<addr_type> network_type;
 	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
@@ -502,7 +502,7 @@ private:
 	deploy_secret_agent() {
 		_secretagent = new Secret_agent;
 		_secretagent->to(_hierarchy.principal());
-		_secretagent->id(factory()->factory_generate_id());
+//		_secretagent->id(factory()->factory_generate_id());
 		_secretagent->parent(this);
 		_secretagent->set_principal_id(_secretagent->to().address());
 		remote_server()->send(_secretagent);
@@ -615,7 +615,7 @@ private:
 		}
 	}
 
-	discovery::Network<sysx::ipv4_addr> _network;
+	sysx::network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
 	uint32_t _numpings;
 	sysx::cmdline _cmdline;
@@ -633,7 +633,7 @@ int main(int argc, char* argv[]) {
 
 	typedef stdx::log<test_discovery> this_log;
 	int retval = 0;
-	discovery::Network<sysx::ipv4_addr> network;
+	sysx::network<sysx::ipv4_addr> network;
 	uint32_t npeers = 0;
 	std::string role;
 	try {
@@ -684,7 +684,7 @@ int main(int argc, char* argv[]) {
 				sysx::this_process::env("START_ID", start_id);
 				return sysx::this_process::execute(
 					argv[0],
-					"--network", discovery::Network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
+					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
 					"--num-peers", 0,

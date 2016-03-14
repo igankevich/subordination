@@ -1,17 +1,19 @@
-#ifndef APPS_DISCOVERY_NETWORK_ITERATOR_HH
-#define APPS_DISCOVERY_NETWORK_ITERATOR_HH
+#ifndef SYSX_NETWORK_ITERATOR_HH
+#define SYSX_NETWORK_ITERATOR_HH
 
 #include <iterator>
 #include <sysx/network_format.hh>
 
-namespace discovery {
+namespace sysx {
 
 	template<class Address>
-	struct network_iterator: public std::iterator<std::random_access_iterator_tag,Address> {
-
+	struct network_iterator:
+	public std::iterator<std::random_access_iterator_tag,Address>
+	{
 		typedef Address addr_type;
 		typedef typename addr_type::rep_type rep_type;
-		typedef typename std::iterator_traits<network_iterator>::difference_type difference_type;
+		typedef std::iterator<std::random_access_iterator_tag,Address> base_type;
+		using typename base_type::difference_type;
 
 		network_iterator() = default;
 		network_iterator(const network_iterator&) = default;
@@ -94,4 +96,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_NETWORK_ITERATOR_HH
+#endif // SYSX_NETWORK_ITERATOR_HH

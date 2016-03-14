@@ -1,5 +1,5 @@
-#ifndef APPS_DISCOVERY_NETWORK_HH
-#define APPS_DISCOVERY_NETWORK_HH
+#ifndef SYSX_NETWORK_HH
+#define SYSX_NETWORK_HH
 
 #include <map>
 #include <vector>
@@ -14,12 +14,12 @@
 #include <sysx/endpoint.hh>
 #include <sysx/ifaddrs.hh>
 
-#include "network_iterator.hh"
+#include <sysx/network_iterator.hh>
 
-namespace discovery {
+namespace sysx {
 
 	template<class Addr>
-	struct Network {
+	struct network {
 
 		typedef sysx::bits::Const_char<'/'> Slash;
 		typedef Addr addr_type;
@@ -28,19 +28,19 @@ namespace discovery {
 		typedef network_iterator<addr_type> iterator;
 
 		constexpr
-		Network(const addr_type& addr, const addr_type& netmask) noexcept:
+		network(const addr_type& addr, const addr_type& netmask) noexcept:
 		_address(addr), _netmask(netmask)
 		{}
 
 		constexpr
-		Network(const addr_type& addr, const sysx::prefix_type prefix) noexcept:
+		network(const addr_type& addr, const sysx::prefix_type prefix) noexcept:
 		_address(addr), _netmask(addr_type::from_prefix(prefix))
 		{}
 
-		constexpr Network() noexcept = default;
-		constexpr Network(const Network&) noexcept = default;
-		constexpr Network(Network&&) noexcept = default;
-		Network& operator=(const Network&) noexcept = default;
+		constexpr network() noexcept = default;
+		constexpr network(const network&) noexcept = default;
+		constexpr network(network&&) noexcept = default;
+		network& operator=(const network&) noexcept = default;
 
 		constexpr const addr_type&
 		address() const noexcept {
@@ -60,6 +60,11 @@ namespace discovery {
 		constexpr const addr_type&
 		gateway() const noexcept {
 			return addr_type(first());
+		}
+
+		constexpr rep_type
+		position() const noexcept {
+			return _address.position(_netmask);
 		}
 
 		constexpr iterator
@@ -104,22 +109,22 @@ namespace discovery {
 		}
 
 		constexpr bool
-		operator==(const Network& rhs) const noexcept {
+		operator==(const network& rhs) const noexcept {
 			return _address == rhs._address && _netmask == rhs._netmask;
 		}
 
 		constexpr bool
-		operator!=(const Network& rhs) const noexcept {
+		operator!=(const network& rhs) const noexcept {
 			return !operator==(rhs);
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Network& rhs) {
+		operator<<(std::ostream& out, const network& rhs) {
 			return out << rhs._address << Slash() << rhs._netmask.to_prefix();
 		}
 
 		friend std::istream&
-		operator>>(std::istream& in, Network& rhs) {
+		operator>>(std::istream& in, network& rhs) {
 			sysx::prefix_type prefix = 0;
 			in >> rhs._address >> Slash() >> prefix;
 			rhs._netmask = addr_type::from_prefix(prefix);
@@ -162,7 +167,7 @@ namespace discovery {
 				if (rhs.ifa_addr != 0 and rhs.ifa_addr->sa_family == AF_INET) {
 					const Addr addr(*rhs.ifa_addr);
 					const Addr netmask(*rhs.ifa_netmask);
-					*result = Network<Addr>(addr, netmask);
+					*result = network<Addr>(addr, netmask);
 					++result;
 				}
 			}
@@ -171,4 +176,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_NETWORK_HH
+#endif // SYSX_NETWORK_HH

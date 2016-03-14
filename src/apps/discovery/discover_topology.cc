@@ -10,9 +10,9 @@
 #include <stdx/log.hh>
 
 #include <sysx/endpoint.hh>
+#include <sysx/network.hh>
 #include <sysx/cmdline.hh>
 
-#include "network.hh"
 #include "location.hh"
 #include "csv_tuple.hh"
 
@@ -59,7 +59,7 @@ template<class Addr>
 struct Topology {
 
 	typedef Addr addr_type;
-	typedef discovery::Network<addr_type> network_type;
+	typedef sysx::network<addr_type> network_type;
 	typedef typename network_type::rep_type uint_type;
 	typedef float float_type;
 	typedef uint32_t city_type;
