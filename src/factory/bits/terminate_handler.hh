@@ -18,7 +18,7 @@ namespace factory {
 			explicit
 			Auto_set_terminate_handler(server_type* root) noexcept {
 				_root = root;
-				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
+//				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
 				init_signal_handlers();
 			}
 

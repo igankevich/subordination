@@ -1,6 +1,9 @@
 #ifndef APPS_AUTOREG_AUTOREG_HH
 #define APPS_AUTOREG_AUTOREG_HH
 
+//#include <Eigen/LU>
+//#include <Eigen/QR>
+
 #include <stdx/log.hh>
 
 namespace std {
@@ -406,10 +409,34 @@ struct Solve_Yule_Walker: public Kernel {
 	const char* name() const { return "YW2"; }
 	bool is_profiled() const { return false; }
 
+	/*
+	void
+	solve_linear_system(std::valarray<T>& a, std::valarray<T>& b) {
+		using namespace Eigen;
+		const int m = ar_coefs.size()-1;
+		Matrix<float,Dynamic,Dynamic> A = Matrix<float,Dynamic,Dynamic>::Zero(m, m);
+		Matrix<float,Dynamic,1> B = Matrix<float,Dynamic,1>::Zero(m);
+		Index<2> idx(size2(m, m));
+		for (int i=0; i<m; ++i) {
+			for (int j=0; j<m; ++j) {
+				A(i, j) = a[idx(j, i)];
+			}
+			B[i] = b[i];
+		}
+		Matrix<float,Dynamic,1> x;
+		x = A.lu().solve(B);
+//		x = A.marked<UpperTriangular>().solveTriangular(B);
+		for (int i=0; i<m; ++i) {
+			b[i] = x[i];
+		}
+	}
+	*/
+
 	void act() {
 
 		int m = ar_coefs.size()-1;
 		int info = 0;
+//		solve_linear_system(a, b);
 		sysv<T>('U', m, 1, &a[0], m, &b[0], m, &info);
 		if (info != 0) {
 			std::stringstream s;
@@ -457,9 +484,6 @@ struct Autoreg_coefs: public Kernel {
 		a((ar_coefs.size()-1)*(ar_coefs.size()-1)), b(ar_coefs.size()-1),
 		state(0)
 	{}
-
-	bool is_profiled() const { return false; }
-	const char* name() const { return "AC"; }
 
 	void act() override {
 		upstream(local_server(), new Yule_walker<T>(acf_model, acf_size, a, b));
