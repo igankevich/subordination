@@ -2,6 +2,8 @@
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 
+#include <cassert>
+
 #include "datum.hh"
 
 #if defined(FACTORY_TEST_WEBSOCKET)
@@ -204,6 +206,11 @@ struct Sender: public Kernel {
 		std::vector<Datum> output = test_kernel->data();
 
 		this_log() << "kernel = " << *test_kernel << std::endl;
+		#if defined(FACTORY_TEST_OFFLINE)
+		assert(not child->from());
+		#else
+		assert(child->from() == server_endpoint);
+		#endif
 
 		if (_input.size() != output.size())
 			throw std::runtime_error("test_socket. Input and output size does not match.");
