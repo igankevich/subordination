@@ -1,10 +1,6 @@
 #ifndef APPS_AUTOREG_AUTOREG_DRIVER_HH
 #define APPS_AUTOREG_AUTOREG_DRIVER_HH
 
-#include <gsl/gsl_cdf.h>
-#include <gsl/gsl_statistics_float.h>
-#include <gsl/gsl_statistics.h>
-
 namespace autoreg {
 
 template<class T>

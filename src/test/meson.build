@@ -22,7 +22,8 @@ test(
 		'nic-server-test',
 		sources: 'nic_server_test.cc',
 		dependencies: threads,
-		include_directories: srcdir
+		include_directories: srcdir,
+		link_args: static_link_flags
 	)
 )
 

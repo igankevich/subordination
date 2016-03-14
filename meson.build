@@ -2,7 +2,11 @@ project('factory', 'cpp', version: '0.2', default_options: ['cpp_std=c++14'])
 
 libpthread = find_library('pthread')
 librt = find_library('rt')
-threads = [libpthread, librt]
+threads = [libpthread]
+#threads = [libpthread, librt]
+
+static_link_flags = ['-static-libstdc++', '-static-libgcc']
+
 srcdir = include_directories('src')
 
 cppcheck = find_program('cppcheck')

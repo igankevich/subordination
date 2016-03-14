@@ -1,8 +1,6 @@
 #ifndef APPS_AUTOREG_NONLINEAR_OMP_HH
 #define APPS_AUTOREG_NONLINEAR_OMP_HH
 
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_cdf.h>
 #include "emath.hh"
 #include "valarray_ext.hh"
 
@@ -12,6 +10,12 @@ const float EPS     = 1e-6;
 const float MAX_ERR = 0.02;
 const float SQRT2   = 1.4142135623730951f;
 const float SQRT2PI = 2.5066282749176025f;
+
+template<class T>
+T
+cdf_ugaussian(T rhs) noexcept {
+	return T(0.5) * std::erfc(-rhs / std::sqrt(T(2)));
+}
 
 
 /// skew normal distribution (approximation with non-zero skewness and kurtosis)
@@ -41,7 +45,7 @@ public:
 	Skew_normal_2(T c): alpha(c) {}
 	inline T operator()(T x) const
 	{
-		return gsl_cdf_ugaussian(x) - T(2)*owenT(x, alpha);
+		return cdf_ugaussian(x) - T(2)*owenT(x, alpha);
 	}
 };
 
@@ -82,7 +86,7 @@ void transform_norm_distribution(T x0,
 	for (size_t i=0; i<arr_x.size(); i++) {
 		T x = x0 + i*dx;
 		arr_x[i] = x;
-		arr_y[i] = bisection<T>(x-DINTERVAL, x+DINTERVAL, Equation_cdf<T, CDF>(cdf, gsl_cdf_ugaussian_P(x)), EPS, 60);
+		arr_y[i] = bisection<T>(x-DINTERVAL, x+DINTERVAL, Equation_cdf<T, CDF>(cdf, cdf_ugaussian(x)), EPS, 60);
 	}
 }
 
@@ -212,7 +216,7 @@ void transform_water_surface(std::valarray<T>& a,
 				if (z0 > min_z && z0 < max_z) {
 					z[id(x, y, t)] = poly<T>(z0, a);
 				} else {
-					z[id(x, y, t)] = bisection<T>(min_z, max_z, Equation_cdf<T, CDF>(cdf, gsl_cdf_ugaussian_P(z0)), EPS, 30);
+					z[id(x, y, t)] = bisection<T>(min_z, max_z, Equation_cdf<T, CDF>(cdf, cdf_ugaussian(z0)), EPS, 30);
 				}
 			}
 		}
