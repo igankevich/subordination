@@ -82,7 +82,6 @@ void transform_norm_distribution(T x0,
 {
 	const T DINTERVAL = 10;
 	T dx = (x1-x0)/(arr_x.size()-1);
-	#pragma omp parallel for shared(dx, x0)
 	for (size_t i=0; i<arr_x.size(); i++) {
 		T x = x0 + i*dx;
 		arr_x[i] = x;
@@ -178,7 +177,6 @@ void transform_acf(std::valarray<T>& acf, std::valarray<T>& c)
 {
 	//ifdebug("nit coefs trimmed =\n" << c << endl);
 	const T ACF_INTERVAL = 2.0;
-	#pragma omp parallel for
 	for (size_t i=0; i<acf.size(); ++i)
 		acf[i] = bisection<T>(-ACF_INTERVAL, ACF_INTERVAL, Equation_acf<T>(c, acf[i]), EPS, 30);
 }
@@ -208,7 +206,6 @@ void transform_water_surface(std::valarray<T>& a,
 							 T max_z)
 {
 	const Index<3> id(zsize);
-	#pragma omp parallel for collapse(3)
 	for (size_t x=0; x<zsize[0]; x++) {
 		for (size_t y=0; y<zsize[1]; y++) {
 			for (size_t t=0; t<zsize[2]; t++) {

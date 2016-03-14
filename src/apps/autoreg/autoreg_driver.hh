@@ -57,7 +57,7 @@ public:
 		write_log("Interval:"   , interval);
 		write_log("Size factor:", size_factor());
 
-		upstream_carry(local_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
+		upstream(local_server(), new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
 //		do_it();
 	}
 
@@ -225,7 +225,7 @@ private:
 			interpolation_coefs<T>(nit_x0, nit_x1, INTERPOLATION_NODES, interp_coefs, cdf);
 			transform_acf<T>(interp_coefs, MAX_NIT_COEFS, acf_model);
 		}
-		upstream_carry(local_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
+		upstream(local_server(), new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
 	}
 
 	size3 zsize;
@@ -271,7 +271,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-		upstream_carry(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
+		upstream(local_server(), new Variance_WN<T>(ar_coefs, acf_model));
 	}
 	typedef Uniform_grid Grid;
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
@@ -291,7 +291,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 //		const std::valarray<T>& water_surface
 //			= reinterpret_cast<Wave_surface_generator<T, Grid>*>(child)->get_water_surface();
 		commit(local_server());
-//		upstream_carry(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
+//		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);
 //		}

@@ -27,9 +27,9 @@ namespace stdx {
 	struct disable_log_category<factory::components::kernel_category>:
 	public std::true_type {};
 
-	template<>
-	struct disable_log_category<factory::components::server_category>:
-	public std::true_type {};
+//	template<>
+//	struct disable_log_category<factory::components::server_category>:
+//	public std::true_type {};
 
 }
 
@@ -555,8 +555,9 @@ struct Main: public Kernel {
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
+			const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
 			const sysx::endpoint bind_addr(_network.address(), _port);
-			this_server.remote_server()->socket(bind_addr);
+			this_server.remote_server()->bind(bind_addr, netmask);
 			std::clog << "Hello from child process" << std::endl;
 			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 2;
 			const auto start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
