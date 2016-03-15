@@ -168,6 +168,28 @@ private:
 
 };
 
+template<class Address>
+struct Hosts: public std::vector<Address> {
+
+	typedef Address addr_type;
+
+	friend std::istream&
+	operator>>(std::istream& cmdline, Hosts& rhs) {
+		std::string filename;
+		cmdline >> filename;
+		std::clog << "reading hosts from " << filename << std::endl;
+		std::ifstream in(filename);
+		rhs.clear();
+		std::copy(
+			std::istream_iterator<addr_type>(in),
+			std::istream_iterator<addr_type>(),
+			std::back_inserter(rhs)
+		);
+		return cmdline;
+	}
+
+};
+
 int main(int argc, char* argv[]) {
 
 	const std::string role_master = "master";
@@ -177,6 +199,7 @@ int main(int argc, char* argv[]) {
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_slave_after = do_not_kill;
 	uint32_t kill_master_after = do_not_kill;
+	Hosts<sysx::ipv4_addr> hosts2;
 
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
@@ -186,6 +209,7 @@ int main(int argc, char* argv[]) {
 	try {
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
+			sysx::cmd::make_option({"--hosts"}, hosts2),
 			sysx::cmd::make_option({"--network"}, network),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
 			sysx::cmd::make_option({"--role"}, role),
@@ -198,8 +222,8 @@ int main(int argc, char* argv[]) {
 		if (role != role_master and role != role_slave) {
 			throw sysx::invalid_cmdline_argument("--role");
 		}
-		if (!network) {
-			throw sysx::invalid_cmdline_argument("--network");
+		if (!network and hosts2.empty()) {
+			throw sysx::invalid_cmdline_argument("--network,--hosts");
 		}
 	} catch (sysx::invalid_cmdline_argument& err) {
 		std::cerr << err.what() << ": " << err.arg() << std::endl;
@@ -214,14 +238,25 @@ int main(int argc, char* argv[]) {
 		this_log() << "start,mid = " << *network.begin() << ',' << *network.middle() << std::endl;
 
 		std::vector<sysx::endpoint> hosts;
-		std::transform(
-			network.begin(),
-			network.begin() + npeers,
-			std::back_inserter(hosts),
-			[discovery_port] (const sysx::ipv4_addr& addr) {
-				return sysx::endpoint(addr, discovery_port);
-			}
-		);
+		if (network) {
+			std::transform(
+				network.begin(),
+				network.begin() + npeers,
+				std::back_inserter(hosts),
+				[discovery_port] (const sysx::ipv4_addr& addr) {
+					return sysx::endpoint(addr, discovery_port);
+				}
+			);
+		} else {
+			std::transform(
+				hosts2.begin(),
+				hosts2.end(),
+				std::back_inserter(hosts),
+				[discovery_port] (const sysx::ipv4_addr& addr) {
+					return sysx::endpoint(addr, discovery_port);
+				}
+			);
+		}
 		springy::Springy_graph graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
