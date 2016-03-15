@@ -34,11 +34,6 @@ namespace discovery {
 			base_type::remove_subordinate(addr);
 		}
 
-		void
-		set_graph(springy::Springy_graph& rhs) noexcept {
-			_graph = rhs;
-		}
-
 	private:
 
 		springy::Springy_graph _graph;
