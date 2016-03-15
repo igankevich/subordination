@@ -27,9 +27,9 @@ namespace stdx {
 	struct disable_log_category<factory::components::kernel_category>:
 	public std::true_type {};
 
-//	template<>
-//	struct disable_log_category<factory::components::server_category>:
-//	public std::true_type {};
+	template<>
+	struct disable_log_category<factory::components::server_category>:
+	public std::true_type {};
 
 }
 
@@ -568,8 +568,11 @@ struct Main: public Kernel {
 //			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
 			this_server.timer_server()->send(master);
 
-			if (_network.address() == traits_type::localhost()) {
+//			if (_network.address() == traits_type::localhost()) {
 //				schedule_pingpong_after(std::chrono::seconds(0), this_server);
+//			}
+
+			if (_network.address() == sysx::ipv4_addr{127,0,0,1}) {
 				schedule_autoreg_app(this_server);
 			}
 
@@ -630,7 +633,8 @@ int main(int argc, char* argv[]) {
 	sysx::port_type discovery_port = 10000;
 	uint32_t num_pings = 10;
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
-	uint32_t kill_every = do_not_kill;
+	uint32_t kill_slave_after = do_not_kill;
+	uint32_t kill_master_after = do_not_kill;
 
 	typedef stdx::log<test_discovery> this_log;
 	int retval = 0;
@@ -645,7 +649,8 @@ int main(int argc, char* argv[]) {
 			sysx::cmd::make_option({"--role"}, role),
 			sysx::cmd::make_option({"--port"}, discovery_port),
 			sysx::cmd::make_option({"--ping"}, num_pings),
-			sysx::cmd::make_option({"--kill"}, kill_every)
+			sysx::cmd::make_option({"--kill-slave-after"}, kill_slave_after),
+			sysx::cmd::make_option({"--kill-master-after"}, kill_master_after)
 		});
 		cmd.parse();
 		if (role != role_master and role != role_slave) {
@@ -693,21 +698,21 @@ int main(int argc, char* argv[]) {
 		}
 
 		this_log() << "Forked " << procs << std::endl;
-		if (kill_every != do_not_kill) {
+		if (kill_master_after != do_not_kill) {
 			using namespace std::chrono;
-			this_log() << "Start killing spree" << std::endl;
-			const auto tick = seconds(kill_every);
-			auto first = procs.begin();
-//			const auto last = procs.end();
+			std::this_thread::sleep_for(seconds(kill_master_after));
+			sysx::process& master = procs.front();
+			this_log() << "Killing master process " << master.id() << std::endl;
+			master.kill();
+		}
+		if (kill_slave_after != do_not_kill) {
+			using namespace std::chrono;
+			std::this_thread::sleep_for(seconds(kill_slave_after));
+			sysx::process_group::iterator first = procs.begin();
 			// skip master
-//			++first;
-//			while (first != last) {
-				std::this_thread::sleep_for(tick);
-				this_log() << "Killing process " << first->id() << std::endl;
-				first->kill();
-				++first;
-//			}
-			this_log() << "Finish killing spree" << std::endl;
+			++first;
+			this_log() << "Killing slave process " << first->id() << std::endl;
+			first->kill();
 		}
 		retval = procs.wait();
 

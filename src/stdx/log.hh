@@ -1,6 +1,8 @@
 #ifndef STDX_LOG_HH
 #define STDX_LOG_HH
 
+#include <unistd.h>
+
 #include <typeinfo>
 #include <type_traits>
 #include <iostream>
@@ -90,10 +92,40 @@ namespace stdx {
 
 	private:
 
+		enum struct Color {
+			RESET            = 0,
+			FG_RED           = 31,
+			FG_GREEN         = 32,
+			FG_YELLOW        = 33,
+			FG_BLUE          = 34,
+			FG_MAGENTA       = 35,
+			FG_CYAN          = 36,
+			FG_LIGHT_GRAY    = 37,
+			FG_DEFAULT       = 39,
+			BG_RED           = 41,
+			BG_GREEN         = 42,
+			BG_BLUE          = 44,
+			BG_DEFAULT       = 49,
+			FG_DARK_GRAY     = 90,
+			FG_LIGHT_RED     = 91,
+			FG_LIGHT_GREEN   = 92,
+			FG_LIGHT_YELLOW  = 93,
+			FG_LIGHT_BLUE    = 94,
+			FG_LIGHT_MAGENTA = 95,
+			FG_LIGHT_CYAN    = 96,
+			FG_WHITE         = 97
+		};
+
+		friend std::ostream&
+		operator<<(std::ostream& os, Color rhs) {
+			if (not ::isatty(2)) return os;
+		    return os << "\033[" << static_cast<int>(rhs) << "m";
+		}
+
 		static void
 		write_header(std::ostream& out, const char* func) {
 			if (func) {
-				out << func << ' ';
+				out << Color::FG_LIGHT_GREEN << func << Color::RESET << ' ';
 			}
 		}
 
