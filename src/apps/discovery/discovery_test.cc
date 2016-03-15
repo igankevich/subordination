@@ -83,7 +83,7 @@ private:
 };
 
 template<class Address>
-struct Negotiator: public Kernel {
+struct Negotiator: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
 	typedef discovery::Hierarchy<addr_type> hierarchy_type;
@@ -167,7 +167,7 @@ private:
 };
 
 template<class Address>
-struct Master_negotiator: public Kernel {
+struct Master_negotiator: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
 	typedef Negotiator<addr_type> negotiator_type;
@@ -230,7 +230,7 @@ private:
 An agent that returns to its principal only when the node where it was sent
 fails, or in case of network failure.
 */
-struct Secret_agent: public Kernel {
+struct Secret_agent: public Priority_kernel<Kernel> {
 
 	typedef stdx::log<Secret_agent> this_log;
 
@@ -380,7 +380,7 @@ private:
 
 
 template<class Address>
-struct Master_discoverer: public Kernel {
+struct Master_discoverer: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
 	typedef sysx::network<addr_type> network_type;
@@ -425,9 +425,13 @@ struct Master_discoverer: public Kernel {
 			}
 		} else
 		if (_secretagent == k) {
+			this_log log;
+			log << "secret agent returned from "
+				<< k->from() << ": " << k->result()
+				<< std::endl;
 			if (k->result() == Result::ENDPOINT_NOT_CONNECTED) {
 				_hierarchy.unset_principal();
-				this_log() << "hierarchy: " << _hierarchy << std::endl;
+				log << "hierarchy: " << _hierarchy << std::endl;
 				try_next_host(this_server);
 			}
 		} else

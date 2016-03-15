@@ -86,12 +86,13 @@ namespace factory {
 			typedef std::chrono::steady_clock Clock;
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
-			typedef std::bitset<2> Flags;
+			typedef std::bitset<3> Flags;
 			typedef stdx::log<Basic_kernel> this_log;
 
 			enum struct Flag {
 				DELETED = 0,
-				carries_parent = 1
+				carries_parent = 1,
+				priority_service = 2
 			};
 
 			virtual
@@ -570,6 +571,13 @@ namespace factory {
 		};
 
 	}
+
+	template<class Base>
+	struct Priority_kernel: public Base {
+		Priority_kernel() {
+			this->setf(components::Basic_kernel::Flag::priority_service);
+		}
+	};
 
 	using components::Result;
 

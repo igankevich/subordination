@@ -12,7 +12,7 @@ libblas = find_library('blas')
 #		link_args: '-rdynamic'
 #		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
 		link_args: ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm'],
-		cpp_args: ['-DFACTORY_SINGLE_THREAD']
+		cpp_args: ['-DFACTORY_SINGLE_THREAD', '-DFACTORY_PRIORITY_SCHEDULING']
 	)
 #	,
 #	args: [

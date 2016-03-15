@@ -88,7 +88,7 @@ namespace factory {
 			explicit
 			CPU_server(unsigned concurrency) noexcept:
 			base_server(concurrency),
-			_servers(concurrency)
+			_servers(concurrency + priority_server)
 			{}
 
 			CPU_server(const CPU_server&) = delete;
@@ -113,9 +113,14 @@ namespace factory {
 
 			void
 			send(kernel_type* kernel) override {
+				#if defined(FACTORY_PRIORITY_SCHEDULING)
+				if (kernel->isset(kernel_type::Flag::priority_service)) {
+					_servers.back().send(kernel);
+				} else
+				#endif
 				if (kernel->moves_downstream()) {
 					size_t i = kernel->hash();
-					_servers[i % _servers.size()].send(kernel);
+					_servers[i % (_servers.size()-priority_server)].send(kernel);
 				} else {
 					base_server::send(kernel);
 				}
@@ -171,6 +176,13 @@ namespace factory {
 			}
 
 			server_pool _servers;
+			#if defined(FACTORY_PRIORITY_SCHEDULING)
+			static constexpr const size_t
+			priority_server = 1;
+			#else
+			static constexpr const size_t
+			priority_server = 0;
+			#endif
 
 		};
 
