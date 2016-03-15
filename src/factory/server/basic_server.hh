@@ -9,6 +9,7 @@
 #include <factory/type.hh>
 #include <sysx/semaphore.hh>
 #include <sysx/endpoint.hh>
+#include <sysx/system.hh>
 #include <stdx/for_each.hh>
 #include <stdx/back_inserter.hh>
 #include <stdx/front_popper.hh>
@@ -197,11 +198,7 @@ namespace factory {
 			explicit
 			Server_with_pool(unsigned concurrency) noexcept:
 			_kernels(),
-			#ifdef FACTORY_SINGLE_THREAD
-			_threads(1u),
-			#else
 			_threads(std::max(1u, concurrency)),
-			#endif
 			_mutex(),
 			_semaphore()
 			{}

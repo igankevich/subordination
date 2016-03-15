@@ -2,6 +2,7 @@
 #define FACTORY_SERVER_CPU_SERVER_HH
 
 #include <stdx/unlock_guard.hh>
+#include <sysx/system.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
 
@@ -81,7 +82,7 @@ namespace factory {
 			{}
 
 			CPU_server() noexcept:
-			CPU_server(std::thread::hardware_concurrency())
+			CPU_server(sysx::thread_concurrency())
 			{}
 
 			explicit

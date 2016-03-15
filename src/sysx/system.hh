@@ -17,18 +17,23 @@ namespace sysx {
 
 	typedef size_t size_type;
 
-	namespace conf {
+	size_type
+	page_size() noexcept {
+		#if defined(FACTORY_SYSCONF_PAGE_SIZE)
+		long result = ::sysconf(FACTORY_SYSCONF_PAGE_SIZE);
+		return result < 1 ? 4096 : result;
+		#else
+		return 4096;
+		#endif
+	}
 
-		size_type
-		page_size() noexcept {
-			#if defined(FACTORY_SYSCONF_PAGE_SIZE)
-			long result = ::sysconf(FACTORY_SYSCONF_PAGE_SIZE);
-			return result < 1 ? 4096 : result;
-			#else
-			return 4096;
-			#endif
-		}
-
+	unsigned
+	thread_concurrency() noexcept {
+		#if defined(FACTORY_SINGLE_THREAD)
+		return 1u;
+		#else
+		return std::thread::hardware_concurrency();
+		#endif
 	}
 
 }
