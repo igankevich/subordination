@@ -227,8 +227,11 @@ int main(int argc, char* argv[]) {
 
 		sysx::process_group procs;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings] () {
+			char workdir[PATH_MAX];
+			::getcwd(workdir, PATH_MAX);
+			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, workdir] () {
 				return sysx::this_process::execute(
+					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "exec",
 					argv[0],
 					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
