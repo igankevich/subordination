@@ -150,9 +150,10 @@ namespace factory {
 			void write_object(kernel_type& kernel, sysx::packetstream& out) {
 				const Type type = kernel.type();
 				if (!type) {
-					std::stringstream msg;
-					msg << "Can not find type for kernel id=" << kernel.id();
-					throw Durability_error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Bad_type(
+						"no type is defined for a kernel",
+						{__FILE__, __LINE__, __func__}
+					);
 				}
 				out << type.id();
 				kernel.write(out);

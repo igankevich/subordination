@@ -4,10 +4,39 @@
 #include <factory/error.hh>
 #include <stdx/log.hh>
 #include <sysx/bits/check.hh>
+#include <sysx/log_color.hh>
 
 namespace factory {
 
 	namespace components {
+
+		template<class T>
+		struct Red {
+
+			explicit
+			Red(const T& rhs) noexcept:
+			_object(rhs)
+			{}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Red& rhs) {
+				return
+				out << sysx::log_color::FG_LIGHT_RED
+					<< rhs._object
+					<< sysx::log_color::RESET;
+			}
+
+		private:
+
+			const T& _object;
+
+		};
+
+		template<class T>
+		Red<T>
+		make_red(const T& rhs) noexcept {
+			return Red<T>(rhs);
+		}
 
 		template<class Server>
 		struct Auto_set_terminate_handler {
@@ -18,11 +47,16 @@ namespace factory {
 			explicit
 			Auto_set_terminate_handler(server_type* root) noexcept {
 				_root = root;
-//				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
+				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
 				init_signal_handlers();
 			}
 
 		private:
+
+			enum struct exit_code: int {
+				success = 0,
+				failure = -1
+			};
 
 			static void
 			error_printing_handler() noexcept {
@@ -33,20 +67,15 @@ namespace factory {
 				if (ptr) {
 					try {
 						std::rethrow_exception(ptr);
-					} catch (sysx::bits::os_error& err) {
-						this_log() << err << std::endl;
-					} catch (Error& err) {
-						this_log() << Error_message(err, __FILE__, __LINE__, __func__) << std::endl;
 					} catch (std::exception& err) {
-						this_log() << String_message(err, __FILE__, __LINE__, __func__) << std::endl;
+						this_log() << make_red(err) << std::endl;
 					} catch (...) {
-						this_log() << String_message(UNKNOWN_ERROR, __FILE__, __LINE__, __func__) << std::endl;
+						this_log() << make_red("unknown exception caught") << std::endl;
 					}
 				} else {
-					this_log() << String_message("terminate called without an active exception",
-						__FILE__, __LINE__, __func__) << std::endl;
+					this_log() << make_red("terminate called without an active exception") << std::endl;
 				}
-				stop_root_server(EXIT_FAILURE);
+				stop_root_server(exit_code::failure);
 			}
 
 			void
@@ -58,23 +87,22 @@ namespace factory {
 
 			static void
 			normal_shutdown(int) noexcept {
-				stop_root_server(EXIT_SUCCESS);
+				stop_root_server(exit_code::success);
 			}
 
 			static void
 			emergency_shutdown(int sig) noexcept {
-				stop_root_server(sig);
+				stop_root_server(exit_code(sig));
 			}
 
 			static void
-			stop_root_server(int retval) {
+			stop_root_server(exit_code retval) {
 				if (_root) {
-					_root->set_exit_code(retval);
+					_root->set_exit_code(int(retval));
 					_root->shutdown();
 				}
 			}
 
-		private:
 			static server_type* _root;
 		};
 
