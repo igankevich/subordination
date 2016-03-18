@@ -20,6 +20,15 @@ struct Delayed_shutdown: public Kernel {
 	act(Server& this_server) override {
 //		this_log() << "Hail the king! His hoes: " << _hierarchy << std::endl;
 //		this_server.factory()->shutdown();
+
+		if (_signal == sysx::signal::kill) {
+			try {
+				sysx::endpoint addr = factory()->remote_server()->server_addr();
+				this_log() << "Killing " << addr << std::endl;
+			} catch (...) {
+				this_log() << "Killing this process" << std::endl;
+			}
+		}
 		sysx::this_process::send(_signal);
 	}
 

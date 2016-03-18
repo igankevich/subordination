@@ -79,12 +79,13 @@ struct Main: public Kernel {
 	_cmdline(argc, argv, {
 		sysx::cmd::ignore_first_arg(),
 		sysx::cmd::ignore_arg("--num-peers"),
-		sysx::cmd::ignore_arg("--role"),
+		sysx::cmd::make_option({"--role"}, _role),
 		sysx::cmd::make_option({"--network"}, _network),
 		sysx::cmd::make_option({"--port"}, _port),
 		sysx::cmd::make_option({"--ping"}, _numpings),
 		sysx::cmd::make_option({"--timeout"}, _timeout),
-		sysx::cmd::make_option({"--signal"}, _signal)
+		sysx::cmd::make_option({"--signal"}, _signal),
+		sysx::cmd::make_option({"--master"}, _masteraddr)
 	})
 	{}
 
@@ -116,12 +117,7 @@ struct Main: public Kernel {
 //				schedule_pingpong_after(std::chrono::seconds(0), this_server);
 //			}
 
-			#if defined(FACTORY_TEST_SLAVE_FAILURE)
-			constexpr const sysx::ipv4_addr master_addr{127,0,0,1};
-			#else
-			constexpr const sysx::ipv4_addr master_addr{127,0,0,2};
-			#endif
-			if (_network.address() == master_addr) {
+			if (_network.address() == _masteraddr) {
 				schedule_autoreg_app(this_server);
 			}
 
@@ -162,17 +158,22 @@ private:
 			if (!_network) {
 				throw sysx::invalid_cmdline_argument("--network");
 			}
+			if (_role != "slave") {
+				throw sysx::invalid_cmdline_argument("--role");
+			}
 		} catch (sysx::invalid_cmdline_argument& err) {
 			std::cerr << err.what() << ": " << err.arg() << std::endl;
 			this_server.factory()->set_exit_code(1);
 		}
 	}
 
+	std::string _role;
 	sysx::network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
 	uint32_t _numpings;
 	uint32_t _timeout = 60;
 	sysx::signal _signal = sysx::signal::terminate;
+	sysx::ipv4_addr _masteraddr;
 	sysx::cmdline _cmdline;
 
 };
@@ -206,11 +207,11 @@ int main(int argc, char* argv[]) {
 	sysx::port_type discovery_port = 10000;
 	uint32_t num_pings = 10;
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
-	uint32_t kill_slave_after = do_not_kill;
-	uint32_t kill_master_after = do_not_kill;
+	uint32_t kill_after = do_not_kill;
 	uint32_t kill_timeout = do_not_kill;
 	Hosts<sysx::ipv4_addr> hosts2;
-	sysx::signal unused;
+	sysx::ipv4_addr master_addr{127,0,0,1};
+	sysx::ipv4_addr kill_addr{127,0,0,2};
 
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
@@ -220,7 +221,7 @@ int main(int argc, char* argv[]) {
 	try {
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
-			sysx::cmd::make_option({"--signal"}, unused),
+			sysx::cmd::ignore_arg("--signal"),
 			sysx::cmd::make_option({"--hosts"}, hosts2),
 			sysx::cmd::make_option({"--network"}, network),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
@@ -228,8 +229,9 @@ int main(int argc, char* argv[]) {
 			sysx::cmd::make_option({"--port"}, discovery_port),
 			sysx::cmd::make_option({"--ping"}, num_pings),
 			sysx::cmd::make_option({"--timeout"}, kill_timeout),
-			sysx::cmd::make_option({"--kill-slave-after"}, kill_slave_after),
-			sysx::cmd::make_option({"--kill-master-after"}, kill_master_after)
+			sysx::cmd::make_option({"--master"}, master_addr),
+			sysx::cmd::make_option({"--kill"}, kill_addr),
+			sysx::cmd::make_option({"--kill-after"}, kill_after)
 		});
 		cmd.parse();
 		if (role != role_master and role != role_slave) {
@@ -273,26 +275,17 @@ int main(int argc, char* argv[]) {
 		springy::Springy_graph graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
-		const uint32_t default_timeout = 60;
-		std::vector<uint32_t> timeouts(hosts.size(), default_timeout);
-		std::vector<sysx::signal> signals(hosts.size(), sysx::signal::terminate);
-		if (kill_master_after != do_not_kill) {
-			assert(hosts.size() >= 1);
-			timeouts[1] = kill_master_after;
-			signals[1] = sysx::signal::kill;
-		}
-		if (kill_slave_after != do_not_kill) {
-			assert(hosts.size() >= 2);
-			timeouts[1] = kill_slave_after;
-			signals[1] = sysx::signal::kill;
-		}
-
-		int idx = 0;
 		sysx::process_group procs;
 		for (sysx::endpoint endpoint : hosts) {
-			char workdir[PATH_MAX];
-			::getcwd(workdir, PATH_MAX);
-			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, workdir, idx, &timeouts, &signals] () {
+			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, master_addr, kill_addr, kill_after] () {
+				char workdir[PATH_MAX];
+				::getcwd(workdir, PATH_MAX);
+				uint32_t timeout = 60;
+				sysx::signal kill_signal = sysx::signal::terminate;
+				if (endpoint.addr4() == kill_addr) {
+					timeout = kill_after;
+					kill_signal = sysx::signal::kill;
+				}
 				return sysx::this_process::execute(
 					#if defined(FACTORY_TEST_USE_SSH)
 					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "exec",
@@ -303,14 +296,15 @@ int main(int argc, char* argv[]) {
 					"--role", "slave",
 					"--num-peers", 0,
 					"--ping", num_pings,
-					"--timeout", timeouts[idx],
-					"--signal", sysx::signal_type(signals[idx])
+					"--timeout", timeout,
+					"--signal", sysx::signal_type(kill_signal),
+					"--master", master_addr
 				);
 			});
-			++idx;
 		}
 
 		this_log() << "Forked " << procs << std::endl;
+		/*
 		if (kill_master_after != do_not_kill) {
 			using namespace std::chrono;
 			std::this_thread::sleep_for(seconds(kill_master_after));
@@ -325,9 +319,9 @@ int main(int argc, char* argv[]) {
 			first->kill();
 			first->wait();
 		}
-		if (kill_slave_after != do_not_kill) {
+		if (kill_after != do_not_kill) {
 			using namespace std::chrono;
-			std::this_thread::sleep_for(seconds(kill_slave_after));
+			std::this_thread::sleep_for(seconds(kill_after));
 			sysx::process_group::iterator first = procs.begin();
 			// skip master
 			++first;
@@ -335,6 +329,7 @@ int main(int argc, char* argv[]) {
 			first->kill();
 			first->wait();
 		}
+		*/
 		retval = procs.wait();
 
 	} else {
