@@ -63,14 +63,46 @@ namespace factory {
 
 		};
 
-		struct Marshalling_error: public Error {
-			Marshalling_error(std::string&& msg, const char* file, const int line, const char* function):
-				Error(std::forward<std::string>(msg), file, line, function) {}
+		struct Bad_kernel: public Error {
+
+			typedef std::uintmax_t id_type;
+
+			Bad_kernel(const char* msg, const Error_location& loc, id_type type_id) noexcept:
+			Error(msg, loc),
+			_id(type_id)
+			{}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Bad_kernel& rhs) {
+				operator<<(out, static_cast<const Error&>(rhs));
+				return out << ' ' << "type_id" << '=' << rhs._id;
+			}
+
+		private:
+
+			id_type _id;
+
 		};
 
 		struct Bad_type: public Error {
-			Bad_type(const char* msg, const Error_location& loc) noexcept:
-			Error(msg, loc) {}
+
+			typedef std::uintmax_t id_type;
+
+			Bad_type(const char* msg, const Error_location& loc, id_type kernel_id) noexcept:
+			Error(msg, loc),
+			_id(kernel_id)
+			{}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Bad_type& rhs) {
+				operator<<(out, static_cast<const Error&>(rhs));
+				return out << ' ' << "id" << '=' << rhs._id;
+			}
+
+		private:
+
+			id_type _id;
+
 		};
 
 	}

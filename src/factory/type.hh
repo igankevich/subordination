@@ -151,8 +151,9 @@ namespace factory {
 				const Type type = kernel.type();
 				if (!type) {
 					throw Bad_type(
-						"no type is defined for a kernel",
-						{__FILE__, __LINE__, __func__}
+						"no type is defined for the kernel",
+						{__FILE__, __LINE__, __func__},
+						kernel.id()
 					);
 				}
 				out << type.id();
@@ -165,18 +166,21 @@ namespace factory {
 				packet >> id;
 				const Type* type = types.lookup(id);
 				if (type == nullptr) {
-					std::stringstream msg;
-					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Bad_kernel(
+						"bad kernel type when reading from Kernel_stream",
+						{__FILE__, __LINE__, __func__},
+						id
+					);
 				}
 				kernel_type* kernel = nullptr;
 				try {
 					kernel = type->read(packet);
 				} catch (std::bad_alloc& err) {
-					std::stringstream msg;
-					msg << "Allocation error. Demarshalled kernel was prevented"
-						" from allocating too much memory. " << err.what();
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Bad_kernel(
+						err.what(),
+						{__FILE__, __LINE__, __func__},
+						id
+					);
 				}
 				return kernel;
 			}
@@ -188,18 +192,21 @@ namespace factory {
 				packet >> id;
 				const Type* type = types.lookup(id);
 				if (type == nullptr) {
-					std::stringstream msg;
-					msg << "Demarshalling of non-kernel object with typeid = " << id << " was prevented.";
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Bad_kernel(
+						"bad kernel type when reading from Kernel_stream",
+						{__FILE__, __LINE__, __func__},
+						id
+					);
 				}
 				kernel_type* kernel = nullptr;
 				try {
 					kernel = type->read(packet);
 				} catch (std::bad_alloc& err) {
-					std::stringstream msg;
-					msg << "Allocation error. Demarshalled kernel was prevented"
-						" from allocating too much memory. " << err.what();
-					throw Marshalling_error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Bad_kernel(
+						err.what(),
+						{__FILE__, __LINE__, __func__},
+						id
+					);
 				}
 				callback(kernel);
 			}

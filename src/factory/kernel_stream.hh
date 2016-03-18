@@ -41,9 +41,11 @@ namespace factory {
 		operator<<(kernel_type& kernel) {
 			const Type<kernel_type> type = kernel.type();
 			if (not type) {
-				std::stringstream msg;
-				msg << "Can not find type for kernel id=" << kernel.id();
-				throw components::Error(msg.str(), __FILE__, __LINE__, __func__);
+				throw components::Bad_type(
+					"no type is defined for the kernel",
+					{__FILE__, __LINE__, __func__},
+					kernel.id()
+				);
 			}
 			begin_packet();
 			*this << kernel.app() << type.id();
@@ -79,7 +81,7 @@ namespace factory {
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
-					} catch (components::Marshalling_error& err) {
+					} catch (components::Bad_kernel& err) {
 						setstate(state::bad_kernel);
 						this_log() << err << std::endl;
 					}
