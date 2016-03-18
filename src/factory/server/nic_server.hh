@@ -477,7 +477,8 @@ namespace factory {
 
 			void
 			advance_upstream_iterator() noexcept {
-				if (++_iterator == _upstream.end()) {
+				_endreached = (++_iterator == _upstream.end());
+				if (_endreached) {
 					_iterator = _upstream.begin();
 				}
 			}
@@ -523,7 +524,10 @@ namespace factory {
 					// delete broadcast kernel
 					delete k;
 				} else if (k->moves_upstream() && k->to() == sysx::endpoint()) {
-					if (_upstream.empty()) {
+					if (_upstream.empty() or _endreached) {
+						// include localhost in round-robin
+						// in a somewhat half-assed fashion
+						_endreached = false;
 						// short-circuit kernels when no upstream servers are available
 						this->root()->send(k);
 					} else {
@@ -606,6 +610,7 @@ namespace factory {
 			socket_type _socket;
 			upstream_type _upstream;
 			iterator_type _iterator;
+			bool _endreached = false;
 			std::atomic<id_type> _counter{0};
 		};
 

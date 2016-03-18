@@ -116,7 +116,12 @@ struct Main: public Kernel {
 //				schedule_pingpong_after(std::chrono::seconds(0), this_server);
 //			}
 
-			if (_network.address() == sysx::ipv4_addr{127,0,0,1}) {
+			#if defined(FACTORY_TEST_SLAVE_FAILURE)
+			constexpr const sysx::ipv4_addr master_addr{127,0,0,1};
+			#else
+			constexpr const sysx::ipv4_addr master_addr{127,0,0,2};
+			#endif
+			if (_network.address() == master_addr) {
 				schedule_autoreg_app(this_server);
 			}
 
@@ -273,8 +278,8 @@ int main(int argc, char* argv[]) {
 		std::vector<sysx::signal> signals(hosts.size(), sysx::signal::terminate);
 		if (kill_master_after != do_not_kill) {
 			assert(hosts.size() >= 1);
-			timeouts[0] = kill_master_after;
-			signals[0] = sysx::signal::kill;
+			timeouts[1] = kill_master_after;
+			signals[1] = sysx::signal::kill;
 		}
 		if (kill_slave_after != do_not_kill) {
 			assert(hosts.size() >= 2);
@@ -309,10 +314,16 @@ int main(int argc, char* argv[]) {
 		if (kill_master_after != do_not_kill) {
 			using namespace std::chrono;
 			std::this_thread::sleep_for(seconds(kill_master_after));
-			sysx::process& master = procs.front();
-			this_log() << "Killing master process " << master.id() << std::endl;
-			master.kill();
-			master.wait();
+//			sysx::process& master = procs.front();
+//			this_log() << "Killing master process " << master.id() << std::endl;
+//			master.kill();
+//			master.wait();
+			sysx::process_group::iterator first = procs.begin();
+			// skip master
+			++first;
+			this_log() << "Killing master process " << first->id() << std::endl;
+			first->kill();
+			first->wait();
 		}
 		if (kill_slave_after != do_not_kill) {
 			using namespace std::chrono;
