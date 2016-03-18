@@ -82,7 +82,9 @@ struct Main: public Kernel {
 		sysx::cmd::ignore_arg("--role"),
 		sysx::cmd::make_option({"--network"}, _network),
 		sysx::cmd::make_option({"--port"}, _port),
-		sysx::cmd::make_option({"--ping"}, _numpings)
+		sysx::cmd::make_option({"--ping"}, _numpings),
+		sysx::cmd::make_option({"--timeout"}, _timeout),
+		sysx::cmd::make_option({"--signal"}, _signal)
 	})
 	{}
 
@@ -118,7 +120,7 @@ struct Main: public Kernel {
 				schedule_autoreg_app(this_server);
 			}
 
-			schedule_shutdown_after(std::chrono::seconds(60), master, this_server);
+			schedule_shutdown_after(std::chrono::seconds(_timeout), master, this_server);
 		}
 	}
 
@@ -135,7 +137,7 @@ private:
 	template<class Time>
 	void
 	schedule_shutdown_after(Time delay, discoverer_type* master, Server& this_server) {
-		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy());
+		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy(), _signal);
 		shutdowner->after(delay);
 		shutdowner->parent(this);
 		this_server.timer_server()->send(shutdowner);
@@ -164,6 +166,8 @@ private:
 	sysx::network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
 	uint32_t _numpings;
+	uint32_t _timeout = 60;
+	sysx::signal _signal = sysx::signal::terminate;
 	sysx::cmdline _cmdline;
 
 };
@@ -199,7 +203,9 @@ int main(int argc, char* argv[]) {
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_slave_after = do_not_kill;
 	uint32_t kill_master_after = do_not_kill;
+	uint32_t kill_timeout = do_not_kill;
 	Hosts<sysx::ipv4_addr> hosts2;
+	sysx::signal unused;
 
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
@@ -209,12 +215,14 @@ int main(int argc, char* argv[]) {
 	try {
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
+			sysx::cmd::make_option({"--signal"}, unused),
 			sysx::cmd::make_option({"--hosts"}, hosts2),
 			sysx::cmd::make_option({"--network"}, network),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
 			sysx::cmd::make_option({"--role"}, role),
 			sysx::cmd::make_option({"--port"}, discovery_port),
 			sysx::cmd::make_option({"--ping"}, num_pings),
+			sysx::cmd::make_option({"--timeout"}, kill_timeout),
 			sysx::cmd::make_option({"--kill-slave-after"}, kill_slave_after),
 			sysx::cmd::make_option({"--kill-master-after"}, kill_master_after)
 		});
@@ -260,21 +268,41 @@ int main(int argc, char* argv[]) {
 		springy::Springy_graph graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
+		const uint32_t default_timeout = 60;
+		std::vector<uint32_t> timeouts(hosts.size(), default_timeout);
+		std::vector<sysx::signal> signals(hosts.size(), sysx::signal::terminate);
+		if (kill_master_after != do_not_kill) {
+			assert(hosts.size() >= 1);
+			timeouts[0] = kill_master_after;
+			signals[0] = sysx::signal::kill;
+		}
+		if (kill_slave_after != do_not_kill) {
+			assert(hosts.size() >= 2);
+			timeouts[1] = kill_slave_after;
+			signals[1] = sysx::signal::kill;
+		}
+
+		int idx = 0;
 		sysx::process_group procs;
 		for (sysx::endpoint endpoint : hosts) {
 			char workdir[PATH_MAX];
 			::getcwd(workdir, PATH_MAX);
-			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, workdir] () {
+			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, workdir, idx, &timeouts, &signals] () {
 				return sysx::this_process::execute(
+					#if defined(FACTORY_TEST_USE_SSH)
 					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "exec",
+					#endif
 					argv[0],
 					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
 					"--num-peers", 0,
-					"--ping", num_pings
+					"--ping", num_pings,
+					"--timeout", timeouts[idx],
+					"--signal", sysx::signal_type(signals[idx])
 				);
 			});
+			++idx;
 		}
 
 		this_log() << "Forked " << procs << std::endl;
@@ -284,6 +312,7 @@ int main(int argc, char* argv[]) {
 			sysx::process& master = procs.front();
 			this_log() << "Killing master process " << master.id() << std::endl;
 			master.kill();
+			master.wait();
 		}
 		if (kill_slave_after != do_not_kill) {
 			using namespace std::chrono;
@@ -293,6 +322,7 @@ int main(int argc, char* argv[]) {
 			++first;
 			this_log() << "Killing slave process " << first->id() << std::endl;
 			first->kill();
+			first->wait();
 		}
 		retval = procs.wait();
 

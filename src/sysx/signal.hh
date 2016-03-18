@@ -96,6 +96,15 @@ namespace sysx {
 		return out;
 	}
 
+	std::istream&
+	operator>>(std::istream& in, signal& rhs) {
+		signal_type tmp = 0;
+		if (in >> tmp) {
+			rhs = static_cast<signal>(tmp);
+		}
+		return in;
+	}
+
 	struct signal_action: public sigaction_type {
 		signal_action() = default;
 		signal_action(void (*func)(int)) noexcept {

@@ -1,6 +1,7 @@
 libgsl = dependency('gsl')
 liblapack = find_library('lapack')
 libblas = find_library('blas')
+static_linking = ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm']
 
 #test(
 #	'discovery',
@@ -11,7 +12,7 @@ libblas = find_library('blas')
 #		dependencies: threads,
 #		link_args: '-rdynamic'
 #		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
-		link_args: ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm'],
+		link_args: static_linking,
 		cpp_args: ['-DFACTORY_SINGLE_THREAD', '-DFACTORY_PRIORITY_SCHEDULING']
 	)
 #	,
@@ -21,6 +22,30 @@ libblas = find_library('blas')
 #		'--network', '127.0.0.1/8'
 #	]
 #)
+executable(
+	'slave-failure-test',
+	sources: 'discovery_test.cc',
+	include_directories: [srcdir, testdir],
+	link_args: static_linking,
+	cpp_args: [
+		'-DFACTORY_SINGLE_THREAD',
+		'-DFACTORY_PRIORITY_SCHEDULING',
+		'-DFACTORY_TEST_SLAVE_FAILURE',
+		'-DFACTORY_TEST_USE_SSH'
+	]
+)
+
+executable(
+	'master-failure-test',
+	sources: 'discovery_test.cc',
+	include_directories: [srcdir, testdir],
+	link_args: static_linking,
+	cpp_args: [
+		'-DFACTORY_SINGLE_THREAD',
+		'-DFACTORY_PRIORITY_SCHEDULING',
+		'-DFACTORY_TEST_USE_SSH'
+	]
+)
 
 test('discovery-ranking',
 	executable(

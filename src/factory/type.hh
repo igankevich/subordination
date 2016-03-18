@@ -161,7 +161,9 @@ namespace factory {
 			}
 
 			static kernel_type*
-			read_object(Types<Type>& types, sysx::packetstream& packet) {
+			read_object(Types<Type>& types, sysx::packetstream& packet)
+			throw(Bad_kernel)
+			{
 				id_type id;
 				packet >> id;
 				const Type* type = types.lookup(id);

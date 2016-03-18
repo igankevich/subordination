@@ -268,11 +268,13 @@ namespace sysx {
 			return *this;
 		}
 
-		inline void terminate() { this->signal(sysx::signal::terminate); }
-		inline void kill() { this->signal(sysx::signal::kill); }
+		inline void terminate() { this->send(sysx::signal::terminate); }
+		inline void kill() { this->send(sysx::signal::kill); }
+		inline void interrupt() { this->send(sysx::signal::keyboard_interrupt); }
+		inline void hang_up() { this->send(sysx::signal::hang_up); }
 
 		inline void
-		signal(sysx::signal sig) {
+		send(sysx::signal sig) {
 			if (_pid > 0) {
 		    	bits::check(do_kill(sig),
 					__FILE__, __LINE__, __func__);
@@ -531,6 +533,14 @@ namespace sysx {
 		const char*
 		tempdir_path() {
 			return "/tmp";
+		}
+
+		void
+		send(signal sig) {
+			bits::check(
+				::kill(::sysx::this_process::id(), signal_type(sig)),
+				__FILE__, __LINE__, __func__
+			);
 		}
 
 	}
