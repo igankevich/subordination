@@ -28,8 +28,11 @@ struct Delayed_shutdown: public Kernel {
 			} catch (...) {
 				this_log() << "Killing this process" << std::endl;
 			}
+			std::quick_exit(0);
+		} else {
+			this_server.factory()->shutdown();
+//			sysx::this_process::send(_signal);
 		}
-		sysx::this_process::send(_signal);
 	}
 
 private:

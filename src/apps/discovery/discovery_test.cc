@@ -61,6 +61,9 @@ using namespace factory::this_config;
 #include "delayed_shutdown.hh"
 #include "master_discoverer.hh"
 
+constexpr const char* role_master = "master";
+constexpr const char* role_slave = "slave";
+
 template<class Address>
 struct Main: public Kernel {
 
@@ -73,16 +76,11 @@ struct Main: public Kernel {
 	typedef stdx::log<Main> this_log;
 
 	Main(Server& this_server, int argc, char* argv[]):
-	_network(),
-	_port(),
-	_numpings(),
 	_cmdline(argc, argv, {
 		sysx::cmd::ignore_first_arg(),
-		sysx::cmd::ignore_arg("--num-peers"),
 		sysx::cmd::make_option({"--role"}, _role),
 		sysx::cmd::make_option({"--network"}, _network),
 		sysx::cmd::make_option({"--port"}, _port),
-		sysx::cmd::make_option({"--ping"}, _numpings),
 		sysx::cmd::make_option({"--timeout"}, _timeout),
 		sysx::cmd::make_option({"--signal"}, _signal),
 		sysx::cmd::make_option({"--master"}, _masteraddr)
@@ -158,7 +156,7 @@ private:
 			if (!_network) {
 				throw sysx::invalid_cmdline_argument("--network");
 			}
-			if (_role != "slave") {
+			if (_role != role_slave) {
 				throw sysx::invalid_cmdline_argument("--role");
 			}
 		} catch (sysx::invalid_cmdline_argument& err) {
@@ -170,7 +168,7 @@ private:
 	std::string _role;
 	sysx::network<sysx::ipv4_addr> _network;
 	sysx::port_type _port;
-	uint32_t _numpings;
+	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
 	sysx::signal _signal = sysx::signal::terminate;
 	sysx::ipv4_addr _masteraddr;
@@ -202,10 +200,7 @@ struct Hosts: public std::vector<Address> {
 
 int main(int argc, char* argv[]) {
 
-	const std::string role_master = "master";
-	const std::string role_slave = "slave";
 	sysx::port_type discovery_port = 10000;
-	uint32_t num_pings = 10;
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_after = do_not_kill;
 	uint32_t kill_timeout = do_not_kill;
@@ -217,7 +212,7 @@ int main(int argc, char* argv[]) {
 	int retval = 0;
 	sysx::network<sysx::ipv4_addr> network;
 	uint32_t npeers = 0;
-	std::string role;
+	std::string role = role_master;
 	try {
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
@@ -227,7 +222,6 @@ int main(int argc, char* argv[]) {
 			sysx::cmd::make_option({"--num-peers"}, npeers),
 			sysx::cmd::make_option({"--role"}, role),
 			sysx::cmd::make_option({"--port"}, discovery_port),
-			sysx::cmd::make_option({"--ping"}, num_pings),
 			sysx::cmd::make_option({"--timeout"}, kill_timeout),
 			sysx::cmd::make_option({"--master"}, master_addr),
 			sysx::cmd::make_option({"--kill"}, kill_addr),
@@ -277,7 +271,7 @@ int main(int argc, char* argv[]) {
 
 		sysx::process_group procs;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, num_pings, master_addr, kill_addr, kill_after] () {
+			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, master_addr, kill_addr, kill_after] () {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = 60;
@@ -294,8 +288,6 @@ int main(int argc, char* argv[]) {
 					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
-					"--num-peers", 0,
-					"--ping", num_pings,
 					"--timeout", timeout,
 					"--signal", sysx::signal_type(kill_signal),
 					"--master", master_addr
@@ -304,32 +296,6 @@ int main(int argc, char* argv[]) {
 		}
 
 		this_log() << "Forked " << procs << std::endl;
-		/*
-		if (kill_master_after != do_not_kill) {
-			using namespace std::chrono;
-			std::this_thread::sleep_for(seconds(kill_master_after));
-//			sysx::process& master = procs.front();
-//			this_log() << "Killing master process " << master.id() << std::endl;
-//			master.kill();
-//			master.wait();
-			sysx::process_group::iterator first = procs.begin();
-			// skip master
-			++first;
-			this_log() << "Killing master process " << first->id() << std::endl;
-			first->kill();
-			first->wait();
-		}
-		if (kill_after != do_not_kill) {
-			using namespace std::chrono;
-			std::this_thread::sleep_for(seconds(kill_after));
-			sysx::process_group::iterator first = procs.begin();
-			// skip master
-			++first;
-			this_log() << "Killing slave process " << first->id() << std::endl;
-			first->kill();
-			first->wait();
-		}
-		*/
 		retval = procs.wait();
 
 	} else {
