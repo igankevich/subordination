@@ -82,7 +82,7 @@ struct Main: public Kernel {
 		sysx::cmd::make_option({"--network"}, _network),
 		sysx::cmd::make_option({"--port"}, _port),
 		sysx::cmd::make_option({"--timeout"}, _timeout),
-		sysx::cmd::make_option({"--signal"}, _signal),
+		sysx::cmd::make_option({"--normal"}, _normal),
 		sysx::cmd::make_option({"--master"}, _masteraddr)
 	})
 	{}
@@ -136,7 +136,7 @@ private:
 	template<class Time>
 	void
 	schedule_shutdown_after(Time delay, discoverer_type* master, Server& this_server) {
-		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy(), _signal);
+		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy(), _normal);
 		shutdowner->after(delay);
 		shutdowner->parent(this);
 		this_server.timer_server()->send(shutdowner);
@@ -170,7 +170,7 @@ private:
 	sysx::port_type _port;
 	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
-	sysx::signal _signal = sysx::signal::terminate;
+	bool _normal = true;
 	sysx::ipv4_addr _masteraddr;
 	sysx::cmdline _cmdline;
 
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 	try {
 		sysx::cmdline cmd(argc, argv, {
 			sysx::cmd::ignore_first_arg(),
-			sysx::cmd::ignore_arg("--signal"),
+			sysx::cmd::ignore_arg("--normal"),
 			sysx::cmd::make_option({"--hosts"}, hosts2),
 			sysx::cmd::make_option({"--network"}, network),
 			sysx::cmd::make_option({"--num-peers"}, npeers),
@@ -275,10 +275,10 @@ int main(int argc, char* argv[]) {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = 60;
-				sysx::signal kill_signal = sysx::signal::terminate;
+				bool normal = true;
 				if (endpoint.addr4() == kill_addr) {
 					timeout = kill_after;
-					kill_signal = sysx::signal::kill;
+					normal = false;
 				}
 				return sysx::this_process::execute(
 					#if defined(FACTORY_TEST_USE_SSH)
@@ -289,7 +289,7 @@ int main(int argc, char* argv[]) {
 					"--port", discovery_port,
 					"--role", "slave",
 					"--timeout", timeout,
-					"--signal", sysx::signal_type(kill_signal),
+					"--normal", normal,
 					"--master", master_addr
 				);
 			});

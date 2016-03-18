@@ -13,6 +13,7 @@
 
 #include <stdx/paired_iterator.hh>
 #include <stdx/unlock_guard.hh>
+#include <stdx/log.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/pipe.hh>
@@ -203,7 +204,7 @@ namespace sysx {
 		_pipe(),
 		_events{poll_event{this->_pipe.in().get_fd(), poll_event::In}}
 		{
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		~event_poller() = default;
@@ -217,7 +218,7 @@ namespace sysx {
 		_handlers(std::move(rhs._handlers)),
 		_specials(std::move(rhs._specials))
 		{
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		void
@@ -258,7 +259,7 @@ namespace sysx {
 			this->_events.erase(special_begin(), _events.end());
 			this->_nspecials = 0;
 			this->_handlers.clear();
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		void
@@ -270,7 +271,7 @@ namespace sysx {
 		emplace(poll_event ev, handler_type&& handler) {
 			this->_events.push_back(ev);
 			this->_handlers.emplace_back(std::move(handler));
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		void
@@ -284,7 +285,7 @@ namespace sysx {
 		template<class Func>
 		inline void
 		for_each_ordinary_fd(Func func) {
-			assert_invariant();
+			assert_invariant(__func__);
 			std::for_each(
 				stdx::make_paired(ordinary_begin(), _handlers.begin()),
 				stdx::make_paired(_events.end(), _handlers.end()),
@@ -379,7 +380,7 @@ namespace sysx {
 			It result = std::remove_if(first, last, pred);
 			_events.erase(result.first(), last.first());
 			_handlers.erase(result.second(), last.second());
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		template<class It, class Pred>
@@ -396,7 +397,7 @@ namespace sysx {
 				stdx::make_paired(ordinary_begin(), _handlers.begin()),
 				stdx::make_paired(_events.end(), _handlers.end()),
 				stdx::apply_to<0>(pred));
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		template<class It>
@@ -415,7 +416,7 @@ namespace sysx {
 			_events.insert(this->ordinary_begin(), _specials.begin(), _specials.end());
 			_nspecials += _specials.size();
 			_specials.clear();
-			assert_invariant();
+			assert_invariant(__func__);
 		}
 
 		bool
@@ -428,9 +429,9 @@ namespace sysx {
 
 //			std::clog << "before poll(this=" << *this << ")" << std::endl;
 			bits::check_if_not<std::errc::interrupted>(
-				::poll(this->_events.data(),
-				this->_events.size(), no_timeout),
-				__FILE__, __LINE__, __func__);
+				::poll(_events.data(), _events.size(), no_timeout),
+				__FILE__, __LINE__, __func__
+			);
 			success = errno != EINTR;
 //			std::clog << "after poll(this=" << *this << ")" << std::endl;
 
@@ -449,8 +450,10 @@ namespace sysx {
 			std::ostream::sentry s(out);
 			if (s) {
 				out << '{';
-				std::copy(rhs._events.begin(), rhs._events.end(),
-					stdx::intersperse_iterator<poll_event>(out, ","));
+				std::copy(
+					rhs._events.begin(), rhs._events.end(),
+					stdx::intersperse_iterator<poll_event>(out, ",")
+				);
 				out << '}';
 			}
 			return out;
@@ -467,18 +470,28 @@ namespace sysx {
 		}
 
 		inline void
-		assert_invariant() const {
+		assert_invariant(const char* func) const {
 			assert(pipes_begin() == _events.begin());
+			assert(pipes_begin() <= pipes_end());
 			assert(pipes_end() == special_begin());
+			assert(special_begin() <= special_end());
 			assert(special_end() == ordinary_begin());
 			assert(ordinary_end() == _events.end());
-			assert(pipes_begin() <= pipes_end());
-			assert(special_begin() <= special_end());
 			// TODO 2016-02-26 sometimes it fails on the following line
-			assert(ordinary_begin() <= ordinary_end());
+			// (probably due to a race condition)
+			if (not (ordinary_begin() <= ordinary_end())) {
+				stdx::log<event_poller>() << stdx::make_fields(
+					"_events.size", _events.size(),
+					"_handlers.size", _handlers.size(),
+					"_specials.size", _specials.size(),
+					"_nspecials", _nspecials,
+					"__func__", func
+				) << std::endl;
+			}
 			assert(special_end() - special_begin() == static_cast<std::make_signed<size_type>::type>(_nspecials));
 			assert(pipes_end() - pipes_begin() == NPIPES);
 			assert(ordinary_end() - ordinary_begin() == _handlers.end() - _handlers.begin());
+			assert(ordinary_begin() <= ordinary_end());
 		}
 
 		sysx::pipe _pipe;
