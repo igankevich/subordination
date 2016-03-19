@@ -132,10 +132,6 @@ namespace factory {
 
 			void
 			handle(sysx::poll_event& event) {
-				// TODO: It is probably too slow to check error on every event.
-				if (socket().error() != 0) {
-					event.setrev(sysx::poll_event::Hup);
-				}
 				if (_packetbuf.dirty()) {
 					event.setrev(sysx::poll_event::Out);
 				}
@@ -146,7 +142,6 @@ namespace factory {
 					while (_stream >> kernel) {
 						receive_kernel(kernel);
 					}
-					this_log() << "finished receiving kernels: " << _stream.rdstate() << std::endl;
 				}
 				if (event.out() && !event.hup()) {
 					_stream.flush();

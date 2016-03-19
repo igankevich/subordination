@@ -148,6 +148,7 @@ namespace sysx {
 				__FILE__, __LINE__, __func__);
 		}
 
+		/// @deprecated We use event-based error notifications.
 		int error() const {
 			int ret = 0;
 			int opt = 0;

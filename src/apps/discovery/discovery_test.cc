@@ -200,7 +200,7 @@ struct Hosts: public std::vector<Address> {
 
 int main(int argc, char* argv[]) {
 
-	sysx::port_type discovery_port = 10000;
+	sysx::port_type discovery_port = 54321;
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_after = do_not_kill;
 	uint32_t kill_timeout = do_not_kill;
@@ -211,7 +211,7 @@ int main(int argc, char* argv[]) {
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
 	sysx::network<sysx::ipv4_addr> network;
-	uint32_t npeers = 0;
+	size_t nhosts = 0;
 	std::string role = role_master;
 	try {
 		sysx::cmdline cmd(argc, argv, {
@@ -219,7 +219,7 @@ int main(int argc, char* argv[]) {
 			sysx::cmd::ignore_arg("--normal"),
 			sysx::cmd::make_option({"--hosts"}, hosts2),
 			sysx::cmd::make_option({"--network"}, network),
-			sysx::cmd::make_option({"--num-peers"}, npeers),
+			sysx::cmd::make_option({"--num-hosts"}, nhosts),
 			sysx::cmd::make_option({"--role"}, role),
 			sysx::cmd::make_option({"--port"}, discovery_port),
 			sysx::cmd::make_option({"--timeout"}, kill_timeout),
@@ -231,8 +231,8 @@ int main(int argc, char* argv[]) {
 		if (role != role_master and role != role_slave) {
 			throw sysx::invalid_cmdline_argument("--role");
 		}
-		if (!network and hosts2.empty()) {
-			throw sysx::invalid_cmdline_argument("--network,--hosts");
+		if (!network) {
+			throw sysx::invalid_cmdline_argument("--network");
 		}
 	} catch (sysx::invalid_cmdline_argument& err) {
 		std::cerr << err.what() << ": " << err.arg() << std::endl;
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
 	if (role == role_master) {
 
 		this_log() << "Network = " << network << std::endl;
-		this_log() << "Num peers = " << npeers << std::endl;
+		this_log() << "Num peers = " << nhosts << std::endl;
 		this_log() << "Role = " << role << std::endl;
 		this_log() << "start,mid = " << *network.begin() << ',' << *network.middle() << std::endl;
 
@@ -250,7 +250,7 @@ int main(int argc, char* argv[]) {
 		if (network) {
 			std::transform(
 				network.begin(),
-				network.begin() + npeers,
+				network.begin() + nhosts,
 				std::back_inserter(hosts),
 				[discovery_port] (const sysx::ipv4_addr& addr) {
 					return sysx::endpoint(addr, discovery_port);
@@ -259,7 +259,7 @@ int main(int argc, char* argv[]) {
 		} else {
 			std::transform(
 				hosts2.begin(),
-				hosts2.end(),
+				hosts2.begin() + std::min(hosts2.size(), nhosts),
 				std::back_inserter(hosts),
 				[discovery_port] (const sysx::ipv4_addr& addr) {
 					return sysx::endpoint(addr, discovery_port);
@@ -271,7 +271,7 @@ int main(int argc, char* argv[]) {
 
 		sysx::process_group procs;
 		for (sysx::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, npeers, &network, discovery_port, master_addr, kill_addr, kill_after] () {
+			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after] () {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = 60;
