@@ -22,6 +22,17 @@ public:
 
 	typedef Uniform_grid grid_type;
 	typedef Wave_surface_generator<T, grid_type> generator_type;
+	typedef stdx::log<Autoreg_model> this_log;
+
+	typedef std::chrono::nanoseconds::rep Time;
+	typedef std::chrono::nanoseconds Nanoseconds;
+	typedef typename std::make_signed<Time>::type Skew;
+
+	static Time current_time_nano() {
+		using namespace std::chrono;
+		typedef std::chrono::system_clock Clock;
+		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+	}
 
 	explicit
 	Autoreg_model(bool b = true):
@@ -49,6 +60,7 @@ public:
 
 	void act() override {
 
+		_time0 = current_time_nano();
 		std::clog << std::left << std::boolalpha;
 		write_log("ACF size:"   , acf_size);
 		write_log("Domain:"     , zsize);
@@ -84,6 +96,7 @@ public:
 		out << alpha;
 		out << beta;
 		out << gamm;
+		out << _time0 << _time1;
 	}
 
 	void
@@ -106,6 +119,7 @@ public:
 		in >> alpha;
 		in >> beta;
 		in >> gamm;
+		in >> _time0 >> _time1;
 	}
 
 	const Type<Kernel>
@@ -253,6 +267,9 @@ private:
 	// параметры автоковариационной функции
 	T alpha, beta, gamm;
 
+	Time _time0;
+	Time _time1;
+
 	static const std::size_t INTERPOLATION_POLYNOMIAL_ORDER = 12;      ///< порядок интерполяционного полинома
 	static const std::size_t INTERPOLATION_NODES            = 100;     ///< кол-во узлов интерполяции
 	static const std::size_t MAX_NIT_COEFS                  = 10;      ///< кол-во коэф. для НБП
@@ -299,6 +316,11 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 		this->parent(nullptr);
 //		const std::valarray<T>& water_surface
 //			= reinterpret_cast<Wave_surface_generator<T, grid_type>*>(child)->get_water_surface();
+		_time1 = current_time_nano();
+		{
+			std::ofstream timerun_log("time.log");
+			timerun_log << float(_time1 - _time0)/1000/1000/1000 << std::endl;
+		}
 		commit(local_server());
 //		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
