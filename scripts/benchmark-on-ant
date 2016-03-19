@@ -1,0 +1,19 @@
+#!/bin/sh
+
+cat >autoreg.model << EOF
+linear=1
+skewness=0.25
+kurtosis=0.4
+size_factor=1.4
+zsize=3000 32 32
+zdelta=1 1 1
+acf_size=10 10 10
+EOF
+for i in $(seq 1 12); do
+	./slave-failure-test --num-hosts $i --network 10.0.0.1/24 --master 10.0.0.1 --timeout 60
+	t=$(cat time.log)
+	echo "$i,$t" >> time.csv
+	sleep 10
+done 2>&1 | tee benchmark-$(date +%F_%T).log
+#--kill 10.0.0.2
+#--kill-after 8

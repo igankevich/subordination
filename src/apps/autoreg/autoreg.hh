@@ -556,7 +556,7 @@ void generate_white_noise(std::valarray<T>& eps,
     const std::size_t ni = zsize[1];
     const std::size_t nj = zsize[2];
 
-    for (std::size_t k=t0; k<t1; k++) {
+    for (std::size_t k=0; k<t1-t0; k++) {
         for (std::size_t i=0; i<ni; i++) {
             for (std::size_t j=0; j<nj; j++) {
                 iState1 = iState + 1;
@@ -627,7 +627,7 @@ void generate_white_noise(std::valarray<T>& eps,
     }
 
 // Debug NaNs caused by race condition.
-    for (std::size_t k=t0; k<t1; k++) {
+    for (std::size_t k=0; k<t1-t0; k++) {
         for (std::size_t i=0; i<ni; i++) {
             for (std::size_t j=0; j<nj; j++) {
                 if (isnan(eps[idz(k, i, j)])) {
@@ -654,7 +654,7 @@ void generate_zeta(const std::valarray<T>& phi,
 	const std::size_t t1 = p.t1() - interval;
 	const std::size_t x1 = zsize[1];
 	const std::size_t y1 = zsize[2];
-    for (std::size_t t=t0; t<t1; t++) {
+    for (std::size_t t=0; t<t1-t0; t++) {
         for (std::size_t x=0; x<x1; x++) {
             for (std::size_t y=0; y<y1; y++) {
                 const std::size_t m1 = std::min(t+1, fsize[0]);
@@ -710,7 +710,7 @@ void weave(const std::valarray<T>& phi,
     const std::size_t t1 = p.t1();                  // interval right margin
     const std::size_t x1 = zsize[1];
     const std::size_t y1 = zsize[2];
-    for (std::size_t t=t0; t<t1; t++) {
+    for (std::size_t t=0; t<t1-t0; t++) {
         for (std::size_t x=0; x<x1; x++) {
             for (std::size_t y=0; y<y1; y++) {
                 // compute left sum
@@ -769,7 +769,7 @@ void trim_zeta(const std::valarray<T>& zeta2,
 //#pragma omp critical
 //  cout << "t1, x1, y1 = " << size3(t1, x1, y1) << endl;
 
-    for (std::size_t t=t0; t<t1; t++) {
+    for (std::size_t t=0; t<t1-t0; t++) {
         for (std::size_t x=0; x<x1; x++) {
             for (std::size_t y=0; y<y1; y++) {
                 const std::size_t x2 = x + dx;
@@ -818,23 +818,30 @@ struct Generator1: public Kernel {
 	const Surface_part& get_part() const { return part; }
 
 	void act() override {
-		this_log() << "running" << std::endl;
-		std::valarray<T> zeta(zsize);
-		std::valarray<T> zeta2(zsize2);
-//		cout << "compute part = " << part.part() << endl;
-		generate_white_noise(zeta2, zsize2, var_eps, part2);
-		generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
-		// TODO 2016-02-26 weaving is disabled for benchmarks
-		if (not _noweave) {
-			if (left_neighbour != nullptr) {
-//				cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
-				downstream(local_server(), new Note(), left_neighbour);
-			}
-			downstream(local_server(), this, this);
-		} else {
-			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
+		if (_writefile) {
 			write_part_to_file(zeta);
 			commit(remote_server());
+		} else {
+			this_log() << "running" << std::endl;
+			const size3 part_size(size_t(part.t1()-part.t0()), zsize[1], zsize[2]);
+			const size3 part_size2(size_t(part2.t1()-part2.t0()), zsize2[1], zsize2[2]);
+			zeta.resize(zsize);
+			std::valarray<T> zeta2(zsize2);
+//			cout << "compute part = " << part.part() << endl;
+			generate_white_noise(zeta2, zsize2, var_eps, part2);
+			generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
+			// TODO 2016-02-26 weaving is disabled for benchmarks
+			if (not _noweave) {
+				if (left_neighbour != nullptr) {
+//					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
+					downstream(local_server(), new Note(), left_neighbour);
+				}
+				downstream(local_server(), this, this);
+			} else {
+				trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
+				_writefile = true;
+				local_server()->send(this);
+			}
 		}
 	}
 
@@ -862,13 +869,13 @@ struct Generator1: public Kernel {
 		const int t1 = part.t1();
 		const int x1 = zsize[1];
 		const int y1 = zsize[2];
-	    for (int t=t0; t<t1; t++) {
+	    for (int t=0; t<t1-t0; t++) {
 	        for (int x=0; x<x1; x++) {
 	            for (int y=0; y<y1; y++) {
-//					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
-					out << zeta[idz(t, x, y)] << ' ';
+					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
+//					out << zeta[idz(t, x, y)] << ' ';
 				}
-				out << '\n';
+//				out << '\n';
 			}
 		}
 	}
@@ -929,6 +936,8 @@ private:
 	Grid grid_2;
 	Generator1<T, Grid>* left_neighbour;
 	uint32_t count;
+	std::valarray<T> zeta;
+	bool _writefile = false;
 	static const bool _noweave = true;
 };
 

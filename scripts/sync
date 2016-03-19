@@ -1,0 +1,10 @@
+#!/bin/sh
+
+scp \
+	src/apps/discovery/master-failure-test \
+	src/apps/discovery/slave-failure-test \
+	benchmark-on-ant \
+	MersenneTwister.dat \
+	ant.apmath.spbu.ru:discovery/
+
+#ssh ant.apmath.spbu.ru 'cd discovery; ./benchmark-on-ant'
