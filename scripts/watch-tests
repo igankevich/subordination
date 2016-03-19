@@ -1,0 +1,2 @@
+#!/bin/sh
+exec watch -n 1 'ps -eo pid,%cpu,%mem,args | grep test | grep -v grep'
