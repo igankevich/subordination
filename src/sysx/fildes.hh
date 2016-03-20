@@ -224,6 +224,7 @@ namespace sysx {
 
 	};
 
+	/// @deprecated temporary files are evil
 	struct tmpfile: public file {
 
 		typedef std::vector<char> path_type;
