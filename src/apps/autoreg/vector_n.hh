@@ -13,6 +13,7 @@ class Vector {
 	T coord[n];
 public:
 	typedef T Value;
+	typedef T value_type;
 
 	Vector() {
 		for (size_t i=0; i<n; ++i)
@@ -93,6 +94,26 @@ public:
 	operator>>(sysx::packetstream& in, Vector& rhs) {
 		for (size_t i=0; i<n; ++i) in >> rhs.coord[i];
 		return in;
+	}
+
+	T*
+	begin() noexcept {
+		return coord;
+	}
+
+	T*
+	end() noexcept {
+		return coord + n;
+	}
+
+	const T*
+	begin() const noexcept {
+		return coord;
+	}
+
+	const T*
+	end() const noexcept {
+		return coord + n;
 	}
 
 private:

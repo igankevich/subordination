@@ -1,10 +1,13 @@
 #ifndef APPS_AUTOREG_AUTOREG_HH
 #define APPS_AUTOREG_AUTOREG_HH
 
-//#include <Eigen/LU>
-//#include <Eigen/QR>
+#include <random>
+#include <chrono>
 
 #include <stdx/log.hh>
+
+#include "discrete_function.hh"
+#include "mersenne_twister.hh"
 
 namespace std {
 
@@ -32,7 +35,26 @@ namespace std {
 
 }
 
+namespace stdx {
+
+	template<class T>
+	bool
+	isnan(T rhs) noexcept {
+		return std::isnan(rhs);
+	}
+
+}
+
 namespace autoreg {
+
+template<class Container>
+typename Container::value_type
+product(const Container& rhs) {
+	typedef typename Container::value_type T;
+	return std::accumulate(
+		std::begin(rhs), std::end(rhs), T(1), std::multiplies<T>()
+	);
+}
 
 template<class T>
 inline T approx_wave_height(T variance) {
@@ -509,145 +531,55 @@ namespace {
 
 using namespace autoreg;
 
-/// Генерация белого шума по алгоритму Вихря Мерсенна и
-/// преобразование его к нормальному распределению по алгоритму Бокса-Мюллера.
+/**
+Generate white noise using Mersenne Twister PRNG and transform it
+to normal distribution with variance @var_eps using Box-Muller transform.
+*/
 template<class T>
-void generate_white_noise(std::valarray<T>& eps,
-                          const size3& zsize,
-                          const T var_eps,
-                          const Surface_part& p)
-{
-//    ifdebug("generate_white_noise\n");
-    mt_struct_stripped d_MT[MT_RNG_COUNT];
-	read_mt_params(d_MT, "MersenneTwister.dat");
-
+void
+generate_white_noise(
+	std::valarray<T>& eps,
+	const T var_eps,
+	const Surface_part& p
+) {
 	if (var_eps < T(0)) {
-		std::stringstream msg;
-		msg << "Variance of white noise is lesser than zero: " << var_eps;
-		throw std::runtime_error(msg.str());
+		throw std::runtime_error("variance is less than zero");
 	}
-    const T sqrtVarA = sqrt(var_eps);
-    const std::size_t part = p.part();
-    const std::size_t t0 = p.t0();
-    const std::size_t t1 = p.t1();
-    const Index<3> idz(zsize);
 
-//	clog << "Part = " << part << endl
-//	     << "t0 = " << t0 << endl
-//		 << "t1 = " << t1 << endl;
+	autoreg::parallel_mt generator(p.part());
+	#if !defined(DISABLE_RANDOM_SEED)
+	generator.seed(std::chrono::steady_clock::now().time_since_epoch().count());
+	#endif
+	std::normal_distribution<T> normal(T(0), var_eps);
+	std::generate(std::begin(eps), std::end(eps), std::bind(normal, generator));
+	if (std::any_of(std::begin(eps), std::end(eps), &stdx::isnan<T>)) {
+		throw std::runtime_error("white noise generator produced some NaNs");
+	}
+}
 
-    int iState, iState1, iStateM;
-    unsigned int mti, mti1, mtiM, x;
-    unsigned int mt[MT_NN], matrix_a, mask_b, mask_c;
-
-    //Load bit-vector Mersenne Twister parameters
-    matrix_a = d_MT[part].matrix_a;
-    mask_b   = d_MT[part].mask_b;
-    mask_c   = d_MT[part].mask_c;
-
-    //Initialize current state
-    mt[0] = d_MT[part].seed;
-    for (iState = 1; iState < MT_NN; iState++)
-        mt[iState] = (1812433253U * (mt[iState - 1] ^ (mt[iState - 1] >> 30)) + iState) & MT_WMASK;
-
-    iState = 0;
-    mti1 = mt[0];
-
-    const std::size_t ni = zsize[1];
-    const std::size_t nj = zsize[2];
-
-    for (std::size_t k=0; k<t1-t0; k++) {
-        for (std::size_t i=0; i<ni; i++) {
-            for (std::size_t j=0; j<nj; j++) {
-                iState1 = iState + 1;
-                iStateM = iState + MT_MM;
-                if (iState1 >= MT_NN) iState1 -= MT_NN;
-                if (iStateM >= MT_NN) iStateM -= MT_NN;
-                mti  = mti1;
-                mti1 = mt[iState1];
-                mtiM = mt[iStateM];
-
-                // MT recurrence
-                x = (mti & MT_UMASK) | (mti1 & MT_LMASK);
-                x = mtiM ^ (x >> 1) ^ ((x & 1) ? matrix_a : 0);
-
-                mt[iState] = x;
-                iState = iState1;
-
-                //Tempering transformation
-                x ^= (x >> MT_SHIFT0);
-                x ^= (x << MT_SHIFTB) & mask_b;
-                x ^= (x << MT_SHIFTC) & mask_c;
-                x ^= (x >> MT_SHIFT1);
-
-                //Convert to (0, 1] float and write to global memory
-                eps[idz(k, i, j)] = (x + 1.0f) / 4294967296.0f;
-            }
-        }
-    }
-
-// Debug NaNs caused by race condition.
-//    for (std::size_t k=t0; k<t1; k++) {
-//        for (std::size_t i=0; i<ni; i++) {
-//            for (std::size_t j=0; j<nj; j++) {
-//                if (isnan(eps[idz(k, i, j)])) {
-//                    cout << "Nan at mersenne[" << size3(k, i, j) << "]\n";
-//					exit(1);
-//                }
-//            }
-//        }
-//    }
-
-//    debug<T>("mersenne_twister, eps", zsize, eps);
-
-    // Box-Muller transformation
-    const std::size_t nk = (t1-t0);
-    const std::size_t total = ni*nj*nk;
-    const std::size_t half = total/2;
-    T eps_saved = 0;
-    if (total%2 != 0) {
-        // save second element from the end if total count is odd
-        std::size_t i = idz(t1, 0, 0);
-        eps_saved = eps[i-2];
-    }
-    for (std::size_t i=0; i<half; i++) {
-        std::size_t t = idz(t0, 0, 0) + 2*i;
-        std::size_t i1 = t;
-        std::size_t i2 = t+1;
-        T   r = sqrt(T(-2)*log(eps[i1]))*sqrtVarA;
-        T phi = T(2)*M_PI*eps[i2];
-        eps[i1] = r*cos(phi);
-        eps[i2] = r*sin(phi);
-    }
-    if (total%2 != 0) {
-        std::size_t i2 = idz(t1, 0, 0)-1;
-        T   r = sqrt(T(-2)*log(eps_saved))*sqrtVarA;
-        T phi = T(2)*M_PI*eps[i2];
-        eps[i2] = r*sin(phi);
-    }
-
-// Debug NaNs caused by race condition.
-    for (std::size_t k=0; k<t1-t0; k++) {
-        for (std::size_t i=0; i<ni; i++) {
-            for (std::size_t j=0; j<nj; j++) {
-                if (isnan(eps[idz(k, i, j)])) {
-                    std::cout << "Nan at box-muller[" << size3(k, i, j) << "]\n";
-					exit(1);
-                }
-            }
-        }
-    }
+template<class T>
+void
+transpose(std::valarray<T>& rhs, size3 size) {
+	Index<3> idx(size);
+	size_t m1 = size[0];
+	size_t m2 = size[1];
+	size_t m3 = size[2];
+	for (size_t k=0; k<m1; k++)
+		for (size_t i=0; i<m2; i++)
+			for (size_t j=0; j<m3; j++)
+				rhs[idx(k, i, j)] = rhs[idx(j, i, k)];
 }
 
 /// Генерация отдельных частей реализации волновой поверхности.
 template<class T>
-void generate_zeta(const std::valarray<T>& phi,
+void generate_zeta(std::valarray<T> phi,
 				   const size3& fsize,
 				   const Surface_part& p,
 				   const std::size_t interval,
 				   const size3& zsize,
 				   std::valarray<T>& zeta)
 {
+//	transpose(phi, fsize);
 	const Index<3> id(fsize);
 	const Index<3> idz(zsize);
 	const std::size_t t0 = p.t0();
@@ -666,32 +598,20 @@ void generate_zeta(const std::valarray<T>& phi,
                         for (std::size_t j=0; j<m3; j++)
                             sum += phi[id(k, i, j)]*zeta[idz(t-k, x-i, y-j)];
                 zeta[idz(t, x, y)] += sum;
+
+				/*
+				const size3 delta(m1, m2, m3);
+				const size3 offset = size3(t, x, y) - delta;
+				std::gslice zeta_slice{
+					product(offset),
+					{delta[0], delta[1], delta[2]},
+					{1, 1, 1}
+				};
+                zeta[idz(t, x, y)] += (phi * zeta[zeta_slice]).sum();
+				*/
             }
         }
     }
-//    std::size_t d1 = x1+y1-1;
-//    std::size_t t1 = zsize[0];
-//    std::size_t u = get_worker_num();
-//    std::size_t p = get_num_workers();
-//    for (std::size_t t=0; t<t1; t++) {
-//        for (std::size_t d=0; d<d1; d++) {
-//            std::size_t x1 = min(d, zsize[1]);
-//            std::size_t y1 = min(d, zsize[2]);
-//            std::size_t xy1 = min(x1, y1);
-//            std::size_t x=d, y=xy1;
-//            for (; y<=xy1; x--, y++) {
-//                std::size_t m1 = min(t+1, fsize[0]);
-//                std::size_t m2 = min(x+1, fsize[1]);
-//                std::size_t m3 = min(y+1, fsize[2]);
-//                T sum = 0;
-//                for (std::size_t k=0; k<m1; k++)
-//                    for (std::size_t i=0; i<m2; i++)
-//                        for (std::size_t j=0; j<m3; j++)
-//                            sum += phi[id(k, i, j)]*zeta[idz(t-k, x-i, y-j)];
-//                zeta[idz(t, x, y)] += sum;
-//            }
-//        }
-//    }
 }
 
 
@@ -747,38 +667,19 @@ void weave(const std::valarray<T>& phi,
 
 /// Удаление участков разгона из реализации.
 template<class T>
-void trim_zeta(const std::valarray<T>& zeta2,
-               const size3& zsize2,
-               const Surface_part& p1,
-               const Surface_part& p2,
-               const size3& zsize,
-               std::valarray<T>& zeta)
-{
-    const Index<3> id1(zsize);
-    const Index<3> id2(zsize2);
-
-    const std::size_t t0 = p1.t0();
-    const std::size_t t1 = p1.t1();
-    const std::size_t x1 = zsize[1];
-    const std::size_t y1 = zsize[2];
-
-    const std::size_t t02 = p2.t0();
-    const std::size_t dt = p2.part_size() - p1.part_size();
-    const std::size_t dx = zsize2[1] - zsize[1];
-    const std::size_t dy = zsize2[2] - zsize[2];
-//#pragma omp critical
-//  cout << "t1, x1, y1 = " << size3(t1, x1, y1) << endl;
-
-    for (std::size_t t=0; t<t1-t0; t++) {
-        for (std::size_t x=0; x<x1; x++) {
-            for (std::size_t y=0; y<y1; y++) {
-                const std::size_t x2 = x + dx;
-                const std::size_t y2 = y + dy;
-                const std::size_t t2 = t - t0 + t02 + dt;
-                zeta[id1(t, x, y)] = zeta2[id2(t2, x2, y2)];
-            }
-        }
-    }
+void trim_zeta(
+	const std::valarray<T>& zeta2,
+	const size3& zsize2,
+	const size3& zsize,
+	std::valarray<T>& zeta
+) {
+	const size3 delta = zsize2-zsize;
+	const std::gslice end_part{
+		product(delta),
+		{delta[0], delta[1], delta[2]},
+		{1, 1, 1}
+	};
+	zeta = zeta2[end_part];
 }
 
 
@@ -823,12 +724,14 @@ struct Generator1: public Kernel {
 			commit(remote_server());
 		} else {
 			this_log() << "running" << std::endl;
-			const size3 part_size(size_t(part.t1()-part.t0()), zsize[1], zsize[2]);
-			const size3 part_size2(size_t(part2.t1()-part2.t0()), zsize2[1], zsize2[2]);
+			const size3 part_size(size_t(part.part_size()), zsize[1], zsize[2]);
+			const size3 part_size2(size_t(part2.part_size()), zsize2[1], zsize2[2]);
+			zsize = part_size;
+			zsize2 = part_size2;
 			zeta.resize(zsize);
 			std::valarray<T> zeta2(zsize2);
 //			cout << "compute part = " << part.part() << endl;
-			generate_white_noise(zeta2, zsize2, var_eps, part2);
+			generate_white_noise(zeta2, var_eps, part2);
 			generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
 			// TODO 2016-02-26 weaving is disabled for benchmarks
 			if (not _noweave) {
@@ -838,7 +741,7 @@ struct Generator1: public Kernel {
 				}
 				downstream(local_server(), this, this);
 			} else {
-				trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
+				trim_zeta(zeta2, zsize2, zsize, zeta);
 				_writefile = true;
 				local_server()->send(this);
 			}

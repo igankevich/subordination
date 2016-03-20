@@ -17,7 +17,6 @@
 
 #define DISABLE_RANDOM_SEED
 #include "mapreduce.hh"
-#include "mersenne.hh"
 #include "ssysv.hh"
 #include "domain.hh"
 #include "spectrum.hh"
