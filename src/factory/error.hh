@@ -63,7 +63,7 @@ namespace factory {
 
 		private:
 
-			const Error_location& _location;
+			Error_location _location;
 
 		};
 

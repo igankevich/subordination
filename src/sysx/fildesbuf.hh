@@ -226,10 +226,11 @@ namespace sysx {
 
 		void
 		pgrow() {
-			const pos_type off = pptr() - pbase();
+			const pos_type pptr_offset = pptr() - pbase();
+			const pos_type pbase_offset = pbase() - pfirst();
 			_pbuf.resize(_pbuf.size() * 2);
-			setp(pfirst(), plast());
-			pbump(off);
+			setp(pfirst() + pbase_offset, plast());
+			pbump(pbase_offset + pptr_offset);
 		}
 
 		signed_size_type

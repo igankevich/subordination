@@ -1,0 +1,6 @@
+#!/bin/sh
+
+./benchmark-on-ant --size 6000 --master 10.0.0.1 
+./benchmark-on-ant --size 6000 --master 10.0.0.1 --kill 10.0.0.2 --after 10 
+./benchmark-on-ant --size 6000 --master 10.0.0.2 --kill 10.0.0.2 --after 10 --prefix master
+./benchmark-on-ant --size 6000 --master 10.0.0.2 --kill 10.0.0.1 --after 10 --prefix master

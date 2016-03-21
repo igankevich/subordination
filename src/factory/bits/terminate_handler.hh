@@ -74,6 +74,8 @@ namespace factory {
 				if (ptr) {
 					try {
 						std::rethrow_exception(ptr);
+					} catch (Error& err) {
+						this_log() << err << Thread_id() << std::endl;
 					} catch (std::exception& err) {
 						this_log() << make_red(err) << Thread_id() << std::endl;
 					} catch (...) {

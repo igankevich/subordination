@@ -631,8 +631,20 @@ struct Generator1: public Kernel {
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
 			zsize = part_size;
 			zsize2 = part_size2;
-			zeta.resize(zsize);
-			std::valarray<T> zeta2(zsize2);
+			std::valarray<T> zeta2;
+			try {
+				zeta.resize(zsize);
+				zeta2.resize(zsize2);
+			} catch (std::exception& x) {
+				std::clog << "resize failed" << std::endl;
+				std::clog << stdx::make_fields(
+					"zsize", zsize,
+					"zsize2", zsize2,
+					"fsize", fsize,
+					"part1", part,
+					"part2", part2
+				) << std::endl;
+			}
 //			cout << "compute part = " << part.part() << endl;
 			generate_white_noise(zeta2, var_eps, part2);
 			generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);

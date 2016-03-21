@@ -25,7 +25,7 @@ while test -n "$1"; do
 			;;
 		--size)
 			shift
-			after=$1
+			size=$1
 			;;
 		--prefix)
 			shift
@@ -72,7 +72,7 @@ zdelta=1 1 1
 acf_size=10 10 10
 EOF
 for i in $(seq 1 12); do
-	./$prefix-failure-test --num-hosts $i --network 10.0.0.1/24 --master $master --timeout 60 $args
+	./$prefix-failure-test --num-hosts $i --network 10.0.0.1/24 --master $master --timeout 120 $args
 	t=$(cat time.log)
 	echo "$i,$t,$size,$prefix,$master,$kill,$after" >> time.csv
 	sleep 10
