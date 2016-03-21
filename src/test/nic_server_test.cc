@@ -119,8 +119,11 @@ struct Test_socket: public Kernel {
 		#if defined(FACTORY_TEST_OFFLINE)
 		// Delete kernel for Valgrind memory checker.
 		delete this;
-		if (++shutdown_counter == TOTAL_NUM_KERNELS) {
-			factory()->stop();
+		this_log() << "shutdown counter " << shutdown_counter << std::endl;
+		if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
+			this_log() << "go offline" << std::endl;
+//			factory()->stop();
+			std::exit(0);
 		}
 		#else
 		commit(remote_server());
@@ -208,8 +211,6 @@ struct Sender: public Kernel {
 		this_log() << "kernel = " << *test_kernel << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
 		assert(not child->from());
-		#else
-		assert(child->from() == server_endpoint);
 		#endif
 
 		if (_input.size() != output.size())
