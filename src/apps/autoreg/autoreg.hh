@@ -8,6 +8,7 @@
 
 #include "discrete_function.hh"
 #include "mersenne_twister.hh"
+#include "grid.hh"
 
 namespace std {
 
@@ -57,6 +58,19 @@ product(const Container& rhs) {
 }
 
 template<class T>
+void
+transpose(std::valarray<T>& rhs, size3 size) {
+	Index<3> idx(size);
+	size_t m1 = size[0];
+	size_t m2 = size[1];
+	size_t m3 = size[2];
+	for (size_t k=0; k<m1; k++)
+		for (size_t i=0; i<m2; i++)
+			for (size_t j=0; j<m3; j++)
+				rhs[idx(k, i, j)] = rhs[idx(j, i, k)];
+}
+
+template<class T>
 inline T approx_wave_height(T variance) {
 	return sqrt(T(2)*M_PI*(variance));
 }
@@ -65,104 +79,6 @@ template<class T>
 inline T approx_wave_period(T variance) {
 	return T(4.8)*sqrt(approx_wave_height(variance));
 }
-
-class Surface_part {
-public:
-    Surface_part(): part_(0), t0_(0), t1_(0) {}
-
-	Surface_part(uint32_t i, uint32_t t0__, uint32_t t1__):
-		part_(i), t0_(t0__), t1_(t1__) {}
-
-    uint32_t part()      const { return part_; }
-    uint32_t t0()        const { return t0_; }
-    uint32_t t1()        const { return t1_; }
-    uint32_t part_size() const { return t1()-t0(); }
-
-    friend ostream& operator<<(ostream& out, const Surface_part& p) {
-        out << "part=" << p.part() << ", ";
-        out << "t0=" << p.t0() << ", ";
-        out << "t1=" << p.t1() << ", ";
-        out << "part_size=" << p.part_size();
-        return out;
-    }
-
-	friend sysx::packetstream&
-	operator<<(sysx::packetstream& out, const Surface_part& rhs) {
-		return out << rhs.part_ << rhs.t0_ << rhs.t1_;
-	}
-
-	friend sysx::packetstream&
-	operator>>(sysx::packetstream& in, Surface_part& rhs) {
-		return in >> rhs.part_ >> rhs.t0_ >> rhs.t1_;
-	}
-
-private:
-
-    uint32_t part_;
-    uint32_t t0_;
-    uint32_t t1_;
-
-};
-
-struct Uniform_grid {
-
-	Uniform_grid() = default;
-
-	Uniform_grid(uint32_t sz, uint32_t npts):
-		size(sz), nparts(npts) {}
-
-	Surface_part part(uint32_t i) const {
-		return Surface_part(i, i*part_size(),
-			(i == num_parts() - 1) ? size : (i+1)*part_size());
-	}
-
-	uint32_t num_parts() const { return nparts; }
-
-	friend sysx::packetstream&
-	operator<<(sysx::packetstream& stream, const Uniform_grid& rhs) {
-		return stream << rhs.size << rhs.nparts;
-	}
-
-	friend sysx::packetstream&
-	operator>>(sysx::packetstream& stream, Uniform_grid& rhs) {
-		return stream >> rhs.size >> rhs.nparts;
-	}
-
-private:
-
-	uint32_t part_size() const { return size / num_parts(); }
-
-    uint32_t size;
-	uint32_t nparts;
-
-};
-
-class Non_uniform_grid {
-public:
-
-	Non_uniform_grid(std::size_t sz, std::size_t max_num_parts, std::size_t modulo_):
-		size(sz), modulo(modulo_),
-//		nparts((-1 + sqrt(1+8*max_num_parts))/2),
-		nparts(max_num_parts / num_parts(modulo) * modulo),
-		min_part_size(size / max_num_parts) {}
-
-	Surface_part part(std::size_t i) const {
-		return Surface_part(i, (num_parts(modulo)*(i/modulo) + num_parts(i%modulo))*min_part_size,
-			(i == num_parts() - 1) ? size : (num_parts(modulo)*((i+1)/modulo) + num_parts((i+1)%modulo))*min_part_size);
-	}
-
-	std::size_t num_parts() const { return nparts; }
-
-private:
-
-//	std::size_t num_parts_before(std::size_t i) const { return i%modulo * (i%modulo + 1) / 2; }
-	std::size_t num_parts(std::size_t i) const { return i*(i+1)/2; }
-
-    std::size_t size;
-	std::size_t modulo;
-	std::size_t nparts;
-	std::size_t min_part_size;
-};
 
 
 }
@@ -555,19 +471,6 @@ generate_white_noise(
 	if (std::any_of(std::begin(eps), std::end(eps), &stdx::isnan<T>)) {
 		throw std::runtime_error("white noise generator produced some NaNs");
 	}
-}
-
-template<class T>
-void
-transpose(std::valarray<T>& rhs, size3 size) {
-	Index<3> idx(size);
-	size_t m1 = size[0];
-	size_t m2 = size[1];
-	size_t m3 = size[2];
-	for (size_t k=0; k<m1; k++)
-		for (size_t i=0; i<m2; i++)
-			for (size_t j=0; j<m3; j++)
-				rhs[idx(k, i, j)] = rhs[idx(j, i, k)];
 }
 
 /// Генерация отдельных частей реализации волновой поверхности.
