@@ -102,7 +102,7 @@ struct Main: public Kernel {
 			const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
 			const sysx::endpoint bind_addr(_network.address(), _port);
 			this_server.remote_server()->bind(bind_addr, netmask);
-			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 2;
+			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 3;
 			const auto start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sysx::to_host_format(_network.address().rep()));
@@ -276,13 +276,13 @@ int main(int argc, char* argv[]) {
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = 60;
 				bool normal = true;
-				if (endpoint.addr4() == kill_addr) {
+				if (endpoint.addr4() == kill_addr and kill_after != do_not_kill) {
 					timeout = kill_after;
 					normal = false;
 				}
 				return sysx::this_process::execute(
 					#if defined(FACTORY_TEST_USE_SSH)
-					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "exec",
+					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "ulimit -c unlimited;", "exec",
 					#endif
 					argv[0],
 					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),

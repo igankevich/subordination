@@ -139,9 +139,9 @@ typedef Vector<float, 1> float1;
 typedef Vector<double, 3> double3;
 typedef Vector<double, 2> double2;
 typedef Vector<double, 1> double1;
-typedef Vector<size_t, 3> size3;
-typedef Vector<size_t, 2> size2;
-typedef Vector<size_t, 1> size1;
+typedef Vector<uint32_t, 3> size3;
+typedef Vector<uint32_t, 2> size2;
+typedef Vector<uint32_t, 1> size1;
 
 template<size_t n=3> class Rot_index;
 template<size_t n=3> class Index;

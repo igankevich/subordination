@@ -60,7 +60,11 @@ namespace factory {
 						kernel_type* kernel = stdx::front(this->_kernels);
 						stdx::pop(this->_kernels);
 						stdx::unlock_guard<lock_type> g(lock);
-						kernel->run_act(*this);
+						try {
+							kernel->run_act(*this);
+						} catch (std::exception& x) {
+							throw Error(x.what(), {__FILE__, __LINE__, __func__});
+						}
 					}
 					return this->stopped();
 				});
@@ -160,20 +164,6 @@ namespace factory {
 			}
 
 		private:
-
-			void
-			do_run() override {
-				lock_type lock(this->_mutex);
-				this->_semaphore.wait(lock, [this,&lock] () {
-					while (!this->_kernels.empty()) {
-						kernel_type* kernel = stdx::front(this->_kernels);
-						stdx::pop(this->_kernels);
-						stdx::unlock_guard<lock_type> g(lock);
-						kernel->run_act(*this);
-					}
-					return this->stopped();
-				});
-			}
 
 			server_pool _servers;
 			#if defined(FACTORY_PRIORITY_SCHEDULING)

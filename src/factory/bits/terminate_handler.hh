@@ -38,6 +38,13 @@ namespace factory {
 			return Red<T>(rhs);
 		}
 
+		struct Thread_id {
+			friend std::ostream&
+			operator<<(std::ostream& out, const Thread_id& rhs) {
+				return out << "(thread id=" << std::this_thread::get_id() << ')';
+			}
+		};
+
 		template<class Server>
 		struct Auto_set_terminate_handler {
 
@@ -68,12 +75,12 @@ namespace factory {
 					try {
 						std::rethrow_exception(ptr);
 					} catch (std::exception& err) {
-						this_log() << make_red(err) << std::endl;
+						this_log() << make_red(err) << Thread_id() << std::endl;
 					} catch (...) {
-						this_log() << make_red("unknown exception caught") << std::endl;
+						this_log() << make_red("unknown exception caught") << Thread_id() << std::endl;
 					}
 				} else {
-					this_log() << make_red("terminate called without an active exception") << std::endl;
+					this_log() << make_red("terminate called without an active exception") << Thread_id() << std::endl;
 				}
 				stop_root_server(exit_code::failure);
 			}

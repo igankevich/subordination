@@ -60,3 +60,4 @@ Current
 - Move to GIT.
 - We need Kernel allocator!
 - We need interval-based kernel IDs allocator.
+- Create source and sink for fildesbuf that simulates how network source/sink behaves (read/write 1 byte at a time etc.)

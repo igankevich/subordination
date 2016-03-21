@@ -492,9 +492,9 @@ void generate_zeta(std::valarray<T> phi,
     for (std::size_t t=0; t<t1-t0; t++) {
         for (std::size_t x=0; x<x1; x++) {
             for (std::size_t y=0; y<y1; y++) {
-                const std::size_t m1 = std::min(t+1, fsize[0]);
-                const std::size_t m2 = std::min(x+1, fsize[1]);
-                const std::size_t m3 = std::min(y+1, fsize[2]);
+                const std::size_t m1 = std::min<size_t>(t+1, fsize[0]);
+                const std::size_t m2 = std::min<size_t>(x+1, fsize[1]);
+                const std::size_t m3 = std::min<size_t>(y+1, fsize[2]);
                 T sum = 0;
                 for (std::size_t k=0; k<m1; k++)
                     for (std::size_t i=0; i<m2; i++)
@@ -537,9 +537,9 @@ void weave(const std::valarray<T>& phi,
         for (std::size_t x=0; x<x1; x++) {
             for (std::size_t y=0; y<y1; y++) {
                 // compute left sum
-                const std::size_t m1 = std::min(fsize[0], t+1);
-                const std::size_t m2 = std::min(fsize[1], x+1);
-                const std::size_t m3 = std::min(fsize[2], y+1);
+                const std::size_t m1 = std::min<size_t>(fsize[0], t+1);
+                const std::size_t m2 = std::min<size_t>(fsize[1], x+1);
+                const std::size_t m3 = std::min<size_t>(fsize[2], y+1);
                 T sum = 0;
                 for (std::size_t k=0; k<m1; k++)
                     for (std::size_t i=0; i<m2; i++)
@@ -553,9 +553,9 @@ void weave(const std::valarray<T>& phi,
                 const std::size_t x = x1-1-ix;
                 const std::size_t y = y1-1-iy;
                 const std::size_t skip = t1-t+1;
-                const std::size_t m1 = std::min(fsize[0], zsize[0]-t);
-                const std::size_t m2 = std::min(fsize[1], zsize[1]-x);
-                const std::size_t m3 = std::min(fsize[2], zsize[2]-y);
+                const std::size_t m1 = std::min<size_t>(fsize[0], zsize[0]-t);
+                const std::size_t m2 = std::min<size_t>(fsize[1], zsize[1]-x);
+                const std::size_t m3 = std::min<size_t>(fsize[2], zsize[2]-y);
                 // compute right sum
                 T sum = 0;
                 for (std::size_t k=skip; k<m1; k++)
@@ -627,8 +627,8 @@ struct Generator1: public Kernel {
 			commit(remote_server());
 		} else {
 			this_log() << "running" << std::endl;
-			const size3 part_size(size_t(part.part_size()), zsize[1], zsize[2]);
-			const size3 part_size2(size_t(part2.part_size()), zsize2[1], zsize2[2]);
+			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
+			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
 			zsize = part_size;
 			zsize2 = part_size2;
 			zeta.resize(zsize);

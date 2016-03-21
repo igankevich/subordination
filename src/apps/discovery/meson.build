@@ -10,7 +10,6 @@ static_linking = ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', 
 		sources: 'discovery_test.cc',
 		include_directories: [srcdir, testdir],
 #		dependencies: threads,
-#		link_args: '-rdynamic'
 #		dependencies: [libpthread, librt, libgsl, liblapack, libblas],
 		link_args: static_linking,
 		cpp_args: ['-DFACTORY_SINGLE_THREAD', '-DFACTORY_PRIORITY_SCHEDULING']
@@ -50,8 +49,7 @@ test('discovery-ranking',
 		'discovery-ranking-test',
 		sources: 'discovery_ranking_test.cc',
 		include_directories: [srcdir, testdir],
-		dependencies: threads,
-		link_args: '-rdynamic'
+		dependencies: threads
 	)
 )
 
@@ -73,6 +71,5 @@ executable(
 	'discover-topology',
 	sources: 'discover_topology.cc',
 	include_directories: [srcdir, testdir],
-	dependencies: threads,
-	link_args: '-rdynamic'
+	dependencies: threads
 )

@@ -55,8 +55,10 @@ namespace sysx {
 
 		virtual
 		~basic_fildesbuf() {
-			// NB: for now full sync is not guaranteed for non-blocking I/O
-			// as it may result in infinite loop
+			/**
+			NB: for now full sync is not guaranteed for non-blocking I/O
+			because it may result in infinite loop
+			*/
 			sync();
 		}
 
@@ -93,10 +95,14 @@ namespace sysx {
 		sync() override {
 			const std::streamsize m = pptr() - pbase();
 			const std::streamsize n = _fd.write(pbase(), m);
-			if (n > 0) {
-				pbump(-n);
+			const bool success = n==m;
+			if (success) {
+				setp(pfirst(), plast());
+			} else if (n >= 0) {
+				setp(pbase()+n, epptr());
+				pbump(m-n);
 			}
-			return n == m ? 0 : -1;
+			return success ? 0 : -1;
 		}
 
 		pos_type
@@ -164,7 +170,7 @@ namespace sysx {
 		do_fill() {
 			// TODO 2016-03-09 this is not optimal solution,
 			// but i don't know a better alternative
-			std::streamsize old_egptr_offset = egptr() - eback();
+			const std::streamsize old_egptr_offset = egptr() - eback();
 			char_type* first = egptr();
 			char_type* last = glast();
 			std::streamsize n = 0;
@@ -208,13 +214,21 @@ namespace sysx {
 			rebase();
 		}
 
+		char_type*
+		pfirst() noexcept {
+			return _pbuf.data();
+		}
+
+		char_type*
+		plast() noexcept {
+			return _pbuf.data() + _pbuf.size();
+		}
+
 		void
 		pgrow() {
 			const pos_type off = pptr() - pbase();
-			const pos_type n = epptr() - pbase();
 			_pbuf.resize(_pbuf.size() * 2);
-			char_type* base = _pbuf.data();
-			setp(base, base + _pbuf.size());
+			setp(pfirst(), plast());
 			pbump(off);
 		}
 

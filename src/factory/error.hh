@@ -2,6 +2,7 @@
 #define FACTORY_ERROR_HH
 
 #include <stdexcept>
+#include <thread>
 
 namespace std {
 
@@ -54,7 +55,10 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Error& rhs) {
-				return out << rhs._location << ' ' << rhs.what();
+				return
+				out << rhs._location << ' '
+					<< std::this_thread::get_id() << ' '
+					<< rhs.what();
 			}
 
 		private:
