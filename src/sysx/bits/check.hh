@@ -9,40 +9,25 @@ namespace sysx {
 
 	namespace bits {
 
-		struct os_error: public std::runtime_error {
+		struct bad_call: public std::system_error {
 
-			os_error(const std::runtime_error& err, const char* file, const int line, const char* function) noexcept:
-				std::runtime_error(err), _file(file), _line(line), _function(function)
+			bad_call(const char* file, const int line, const char* function) noexcept:
+			std::system_error(errno, std::generic_category()),
+			_file(file), _line(line), _function(function)
 			{}
-
-			os_error(std::string&& msg, const char* file, const int line, const char* function) noexcept:
-			std::runtime_error(std::forward<std::string>(msg)),
-			_file(file),
-			_line(line),
-			_function(function)
-			{}
-
-			os_error(const os_error& rhs) noexcept:
-			std::runtime_error(rhs),
-			_file(rhs._file),
-			_line(rhs._line),
-			_function(rhs._function)
-			{}
-
-			os_error& operator=(const os_error&) = delete;
 
 			friend std::ostream&
-			operator<<(std::ostream& out, const os_error& rhs) {
-				return out << '{'
-					<< "what=" << rhs.what()
-					<< ",origin=" << rhs._function
-					<< '[' << rhs._file << ':' << rhs._line << ']'
-					<< '}';
+			operator<<(std::ostream& out, const bad_call& rhs) {
+				return out
+					<< rhs._file << ':'
+					<< rhs._line << ':'
+					<< rhs._function << ' '
+					<< rhs.what();
 			}
 
 		private:
 			const char* _file;
-			const int   _line;
+			const int  _line;
 			const char* _function;
 		};
 
@@ -50,9 +35,7 @@ namespace sysx {
 		inline Ret
 		check(Ret ret, Ret bad, const char* file, const int line, const char* func) {
 			if (ret == bad) {
-				throw os_error(std::system_error(std::error_code(errno,
-					std::generic_category()), func),
-					file, line, func);
+				throw bad_call(file, line, func);
 			}
 			return ret;
 		}
@@ -66,8 +49,7 @@ namespace sysx {
 		template<std::errc ignored_errcode, class Ret>
 		inline
 		Ret check_if_not(Ret ret, const char* file, const int line, const char* func) {
-			std::error_code errcode(errno, std::generic_category());
-			return errcode == std::make_error_code(ignored_errcode)
+			return std::errc(errno) == ignored_errcode
 				? Ret(0)
 				: check<Ret>(ret, file, line, func);
 		}

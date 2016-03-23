@@ -87,7 +87,7 @@ namespace sysx {
 			str.rdbuf(new filterbuf<std::ostream::char_type>(orig));
 		}
 	};
-	
+
 	struct Auto_check_endiannes {
 		Auto_check_endiannes() {
 			union Endian {
@@ -98,8 +98,7 @@ namespace sysx {
 			if ((bits::is_network_byte_order() && endian.b[0] != 0)
 				|| (!bits::is_network_byte_order() && endian.b[0] != 1))
 			{
-				throw bits::os_error("endiannes was not correctly determined at compile time",
-					__FILE__, __LINE__, __func__);
+				throw std::runtime_error("endiannes was not correctly determined at compile time");
 			}
 		}
 	};
