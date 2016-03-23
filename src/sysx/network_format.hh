@@ -4,9 +4,9 @@
 #include <algorithm>
 
 #include <stdx/intersperse_iterator.hh>
+#include <stdx/uint128.hh>
 #include <stdx/iosx.hh>
 
-#include <sysx/uint128.hh>
 #include <sysx/bits/macros.hh>
 
 #if SYSX_GCC_VERSION_AT_LEAST(4, 3)

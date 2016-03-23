@@ -1,5 +1,5 @@
 #include <iostream>
-#include <sysx/uint128.hh>
+#include <stdx/uint128.hh>
 #include "test.hh"
 
 void check_bool(bool x, bool y) {

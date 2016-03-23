@@ -11,14 +11,14 @@
 #include <bitset>
 #include <limits>
 
-#include <sysx/uint128.hh>
-#include <sysx/packetstream.hh>
+#include <stdx/uint128.hh>
+#include <stdx/iosx.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/bits/endpoint_parse.hh>
 #include <sysx/bits/bit_count.hh>
+#include <sysx/packetstream.hh>
 #include <sysx/network_format.hh>
-#include <stdx/iosx.hh>
 
 
 namespace sysx {

@@ -1,5 +1,5 @@
-#ifndef SYSX_UINT128_HH
-#define SYSX_UINT128_HH
+#ifndef STDX_UINT128_HH
+#define STDX_UINT128_HH
 
 // prefer builtin types over substitute implementation
 #if defined(__SIZEOF_INT128__) && !defined(FACTORY_FORCE_CUSTOM_UINT128)
@@ -72,4 +72,4 @@ namespace sysx {
 }
 #define UINT128_C(x) x##_u128
 
-#endif // SYSX_UINT128_HH
+#endif // STDX_UINT128_HH
