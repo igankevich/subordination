@@ -21,7 +21,6 @@
 #include <sysx/security.hh>
 #include <sysx/process.hh>
 #include <sysx/log.hh>
-#include <sysx/cpu_bind.hh>
 #include <sysx/packetstream.hh>
 
 #include <factory/bits/terminate_handler.hh>
