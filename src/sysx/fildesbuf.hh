@@ -8,11 +8,16 @@
 #include <sysx/fildes.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/log.hh>
+#include <stdx/streambuf_traits.hh>
 
 namespace sysx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
-	struct basic_fildesbuf: public stdx::basic_packetbuf<Ch,Tr> {
+	class basic_fildesbuf: public stdx::basic_packetbuf<Ch,Tr> {
+
+		typedef stdx::streambuf_traits<Fd> streambuf_traits_type;
+
+	public:
 
 		typedef stdx::basic_packetbuf<Ch,Tr> base_type;
 		using base_type::gptr;
@@ -94,7 +99,7 @@ namespace sysx {
 		int
 		sync() override {
 			const std::streamsize m = pptr() - pbase();
-			const std::streamsize n = _fd.write(pbase(), m);
+			const std::streamsize n = streambuf_traits_type::write(_fd, pbase(), m);
 			const bool success = n==m;
 			if (success) {
 				setp(pfirst(), plast());
@@ -174,7 +179,7 @@ namespace sysx {
 			char_type* first = egptr();
 			char_type* last = glast();
 			std::streamsize n = 0;
-			while ((n = _fd.read(first, last-first)) > 0) {
+			while ((n = streambuf_traits_type::read(_fd, first, last-first)) > 0) {
 				first += n;
 				setg(eback(), gptr(), first);
 				if (first == last) {

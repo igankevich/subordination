@@ -231,4 +231,25 @@ namespace sysx {
 
 }
 
+namespace stdx {
+
+	template<>
+	struct streambuf_traits<sysx::socket> {
+
+		typedef void char_type;
+
+		static std::streamsize
+		write(sysx::socket& sink, const char_type* s, std::streamsize n) {
+			return sink.write(s, n);
+		}
+
+		static std::streamsize
+		read(sysx::socket& src, char_type* s, std::streamsize n) {
+			return src.read(s, n);
+		}
+
+	};
+
+}
+
 #endif // SYSX_SOCKET_HH

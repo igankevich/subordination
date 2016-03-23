@@ -9,6 +9,8 @@
 #include <sysx/bits/check.hh>
 #include <sysx/bits/safe_calls.hh>
 
+#include <stdx/streambuf_traits.hh>
+
 namespace sysx {
 
 	typedef ::mode_t mode_type;
@@ -224,67 +226,46 @@ namespace sysx {
 
 	};
 
-	/// @deprecated temporary files are evil
-	struct tmpfile: public file {
+}
 
-		typedef std::vector<char> path_type;
+namespace stdx {
 
-		tmpfile() noexcept = default;
+	template<>
+	struct streambuf_traits<sysx::fildes> {
 
-		explicit
-		tmpfile(tmpfile&& rhs) noexcept:
-		sysx::file(std::move(rhs)),
-		_path(std::move(rhs._path))
-		{}
+		typedef void char_type;
 
-		explicit
-		tmpfile(const std::string& filename, openmode flags=read_write,
-		sysx::flag_type flags2=create|truncate, mode_type mode=S_IRUSR|S_IWUSR):
-		sysx::file(),
-		_path(create_template(filename))
-		{
-			_fd = create_temp_file();
+		static std::streamsize
+		write(sysx::fildes& sink, const char_type* s, std::streamsize n) {
+			return sink.write(s, n);
 		}
 
-		~tmpfile() {
-			this->close();
-			this->unlink();
+		static std::streamsize
+		read(sysx::fildes& src, char_type* s, std::streamsize n) {
+			return src.read(s, n);
 		}
 
-		std::string
-		path() const noexcept {
-			std::string ret;
-			if (!_path.empty()) {
-				std::copy(_path.begin(), _path.end()-1, std::back_inserter(ret));
-			}
-			return ret;
+	};
+
+}
+
+namespace stdx {
+
+	template<>
+	struct streambuf_traits<sysx::file> {
+
+		typedef void char_type;
+
+		static std::streamsize
+		write(sysx::file& sink, const char_type* s, std::streamsize n) {
+			return sink.write(s, n);
 		}
 
-	private:
-
-		path_type
-		create_template(const std::string& prefix) {
-			static const size_t NUM_X = 6;
-			path_type path(prefix.size() + NUM_X + 1);
-			std::copy(prefix.begin(), prefix.end(), path.begin());
-			std::fill_n(path.begin() + prefix.size(), NUM_X, 'X');
-			path.back() = 0;
-			return path;
+		static std::streamsize
+		read(sysx::file& src, char_type* s, std::streamsize n) {
+			return src.read(s, n);
 		}
 
-		fd_type
-		create_temp_file() {
-			fd_type fd = bits::check(::mkstemp(_path.data()),
-				__FILE__, __LINE__, __func__);
-			return fd;
-		}
-
-		void
-		unlink() noexcept {
-			::unlink(_path.data());
-		}
-
-		path_type _path;
 	};
 
 }

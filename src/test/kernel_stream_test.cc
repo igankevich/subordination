@@ -249,7 +249,8 @@ template<class Kernel, class Carrier, class Parent=Dummy_kernel, class Ch=char>
 struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,Parent,Ch>> {
 
 	typedef Kernel kernel_type;
-	typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::file>> buffer_type;
+	typedef std::basic_stringbuf<Ch> sink_type;
+	typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sink_type>> buffer_type;
 	typedef Kernel_stream<kernel_type> stream_type;
 	typedef typename stream_type::types types;
 	typedef stdx::log<Test_kernel_stream> this_log;
@@ -270,35 +271,21 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 
 	void
 	do_one_iteration(size_t count) {
-		sysx::tmpfile tfile(prefix);
-		const std::string filename = tfile.path();
 		std::vector<Carrier> expected(count);
 		std::vector<kernel_type*> result(count);
-		{
-			buffer_type buffer;
-			sysx::file file(filename, sysx::file::write_only);
-			buffer.setfd(std::move(file));
-			stream_type stream(&buffer);
-			test::equal(static_cast<bool>(stream), true, "bad rdstate after construction");
-			stream.settypes(&_types);
-			for (Carrier& k : expected) {
-				stream << k;
-			}
-			stream.flush();
+		buffer_type buffer{sink_type{}};
+		stream_type stream(&buffer);
+		test::equal(static_cast<bool>(stream), true, "bad rdstate after construction");
+		stream.settypes(&_types);
+		for (Carrier& k : expected) {
+			stream << k;
 		}
-		{
-			buffer_type buffer;
-			sysx::file file(filename, sysx::file::read_only);
-			buffer.setfd(std::move(file));
-			stream_type stream(&buffer);
-			test::equal(static_cast<bool>(stream), true, "bad rdstate after construction");
-			stream.settypes(&_types);
-			for (size_t i=0; i<count; ++i) {
-				stream.fill();
-				stream >> result[i];
-				test::equal(static_cast<bool>(stream), true, "can not read kernel",
-					"i=", i, ", rdstate=", stream.rdstate());
-			}
+		stream.flush();
+		for (size_t i=0; i<count; ++i) {
+			stream.fill();
+			stream >> result[i];
+			test::equal(static_cast<bool>(stream), true, "can not read kernel",
+				"i=", i, ", rdstate=", stream.rdstate());
 		}
 		for (size_t i=0; i<result.size(); ++i) {
 			Carrier* tmp = dynamic_cast<Carrier*>(result[i]);
@@ -309,8 +296,6 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 private:
 
 	types _types;
-
-	static constexpr const char* prefix = "tmp.test_buffer.";
 
 };
 
