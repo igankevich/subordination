@@ -193,39 +193,6 @@ namespace sysx {
 
 	static_assert(sizeof(fildes) == sizeof(fd_type), "bad fd size");
 
-
-	struct file: public sysx::fildes {
-
-		enum openmode {
-			read_only=O_RDONLY,
-			write_only=O_WRONLY,
-			read_write=O_RDWR
-		};
-
-		file() noexcept = default;
-
-		explicit
-		file(file&& rhs) noexcept:
-			sysx::fildes(std::move(rhs)) {}
-
-		explicit
-		file(const std::string& filename, openmode flags,
-			sysx::flag_type flags2=0, mode_type mode=S_IRUSR|S_IWUSR):
-			sysx::fildes(bits::check(safe_open(filename.c_str(), flags|flags2, mode),
-				__FILE__, __LINE__, __func__)) {}
-
-		~file() {
-			this->close();
-		}
-
-		file&
-		operator=(file&& rhs) {
-			sysx::fildes::operator=(std::move(rhs));
-			return *this;
-		}
-
-	};
-
 }
 
 namespace stdx {
@@ -242,27 +209,6 @@ namespace stdx {
 
 		static std::streamsize
 		read(sysx::fildes& src, char_type* s, std::streamsize n) {
-			return src.read(s, n);
-		}
-
-	};
-
-}
-
-namespace stdx {
-
-	template<>
-	struct streambuf_traits<sysx::file> {
-
-		typedef void char_type;
-
-		static std::streamsize
-		write(sysx::file& sink, const char_type* s, std::streamsize n) {
-			return sink.write(s, n);
-		}
-
-		static std::streamsize
-		read(sysx::file& src, char_type* s, std::streamsize n) {
 			return src.read(s, n);
 		}
 

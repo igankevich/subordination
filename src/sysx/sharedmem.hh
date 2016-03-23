@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <vector>
+#include <fstream>
 
 #include <unistd.h>
 #include <sys/shm.h>
@@ -222,7 +223,7 @@ namespace sysx {
 
 		key_type
 		xgenkey(char num) const {
-			{ file f(_path, file::read_only, file::create); }
+			{ std::filebuf f; f.open(_path, std::ios_base::in); }
 			return bits::check(::ftok(_path.c_str(), num),
 				__FILE__, __LINE__, __func__);
 		}
