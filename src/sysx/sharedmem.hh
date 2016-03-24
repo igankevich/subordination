@@ -284,8 +284,7 @@ namespace sysx {
 
 		static inline path_type
 		make_path(path_type&& rhs) {
-			return path_type(this_process::tempdir_path()
-				+ std::forward<path_type>(rhs));
+			return path_type("/tmp" + std::forward<path_type>(rhs));
 		}
 
 		friend std::ostream&

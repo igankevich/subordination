@@ -23,6 +23,8 @@ namespace sysx {
 	typedef int stat_type;
 	typedef int code_type;
 	typedef ::siginfo_t siginfo_type;
+	typedef ::uid_t uid_type;
+	typedef ::gid_t gid_type;
 
 	pid_type
 	safe_fork() {
@@ -488,6 +490,7 @@ namespace sysx {
 		inline pid_type
 		parent_id() noexcept { return ::getppid(); }
 
+		/*
 		inline pid_type
 		group_id() noexcept { return ::getpgrp(); }
 
@@ -496,25 +499,19 @@ namespace sysx {
 			bits::check(::setpgid(this_process::id(), rhs),
 				__FILE__, __LINE__, __func__);
 		}
+		*/
 
-		template<class T>
-		T getenv(const char* key, T dflt) {
-			const char* text = ::getenv(key);
-			if (!text) { return dflt; }
-			std::stringstream s;
-			s << text;
-			T val;
-			return (s >> val) ? val : dflt;
-		}
+		inline uid_type
+		user_id() noexcept { return ::getuid(); }
 
-		// TODO: setenv() is known to cause memory leaks
-		template<class T>
-		void
-		env(const char* key, T val) {
-			std::string str = bits::to_string(val);
-			bits::check(::setenv(key, str.c_str(), 1),
-				__FILE__, __LINE__, __func__);
-		}
+		inline uid_type
+		effective_user_id() noexcept { return ::geteuid(); }
+
+		inline uid_type
+		group_id() noexcept { return ::getgid(); }
+
+		inline uid_type
+		effective_group_id() noexcept { return ::getegid(); }
 
 		template<class ... Args>
 		int
@@ -526,13 +523,11 @@ namespace sysx {
 				argv[i] = const_cast<char*>(tmp[i].c_str());
 			}
 			argv[argc] = 0;
-			return bits::check(::execv(argv[0], argv),
-				__FILE__, __LINE__, __func__);
-		}
-
-		const char*
-		tempdir_path() {
-			return "/tmp";
+			char* const no_env[1] = {0};
+			return bits::check(
+				::execve(argv[0], argv, no_env),
+				__FILE__, __LINE__, __func__
+			);
 		}
 
 		void

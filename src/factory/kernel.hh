@@ -62,7 +62,6 @@ namespace factory {
 
 			int
 			execute() const {
-				sysx::this_process::env("APP_ID", this->_id);
 				return sysx::this_process::execute(this->_execpath);
 			}
 

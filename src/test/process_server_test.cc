@@ -220,12 +220,6 @@ struct Main: public Kernel {
 		std::cout << "App = " << XSTRINGIFY(FACTORY_APP_PATH) << std::endl;
 		__factory.remote_server()->add(Application(XSTRINGIFY(FACTORY_APP_PATH), MY_APP_ID));
 		#endif
-		#if defined(FACTORY_TEST_APP)
-		Application::id_type app = sysx::this_process::getenv("APP_ID", 0);
-		if (app == MY_APP_ID) {
-			this_log() << "I am an application no. " << app << "!" << std::endl;
-		}
-		#endif
 	}
 
 	void act() override {

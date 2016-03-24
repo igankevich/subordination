@@ -18,7 +18,6 @@
 	#error Factory requires C++11 compiler.
 #endif
 
-#include <sysx/security.hh>
 #include <sysx/process.hh>
 #include <sysx/log.hh>
 #include <sysx/packetstream.hh>
@@ -35,8 +34,8 @@ namespace factory {
 		public Managed_set<Server<Config>>,
 //		private sysx::Disable_sync_with_stdio,
 		private sysx::Auto_check_endiannes,
-		private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
-		private sysx::Auto_open_standard_file_descriptors,
+//		private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
+//		private sysx::Auto_open_standard_file_descriptors,
 		private Auto_set_terminate_handler<Basic_factory<Config>>,
 		public sysx::Install_syslog
 		{

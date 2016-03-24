@@ -33,6 +33,7 @@ NOT NEEDED [there many tools to access and filter logs (e.g. journalctl, grep /v
 NOT NEEDED [use syslog and custom streambuf for std::clog instead] Create log server to minimise lock contention when writing to log.
 NOT NEEDED [thread-safe containers are not flexible enough for factory servers, use templated base class for all servers instead] Make locks mutable.
 NOT NEEDED [now event-based approach is employed] Remove stale connections from Socket_server. Remove stale peers from Peers. Limit number of peers to reduce number of persistent connections.
+NOT NEEDED [resort to per host ID range] We need interval-based kernel IDs allocator.
 
 Make Buffer and LBuffer a subclass of std::streambuf.
 Handle cases when a machine has multiple IP addresses.
@@ -59,5 +60,4 @@ Current
 - Hierarchical kernel IDs. Kernel carries min and max id assigned to it.
 - Move to GIT.
 - We need Kernel allocator!
-- We need interval-based kernel IDs allocator.
 - Create source and sink for fildesbuf that simulates how network source/sink behaves (read/write 1 byte at a time etc.)

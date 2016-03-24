@@ -8,6 +8,7 @@
 #include <sysx/bits/check.hh>
 #include <sysx/bits/safe_calls.hh>
 #include <sysx/fildes.hh>
+#include <sysx/process.hh>
 
 namespace sysx {
 

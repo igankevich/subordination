@@ -336,6 +336,21 @@ namespace sysx {
 		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
 	}
 
+	struct Auto_check_endiannes {
+		Auto_check_endiannes() {
+			union Endian {
+				constexpr Endian() {}
+				uint32_t i = UINT32_C(1);
+				uint8_t b[4];
+			} endian;
+			if ((bits::is_network_byte_order() && endian.b[0] != 0)
+				|| (!bits::is_network_byte_order() && endian.b[0] != 1))
+			{
+				throw std::runtime_error("endiannes was not correctly determined at compile time");
+			}
+		}
+	};
+
 }
 
 #endif // SYSX_NETWORK_FORMAT_HH

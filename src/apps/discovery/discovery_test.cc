@@ -102,8 +102,7 @@ struct Main: public Kernel {
 			const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
 			const sysx::endpoint bind_addr(_network.address(), _port);
 			this_server.remote_server()->bind(bind_addr, netmask);
-			const auto default_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 3;
-			const auto start_delay = sysx::this_process::getenv("START_DELAY", default_delay);
+			const auto start_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 3;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sysx::to_host_format(_network.address().rep()));
 			this_server.factory()->instances().register_instance(master);

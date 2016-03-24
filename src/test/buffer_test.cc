@@ -1,4 +1,4 @@
-#include <sysx/security.hh>
+#include <apps/factory/security.hh>
 #include <sysx/fildesbuf.hh>
 #include <sysx/packetstream.hh>
 #include <factory/error.hh>
@@ -40,32 +40,6 @@ struct Test_fildesbuf: public test::Test<Test_fildesbuf<T,Fd>> {
 		}
 	}
 
-};
-
-template<class T>
-struct Test_filterbuf: public test::Test<Test_filterbuf<T>> {
-
-	void xrun() override {
-		using namespace factory::components;
-		const size_t MAX_K = 1 << 20;
-		for (size_t k=1; k<=MAX_K; k<<=1) {
-			std::basic_string<T> contents = test::random_string<T>(k, 0, 31);
-			std::basic_stringstream<T> out;
-			std::basic_streambuf<T>* orig = out.rdbuf();
-			out.std::template basic_ostream<T>::rdbuf(new sysx::filterbuf<T>(orig));
-			out << contents;
-			std::basic_string<T> result = out.str();
-			std::size_t cnt = std::count_if(result.begin(), result.end(), [] (T ch) {
-				return ch != '\r' && ch != '\n';
-			});
-			if (cnt > 0) {
-				std::stringstream msg;
-				msg << "output stream is not properly filtered: rdbuf='"
-					<< out.rdbuf() << '\'';
-				throw Error(msg.str(), __FILE__, __LINE__, __func__);
-			}
-		}
-	}
 };
 
 template<class T, class Fd=sysx::fildes>
@@ -146,8 +120,6 @@ int main() {
 	return test::Test_suite{
 		new Test_fildesbuf<char, std::basic_stringbuf<char>>,
 		new Test_fildesbuf<unsigned char, std::basic_stringbuf<unsigned char>>,
-		new Test_filterbuf<char>,
-		new Test_filterbuf<unsigned char>,
 		new Test_packetbuf<char, std::basic_stringbuf<char>>,
 		new test_packetstream<char, std::basic_stringbuf<char>>
 	}.run();
