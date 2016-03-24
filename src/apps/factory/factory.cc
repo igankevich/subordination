@@ -9,16 +9,21 @@ proceed_with_security_checks_or_exit() {
 	factory::close_all_file_descriptors();
 }
 
+int
+bail_out() {
+	std::cerr << "The environment has not passed minimal security checks. Exiting." << std::endl;
+	return 1;
+}
+
 int main() {
 	try {
 		proceed_with_security_checks_or_exit();
 	} catch (sysx::bits::bad_call& err) {
 		std::cerr << err << std::endl;
-		std::cerr << "The environment has not passed minimal security checks. Exiting." << std::endl;
+		return bail_out();
 	} catch (std::exception& err) {
 		std::cerr << err.what() << std::endl;
-		std::cerr << "The environment has not passed minimal security checks. Exiting." << std::endl;
-		return 1;
+		return bail_out();
 	}
 	return 0;
 }
