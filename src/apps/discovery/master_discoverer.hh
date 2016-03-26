@@ -38,7 +38,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	void
 	react(Server& this_server, Kernel* k) override {
 		if (_negotiator == k) {
-			if (k->result() == Result::SUCCESS) {
+			if (k->result() == Result::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
 				this_log() << "hierarchy: " << _hierarchy << std::endl;
 				_negotiator = nullptr;
@@ -52,7 +52,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			log << "secret agent returned from "
 				<< k->from() << ": " << k->result()
 				<< std::endl;
-			if (k->result() == Result::ENDPOINT_NOT_CONNECTED) {
+			if (k->result() == Result::endpoint_not_connected) {
 				_hierarchy.unset_principal();
 				log << "hierarchy: " << _hierarchy << std::endl;
 				try_next_host(this_server);

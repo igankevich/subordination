@@ -25,7 +25,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 	negotiate(Server& this_server, Hierarchy& hierarchy) {
 		const sysx::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
-		this->result(Result::SUCCESS);
+		this->result(Result::success);
 		if (_newprinc == this_addr) {
 			// principal becomes subordinate
 			if (this->from() == hierarchy.principal()) {
@@ -33,17 +33,17 @@ struct Negotiator: public Priority_kernel<Kernel> {
 					hierarchy.unset_principal();
 				} else {
 					// root tries to swap with its subordinate
-					this->result(Result::USER_ERROR);
+					this->result(Result::error);
 				}
 			}
-			if (this->result() != Result::USER_ERROR) {
+			if (this->result() != Result::error) {
 				hierarchy.add_subordinate(this->from());
 			}
 		} else
 		if (_oldprinc == this_addr) {
 			// something fancy is going on
 			if (this->from() == hierarchy.principal()) {
-				this->result(Result::USER_ERROR);
+				this->result(Result::error);
 			} else {
 				hierarchy.remove_subordinate(this->from());
 			}
@@ -110,7 +110,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 		if (_numsent == 1) {
 			this_log() << "Tried " << k->from() << ": " << k->result() << std::endl;
 			this->result(k->result());
-			if (k->result() == Result::SUCCESS and _oldprinc) {
+			if (k->result() == Result::success and _oldprinc) {
 				finished = false;
 				send_negotiator(this_server, _oldprinc);
 			}

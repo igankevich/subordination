@@ -18,25 +18,20 @@ namespace factory {
 		typedef uint16_t result_type;
 
 		enum struct Result: result_type {
-			SUCCESS = 0,
-			UNDEFINED = 1,
-			ENDPOINT_NOT_CONNECTED = 3,
-			NO_UPSTREAM_SERVERS_LEFT = 4,
-			NO_PRINCIPAL_FOUND = 5,
-			USER_ERROR = 6,
-			FATAL_ERROR = 7
+			success = 0,
+			undefined = 1,
+			error = 2,
+			endpoint_not_connected = 3,
+			no_principal_found = 4
 		};
 
 		inline std::ostream&
 		operator<<(std::ostream& out, Result rhs) {
 			switch (rhs) {
-				case Result::SUCCESS: out << "success"; break;
-				case Result::UNDEFINED: out << "undefined"; break;
-				case Result::ENDPOINT_NOT_CONNECTED: out << "endpoint_not_connected"; break;
-				case Result::NO_UPSTREAM_SERVERS_LEFT: out << "no_upstream_servers_left"; break;
-				case Result::NO_PRINCIPAL_FOUND: out << "no_principal_found"; break;
-				case Result::USER_ERROR: out << "user_error"; break;
-				case Result::FATAL_ERROR: out << "fatal_error"; break;
+				case Result::success: out << "success"; break;
+				case Result::undefined: out << "undefined"; break;
+				case Result::endpoint_not_connected: out << "endpoint_not_connected"; break;
+				case Result::no_principal_found: out << "no_principal_found"; break;
 				default: out << "unknown_result";
 			}
 			return out;
@@ -156,7 +151,7 @@ namespace factory {
 
 		private:
 
-			Result _result = Result::UNDEFINED;
+			Result _result = Result::undefined;
 			Time_point _at = Time_point(Duration::zero());
 			Flags _flags = 0;
 
@@ -334,17 +329,17 @@ namespace factory {
 
 			bool
 			moves_upstream() const noexcept {
-				return this->result() == Result::UNDEFINED && !_principal && _parent;
+				return this->result() == Result::undefined && !_principal && _parent;
 			}
 
 			bool
 			moves_downstream() const noexcept {
-				return this->result() != Result::UNDEFINED && _principal && _parent;
+				return this->result() != Result::undefined && _principal && _parent;
 			}
 
 			bool
 			moves_somewhere() const noexcept {
-				return this->result() == Result::UNDEFINED && _principal && _parent;
+				return this->result() == Result::undefined && _principal && _parent;
 			}
 
 			bool
@@ -422,7 +417,7 @@ namespace factory {
 					_principal->_server = &this_server;
 				}
 				switch (this->result()) {
-					case Result::UNDEFINED:
+					case Result::undefined:
 						if (_principal) {
 							_principal->react(this_server, this);
 						} else {
@@ -432,11 +427,9 @@ namespace factory {
 //							}
 						}
 						break;
-					case Result::SUCCESS:
-					case Result::ENDPOINT_NOT_CONNECTED:
-					case Result::NO_UPSTREAM_SERVERS_LEFT:
-					case Result::NO_PRINCIPAL_FOUND:
-					case Result::USER_ERROR:
+					case Result::success:
+					case Result::endpoint_not_connected:
+					case Result::no_principal_found:
 					default:
 						this_log() << "Result is defined" << std::endl;
 						if (!_principal) {
@@ -449,7 +442,7 @@ namespace factory {
 						} else {
 							this_log() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
-							if (this->result() == Result::SUCCESS) {
+							if (this->result() == Result::success) {
 								_principal->react(this_server, this);
 								this_log() << "Principal end react" << std::endl;
 							} else {
@@ -529,13 +522,13 @@ namespace factory {
 			void
 			downstream(S* this_server, Principal* a, Principal* b) {
 				a->principal(b);
-				this->result(Result::SUCCESS);
+				this->result(Result::success);
 				this_server->send(a);
 			}
 
 			template<class S>
 			void
-			commit(S* srv, Result res = Result::SUCCESS) {
+			commit(S* srv, Result res = Result::success) {
 				this->principal(_parent);
 				this->result(res);
 				srv->send(this);

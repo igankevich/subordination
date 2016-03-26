@@ -231,7 +231,7 @@ namespace factory {
 				} else if (k->principal_id()) {
 					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
 					if (p == nullptr) {
-						k->result(Result::NO_PRINCIPAL_FOUND);
+						k->result(Result::no_principal_found);
 						ok = false;
 					}
 					k->principal(p);
@@ -255,7 +255,7 @@ namespace factory {
 					this->parent()->send(k);
 				} else if (k->moves_somewhere()) {
 					k->from(k->to());
-					k->result(Result::ENDPOINT_NOT_CONNECTED);
+					k->result(Result::endpoint_not_connected);
 					k->principal(k->parent());
 					this->root()->send(k);
 				} else if (k->moves_downstream() and k->carries_parent()) {
