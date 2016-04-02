@@ -58,15 +58,6 @@ namespace sysx {
 
 		basic_fildesbuf(basic_fildesbuf&& rhs) = default;
 
-		virtual
-		~basic_fildesbuf() {
-			/**
-			NB: for now full sync is not guaranteed for non-blocking I/O
-			because it may result in infinite loop
-			*/
-			sync();
-		}
-
 		int_type
 		underflow() override {
 			assert(gptr() == egptr());
@@ -86,7 +77,7 @@ namespace sysx {
 					pbump(1);
 				}
 			} else {
-				sync();
+				do_flush();
 			}
 			return c;
 		}
@@ -98,16 +89,7 @@ namespace sysx {
 
 		int
 		sync() override {
-			const std::streamsize m = pptr() - pbase();
-			const std::streamsize n = streambuf_traits_type::write(_fd, pbase(), m);
-			const bool success = n==m;
-			if (success) {
-				setp(pfirst(), plast());
-			} else if (n >= 0) {
-				setp(pbase()+n, epptr());
-				pbump(m-n);
-			}
-			return success ? 0 : -1;
+			return do_flush();
 		}
 
 		pos_type
@@ -189,6 +171,20 @@ namespace sysx {
 				}
 			}
 			return first - (eback() + old_egptr_offset);
+		}
+
+		std::streamsize
+		do_flush() {
+			const std::streamsize m = pptr() - pbase();
+			const std::streamsize n = streambuf_traits_type::write(_fd, pbase(), m);
+			const bool success = n==m;
+			if (success) {
+				setp(pfirst(), plast());
+			} else if (n >= 0) {
+				setp(pbase()+n, epptr());
+				pbump(m-n);
+			}
+			return n==-1 ? 0 : n;
 		}
 
 	protected:
