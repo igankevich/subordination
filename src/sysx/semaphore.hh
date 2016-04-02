@@ -24,7 +24,7 @@
 #include <condition_variable>
 #include <cassert>
 
-#include <stdx/unlock_guard.hh>
+#include <stdx/mutex.hh>
 
 #include <sysx/fildes.hh>
 #include <sysx/process.hh>

@@ -13,6 +13,7 @@
 #endif
 
 #include <stdx/log.hh>
+#include <stdx/mutex.hh>
 
 #include <sysx/fildes.hh>
 #include <sysx/endpoint.hh>

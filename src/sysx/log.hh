@@ -6,6 +6,8 @@
 
 #include <syslog.h>
 
+#include <stdx/mutex.hh>
+
 #include <sysx/process.hh>
 
 namespace sysx {

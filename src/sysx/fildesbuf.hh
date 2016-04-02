@@ -8,7 +8,7 @@
 #include <sysx/fildes.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/log.hh>
-#include <stdx/streambuf_traits.hh>
+#include <stdx/streambuf.hh>
 
 namespace sysx {
 

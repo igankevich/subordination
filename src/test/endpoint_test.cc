@@ -2,7 +2,7 @@
 
 #include <sysx/endpoint.hh>
 #include <sysx/packetstream.hh>
-#include <stdx/n_random_bytes.hh>
+#include <stdx/random.hh>
 
 #include "test.hh"
 

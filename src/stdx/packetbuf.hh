@@ -79,6 +79,7 @@ namespace stdx {
 			_packetpos = pos1;
 			_payloadpos = pos2;
 			_packetsize = n;
+			#ifndef NDEBUG
 			if (not (_payloadpos <= _packetpos + n)) {
 				typedef stdx::log<basic_packetbuf> this_log;
 				this_log() << "packet " << _packetpos
@@ -86,6 +87,7 @@ namespace stdx {
 					<< ',' << _packetsize
 					<< std::endl;
 			}
+			#endif
 			assert(_packetpos <= _payloadpos);
 			assert(_payloadpos <= _packetpos + n);
 		}

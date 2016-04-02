@@ -5,7 +5,7 @@
 #include <cassert>
 
 #include <stdx/log.hh>
-#include <stdx/front_popper.hh>
+#include <stdx/iterator.hh>
 
 #include <sysx/process.hh>
 #include <sysx/pipe.hh>

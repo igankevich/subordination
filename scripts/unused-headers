@@ -1,0 +1,22 @@
+#!/bin/sh
+
+rootdir=$(dirname $0)/..
+
+usedheaders=$(mktemp)
+allheaders=$(mktemp)
+
+(cd $rootdir/build && ninja -t deps |
+while read line; do
+	if test -f "$line"; then
+		echo $line
+	fi
+done |
+sort |
+uniq |
+grep '\.hh') > $usedheaders
+
+(cd $rootdir/src && find ../src -type f -name '*.hh' | sort | uniq) > $allheaders
+
+diff $usedheaders $allheaders
+
+rm $usedheaders $allheaders

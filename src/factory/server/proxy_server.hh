@@ -1,10 +1,9 @@
 #ifndef FACTORY_SERVER_PROXY_SERVER_HH
 #define FACTORY_SERVER_PROXY_SERVER_HH
 
-#include <stdx/for_each.hh>
-#include <stdx/field_iterator.hh>
-#include <stdx/front_popper.hh>
-#include <stdx/unlock_guard.hh>
+#include <stdx/algorithm.hh>
+#include <stdx/iterator.hh>
+#include <stdx/mutex.hh>
 
 #include <sysx/event.hh>
 #include <sysx/packetstream.hh>

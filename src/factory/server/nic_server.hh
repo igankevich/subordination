@@ -4,10 +4,9 @@
 #include <map>
 #include <type_traits>
 
-#include <stdx/for_each.hh>
-#include <stdx/field_iterator.hh>
-#include <stdx/front_popper.hh>
-#include <stdx/unlock_guard.hh>
+#include <stdx/algorithm.hh>
+#include <stdx/iterator.hh>
+#include <stdx/mutex.hh>
 
 #include <sysx/event.hh>
 #include <sysx/socket.hh>
@@ -181,8 +180,7 @@ namespace factory {
 				return out << stdx::make_fields(
 					"vaddr", rhs.vaddr(),
 					"socket", rhs.socket(),
-					"kernels", rhs._sentupstream.size(),
-					"stream", stdx::debug_stream(rhs._stream)
+					"kernels", rhs._sentupstream.size()
 				);
 			}
 
@@ -565,20 +563,6 @@ namespace factory {
 				}
 				return ret;
 			}
-
-			struct print_values {
-				explicit print_values(const upstream_type& rhs): map(rhs) {}
-				friend std::ostream& operator<<(std::ostream& out, const print_values& rhs) {
-					out << '{';
-					std::copy(stdx::field_iter<1>(rhs.map.begin()),
-						stdx::field_iter<1>(rhs.map.end()),
-						stdx::intersperse_iterator<server_type>(out, ","));
-					out << '}';
-					return out;
-				}
-			private:
-				const upstream_type& map;
-			};
 
 			server_type* connect_to_server(sysx::endpoint addr, sysx::poll_event::legacy_event events) {
 				// bind to server address with ephemeral port

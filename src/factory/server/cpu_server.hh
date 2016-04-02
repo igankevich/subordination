@@ -1,7 +1,7 @@
 #ifndef FACTORY_SERVER_CPU_SERVER_HH
 #define FACTORY_SERVER_CPU_SERVER_HH
 
-#include <stdx/unlock_guard.hh>
+#include <stdx/mutex.hh>
 #include <sysx/system.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>

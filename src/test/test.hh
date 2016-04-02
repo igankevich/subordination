@@ -23,8 +23,8 @@
 #include <cxxabi.h>
 #endif
 
-#include <stdx/n_random_bytes.hh>
-#include <stdx/front_popper.hh>
+#include <stdx/random.hh>
+#include <stdx/iterator.hh>
 
 #include <sysx/network_format.hh>
 

@@ -4,7 +4,7 @@
 #include <fcntl.h>
 
 #include <mutex>
-#include <stdx/spin_mutex.hh>
+#include <stdx/mutex.hh>
 
 namespace sysx {
 

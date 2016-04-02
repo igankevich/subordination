@@ -1,6 +1,7 @@
 #include "lbuffer.hh"
 #include <factory/error.hh>
 #include <sysx/bits/buffer_category.hh>
+#include "websocket.hh"
 
 #include "test.hh"
 #include "datum.hh"

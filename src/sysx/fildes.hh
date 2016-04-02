@@ -9,7 +9,7 @@
 #include <sysx/bits/check.hh>
 #include <sysx/bits/safe_calls.hh>
 
-#include <stdx/streambuf_traits.hh>
+#include <stdx/streambuf.hh>
 
 namespace sysx {
 

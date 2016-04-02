@@ -12,7 +12,7 @@
 #include <limits>
 
 #include <stdx/uint128.hh>
-#include <stdx/iosx.hh>
+#include <stdx/ios.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/bits/endpoint_parse.hh>

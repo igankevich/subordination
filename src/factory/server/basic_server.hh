@@ -5,14 +5,16 @@
 #include <queue>
 #include <cassert>
 
-#include <factory/managed_object.hh>
-#include <factory/type.hh>
+#include <stdx/algorithm.hh>
+#include <stdx/iterator.hh>
+#include <stdx/mutex.hh>
+
 #include <sysx/semaphore.hh>
 #include <sysx/endpoint.hh>
 #include <sysx/system.hh>
-#include <stdx/for_each.hh>
-#include <stdx/back_inserter.hh>
-#include <stdx/front_popper.hh>
+
+#include <factory/managed_object.hh>
+#include <factory/type.hh>
 
 namespace factory {
 
@@ -261,10 +263,13 @@ namespace factory {
 			void
 			wait() override {
 				base_server::wait();
-				stdx::for_each_if(
+				std::for_each(
 					_threads.begin(), _threads.end(),
-					std::mem_fn(&std::thread::joinable),
-					std::mem_fn(&std::thread::join)
+					[] (std::thread& rhs) {
+						if (rhs.joinable()) {
+							rhs.join();
+						}
+					}
 				);
 			}
 

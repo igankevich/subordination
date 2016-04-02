@@ -3,9 +3,9 @@
 
 #include <algorithm>
 
-#include <stdx/intersperse_iterator.hh>
+#include <stdx/iterator.hh>
 #include <stdx/uint128.hh>
-#include <stdx/iosx.hh>
+#include <stdx/ios.hh>
 
 #include <sysx/bits/macros.hh>
 

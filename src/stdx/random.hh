@@ -1,5 +1,5 @@
-#ifndef STDX_N_RANDOM_BYTES_HH
-#define STDX_N_RANDOM_BYTES_HH
+#ifndef STDX_RANDOM_HH
+#define STDX_RANDOM_HH
 
 #include <algorithm>
 #include <functional>
@@ -76,4 +76,4 @@ namespace stdx {
 
 }
 
-#endif // STDX_N_RANDOM_BYTES_HH
+#endif // STDX_RANDOM_HH

@@ -4,17 +4,16 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <sysx/event.hh>
-#include <sysx/bits/check.hh>
-
 #include <iostream>
 #include <cmath>
 #include <vector>
 #include <iterator>
 #include <algorithm>
 
-#include <stdx/cstring_iterator.hh>
+#include <stdx/iterator.hh>
 
+#include <sysx/bits/check.hh>
+#include <sysx/event.hh>
 #include <sysx/process.hh>
 
 namespace factory {

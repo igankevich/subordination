@@ -3,6 +3,7 @@
 
 #include <factory/error.hh>
 #include <stdx/packetbuf.hh>
+#include <stdx/mutex.hh>
 #include <sysx/bits/buffer_category.hh>
 #include <sysx/sharedmem.hh>
 

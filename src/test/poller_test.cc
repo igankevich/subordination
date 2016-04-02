@@ -1,5 +1,5 @@
-#include <stdx/paired_iterator.hh>
-#include <stdx/n_random_bytes.hh>
+#include <stdx/iterator.hh>
+#include <stdx/random.hh>
 
 #include "test.hh"
 

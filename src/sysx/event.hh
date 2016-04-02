@@ -11,8 +11,8 @@
 
 #include <cassert>
 
-#include <stdx/paired_iterator.hh>
-#include <stdx/unlock_guard.hh>
+#include <stdx/iterator.hh>
+#include <stdx/mutex.hh>
 #include <stdx/log.hh>
 
 #include <sysx/bits/check.hh>

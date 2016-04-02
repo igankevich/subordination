@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <random>
 
-#include <stdx/n_random_bytes.hh>
+#include <stdx/random.hh>
 #include <sysx/network.hh>
 #include <test.hh>
 

@@ -4,7 +4,7 @@
 #include <cstddef> // offsetof
 
 #include <sysx/endpoint.hh>
-#include <stdx/n_random_bytes.hh>
+#include <stdx/random.hh>
 #include <stdx/log.hh>
 #include <factory/error.hh>
 

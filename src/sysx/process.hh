@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <stdx/log.hh>
-#include <stdx/intersperse_iterator.hh>
+#include <stdx/iterator.hh>
 
 #include <sysx/bits/check.hh>
 #include <sysx/bits/to_string.hh>

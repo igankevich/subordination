@@ -4,8 +4,8 @@
 #include <vector>
 #include <queue>
 
-#include <stdx/spin_mutex.hh>
-#include <stdx/for_each.hh>
+#include <stdx/mutex.hh>
+#include <stdx/algorithm.hh>
 #include <sysx/semaphore.hh>
 
 #include "test.hh"

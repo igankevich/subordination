@@ -5,8 +5,8 @@
 #include <unordered_map>
 
 #include <sysx/socket.hh>
-#include <factory/ext/lbuffer.hh>
-#include <factory/ext/encoding.hh>
+#include "lbuffer.hh"
+#include "encoding.hh"
 
 namespace factory {
 
@@ -24,10 +24,10 @@ namespace factory {
 
 
 	struct HTTP_headers {
-	
+
 		size_t size() const { return hdrs.size(); }
 		std::string& operator[](const std::string& key) { return hdrs[key]; }
-	
+
 		bool contain(const char* name) const {
 			return hdrs.count(name) != 0;
 		}
@@ -36,21 +36,21 @@ namespace factory {
 			auto it = hdrs.find(name);
 			return it != hdrs.end() && it->second == value;
 		}
-	
+
 		bool contain(const char* name, const char* value) const {
 			auto it = hdrs.find(name);
 			return it != hdrs.end() && it->second == value;
 		}
-	
+
 		bool contain_value(const char* name, const char* value) const {
 			auto it = hdrs.find(name);
 			return it != hdrs.end() && it->second.find(value) != std::string::npos;
 		}
-	
+
 	private:
 		std::unordered_map<std::string, std::string> hdrs;
 	};
-	
+
 	struct Web_socket: public sysx::socket {
 
 		typedef stdx::log<Web_socket> this_log;
@@ -179,7 +179,7 @@ namespace factory {
 				}
 				handshake();
 			} else {
-				Opcode opcode = Opcode::CONT_FRAME;
+				Opcode opcode = Opcode::cont_frame;
 				if (mid_buffer.empty()) {
 					this->fill();
 					size_t len = websocket_decode(recv_buffer.read_begin(),
@@ -192,7 +192,7 @@ namespace factory {
 //						<< std::setw(40) << mid_buffer << std::endl;
 					recv_buffer.ignore(len);
 				}
-				if (opcode == Opcode::CONN_CLOSE) {
+				if (opcode == Opcode::conn_close) {
 					this_log() << "Close frame" << std::endl;
 					this->close();
 				} else {
@@ -339,7 +339,7 @@ namespace factory {
 				ret = _http_headers.contain("Sec-WebSocket-Key")
 					&& _http_headers.contain("Sec-WebSocket-Version");
 			}
-			ret = ret 
+			ret = ret
 				&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
 				&& _http_headers.contain("Upgrade", "websocket")
 				&& _http_headers.contain_value("Connection", "Upgrade");
@@ -462,7 +462,7 @@ namespace factory {
 //		};
 //
 //		enum struct Role { SERVER, CLIENT };
-//		
+//
 //		explicit basic_websocketbuf(std::basic_streambuf<T>* oldbuf):
 //			_orig(oldbuf) {}
 //		~basic_websocketbuf() { delete this->_orig; }
@@ -501,7 +501,7 @@ namespace factory {
 //					this->_nread = 0;
 //					this->_orig->gbump(hdrsz);
 //					this->sets(State::READING_PAYLOAD);
-//					if (_frame.opcode() == Opcode::CONN_CLOSE) {
+//					if (_frame.opcode() == opcode::conn_close) {
 //						this_log() << "Close frame" << std::endl;
 //						return traits_type::eof();
 //					}
@@ -537,7 +537,7 @@ namespace factory {
 ////			}
 ////			if (this->state() == State::WRITING_FRAME) {
 ////				this->_frame = {};
-////				this->_frame.opcode(Opcode::BINARY_FRAME);
+////				this->_frame.opcode(opcode::binary_frame);
 ////				this->_frame.fin(1);
 ////				this->_frame.payload_size(input_size);
 ////				this->_frame.mask(components::rng());
@@ -679,7 +679,7 @@ namespace factory {
 //				ret = _http_headers.contain("Sec-WebSocket-Key")
 //					&& _http_headers.contain("Sec-WebSocket-Version");
 //			}
-//			ret = ret 
+//			ret = ret
 //				&& _http_headers.contain("Sec-WebSocket-Protocol", "binary")
 //				&& _http_headers.contain("Upgrade", "websocket")
 //				&& _http_headers.contain_value("Connection", "Upgrade");
