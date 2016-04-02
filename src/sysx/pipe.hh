@@ -12,18 +12,22 @@
 
 namespace sysx {
 
-	fd_type
-	safe_pipe(fd_type fds[2]) {
-		bits::global_lock_type lock(bits::__forkmutex);
-		int ret = ::pipe(fds);
-		if (ret != -1) {
-			bits::set_mandatory_flags(fds[0]);
-			bits::set_mandatory_flags(fds[1]);
-			#if defined(F_SETNOSIGPIPE)
-			fcntl(fds[1], F_SETNOSIGPIPE, 1);
-			#endif
+	namespace bits {
+
+		fd_type
+		safe_pipe(fd_type fds[2]) {
+			bits::global_lock_type lock(bits::__forkmutex);
+			int ret = ::pipe(fds);
+			if (ret != -1) {
+				bits::set_mandatory_flags(fds[0]);
+				bits::set_mandatory_flags(fds[1]);
+				#if defined(F_SETNOSIGPIPE)
+				fcntl(fds[1], F_SETNOSIGPIPE, 1);
+				#endif
+			}
+			return ret;
 		}
-		return ret;
+
 	}
 
 	union pipe {
@@ -67,7 +71,7 @@ namespace sysx {
 
 		void open() {
 			this->close();
-			bits::check(safe_pipe(this->_rawfds),
+			bits::check(bits::safe_pipe(this->_rawfds),
 				__FILE__, __LINE__, __func__);
 		}
 
