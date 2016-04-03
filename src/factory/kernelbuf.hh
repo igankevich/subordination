@@ -61,9 +61,9 @@ namespace factory {
 		basic_kernelbuf(Args&& ... args):
 		Base(std::forward<Args>(args)...) {}
 
-		std::streamsize
-		fill() override {
-			std::streamsize ret = Base::fill();
+		int
+		sync() override {
+			int ret = Base::sync();
 			this->debug_state(__func__);
 			return ret;
 		}

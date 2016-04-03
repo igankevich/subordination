@@ -58,10 +58,10 @@ struct Test_packetbuf: public test::Test<Test_packetbuf<T,Fd>> {
 			buf.begin_packet();
 			out << contents;
 			buf.end_packet();
-			buf.sync();
+			buf.pubsync();
 			std::basic_istream<T> in(&buf);
 			std::basic_string<T> result(k, '_');
-			buf.fill();
+			buf.pubsync();
 			buf.read_packet();
 			in.read(&result[0], k);
 			if (in.gcount() < k) {
@@ -105,7 +105,7 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 
 			test::equal(str.tellg(), 0, "buffer is not empty before read");
 
-			str.fill();
+			str.sync();
 			std::for_each(output.begin(), output.end(), [&str] (Datum& rhs) {
 				str.read_packet();
 				str >> rhs;

@@ -42,8 +42,8 @@ namespace sysx {
 		}
 
 		void
-		fill() {
-			_buf->pubfill();
+		sync() {
+			_buf->pubsync();
 		}
 
 		void

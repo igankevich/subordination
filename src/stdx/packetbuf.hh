@@ -10,14 +10,14 @@
 namespace stdx {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
-	struct basic_packetbuf: public basic_streambuf<Ch,Tr> {
+	struct basic_packetbuf: public std::basic_streambuf<Ch,Tr> {
 
-		using typename basic_streambuf<Ch,Tr>::pos_type;
-		using typename basic_streambuf<Ch,Tr>::off_type;
-		using typename basic_streambuf<Ch,Tr>::char_type;
-		using basic_streambuf<Ch,Tr>::eback;
-		using basic_streambuf<Ch,Tr>::egptr;
-		using basic_streambuf<Ch,Tr>::setg;
+		using typename std::basic_streambuf<Ch,Tr>::pos_type;
+		using typename std::basic_streambuf<Ch,Tr>::off_type;
+		using typename std::basic_streambuf<Ch,Tr>::char_type;
+		using std::basic_streambuf<Ch,Tr>::eback;
+		using std::basic_streambuf<Ch,Tr>::egptr;
+		using std::basic_streambuf<Ch,Tr>::setg;
 		typedef std::streamsize size_type;
 
 		virtual void

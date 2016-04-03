@@ -82,14 +82,12 @@ namespace sysx {
 			return c;
 		}
 
-		std::streamsize
-		fill() override {
-			return do_fill();
-		}
-
 		int
 		sync() override {
-			return do_flush();
+			int ret = 0;
+			ret |= do_flush()==-1 ? -1 : 0;
+			ret |= do_fill()==-1 ? -1 : 0;
+			return ret;
 		}
 
 		pos_type

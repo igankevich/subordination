@@ -231,7 +231,7 @@ namespace factory {
 					);
 					assert(!event.out() || event.hup());
 					if (event.in()) {
-						_istream.fill();
+						_istream.sync();
 						while (_istream.read_packet()) {
 							read_and_receive_kernel();
 						}

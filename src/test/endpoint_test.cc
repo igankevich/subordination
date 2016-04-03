@@ -176,18 +176,24 @@ struct Test_endpoint {
 		// write
 		stdx::packetbuf buf;
 		sysx::packetstream os(&buf);
-		std::for_each(addrs.begin(), addrs.end(), [&os] (const sysx::endpoint& rhs) {
-			os.begin_packet();
-			os << rhs;
-			os.end_packet();
-		});
+		std::for_each(
+			addrs.begin(), addrs.end(),
+			[&os] (const sysx::endpoint& rhs) {
+				os.begin_packet();
+				os << rhs;
+				os.end_packet();
+			}
+		);
 
 		// read
 		std::vector<sysx::endpoint> addrs2(addrs.size());
-		std::for_each(addrs2.begin(), addrs2.end(), [&os] (sysx::endpoint& rhs) {
-			os.fill();
-			os >> rhs;
-		});
+		std::for_each(
+			addrs2.begin(), addrs2.end(),
+			[&os] (sysx::endpoint& rhs) {
+				os.sync();
+				os >> rhs;
+			}
+		);
 
 		if (addrs.size() != addrs2.size()) {
 			std::stringstream msg;

@@ -282,7 +282,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 		}
 		stream.flush();
 		for (size_t i=0; i<count; ++i) {
-			stream.fill();
+			stream.sync();
 			stream >> result[i];
 			test::equal(static_cast<bool>(stream), true, "can not read kernel",
 				"i=", i, ", rdstate=", stream.rdstate());

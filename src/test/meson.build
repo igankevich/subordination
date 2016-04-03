@@ -38,15 +38,15 @@ test(
 	)
 )
 
-test(
-	'shmem',
-	executable(
-		'shmem-test',
-		sources: 'shmem_test.cc',
-		dependencies: threads,
-		include_directories: srcdir
-	)
-)
+#test(
+#	'shmem',
+#	executable(
+#		'shmem-test',
+#		sources: 'shmem_test.cc',
+#		dependencies: threads,
+#		include_directories: srcdir
+#	)
+#)
 
 test(
 	'locks',

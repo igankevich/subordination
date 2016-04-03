@@ -13,10 +13,10 @@
 #include <sysx/packetstream.hh>
 #include <sysx/endpoint.hh>
 #include <sysx/network.hh>
+#include <sysx/fildesbuf.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>
-#include <sysx/fildesbuf.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 
@@ -131,19 +131,15 @@ namespace factory {
 
 			void
 			handle(sysx::poll_event& event) {
-				if (_packetbuf.dirty()) {
-					event.setrev(sysx::poll_event::Out);
+				if (not event.hup()) {
+					_stream.clear();
+					_stream.sync();
 				}
 				if (event.in()) {
-					_stream.clear();
-					_stream.fill();
 					kernel_type* kernel = nullptr;
 					while (_stream >> kernel) {
 						receive_kernel(kernel);
 					}
-				}
-				if (event.out() && !event.hup()) {
-					_stream.flush();
 				}
 			}
 
@@ -168,7 +164,7 @@ namespace factory {
 
 			void
 			socket(sysx::socket&& rhs) {
-				_packetbuf.pubfill();
+				_packetbuf.pubsync();
 				_packetbuf.setfd(socket_type(std::move(rhs)));
 			}
 

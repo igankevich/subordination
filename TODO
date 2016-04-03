@@ -56,6 +56,7 @@ Factory daemon
 - Close fds other than 0, 1, 2 on startup (use getrlimit to determine maximum count and poll to process them in batches).
 
 Current
+- implement streambuf_traits::move via splice(2) system call
 - Hierarchical logs.
 - Hierarchical kernel IDs. Kernel carries min and max id assigned to it.
 - Move to GIT.
