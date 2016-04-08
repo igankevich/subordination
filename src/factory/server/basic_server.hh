@@ -62,66 +62,8 @@ namespace factory {
 			stopped
 		};
 
-		struct Resident {
-
-			Resident() = default;
-			virtual ~Resident() = default;
-
-			virtual void
-			start() {
-				setstate(server_state::started);
-			}
-
-			virtual void
-			shutdown() {
-				setstate(server_state::stopping);
-			}
-
-			virtual void
-			stop() {
-				setstate(server_state::stopped);
-			}
-
-			virtual void
-			wait() {}
-
-			void
-			setstate(server_state rhs) noexcept {
-				_state = rhs;
-			}
-
-			bool
-			stopped() const noexcept {
-				return _state == server_state::stopped;
-			}
-
-			bool
-			stopping() const noexcept {
-				return _state == server_state::stopping;
-			}
-
-			bool
-			started() const noexcept {
-				return _state == server_state::started;
-			}
-
-			void
-			set_global_context(Global_thread_context* rhs) noexcept {
-				_globalcon = rhs;
-			}
-
-			Global_thread_context*
-			global_context() noexcept {
-				return _globalcon;
-			}
-
-		private:
-			volatile server_state _state = server_state::initial;
-			Global_thread_context* _globalcon = nullptr;
-		};
-
 		template<class Config>
-		struct Server: public Resident {
+		struct Server {
 
 			typedef typename Config::kernel kernel_type;
 			typedef typename Config::factory factory_type;
@@ -131,7 +73,7 @@ namespace factory {
 			typedef typename Config::app_server App_server;
 
 			Server() = default;
-			~Server() = default;
+			virtual ~Server() = default;
 			Server(Server&&) = default;
 			Server(const Server&) = delete;
 			Server& operator=(Server&) = delete;
@@ -181,9 +123,57 @@ namespace factory {
 			Timer_server* timer_server() { return _root->timer_server(); }
 			App_server* app_server() { return _root->app_server(); }
 
+			virtual Global_thread_context*
+			global_context() noexcept {
+				Server* rt = root();
+				return rt == this ? nullptr : rt->global_context();
+			}
+
+			virtual void
+			start() {
+				setstate(server_state::started);
+			}
+
+			virtual void
+			shutdown() {
+				setstate(server_state::stopping);
+			}
+
+			virtual void
+			stop() {
+				setstate(server_state::stopped);
+			}
+
+			virtual void
+			wait() {}
+
+			void
+			setstate(server_state rhs) noexcept {
+				_state = rhs;
+			}
+
+			bool
+			stopped() const noexcept {
+				return _state == server_state::stopped;
+			}
+
+			bool
+			stopping() const noexcept {
+				return _state == server_state::stopping;
+			}
+
+			bool
+			started() const noexcept {
+				return _state == server_state::started;
+			}
+
+
 		protected:
+
 			factory_type* _root = nullptr;
 			Server* _parent = nullptr;
+			volatile server_state _state = server_state::initial;
+
 		};
 
 		template<

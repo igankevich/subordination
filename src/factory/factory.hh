@@ -51,14 +51,11 @@ namespace factory {
 			Basic_factory(Global_thread_context& context):
 			Auto_set_terminate_handler<Basic_factory>(this),
 			Install_syslog(std::clog),
-			_local_server(),
-			_remote_server(),
-			_timer_server()
+			_globalcon(&context)
 			{
 				Install_syslog::tee(true);
 				this->setfactory(this);
 				init_parents();
-				init_context(&context);
 			}
 
 			virtual ~Basic_factory() {}
@@ -142,6 +139,11 @@ namespace factory {
 				return Application::ROOT;
 			}
 
+			Global_thread_context*
+			global_context() noexcept override {
+				return _globalcon;
+			}
+
 		private:
 
 			void init_parents() {
@@ -150,19 +152,13 @@ namespace factory {
 				this->_timer_server.setparent(this);
 			}
 
-			void init_context(Global_thread_context* context) {
-				this->set_global_context(context);
-				this->_local_server.set_global_context(context);
-				this->_remote_server.set_global_context(context);
-				this->_timer_server.set_global_context(context);
-			}
-
 			local_server_type _local_server;
 			remote_server_type _remote_server;
 			timer_server_type _timer_server;
 			int _exitcode = 0;
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;
+			Global_thread_context* _globalcon = nullptr;
 		};
 
 		template<class Main, class Config>
