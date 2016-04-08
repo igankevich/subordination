@@ -33,7 +33,7 @@ namespace sysx {
 			int sock = check(
 				::socket(domain, type, protocol),
 				__FILE__, __LINE__, __func__);
-			#if !SOCK_NONBLOCK || !SOCK_CLOEXEC
+			#if !defined(SOCK_NONBLOCK) || !defined(SOCK_CLOEXEC)
 			set_mandatory_flags(sock);
 			#endif
 			return sock;
