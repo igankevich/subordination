@@ -28,8 +28,6 @@ inline namespace timer_config {
 		typedef components::No_server<config> remote_server;
 		typedef components::Timer_server<config> timer_server;
 		typedef components::No_server<config> app_server;
-		typedef components::No_server<config> principal_server;
-		typedef components::No_server<config> external_server;
 		typedef components::Basic_factory<config> factory;
 	};
 
@@ -71,14 +69,14 @@ struct Main: public Kernel {
 		for (size_t i=0; i<NUM_KERNELS; ++i) {
 			kernels[i] = new_sleepy_kernel(NUM_KERNELS - i, NUM_KERNELS - i);
 		}
-		this_server.timer_server()->send(kernels.data(), kernels.size());
+		factory()->timer_server()->send(kernels.data(), kernels.size());
 	}
 	void react(Server& this_server, Kernel* child) {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
 		test::equal(k->pos(), last_pos+1, "Invalid order of timed kernels");
 		++last_pos;
 		if (++count == NUM_KERNELS) {
-			commit(this_server.local_server());
+			commit(local_server());
 		}
 	}
 

@@ -20,8 +20,6 @@ namespace factory {
 			typedef components::Process_iserver<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
-			typedef components::No_server<config> principal_server;
-			typedef components::No_server<config> external_server;
 			typedef components::Basic_factory<config> factory;
 		};
 
@@ -45,8 +43,6 @@ namespace factory {
 			typedef components::Process_child_server<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
-			typedef components::No_server<config> principal_server;
-			typedef components::No_server<config> external_server;
 			typedef components::Basic_factory<config> factory;
 		};
 

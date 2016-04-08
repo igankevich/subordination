@@ -29,8 +29,6 @@ namespace factory {
 			typedef components::No_server<config> remote_server;
 			typedef components::No_server<config> timer_server;
 			typedef components::No_server<config> app_server;
-			typedef components::No_server<config> principal_server;
-			typedef components::No_server<config> external_server;
 			typedef components::Basic_factory<config> factory;
 		};
 

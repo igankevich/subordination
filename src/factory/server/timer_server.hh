@@ -44,8 +44,6 @@ namespace factory {
 			Timer_server& operator=(const Timer_server&) = delete;
 			~Timer_server() = default;
 
-			void add_cpu(size_t) {}
-
 		private:
 
 			void

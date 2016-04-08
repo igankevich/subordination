@@ -127,10 +127,8 @@ namespace factory {
 			typedef typename Config::factory factory_type;
 			typedef typename Config::local_server Local_server;
 			typedef typename Config::remote_server Remote_server;
-			typedef typename Config::external_server External_server;
 			typedef typename Config::timer_server Timer_server;
 			typedef typename Config::app_server App_server;
-			typedef typename Config::principal_server Principal_server;
 
 			Server() = default;
 			~Server() = default;
@@ -180,10 +178,8 @@ namespace factory {
 
 			Local_server* local_server() { return _root->local_server(); }
 			Remote_server* remote_server() { return _root->remote_server(); }
-			External_server* ext_server() { return _root->ext_server(); }
 			Timer_server* timer_server() { return _root->timer_server(); }
 			App_server* app_server() { return _root->app_server(); }
-			Principal_server* principal_server() { return _root->principal_server(); }
 
 		protected:
 			factory_type* _root = nullptr;

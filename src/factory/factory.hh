@@ -43,10 +43,9 @@ namespace factory {
 			typedef Server<Config> base_server;
 			using typename base_server::kernel_type;
 			typedef typename kernel_type::app_type app_type;
-			typedef typename Config::local_server Local_server;
-			typedef typename Config::remote_server Remote_server;
-			typedef typename Config::external_server External_server;
-			typedef typename Config::timer_server Timer_server;
+			typedef typename Config::local_server local_server_type;
+			typedef typename Config::remote_server remote_server_type;
+			typedef typename Config::timer_server timer_server_type;
 			typedef typename kernel_type::id_type id_type;
 
 			Basic_factory(Global_thread_context& context):
@@ -54,7 +53,6 @@ namespace factory {
 			Install_syslog(std::clog),
 			_local_server(),
 			_remote_server(),
-			_ext_server(),
 			_timer_server()
 			{
 				Install_syslog::tee(true);
@@ -70,7 +68,6 @@ namespace factory {
 				base_server::start();
 				_local_server.start();
 				_remote_server.start();
-				_ext_server.start();
 				_timer_server.start();
 			}
 
@@ -79,14 +76,12 @@ namespace factory {
 				base_server::stop();
 				_local_server.stop();
 				_remote_server.stop();
-				_ext_server.stop();
 				_timer_server.stop();
 			}
 
 			void wait() override {
 				_local_server.wait();
 				_remote_server.wait();
-				_ext_server.wait();
 				_timer_server.wait();
 			}
 
@@ -95,17 +90,15 @@ namespace factory {
 				base_server::shutdown();
 				_local_server.shutdown();
 				_remote_server.shutdown();
-				_ext_server.shutdown();
 				_timer_server.shutdown();
 				stop();
 			}
 
 			void send(kernel_type* k) override { this->_local_server.send(k); }
 
-			Local_server* local_server() { return &_local_server; }
-			Remote_server* remote_server() { return &_remote_server; }
-			External_server* ext_server() { return &_ext_server; }
-			Timer_server* timer_server() { return &_timer_server; }
+			local_server_type* local_server() { return &_local_server; }
+			remote_server_type* remote_server() { return &_remote_server; }
+			timer_server_type* timer_server() { return &_timer_server; }
 
 			void
 			run(int argc, char* argv[]) {
@@ -154,21 +147,19 @@ namespace factory {
 			void init_parents() {
 				this->_local_server.setparent(this);
 				this->_remote_server.setparent(this);
-				this->_ext_server.setparent(this);
 				this->_timer_server.setparent(this);
 			}
 
 			void init_context(Global_thread_context* context) {
+				this->set_global_context(context);
 				this->_local_server.set_global_context(context);
 				this->_remote_server.set_global_context(context);
-				this->_ext_server.set_global_context(context);
 				this->_timer_server.set_global_context(context);
 			}
 
-			Local_server _local_server;
-			Remote_server _remote_server;
-			External_server _ext_server;
-			Timer_server _timer_server;
+			local_server_type _local_server;
+			remote_server_type _remote_server;
+			timer_server_type _timer_server;
 			int _exitcode = 0;
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;
