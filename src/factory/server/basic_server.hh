@@ -13,7 +13,6 @@
 #include <sysx/endpoint.hh>
 #include <sysx/system.hh>
 
-#include <factory/managed_object.hh>
 #include <factory/type.hh>
 
 namespace factory {
@@ -86,12 +85,6 @@ namespace factory {
 			virtual void
 			wait() {}
 
-			// TODO: boilerplate :(
-			virtual sysx::endpoint
-			addr() const {
-				return sysx::endpoint();
-			}
-
 			void
 			setstate(server_state rhs) noexcept {
 				_state = rhs;
@@ -159,10 +152,30 @@ namespace factory {
 			}
 
 			void
-			setparent(Server* rhs) noexcept {
+			setparent(Server* rhs) {
 				if (rhs) {
 					setfactory(rhs->_root);
 				}
+				if (rhs != this) {
+					_parent = rhs;
+				}
+			}
+
+			inline Server*
+			parent() const noexcept {
+				return _parent;
+			}
+
+			inline Server*
+			root() noexcept {
+				return _parent
+					? _parent->root()
+					: this;
+			}
+
+			inline const Server*
+			root() const noexcept {
+				return _parent ? _parent->root() : this;
 			}
 
 			Local_server* local_server() { return _root->local_server(); }
@@ -174,6 +187,7 @@ namespace factory {
 
 		protected:
 			factory_type* _root = nullptr;
+			Server* _parent = nullptr;
 		};
 
 		template<
@@ -184,7 +198,7 @@ namespace factory {
 			class Lock=std::unique_lock<Mutex>,
 			class Semaphore=sysx::thread_semaphore
 		>
-		struct Server_with_pool: public Managed_object<Server<T>> {
+		struct Server_with_pool: public Server<T> {
 
 			typedef Server<T> base_server;
 			using typename base_server::kernel_type;
@@ -351,20 +365,11 @@ namespace factory {
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
 		template<class Unused>
-		struct No_server: public Managed_object<Server<Unused>> {
+		struct No_server: public Server<Unused> {
 			using typename Server<Unused>::kernel_type;
 			void send(kernel_type*) override {}
 			template<class ... Args>
 			void forward(Args&& ...) {}
-			void
-			setparent(Managed_object<Server<Unused>>*) override {}
-			Category
-			category() const noexcept override {
-				return Category{
-					"no_server",
-					[] () { return new No_server; }
-				};
-			}
 		};
 	}
 

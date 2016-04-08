@@ -27,7 +27,7 @@ namespace factory {
 	inline namespace this_config {
 
 		struct config {
-			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Server<config> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
@@ -47,7 +47,7 @@ namespace factory {
 	inline namespace this_config {
 
 		struct config {
-			typedef components::Managed_object<components::Server<config>> server;
+			typedef components::Server<config> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::Sub_Iserver<config> remote_server;

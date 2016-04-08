@@ -31,7 +31,7 @@ namespace factory {
 
 		template<class Config>
 		struct Basic_factory:
-		public Managed_set<Server<Config>>,
+		public Server<Config>,
 //		private sysx::Disable_sync_with_stdio,
 		private sysx::Auto_check_endiannes,
 //		private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
@@ -40,9 +40,8 @@ namespace factory {
 		public sysx::Install_syslog
 		{
 
-			typedef Managed_set<Server<Config>> base_server;
+			typedef Server<Config> base_server;
 			using typename base_server::kernel_type;
-			using typename base_server::for_each_func_type;
 			typedef typename kernel_type::app_type app_type;
 			typedef typename Config::local_server Local_server;
 			typedef typename Config::remote_server Remote_server;
@@ -61,19 +60,10 @@ namespace factory {
 				Install_syslog::tee(true);
 				this->setfactory(this);
 				init_parents();
-				init_names();
 				init_context(&context);
 			}
 
 			virtual ~Basic_factory() {}
-
-			Category
-			category() const noexcept override {
-				return Category{
-					"factory",
-					[] () { return nullptr; }
-				};
-			}
 
 			void
 			start() override {
@@ -154,12 +144,6 @@ namespace factory {
 				return _types;
 			}
 
-			void
-			write_recursively(std::ostream& out) const override {
-				base_server::write_recursively(out);
-				this->write_foreign(_types, "types", out);
-			}
-
 			app_type
 			app() const noexcept {
 				return Application::ROOT;
@@ -172,14 +156,6 @@ namespace factory {
 				this->_remote_server.setparent(this);
 				this->_ext_server.setparent(this);
 				this->_timer_server.setparent(this);
-			}
-
-			void init_names() {
-				this->setname("root");
-				_local_server.setname("local");
-				_remote_server.setname("remote");
-				_ext_server.setname("ext");
-				_timer_server.setname("timer");
 			}
 
 			void init_context(Global_thread_context* context) {

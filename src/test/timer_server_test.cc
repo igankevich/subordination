@@ -22,7 +22,7 @@ namespace factory {
 inline namespace timer_config {
 
 	struct config {
-		typedef components::Managed_object<components::Server<config>> server;
+		typedef components::Server<config> server;
 		typedef components::Principal<config> kernel;
 		typedef components::CPU_server<config> local_server;
 		typedef components::No_server<config> remote_server;

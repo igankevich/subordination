@@ -29,9 +29,9 @@ namespace factory {
 		class Socket,
 		class Kernels=std::deque<typename Server<T>::kernel_type*>
 		>
-		struct Remote_Rserver: public Managed_object<Server<T>> {
+		struct Remote_Rserver: public Server<T> {
 
-			typedef Managed_object<Server<T>> base_server;
+			typedef Server<T> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::factory_type;
 			typedef char Ch;
@@ -83,14 +83,6 @@ namespace factory {
 			~Remote_Rserver() {
 				this->recover_kernels();
 				this->delete_kernels();
-			}
-
-			Category
-			category() const noexcept override {
-				return Category{
-					"nic_rserver",
-					[] () { return nullptr; }
-				};
 			}
 
 			void
@@ -403,24 +395,6 @@ namespace factory {
 			inline sysx::endpoint
 			server_addr() const {
 				return _socket.bind_addr();
-			}
-
-			Category
-			category() const noexcept override {
-				return Category{
-					"nic_server",
-					[] () { return new NIC_server; },
-					{"endpoint"},
-					[] (const void* obj, Category::key_type key) {
-						const NIC_server* lhs = static_cast<const NIC_server*>(obj);
-						if (key == "endpoint") {
-							std::stringstream tmp;
-							tmp << lhs->server_addr();
-							return tmp.str();
-						}
-						return Category::value_type();
-					}
-				};
 			}
 
 		private:

@@ -270,7 +270,6 @@ namespace factory {
 			typedef Mobile_kernel base_kernel;
 			typedef Basic_kernel::Flag Flag;
 			typedef stdx::log<Principal> this_log;
-//			typedef Managed_object<Server<Principal>> server_type;
 			typedef typename Config::server server_type;
 			typedef typename Config::factory factory_type;
 			using Mobile_kernel::id_type;

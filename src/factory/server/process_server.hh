@@ -21,9 +21,9 @@ namespace factory {
 	namespace components {
 
 		template<class T, class Kernels=std::deque<typename Server<T>::kernel_type*>>
-		struct Buffered_server: public Managed_object<Server<T>> {
+		struct Buffered_server: public Server<T> {
 
-			typedef Managed_object<Server<T>> base_server;
+			typedef Server<T> base_server;
 			using typename base_server::kernel_type;
 			typedef Kernels pool_type;
 			typedef stdx::log<Buffered_server> this_log;
@@ -130,18 +130,12 @@ namespace factory {
 		template<class T>
 		struct Process_rserver: public Buffered_server<T> {
 
-//			typedef Managed_object<Server<T>> base_server;
 			typedef Buffered_server<T> base_server;
 			using typename base_server::kernel_type;
 			typedef basic_kernelbuf<sysx::fildesbuf> kernelbuf_type;
 			typedef sysx::packetstream stream_type;
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Process_rserver> this_log;
-
-			Category
-			category() const noexcept override {
-				return Category{"proc_rserver"};
-			}
 
 			Process_rserver(sysx::pid_type&& child, sysx::two_way_pipe&& pipe):
 			_childpid(child),
@@ -346,14 +340,6 @@ namespace factory {
 
 			~Process_iserver() = default;
 
-			Category
-			category() const noexcept override {
-				return Category{
-					"proc_iserver",
-					[] () { return new Process_iserver; }
-				};
-			}
-
 			void
 			remove_server(server_type* ptr) override {
 				_apps.erase(ptr->childpid());
@@ -504,14 +490,6 @@ namespace factory {
 			{}
 
 			virtual ~Process_child_server() = default;
-
-			Category
-			category() const noexcept override {
-				return Category{
-					"proc_child_server",
-					[] () { return new Process_child_server; }
-				};
-			}
 
 			void
 			remove_server(server_type* ptr) override {

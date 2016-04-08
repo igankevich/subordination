@@ -34,22 +34,6 @@ namespace factory {
 			Basic_CPU_server& operator=(const Basic_CPU_server&) = delete;
 			~Basic_CPU_server() = default;
 
-			Category
-			category() const noexcept override {
-				return Category{
-					"basic_cpu_server",
-					[] () { return new Basic_CPU_server; },
-					{"nthreads"},
-					[] (const void* obj, Category::key_type key) {
-						const Basic_CPU_server* lhs = static_cast<const Basic_CPU_server*>(obj);
-						if (key == "nthreads") {
-							return std::to_string(lhs->_threads.size());
-						}
-						return Category::value_type();
-					}
-				};
-			}
-
 		private:
 
 			void
@@ -98,22 +82,6 @@ namespace factory {
 			CPU_server(const CPU_server&) = delete;
 			CPU_server& operator=(const CPU_server&) = delete;
 			~CPU_server() = default;
-
-			Category
-			category() const noexcept override {
-				return Category{
-					"cpu_server",
-					[] () { return new CPU_server; },
-					{"nthreads"},
-					[] (const void* obj, Category::key_type key) {
-						const CPU_server* lhs = static_cast<const CPU_server*>(obj);
-						if (key == "nthreads") {
-							return std::to_string(lhs->_threads.size());
-						}
-						return Category::value_type();
-					}
-				};
-			}
 
 			void
 			send(kernel_type* kernel) override {
