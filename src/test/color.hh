@@ -1,3 +1,6 @@
+#ifndef TEST_COLOR_HH
+#define TEST_COLOR_HH
+
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -30,3 +33,5 @@ operator<<(std::ostream& os, Color rhs) {
 	if (!::isatty(STDOUT_FILENO)) return os;
     return os << "\033[" << static_cast<int>(rhs) << "m";
 }
+
+#endif // TEST_COLOR_HH

@@ -1,5 +1,5 @@
-#ifndef DATUM_HH
-#define DATUM_HH
+#ifndef TEST_DATUM_HH
+#define TEST_DATUM_HH
 
 #include <random>
 #include <chrono>
@@ -122,4 +122,4 @@ private:
 	char padding[5] = {};
 };
 
-#endif // DATUM_HH
+#endif // TEST_DATUM_HH

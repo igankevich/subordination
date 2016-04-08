@@ -6,10 +6,14 @@
 #include <fcntl.h>
 
 #if !defined(SOCK_NONBLOCK)
-	#define SOCK_NONBLOCK 0
+	#define FACTORY_SOCK_NONBLOCK 0
+#else
+	#define FACTORY_SOCK_NONBLOCK SOCK_NONBLOCK
 #endif
 #if !defined(SOCK_CLOEXEC)
-	#define SOCK_CLOEXEC 0
+	#define FACTORY_SOCK_CLOEXEC 0
+#else
+	#define FACTORY_SOCK_CLOEXEC SOCK_CLOEXEC
 #endif
 
 #include <stdx/log.hh>
@@ -25,7 +29,7 @@ namespace sysx {
 
 		int
 		safe_socket(int domain, int type, int protocol) {
-			std::lock_guard<stdx::spin_mutex> lock(__forkmutex);
+			global_lock_type lock(__forkmutex);
 			int sock = check(
 				::socket(domain, type, protocol),
 				__FILE__, __LINE__, __func__);
@@ -54,7 +58,7 @@ namespace sysx {
 		};
 
 		static const flag_type
-		DEFAULT_FLAGS = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
+		default_flags = SOCK_STREAM | FACTORY_SOCK_NONBLOCK | FACTORY_SOCK_CLOEXEC;
 
 		socket() = default;
 		socket(const socket&) = delete;
@@ -94,7 +98,7 @@ namespace sysx {
 
 		void create_socket_if_necessary() {
 			if (!*this) {
-				this->_fd = bits::safe_socket(AF_INET, DEFAULT_FLAGS, 0);
+				this->_fd = bits::safe_socket(AF_INET, default_flags, 0);
 			}
 		}
 

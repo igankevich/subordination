@@ -1,5 +1,5 @@
-#ifndef TEST_HH
-#define TEST_HH
+#ifndef TEST_TEST_HH
+#define TEST_TEST_HH
 
 #include <string>
 #include <random>
@@ -358,4 +358,4 @@ namespace std {
 	}
 }
 
-#endif // TEST_HH
+#endif // TEST_TEST_HH

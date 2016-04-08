@@ -1,5 +1,5 @@
-#ifndef APPS_DISCOVERY_PEERS_HH
-#define APPS_DISCOVERY_PEERS_HH
+#ifndef APPS_DISCOVERY_HIERARCHY_HH
+#define APPS_DISCOVERY_HIERARCHY_HH
 
 #include <map>
 #include <set>
@@ -98,4 +98,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_PEERS_HH
+#endif // APPS_DISCOVERY_HIERARCHY_HH

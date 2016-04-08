@@ -1,3 +1,6 @@
+#ifndef APPS_DISCOVERY_CACHE_GUARD_HH
+#define APPS_DISCOVERY_CACHE_GUARD_HH
+
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -59,3 +62,5 @@ namespace discovery {
 	};
 
 }
+
+#endif // APPS_DISCOVERY_CACHE_GUARD_HH

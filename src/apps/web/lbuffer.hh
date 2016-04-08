@@ -1,5 +1,5 @@
-#ifndef WEB_LBUFFER_HH
-#define WEB_LBUFFER_HH
+#ifndef APPS_WEB_LBUFFER_HH
+#define APPS_WEB_LBUFFER_HH
 
 #include <iostream>
 #include <iomanip>
@@ -159,4 +159,4 @@ namespace factory {
 
 }
 
-#endif // WEB_LBUFFER_HH
+#endif // APPS_WEB_LBUFFER_HH

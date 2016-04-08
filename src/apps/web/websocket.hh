@@ -1,5 +1,5 @@
-#ifndef WEB_WEBSOCKET_HH
-#define WEB_WEBSOCKET_HH
+#ifndef APPS_WEB_WEBSOCKET_HH
+#define APPS_WEB_WEBSOCKET_HH
 
 #include <random>
 #include <unordered_map>
@@ -812,4 +812,4 @@ namespace factory {
 
 }
 
-#endif // WEB_WEBSOCKET_HH
+#endif // APPS_WEB_WEBSOCKET_HH
