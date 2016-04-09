@@ -1,5 +1,5 @@
-#ifndef SYSX_BITS_ENDPOINT_PARSE_HH
-#define SYSX_BITS_ENDPOINT_PARSE_HH
+#ifndef SYS_BITS_ENDPOINT_PARSE_HH
+#define SYS_BITS_ENDPOINT_PARSE_HH
 
 #include <limits>
 
@@ -142,4 +142,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_BITS_ENDPOINT_PARSE_HH
+#endif // SYS_BITS_ENDPOINT_PARSE_HH

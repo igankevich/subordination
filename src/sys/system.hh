@@ -1,5 +1,5 @@
-#ifndef SYSX_SYSTEM_HH
-#define SYSX_SYSTEM_HH
+#ifndef SYS_SYSTEM_HH
+#define SYS_SYSTEM_HH
 
 #include <unistd.h>
 
@@ -38,4 +38,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_SYSTEM_HH
+#endif // SYS_SYSTEM_HH

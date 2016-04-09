@@ -1,5 +1,5 @@
-#ifndef SYSX_SEMAPHORE_HH
-#define SYSX_SEMAPHORE_HH
+#ifndef SYS_SEMAPHORE_HH
+#define SYS_SEMAPHORE_HH
 
 #include <unistd.h>
 #include <signal.h>
@@ -502,4 +502,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_SEMAPHORE_HH
+#endif // SYS_SEMAPHORE_HH

@@ -1,5 +1,5 @@
-#ifndef SYSX_CMDLINE_HH
-#define SYSX_CMDLINE_HH
+#ifndef SYS_CMDLINE_HH
+#define SYS_CMDLINE_HH
 
 #include <algorithm>
 #include <iterator>
@@ -189,4 +189,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_CMDLINE_HH
+#endif // SYS_CMDLINE_HH

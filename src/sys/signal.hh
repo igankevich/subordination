@@ -1,5 +1,5 @@
-#ifndef SYSX_SIGNAL_HH
-#define SYSX_SIGNAL_HH
+#ifndef SYS_SIGNAL_HH
+#define SYS_SIGNAL_HH
 
 #include <signal.h>
 
@@ -122,4 +122,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_SIGNAL_HH
+#endif // SYS_SIGNAL_HH

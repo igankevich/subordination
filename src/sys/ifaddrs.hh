@@ -1,5 +1,5 @@
-#ifndef SYSX_IFADDRS_HH
-#define SYSX_IFADDRS_HH
+#ifndef SYS_IFADDRS_HH
+#define SYS_IFADDRS_HH
 
 namespace sys {
 
@@ -126,4 +126,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_IFADDRS_HH
+#endif // SYS_IFADDRS_HH

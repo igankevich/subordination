@@ -1,9 +1,9 @@
-#ifndef SYSX_BITS_BUFFER_CATEGORY_HH
-#define SYSX_BITS_BUFFER_CATEGORY_HH
+#ifndef SYS_BITS_BUFFER_CATEGORY_HH
+#define SYS_BITS_BUFFER_CATEGORY_HH
 
 namespace sys {
 
 	struct buffer_category {};
 
 }
-#endif // SYSX_BITS_BUFFER_CATEGORY_HH
+#endif // SYS_BITS_BUFFER_CATEGORY_HH

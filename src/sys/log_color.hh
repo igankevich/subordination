@@ -1,5 +1,5 @@
-#ifndef SYSX_LOG_COLOR_HH
-#define SYSX_LOG_COLOR_HH
+#ifndef SYS_LOG_COLOR_HH
+#define SYS_LOG_COLOR_HH
 
 #include <unistd.h>
 
@@ -44,4 +44,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_LOG_COLOR_HH
+#endif // SYS_LOG_COLOR_HH

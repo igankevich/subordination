@@ -1,5 +1,5 @@
-#ifndef SYSX_NETWORK_HH
-#define SYSX_NETWORK_HH
+#ifndef SYS_NETWORK_HH
+#define SYS_NETWORK_HH
 
 #include <map>
 #include <vector>
@@ -176,4 +176,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_NETWORK_HH
+#endif // SYS_NETWORK_HH

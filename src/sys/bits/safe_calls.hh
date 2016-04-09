@@ -1,5 +1,5 @@
-#ifndef SYSX_BITS_SAFE_CALLS_HH
-#define SYSX_BITS_SAFE_CALLS_HH
+#ifndef SYS_BITS_SAFE_CALLS_HH
+#define SYS_BITS_SAFE_CALLS_HH
 
 #include <fcntl.h>
 
@@ -25,4 +25,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_BITS_SAFE_CALLS_HH
+#endif // SYS_BITS_SAFE_CALLS_HH

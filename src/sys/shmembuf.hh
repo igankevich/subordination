@@ -1,5 +1,5 @@
-#ifndef SYSX_SHMEMBUF_HH
-#define SYSX_SHMEMBUF_HH
+#ifndef SYS_SHMEMBUF_HH
+#define SYS_SHMEMBUF_HH
 
 #include <factory/error.hh>
 #include <stdx/packetbuf.hh>
@@ -197,4 +197,4 @@ namespace stdx {
 
 }
 
-#endif // SYSX_SHMEMBUF_HH
+#endif // SYS_SHMEMBUF_HH

@@ -1,5 +1,5 @@
-#ifndef SYSX_BITS_UINT128_PARSE_HH
-#define SYSX_BITS_UINT128_PARSE_HH
+#ifndef SYS_BITS_UINT128_PARSE_HH
+#define SYS_BITS_UINT128_PARSE_HH
 
 #include <ostream>
 #include <istream>
@@ -110,4 +110,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_BITS_UINT128_PARSE_HH
+#endif // SYS_BITS_UINT128_PARSE_HH

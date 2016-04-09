@@ -1,5 +1,5 @@
-#ifndef SYSX_PACKETSTREAM_HH
-#define SYSX_PACKETSTREAM_HH
+#ifndef SYS_PACKETSTREAM_HH
+#define SYS_PACKETSTREAM_HH
 
 #include <cassert>
 #include <istream>
@@ -181,4 +181,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_PACKETSTREAM_HH
+#endif // SYS_PACKETSTREAM_HH

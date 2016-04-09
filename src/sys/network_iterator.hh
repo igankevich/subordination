@@ -1,5 +1,5 @@
-#ifndef SYSX_NETWORK_ITERATOR_HH
-#define SYSX_NETWORK_ITERATOR_HH
+#ifndef SYS_NETWORK_ITERATOR_HH
+#define SYS_NETWORK_ITERATOR_HH
 
 #include <iterator>
 #include <sys/network_format.hh>
@@ -96,4 +96,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_NETWORK_ITERATOR_HH
+#endif // SYS_NETWORK_ITERATOR_HH

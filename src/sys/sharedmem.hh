@@ -1,5 +1,5 @@
-#ifndef SYSX_SHAREDMEM_HH
-#define SYSX_SHAREDMEM_HH
+#ifndef SYS_SHAREDMEM_HH
+#define SYS_SHAREDMEM_HH
 
 #include <memory>
 #include <vector>
@@ -310,4 +310,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_SHAREDMEM_HH
+#endif // SYS_SHAREDMEM_HH

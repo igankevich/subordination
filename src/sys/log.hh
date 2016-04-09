@@ -1,5 +1,5 @@
-#ifndef SYSX_LOG_HH
-#define SYSX_LOG_HH
+#ifndef SYS_LOG_HH
+#define SYS_LOG_HH
 
 #include <thread>
 #include <unordered_map>
@@ -116,4 +116,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_LOG_HH
+#endif // SYS_LOG_HH

@@ -1,5 +1,5 @@
-#ifndef SYSX_BITS_CHECK_HH
-#define SYSX_BITS_CHECK_HH
+#ifndef SYS_BITS_CHECK_HH
+#define SYS_BITS_CHECK_HH
 
 #include <stdexcept>
 #include <system_error>
@@ -58,4 +58,4 @@ namespace sys {
 
 }
 
-#endif // SYSX_BITS_CHECK_HH
+#endif // SYS_BITS_CHECK_HH
