@@ -105,6 +105,14 @@ test(
 	)
 )
 
+test(
+	'sys',
+	executable(
+		'sys-test',
+		sources: 'sys_test.cc',
+		include_directories: srcdir
+	)
+)
 
 app_exe = executable(
 	'process-server-test-app',
