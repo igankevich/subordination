@@ -15,7 +15,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 	_newprinc()
 	{}
 
-	Negotiator(sysx::endpoint old, sysx::endpoint neww) noexcept:
+	Negotiator(sys::endpoint old, sys::endpoint neww) noexcept:
 	_oldprinc(old),
 	_newprinc(neww)
 	{}
@@ -23,7 +23,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 	template<class Hierarchy>
 	void
 	negotiate(Server& this_server, Hierarchy& hierarchy) {
-		const sysx::endpoint& this_addr = hierarchy.bindaddr();
+		const sys::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
 		this->result(Result::success);
 		if (_newprinc == this_addr) {
@@ -51,13 +51,13 @@ struct Negotiator: public Priority_kernel<Kernel> {
 		this_server.remote_server()->send(this);
 	}
 
-	void write(sysx::packetstream& out) override {
+	void write(sys::packetstream& out) override {
 		Kernel::write(out);
 		// TODO: if moves_upstream
 		out << _oldprinc << _newprinc;
 	}
 
-	void read(sysx::packetstream& in) override {
+	void read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> _oldprinc >> _newprinc;
 	}
@@ -72,7 +72,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 		return Type<Kernel>{
 			8,
 			"Negotiator",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Negotiator<Address>* k = new Negotiator<Address>;
 				k->read(in);
 				return k;
@@ -82,8 +82,8 @@ struct Negotiator: public Priority_kernel<Kernel> {
 
 private:
 
-	sysx::endpoint _oldprinc;
-	sysx::endpoint _newprinc;
+	sys::endpoint _oldprinc;
+	sys::endpoint _newprinc;
 
 };
 
@@ -94,7 +94,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<Master_negotiator> this_log;
 
-	Master_negotiator(sysx::endpoint oldp, sysx::endpoint newp):
+	Master_negotiator(sys::endpoint oldp, sys::endpoint newp):
 	_oldprinc(oldp),
 	_newprinc(newp)
 	{}
@@ -121,12 +121,12 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 		}
 	}
 
-	const sysx::endpoint&
+	const sys::endpoint&
 	old_principal() const noexcept {
 		return _oldprinc;
 	}
 
-	const sysx::endpoint&
+	const sys::endpoint&
 	new_principal() const noexcept {
 		return _newprinc;
 	}
@@ -134,7 +134,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 private:
 
 	void
-	send_negotiator(Server& this_server, sysx::endpoint addr) {
+	send_negotiator(Server& this_server, sys::endpoint addr) {
 		++_numsent;
 		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
@@ -142,8 +142,8 @@ private:
 		upstream(this_server.remote_server(), n);
 	}
 
-	sysx::endpoint _oldprinc;
-	sysx::endpoint _newprinc;
+	sys::endpoint _oldprinc;
+	sys::endpoint _newprinc;
 	uint32_t _numsent = 0;
 };
 

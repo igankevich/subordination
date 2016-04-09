@@ -3,8 +3,8 @@
 
 #include <factory/error.hh>
 #include <stdx/log.hh>
-#include <sysx/bits/check.hh>
-#include <sysx/log_color.hh>
+#include <sys/bits/check.hh>
+#include <sys/log_color.hh>
 
 namespace factory {
 
@@ -21,9 +21,9 @@ namespace factory {
 			friend std::ostream&
 			operator<<(std::ostream& out, const Red& rhs) {
 				return
-				out << sysx::log_color::FG_LIGHT_RED
+				out << sys::log_color::FG_LIGHT_RED
 					<< rhs._object
-					<< sysx::log_color::RESET;
+					<< sys::log_color::RESET;
 			}
 
 		private:
@@ -89,9 +89,9 @@ namespace factory {
 
 			void
 			init_signal_handlers() noexcept {
-				sysx::this_process::bind_signal(sysx::signal::terminate, normal_shutdown);
-				sysx::this_process::bind_signal(sysx::signal::keyboard_interrupt, normal_shutdown);
-				sysx::this_process::ignore_signal(sysx::signal::broken_pipe);
+				sys::this_process::bind_signal(sys::signal::terminate, normal_shutdown);
+				sys::this_process::bind_signal(sys::signal::keyboard_interrupt, normal_shutdown);
+				sys::this_process::ignore_signal(sys::signal::broken_pipe);
 			}
 
 			static void

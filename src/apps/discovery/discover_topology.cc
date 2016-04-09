@@ -9,9 +9,9 @@
 
 #include <stdx/log.hh>
 
-#include <sysx/endpoint.hh>
-#include <sysx/network.hh>
-#include <sysx/cmdline.hh>
+#include <sys/endpoint.hh>
+#include <sys/network.hh>
+#include <sys/cmdline.hh>
 
 #include "location.hh"
 #include "csv_tuple.hh"
@@ -59,7 +59,7 @@ template<class Addr>
 struct Topology {
 
 	typedef Addr addr_type;
-	typedef sysx::network<addr_type> network_type;
+	typedef sys::network<addr_type> network_type;
 	typedef typename network_type::rep_type uint_type;
 	typedef float float_type;
 	typedef uint32_t city_type;
@@ -306,25 +306,25 @@ main(int argc, char* argv[]) {
 		locations = "GeoLite2-City-Locations-en.csv",
 		blocks = "GeoLite2-City-Blocks-IPv4.csv";
 
-	sysx::cmdline cmd(argc, argv, {
-		sysx::cmd::ignore_first_arg(),
-		sysx::cmd::make_option({"--country"}, country),
-		sysx::cmd::make_option({"--continent"}, continent),
-		sysx::cmd::make_option({"--locations"}, locations),
-		sysx::cmd::make_option({"--blocks"}, blocks),
+	sys::cmdline cmd(argc, argv, {
+		sys::cmd::ignore_first_arg(),
+		sys::cmd::make_option({"--country"}, country),
+		sys::cmd::make_option({"--continent"}, continent),
+		sys::cmd::make_option({"--locations"}, locations),
+		sys::cmd::make_option({"--blocks"}, blocks),
 	});
 
 	try {
 		cmd.parse();
 		transform_to_upper_case(country.begin(), country.end());
 		transform_to_upper_case(continent.begin(), continent.end());
-	} catch (sysx::invalid_cmdline_argument& err) {
+	} catch (sys::invalid_cmdline_argument& err) {
 		std::cerr << err.what() << ": " << err.arg() << std::endl;
 		retval = -1;
 	}
 
 	if (retval == 0) {
-		Topology<sysx::ipv4_addr> topo(locations, blocks, country, continent);
+		Topology<sys::ipv4_addr> topo(locations, blocks, country, continent);
 		topo.save();
 	}
 

@@ -4,7 +4,7 @@
 #include <ostream>
 #include <istream>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

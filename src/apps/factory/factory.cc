@@ -18,7 +18,7 @@ bail_out() {
 int main() {
 	try {
 		proceed_with_security_checks_or_exit();
-	} catch (sysx::bits::bad_call& err) {
+	} catch (sys::bits::bad_call& err) {
 		std::cerr << err << std::endl;
 		return bail_out();
 	} catch (std::exception& err) {

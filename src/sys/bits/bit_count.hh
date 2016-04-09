@@ -1,7 +1,7 @@
 #ifndef SYSX_BITS_BIT_COUNT_HH
 #define SYSX_BITS_BIT_COUNT_HH
 
-#include <sysx/bits/macros.hh>
+#include <sys/bits/macros.hh>
 
 #if SYSX_GCC_VERSION_AT_LEAST(4, 3)
 	#define FACTORY_HAVE_BUILTIN_POPCOUNT
@@ -11,7 +11,7 @@
 	#endif
 #endif
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <initializer_list>
 
-namespace sysx {
+namespace sys {
 
 	struct basic_cmdline {
 

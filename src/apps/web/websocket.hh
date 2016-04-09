@@ -4,7 +4,7 @@
 #include <random>
 #include <unordered_map>
 
-#include <sysx/socket.hh>
+#include <sys/socket.hh>
 #include "lbuffer.hh"
 #include "encoding.hh"
 
@@ -51,7 +51,7 @@ namespace factory {
 		std::unordered_map<std::string, std::string> hdrs;
 	};
 
-	struct Web_socket: public sysx::socket {
+	struct Web_socket: public sys::socket {
 
 		typedef stdx::log<Web_socket> this_log;
 
@@ -79,8 +79,8 @@ namespace factory {
 			_rng()
 			{}
 
-//		explicit Web_socket(sysx::fd_type fd):
-//			sysx::socket(fd),
+//		explicit Web_socket(sys::fd_type fd):
+//			sys::socket(fd),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 //			send_buffer(BUFFER_SIZE),
@@ -90,7 +90,7 @@ namespace factory {
 
 		// TODO: move all fields
 		explicit Web_socket(Web_socket&& rhs):
-			sysx::socket(std::move(rhs)),
+			sys::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -99,8 +99,8 @@ namespace factory {
 			_rng()
 			{}
 
-		explicit Web_socket(sysx::socket&& rhs):
-			sysx::socket(std::move(rhs)),
+		explicit Web_socket(sys::socket&& rhs):
+			sys::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -109,8 +109,8 @@ namespace factory {
 			_rng()
 			{}
 
-		explicit Web_socket(sysx::fd_type rhs):
-			sysx::socket(rhs),
+		explicit Web_socket(sys::fd_type rhs):
+			sys::socket(rhs),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 			send_buffer(BUFFER_SIZE),
@@ -120,8 +120,8 @@ namespace factory {
 			{}
 
 		explicit
-		Web_socket(const sysx::endpoint& bind_addr, const sysx::endpoint& conn_addr):
-		sysx::socket(bind_addr, conn_addr),
+		Web_socket(const sys::endpoint& bind_addr, const sys::endpoint& conn_addr):
+		sys::socket(bind_addr, conn_addr),
 		_http_headers(),
 		key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 		send_buffer(BUFFER_SIZE),
@@ -130,8 +130,8 @@ namespace factory {
 		_rng()
 		{}
 
-//		explicit Web_socket(const sysx::socket& rhs):
-//			sysx::socket(rhs),
+//		explicit Web_socket(const sys::socket& rhs):
+//			sys::socket(rhs),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
 //			send_buffer(BUFFER_SIZE),
@@ -142,12 +142,12 @@ namespace factory {
 		virtual ~Web_socket() { this->close(); }
 
 		Web_socket& operator=(Web_socket&& rhs) {
-			sysx::socket::operator=(std::move(rhs));
+			sys::socket::operator=(std::move(rhs));
 			return *this;
 		}
 
-//		Web_socket& operator=(const sysx::socket& rhs) {
-//			sysx::socket::operator=(rhs);
+//		Web_socket& operator=(const sys::socket& rhs) {
+//			sys::socket::operator=(rhs);
 //			return *this;
 //		}
 
@@ -206,7 +206,7 @@ namespace factory {
 
 		bool flush() {
 			size_t old_size = send_buffer.size();
-			send_buffer.flush<sysx::socket&>(*this);
+			send_buffer.flush<sys::socket&>(*this);
 			this_log() << "send buffer"
 				<< "(" << old_size - send_buffer.size() << ") "
 				<< std::endl;
@@ -411,7 +411,7 @@ namespace factory {
 			this_log() << "writing handshake " << request.str() << std::endl;
 		}
 
-		void fill() { recv_buffer.fill<sysx::socket&>(*this); }
+		void fill() { recv_buffer.fill<sys::socket&>(*this); }
 
 		State state = State::INITIAL_STATE;
 		Role role = Role::SERVER;
@@ -440,7 +440,7 @@ namespace factory {
 //		using typename std::basic_streambuf<T>::int_type;
 //		using typename std::basic_streambuf<T>::traits_type;
 //		using typename std::basic_streambuf<T>::char_type;
-//		using typename basic_fdbuf<T>::sysx::fd_type;
+//		using typename basic_fdbuf<T>::sys::fd_type;
 //
 //		typedef basic_fdbuf<T> basebuf_type;
 //

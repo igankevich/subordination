@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include <stdx/log.hh>
-#include <sysx/packetstream.hh>
+#include <sys/packetstream.hh>
 
 namespace factory {
 
@@ -80,7 +80,7 @@ namespace factory {
 			typedef int16_t id_type;
 			typedef T kernel_type;
 //			typedef std::function<T* ()> construct_type;
-			typedef std::function<T* (sysx::packetstream&)> read_type;
+			typedef std::function<T* (sys::packetstream&)> read_type;
 
 			typedef stdx::log<Type> this_log;
 
@@ -147,7 +147,7 @@ namespace factory {
 
 			// TODO: delme
 			static
-			void write_object(kernel_type& kernel, sysx::packetstream& out) {
+			void write_object(kernel_type& kernel, sys::packetstream& out) {
 				const Type type = kernel.type();
 				if (!type) {
 					throw Bad_type(
@@ -161,7 +161,7 @@ namespace factory {
 			}
 
 			static kernel_type*
-			read_object(Types<Type>& types, sysx::packetstream& packet)
+			read_object(Types<Type>& types, sys::packetstream& packet)
 			throw(Bad_kernel)
 			{
 				id_type id;
@@ -189,7 +189,7 @@ namespace factory {
 
 			template<class Func>
 			static void
-			read_object(Types<Type>& types, sysx::packetstream& packet, Func callback) {
+			read_object(Types<Type>& types, sys::packetstream& packet, Func callback) {
 				id_type id;
 				packet >> id;
 				const Type* type = types.lookup(id);
@@ -228,27 +228,27 @@ namespace factory {
 //			}
 //
 //			void
-//			write(sysx::packetstream& out) override {
+//			write(sys::packetstream& out) override {
 //				Base::write(out);
 //				write_impl(out);
 //			}
 //
 //			void
-//			read(sysx::packetstream& in) override {
+//			read(sys::packetstream& in) override {
 //				Base::read(in);
 //				read_impl(in);
 //			}
 //
 //			virtual void
-//			write_impl(sysx::packetstream& out) = 0;
+//			write_impl(sys::packetstream& out) = 0;
 //
 //			virtual void
-//			read_impl(sysx::packetstream& in) = 0;
+//			read_impl(sys::packetstream& in) = 0;
 //
 //		private:
 //			struct Init: public Type<T> {
 //				Init() {
-//					this->read = [] (sysx::packetstream& in) {
+//					this->read = [] (sys::packetstream& in) {
 //						Sub* k = new Sub;
 //						k->read(in);
 //						return k;

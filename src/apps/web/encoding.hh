@@ -3,7 +3,7 @@
 
 #include <cstddef> // offsetof
 
-#include <sysx/endpoint.hh>
+#include <sys/endpoint.hh>
 #include <stdx/random.hh>
 #include <stdx/log.hh>
 #include <factory/error.hh>
@@ -519,9 +519,9 @@ namespace factory {
 			Len64 payload_size() const {
 				using namespace constants;
 				switch (hdr.len) {
-					case LEN16_TAG: return sysx::to_host_format<Len16>(hdr.extlen);
+					case LEN16_TAG: return sys::to_host_format<Len16>(hdr.extlen);
 					case LEN64_TAG: {
-						sysx::Bytes<Len64> tmp(rawhdr + BASE_SIZE,
+						sys::Bytes<Len64> tmp(rawhdr + BASE_SIZE,
 							rawhdr + BASE_SIZE + sizeof(Len64));
 						tmp.to_host_format();
 						return tmp.value();
@@ -537,12 +537,12 @@ namespace factory {
 					hdr.len = rhs;
 				} else if (rhs > 125 && rhs <= std::numeric_limits<Len16>::max()) {
 					hdr.len = LEN16_TAG;
-					sysx::Bytes<Len16> raw = rhs;
+					sys::Bytes<Len16> raw = rhs;
 					raw.to_network_format();
 					hdr.extlen = raw;
 				} else {
 					hdr.len = LEN64_TAG;
-					sysx::Bytes<Len64> raw = rhs;
+					sys::Bytes<Len64> raw = rhs;
 					raw.to_network_format();
 					std::copy(raw.begin(), raw.end(), rawhdr + BASE_SIZE);
 				}
@@ -557,10 +557,10 @@ namespace factory {
 				using namespace constants;
 				switch (hdr.len) {
 					case LEN16_TAG: return hdr.extlen2;
-					case LEN64_TAG: return sysx::Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
+					case LEN64_TAG: return sys::Bytes<Mask>(rawhdr + header_size() - MASK_SIZE,
 							rawhdr + header_size());
 					default:
-						return sysx::Bytes<Mask>(rawhdr + BASE_SIZE,
+						return sys::Bytes<Mask>(rawhdr + BASE_SIZE,
 							rawhdr + BASE_SIZE + MASK_SIZE);
 				}
 			}
@@ -574,12 +574,12 @@ namespace factory {
 					switch (hdr.len) {
 						case LEN16_TAG: hdr.extlen2 = rhs; break;
 						case LEN64_TAG: {
-							sysx::Bytes<Mask> tmp = rhs;
+							sys::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + header_size() - MASK_SIZE);
 							break;
 						}
 						default: {
-							sysx::Bytes<Mask> tmp = rhs;
+							sys::Bytes<Mask> tmp = rhs;
 							std::copy(tmp.begin(), tmp.end(), rawhdr + BASE_SIZE);
 							break;
 						}
@@ -591,7 +591,7 @@ namespace factory {
 			void copy_payload(It first, It last, Res result) const {
 				using namespace constants;
 				if (is_masked()) {
-					sysx::Bytes<Mask> m = mask();
+					sys::Bytes<Mask> m = mask();
 					size_t i = 0;
 					std::transform(first, last, result,
 						[&i,&m] (char ch) {
@@ -607,7 +607,7 @@ namespace factory {
 			char getpayloadc(It first, size_t nread) const {
 				using namespace constants;
 				if (is_masked()) {
-					sysx::Bytes<Mask> m = mask();
+					sys::Bytes<Mask> m = mask();
 					size_t i = 0;
 					return *first ^ m[nread%4];
 				} else {
@@ -627,7 +627,7 @@ namespace factory {
 						<< "opcode=" << rhs.hdr.opcode << ','
 						<< "maskbit=" << rhs.hdr.maskbit << ','
 						<< "len=" << rhs.hdr.len << ','
-						<< "mask=" << sysx::Bytes<Mask>(rhs.mask()) << ','
+						<< "mask=" << sys::Bytes<Mask>(rhs.mask()) << ','
 						<< "payload_size=" << rhs.payload_size() << ','
 						<< "header_size=" << rhs.header_size();
 				}
@@ -674,8 +674,8 @@ namespace factory {
 		void websocket_accept_header(const std::string& web_socket_key, Res header) {
 			static const char WEBSOCKET_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 			static const size_t SHA_DIGEST_SIZE = 5;
-			typedef sysx::Bytes<uint32_t, unsigned char> Digest_item;
-			sysx::Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
+			typedef sys::Bytes<uint32_t, unsigned char> Digest_item;
+			sys::Bytes<Digest_item[SHA_DIGEST_SIZE], unsigned char> hash;
 			SHA1 sha1;
 			sha1.input(web_socket_key.begin(), web_socket_key.end());
 			sha1.input(WEBSOCKET_GUID, WEBSOCKET_GUID + sizeof(WEBSOCKET_GUID)-1);
@@ -687,7 +687,7 @@ namespace factory {
 
 		template<class Res, class Random>
 		void websocket_key(Res key, Random& rng) {
-			sysx::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
+			sys::Bytes<std::uint128_t> buf = stdx::n_random_bytes<std::uint128_t>(rng);
 			base64_encode(buf.begin(), buf.end(), key);
 		}
 

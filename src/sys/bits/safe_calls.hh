@@ -6,7 +6,7 @@
 #include <mutex>
 #include <stdx/mutex.hh>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

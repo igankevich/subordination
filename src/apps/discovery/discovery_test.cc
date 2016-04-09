@@ -1,8 +1,8 @@
 #include <map>
 
-#include <sysx/socket.hh>
-#include <sysx/cmdline.hh>
-#include <sysx/network.hh>
+#include <sys/socket.hh>
+#include <sys/cmdline.hh>
+#include <sys/network.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
@@ -20,7 +20,7 @@
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::true_type {};
 
 	template<>
@@ -40,7 +40,7 @@ namespace factory {
 			typedef components::Server<config> server;
 			typedef components::Principal<config> kernel;
 			typedef components::CPU_server<config> local_server;
-			typedef components::NIC_server<config, sysx::socket> remote_server;
+			typedef components::NIC_server<config, sys::socket> remote_server;
 			typedef components::Timer_server<config> timer_server;
 			typedef components::No_server<config> app_server;
 			typedef components::Basic_factory<config> factory;
@@ -66,7 +66,7 @@ template<class Address>
 struct Main: public Kernel {
 
 	typedef Address addr_type;
-	typedef typename sysx::ipaddr_traits<addr_type> traits_type;
+	typedef typename sys::ipaddr_traits<addr_type> traits_type;
 	typedef Negotiator<addr_type> negotiator_type;
 	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
@@ -75,13 +75,13 @@ struct Main: public Kernel {
 
 	Main(Server& this_server, int argc, char* argv[]):
 	_cmdline(argc, argv, {
-		sysx::cmd::ignore_first_arg(),
-		sysx::cmd::make_option({"--role"}, _role),
-		sysx::cmd::make_option({"--network"}, _network),
-		sysx::cmd::make_option({"--port"}, _port),
-		sysx::cmd::make_option({"--timeout"}, _timeout),
-		sysx::cmd::make_option({"--normal"}, _normal),
-		sysx::cmd::make_option({"--master"}, _masteraddr)
+		sys::cmd::ignore_first_arg(),
+		sys::cmd::make_option({"--role"}, _role),
+		sys::cmd::make_option({"--network"}, _network),
+		sys::cmd::make_option({"--port"}, _port),
+		sys::cmd::make_option({"--timeout"}, _timeout),
+		sys::cmd::make_option({"--normal"}, _normal),
+		sys::cmd::make_option({"--master"}, _masteraddr)
 	})
 	{}
 
@@ -97,12 +97,12 @@ struct Main: public Kernel {
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
-			const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
-			const sysx::endpoint bind_addr(_network.address(), _port);
+			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
+			const sys::endpoint bind_addr(_network.address(), _port);
 			this_server.remote_server()->bind(bind_addr, netmask);
-			const auto start_delay = (_network.address() == sysx::ipv4_addr{127,0,0,1}) ? 0 : 3;
+			const auto start_delay = (_network.address() == sys::ipv4_addr{127,0,0,1}) ? 0 : 3;
 			discoverer_type* master = new discoverer_type(_network, _port);
-			master->id(sysx::to_host_format(_network.address().rep()));
+			master->id(sys::to_host_format(_network.address().rep()));
 			this_server.factory()->instances().register_instance(master);
 			master->after(std::chrono::seconds(start_delay));
 //			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
@@ -151,25 +151,25 @@ private:
 		try {
 			_cmdline.parse();
 			if (!_network) {
-				throw sysx::invalid_cmdline_argument("--network");
+				throw sys::invalid_cmdline_argument("--network");
 			}
 			if (_role != role_slave) {
-				throw sysx::invalid_cmdline_argument("--role");
+				throw sys::invalid_cmdline_argument("--role");
 			}
-		} catch (sysx::invalid_cmdline_argument& err) {
+		} catch (sys::invalid_cmdline_argument& err) {
 			std::cerr << err.what() << ": " << err.arg() << std::endl;
 			this_server.factory()->set_exit_code(1);
 		}
 	}
 
 	std::string _role;
-	sysx::network<sysx::ipv4_addr> _network;
-	sysx::port_type _port;
+	sys::network<sys::ipv4_addr> _network;
+	sys::port_type _port;
 	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
 	bool _normal = true;
-	sysx::ipv4_addr _masteraddr;
-	sysx::cmdline _cmdline;
+	sys::ipv4_addr _masteraddr;
+	sys::cmdline _cmdline;
 
 };
 
@@ -197,41 +197,41 @@ struct Hosts: public std::vector<Address> {
 
 int main(int argc, char* argv[]) {
 
-	sysx::port_type discovery_port = 54321;
+	sys::port_type discovery_port = 54321;
 	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_after = do_not_kill;
 	uint32_t kill_timeout = do_not_kill;
-	Hosts<sysx::ipv4_addr> hosts2;
-	sysx::ipv4_addr master_addr{127,0,0,1};
-	sysx::ipv4_addr kill_addr{127,0,0,2};
+	Hosts<sys::ipv4_addr> hosts2;
+	sys::ipv4_addr master_addr{127,0,0,1};
+	sys::ipv4_addr kill_addr{127,0,0,2};
 
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
-	sysx::network<sysx::ipv4_addr> network;
+	sys::network<sys::ipv4_addr> network;
 	size_t nhosts = 0;
 	std::string role = role_master;
 	try {
-		sysx::cmdline cmd(argc, argv, {
-			sysx::cmd::ignore_first_arg(),
-			sysx::cmd::ignore_arg("--normal"),
-			sysx::cmd::make_option({"--hosts"}, hosts2),
-			sysx::cmd::make_option({"--network"}, network),
-			sysx::cmd::make_option({"--num-hosts"}, nhosts),
-			sysx::cmd::make_option({"--role"}, role),
-			sysx::cmd::make_option({"--port"}, discovery_port),
-			sysx::cmd::make_option({"--timeout"}, kill_timeout),
-			sysx::cmd::make_option({"--master"}, master_addr),
-			sysx::cmd::make_option({"--kill"}, kill_addr),
-			sysx::cmd::make_option({"--kill-after"}, kill_after)
+		sys::cmdline cmd(argc, argv, {
+			sys::cmd::ignore_first_arg(),
+			sys::cmd::ignore_arg("--normal"),
+			sys::cmd::make_option({"--hosts"}, hosts2),
+			sys::cmd::make_option({"--network"}, network),
+			sys::cmd::make_option({"--num-hosts"}, nhosts),
+			sys::cmd::make_option({"--role"}, role),
+			sys::cmd::make_option({"--port"}, discovery_port),
+			sys::cmd::make_option({"--timeout"}, kill_timeout),
+			sys::cmd::make_option({"--master"}, master_addr),
+			sys::cmd::make_option({"--kill"}, kill_addr),
+			sys::cmd::make_option({"--kill-after"}, kill_after)
 		});
 		cmd.parse();
 		if (role != role_master and role != role_slave) {
-			throw sysx::invalid_cmdline_argument("--role");
+			throw sys::invalid_cmdline_argument("--role");
 		}
 		if (!network) {
-			throw sysx::invalid_cmdline_argument("--network");
+			throw sys::invalid_cmdline_argument("--network");
 		}
-	} catch (sysx::invalid_cmdline_argument& err) {
+	} catch (sys::invalid_cmdline_argument& err) {
 		std::cerr << err.what() << ": " << err.arg() << std::endl;
 		return 1;
 	}
@@ -243,14 +243,14 @@ int main(int argc, char* argv[]) {
 		this_log() << "Role = " << role << std::endl;
 		this_log() << "start,mid = " << *network.begin() << ',' << *network.middle() << std::endl;
 
-		std::vector<sysx::endpoint> hosts;
+		std::vector<sys::endpoint> hosts;
 		if (network) {
 			std::transform(
 				network.begin(),
 				network.begin() + nhosts,
 				std::back_inserter(hosts),
-				[discovery_port] (const sysx::ipv4_addr& addr) {
-					return sysx::endpoint(addr, discovery_port);
+				[discovery_port] (const sys::ipv4_addr& addr) {
+					return sys::endpoint(addr, discovery_port);
 				}
 			);
 		} else {
@@ -258,16 +258,16 @@ int main(int argc, char* argv[]) {
 				hosts2.begin(),
 				hosts2.begin() + std::min(hosts2.size(), nhosts),
 				std::back_inserter(hosts),
-				[discovery_port] (const sysx::ipv4_addr& addr) {
-					return sysx::endpoint(addr, discovery_port);
+				[discovery_port] (const sys::ipv4_addr& addr) {
+					return sys::endpoint(addr, discovery_port);
 				}
 			);
 		}
 		springy::Springy_graph graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
-		sysx::process_group procs;
-		for (sysx::endpoint endpoint : hosts) {
+		sys::process_group procs;
+		for (sys::endpoint endpoint : hosts) {
 			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after] () {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
@@ -277,12 +277,12 @@ int main(int argc, char* argv[]) {
 					timeout = kill_after;
 					normal = false;
 				}
-				return sysx::this_process::execute(
+				return sys::this_process::execute(
 					#if defined(FACTORY_TEST_USE_SSH)
 					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "ulimit -c unlimited;", "exec",
 					#endif
 					argv[0],
-					"--network", sysx::network<sysx::ipv4_addr>(endpoint.addr4(), network.netmask()),
+					"--network", sys::network<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
 					"--timeout", timeout,
@@ -297,7 +297,7 @@ int main(int argc, char* argv[]) {
 
 	} else {
 		using namespace factory;
-		retval = factory_main<Main<sysx::ipv4_addr>,config>(argc, argv);
+		retval = factory_main<Main<sys::ipv4_addr>,config>(argc, argv);
 	}
 
 	return retval;

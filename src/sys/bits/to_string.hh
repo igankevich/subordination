@@ -3,7 +3,7 @@
 
 #include <sstream>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

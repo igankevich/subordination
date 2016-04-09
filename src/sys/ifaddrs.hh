@@ -1,7 +1,7 @@
 #ifndef SYSX_IFADDRS_HH
 #define SYSX_IFADDRS_HH
 
-namespace sysx {
+namespace sys {
 
 	typedef struct ::ifaddrs ifaddrs_type;
 

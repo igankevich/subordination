@@ -13,8 +13,8 @@
 namespace std {
 
 	template<class T>
-	sysx::packetstream&
-	operator<<(sysx::packetstream& out, const std::valarray<T>& rhs) {
+	sys::packetstream&
+	operator<<(sys::packetstream& out, const std::valarray<T>& rhs) {
 		out << uint32_t(rhs.size());
 		for (size_t i=0; i<rhs.size(); ++i) {
 			out << rhs[i];
@@ -23,8 +23,8 @@ namespace std {
 	}
 
 	template<class T>
-	sysx::packetstream&
-	operator>>(sysx::packetstream& in, std::valarray<T>& rhs) {
+	sys::packetstream&
+	operator>>(sys::packetstream& in, std::valarray<T>& rhs) {
 		uint32_t n = 0;
 		in >> n;
 		rhs.resize(n);
@@ -699,7 +699,7 @@ struct Generator1: public Kernel {
 	}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
@@ -711,7 +711,7 @@ struct Generator1: public Kernel {
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> part >> part2;
 		in >> phi >> fsize;
@@ -732,7 +732,7 @@ struct Generator1: public Kernel {
 		return Type<Kernel>{
 			10002,
 			"Generator",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Generator1* k = new Generator1;
 				k->read(in);
 				return k;
@@ -819,7 +819,7 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << phi;
 		out << fsize;
@@ -833,7 +833,7 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> phi;
 		in >> fsize;
@@ -856,7 +856,7 @@ struct Wave_surface_generator: public Kernel {
 		return Type<Kernel>{
 			10001,
 			"Wave_surface_generator",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Wave_surface_generator* k = new Wave_surface_generator;
 				k->read(in);
 				return k;

@@ -8,12 +8,12 @@
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
 
-#include <sysx/event.hh>
-#include <sysx/socket.hh>
-#include <sysx/packetstream.hh>
-#include <sysx/endpoint.hh>
-#include <sysx/network.hh>
-#include <sysx/fildesbuf.hh>
+#include <sys/event.hh>
+#include <sys/socket.hh>
+#include <sys/packetstream.hh>
+#include <sys/endpoint.hh>
+#include <sys/network.hh>
+#include <sys/fildesbuf.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>
@@ -35,7 +35,7 @@ namespace factory {
 			using typename base_server::kernel_type;
 			using typename base_server::factory_type;
 			typedef char Ch;
-			typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sysx::socket>> Kernelbuf;
+			typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
 			typedef Kernel_stream<kernel_type> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
@@ -50,7 +50,7 @@ namespace factory {
 
 			Remote_Rserver() = default;
 
-			Remote_Rserver(socket_type&& sock, sysx::endpoint vaddr, factory_type* factory):
+			Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, factory_type* factory):
 			_vaddr(vaddr),
 			_packetbuf(),
 			_stream(&_packetbuf),
@@ -90,7 +90,7 @@ namespace factory {
 
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				sysx::poll_event ev{socket().fd(), sysx::poll_event::In};
+				sys::poll_event ev{socket().fd(), sys::poll_event::In};
 				handle(ev);
 
 				// recover kernels from upstream and downstream buffer
@@ -122,7 +122,7 @@ namespace factory {
 			}
 
 			void
-			handle(sysx::poll_event& event) {
+			handle(sys::poll_event& event) {
 				if (not event.hup()) {
 					_stream.clear();
 					_stream.sync();
@@ -136,11 +136,11 @@ namespace factory {
 			}
 
 			void
-			prepare(sysx::poll_event& event) {
+			prepare(sys::poll_event& event) {
 				if (_packetbuf.dirty()) {
-					event.setev(sysx::poll_event::Out);
+					event.setev(sys::poll_event::Out);
 				} else {
-					event.unsetev(sysx::poll_event::Out);
+					event.unsetev(sys::poll_event::Out);
 				}
 			}
 
@@ -155,13 +155,13 @@ namespace factory {
 			}
 
 			void
-			socket(sysx::socket&& rhs) {
+			socket(sys::socket&& rhs) {
 				_packetbuf.pubsync();
 				_packetbuf.setfd(socket_type(std::move(rhs)));
 			}
 
-			const sysx::endpoint& vaddr() const { return _vaddr; }
-			void setvaddr(const sysx::endpoint& rhs) { _vaddr = rhs; }
+			const sys::endpoint& vaddr() const { return _vaddr; }
+			void setvaddr(const sys::endpoint& rhs) { _vaddr = rhs; }
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Remote_Rserver& rhs) {
@@ -267,7 +267,7 @@ namespace factory {
 				}
 			}
 
-			sysx::endpoint _vaddr;
+			sys::endpoint _vaddr;
 			Kernelbuf _packetbuf;
 			stream_type _stream;
 			pool_type _sentupstream;
@@ -289,11 +289,11 @@ namespace factory {
 
 			using base_server::poller;
 
-			typedef std::map<sysx::endpoint,server_type> upstream_type;
+			typedef std::map<sys::endpoint,server_type> upstream_type;
 			typedef typename upstream_type::iterator iterator_type;
 			typedef server_type* handler_type;
-			typedef sysx::event_poller<handler_type> poller_type;
-			typedef sysx::network<sysx::ipv4_addr> network_type;
+			typedef sys::event_poller<handler_type> poller_type;
+			typedef sys::network<sys::ipv4_addr> network_type;
 			typedef network_type::rep_type rep_type;
 			typedef Mobile_kernel::id_type id_type;
 			typedef stdx::log<NIC_server> this_log;
@@ -329,18 +329,18 @@ namespace factory {
 				}
 			}
 
-			void accept_connection(sysx::poll_event&) override {
-				sysx::endpoint addr;
+			void accept_connection(sys::poll_event&) override {
+				sys::endpoint addr;
 				socket_type sock;
 				_socket.accept(sock, addr);
-				sysx::endpoint vaddr = virtual_addr(addr);
+				sys::endpoint vaddr = virtual_addr(addr);
 				auto res = _upstream.find(vaddr);
 				if (res == _upstream.end()) {
-					this->add_connected_server(std::move(sock), vaddr, sysx::poll_event::In);
+					this->add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
 					this_log() << "connected peer " << vaddr << std::endl;
 				} else {
 					server_type& s = res->second;
-					const sysx::port_type
+					const sys::port_type
 					local_port = s.socket().bind_addr().port();
 					this_log()
 						<< "ports: "
@@ -363,36 +363,36 @@ namespace factory {
 						_upstream.emplace(vaddr, std::move(new_s));
 //						_upstream.emplace(vaddr, std::move(*new_s));
 						poller().emplace(
-							sysx::poll_event{res->second.socket().fd(), sysx::poll_event::Inout, sysx::poll_event::Inout},
+							sys::poll_event{res->second.socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout},
 							handler_type(&res->second));
 						log << " with " << res->second << std::endl;
 					}
 				}
 			}
 
-			void peer(sysx::endpoint addr) {
-				this->connect_to_server(addr, sysx::poll_event::In);
+			void peer(sys::endpoint addr) {
+				this->connect_to_server(addr, sys::poll_event::In);
 			}
 
 			void
-			bind(const sysx::endpoint& rhs, sysx::ipv4_addr netmask) {
+			bind(const sys::endpoint& rhs, sys::ipv4_addr netmask) {
 				_network = network_type(rhs.addr4(), netmask);
 				_counter = determine_initial_id();
 				socket(rhs);
 			}
 
 			void
-			socket(const sysx::endpoint& addr) {
+			socket(const sys::endpoint& addr) {
 				_socket.bind(addr);
 				_socket.listen();
-				poller().insert_special(sysx::poll_event{_socket.fd(),
-					sysx::poll_event::In});
+				poller().insert_special(sys::poll_event{_socket.fd(),
+					sys::poll_event::In});
 				if (!this->stopped()) {
 					this->_semaphore.notify_one();
 				}
 			}
 
-			inline sysx::endpoint
+			inline sys::endpoint
 			server_addr() const {
 				return _socket.bind_addr();
 			}
@@ -447,7 +447,7 @@ namespace factory {
 			}
 
 			std::pair<iterator_type,bool>
-			emplace_server(const sysx::endpoint& vaddr, server_type&& s) {
+			emplace_server(const sys::endpoint& vaddr, server_type&& s) {
 				auto result = _upstream.emplace(vaddr, std::move(s));
 				if (_upstream.size() == 1) {
 					_iterator = _upstream.begin();
@@ -455,9 +455,9 @@ namespace factory {
 				return result;
 			}
 
-			inline sysx::endpoint
-			virtual_addr(sysx::endpoint addr) const {
-				return sysx::endpoint(addr, server_addr().port());
+			inline sys::endpoint
+			virtual_addr(sys::endpoint addr) const {
+				return sys::endpoint(addr, server_addr().port());
 			}
 
 			void
@@ -486,7 +486,7 @@ namespace factory {
 					}
 					// delete broadcast kernel
 					delete k;
-				} else if (k->moves_upstream() && k->to() == sysx::endpoint()) {
+				} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
 					if (_upstream.empty() or _endreached) {
 						// include localhost in round-robin
 						// in a somewhat half-assed fashion
@@ -519,11 +519,11 @@ namespace factory {
 					if (k->moves_somewhere()) {
 						ensure_identity(k);
 					}
-					this->find_or_create_peer(k->to(), sysx::poll_event::Inout)->send(k);
+					this->find_or_create_peer(k->to(), sys::poll_event::Inout)->send(k);
 				}
 			}
 
-			server_type* find_or_create_peer(const sysx::endpoint& addr, sysx::poll_event::legacy_event ev) {
+			server_type* find_or_create_peer(const sys::endpoint& addr, sys::poll_event::legacy_event ev) {
 				server_type* ret;
 				auto result = _upstream.find(addr);
 				if (result == _upstream.end()) {
@@ -534,22 +534,22 @@ namespace factory {
 				return ret;
 			}
 
-			server_type* connect_to_server(sysx::endpoint addr, sysx::poll_event::legacy_event events) {
+			server_type* connect_to_server(sys::endpoint addr, sys::poll_event::legacy_event events) {
 				// bind to server address with ephemeral port
-				sysx::endpoint srv_addr(this->server_addr(), 0);
+				sys::endpoint srv_addr(this->server_addr(), 0);
 				return this->add_connected_server(socket_type(srv_addr, addr), addr, events);
 			}
 
-			server_type* add_connected_server(socket_type&& sock, sysx::endpoint vaddr,
-				sysx::poll_event::legacy_event events,
-				sysx::poll_event::legacy_event revents=0)
+			server_type* add_connected_server(socket_type&& sock, sys::endpoint vaddr,
+				sys::poll_event::legacy_event events,
+				sys::poll_event::legacy_event revents=0)
 			{
-				sysx::fd_type fd = sock.fd();
+				sys::fd_type fd = sock.fd();
 				server_type s(std::move(sock), vaddr, this->factory());
 				s.setparent(this);
 				auto result = emplace_server(vaddr, std::move(s));
 				poller().emplace(
-					sysx::poll_event{fd, events, revents},
+					sys::poll_event{fd, events, revents},
 					handler_type(&result.first->second));
 				this_log() << "add server " << result.first->second << std::endl;
 				return &result.first->second;

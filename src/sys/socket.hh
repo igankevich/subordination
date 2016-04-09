@@ -19,11 +19,11 @@
 #include <stdx/log.hh>
 #include <stdx/mutex.hh>
 
-#include <sysx/fildes.hh>
-#include <sysx/endpoint.hh>
+#include <sys/fildes.hh>
+#include <sys/endpoint.hh>
 
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 
@@ -66,11 +66,11 @@ namespace sysx {
 
 		explicit
 		socket(socket&& rhs) noexcept:
-			sysx::fildes(std::move(rhs)) {}
+			sys::fildes(std::move(rhs)) {}
 
 		explicit
 		socket(fildes&& rhs) noexcept:
-			sysx::fildes(std::move(rhs)) {}
+			sys::fildes(std::move(rhs)) {}
 
 		/// Bind on @bind_addr and listen.
 		explicit
@@ -92,7 +92,7 @@ namespace sysx {
 
 		socket&
 		operator=(socket&& rhs) {
-			sysx::fildes::operator=(std::move(static_cast<sysx::fildes&&>(rhs)));
+			sys::fildes::operator=(std::move(static_cast<sys::fildes&&>(rhs)));
 			return *this;
 		}
 
@@ -143,7 +143,7 @@ namespace sysx {
 
 		void close() {
 			this->shutdown(shut_read_write);
-			this->sysx::fildes::close();
+			this->sys::fildes::close();
 		}
 
 		void setopt(option opt) {
@@ -230,7 +230,7 @@ namespace sysx {
 
 		explicit
 		socket(fd_type sock) noexcept:
-			sysx::fildes(sock) {}
+			sys::fildes(sock) {}
 
 	};
 
@@ -239,17 +239,17 @@ namespace sysx {
 namespace stdx {
 
 	template<>
-	struct streambuf_traits<sysx::socket> {
+	struct streambuf_traits<sys::socket> {
 
 		typedef void char_type;
 
 		static std::streamsize
-		write(sysx::socket& sink, const char_type* s, std::streamsize n) {
+		write(sys::socket& sink, const char_type* s, std::streamsize n) {
 			return sink.write(s, n);
 		}
 
 		static std::streamsize
-		read(sysx::socket& src, char_type* s, std::streamsize n) {
+		read(sys::socket& src, char_type* s, std::streamsize n) {
 			return src.read(s, n);
 		}
 

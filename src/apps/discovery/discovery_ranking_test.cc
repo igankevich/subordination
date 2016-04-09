@@ -5,7 +5,7 @@
 #include <random>
 
 #include <stdx/random.hh>
-#include <sysx/network.hh>
+#include <sys/network.hh>
 #include <test.hh>
 
 #include "distance.hh"
@@ -25,7 +25,7 @@ template<class Addr>
 struct Test_network: public test::Test<Test_network<Addr>> {
 
 	typedef Addr addr_type;
-	typedef sysx::network<addr_type> network_type;
+	typedef sys::network<addr_type> network_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef typename network_type::rep_type rep_type;
 	typedef std::random_device engine_type;
@@ -35,7 +35,7 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		test_addr_calculus();
 		test_io();
 		std::vector<network_type> networks;
-		sysx::enumerate_networks<sysx::ipv4_addr>(std::back_inserter(networks));
+		sys::enumerate_networks<sys::ipv4_addr>(std::back_inserter(networks));
 		std::copy(
 			networks.begin(), networks.end(),
 			std::ostream_iterator<network_type>(std::clog, "\n")
@@ -62,9 +62,9 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 			networks.begin(), networks.end(),
 			[&ranked_hosts,fanout] (const network_type& rhs) {
 //				const addr_type from(rhs.address());
-//				const rep_type end = sysx::to_host_format(from.rep());
+//				const rep_type end = sys::to_host_format(from.rep());
 //				for (rep_type i=rhs.start(); i<end; ++i) {
-//					const addr_type to(sysx::to_network_format(i));
+//					const addr_type to(sys::to_network_format(i));
 //					const distance_type dist = distance_type(from, to, rhs.netmask(), fanout);
 //					ranked_hosts.emplace(dist, to);
 //				}
@@ -89,23 +89,23 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 
 	void
 	test_addr_calculus() {
-		typedef sysx::ipv4_addr::rep_type rep_type;
-		test::equal(sysx::ipv4_addr{127,0,0,1}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(1));
-		test::equal(sysx::ipv4_addr{127,0,0,5}.position(sysx::ipv4_addr{255,0,0,0}), rep_type(5));
-		test::equal(distance_type(sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}, 2), distance_type(1, 0));
+		typedef sys::ipv4_addr::rep_type rep_type;
+		test::equal(sys::ipv4_addr{127,0,0,1}.position(sys::ipv4_addr{255,0,0,0}), rep_type(1));
+		test::equal(sys::ipv4_addr{127,0,0,5}.position(sys::ipv4_addr{255,0,0,0}), rep_type(5));
+		test::equal(distance_type(sys::ipv4_addr{127,0,0,2}, sys::ipv4_addr{127,0,0,1}, sys::ipv4_addr{255,0,0,0}, 2), distance_type(1, 0));
 		test::equal(network_type(addr_type{127,0,0,7}, addr_type{255,0,0,0}).is_loopback(), true);
 		test::equal(network_type(addr_type{128,0,0,7}, addr_type{255,0,0,0}).is_loopback(), false);
-		test::equal(addr_type{255,255,255,0}.to_prefix(), sysx::prefix_type(24));
-		test::equal(addr_type{255,255,0,0}.to_prefix(), sysx::prefix_type(16));
-		test::equal(addr_type{255,0,0,0}.to_prefix(), sysx::prefix_type(8));
+		test::equal(addr_type{255,255,255,0}.to_prefix(), sys::prefix_type(24));
+		test::equal(addr_type{255,255,0,0}.to_prefix(), sys::prefix_type(16));
+		test::equal(addr_type{255,0,0,0}.to_prefix(), sys::prefix_type(8));
 	}
 
 	void
 	debug_addrs() {
-		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,1}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
-		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,2}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
-		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,3}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
-		std::clog << distance_type(2, sysx::ipv4_addr{127,0,0,4}, sysx::ipv4_addr{255,0,0,0}) << std::endl;
+		std::clog << distance_type(2, sys::ipv4_addr{127,0,0,1}, sys::ipv4_addr{255,0,0,0}) << std::endl;
+		std::clog << distance_type(2, sys::ipv4_addr{127,0,0,2}, sys::ipv4_addr{255,0,0,0}) << std::endl;
+		std::clog << distance_type(2, sys::ipv4_addr{127,0,0,3}, sys::ipv4_addr{255,0,0,0}) << std::endl;
+		std::clog << distance_type(2, sys::ipv4_addr{127,0,0,4}, sys::ipv4_addr{255,0,0,0}) << std::endl;
 		std::clog
 			<< std::setw(20) << "address"
 			<< std::setw(20) << "position"
@@ -113,11 +113,11 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 			<< std::endl;
 		std::clog << std::right;
 		for (unsigned char i=1; i<23; ++i) {
-			const sysx::ipv4_addr addr{127,0,0,i};
+			const sys::ipv4_addr addr{127,0,0,i};
 			std::clog
 				<< std::setw(20) << addr
-				<< std::setw(20) << addr.position(sysx::ipv4_addr{255,0,0,0})
-				<< std::setw(20) << distance_type(2, addr, sysx::ipv4_addr{255,0,0,0}) << std::endl;
+				<< std::setw(20) << addr.position(sys::ipv4_addr{255,0,0,0})
+				<< std::setw(20) << distance_type(2, addr, sys::ipv4_addr{255,0,0,0}) << std::endl;
 		}
 	}
 
@@ -135,12 +135,12 @@ private:
 		return addr_type(stdx::n_random_bytes<rep_type>(generator));
 	}
 
-	sysx::prefix_type
+	sys::prefix_type
 	random_prefix() {
 		static std::default_random_engine generator(
 			std::chrono::high_resolution_clock::now().time_since_epoch().count()
 		);
-		std::uniform_int_distribution<sysx::prefix_type> dist(0, 32);
+		std::uniform_int_distribution<sys::prefix_type> dist(0, 32);
 		auto gen = std::bind(dist, generator);
 		return gen();
 	}
@@ -156,7 +156,7 @@ private:
 
 int main(int argc, char* argv[]) {
 	test::Test_suite tests{"Test network", {
-		new Test_network<sysx::ipv4_addr>
+		new Test_network<sys::ipv4_addr>
 	}};
 	return tests.run();
 }

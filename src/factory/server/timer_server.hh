@@ -1,7 +1,7 @@
 #ifndef FACTORY_SERVER_TIMER_SERVER_HH
 #define FACTORY_SERVER_TIMER_SERVER_HH
 
-#include <sysx/semaphore.hh>
+#include <sys/semaphore.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
 

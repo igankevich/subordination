@@ -24,13 +24,13 @@ namespace autoreg {
 			return out;
 		}
 
-		friend sysx::packetstream&
-		operator<<(sysx::packetstream& out, const Surface_part& rhs) {
+		friend sys::packetstream&
+		operator<<(sys::packetstream& out, const Surface_part& rhs) {
 			return out << rhs._part << rhs._t0 << rhs._t1;
 		}
 
-		friend sysx::packetstream&
-		operator>>(sysx::packetstream& in, Surface_part& rhs) {
+		friend sys::packetstream&
+		operator>>(sys::packetstream& in, Surface_part& rhs) {
 			return in >> rhs._part >> rhs._t0 >> rhs._t1;
 		}
 
@@ -56,13 +56,13 @@ namespace autoreg {
 
 		uint32_t num_parts() const { return nparts; }
 
-		friend sysx::packetstream&
-		operator<<(sysx::packetstream& stream, const Uniform_grid& rhs) {
+		friend sys::packetstream&
+		operator<<(sys::packetstream& stream, const Uniform_grid& rhs) {
 			return stream << rhs.size << rhs.nparts;
 		}
 
-		friend sysx::packetstream&
-		operator>>(sysx::packetstream& stream, Uniform_grid& rhs) {
+		friend sys::packetstream&
+		operator>>(sys::packetstream& stream, Uniform_grid& rhs) {
 			return stream >> rhs.size >> rhs.nparts;
 		}
 

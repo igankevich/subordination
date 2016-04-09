@@ -18,9 +18,9 @@
 	#error Factory requires C++11 compiler.
 #endif
 
-#include <sysx/process.hh>
-#include <sysx/log.hh>
-#include <sysx/packetstream.hh>
+#include <sys/process.hh>
+#include <sys/log.hh>
+#include <sys/packetstream.hh>
 
 #include <factory/bits/terminate_handler.hh>
 #include <factory/kernel.hh>
@@ -32,12 +32,12 @@ namespace factory {
 		template<class Config>
 		struct Basic_factory:
 		public Server<Config>,
-//		private sysx::Disable_sync_with_stdio,
-		private sysx::Auto_check_endiannes,
-//		private sysx::Auto_filter_bad_chars_on_cout_and_cerr,
-//		private sysx::Auto_open_standard_file_descriptors,
+//		private sys::Disable_sync_with_stdio,
+		private sys::Auto_check_endiannes,
+//		private sys::Auto_filter_bad_chars_on_cout_and_cerr,
+//		private sys::Auto_open_standard_file_descriptors,
 		private Auto_set_terminate_handler<Basic_factory<Config>>,
-		public sysx::Install_syslog
+		public sys::Install_syslog
 		{
 
 			typedef Server<Config> base_server;

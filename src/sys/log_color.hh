@@ -3,7 +3,7 @@
 
 #include <unistd.h>
 
-namespace sysx {
+namespace sys {
 
 	enum struct log_color {
 		RESET            = 0,

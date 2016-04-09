@@ -1,5 +1,5 @@
-#include <sysx/sharedmem.hh>
-#include <sysx/shmembuf.hh>
+#include <sys/sharedmem.hh>
+#include <sys/shmembuf.hh>
 
 #include "test.hh"
 
@@ -7,7 +7,7 @@
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
@@ -16,9 +16,9 @@ template<class T>
 struct Test_shmem: public test::Test<Test_shmem<T>> {
 
 	typedef stdx::log<Test_shmem> this_log;
-	typedef typename sysx::shared_mem<T>::size_type size_type;
-	typedef sysx::shared_mem<T> shmem;
-	typedef sysx::basic_shmembuf<T> shmembuf;
+	typedef typename sys::shared_mem<T>::size_type size_type;
+	typedef sys::shared_mem<T> shmem;
+	typedef sys::basic_shmembuf<T> shmembuf;
 
 	static bool
 	shmem_invariant(shmem& shm) {
@@ -26,9 +26,9 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 	}
 
 	void xrun() override {
-		const typename sysx::shared_mem<T>::size_type SHMEM_SIZE = 512;
-		sysx::shared_mem<T> mem1(SHMEM_SIZE, 0666);
-		sysx::shared_mem<T> mem2(mem1.id());
+		const typename sys::shared_mem<T>::size_type SHMEM_SIZE = 512;
+		sys::shared_mem<T> mem1(SHMEM_SIZE, 0666);
+		sys::shared_mem<T> mem2(mem1.id());
 		test::invar(shmem_invariant, mem1);
 		test::invar(shmem_invariant, mem2);
 		const size_type real_size = mem1.size();
@@ -51,9 +51,9 @@ template<class T>
 struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 
 	typedef stdx::log<Test_shmembuf> this_log;
-	typedef typename sysx::shared_mem<T>::size_type size_type;
-	typedef sysx::shared_mem<T> shmem;
-	typedef sysx::basic_shmembuf<T> shmembuf;
+	typedef typename sys::shared_mem<T>::size_type size_type;
+	typedef sys::shared_mem<T> shmem;
+	typedef sys::basic_shmembuf<T> shmembuf;
 
 	void xrun() override {
 		shmembuf buf1("/test-shmem-2", 0600);

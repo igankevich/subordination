@@ -6,8 +6,8 @@
 
 #include <stdx/log.hh>
 
-#include <sysx/endpoint.hh>
-#include <sysx/network.hh>
+#include <sys/endpoint.hh>
+#include <sys/network.hh>
 
 namespace discovery {
 
@@ -15,12 +15,12 @@ namespace discovery {
 	struct Hierarchy {
 
 		typedef Addr addr_type;
-		typedef sysx::network<addr_type> network_type;
-		typedef std::set<sysx::endpoint>::size_type size_type;
+		typedef sys::network<addr_type> network_type;
+		typedef std::set<sys::endpoint>::size_type size_type;
 		typedef stdx::log<Hierarchy> this_log;
 
 		explicit
-		Hierarchy(const network_type& net, const sysx::port_type port):
+		Hierarchy(const network_type& net, const sys::port_type port):
 		_network(net),
 		_bindaddr(net.address(), port),
 		_principal(),
@@ -35,12 +35,12 @@ namespace discovery {
 			return _network;
 		}
 
-		const sysx::endpoint&
+		const sys::endpoint&
 		bindaddr() const noexcept {
 			return _bindaddr;
 		}
 
-		const sysx::endpoint&
+		const sys::endpoint&
 		principal() const noexcept {
 			return _principal;
 		}
@@ -51,20 +51,20 @@ namespace discovery {
 		}
 
 		void
-		set_principal(const sysx::endpoint& new_princ) {
+		set_principal(const sys::endpoint& new_princ) {
 			this_log() << "Set principal to " << new_princ << std::endl;
 			_principal = new_princ;
 			_subordinates.erase(new_princ);
 		}
 
 		void
-		add_subordinate(const sysx::endpoint& addr) {
+		add_subordinate(const sys::endpoint& addr) {
 			this_log() << "Adding subordinate = " << addr << std::endl;
 			_subordinates.insert(addr);
 		}
 
 		void
-		remove_subordinate(const sysx::endpoint& addr) {
+		remove_subordinate(const sys::endpoint& addr) {
 			this_log() << "Removing subordinate = " << addr << std::endl;
 			_subordinates.erase(addr);
 		}
@@ -82,7 +82,7 @@ namespace discovery {
 			std::copy(
 				rhs._subordinates.begin(),
 				rhs._subordinates.end(),
-				std::ostream_iterator<sysx::endpoint>(out, ",")
+				std::ostream_iterator<sys::endpoint>(out, ",")
 			);
 			return out;
 		}
@@ -90,9 +90,9 @@ namespace discovery {
 	protected:
 
 		network_type _network;
-		sysx::endpoint _bindaddr;
-		sysx::endpoint _principal;
-		std::set<sysx::endpoint> _subordinates;
+		sys::endpoint _bindaddr;
+		sys::endpoint _principal;
+		std::set<sys::endpoint> _subordinates;
 
 	};
 

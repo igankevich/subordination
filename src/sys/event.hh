@@ -15,10 +15,10 @@
 #include <stdx/mutex.hh>
 #include <stdx/log.hh>
 
-#include <sysx/bits/check.hh>
-#include <sysx/pipe.hh>
+#include <sys/bits/check.hh>
+#include <sys/pipe.hh>
 
-namespace sysx {
+namespace sys {
 
 	typedef struct ::pollfd basic_event;
 
@@ -494,7 +494,7 @@ namespace sysx {
 			assert(ordinary_begin() <= ordinary_end());
 		}
 
-		sysx::pipe _pipe;
+		sys::pipe _pipe;
 		events_type _events;
 		handlers_type _handlers;
 		std::vector<poll_event> _specials;

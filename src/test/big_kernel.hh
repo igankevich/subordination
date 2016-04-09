@@ -15,7 +15,7 @@ struct Big_kernel: public Kernel {
 	}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -23,7 +23,7 @@ struct Big_kernel: public Kernel {
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -52,7 +52,7 @@ struct Big_kernel: public Kernel {
 	friend std::ostream&
 	operator<<(std::ostream& out, const Big_kernel& rhs) {
 		for (const Datum& x : rhs._data) {
-			out << sysx::make_bytes(x);
+			out << sys::make_bytes(x);
 		}
 		return out;
 	}
@@ -67,7 +67,7 @@ struct Big_kernel: public Kernel {
 		return Type<Kernel>{
 			12345u + Size,
 			"Big_kernel",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Big_kernel<Size>* k = new Big_kernel<Size>;
 				k->read(in);
 				return k;

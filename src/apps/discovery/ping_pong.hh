@@ -16,12 +16,12 @@ struct Ping: public Kernel {
 		commit(this_server.remote_server());
 	}
 
-	void write(sysx::packetstream& out) {
+	void write(sys::packetstream& out) {
 		Kernel::write(out);
 		out << _data;
 	}
 
-	void read(sysx::packetstream& in) {
+	void read(sys::packetstream& in) {
 		this_log() << "Ping::read()" << std::endl;
 		Kernel::read(in);
 		in >> _data;
@@ -42,7 +42,7 @@ struct Ping: public Kernel {
 		return Type<Kernel>{
 			111,
 			"Ping",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Ping* k = new Ping;
 				k->read(in);
 				return k;

@@ -7,7 +7,7 @@
 #include <stdx/uint128.hh>
 #include <stdx/ios.hh>
 
-#include <sysx/bits/macros.hh>
+#include <sys/bits/macros.hh>
 
 #if SYSX_GCC_VERSION_AT_LEAST(4, 3)
 	#define FACTORY_HAVE_BUILTIN_SWAP16
@@ -15,7 +15,7 @@
 	#define FACTORY_HAVE_BUILTIN_SWAP64
 #endif
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

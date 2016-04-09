@@ -18,7 +18,7 @@ struct Delayed_shutdown: public Kernel {
 	act() override {
 		if (not _normal) {
 			try {
-				sysx::endpoint addr = factory()->remote_server()->server_addr();
+				sys::endpoint addr = factory()->remote_server()->server_addr();
 				this_log() << "Killing " << addr << std::endl;
 			} catch (...) {
 				this_log() << "Killing this process" << std::endl;

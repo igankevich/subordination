@@ -1,6 +1,6 @@
 #include <apps/factory/security.hh>
-#include <sysx/fildesbuf.hh>
-#include <sysx/packetstream.hh>
+#include <sys/fildesbuf.hh>
+#include <sys/packetstream.hh>
 #include <factory/error.hh>
 #include <factory/kernelbuf.hh>
 
@@ -13,7 +13,7 @@ using namespace factory;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
@@ -24,7 +24,7 @@ template<class T, class Fd>
 struct Test_fildesbuf: public test::Test<Test_fildesbuf<T,Fd>> {
 
 	typedef std::char_traits<T> Tr;
-	typedef sysx::basic_fdstream<T,Tr,Fd> stream_type;
+	typedef sys::basic_fdstream<T,Tr,Fd> stream_type;
 	typedef Fd sink_type;
 
 	void xrun() override {
@@ -42,11 +42,11 @@ struct Test_fildesbuf: public test::Test<Test_fildesbuf<T,Fd>> {
 
 };
 
-template<class T, class Fd=sysx::fildes>
+template<class T, class Fd=sys::fildes>
 struct Test_packetbuf: public test::Test<Test_packetbuf<T,Fd>> {
 
 	typedef std::char_traits<T> Tr;
-	typedef sysx::basic_fildesbuf<T,Tr,Fd> packetbuf_type;
+	typedef sys::basic_fildesbuf<T,Tr,Fd> packetbuf_type;
 	typedef Fd sink_type;
 
 	void xrun() override {
@@ -82,7 +82,7 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 		typedef std::size_t I;
 		typedef std::char_traits<T> Tr;
 		typedef Fd sink_type;
-		typedef factory::basic_kernelbuf<sysx::basic_fildesbuf<T,Tr,Fd>> basebuf;
+		typedef factory::basic_kernelbuf<sys::basic_fildesbuf<T,Tr,Fd>> basebuf;
 
 		const I MAX_SIZE_POWER = 12;
 
@@ -93,7 +93,7 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 			std::vector<Datum> output(size);
 
 			basebuf buf{sink_type{}};
-			sysx::basic_packetstream<T> str(&buf);
+			sys::basic_packetstream<T> str(&buf);
 
 			test::equal(str.tellp(), 0, "buffer is not empty before write");
 			std::for_each(input.begin(), input.end(), [&str] (const Datum& rhs) {

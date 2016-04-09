@@ -5,12 +5,12 @@
 
 #include <stdx/log.hh>
 
-#include <sysx/bits/check.hh>
-#include <sysx/bits/safe_calls.hh>
-#include <sysx/fildes.hh>
-#include <sysx/process.hh>
+#include <sys/bits/check.hh>
+#include <sys/bits/safe_calls.hh>
+#include <sys/fildes.hh>
+#include <sys/process.hh>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 
@@ -43,7 +43,7 @@ namespace sysx {
 		{}
 
 		pipe(fd_type in, fd_type out) noexcept:
-		_fds{sysx::fildes(in), sysx::fildes(out)}
+		_fds{sys::fildes(in), sys::fildes(out)}
 		{}
 
 		inline
@@ -87,16 +87,16 @@ namespace sysx {
 		}
 
 	private:
-		sysx::fildes _fds[2] = {};
+		sys::fildes _fds[2] = {};
 		fd_type _rawfds[2];
 
-		static_assert(sizeof(_fds) == sizeof(_rawfds), "bad sysx::fildes size");
+		static_assert(sizeof(_fds) == sizeof(_rawfds), "bad sys::fildes size");
 	};
 
 	struct two_way_pipe {
 
 		two_way_pipe():
-		_owner(sysx::this_process::id())
+		_owner(sys::this_process::id())
 		{}
 		~two_way_pipe() = default;
 		two_way_pipe(const two_way_pipe&) = delete;
@@ -140,7 +140,7 @@ namespace sysx {
 
 		bool
 		is_owner() const {
-			return sysx::this_process::id() == _owner;
+			return sys::this_process::id() == _owner;
 		}
 
 		void

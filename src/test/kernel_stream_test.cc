@@ -1,5 +1,5 @@
-#include <sysx/network_format.hh>
-#include <sysx/fildesbuf.hh>
+#include <sys/network_format.hh>
+#include <sys/fildesbuf.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/basic_server.hh>
@@ -14,7 +14,7 @@
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
@@ -45,13 +45,13 @@ using namespace factory::this_config;
 struct Good_kernel: public Kernel {
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << _data;
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> _data;
 	}
@@ -66,7 +66,7 @@ struct Good_kernel: public Kernel {
 		return Type<Kernel>{
 			1,
 			"Good_kernel",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Good_kernel* k = new Good_kernel;
 				k->read(in);
 				return k;
@@ -87,7 +87,7 @@ struct Good_kernel: public Kernel {
 	friend std::ostream&
 	operator<<(std::ostream& out, const Good_kernel& rhs) {
 //		operator<<(out, static_cast<const Kernel&>(rhs));
-		return out << sysx::make_bytes(rhs._data);
+		return out << sys::make_bytes(rhs._data);
 	}
 
 	const Datum&
@@ -104,7 +104,7 @@ private:
 struct Kernel_that_writes_more_than_reads: public Good_kernel {
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Good_kernel::write(out);
 		// push dummy object to the stream
 		out << Datum();
@@ -120,7 +120,7 @@ struct Kernel_that_writes_more_than_reads: public Good_kernel {
 		return Type<Kernel>{
 			2,
 			"Kernel_that_writes_more_than_reads",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Kernel_that_writes_more_than_reads* k = new Kernel_that_writes_more_than_reads;
 				k->read(in);
 				return k;
@@ -133,7 +133,7 @@ struct Kernel_that_writes_more_than_reads: public Good_kernel {
 struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Good_kernel::read(in);
 		Datum dummy;
 		// read dummy object from the stream
@@ -150,7 +150,7 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 		return Type<Kernel>{
 			3,
 			"Kernel_that_reads_more_than_writes",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Kernel_that_reads_more_than_writes* k = new Kernel_that_reads_more_than_writes;
 				k->read(in);
 				return k;
@@ -171,13 +171,13 @@ struct Kernel_that_carries_its_parent: public Kernel {
 	Kernel_that_carries_its_parent(int) {}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << _data;
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> _data;
 	}
@@ -192,7 +192,7 @@ struct Kernel_that_carries_its_parent: public Kernel {
 		return Type<Kernel>{
 			4,
 			"Kernel_that_carries_its_parent",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
 				k->read(in);
 				assert(k->carries_parent());
@@ -214,9 +214,9 @@ struct Kernel_that_carries_its_parent: public Kernel {
 
 	friend std::ostream&
 	operator<<(std::ostream& out, const Kernel_that_carries_its_parent& rhs) {
-		out << sysx::make_bytes(rhs._data) << ' ';
+		out << sys::make_bytes(rhs._data) << ' ';
 		if (rhs.good_parent()) {
-			out << sysx::make_bytes(rhs.good_parent()->data());
+			out << sys::make_bytes(rhs.good_parent()->data());
 		} else {
 			out << "nullptr";
 		}
@@ -248,7 +248,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 
 	typedef Kernel kernel_type;
 	typedef std::basic_stringbuf<Ch> sink_type;
-	typedef basic_kernelbuf<sysx::basic_fildesbuf<Ch, std::char_traits<Ch>, sink_type>> buffer_type;
+	typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sink_type>> buffer_type;
 	typedef Kernel_stream<kernel_type> stream_type;
 	typedef typename stream_type::types types;
 	typedef stdx::log<Test_kernel_stream> this_log;

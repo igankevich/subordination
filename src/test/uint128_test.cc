@@ -65,7 +65,7 @@ void check_exception(F func) {
 }
 
 void test_uint128() {
-	using namespace sysx::literals;
+	using namespace sys::literals;
 	// check different numbers
 	check_op(uint128_t(0u), "0");
 	check_op(uint128_t(1), "1");

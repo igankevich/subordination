@@ -57,7 +57,7 @@ using namespace factory::app_config;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
@@ -68,8 +68,8 @@ using factory::components::Application;
 #include "datum.hh"
 
 
-sysx::endpoint server_endpoint("127.0.0.1", 10000);
-sysx::endpoint client_endpoint("127.0.0.1", 20000);
+sys::endpoint server_endpoint("127.0.0.1", 10000);
+sys::endpoint client_endpoint("127.0.0.1", 20000);
 
 const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 1;
@@ -97,7 +97,7 @@ struct Test_socket: public Kernel {
 		commit(remote_server());
 	}
 
-	void write(sysx::packetstream& out) override {
+	void write(sys::packetstream& out) override {
 		this_log() << "Test_socket::write()" << std::endl;
 		Kernel::write(out);
 		out << uint32_t(_data.size());
@@ -105,7 +105,7 @@ struct Test_socket: public Kernel {
 			out << _data[i];
 	}
 
-	void read(sysx::packetstream& in) override {
+	void read(sys::packetstream& in) override {
 		this_log() << "Test_socket::read()" << std::endl;
 		Kernel::read(in);
 		uint32_t sz;
@@ -133,7 +133,7 @@ struct Test_socket: public Kernel {
 		return Type<Kernel>{
 			1,
 			"Test_socket",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Test_socket* k = new Test_socket;
 				k->read(in);
 				return k;
@@ -221,7 +221,7 @@ struct Main: public Kernel {
 	void act() override {
 		#if defined(FACTORY_TEST_APP)
 		Test_socket* kernel = new Test_socket;
-		kernel->setapp(sysx::this_process::id());
+		kernel->setapp(sys::this_process::id());
 		upstream(remote_server(), kernel);
 		#endif
 		#if defined(FACTORY_TEST_SERVER)

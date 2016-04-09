@@ -6,7 +6,7 @@
 
 #include <stdx/mutex.hh>
 #include <stdx/algorithm.hh>
-#include <sysx/semaphore.hh>
+#include <sys/semaphore.hh>
 
 #include "test.hh"
 
@@ -186,16 +186,16 @@ struct Test_semaphore: public Parametric_test<Test_semaphore<Mutex,Semaphore,I>>
 //		<< std::endl;
 //}
 
-struct self_signal_semaphore: public sysx::signal_semaphore {
+struct self_signal_semaphore: public sys::signal_semaphore {
 	self_signal_semaphore():
-	sysx::signal_semaphore(sysx::this_process::id(), SIGUSR1)
+	sys::signal_semaphore(sys::this_process::id(), SIGUSR1)
 	{}
 };
 
 int main() {
-//	sysx::init_signal_semaphore init(SIGUSR1);
+//	sys::init_signal_semaphore init(SIGUSR1);
 	return test::Test_suite{
 		new Test_mutex<stdx::spin_mutex>(2, 10),
-		new Test_semaphore<std::mutex,sysx::sysv_semaphore>(1, 10)
+		new Test_semaphore<std::mutex,sys::sysv_semaphore>(1, 10)
 	}.run();
 }

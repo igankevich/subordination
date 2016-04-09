@@ -10,10 +10,10 @@
 
 #include <stdx/log.hh>
 
-#include <sysx/fildes.hh>
-#include <sysx/process.hh>
+#include <sys/fildes.hh>
+#include <sys/process.hh>
 
-namespace sysx {
+namespace sys {
 
 	template<class T>
 	struct shared_mem {

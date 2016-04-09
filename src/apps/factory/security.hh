@@ -12,9 +12,9 @@
 
 #include <stdx/iterator.hh>
 
-#include <sysx/bits/check.hh>
-#include <sysx/event.hh>
-#include <sysx/process.hh>
+#include <sys/bits/check.hh>
+#include <sys/event.hh>
+#include <sys/process.hh>
 
 namespace factory {
 
@@ -24,22 +24,22 @@ namespace factory {
 		void
 		for_each_open_file_descriptor(F func) {
 			struct ::rlimit rlim;
-			sysx::bits::check(::getrlimit(RLIMIT_NOFILE, &rlim), __FILE__, __LINE__, __func__);
+			sys::bits::check(::getrlimit(RLIMIT_NOFILE, &rlim), __FILE__, __LINE__, __func__);
 			const int num_fds = rlim.rlim_cur == RLIM_INFINITY ? FD_SETSIZE : rlim.rlim_cur;
 			const int batch_size = FD_SETSIZE;
 			const int num_batches = num_fds / batch_size + (num_fds % FD_SETSIZE == 0 ? 0 : 1);
 			const int no_timeout = -1;
 			for (int i=0; i<num_batches; ++i) {
-				std::vector<sysx::poll_event> fds;
+				std::vector<sys::poll_event> fds;
 				const int from = i*batch_size;
 				const int to = std::min((i+1)*batch_size, num_fds);
 				for (int fd=from; fd<to; ++fd) {
 					fds.emplace_back(fd, 0, 0);
 				}
-				sysx::bits::check(::poll(fds.data(), fds.size(), no_timeout), __FILE__, __LINE__, __func__);
+				sys::bits::check(::poll(fds.data(), fds.size(), no_timeout), __FILE__, __LINE__, __func__);
 				std::for_each(
 					fds.begin(), fds.end(),
-					[&func] (const sysx::poll_event& rhs) {
+					[&func] (const sys::poll_event& rhs) {
 						if (not rhs.bad()) {
 							func(rhs);
 						}
@@ -83,7 +83,7 @@ namespace factory {
 
 	void
 	do_not_allow_to_run_as_superuser_or_setuid() {
-		using namespace sysx::this_process;
+		using namespace sys::this_process;
 		if (user_id() == 0 or effective_user_id() == 0 or
 			group_id() == 0 or effective_group_id() == 0) {
 			throw std::runtime_error("do not run as superuser/supergroup");
@@ -96,13 +96,13 @@ namespace factory {
 
 	void
 	ignore_all_signals_except_terminate() {
-		for (sysx::signal_type s=1; s<=31; ++s) {
-			sysx::signal sig = sysx::signal(s);
-			if (sig != sysx::signal::terminate and
-				sig != sysx::signal::kill and
-				sig != sysx::signal::stop)
+		for (sys::signal_type s=1; s<=31; ++s) {
+			sys::signal sig = sys::signal(s);
+			if (sig != sys::signal::terminate and
+				sig != sys::signal::kill and
+				sig != sys::signal::stop)
 			{
-				sysx::this_process::ignore_signal(sig);
+				sys::this_process::ignore_signal(sig);
 			}
 		}
 	}
@@ -110,11 +110,11 @@ namespace factory {
 	void
 	close_all_file_descriptors() {
 		bits::for_each_open_file_descriptor(
-			[] (const sysx::poll_event& rhs) {
+			[] (const sys::poll_event& rhs) {
 				#ifdef NDEBUG
-				sysx::fildes tmp(rhs.fd());
+				sys::fildes tmp(rhs.fd());
 				#else
-				if (rhs.fd() > 2) { sysx::fildes tmp(rhs.fd()); }
+				if (rhs.fd() > 2) { sys::fildes tmp(rhs.fd()); }
 				#endif
 				// destructor closes file descriptor
 			}

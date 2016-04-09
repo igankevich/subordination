@@ -10,13 +10,13 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	typedef Address addr_type;
 	typedef Hierarchy hierarchy_type;
 	typedef Distance distance_type;
-	typedef sysx::network<addr_type> network_type;
+	typedef sys::network<addr_type> network_type;
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
 	typedef typename rankedlist_type::iterator rankedlist_iterator;
 	typedef Negotiator<addr_type> negotiator_type;
 	typedef stdx::log<Master_discoverer> this_log;
 
-	Master_discoverer(const network_type& network, const sysx::port_type port):
+	Master_discoverer(const network_type& network, const sys::port_type port):
 	_hierarchy(network, port),
 	_port(port),
 	_rankedhosts(),
@@ -118,7 +118,7 @@ private:
 	void
 	run_negotiator(Server& this_server) {
 		if (_currenthost != _rankedhosts.end()) {
-			const sysx::endpoint new_princ(_currenthost->second, _port);
+			const sys::endpoint new_princ(_currenthost->second, _port);
 			this_log() << "trying " << new_princ << std::endl;
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
 			upstream(this_server.local_server(), _negotiator);
@@ -136,7 +136,7 @@ private:
 	}
 
 	hierarchy_type _hierarchy;
-	sysx::port_type _port;
+	sys::port_type _port;
 	rankedlist_type _rankedhosts;
 	rankedlist_iterator _currenthost;
 //	discovery::Cache_guard<Peers> _cache;

@@ -2,9 +2,9 @@
 #define SYSX_NETWORK_ITERATOR_HH
 
 #include <iterator>
-#include <sysx/network_format.hh>
+#include <sys/network_format.hh>
 
-namespace sysx {
+namespace sys {
 
 	template<class Address>
 	struct network_iterator:
@@ -29,7 +29,7 @@ namespace sysx {
 
 		explicit constexpr
 		network_iterator(const addr_type& addr) noexcept:
-		_idx(sysx::to_host_format(addr.rep())),
+		_idx(sys::to_host_format(addr.rep())),
 		_addr(addr)
 		{}
 
@@ -86,7 +86,7 @@ namespace sysx {
 
 		addr_type
 		make_addr() const noexcept {
-			return addr_type(sysx::to_network_format(_idx));
+			return addr_type(sys::to_network_format(_idx));
 		}
 
 		rep_type _idx;

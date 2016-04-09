@@ -3,7 +3,7 @@
 
 #include <signal.h>
 
-namespace sysx {
+namespace sys {
 
 	typedef int signal_type;
 	typedef struct ::sigaction sigaction_type;

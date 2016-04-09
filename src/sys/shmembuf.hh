@@ -4,10 +4,10 @@
 #include <factory/error.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/mutex.hh>
-#include <sysx/bits/buffer_category.hh>
-#include <sysx/sharedmem.hh>
+#include <sys/bits/buffer_category.hh>
+#include <sys/sharedmem.hh>
 
-namespace sysx {
+namespace sys {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
 	struct basic_shmembuf: public stdx::basic_packetbuf<Ch,Tr> {
@@ -18,13 +18,13 @@ namespace sysx {
 		using typename stdx::basic_packetbuf<Ch,Tr>::pos_type;
 		using typename stdx::basic_packetbuf<Ch,Tr>::off_type;
 
-		typedef typename sysx::shared_mem<char_type>::size_type size_type;
-		typedef typename sysx::shared_mem<char_type>::path_type path_type;
+		typedef typename sys::shared_mem<char_type>::size_type size_type;
+		typedef typename sys::shared_mem<char_type>::path_type path_type;
 		typedef stdx::spin_mutex mutex_type;
 		typedef stdx::log<basic_shmembuf> this_log;
 
 		explicit
-		basic_shmembuf(path_type&& path, sysx::mode_type mode):
+		basic_shmembuf(path_type&& path, sys::mode_type mode):
 		_sharedmem(std::forward<path_type>(path), 512, mode, BUFFER_PROJID),
 		_sharedpart(new (_sharedmem.ptr()) shmem_header)
 		{
@@ -172,7 +172,7 @@ namespace sysx {
 			this->debug("readoffs");
 		}
 
-		sysx::shared_mem<char_type> _sharedmem;
+		sys::shared_mem<char_type> _sharedmem;
 		struct shmem_header {
 			mutex_type mtx;
 			pos_type goff = 0;
@@ -189,10 +189,10 @@ namespace sysx {
 namespace stdx {
 
 	template<class Ch, class Tr>
-	struct type_traits<sysx::basic_shmembuf<Ch,Tr>> {
+	struct type_traits<sys::basic_shmembuf<Ch,Tr>> {
 		static constexpr const char*
 		short_name() { return "shmembuf"; }
-		typedef sysx::buffer_category category;
+		typedef sys::buffer_category category;
 	};
 
 }

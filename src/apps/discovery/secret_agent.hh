@@ -25,7 +25,7 @@ struct Secret_agent: public Priority_kernel<Kernel> {
 		return Type<Kernel>{
 			112,
 			"Secret_agent",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Secret_agent* k = new Secret_agent;
 				k->read(in);
 				return k;

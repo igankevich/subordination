@@ -5,10 +5,10 @@
 #include <istream>
 #include <ostream>
 
-#include <sysx/network_format.hh>
+#include <sys/network_format.hh>
 #include <stdx/packetbuf.hh>
 
-namespace sysx {
+namespace sys {
 
 	template<class Ch, class Tr=std::char_traits<Ch>, class Size=uint32_t>
 	struct basic_packetstream {
@@ -85,7 +85,7 @@ namespace sysx {
 		#endif
 		basic_packetstream& operator<<(const std::string& rhs) { return write(rhs); }
 		template<class T>
-		basic_packetstream& operator<<(const sysx::Bytes<T>& rhs) {
+		basic_packetstream& operator<<(const sys::Bytes<T>& rhs) {
 			return this->write(rhs.begin(), rhs.size());
 		}
 
@@ -108,7 +108,7 @@ namespace sysx {
 		#endif
 		basic_packetstream& operator>>(std::string& rhs) { return read(rhs); }
 		template<class T>
-		basic_packetstream& operator>>(sysx::Bytes<T>& rhs) {
+		basic_packetstream& operator>>(sys::Bytes<T>& rhs) {
 			return this->read(rhs.begin(), rhs.size());
 		}
 
@@ -142,7 +142,7 @@ namespace sysx {
 	            " by defining IGNORE_ISO_IEC559."
 			);
 		#endif
-			sysx::Bytes<T> val = rhs;
+			sys::Bytes<T> val = rhs;
 			val.to_network_format();
 			this->operator<<(val);
 			return *this;
@@ -157,7 +157,7 @@ namespace sysx {
 
 		template<class T>
 		basic_packetstream& read(T& rhs) {
-			sysx::Bytes<T> val;
+			sys::Bytes<T> val;
 			_buf->sgetn(val.begin(), val.size());
 			val.to_host_format();
 			rhs = val;

@@ -6,7 +6,7 @@
 	#define FACTORY_HAVE_UINT128_T
 #endif
 
-#include <sysx/bits/uint128_parse.hh>
+#include <sys/bits/uint128_parse.hh>
 
 #if defined(FACTORY_HAVE_UINT128_T)
 typedef unsigned __int128 uint128_t;
@@ -22,7 +22,7 @@ namespace std {
 	operator<<(std::ostream& out, unsigned __int128 rhs) {
 		std::ostream::sentry s(out);
 		if (s) {
-			sysx::bits::uint128_put(rhs, out);
+			sys::bits::uint128_put(rhs, out);
 		}
 		return out;
 	}
@@ -31,15 +31,15 @@ namespace std {
 	operator>>(std::istream& in, unsigned __int128& rhs) {
 		std::istream::sentry s(in);
 		if (s) {
-			sysx::bits::uint128_get(rhs, in);
+			sys::bits::uint128_get(rhs, in);
 		}
 		return in;
 	}
 
 }
 #else
-#include <sysx/bits/basic_uint.hh>
-typedef sysx::bits::basic_uint<uint64_t> uint128_t;
+#include <sys/bits/basic_uint.hh>
+typedef sys::bits::basic_uint<uint64_t> uint128_t;
 namespace std {
 	typedef ::uint128_t uint128_t;
 }
@@ -57,7 +57,7 @@ namespace std {
 
 }
 
-namespace sysx {
+namespace sys {
 
 	namespace literals {
 

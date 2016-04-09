@@ -11,13 +11,13 @@
 #include <stdx/log.hh>
 #include <stdx/iterator.hh>
 
-#include <sysx/bits/check.hh>
-#include <sysx/bits/to_string.hh>
-#include <sysx/bits/safe_calls.hh>
+#include <sys/bits/check.hh>
+#include <sys/bits/to_string.hh>
+#include <sys/bits/safe_calls.hh>
 
-#include <sysx/signal.hh>
+#include <sys/signal.hh>
 
-namespace sysx {
+namespace sys {
 
 	typedef ::pid_t pid_type;
 	typedef int stat_type;
@@ -259,7 +259,7 @@ namespace sysx {
 
 		~process() {
 			if (_pid > 0) {
-				this->do_kill(sysx::signal::terminate);
+				this->do_kill(sys::signal::terminate);
 			}
 		}
 
@@ -270,20 +270,20 @@ namespace sysx {
 			return *this;
 		}
 
-		inline void terminate() { this->send(sysx::signal::terminate); }
-		inline void kill() { this->send(sysx::signal::kill); }
-		inline void interrupt() { this->send(sysx::signal::keyboard_interrupt); }
-		inline void hang_up() { this->send(sysx::signal::hang_up); }
+		inline void terminate() { this->send(sys::signal::terminate); }
+		inline void kill() { this->send(sys::signal::kill); }
+		inline void interrupt() { this->send(sys::signal::keyboard_interrupt); }
+		inline void hang_up() { this->send(sys::signal::hang_up); }
 
 		inline void
-		send(sysx::signal sig) {
+		send(sys::signal sig) {
 			if (_pid > 0) {
 		    	bits::check(do_kill(sig),
 					__FILE__, __LINE__, __func__);
 			}
 		}
 
-		sysx::proc_status
+		sys::proc_status
 		wait() {
 			int stat = 0;
 			if (_pid > 0) {
@@ -292,12 +292,12 @@ namespace sysx {
 					__FILE__, __LINE__, __func__);
 				_pid = 0;
 			}
-			return sysx::proc_status(stat);
+			return sys::proc_status(stat);
 		}
 
 		explicit inline
 		operator bool() const noexcept {
-			return _pid > 0 && do_kill(sysx::signal(0)) != -1;
+			return _pid > 0 && do_kill(sys::signal(0)) != -1;
 		}
 
 		inline bool
@@ -333,7 +333,7 @@ namespace sysx {
 	private:
 
 		inline int
-		do_kill(sysx::signal sig) const noexcept {
+		do_kill(sys::signal sig) const noexcept {
 		   	return ::kill(_pid, signal_type(sig));
 		}
 
@@ -373,7 +373,7 @@ namespace sysx {
 		wait() {
 			int ret = 0;
 			for (process& p : _procs) {
-				sysx::proc_status x = p.wait();
+				sys::proc_status x = p.wait();
 				this_log() << "process terminated:"
 					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal())
 					<< std::endl;
@@ -386,7 +386,7 @@ namespace sysx {
 		void
 		wait(F callback, wait_flags flags=proc_exited) {
 			while (!_procs.empty()) {
-				sysx::proc_info status = do_wait(flags);
+				sys::proc_info status = do_wait(flags);
 				auto result = std::find_if(
 					_procs.begin(), _procs.end(),
 					[&status] (const process& p) {
@@ -469,13 +469,13 @@ namespace sysx {
 
 	private:
 
-		sysx::proc_info
+		sys::proc_info
 		do_wait(wait_flags flags) const {
-			sysx::siginfo_type info;
+			sys::siginfo_type info;
 			bits::check_if_not<std::errc::interrupted>(
 				::waitid(P_PGID, _gid, &info, flags),
 				__FILE__, __LINE__, __func__);
-			return sysx::proc_info(info);
+			return sys::proc_info(info);
 		}
 
 		std::vector<process> _procs;
@@ -533,7 +533,7 @@ namespace sysx {
 		void
 		send(signal sig) {
 			bits::check(
-				::kill(::sysx::this_process::id(), signal_type(sig)),
+				::kill(::sys::this_process::id(), signal_type(sig)),
 				__FILE__, __LINE__, __func__
 			);
 		}

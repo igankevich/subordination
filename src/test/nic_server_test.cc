@@ -19,7 +19,7 @@
 #if !defined(FACTORY_SOCKET_TYPE)
 #include <factory/server/nic_server.hh>
 #define FACTORY_TEST_SOCKET
-#define FACTORY_SOCKET_TYPE sysx::socket
+#define FACTORY_SOCKET_TYPE sys::socket
 #endif
 
 namespace factory {
@@ -66,18 +66,18 @@ using namespace factory::this_config;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }
 
-const sysx::ipv4_addr netmask = sysx::ipaddr_traits<sysx::ipv4_addr>::loopback_mask();
+const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
-sysx::endpoint server_endpoint("127.0.0.1", 10001);
-sysx::endpoint client_endpoint({127,0,0,1}, 20001);
+sys::endpoint server_endpoint("127.0.0.1", 10001);
+sys::endpoint client_endpoint({127,0,0,1}, 20001);
 #else
-sysx::endpoint server_endpoint("127.0.0.1", 10002);
-sysx::endpoint client_endpoint({127,0,0,1}, 20002);
+sys::endpoint server_endpoint("127.0.0.1", 10002);
+sys::endpoint client_endpoint({127,0,0,1}, 20002);
 #endif
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
@@ -127,7 +127,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -135,7 +135,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -162,7 +162,7 @@ struct Test_socket: public Kernel {
 		return Type<Kernel>{
 			1,
 			"Test_socket",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Test_socket* k = new Test_socket;
 				k->read(in);
 				return k;
@@ -293,23 +293,23 @@ main(int argc, char* argv[]) {
 			<< ",client=" << client_endpoint
 			<< std::endl;
 		uint32_t sleep = 0;
-		sysx::process_group procs;
+		sys::process_group procs;
 		procs.add([&argv, sleep] () {
-			return sysx::this_process::execute(argv[0], 'x', sleep);
+			return sys::this_process::execute(argv[0], 'x', sleep);
 		});
 		// wait for the child to start
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		procs.add([&argv, sleep] () {
-			return sysx::this_process::execute(argv[0], 'y', sleep);
+			return sys::this_process::execute(argv[0], 'y', sleep);
 		});
-		this_log() << "sysx::process group = " << procs << std::endl;
-		const sysx::proc_status stat = procs.back().wait();
+		this_log() << "sys::process group = " << procs << std::endl;
+		const sys::proc_status stat = procs.back().wait();
 		this_log() << "master process terminated: " << stat << std::endl;
 		procs.front().terminate();
-		const sysx::proc_status stat2 = procs.front().wait();
+		const sys::proc_status stat2 = procs.front().wait();
 		this_log() << "child process terminated: " << stat2 << std::endl;
-		retval |= stat.exit_code() | sysx::signal_type(stat.term_signal());
-		retval |= stat2.exit_code() | sysx::signal_type(stat2.term_signal());
+		retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
+		retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
 	} else {
 		retval = factory_main<Main,config>(argc, argv);
 	}

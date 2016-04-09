@@ -6,8 +6,8 @@
 
 #include <stdx/log.hh>
 #include <stdx/packetbuf.hh>
-#include <sysx/network_format.hh>
-#include <sysx/bits/buffer_category.hh>
+#include <sys/network_format.hh>
+#include <sys/bits/buffer_category.hh>
 
 namespace factory {
 
@@ -118,7 +118,7 @@ namespace factory {
 		}
 
 	private:
-		typedef sysx::Bytes<size_type, char_type> bytes_type;
+		typedef sys::Bytes<size_type, char_type> bytes_type;
 
 		void read_kernel_packetsize() {
 			const size_type count = egptr() - gptr();
@@ -270,7 +270,7 @@ namespace stdx {
 	struct type_traits<factory::basic_kernelbuf<Base>> {
 		static constexpr const char*
 		short_name() { return "kernelbuf"; }
-		typedef sysx::buffer_category category;
+		typedef sys::buffer_category category;
 	};
 
 }

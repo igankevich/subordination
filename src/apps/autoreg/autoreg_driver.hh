@@ -77,7 +77,7 @@ public:
 	}
 
 	void
-	write(sysx::packetstream& out) override {
+	write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << zsize;
 		out << zdelta;
@@ -100,7 +100,7 @@ public:
 	}
 
 	void
-	read(sysx::packetstream& in) override {
+	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> zsize;
 		in >> zdelta;
@@ -132,7 +132,7 @@ public:
 		return Type<Kernel>{
 			10000,
 			"Autoreg_model",
-			[] (sysx::packetstream& in) {
+			[] (sys::packetstream& in) {
 				Autoreg_model* k = new Autoreg_model;
 				k->read(in);
 				return k;

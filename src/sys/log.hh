@@ -8,9 +8,9 @@
 
 #include <stdx/mutex.hh>
 
-#include <sysx/process.hh>
+#include <sys/process.hh>
 
-namespace sysx {
+namespace sys {
 
 	template<class Ch, class Tr=std::char_traits<Ch>>
 	struct basic_logbuf: public std::basic_streambuf<Ch,Tr> {
@@ -64,7 +64,7 @@ namespace sysx {
 				write_syslog(buf.c_str());
 				if (_tee) {
 					_oldbuf->sputc('[');
-					const std::string pid = std::to_string(sysx::this_process::id());
+					const std::string pid = std::to_string(sys::this_process::id());
 					_oldbuf->sputn(pid.data(), pid.size());
 					_oldbuf->sputc(']');
 					_oldbuf->sputc(' ');

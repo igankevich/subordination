@@ -4,15 +4,15 @@
 #include <vector>
 #include <cassert>
 
-#include <sysx/bits/buffer_category.hh>
-#include <sysx/fildes.hh>
+#include <sys/bits/buffer_category.hh>
+#include <sys/fildes.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/log.hh>
 #include <stdx/streambuf.hh>
 
-namespace sysx {
+namespace sys {
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sys::fildes>
 	class basic_fildesbuf: public stdx::basic_packetbuf<Ch,Tr> {
 
 		typedef stdx::streambuf_traits<Fd> streambuf_traits_type;
@@ -247,7 +247,7 @@ namespace sysx {
 		std::vector<char_type> _pbuf;
 	};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sys::fildes>
 	struct basic_ifdstream: public std::basic_istream<Ch> {
 		typedef basic_fildesbuf<Ch,Tr,Fd> fildesbuf_type;
 		typedef std::basic_istream<Ch,Tr> istream_type;
@@ -257,7 +257,7 @@ namespace sysx {
 		fildesbuf_type _fildesbuf;
 	};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sys::fildes>
 	struct basic_ofdstream: public std::basic_ostream<Ch> {
 		typedef basic_fildesbuf<Ch,Tr,Fd> fildesbuf_type;
 		typedef std::basic_ostream<Ch,Tr> ostream_type;
@@ -267,7 +267,7 @@ namespace sysx {
 		fildesbuf_type _fildesbuf;
 	};
 
-	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sysx::fildes>
+	template<class Ch, class Tr=std::char_traits<Ch>, class Fd=sys::fildes>
 	struct basic_fdstream: public std::basic_iostream<Ch> {
 		typedef basic_fildesbuf<Ch,Tr,Fd> fildesbuf_type;
 		typedef std::basic_iostream<Ch,Tr> iostream_type;
@@ -286,10 +286,10 @@ namespace sysx {
 namespace stdx {
 
 	template<class Ch, class Tr, class Fd>
-	struct type_traits<sysx::basic_fildesbuf<Ch,Tr,Fd>> {
+	struct type_traits<sys::basic_fildesbuf<Ch,Tr,Fd>> {
 		static constexpr const char*
 		short_name() { return "fildesbuf"; }
-		typedef sysx::buffer_category category;
+		typedef sys::buffer_category category;
 	};
 
 }

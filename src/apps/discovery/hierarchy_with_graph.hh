@@ -19,7 +19,7 @@ namespace discovery {
 		{}
 
 		void
-		add_subordinate(const sysx::endpoint& addr) {
+		add_subordinate(const sys::endpoint& addr) {
 			if (_subordinates.count(addr) == 0) {
 				_graph.add_edge(addr, _bindaddr);
 			}
@@ -27,7 +27,7 @@ namespace discovery {
 		}
 
 		void
-		remove_subordinate(const sysx::endpoint& addr) {
+		remove_subordinate(const sys::endpoint& addr) {
 			if (_subordinates.count(addr) > 0) {
 				_graph.remove_edge(addr, _bindaddr);
 			}

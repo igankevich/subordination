@@ -7,10 +7,10 @@
 #include <stdx/log.hh>
 #include <stdx/iterator.hh>
 
-#include <sysx/process.hh>
-#include <sysx/pipe.hh>
-#include <sysx/fildesbuf.hh>
-#include <sysx/packetstream.hh>
+#include <sys/process.hh>
+#include <sys/pipe.hh>
+#include <sys/fildesbuf.hh>
+#include <sys/packetstream.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>
@@ -84,7 +84,7 @@ namespace factory {
 				// TODO do we need this?
 				// Here failed kernels are written to buffer,
 				// from which they must be recovered with recover_kernels().
-				// sysx::poll_event ev{socket().fd(), sysx::poll_event::In};
+				// sys::poll_event ev{socket().fd(), sys::poll_event::In};
 				// handle(ev);
 
 				this_log()
@@ -132,12 +132,12 @@ namespace factory {
 
 			typedef Buffered_server<T> base_server;
 			using typename base_server::kernel_type;
-			typedef basic_kernelbuf<sysx::fildesbuf> kernelbuf_type;
-			typedef sysx::packetstream stream_type;
+			typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
+			typedef sys::packetstream stream_type;
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Process_rserver> this_log;
 
-			Process_rserver(sysx::pid_type&& child, sysx::two_way_pipe&& pipe):
+			Process_rserver(sys::pid_type&& child, sys::two_way_pipe&& pipe):
 			_childpid(child),
 			_outbuf(std::move(pipe.parent_out())),
 			_ostream(&_outbuf),
@@ -163,15 +163,15 @@ namespace factory {
 			}
 
 			explicit
-			Process_rserver(sysx::pipe&& pipe):
-			_childpid(sysx::this_process::id()),
+			Process_rserver(sys::pipe&& pipe):
+			_childpid(sys::this_process::id()),
 			_outbuf(std::move(pipe.out())),
 			_ostream(&_outbuf),
 			_inbuf(std::move(pipe.in())),
 			_istream(&_inbuf)
 			{}
 
-			const sysx::pid_type&
+			const sys::pid_type&
 			childpid() const {
 				return _childpid;
 			}
@@ -194,22 +194,22 @@ namespace factory {
 			}
 
 			void
-			prepare(sysx::poll_event& event) {
+			prepare(sys::poll_event& event) {
 //				if (event.fd() == _outbuf.fd()) {
 //					if (_outbuf.dirty()) {
-//						event.setev(sysx::poll_event::Out);
+//						event.setev(sys::poll_event::Out);
 //					} else {
-//						event.unsetev(sysx::poll_event::Out);
+//						event.unsetev(sys::poll_event::Out);
 //					}
 //				}
 			}
 
 			void
-			handle(sysx::poll_event& event) {
+			handle(sys::poll_event& event) {
 				stdx::log_func<this_log>(__func__, "ev", event);
 				if (event.fd() == _outbuf.fd()) {
 					if (_outbuf.dirty()) {
-						event.setrev(sysx::poll_event::Out);
+						event.setrev(sys::poll_event::Out);
 					}
 					if (event.out() && !event.hup()) {
 						_ostream.flush();
@@ -234,7 +234,7 @@ namespace factory {
 			}
 
 			void
-			forward(const Kernel_header& hdr, sysx::packetstream& istr) {
+			forward(const Kernel_header& hdr, sys::packetstream& istr) {
 				_ostream.begin_packet();
 				_ostream.append_payload(istr);
 				_ostream.end_packet();
@@ -249,11 +249,11 @@ namespace factory {
 		private:
 
 			void read_and_receive_kernel() {
-				app_type app; sysx::endpoint from;
+				app_type app; sys::endpoint from;
 				_istream >> app >> from;
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
-				if (app == Application::ROOT || _childpid == sysx::this_process::id()) {
+				if (app == Application::ROOT || _childpid == sys::this_process::id()) {
 					Type<kernel_type>::read_object(this->factory()->types(), _istream,
 						[this,app] (kernel_type* k) {
 							receive_kernel(k, app);
@@ -297,7 +297,7 @@ namespace factory {
 				this->send(k);
 			}
 
-			sysx::pid_type _childpid;
+			sys::pid_type _childpid;
 			kernelbuf_type _outbuf;
 			stream_type _ostream;
 			kernelbuf_type _inbuf;
@@ -305,7 +305,7 @@ namespace factory {
 
 		};
 
-		enum Shared_fildes: sysx::fd_type {
+		enum Shared_fildes: sys::fd_type {
 			In  = 100,
 			Out = 101
 		};
@@ -324,7 +324,7 @@ namespace factory {
 
 			using base_server::poller;
 
-			typedef sysx::pid_type key_type;
+			typedef sys::pid_type key_type;
 			typedef Process_rserver<T> rserver_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef stdx::log<Process_iserver> this_log;
@@ -360,30 +360,30 @@ namespace factory {
 			add(const Application& app) {
 				this_log() << "starting app=" << app << std::endl;
 				lock_type lock(this->_mutex);
-				sysx::two_way_pipe data_pipe;
-				const sysx::process& p = _procs.add([&app,this,&data_pipe] () {
+				sys::two_way_pipe data_pipe;
+				const sys::process& p = _procs.add([&app,this,&data_pipe] () {
 					data_pipe.close_in_child();
 					data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 					data_pipe.validate();
 					return app.execute();
 				});
-				sysx::pid_type process_id = p.id();
+				sys::pid_type process_id = p.id();
 				data_pipe.close_in_parent();
 				data_pipe.validate();
 				this_log() << "pipe=" << data_pipe << std::endl;
-				sysx::fd_type parent_in = data_pipe.parent_in().get_fd();
-				sysx::fd_type parent_out = data_pipe.parent_out().get_fd();
+				sys::fd_type parent_in = data_pipe.parent_in().get_fd();
+				sys::fd_type parent_out = data_pipe.parent_out().get_fd();
 				rserver_type child(p.id(), std::move(data_pipe));
 				child.setparent(this);
 				assert(child.root() != nullptr);
 				this_log() << "starting child process: " << child << std::endl;
 				auto result = _apps.emplace(process_id, std::move(child));
 				poller().emplace(
-					sysx::poll_event{parent_in, sysx::poll_event::In, 0},
+					sys::poll_event{parent_in, sys::poll_event::In, 0},
 					handler_type(&result.first->second)
 				);
 				poller().emplace(
-					sysx::poll_event{parent_out, 0, 0},
+					sys::poll_event{parent_out, 0, 0},
 					handler_type(&result.first->second)
 				);
 			}
@@ -400,7 +400,7 @@ namespace factory {
 			}
 
 			void
-			forward(const Kernel_header& hdr, sysx::packetstream& istr) {
+			forward(const Kernel_header& hdr, sys::packetstream& istr) {
 				auto result = _apps.find(hdr.app());
 				if (result == _apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);
@@ -444,7 +444,7 @@ namespace factory {
 			}
 
 			void
-			on_process_exit(sysx::process& p, sysx::proc_info status) {
+			on_process_exit(sys::process& p, sys::proc_info status) {
 				stdx::log_func<this_log>(__func__, "process", p);
 				lock_type lock(this->_mutex);
 				auto result = _apps.find(p.id());
@@ -459,7 +459,7 @@ namespace factory {
 			}
 
 			map_type _apps;
-			sysx::process_group _procs;
+			sys::process_group _procs;
 		};
 
 		template<class T>
@@ -476,13 +476,13 @@ namespace factory {
 
 			using base_server::poller;
 
-			typedef sysx::pid_type key_type;
+			typedef sys::pid_type key_type;
 			typedef Process_rserver<T> rserver_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef stdx::log<Process_child_server> this_log;
 
 			Process_child_server():
-			_parent(sysx::pipe{Shared_fildes::In, Shared_fildes::Out})
+			_parent(sys::pipe{Shared_fildes::In, Shared_fildes::Out})
 			{}
 
 			Process_child_server(Process_child_server&& rhs) noexcept:
@@ -512,7 +512,7 @@ namespace factory {
 			}
 
 			void
-			forward(const Kernel_header& hdr, sysx::packetstream& istr) {
+			forward(const Kernel_header& hdr, sys::packetstream& istr) {
 				assert(false);
 			}
 
@@ -527,10 +527,10 @@ namespace factory {
 			void
 			init_server() {
 				_parent.setparent(this);
-				std::cout << "HELLO WORLD " << sysx::poll_event(Shared_fildes::Out, 0, 0)  << std::endl;
-				this_log() << "DEBUG=" << sysx::poll_event(Shared_fildes::Out, 0, 0) << std::endl;
-				poller().emplace(sysx::poll_event{Shared_fildes::In, sysx::poll_event::In, 0}, handler_type(&_parent));
-				poller().emplace(sysx::poll_event(Shared_fildes::Out, 0, 0), handler_type(&_parent));
+				std::cout << "HELLO WORLD " << sys::poll_event(Shared_fildes::Out, 0, 0)  << std::endl;
+				this_log() << "DEBUG=" << sys::poll_event(Shared_fildes::Out, 0, 0) << std::endl;
+				poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, handler_type(&_parent));
+				poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), handler_type(&_parent));
 			}
 
 			void

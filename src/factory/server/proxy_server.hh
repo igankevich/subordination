@@ -5,11 +5,11 @@
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
 
-#include <sysx/event.hh>
-#include <sysx/packetstream.hh>
+#include <sys/event.hh>
+#include <sys/packetstream.hh>
 
 #include <factory/server/intro.hh>
-#include <sysx/fildesbuf.hh>
+#include <sys/fildesbuf.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 
@@ -22,7 +22,7 @@ namespace factory {
 		class Threads=std::vector<std::thread>>
 		using Proxy_server_base = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
-			sysx::event_poller<Rserver*>>;
+			sys::event_poller<Rserver*>>;
 
 		template<class T, class Rserver>
 		struct Proxy_server: public Proxy_server_base<T,Rserver> {
@@ -87,14 +87,14 @@ namespace factory {
 			process_kernels() = 0;
 
 			virtual void
-			accept_connection(sysx::poll_event&) {}
+			accept_connection(sys::poll_event&) {}
 
 		private:
 
 			void
 			prepare_poll_events() {
 				poller().for_each_ordinary_fd(
-					[this] (sysx::poll_event& ev, handler_type& h) {
+					[this] (sys::poll_event& ev, handler_type& h) {
 						h->prepare(ev);
 					}
 				);
@@ -103,7 +103,7 @@ namespace factory {
 			void
 			remove_servers_if_any() {
 				poller().for_each_ordinary_fd(
-					[this] (sysx::poll_event& ev, handler_type& h) {
+					[this] (sys::poll_event& ev, handler_type& h) {
 						if (!ev) {
 							this->remove_server(h);
 						}
@@ -116,7 +116,7 @@ namespace factory {
 				if (this->stopped()) {
 					this->try_to_stop_gracefully();
 				} else {
-					poller().for_each_pipe_fd([this] (sysx::poll_event& ev) {
+					poller().for_each_pipe_fd([this] (sys::poll_event& ev) {
 						if (ev.in()) {
 							this->process_kernels();
 						}
@@ -126,7 +126,7 @@ namespace factory {
 
 			void
 			accept_connections_if_any() {
-				poller().for_each_special_fd([this] (sysx::poll_event& ev) {
+				poller().for_each_special_fd([this] (sys::poll_event& ev) {
 					if (ev.in()) {
 						this->accept_connection(ev);
 					}
@@ -136,7 +136,7 @@ namespace factory {
 			void
 			handle_events() {
 				poller().for_each_ordinary_fd(
-					[this] (sysx::poll_event& ev, handler_type& h) {
+					[this] (sys::poll_event& ev, handler_type& h) {
 						h->handle(ev);
 					}
 				);
@@ -154,7 +154,7 @@ namespace factory {
 			//	typedef typename upstream_type::value_type pair_type;
 			//	std::for_each(_upstream.begin(), _upstream.end(),
 			//		[] (pair_type& rhs) {
-			//			rhs.second.handle(sysx::poll_event::Out);
+			//			rhs.second.handle(sys::poll_event::Out);
 			//		}
 			//	);
 			//}

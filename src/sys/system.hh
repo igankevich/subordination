@@ -13,7 +13,7 @@
 	#define FACTORY_SYSCONF_PAGE_SIZE _SC_PAGE_SIZE
 #endif
 
-namespace sysx {
+namespace sys {
 
 	typedef size_t size_type;
 

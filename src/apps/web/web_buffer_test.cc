@@ -1,6 +1,6 @@
 #include "lbuffer.hh"
 #include <factory/error.hh>
-#include <sysx/bits/buffer_category.hh>
+#include <sys/bits/buffer_category.hh>
 #include "websocket.hh"
 
 #include "test.hh"
@@ -14,7 +14,7 @@ using factory::components::LBuffer;
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sysx::buffer_category>:
+	struct disable_log_category<sys::buffer_category>:
 	public std::integral_constant<bool, true> {};
 
 }

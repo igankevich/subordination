@@ -3,10 +3,10 @@
 
 #include <limits>
 
-#include <sysx/bits/uint128_parse.hh>
-#include <sysx/packetstream.hh>
+#include <sys/bits/uint128_parse.hh>
+#include <sys/packetstream.hh>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

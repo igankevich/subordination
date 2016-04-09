@@ -14,14 +14,14 @@
 #include <stdx/uint128.hh>
 #include <stdx/ios.hh>
 
-#include <sysx/bits/check.hh>
-#include <sysx/bits/endpoint_parse.hh>
-#include <sysx/bits/bit_count.hh>
-#include <sysx/packetstream.hh>
-#include <sysx/network_format.hh>
+#include <sys/bits/check.hh>
+#include <sys/bits/endpoint_parse.hh>
+#include <sys/bits/bit_count.hh>
+#include <sys/packetstream.hh>
+#include <sys/network_format.hh>
 
 
-namespace sysx {
+namespace sys {
 
 	typedef struct ::sockaddr sa_type;
 	typedef struct ::sockaddr_in sockinet4_type;
@@ -702,7 +702,7 @@ namespace sysx {
 	static_assert(sizeof(port_type) == 2, "bad port_type size");
 
 	ipv4_addr::ipv4_addr(const sa_type& rhs) noexcept:
-	inaddr(sysx::endpoint(rhs)._addr4.sin_addr)
+	inaddr(sys::endpoint(rhs)._addr4.sin_addr)
 	{}
 
 	ipv4_addr

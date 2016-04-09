@@ -4,14 +4,14 @@
 #include <cassert>
 
 #include <stdx/log.hh>
-#include <sysx/packetstream.hh>
+#include <sys/packetstream.hh>
 #include <factory/type.hh>
 #include <factory/error.hh>
 
 namespace factory {
 
 	template<class T>
-	struct Kernel_stream: public sysx::packetstream {
+	struct Kernel_stream: public sys::packetstream {
 
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
@@ -25,11 +25,11 @@ namespace factory {
 			bad_kernel
 		};
 
-		using sysx::packetstream::operator<<;
-		using sysx::packetstream::operator>>;
+		using sys::packetstream::operator<<;
+		using sys::packetstream::operator>>;
 
 		Kernel_stream() = default;
-		Kernel_stream(stdx::packetbuf* buf): sysx::packetstream(buf) {}
+		Kernel_stream(stdx::packetbuf* buf): sys::packetstream(buf) {}
 		Kernel_stream(Kernel_stream&&) = default;
 
 		Kernel_stream&

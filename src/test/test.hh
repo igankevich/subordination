@@ -26,7 +26,7 @@
 #include <stdx/random.hh>
 #include <stdx/iterator.hh>
 
-#include <sysx/network_format.hh>
+#include <sys/network_format.hh>
 
 #include "color.hh"
 
@@ -267,7 +267,7 @@ namespace test {
 		do_compare(
 			cnt1,
 			cnt2,
-			sysx::make_bytes<value_type>,
+			sys::make_bytes<value_type>,
 			text,
 			std::forward<Args>(args)...
 		);

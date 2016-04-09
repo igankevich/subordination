@@ -6,8 +6,8 @@
 #include <stdx/log.hh>
 
 #include <factory/server/basic_server.hh>
-#include <sysx/process.hh>
-#include <sysx/packetstream.hh>
+#include <sys/process.hh>
+#include <sys/packetstream.hh>
 
 namespace factory {
 
@@ -57,7 +57,7 @@ namespace factory {
 
 			int
 			execute() const {
-				return sysx::this_process::execute(this->_execpath);
+				return sys::this_process::execute(this->_execpath);
 			}
 
 			bool
@@ -166,23 +166,23 @@ namespace factory {
 			Kernel_header& operator=(const Kernel_header&) = default;
 			~Kernel_header() = default;
 
-			sysx::endpoint
+			sys::endpoint
 			from() const noexcept {
 				return _src;
 			}
 
 			void
-			from(sysx::endpoint rhs) noexcept {
+			from(sys::endpoint rhs) noexcept {
 				_src = rhs;
 			}
 
-			sysx::endpoint
+			sys::endpoint
 			to() const noexcept {
 				return _dst;
 			}
 
 			void
-			to(sysx::endpoint rhs) noexcept {
+			to(sys::endpoint rhs) noexcept {
 				_dst = rhs;
 			}
 
@@ -203,8 +203,8 @@ namespace factory {
 			}
 
 		private:
-			sysx::endpoint _src{};
-			sysx::endpoint _dst{};
+			sys::endpoint _src{};
+			sys::endpoint _dst{};
 			Application::id_type _app = 0;
 		};
 
@@ -214,7 +214,7 @@ namespace factory {
 			static constexpr const id_type no_id = 0;
 
 			virtual void
-			read(sysx::packetstream& in) {
+			read(sys::packetstream& in) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r;
 				in >> r;
@@ -223,7 +223,7 @@ namespace factory {
 			}
 
 			virtual void
-			write(sysx::packetstream& out) {
+			write(sys::packetstream& out) {
 				typedef std::underlying_type<Result>::type Raw_result;
 				Raw_result r = static_cast<Raw_result>(this->result());
 				out << r << this->_id;
@@ -347,7 +347,7 @@ namespace factory {
 			}
 
 			void
-			read(sysx::packetstream& in) override {
+			read(sys::packetstream& in) override {
 				base_kernel::read(in);
 				bool b = false;
 				in >> b;
@@ -361,7 +361,7 @@ namespace factory {
 			}
 
 			void
-			write(sysx::packetstream& out) override {
+			write(sys::packetstream& out) override {
 				base_kernel::write(out);
 				out << carries_parent();
 				if (moves_downstream() or moves_somewhere()) {

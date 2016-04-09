@@ -5,7 +5,7 @@
 #include <system_error>
 #include <ostream>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 

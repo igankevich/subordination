@@ -3,27 +3,27 @@
 
 #include <chrono>
 
-#include <sysx/endpoint.hh>
+#include <sys/endpoint.hh>
 
 namespace springy {
 
 	struct Node {
-		explicit Node(const sysx::endpoint& rhs): addr(rhs) {}
+		explicit Node(const sys::endpoint& rhs): addr(rhs) {}
 		friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
 			return out << "n" << uint64_t(rhs.addr.address()) * uint64_t(rhs.addr.port());
 		}
 	private:
-		const sysx::endpoint& addr;
+		const sys::endpoint& addr;
 	};
 
 	struct Edge {
-		Edge(const sysx::endpoint& a, const sysx::endpoint& b): x(a), y(b) {}
+		Edge(const sys::endpoint& a, const sys::endpoint& b): x(a), y(b) {}
 		friend std::ostream& operator<<(std::ostream& out, const Edge& rhs) {
 			return out << Node(rhs.x) << '_' << Node(rhs.y);
 		}
 	private:
-		const sysx::endpoint& x;
-		const sysx::endpoint& y;
+		const sys::endpoint& x;
+		const sys::endpoint& y;
 	};
 
 	struct Springy_graph {
@@ -45,7 +45,7 @@ namespace springy {
 		}
 
 		void
-		add_edge(sysx::endpoint addr, sysx::endpoint principal_addr) {
+		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
 			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
@@ -61,7 +61,7 @@ namespace springy {
 		}
 
 		void
-		remove_edge(sysx::endpoint addr, sysx::endpoint principal_addr) {
+		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
 			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function () {"
@@ -76,7 +76,7 @@ namespace springy {
 		}
 
 		void
-		add_node(sysx::endpoint addr) {
+		add_node(sys::endpoint addr) {
 			this_log()
 				<< "log[logline++] = {"
 				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
@@ -97,7 +97,7 @@ namespace springy {
 		}
 
 		void
-		push_back(const sysx::endpoint& rhs) {
+		push_back(const sys::endpoint& rhs) {
 			add_node(rhs);
 		}
 

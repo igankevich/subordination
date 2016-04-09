@@ -6,12 +6,12 @@
 
 #include <vector>
 
-#include <sysx/bits/check.hh>
-#include <sysx/bits/safe_calls.hh>
+#include <sys/bits/check.hh>
+#include <sys/bits/safe_calls.hh>
 
 #include <stdx/streambuf.hh>
 
-namespace sysx {
+namespace sys {
 
 	typedef ::mode_t mode_type;
 	typedef int fd_type;
@@ -198,17 +198,17 @@ namespace sysx {
 namespace stdx {
 
 	template<>
-	struct streambuf_traits<sysx::fildes> {
+	struct streambuf_traits<sys::fildes> {
 
 		typedef void char_type;
 
 		static std::streamsize
-		write(sysx::fildes& sink, const char_type* s, std::streamsize n) {
+		write(sys::fildes& sink, const char_type* s, std::streamsize n) {
 			return sink.write(s, n);
 		}
 
 		static std::streamsize
-		read(sysx::fildes& src, char_type* s, std::streamsize n) {
+		read(sys::fildes& src, char_type* s, std::streamsize n) {
 			return src.read(s, n);
 		}
 

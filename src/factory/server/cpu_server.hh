@@ -2,7 +2,7 @@
 #define FACTORY_SERVER_CPU_SERVER_HH
 
 #include <stdx/mutex.hh>
-#include <sysx/system.hh>
+#include <sys/system.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
 
@@ -70,7 +70,7 @@ namespace factory {
 			{}
 
 			CPU_server() noexcept:
-			CPU_server(sysx::thread_concurrency())
+			CPU_server(sys::thread_concurrency())
 			{}
 
 			explicit

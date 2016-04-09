@@ -3,7 +3,7 @@
 
 #include <limits>
 
-namespace sysx {
+namespace sys {
 
 	namespace bits {
 
