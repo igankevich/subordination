@@ -15,11 +15,12 @@ for_each_file(Path starting_point, Func func) {
 		sys::directory dir(path);
 		dirs.pop();
 		std::for_each(
-			dir.begin(), dir.end(),
-			[&path,&func,&dirs] (const sys::dirent_type& entry) {
+			sys::dirent_iterator(dir),
+			sys::dirent_iterator(),
+			[&path,&func,&dirs] (const sys::direntry& entry) {
 				if (!entry.is_working_dir() && !entry.is_parent_dir()) {
 					sys::path p(path, entry.name());
-					sys::file f(p);
+					sys::file_stat f(p);
 					if (f.is_directory()) {
 						dirs.emplace(p);
 					}
@@ -36,19 +37,19 @@ test_dirent_iterator() {
 //	sys::directory dir(path);
 	/*std::copy(
 		dir.begin(), dir.end(),
-		std::ostream_iterator<sys::dirent_type>(std::cout, "\n")
+		std::ostream_iterator<sys::direntry>(std::cout, "\n")
 	);*/
 	/*std::for_each(
 		dir.begin(), dir.end(),
-		[&path] (const sys::dirent_type& entry) {
+		[&path] (const sys::direntry& entry) {
 			sys::path p(path, entry.name());
-			sys::file f(p);
+			sys::file_stat f(p);
 			std::cout << f << ' ' << p << '\n';
 		}
 	);*/
 	for_each_file(
 		path,
-		[] (const sys::file& f, const sys::path& p) {
+		[] (const sys::file_stat& f, const sys::path& p) {
 			std::cout << f << ' ' << p << '\n';
 		}
 	);
