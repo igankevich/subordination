@@ -39,6 +39,8 @@ namespace sys {
 
 		static const char separator = '/';
 
+		path() = default;
+
 		explicit
 		path(const_path rhs):
 		_path(rhs)
@@ -68,6 +70,9 @@ namespace sys {
 		operator const char* () const noexcept {
 			return _path.data();
 		}
+
+		path&
+		operator=(const path&) = default;
 
 		friend class const_path;
 

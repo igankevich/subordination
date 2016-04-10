@@ -190,12 +190,7 @@ namespace sys {
 		explicit
 		file_stat(const char* filename):
 		stat_type{}
-		{
-			bits::check(
-				::stat(filename, this),
-				__FILE__, __LINE__, __func__
-			);
-		}
+		{ update(filename); }
 
 		file_type
 		type() const noexcept {
@@ -255,6 +250,14 @@ namespace sys {
 		gid_type
 		group() const noexcept {
 			return this->st_gid;
+		}
+
+		void
+		update(const char* filename) {
+			bits::check(
+				::stat(filename, this),
+				__FILE__, __LINE__, __func__
+			);
 		}
 
 		friend std::ostream&

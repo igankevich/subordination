@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <cstring>
 #include <system_error>
+#include <queue>
 
 #include <sys/bits/check.hh>
 #include <sys/path.hh>
@@ -19,6 +20,10 @@ namespace sys {
 
 		constexpr static const char* current_dir = ".";
 		constexpr static const char* parent_dir = "..";
+
+		direntry() = default;
+		direntry(const direntry&) = default;
+		~direntry() = default;
 
 		const char*
 		name() const noexcept {
@@ -61,7 +66,63 @@ namespace sys {
 
 	};
 
-	struct directory {
+	struct pathentry: public direntry {
+
+		pathentry() = default;
+		pathentry(const pathentry&) = default;
+		~pathentry() = default;
+
+		void
+		setdir(const path& rhs) {
+			_dirname = rhs;
+		}
+
+		const path&
+		dirname() const noexcept {
+			return _dirname;
+		}
+
+		path
+		getpath() const {
+			return path(_dirname, name());
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const pathentry& rhs) {
+			return out << rhs.dirname() << path::separator << rhs.name();
+		}
+
+	public:
+
+		path _dirname;
+
+	};
+
+	struct file: public file_stat, public path {
+
+		file() = default;
+
+		explicit
+		file(path&& rhs):
+		file_stat(rhs),
+		path(rhs)
+		{}
+
+		void
+		setpath(path&& rhs) {
+			file_stat::update(const_path(rhs));
+			path::operator=(rhs);
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const file& rhs) {
+			return out << static_cast<const file_stat&>(rhs)
+				<< ' ' << static_cast<const path&>(rhs);
+		}
+
+	};
+
+	struct basic_dirstream {
 
 		enum state {
 			goodbit = 0,
@@ -69,26 +130,6 @@ namespace sys {
 			badbit = 2,
 			eofbit = 4
 		};
-
-		explicit
-		directory(const char* path) {
-			_dir = ::opendir(path);
-			_errc = std::errc(errno);
-		}
-
-		directory(directory&& rhs):
-		_dir(rhs._dir),
-		_errc(rhs._errc)
-		{ rhs._dir = nullptr; }
-
-		~directory() {
-			if (_dir) {
-				bits::check(
-					::closedir(_dir),
-					__FILE__, __LINE__, __func__
-				);
-			}
-		}
 
 		explicit
 		operator bool() const noexcept {
@@ -100,11 +141,6 @@ namespace sys {
 			return !operator bool();
 		}
 
-		bool
-		is_open() const noexcept {
-			return _dir != nullptr;
-		}
-
 		void
 		clear() noexcept {
 			_errc = std::errc(0);
@@ -113,7 +149,7 @@ namespace sys {
 
 		bool
 		good() const noexcept {
-			return _state & goodbit;
+			return !_state;
 		}
 
 		bool
@@ -141,16 +177,65 @@ namespace sys {
 			return _errc;
 		}
 
+	protected:
+
+		std::errc _errc = std::errc(0);
+		state _state = goodbit;
+
+	};
+
+	struct directory: public basic_dirstream {
+
+		template<class Path>
+		explicit
+		directory(Path&& path) {
+			open(std::forward<Path>(path));
+		}
+
+		directory(directory&& rhs):
+		basic_dirstream(std::forward<basic_dirstream>(rhs)),
+		_dir(rhs._dir)
+		{ rhs._dir = nullptr; }
+
+		~directory() {
+			close();
+		}
+
+		template<class Path>
+		void
+		open(Path&& path) {
+			close();
+			_dir = ::opendir(const_path(path));
+			_errc = std::errc(errno);
+		}
+
+		void
+		close() {
+			if (_dir) {
+				bits::check(
+					::closedir(_dir),
+					__FILE__, __LINE__, __func__
+				);
+			}
+		}
+
+		bool
+		is_open() const noexcept {
+			return _dir != nullptr;
+		}
+
 		directory&
 		operator>>(direntry& rhs) {
-			dirent_type* result = nullptr;
-			int ret = ::readdir_r(_dir, &rhs, &result);
-			if (ret == -1) {
-				_errc = std::errc(errno);
-				_state = state(_state | failbit);
-			}
-			if (!result) {
-				_state = state(_state | eofbit);
+			if (good()) {
+				dirent_type* result = nullptr;
+				int ret = ::readdir_r(_dir, &rhs, &result);
+				if (ret == -1) {
+					_errc = std::errc(errno);
+					_state = state(_state | failbit);
+				}
+				if (!result) {
+					_state = state(_state | eofbit);
+				}
 			}
 			return *this;
 		}
@@ -158,8 +243,83 @@ namespace sys {
 	private:
 
 		dir_type* _dir = nullptr;
-		std::errc _errc = std::errc(0);
-		state _state = goodbit;
+
+	};
+
+	struct dirtree: public directory {
+
+		template<class Path>
+		explicit
+		dirtree(Path starting_point):
+		directory(starting_point)
+		{ _dirs.emplace(starting_point); }
+
+		const path&
+		current_path() const noexcept {
+			return _dirs.front();
+		}
+
+		dirtree&
+		operator>>(direntry& rhs) {
+			read_direntry(rhs);
+			if (good()) {
+				path p(current_path(), rhs.name());
+				if (determine_file_type(rhs, p) == file_type::directory) {
+					_dirs.push(p);
+				}
+			}
+			return *this;
+		}
+
+		dirtree&
+		operator>>(pathentry& rhs) {
+			read_direntry(rhs);
+			if (good()) {
+				rhs.setdir(current_path());
+				path p(std::move(rhs.getpath()));
+				if (determine_file_type(rhs, p) == file_type::directory) {
+					_dirs.push(p);
+				}
+			}
+			return *this;
+		}
+
+		dirtree&
+		operator>>(file& rhs) {
+			direntry ent;
+			read_direntry(ent);
+			if (good()) {
+				rhs.setpath(path(current_path(), ent.name()));
+				if (rhs.is_directory()) {
+					_dirs.push(rhs);
+				}
+			}
+			return *this;
+		}
+
+	private:
+
+		void
+		read_direntry(direntry& rhs) {
+			do {
+				while (!eof() && directory::operator>>(rhs).eof()) {
+					_dirs.pop();
+					if (_dirs.empty()) {
+						_state = eofbit;
+					} else {
+						clear();
+						open(_dirs.front());
+					}
+				}
+			} while (good() && (rhs.is_working_dir() || rhs.is_parent_dir()));
+		}
+
+		static file_type
+		determine_file_type(const direntry& rhs, const path& p) {
+			return rhs.has_type() ? rhs.type() : file_stat(p).type();
+		}
+
+		std::queue<sys::path> _dirs;
 
 	};
 
@@ -167,29 +327,31 @@ namespace sys {
 	class basic_istream_iterator: public std::iterator<std::input_iterator_tag, Value> {
 
 		typedef Stream stream_type;
-		typedef Value value_type;
 
 	public:
 
+		using typename std::iterator<std::input_iterator_tag, Value>::iterator_category;
+
+		typedef Value value_type;
 		typedef value_type* pointer;
 		typedef const value_type* const_pointer;
 		typedef value_type& reference;
 		typedef const value_type& const_reference;
 
 		explicit
-		basic_istream_iterator(stream_type& rhs) noexcept:
+		basic_istream_iterator(stream_type& rhs):
 		_stream(&rhs)
 		{ next(); }
 
-		basic_istream_iterator() noexcept = default;
+		basic_istream_iterator() = default;
 
 		inline
 		~basic_istream_iterator() = default;
 
-		basic_istream_iterator(const basic_istream_iterator&) noexcept = default;
+		basic_istream_iterator(const basic_istream_iterator&) = default;
 
 		inline basic_istream_iterator&
-		operator=(const basic_istream_iterator&) noexcept = default;
+		operator=(const basic_istream_iterator&) = default;
 
 		bool
 		operator==(const basic_istream_iterator& rhs) const noexcept {
@@ -246,6 +408,9 @@ namespace sys {
 	};
 
 	typedef basic_istream_iterator<directory, direntry> dirent_iterator;
+
+	template<class T>
+	using dirtree_iterator = basic_istream_iterator<dirtree, T>;
 
 }
 
