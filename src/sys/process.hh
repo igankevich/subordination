@@ -12,15 +12,15 @@
 #include <stdx/iterator.hh>
 
 #include <sys/bits/check.hh>
-#include <sys/bits/to_string.hh>
 #include <sys/bits/safe_calls.hh>
 
 #include <sys/signal.hh>
+#include <sys/argstream.hh>
 
 namespace sys {
 
 	typedef ::pid_t pid_type;
-	typedef int stat_type;
+	typedef int wstat_type;
 	typedef int code_type;
 	typedef ::siginfo_t siginfo_type;
 	typedef ::uid_t uid_type;
@@ -42,10 +42,10 @@ namespace sys {
 	struct basic_status {};
 
 	template<>
-	struct basic_status<stat_type> {
+	struct basic_status<wstat_type> {
 
 		explicit constexpr
-		basic_status(stat_type rhs) noexcept:
+		basic_status(wstat_type rhs) noexcept:
 			stat(rhs) {}
 
 		constexpr
@@ -122,7 +122,7 @@ namespace sys {
 			return out;
 		}
 
-		stat_type stat = 0;
+		wstat_type stat = 0;
 	};
 
 	template<>
@@ -227,7 +227,7 @@ namespace sys {
 		pid_type _pid = 0;
 	};
 
-	typedef basic_status<stat_type> proc_status;
+	typedef basic_status<wstat_type> proc_status;
 	typedef basic_status<siginfo_type> proc_info;
 
 	struct process {
@@ -482,6 +482,12 @@ namespace sys {
 		pid_type _gid = 0;
 	};
 
+	constexpr uid_type
+	superuser() noexcept { return 0; }
+
+	constexpr gid_type
+	supergroup() noexcept { return 0; }
+
 	namespace this_process {
 
 		inline pid_type
@@ -502,27 +508,24 @@ namespace sys {
 		*/
 
 		inline uid_type
-		user_id() noexcept { return ::getuid(); }
+		user() noexcept { return ::getuid(); }
 
 		inline uid_type
-		effective_user_id() noexcept { return ::geteuid(); }
+		effective_user() noexcept { return ::geteuid(); }
 
-		inline uid_type
-		group_id() noexcept { return ::getgid(); }
+		inline gid_type
+		group() noexcept { return ::getgid(); }
 
-		inline uid_type
-		effective_group_id() noexcept { return ::getegid(); }
+		inline gid_type
+		effective_group() noexcept { return ::getegid(); }
 
 		template<class ... Args>
 		int
 		execute(const Args& ... args) {
-			bits::To_string tmp[] = { args... };
-			const size_t argc = sizeof...(Args);
-			char* argv[argc + 1];
-			for (size_t i=0; i<argc; ++i) {
-				argv[i] = const_cast<char*>(tmp[i].c_str());
-			}
-			argv[argc] = 0;
+			sys::argstream str;
+			str.append(args...);
+			assert(str.argc() == sizeof...(Args));
+			char** argv = str.argv();
 			char* const no_env[1] = {0};
 			return bits::check(
 				::execve(argv[0], argv, no_env),

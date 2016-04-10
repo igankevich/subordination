@@ -1,5 +1,5 @@
-#include <sys/dirent.hh>
-#include <sys/file.hh>
+#include <sys/filesys.hh>
+#include <sys/argstream.hh>
 
 #include "test.hh"
 
@@ -27,7 +27,27 @@ test_dirent_iterator() {
 	);
 }
 
+void
+test_argstream() {
+	const std::string arg0 = "Hello!!!";
+	const std::string arg1 = "world";
+	const int arg2 = 123;
+	sys::argstream args;
+	test::equal(args.argc(), 0, "bad argc");
+	args << arg0 << '\0' << arg1 << '\0' << arg2 << '\0';
+	test::equal(args.argc(), 3, "bad argc");
+	test::equal(args.argv()[0], arg0, "bad arg0");
+	test::equal(args.argv()[1], arg1, "bad arg1");
+	test::equal(args.argv()[2], std::to_string(arg2), "bad arg2");
+	args.append(arg0, arg1, arg2);
+	test::equal(args.argc(), 6, "bad argc");
+	test::equal(args.argv()[3], arg0, "bad arg0");
+	test::equal(args.argv()[4], arg1, "bad arg1");
+	test::equal(args.argv()[5], std::to_string(arg2), "bad arg2");
+}
+
 int main() {
 	test_dirent_iterator();
+	test_argstream();
 	return 0;
 }

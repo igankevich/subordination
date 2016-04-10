@@ -84,12 +84,12 @@ namespace factory {
 	void
 	do_not_allow_to_run_as_superuser_or_setuid() {
 		using namespace sys::this_process;
-		if (user_id() == 0 or effective_user_id() == 0 or
-			group_id() == 0 or effective_group_id() == 0) {
+		if (user() == sys::superuser() or effective_user() == sys::superuser() or
+			group() == sys::supergroup() or effective_group() == sys::supergroup()) {
 			throw std::runtime_error("do not run as superuser/supergroup");
 		}
-		if (user_id() != effective_user_id() or
-			group_id() != effective_group_id()) {
+		if (user() != effective_user() or
+			group() != effective_group()) {
 			throw std::runtime_error("do not run as setuid/setgid");
 		}
 	}
