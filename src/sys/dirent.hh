@@ -2,6 +2,7 @@
 #define SYS_DIRENT_HH
 
 #include <dirent.h>
+#include <cstring>
 
 #include <sys/bits/check.hh>
 #include <sys/path.hh>
@@ -11,11 +12,26 @@ namespace sys {
 	typedef struct ::dirent basic_dirent_type;
 	typedef DIR dir_type;
 
+	struct directory;
+
 	struct dirent_type: public basic_dirent_type {
+
+		constexpr static const char* current_dir = ".";
+		constexpr static const char* parent_dir = "..";
 
 		const char*
 		name() const noexcept {
 			return this->d_name;
+		}
+
+		bool
+		is_working_dir() const noexcept {
+			return !std::strcmp(name(), current_dir);
+		}
+
+		bool
+		is_parent_dir() const noexcept {
+			return !std::strcmp(name(), parent_dir);
 		}
 
 		friend std::ostream&
@@ -107,6 +123,17 @@ namespace sys {
 		dirent_type _entry;
 	};
 
+}
+
+namespace std {
+
+	void
+	swap(sys::directory& lhs, sys::directory& rhs) noexcept;
+
+}
+
+namespace sys {
+
 	struct directory {
 
 		typedef dirent_iterator iterator;
@@ -158,6 +185,11 @@ namespace sys {
 		size_type
 		size() const noexcept {
 			return std::distance(this->begin(), this->end());
+		}
+
+		friend void
+		std::swap(sys::directory& lhs, sys::directory& rhs) noexcept {
+			std::swap(lhs._dir, rhs._dir);
 		}
 
 	private:

@@ -49,6 +49,10 @@ namespace sys {
 		_path(std::forward<std::string>(rhs))
 		{}
 
+		path(const path& rhs):
+		_path(rhs._path)
+		{}
+
 		path(path&& rhs):
 		_path(std::forward<std::string>(rhs._path))
 		{}
