@@ -1,6 +1,6 @@
 #include <map>
 
-#include <sys/socket.hh>
+#include <sys/io/socket.hh>
 #include <sys/cmdline.hh>
 #include <sys/net/ifaddr.hh>
 

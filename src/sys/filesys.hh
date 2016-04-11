@@ -1,8 +1,8 @@
 #ifndef SYS_FILESYS_HH
 #define SYS_FILESYS_HH
 
-#include <sys/bits/file.hh>
-#include <sys/bits/dir.hh>
-#include <sys/bits/path.hh>
+#include "fs/file.hh"
+#include "fs/dir.hh"
+#include "fs/path.hh"
 
 #endif // SYS_FILESYS_HH

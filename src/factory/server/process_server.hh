@@ -8,8 +8,8 @@
 #include <stdx/iterator.hh>
 
 #include <sys/process.hh>
-#include <sys/pipe.hh>
-#include <sys/fildesbuf.hh>
+#include <sys/io/pipe.hh>
+#include <sys/io/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
 #include <factory/server/intro.hh>

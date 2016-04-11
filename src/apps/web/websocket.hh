@@ -4,7 +4,7 @@
 #include <random>
 #include <unordered_map>
 
-#include <sys/socket.hh>
+#include <sys/io/socket.hh>
 #include "lbuffer.hh"
 #include "encoding.hh"
 

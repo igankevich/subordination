@@ -16,7 +16,8 @@
 #include <stdx/log.hh>
 
 #include <sys/bits/check.hh>
-#include <sys/pipe.hh>
+
+#include "pipe.hh"
 
 namespace sys {
 

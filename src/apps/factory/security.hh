@@ -13,7 +13,7 @@
 #include <stdx/iterator.hh>
 
 #include <sys/bits/check.hh>
-#include <sys/event.hh>
+#include <sys/io/event.hh>
 #include <sys/process.hh>
 
 namespace factory {

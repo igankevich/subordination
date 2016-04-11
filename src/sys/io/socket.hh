@@ -19,8 +19,9 @@
 #include <stdx/log.hh>
 #include <stdx/mutex.hh>
 
-#include <sys/fildes.hh>
 #include <sys/net/endpoint.hh>
+
+#include "fildes.hh"
 
 
 namespace sys {

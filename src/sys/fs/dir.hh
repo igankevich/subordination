@@ -7,9 +7,10 @@
 #include <queue>
 
 #include <sys/bits/check.hh>
-#include <sys/bits/path.hh>
-#include <sys/bits/file.hh>
 #include <sys/bits/basic_istream_iterator.hh>
+
+#include "path.hh"
+#include "file.hh"
 
 namespace sys {
 

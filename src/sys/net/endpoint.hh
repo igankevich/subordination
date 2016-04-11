@@ -14,8 +14,8 @@
 #include <stdx/ios.hh>
 
 #include <sys/bits/check.hh>
-#include <sys/bits/endpoint_parse.hh>
-#include <sys/bits/bit_count.hh>
+#include "bits/endpoint_parse.hh"
+#include "bits/bit_count.hh"
 #include <sys/packetstream.hh>
 #include "network_format.hh"
 

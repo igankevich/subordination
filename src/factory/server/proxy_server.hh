@@ -5,11 +5,11 @@
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
 
-#include <sys/event.hh>
+#include <sys/io/event.hh>
+#include <sys/io/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
 #include <factory/server/intro.hh>
-#include <sys/fildesbuf.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 

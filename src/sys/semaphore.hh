@@ -26,7 +26,7 @@
 
 #include <stdx/mutex.hh>
 
-#include <sys/fildes.hh>
+#include <sys/io/fildes.hh>
 #include <sys/process.hh>
 
 namespace sys {

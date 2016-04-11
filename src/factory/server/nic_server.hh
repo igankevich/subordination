@@ -8,12 +8,12 @@
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
 
-#include <sys/event.hh>
-#include <sys/socket.hh>
+#include <sys/io/event.hh>
+#include <sys/io/socket.hh>
+#include <sys/io/fildesbuf.hh>
 #include <sys/packetstream.hh>
 #include <sys/net/endpoint.hh>
 #include <sys/net/ifaddr.hh>
-#include <sys/fildesbuf.hh>
 
 #include <factory/server/intro.hh>
 #include <factory/server/proxy_server.hh>

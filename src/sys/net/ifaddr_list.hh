@@ -1,7 +1,7 @@
 #ifndef SYS_IFADDR_LIST_HH
 #define SYS_IFADDR_LIST_HH
 
-#include <sys/bits/ifaddrs_iterator.hh>
+#include "bits/ifaddrs_iterator.hh"
 #include "ifaddr.hh"
 
 namespace sys {

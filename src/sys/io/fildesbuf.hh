@@ -5,10 +5,11 @@
 #include <cassert>
 
 #include <sys/bits/buffer_category.hh>
-#include <sys/fildes.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/log.hh>
 #include <stdx/streambuf.hh>
+
+#include "fildes.hh"
 
 namespace sys {
 
