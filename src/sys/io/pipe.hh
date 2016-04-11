@@ -7,7 +7,7 @@
 
 #include <sys/bits/check.hh>
 #include <sys/bits/safe_calls.hh>
-#include <sys/process.hh>
+#include <sys/proc/process.hh>
 
 #include "fildes.hh"
 

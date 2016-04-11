@@ -14,7 +14,7 @@
 
 #include <sys/bits/check.hh>
 #include <sys/io/event.hh>
-#include <sys/process.hh>
+#include <sys/proc/process.hh>
 
 namespace factory {
 

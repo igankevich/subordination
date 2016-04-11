@@ -1,7 +1,7 @@
 #include <map>
 
 #include <sys/io/socket.hh>
-#include <sys/cmdline.hh>
+#include <sys/proc/cmdline.hh>
 #include <sys/net/ifaddr.hh>
 
 #include <factory/factory.hh>

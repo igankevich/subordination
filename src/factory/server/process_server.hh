@@ -7,7 +7,7 @@
 #include <stdx/log.hh>
 #include <stdx/iterator.hh>
 
-#include <sys/process.hh>
+#include <sys/proc/process.hh>
 #include <sys/io/pipe.hh>
 #include <sys/io/fildesbuf.hh>
 #include <sys/packetstream.hh>

@@ -10,7 +10,7 @@
 #include <stdx/log.hh>
 
 #include <sys/net.hh>
-#include <sys/cmdline.hh>
+#include <sys/proc/cmdline.hh>
 
 #include "location.hh"
 #include "csv_tuple.hh"

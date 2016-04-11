@@ -14,8 +14,8 @@
 #include <sys/bits/check.hh>
 #include <sys/bits/safe_calls.hh>
 
-#include <sys/signal.hh>
-#include <sys/argstream.hh>
+#include "signal.hh"
+#include "argstream.hh"
 
 namespace sys {
 

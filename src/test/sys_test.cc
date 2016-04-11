@@ -1,5 +1,5 @@
 #include <sys/filesys.hh>
-#include <sys/argstream.hh>
+#include <sys/proc/argstream.hh>
 
 #include "test.hh"
 
