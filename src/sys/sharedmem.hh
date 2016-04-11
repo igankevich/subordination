@@ -24,7 +24,7 @@ namespace sys {
 
 		typedef std::chrono::system_clock clock_type;
 		typedef clock_type::time_point tp_type;
-		typedef shmatt_t num_attaches_type;
+		typedef ::shmatt_t num_attaches_type;
 
 	public:
 
