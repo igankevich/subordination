@@ -1,8 +1,9 @@
 #include <sys/sharedmem.hh>
-#include <sys/shmembuf.hh>
+//#include <sys/shmembuf.hh>
 
 #include "test.hh"
 
+/*
 // disable logs
 namespace stdx {
 
@@ -11,6 +12,7 @@ namespace stdx {
 	public std::integral_constant<bool, true> {};
 
 }
+*/
 
 template<class T>
 struct Test_shmem: public test::Test<Test_shmem<T>> {
@@ -18,7 +20,6 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 	typedef stdx::log<Test_shmem> this_log;
 	typedef typename sys::shared_mem<T>::size_type size_type;
 	typedef sys::shared_mem<T> shmem;
-	typedef sys::basic_shmembuf<T> shmembuf;
 
 	static bool
 	shmem_invariant(shmem& shm) {
@@ -27,7 +28,7 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 
 	void xrun() override {
 		const typename sys::shared_mem<T>::size_type SHMEM_SIZE = 512;
-		sys::shared_mem<T> mem1(SHMEM_SIZE, 0666);
+		sys::shared_mem<T> mem1(0666, SHMEM_SIZE);
 		sys::shared_mem<T> mem2(mem1.id());
 		test::invar(shmem_invariant, mem1);
 		test::invar(shmem_invariant, mem2);
@@ -47,6 +48,7 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 
 };
 
+/*
 template<class T>
 struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 
@@ -88,11 +90,11 @@ struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 //	}
 
 };
+*/
 
 int main() {
 	return test::Test_suite{
 		new Test_shmem<char>,
-		new Test_shmem<unsigned char>,
-		new Test_shmembuf<char>
+		new Test_shmem<unsigned char>
 	}.run();
 }

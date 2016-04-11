@@ -3,17 +3,55 @@
 
 #include <memory>
 #include <vector>
-#include <fstream>
+#include <utility>
+#include <cstring>
 
 #include <unistd.h>
 #include <sys/shm.h>
 
 #include <stdx/log.hh>
 
-#include <sys/fildes.hh>
-#include <sys/process.hh>
+#include <sys/io/fildes.hh>
+#include <sys/proc/process.hh>
 
 namespace sys {
+
+	namespace ipc {
+
+		enum ipc_mode_type {
+			create = IPC_CREAT,
+			exclusive = IPC_EXCL,
+			no_wait = IPC_NOWAIT
+		};
+
+	}
+
+	namespace shm {
+
+		enum shm_flags_type {
+			#if defined(SHM_HUGETLB)
+			huge_pages = SHM_HUGETLB
+			#else
+			huge_pages = 0
+			#endif
+			#if defined(SHM_HUGE_2MB)
+			, huge_2mb = SHM_HUGE_2MB
+			#else
+			, huge_2mb = 0
+			#endif
+			#if defined(SHM_HUGE_1GB)
+			, huge_1gb = SHM_HUGE_1GB
+			#else
+			, huge_1gb = 0
+			#endif
+			#if defined(SHM_NORESERVE)
+			, no_reserve = SHM_NORESERVE
+			#else
+			, no_reserve = 0
+			#endif
+		};
+
+	}
 
 	template<class T>
 	struct shared_mem {
@@ -25,38 +63,18 @@ namespace sys {
 		typedef T value_type;
 		typedef T* iterator;
 		typedef const T* const_iterator;
-		typedef std::string path_type;
 
-		shared_mem(path_type&& name, size_type min_sz, mode_type mode, char num = NO_PROJ_ID):
-		_path(), _size(min_sz), _owner(true)
-		{
-			do_open(std::move(name), mode|IPC_CREAT, num);
+		shared_mem(mode_type mode, size_type guaranteed_size) {
+			open_as_owner(mode|ipc::create, guaranteed_size);
 		}
 
 		explicit
-		shared_mem(path_type&& name, char num = NO_PROJ_ID):
-		_path(), _size(0), _owner(false)
-		{
-			do_open(std::move(name), 0, num);
-		}
-
-		shared_mem(size_type min_sz, mode_type mode):
-		_path(), _size(min_sz), _owner(true)
-		{
-			do_open_private(IPC_PRIVATE, mode|IPC_CREAT);
-		}
-
-		explicit
-		shared_mem(shm_type shm):
-		_path(), _size(0), _shm(shm), _owner(false)
-		{
-			do_open_existing();
+		shared_mem(shm_type shm) {
+			open_as_user(shm);
 		}
 
 		shared_mem(shared_mem&& rhs):
-		_path(std::move(rhs._path)),
 		_size(rhs._size),
-		_key(rhs._key),
 		_shm(rhs._shm),
 		_addr(rhs._addr),
 		_owner(rhs._owner)
@@ -65,28 +83,24 @@ namespace sys {
 			rhs._owner = false;
 		}
 
-		shared_mem&
-		operator=(shared_mem&& rhs) {
-			this->close();
-			_path = std::move(rhs._path);
-			_size = rhs._size;
-			_key = rhs._key;
-			_shm = rhs._shm;
-			_addr = rhs._addr;
-			_owner = rhs._owner;
-			rhs._addr = nullptr;
-			rhs._owner = false;
-			return *this;
-		}
-
 		shared_mem() = default;
+		shared_mem(const shared_mem&) = delete;
 
 		~shared_mem() {
 			this->close();
 		}
 
-		shared_mem(const shared_mem&) = delete;
-		shared_mem& operator=(const shared_mem&) = delete;
+		shared_mem&
+		operator=(const shared_mem&) = delete;
+
+		shared_mem&
+		operator=(shared_mem&& rhs) noexcept {
+			std::swap(_size, rhs._size);
+			std::swap(_shm, rhs._shm);
+			std::swap(_addr, rhs._addr);
+			std::swap(_owner, rhs._owner);
+			return *this;
+		}
 
 		addr_type
 		ptr() noexcept {
@@ -101,6 +115,11 @@ namespace sys {
 		size_type
 		size() const noexcept {
 			return _size;
+		}
+
+		size_type
+		size_in_bytes() const noexcept {
+			return size()*sizeof(value_type);
 		}
 
 		bool
@@ -128,184 +147,113 @@ namespace sys {
 			return static_cast<iterator>(_addr) + _size;
 		}
 
-		// TODO: resize is slow
-		void
-		resize(size_type new_size) {
-			// copy old data and openmode
-			const size_type n = std::min(new_size, _size);
-			const std::vector<value_type> olddata(begin(), begin() + n);
-			const mode_type mod = xmode();
-			// detach and close old segment
-			xdetach();
-			xclose();
-			_size = new_size;
-			_shm = xopen(mod|IPC_CREAT);
-			_addr = xattach();
-			std::uninitialized_copy(olddata.begin(),
-				olddata.end(), begin());
-			_size = xsize();
+		shm_type
+		id() const noexcept {
+			return _shm;
+		}
+
+		explicit
+		operator bool() const noexcept {
+			return _addr and _shm;
+		}
+
+		bool
+		operator!() const noexcept {
+			return !operator bool();
 		}
 
 		void
-		sync() {
-			shm_type newid = xopen();
-			if (newid != _shm) {
-				xdetach();
-				xclose();
-				_shm = newid;
-				_addr = xattach();
-			}
-			_size = xsize();
-		}
-
-		shm_type id() const { return _shm; }
-
-	private:
-
-		void
-		do_open_existing() {
-			_path.clear();
-			_key = getkey();
-			_addr = xattach();
-			if (_owner) {
-				xfill();
-			}
-			_size = xsize();
+		open_as_user(shm_type id) {
+			_shm = id;
+			_addr = attach(id);
+			_size = getsize();
 		}
 
 		void
-		do_open_private(key_type key, mode_type mode)
-		{
-			_path.clear();
-			_key = key;
-			_shm = xopen(mode);
-			_key = getkey();
-			_addr = xattach();
-			if (_owner) {
-				xfill();
-			}
-			_size = xsize();
-		}
-
-		void
-		do_open(path_type&& name, mode_type mode, char num)
-		{
-			_path = this->make_path(std::forward<path_type>(name));
-			_key = xgenkey(num);
-			_shm = xopen(mode);
-			_addr = xattach();
-			if (_owner) {
-				xfill();
-			}
-			_size = xsize();
-		}
-
-		key_type
-		getkey() const {
-			struct ::shmid_ds stat;
-			bits::check(::shmctl(_shm, IPC_STAT, &stat),
-				__FILE__, __LINE__, __func__);
-			return stat.shm_perm.__key;
+		open_as_owner(mode_type mode, size_type size) {
+			_owner = true;
+			_shm = open(IPC_PRIVATE, size, mode);
+			_addr = attach(_shm);
+			_size = getsize();
+			memzero();
 		}
 
 		void
 		close() {
-			xdetach();
-			xclose();
-			xunlink();
+			detach();
+			remove();
+		}
+
+	private:
+
+		void
+		remove() {
+			if (_owner) {
+				bits::check(
+					::shmctl(_shm, IPC_RMID, 0),
+					__FILE__, __LINE__, __func__
+				);
+				_shm = 0;
+			}
 		}
 
 		void
-		xfill() noexcept {
-			std::uninitialized_fill(this->begin(),
-				this->end(), value_type());
-		}
-
-		key_type
-		xgenkey(char num) const {
-			{ std::filebuf f; f.open(_path, std::ios_base::in); }
-			return bits::check(::ftok(_path.c_str(), num),
-				__FILE__, __LINE__, __func__);
+		memzero() noexcept {
+			std::memset(ptr(), 0, size_in_bytes());
 		}
 
 		shm_type
-		xopen(int flags=0) const {
-			return bits::check(::shmget(_key,
-				size()*sizeof(value_type), flags),
-				__FILE__, __LINE__, __func__);
+		open(key_type key, size_type size, int shmflags) const {
+			return bits::check(
+				::shmget(key, size, shmflags),
+				__FILE__, __LINE__, __func__
+			);
 		}
 
 		addr_type
-		xattach() const {
-			return bits::check(::shmat(_shm, 0, 0),
-				__FILE__, __LINE__, __func__);
+		attach(shm_type s) const {
+			return bits::check(
+				::shmat(s, nullptr, 0),
+				__FILE__, __LINE__, __func__
+			);
 		}
 
 		void
-		xdetach() {
+		detach() {
 			if (_addr) {
-				bits::check(::shmdt(_addr),
-					__FILE__, __LINE__, __func__);
+				bits::check(
+					::shmdt(_addr),
+					__FILE__, __LINE__, __func__
+				);
 				_addr = nullptr;
 			}
 		}
 
-		void
-		xclose() const {
-			if (_owner) {
-				bits::check(::shmctl(_shm, IPC_RMID, 0),
-					__FILE__, __LINE__, __func__);
-			}
-		}
-
-		void
-		xunlink() const {
-			if (_owner && !_path.empty()) {
-				bits::check(::unlink(_path.c_str()),
-					__FILE__, __LINE__, __func__);
-			}
-		}
-
 		size_type
-		xsize() const {
+		getsize() const {
 			::shmid_ds stat;
-			bits::check(::shmctl(_shm, IPC_STAT, &stat),
-				__FILE__, __LINE__, __func__);
+			bits::check(
+				::shmctl(_shm, IPC_STAT, &stat),
+				__FILE__, __LINE__, __func__
+			);
 			return stat.shm_segsz / sizeof(value_type);
-		}
-
-		mode_type
-		xmode() const {
-			::shmid_ds stat;
-			bits::check(::shmctl(_shm, IPC_STAT, &stat),
-				__FILE__, __LINE__, __func__);
-			return stat.shm_perm.mode;
-		}
-
-		static inline path_type
-		make_path(path_type&& rhs) {
-			return path_type("/tmp" + std::forward<path_type>(rhs));
 		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const shared_mem& rhs) {
-			return out << "{addr=" << rhs.ptr()
-				<< ",path=" << rhs._path
-				<< ",size=" << rhs.size()
-				<< ",owner=" << rhs.is_owner()
-				<< ",key=" << rhs._key
-				<< ",shm=" << rhs._shm
-				<< '}';
+			return out << stdx::make_fields(
+				"addr", rhs.ptr(),
+				"size", rhs.size(),
+				"owner", rhs.is_owner(),
+				"shm", rhs.id()
+			);
 		}
 
-		std::string _path;
 		size_type _size = 0;
-		key_type _key = 0;
 		shm_type _shm = 0;
 		addr_type _addr = nullptr;
 		bool _owner = false;
 
-		constexpr static const char NO_PROJ_ID = 'a';
 	};
 
 }

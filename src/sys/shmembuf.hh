@@ -19,7 +19,6 @@ namespace sys {
 		using typename stdx::basic_packetbuf<Ch,Tr>::off_type;
 
 		typedef typename sys::shared_mem<char_type>::size_type size_type;
-		typedef typename sys::shared_mem<char_type>::path_type path_type;
 		typedef stdx::spin_mutex mutex_type;
 		typedef stdx::log<basic_shmembuf> this_log;
 
