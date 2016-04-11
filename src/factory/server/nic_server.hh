@@ -11,8 +11,8 @@
 #include <sys/event.hh>
 #include <sys/socket.hh>
 #include <sys/packetstream.hh>
-#include <sys/endpoint.hh>
-#include <sys/network.hh>
+#include <sys/net/endpoint.hh>
+#include <sys/net/ifaddr.hh>
 #include <sys/fildesbuf.hh>
 
 #include <factory/server/intro.hh>
@@ -293,7 +293,7 @@ namespace factory {
 			typedef typename upstream_type::iterator iterator_type;
 			typedef server_type* handler_type;
 			typedef sys::event_poller<handler_type> poller_type;
-			typedef sys::network<sys::ipv4_addr> network_type;
+			typedef sys::ifaddr<sys::ipv4_addr> network_type;
 			typedef network_type::rep_type rep_type;
 			typedef Mobile_kernel::id_type id_type;
 			typedef stdx::log<NIC_server> this_log;

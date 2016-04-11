@@ -20,7 +20,7 @@
 #include <stdx/mutex.hh>
 
 #include <sys/fildes.hh>
-#include <sys/endpoint.hh>
+#include <sys/net/endpoint.hh>
 
 
 namespace sys {

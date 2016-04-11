@@ -26,7 +26,7 @@
 #include <stdx/random.hh>
 #include <stdx/iterator.hh>
 
-#include <sys/network_format.hh>
+#include <sys/net/network_format.hh>
 
 #include "color.hh"
 

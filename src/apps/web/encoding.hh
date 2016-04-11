@@ -3,7 +3,7 @@
 
 #include <cstddef> // offsetof
 
-#include <sys/endpoint.hh>
+#include <sys/net/endpoint.hh>
 #include <stdx/random.hh>
 #include <stdx/log.hh>
 #include <factory/error.hh>

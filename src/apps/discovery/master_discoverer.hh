@@ -10,7 +10,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	typedef Address addr_type;
 	typedef Hierarchy hierarchy_type;
 	typedef Distance distance_type;
-	typedef sys::network<addr_type> network_type;
+	typedef sys::ifaddr<addr_type> network_type;
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
 	typedef typename rankedlist_type::iterator rankedlist_iterator;
 	typedef Negotiator<addr_type> negotiator_type;

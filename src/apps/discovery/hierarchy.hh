@@ -6,8 +6,8 @@
 
 #include <stdx/log.hh>
 
-#include <sys/endpoint.hh>
-#include <sys/network.hh>
+#include <sys/net/endpoint.hh>
+#include <sys/net/ifaddr.hh>
 
 namespace discovery {
 
@@ -15,7 +15,7 @@ namespace discovery {
 	struct Hierarchy {
 
 		typedef Addr addr_type;
-		typedef sys::network<addr_type> network_type;
+		typedef sys::ifaddr<addr_type> network_type;
 		typedef std::set<sys::endpoint>::size_type size_type;
 		typedef stdx::log<Hierarchy> this_log;
 

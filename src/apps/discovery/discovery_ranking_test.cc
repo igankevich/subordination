@@ -5,7 +5,7 @@
 #include <random>
 
 #include <stdx/random.hh>
-#include <sys/network.hh>
+#include <sys/net/ifaddr_list.hh>
 #include <test.hh>
 
 #include "distance.hh"
@@ -25,7 +25,7 @@ template<class Addr>
 struct Test_network: public test::Test<Test_network<Addr>> {
 
 	typedef Addr addr_type;
-	typedef sys::network<addr_type> network_type;
+	typedef sys::ifaddr<addr_type> network_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef typename network_type::rep_type rep_type;
 	typedef std::random_device engine_type;
@@ -35,7 +35,7 @@ struct Test_network: public test::Test<Test_network<Addr>> {
 		test_addr_calculus();
 		test_io();
 		std::vector<network_type> networks;
-		sys::enumerate_networks<sys::ipv4_addr>(std::back_inserter(networks));
+		sys::enumerate_ifaddrs<sys::ipv4_addr>(std::back_inserter(networks));
 		std::copy(
 			networks.begin(), networks.end(),
 			std::ostream_iterator<network_type>(std::clog, "\n")

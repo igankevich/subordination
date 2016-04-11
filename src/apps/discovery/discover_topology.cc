@@ -9,8 +9,7 @@
 
 #include <stdx/log.hh>
 
-#include <sys/endpoint.hh>
-#include <sys/network.hh>
+#include <sys/net.hh>
 #include <sys/cmdline.hh>
 
 #include "location.hh"
@@ -59,7 +58,7 @@ template<class Addr>
 struct Topology {
 
 	typedef Addr addr_type;
-	typedef sys::network<addr_type> network_type;
+	typedef sys::ifaddr<addr_type> network_type;
 	typedef typename network_type::rep_type uint_type;
 	typedef float float_type;
 	typedef uint32_t city_type;

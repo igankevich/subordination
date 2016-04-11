@@ -1,3 +1,3 @@
 #!/bin/sh
 
-find . -type f -name '*.hh' -exec vim -T dumb -c HeaderguardAdd -c ':wq' \{\} \;
+find . -type f -name '*.hh' -exec vim -T dumb -c HeaderguardAdd -c ':update' -c ':quit' \{\} \;

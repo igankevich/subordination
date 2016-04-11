@@ -10,7 +10,7 @@
 #include <stdx/mutex.hh>
 
 #include <sys/semaphore.hh>
-#include <sys/endpoint.hh>
+#include <sys/net/endpoint.hh>
 #include <sys/system.hh>
 
 #include <factory/type.hh>

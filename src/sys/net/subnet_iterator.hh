@@ -1,13 +1,13 @@
-#ifndef SYS_NETWORK_ITERATOR_HH
-#define SYS_NETWORK_ITERATOR_HH
+#ifndef SYS_SUBNET_ITERATOR_HH
+#define SYS_SUBNET_ITERATOR_HH
 
 #include <iterator>
-#include <sys/network_format.hh>
+#include "network_format.hh"
 
 namespace sys {
 
 	template<class Address>
-	struct network_iterator:
+	struct subnet_iterator:
 	public std::iterator<std::random_access_iterator_tag,Address>
 	{
 		typedef Address addr_type;
@@ -15,31 +15,31 @@ namespace sys {
 		typedef std::iterator<std::random_access_iterator_tag,Address> base_type;
 		using typename base_type::difference_type;
 
-		network_iterator() = default;
-		network_iterator(const network_iterator&) = default;
-		network_iterator(network_iterator&&) = default;
-		~network_iterator() = default;
-		network_iterator& operator=(const network_iterator&) = default;
+		subnet_iterator() = default;
+		subnet_iterator(const subnet_iterator&) = default;
+		subnet_iterator(subnet_iterator&&) = default;
+		~subnet_iterator() = default;
+		subnet_iterator& operator=(const subnet_iterator&) = default;
 
 		explicit constexpr
-		network_iterator(rep_type idx) noexcept:
+		subnet_iterator(rep_type idx) noexcept:
 		_idx(idx),
 		_addr(make_addr())
 		{}
 
 		explicit constexpr
-		network_iterator(const addr_type& addr) noexcept:
+		subnet_iterator(const addr_type& addr) noexcept:
 		_idx(sys::to_host_format(addr.rep())),
 		_addr(addr)
 		{}
 
 		constexpr bool
-		operator==(const network_iterator& rhs) const noexcept {
+		operator==(const subnet_iterator& rhs) const noexcept {
 			return _idx == rhs._idx;
 		}
 
 		constexpr bool
-		operator!=(const network_iterator& rhs) const noexcept {
+		operator!=(const subnet_iterator& rhs) const noexcept {
 			return !operator==(rhs);
 		}
 
@@ -53,32 +53,32 @@ namespace sys {
 			return &_addr;
 		}
 
-		network_iterator&
+		subnet_iterator&
 		operator++() noexcept {
 			++_idx;
 			_addr = make_addr();
 			return *this;
 		}
 
-		network_iterator&
+		subnet_iterator&
 		operator++(int) noexcept {
-			network_iterator tmp(*this);
+			subnet_iterator tmp(*this);
 			operator++();
 			return tmp;
 		}
 
-		constexpr network_iterator
+		constexpr subnet_iterator
 		operator+(difference_type rhs) const noexcept {
-			return network_iterator(_idx + rhs);
+			return subnet_iterator(_idx + rhs);
 		}
 
-		constexpr network_iterator
+		constexpr subnet_iterator
 		operator-(difference_type rhs) const noexcept {
-			return network_iterator(_idx - rhs);
+			return subnet_iterator(_idx - rhs);
 		}
 
 		constexpr difference_type
-		operator-(const network_iterator& rhs) const noexcept {
+		operator-(const subnet_iterator& rhs) const noexcept {
 			return rhs._idx - _idx;
 		}
 
@@ -96,4 +96,4 @@ namespace sys {
 
 }
 
-#endif // SYS_NETWORK_ITERATOR_HH
+#endif // SYS_SUBNET_ITERATOR_HH

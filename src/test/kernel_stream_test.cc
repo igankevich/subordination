@@ -1,4 +1,4 @@
-#include <sys/network_format.hh>
+#include <sys/net/network_format.hh>
 #include <sys/fildesbuf.hh>
 
 #include <factory/factory.hh>

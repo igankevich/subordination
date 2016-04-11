@@ -1,5 +1,7 @@
-#ifndef SYS_IFADDRS_HH
-#define SYS_IFADDRS_HH
+#ifndef SYS_BITS_IFADDRS_ITERATOR_HH
+#define SYS_BITS_IFADDRS_ITERATOR_HH
+
+#include <ifaddrs.h>
 
 namespace sys {
 
@@ -77,53 +79,7 @@ namespace sys {
 		pointer _ifa = nullptr;
 	};
 
-	struct ifaddrs {
-
-		typedef ifaddrs_type value_type;
-		typedef ifaddrs_iterator iterator;
-		typedef std::size_t size_type;
-
-		ifaddrs() {
-			bits::check(::getifaddrs(&this->_addrs),
-				__FILE__, __LINE__, __func__);
-		}
-		~ifaddrs() noexcept {
-			if (this->_addrs) {
-				::freeifaddrs(this->_addrs);
-			}
-		}
-
-		iterator
-		begin() noexcept {
-			return iterator(this->_addrs);
-		}
-
-		iterator
-		begin() const noexcept {
-			return iterator(this->_addrs);
-		}
-
-		static constexpr iterator
-		end() noexcept {
-			return iterator();
-		}
-
-		bool
-		empty() const noexcept {
-			return this->begin() == this->end();
-		}
-
-		size_type
-		size() const noexcept {
-			return std::distance(this->begin(), this->end());
-		}
-
-	private:
-
-		ifaddrs_type* _addrs = nullptr;
-
-	};
 
 }
 
-#endif // SYS_IFADDRS_HH
+#endif // SYS_BITS_IFADDRS_ITERATOR_HH

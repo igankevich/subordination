@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <sys/endpoint.hh>
+#include <sys/net/endpoint.hh>
 #include <sys/packetstream.hh>
 #include <stdx/random.hh>
 

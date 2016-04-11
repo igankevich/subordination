@@ -1,5 +1,5 @@
-#ifndef SYS_NETWORK_HH
-#define SYS_NETWORK_HH
+#ifndef SYS_SUBNET_ADDR_HH
+#define SYS_SUBNET_ADDR_HH
 
 #include <map>
 #include <vector>
@@ -11,36 +11,37 @@
 #include <stdx/log.hh>
 
 #include <sys/bits/check.hh>
-#include <sys/endpoint.hh>
-#include <sys/ifaddrs.hh>
-
-#include <sys/network_iterator.hh>
+#include "endpoint.hh"
+#include "subnet_iterator.hh"
 
 namespace sys {
 
 	template<class Addr>
-	struct network {
+	class ifaddr {
 
 		typedef sys::bits::Const_char<'/'> Slash;
+		typedef typename sys::ipaddr_traits<Addr> traits_type;
+
+	public:
+
 		typedef Addr addr_type;
 		typedef typename addr_type::rep_type rep_type;
-		typedef typename sys::ipaddr_traits<addr_type> traits_type;
-		typedef network_iterator<addr_type> iterator;
+		typedef subnet_iterator<addr_type> iterator;
 
 		constexpr
-		network(const addr_type& addr, const addr_type& netmask) noexcept:
+		ifaddr(const addr_type& addr, const addr_type& netmask) noexcept:
 		_address(addr), _netmask(netmask)
 		{}
 
 		constexpr
-		network(const addr_type& addr, const sys::prefix_type prefix) noexcept:
+		ifaddr(const addr_type& addr, const sys::prefix_type prefix) noexcept:
 		_address(addr), _netmask(addr_type::from_prefix(prefix))
 		{}
 
-		constexpr network() noexcept = default;
-		constexpr network(const network&) noexcept = default;
-		constexpr network(network&&) noexcept = default;
-		network& operator=(const network&) noexcept = default;
+		constexpr ifaddr() noexcept = default;
+		constexpr ifaddr(const ifaddr&) noexcept = default;
+		constexpr ifaddr(ifaddr&&) noexcept = default;
+		ifaddr& operator=(const ifaddr&) noexcept = default;
 
 		constexpr const addr_type&
 		address() const noexcept {
@@ -109,22 +110,22 @@ namespace sys {
 		}
 
 		constexpr bool
-		operator==(const network& rhs) const noexcept {
+		operator==(const ifaddr& rhs) const noexcept {
 			return _address == rhs._address && _netmask == rhs._netmask;
 		}
 
 		constexpr bool
-		operator!=(const network& rhs) const noexcept {
+		operator!=(const ifaddr& rhs) const noexcept {
 			return !operator==(rhs);
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const network& rhs) {
+		operator<<(std::ostream& out, const ifaddr& rhs) {
 			return out << rhs._address << Slash() << rhs._netmask.to_prefix();
 		}
 
 		friend std::istream&
-		operator>>(std::istream& in, network& rhs) {
+		operator>>(std::istream& in, ifaddr& rhs) {
 			sys::prefix_type prefix = 0;
 			in >> rhs._address >> Slash() >> prefix;
 			rhs._netmask = addr_type::from_prefix(prefix);
@@ -157,23 +158,6 @@ namespace sys {
 		addr_type _netmask;
 	};
 
-	template<class Addr, class Result>
-	void
-	enumerate_networks(Result result) {
-		sys::ifaddrs addrs;
-		std::for_each(
-			addrs.begin(), addrs.end(),
-			[&result] (const sys::ifaddrs_type& rhs) {
-				if (rhs.ifa_addr != 0 and rhs.ifa_addr->sa_family == AF_INET) {
-					const Addr addr(*rhs.ifa_addr);
-					const Addr netmask(*rhs.ifa_netmask);
-					*result = network<Addr>(addr, netmask);
-					++result;
-				}
-			}
-		);
-	}
-
 }
 
-#endif // SYS_NETWORK_HH
+#endif // SYS_SUBNET_ADDR_HH

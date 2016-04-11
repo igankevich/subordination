@@ -2,7 +2,7 @@
 
 #include <sys/socket.hh>
 #include <sys/cmdline.hh>
-#include <sys/network.hh>
+#include <sys/net/ifaddr.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
@@ -163,7 +163,7 @@ private:
 	}
 
 	std::string _role;
-	sys::network<sys::ipv4_addr> _network;
+	sys::ifaddr<sys::ipv4_addr> _network;
 	sys::port_type _port;
 	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
 
 	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
-	sys::network<sys::ipv4_addr> network;
+	sys::ifaddr<sys::ipv4_addr> network;
 	size_t nhosts = 0;
 	std::string role = role_master;
 	try {
@@ -282,7 +282,7 @@ int main(int argc, char* argv[]) {
 					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "ulimit -c unlimited;", "exec",
 					#endif
 					argv[0],
-					"--network", sys::network<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
+					"--network", sys::ifaddr<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
 					"--timeout", timeout,
