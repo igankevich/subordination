@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <cstring>
+#include <chrono>
 
 #include <unistd.h>
 #include <sys/shm.h>
@@ -19,7 +20,13 @@ namespace sys {
 	typedef ::shmid_ds basic_shmstat_type;
 	typedef int shm_type;
 
-	struct sharedmem_stat: public ::shmid_ds {
+	class sharedmem_stat: public ::shmid_ds {
+
+		typedef std::chrono::system_clock clock_type;
+		typedef clock_type::time_point tp_type;
+		typedef shmatt_t num_attaches_type;
+
+	public:
 
 		typedef size_t size_type;
 
@@ -29,13 +36,38 @@ namespace sys {
 		}
 
 		size_type
-		segment_size() const {
+		segment_size() const noexcept {
 			return shm_segsz;
 		}
 
 		pid_type
-		creator() {
+		creator() const noexcept {
 			return shm_cpid;
+		}
+
+		pid_type
+		last_user() const noexcept {
+			return shm_lpid;
+		}
+
+		tp_type
+		last_attach() const noexcept {
+			return clock_type::from_time_t(shm_atime);
+		}
+
+		tp_type
+		last_detach() const noexcept {
+			return clock_type::from_time_t(shm_dtime);
+		}
+
+		tp_type
+		last_change() const noexcept {
+			return clock_type::from_time_t(shm_ctime);
+		}
+
+		num_attaches_type
+		num_attaches() const noexcept {
+			return shm_nattch;
 		}
 
 	private:
