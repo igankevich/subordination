@@ -221,7 +221,7 @@ namespace sys {
 
 		void
 		remove() {
-			if (is_owner() and getcreator() == this_process::id()) {
+			if (is_owner()) {
 				bits::check(
 					::shmctl(_shm, IPC_RMID, 0),
 					__FILE__, __LINE__, __func__
@@ -266,12 +266,6 @@ namespace sys {
 		getsize() const {
 			sharedmem_stat stat(_shm);
 			return stat.segment_size() / sizeof(value_type);
-		}
-
-		pid_type
-		getcreator() const {
-			sharedmem_stat stat(_shm);
-			return stat.creator();
 		}
 
 		friend std::ostream&
