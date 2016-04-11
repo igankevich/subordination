@@ -16,6 +16,40 @@
 
 namespace sys {
 
+	typedef ::shmid_ds basic_shmstat_type;
+	typedef int shm_type;
+
+	struct sharedmem_stat: public ::shmid_ds {
+
+		typedef size_t size_type;
+
+		explicit
+		sharedmem_stat(shm_type id) {
+			getstat(id);
+		}
+
+		size_type
+		segment_size() const {
+			return shm_segsz;
+		}
+
+		pid_type
+		creator() {
+			return shm_cpid;
+		}
+
+	private:
+
+		void
+		getstat(shm_type id) {
+			bits::check(
+				::shmctl(id, IPC_STAT, this),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+	};
+
 	namespace ipc {
 
 		enum ipc_mode_type {
@@ -58,7 +92,6 @@ namespace sys {
 
 		typedef ::key_t key_type;
 		typedef size_t size_type;
-		typedef int shm_type;
 		typedef void* addr_type;
 		typedef T value_type;
 		typedef T* iterator;
@@ -74,10 +107,10 @@ namespace sys {
 		}
 
 		shared_mem(shared_mem&& rhs):
-		_size(rhs._size),
 		_shm(rhs._shm),
 		_addr(rhs._addr),
-		_owner(rhs._owner)
+		_owner(rhs._owner),
+		_size(rhs._size)
 		{
 			rhs._addr = nullptr;
 			rhs._owner = false;
@@ -95,9 +128,9 @@ namespace sys {
 
 		shared_mem&
 		operator=(shared_mem&& rhs) noexcept {
-			std::swap(_size, rhs._size);
 			std::swap(_shm, rhs._shm);
 			std::swap(_addr, rhs._addr);
+			std::swap(_size, rhs._size);
 			std::swap(_owner, rhs._owner);
 			return *this;
 		}
@@ -171,10 +204,10 @@ namespace sys {
 
 		void
 		open_as_owner(mode_type mode, size_type size) {
-			_owner = true;
 			_shm = open(IPC_PRIVATE, size, mode);
 			_addr = attach(_shm);
 			_size = getsize();
+			_owner = true;
 			memzero();
 		}
 
@@ -188,7 +221,7 @@ namespace sys {
 
 		void
 		remove() {
-			if (_owner) {
+			if (is_owner() and getcreator() == this_process::id()) {
 				bits::check(
 					::shmctl(_shm, IPC_RMID, 0),
 					__FILE__, __LINE__, __func__
@@ -202,16 +235,16 @@ namespace sys {
 			std::memset(ptr(), 0, size_in_bytes());
 		}
 
-		shm_type
-		open(key_type key, size_type size, int shmflags) const {
+		static shm_type
+		open(key_type key, size_type size, int shmflags) {
 			return bits::check(
 				::shmget(key, size, shmflags),
 				__FILE__, __LINE__, __func__
 			);
 		}
 
-		addr_type
-		attach(shm_type s) const {
+		static addr_type
+		attach(shm_type s) {
 			return bits::check(
 				::shmat(s, nullptr, 0),
 				__FILE__, __LINE__, __func__
@@ -231,12 +264,14 @@ namespace sys {
 
 		size_type
 		getsize() const {
-			::shmid_ds stat;
-			bits::check(
-				::shmctl(_shm, IPC_STAT, &stat),
-				__FILE__, __LINE__, __func__
-			);
-			return stat.shm_segsz / sizeof(value_type);
+			sharedmem_stat stat(_shm);
+			return stat.segment_size() / sizeof(value_type);
+		}
+
+		pid_type
+		getcreator() const {
+			sharedmem_stat stat(_shm);
+			return stat.creator();
 		}
 
 		friend std::ostream&
@@ -249,9 +284,9 @@ namespace sys {
 			);
 		}
 
-		size_type _size = 0;
 		shm_type _shm = 0;
 		addr_type _addr = nullptr;
+		size_type _size = 0;
 		bool _owner = false;
 
 	};
