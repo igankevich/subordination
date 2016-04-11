@@ -1,5 +1,5 @@
-#ifndef SYS_FILDESBUF_HH
-#define SYS_FILDESBUF_HH
+#ifndef SYS_IO_FILDESBUF_HH
+#define SYS_IO_FILDESBUF_HH
 
 #include <vector>
 #include <cassert>
@@ -295,4 +295,4 @@ namespace stdx {
 
 }
 
-#endif // SYS_FILDESBUF_HH
+#endif // SYS_IO_FILDESBUF_HH

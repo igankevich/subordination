@@ -1,5 +1,5 @@
-#ifndef SYS_BITS_PATH_HH
-#define SYS_BITS_PATH_HH
+#ifndef SYS_FS_PATH_HH
+#define SYS_FS_PATH_HH
 
 #include <limits.h>
 #include <stdlib.h>
@@ -120,4 +120,4 @@ namespace sys {
 
 }
 
-#endif // SYS_BITS_PATH_HH
+#endif // SYS_FS_PATH_HH

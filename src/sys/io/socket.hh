@@ -1,5 +1,5 @@
-#ifndef SYS_SOCKET_HH
-#define SYS_SOCKET_HH
+#ifndef SYS_IO_SOCKET_HH
+#define SYS_IO_SOCKET_HH
 
 #include <sys/socket.h>
 #include <unistd.h>
@@ -258,4 +258,4 @@ namespace stdx {
 
 }
 
-#endif // SYS_SOCKET_HH
+#endif // SYS_IO_SOCKET_HH

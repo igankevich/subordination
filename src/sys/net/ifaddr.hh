@@ -1,5 +1,5 @@
-#ifndef SYS_SUBNET_ADDR_HH
-#define SYS_SUBNET_ADDR_HH
+#ifndef SYS_NET_IFADDR_HH
+#define SYS_NET_IFADDR_HH
 
 #include <map>
 #include <vector>
@@ -160,4 +160,4 @@ namespace sys {
 
 }
 
-#endif // SYS_SUBNET_ADDR_HH
+#endif // SYS_NET_IFADDR_HH

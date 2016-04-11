@@ -1,5 +1,5 @@
-#ifndef IO_HH
-#define IO_HH
+#ifndef SYS_IO_HH
+#define SYS_IO_HH
 
 #include "io/event.hh"
 #include "io/fildes.hh"
@@ -7,4 +7,4 @@
 #include "io/pipe.hh"
 #include "io/socket.hh"
 
-#endif // IO_HH
+#endif // SYS_IO_HH

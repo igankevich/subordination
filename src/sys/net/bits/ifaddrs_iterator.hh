@@ -1,5 +1,5 @@
-#ifndef SYS_BITS_IFADDRS_ITERATOR_HH
-#define SYS_BITS_IFADDRS_ITERATOR_HH
+#ifndef SYS_NET_BITS_IFADDRS_ITERATOR_HH
+#define SYS_NET_BITS_IFADDRS_ITERATOR_HH
 
 #include <ifaddrs.h>
 
@@ -82,4 +82,4 @@ namespace sys {
 
 }
 
-#endif // SYS_BITS_IFADDRS_ITERATOR_HH
+#endif // SYS_NET_BITS_IFADDRS_ITERATOR_HH

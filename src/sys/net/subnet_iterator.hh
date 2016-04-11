@@ -1,5 +1,5 @@
-#ifndef SYS_SUBNET_ITERATOR_HH
-#define SYS_SUBNET_ITERATOR_HH
+#ifndef SYS_NET_SUBNET_ITERATOR_HH
+#define SYS_NET_SUBNET_ITERATOR_HH
 
 #include <iterator>
 #include "network_format.hh"
@@ -96,4 +96,4 @@ namespace sys {
 
 }
 
-#endif // SYS_SUBNET_ITERATOR_HH
+#endif // SYS_NET_SUBNET_ITERATOR_HH

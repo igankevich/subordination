@@ -1,5 +1,5 @@
-#ifndef SYS_NETWORK_FORMAT_HH
-#define SYS_NETWORK_FORMAT_HH
+#ifndef SYS_NET_NETWORK_FORMAT_HH
+#define SYS_NET_NETWORK_FORMAT_HH
 
 #include <algorithm>
 
@@ -353,4 +353,4 @@ namespace sys {
 
 }
 
-#endif // SYS_NETWORK_FORMAT_HH
+#endif // SYS_NET_NETWORK_FORMAT_HH

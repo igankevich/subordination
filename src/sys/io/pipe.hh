@@ -1,5 +1,5 @@
-#ifndef SYS_PIPE_HH
-#define SYS_PIPE_HH
+#ifndef SYS_IO_PIPE_HH
+#define SYS_IO_PIPE_HH
 
 #include <unistd.h>
 
@@ -176,4 +176,4 @@ namespace sys {
 
 }
 
-#endif // SYS_PIPE_HH
+#endif // SYS_IO_PIPE_HH

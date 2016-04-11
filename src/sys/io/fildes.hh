@@ -1,5 +1,5 @@
-#ifndef SYS_FILDES_HH
-#define SYS_FILDES_HH
+#ifndef SYS_IO_FILDES_HH
+#define SYS_IO_FILDES_HH
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -216,4 +216,4 @@ namespace stdx {
 
 }
 
-#endif // SYS_FILDES_HH
+#endif // SYS_IO_FILDES_HH

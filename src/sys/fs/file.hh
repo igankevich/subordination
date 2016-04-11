@@ -1,5 +1,5 @@
-#ifndef SYS_BITS_FILE_HH
-#define SYS_BITS_FILE_HH
+#ifndef SYS_FS_FILE_HH
+#define SYS_FS_FILE_HH
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -271,4 +271,4 @@ namespace sys {
 
 }
 
-#endif // SYS_BITS_FILE_HH
+#endif // SYS_FS_FILE_HH

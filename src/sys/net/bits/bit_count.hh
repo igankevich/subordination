@@ -1,5 +1,5 @@
-#ifndef SYS_BITS_BIT_COUNT_HH
-#define SYS_BITS_BIT_COUNT_HH
+#ifndef SYS_NET_BITS_BIT_COUNT_HH
+#define SYS_NET_BITS_BIT_COUNT_HH
 
 #include <sys/bits/macros.hh>
 
@@ -55,4 +55,4 @@ namespace sys {
 
 }
 
-#endif // SYS_BITS_BIT_COUNT_HH
+#endif // SYS_NET_BITS_BIT_COUNT_HH

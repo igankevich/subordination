@@ -1,5 +1,5 @@
-#ifndef SYS_ARGSTREAM_HH
-#define SYS_ARGSTREAM_HH
+#ifndef SYS_PROC_ARGSTREAM_HH
+#define SYS_PROC_ARGSTREAM_HH
 
 #include <streambuf>
 #include <vector>
@@ -120,4 +120,4 @@ namespace sys {
 
 }
 
-#endif // SYS_ARGSTREAM_HH
+#endif // SYS_PROC_ARGSTREAM_HH
