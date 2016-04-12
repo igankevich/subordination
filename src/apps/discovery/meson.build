@@ -1,7 +1,8 @@
 libgsl = dependency('gsl')
 liblapack = find_library('lapack')
 libblas = find_library('blas')
-static_linking = ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm']
+libz = dependency('zlib')
+static_linking = ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm', '-lz']
 
 #test(
 #	'discovery',
@@ -28,8 +29,8 @@ executable(
 	link_args: static_linking,
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
-		'-DFACTORY_TEST_SLAVE_FAILURE',
-		'-DFACTORY_TEST_USE_SSH'
+		'-DFACTORY_TEST_SLAVE_FAILURE'
+#		, '-DFACTORY_TEST_USE_SSH'
 	]
 )
 

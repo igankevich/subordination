@@ -106,6 +106,12 @@ namespace sys {
 		path(std::forward<path>(rhs))
 		{}
 
+		template<class T>
+		explicit
+		canonical_path(T&& rhs):
+		path(canonicalise(path(std::forward<T>(rhs))))
+		{}
+
 		static path
 		canonicalise(path&& rhs) {
 			std::unique_ptr<char> ptr(bits::check<char*>(

@@ -7,6 +7,7 @@
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
+#include <factory/server/io_server.hh>
 #include <factory/server/nic_server.hh>
 
 #include "distance.hh"
@@ -42,7 +43,7 @@ namespace factory {
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, sys::socket> remote_server;
 			typedef components::Timer_server<config> timer_server;
-			typedef components::No_server<config> io_server;
+			typedef components::IO_server<config> io_server;
 			typedef components::No_server<config> app_server;
 			typedef components::Basic_factory<config> factory;
 		};
@@ -56,6 +57,7 @@ using namespace factory;
 using namespace factory::this_config;
 
 #include "apps/autoreg/autoreg_app.hh"
+#include "apps/spec/spec_app.hh"
 #include "ping_pong.hh"
 #include "delayed_shutdown.hh"
 #include "master_discoverer.hh"
@@ -95,6 +97,8 @@ struct Main: public Kernel {
 		this_server.factory()->types().register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
 		this_server.factory()->types().register_type(autoreg::Autoreg_model<float>::static_type());
 		this_server.factory()->types().register_type(Secret_agent::static_type());
+		this_server.factory()->types().register_type(Launcher::static_type());
+		this_server.factory()->types().register_type(Year_kernel::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -114,7 +118,8 @@ struct Main: public Kernel {
 //			}
 
 			if (_network.address() == _masteraddr) {
-				schedule_autoreg_app(this_server);
+//				schedule_autoreg_app(this_server);
+				schedule_spec_app(this_server);
 			}
 
 			schedule_shutdown_after(std::chrono::seconds(_timeout), master, this_server);
@@ -143,6 +148,13 @@ private:
 	void
 	schedule_autoreg_app(Server& this_server) {
 		Autoreg_app* app = new Autoreg_app;
+		app->after(std::chrono::seconds(5));
+		this_server.timer_server()->send(app);
+	}
+
+	void
+	schedule_spec_app(Server& this_server) {
+		Spec_app* app = new Spec_app;
 		app->after(std::chrono::seconds(5));
 		this_server.timer_server()->send(app);
 	}
