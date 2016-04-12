@@ -489,6 +489,12 @@ namespace factory {
 			}
 
 			server_type*
+			io_server() noexcept {
+				assert(_server != nullptr);
+				return _server->io_server();
+			}
+
+			server_type*
 			remote_server() noexcept {
 				assert(_server != nullptr);
 				return _server->remote_server();

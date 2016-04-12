@@ -3,6 +3,7 @@
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
+#include <factory/server/io_server.hh>
 #include <factory/server/nic_server.hh>
 
 // disable logs
@@ -32,6 +33,7 @@ namespace factory {
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, sys::socket> remote_server;
 			typedef components::Timer_server<config> timer_server;
+			typedef components::IO_server<config> io_server;
 			typedef components::No_server<config> app_server;
 			typedef components::Basic_factory<config> factory;
 		};
@@ -401,7 +403,7 @@ struct Year_kernel: public Kernel {
 	void act() override {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				this->upstream(local_server(), new Station_kernel(pair.second, pair.first));
+				this->upstream(io_server(), new Station_kernel(pair.second, pair.first));
 //				std::for_each(pair.second.cbegin(), pair.second.cend(),
 //					[this] (const decltype(pair.second)::value_type& pair2) {
 //						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;

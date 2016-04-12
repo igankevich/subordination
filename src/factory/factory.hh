@@ -46,6 +46,7 @@ namespace factory {
 			typedef typename Config::local_server local_server_type;
 			typedef typename Config::remote_server remote_server_type;
 			typedef typename Config::timer_server timer_server_type;
+			typedef typename Config::io_server io_server_type;
 			typedef typename kernel_type::id_type id_type;
 
 			Basic_factory(Global_thread_context& context):
@@ -66,6 +67,7 @@ namespace factory {
 				_local_server.start();
 				_remote_server.start();
 				_timer_server.start();
+				_io_server.start();
 			}
 
 			void
@@ -74,12 +76,15 @@ namespace factory {
 				_local_server.stop();
 				_remote_server.stop();
 				_timer_server.stop();
+				_io_server.stop();
 			}
 
-			void wait() override {
+			void
+			wait() override {
 				_local_server.wait();
 				_remote_server.wait();
 				_timer_server.wait();
+				_io_server.wait();
 			}
 
 			void
@@ -88,6 +93,7 @@ namespace factory {
 				_local_server.shutdown();
 				_remote_server.shutdown();
 				_timer_server.shutdown();
+				_io_server.shutdown();
 				stop();
 			}
 
@@ -96,6 +102,7 @@ namespace factory {
 			local_server_type* local_server() { return &_local_server; }
 			remote_server_type* remote_server() { return &_remote_server; }
 			timer_server_type* timer_server() { return &_timer_server; }
+			io_server_type* io_server() { return &_io_server; }
 
 			void
 			run(int argc, char* argv[]) {
@@ -150,11 +157,13 @@ namespace factory {
 				this->_local_server.setparent(this);
 				this->_remote_server.setparent(this);
 				this->_timer_server.setparent(this);
+				this->_io_server.setparent(this);
 			}
 
 			local_server_type _local_server;
 			remote_server_type _remote_server;
 			timer_server_type _timer_server;
+			io_server_type _io_server;
 			int _exitcode = 0;
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;

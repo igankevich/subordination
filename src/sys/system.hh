@@ -36,6 +36,11 @@ namespace sys {
 		#endif
 	}
 
+	unsigned
+	io_concurrency() noexcept {
+		return 1u;
+	}
+
 }
 
 #endif // SYS_SYSTEM_HH
