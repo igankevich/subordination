@@ -53,17 +53,29 @@ struct Date {
 		return _minutes + 60*_hours + 60*24*_day + 60*24*31*_month + 60*24*31*12*_year;
 	}
 
-	friend std::istream& operator>>(std::istream& in, Date& rhs) {
+	friend std::istream&
+	operator>>(std::istream& in, Date& rhs) {
 		return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
 	}
 
-	friend std::ostream& operator<<(std::ostream& out, const Date& rhs) {
+	friend std::ostream&
+	operator<<(std::ostream& out, const Date& rhs) {
 		return out << std::setfill('0')
 			                << rhs._year << ' '
 			<< std::setw(2) << rhs._month << ' '
 			<< std::setw(2) << rhs._day << ' '
 			<< std::setw(2) << rhs._hours << ' '
 			<< std::setw(2) << rhs._minutes;
+	}
+
+	friend sys::packetstream&
+	operator>>(sys::packetstream& in, Date& rhs) {
+		return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
+	}
+
+	friend sys::packetstream&
+	operator<<(sys::packetstream& out, const Date& rhs) {
+		return out << rhs._year << rhs._month << rhs._day << rhs._hours << rhs._minutes;
 	}
 
 private:
@@ -135,6 +147,112 @@ private:
 	Variable _var;
 };
 
+namespace sys {
+
+	namespace bits {
+
+		template<class Container>
+		sys::packetstream&
+		write_container(sys::packetstream& out, const Container& rhs) {
+			typedef typename Container::value_type value_type;
+			out << uint64_t(rhs.size());
+			std::for_each(
+				rhs.begin(),
+				rhs.end(),
+				[&out] (const value_type& val) {
+					out << val;
+				}
+			);
+			return out;
+		}
+
+		template<class Container>
+		sys::packetstream&
+		read_container(sys::packetstream& in, Container& rhs) {
+			typedef typename Container::value_type value_type;
+			uint64_t n = 0;
+			in >> n;
+			rhs.resize(n);
+			std::for_each(
+				rhs.begin(),
+				rhs.end(),
+				[&in] (value_type& val) {
+					in >> val;
+				}
+			);
+			return in;
+		}
+
+		template<class Container>
+		sys::packetstream&
+		read_map(sys::packetstream& in, Container& rhs) {
+			typedef typename Container::key_type key_type;
+			typedef typename Container::mapped_type mapped_type;
+			uint64_t n = 0;
+			in >> n;
+			rhs.clear();
+			for (uint64_t i=0; i<n; ++i) {
+				key_type key;
+				mapped_type val;
+				in >> key >> val;
+				rhs.emplace(key, val);
+			}
+			return in;
+		}
+
+	}
+
+	template<class T>
+	sys::packetstream&
+	operator<<(sys::packetstream& out, const std::vector<T>& rhs) {
+		return bits::write_container(out, rhs);
+	}
+
+	template<class T>
+	sys::packetstream&
+	operator>>(sys::packetstream& in, std::vector<T>& rhs) {
+		return bits::read_container(in, rhs);
+	}
+
+	template<class K, class V>
+	sys::packetstream&
+	operator<<(sys::packetstream& out, const std::unordered_map<K,V>& rhs) {
+		return bits::write_container(out, rhs);
+	}
+
+	template<class K, class V>
+	sys::packetstream&
+	operator>>(sys::packetstream& in, std::unordered_map<K,V>& rhs) {
+		return bits::read_map(in, rhs);
+	}
+
+	template<class K, class V>
+	sys::packetstream&
+	operator<<(sys::packetstream& out, const std::map<K,V>& rhs) {
+		return bits::write_container(out, rhs);
+	}
+
+	template<class K, class V>
+	sys::packetstream&
+	operator>>(sys::packetstream& in, std::map<K,V>& rhs) {
+		return bits::read_map(in, rhs);
+	}
+
+	template<class X, class Y>
+	sys::packetstream&
+	operator<<(sys::packetstream& out, const std::pair<X,Y>& rhs) {
+		return out << rhs.first << rhs.second;
+	}
+
+	template<class X, class Y>
+	sys::packetstream&
+	operator>>(sys::packetstream& in, std::pair<X,Y>& rhs) {
+		return in >> rhs.first >> rhs.second;
+	}
+
+
+}
+
 struct Spectrum_kernel: public Kernel {
 
 	enum {
@@ -193,6 +311,8 @@ struct Station_kernel: public Kernel {
 	typedef std::unordered_map<Variable, Observation> Map;
 	typedef stdx::log<Station_kernel> this_log;
 
+	Station_kernel() = default;
+
 	Station_kernel(const Map& m, Station st, Year year):
 	_observations(m), _station(st), _year(year), _count(0)
 	{}
@@ -216,20 +336,20 @@ struct Station_kernel: public Kernel {
 	}
 
 	void react(Kernel* kernel) override {
-		Spectrum_kernel* k = reinterpret_cast<Spectrum_kernel*>(kernel);
+		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(kernel);
 		_out_matrix[k->date()] = k->variance();
 //		this_log() << "Finished station = " << _station
 //			<< ", date = " << k->date()
 //			<< ", variance = " << k->variance() << std::endl;
 		if (++_count == _matrix.size()) {
-			commit(local_server());
+			commit(remote_server());
 		}
 	}
 
 	void act() override {
-		// omit missing variables
+		// skip records when some variables are missing
 		if (_observations.size() != NUM_VARIABLES) {
-			commit(local_server());
+			commit(remote_server());
 			return;
 		}
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -309,8 +429,51 @@ struct Station_kernel: public Kernel {
 		);
 	}
 
+	Year year() const { return _year; }
 	Station station() const { return _station; }
 	int32_t num_processed_spectra() const { return _matrix.size(); }
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			20002,
+			"Station_kernel",
+			[] (sys::packetstream& in) {
+				Station_kernel* k = new Station_kernel;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+	void
+	read(sys::packetstream& in) override {
+		Kernel::read(in);
+		in >> _observations;
+		in >> _station;
+		in >> _year;
+		in >> _matrix;
+		in >> _frequencies;
+		in >> _count;
+		in >> _out_matrix;
+	}
+
+	void
+	write(sys::packetstream& out) override {
+		Kernel::write(out);
+		out << _observations;
+		out << _station;
+		out << _year;
+		out << _matrix;
+		out << _frequencies;
+		out << _count;
+		out << _out_matrix;
+	}
 
 private:
 	Map _observations;
@@ -348,8 +511,13 @@ struct Year_kernel: public Kernel {
 		return std::to_string(_year) + ".out";
 	}
 
+	bool
+	finished() const noexcept {
+		return _count == _observations.size();
+	}
+
 	void react(Kernel* kernel) override {
-		Station_kernel* k = reinterpret_cast<Station_kernel*>(kernel);
+		Station_kernel* k = dynamic_cast<Station_kernel*>(kernel);
 		if (!_output_file.is_open()) {
 			_output_file.open(output_filename());
 		}
@@ -359,14 +527,14 @@ struct Year_kernel: public Kernel {
 			<< k->num_processed_spectra() << " spectra total)" << std::endl;
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
-			commit(remote_server());
+//			commit(remote_server());
 		}
 	}
 
 	void act() override {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				this->upstream(io_server(), new Station_kernel(pair.second, pair.first, _year));
+				this->upstream(remote_server(), new Station_kernel(pair.second, pair.first, _year));
 //				std::for_each(pair.second.cbegin(), pair.second.cend(),
 //					[this] (const decltype(pair.second)::value_type& pair2) {
 //						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
@@ -443,6 +611,9 @@ private:
 
 struct Launcher: public Kernel {
 
+	typedef std::unordered_map<Station,
+		std::unordered_map<Variable, Observation>> Map;
+
 	typedef stdx::log<Launcher> this_log;
 
 	Launcher(): _count(0), _count_spectra(0) {}
@@ -461,22 +632,32 @@ struct Launcher: public Kernel {
 		_count -= observations.size();
 		std::for_each(observations.cbegin(), observations.cend(),
 			[this] (const decltype(observations)::value_type& pair) {
-				this->upstream(remote_server(), new Year_kernel(pair.second, pair.first));
+				Year year = pair.first;
+				_yearkernels[year] = new Year_kernel(pair.second, year);
+				submit_station_kernels(pair.second, year);
+				// this->upstream(remote_server(), new Year_kernel(pair.second, year));
 			}
 		);
 	}
 
 	void react(Kernel* kernel) override {
-		Year_kernel* k = reinterpret_cast<Year_kernel*>(kernel);
-		this_log() << "finished year " << k->year() << std::endl;
-		_count_spectra += k->num_processed_spectra();
-		if (++_count == 0) {
-			this_log() << "total number of processed spectra: " << _count_spectra << std::endl;
-			#if defined(FACTORY_TEST_SLAVE_FAILURE)
-			commit(local_server());
-			#else
-			commit(remote_server());
-			#endif
+		// Year_kernel* k = dynamic_cast<Year_kernel*>(kernel);
+		Station_kernel* k1 = dynamic_cast<Station_kernel*>(kernel);
+		Year_kernel* k = _yearkernels[k1->year()];
+		k->react(k1);
+		if (k->finished()) {
+			this_log() << "finished year " << k->year() << std::endl;
+			_count_spectra += k->num_processed_spectra();
+			_yearkernels.erase(k1->year());
+			delete k;
+			if (++_count == 0) {
+				this_log() << "total number of processed spectra: " << _count_spectra << std::endl;
+				#if defined(FACTORY_TEST_SLAVE_FAILURE)
+				commit(local_server());
+				#else
+				commit(remote_server());
+				#endif
+			}
 		}
 	}
 
@@ -510,9 +691,25 @@ struct Launcher: public Kernel {
 		out << _count << _count_spectra;
 	}
 
+	void
+	submit_station_kernels(Map _observations, Year _year) {
+		std::for_each(_observations.cbegin(), _observations.cend(),
+			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
+				this->upstream(remote_server(), new Station_kernel(pair.second, pair.first, _year));
+//				std::for_each(pair.second.cbegin(), pair.second.cend(),
+//					[this] (const decltype(pair.second)::value_type& pair2) {
+//						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
+//					}
+//				);
+			}
+		);
+	}
+
 private:
 	int32_t _count;
 	int32_t _count_spectra;
+
+	std::unordered_map<Year, Year_kernel*> _yearkernels;
 };
 
 struct Spec_app: public Kernel {

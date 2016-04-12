@@ -99,6 +99,7 @@ struct Main: public Kernel {
 		this_server.factory()->types().register_type(Secret_agent::static_type());
 		this_server.factory()->types().register_type(Launcher::static_type());
 		this_server.factory()->types().register_type(Year_kernel::static_type());
+		this_server.factory()->types().register_type(Station_kernel::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
