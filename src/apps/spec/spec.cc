@@ -480,8 +480,9 @@ struct Launcher: public Kernel {
 
 	typedef stdx::log<Launcher> this_log;
 
-	Launcher(Server& this_server, int argc, char** argv): _count(0), _count_spectra(0) {}
-	void act() {
+	Launcher(): _count(0), _count_spectra(0) {}
+
+	void act() override {
 		std::ifstream in("input");
 		std::unordered_map<Year,
 			std::unordered_map<Station,
@@ -500,7 +501,7 @@ struct Launcher: public Kernel {
 			}
 		);
 	}
-	void react(Kernel* kernel) {
+	void react(Kernel* kernel) override {
 		Year_kernel* k = reinterpret_cast<Year_kernel*>(kernel);
 		this_log() << "Finished year " << k->year() << std::endl;
 		_count_spectra += k->num_processed_spectra();
@@ -510,12 +511,61 @@ struct Launcher: public Kernel {
 		}
 	}
 
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			10001,
+			"Launcher",
+			[] (sys::packetstream& in) {
+				Launcher* k = new Launcher;
+				k->read(in);
+				return k;
+			}
+		};
+	}
+
+	void
+	read(sys::packetstream& in) override {
+		in >> _count >> _count_spectra;
+	}
+
+	void
+	write(sys::packetstream& out) override {
+		out << _count << _count_spectra;
+	}
+
 private:
 	int32_t _count;
 	int32_t _count_spectra;
 };
 
+struct Main: public Kernel {
+
+	typedef stdx::log<Main> this_log;
+
+	Main(Server& this_server, int argc, char** argv) {
+	}
+
+	void
+	act() override {
+		factory()->types().register_type(Launcher::static_type());
+		factory()->types().register_type(Year_kernel::static_type());
+		upstream_carry(local_server(), new Launcher);
+	}
+
+	void
+	react(Kernel*) {
+		commit(local_server());
+	}
+
+};
+
 int
 main(int argc, char** argv) {
-	return factory_main<Launcher,config>(argc, argv);
+	return factory_main<Main,config>(argc, argv);
 }
