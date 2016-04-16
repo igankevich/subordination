@@ -615,10 +615,19 @@ struct Launcher: public Kernel {
 		std::unordered_map<Variable, Observation>> Map;
 
 	typedef stdx::log<Launcher> this_log;
+	typedef std::chrono::nanoseconds::rep Time;
 
 	Launcher(): _count(0), _count_spectra(0) {}
 
+	static Time
+	current_time_nano() {
+		using namespace std::chrono;
+		typedef std::chrono::system_clock Clock;
+		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+	}
+
 	void act() override {
+		_time0 = current_time_nano();
 		std::ifstream in("input");
 		std::unordered_map<Year,
 			std::unordered_map<Station,
@@ -652,6 +661,11 @@ struct Launcher: public Kernel {
 			delete k;
 			if (++_count == 0) {
 				this_log() << "total number of processed spectra: " << _count_spectra << std::endl;
+				{
+					Time time1 = current_time_nano();
+					std::ofstream timerun_log("time.log");
+					timerun_log << float(time1 - _time0)/1000/1000/1000 << std::endl;
+				}
 				#if defined(FACTORY_TEST_SLAVE_FAILURE)
 				commit(local_server());
 				#else
@@ -708,6 +722,7 @@ struct Launcher: public Kernel {
 private:
 	int32_t _count;
 	int32_t _count_spectra;
+	Time _time0;
 
 	std::unordered_map<Year, Year_kernel*> _yearkernels;
 };

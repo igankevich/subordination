@@ -29,8 +29,8 @@ executable(
 	link_args: static_linking,
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
-		'-DFACTORY_TEST_SLAVE_FAILURE'
-#		, '-DFACTORY_TEST_USE_SSH'
+		'-DFACTORY_TEST_SLAVE_FAILURE',
+		'-DFACTORY_TEST_USE_SSH'
 	]
 )
 

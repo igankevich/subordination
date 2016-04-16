@@ -24,6 +24,7 @@ namespace sys {
 		typedef std::vector<char_type> arg_type;
 
 		basic_argbuf() {
+			_args.reserve(4096);
 			_args.emplace_back();
 			_rawargs.push_back(nullptr);
 		}

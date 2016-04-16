@@ -7,6 +7,7 @@
 
 namespace autoreg {
 
+	// TODO 2016-04-13 implement std::seed_seq interaface for parallel MT
 	struct parallel_mt {
 
 		typedef uint32_t result_type;

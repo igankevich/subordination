@@ -39,11 +39,13 @@ test_argstream() {
 	test::equal(args.argv()[0], arg0, "bad arg0");
 	test::equal(args.argv()[1], arg1, "bad arg1");
 	test::equal(args.argv()[2], std::to_string(arg2), "bad arg2");
+	test::equal(args.argv()[args.argc()], (char*)nullptr, "bad last arg");
 	args.append(arg0, arg1, arg2);
 	test::equal(args.argc(), 6, "bad argc");
 	test::equal(args.argv()[3], arg0, "bad arg0");
 	test::equal(args.argv()[4], arg1, "bad arg1");
 	test::equal(args.argv()[5], std::to_string(arg2), "bad arg2");
+	test::equal(args.argv()[args.argc()], (char*)nullptr, "bad last arg");
 }
 
 int main() {

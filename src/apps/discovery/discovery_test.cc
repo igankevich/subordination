@@ -293,7 +293,8 @@ int main(int argc, char* argv[]) {
 				}
 				return sys::this_process::execute(
 					#if defined(FACTORY_TEST_USE_SSH)
-					"/usr/bin/ssh", endpoint.addr4(), "cd", workdir, ";", "ulimit -c unlimited;", "exec",
+					"/usr/bin/ssh", "-n", "-o", "StrictHostKeyChecking no", endpoint.addr4(),
+					"cd", workdir, ';', "exec",
 					#endif
 					argv[0],
 					"--network", sys::ifaddr<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
