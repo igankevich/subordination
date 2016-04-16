@@ -32,7 +32,6 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 
 	void
 	act(Server& this_server) override {
-		std::this_thread::sleep_for(std::chrono::seconds(2));
 		try_next_host(this_server);
 	}
 

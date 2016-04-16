@@ -113,7 +113,7 @@ namespace factory {
 				if (not kernel->moves_everywhere()) {
 					delete_kernel = true;
 				}
-				std::clog << "send " << *kernel << std::endl;
+				std::clog << "send to " << vaddr() << ' ' << *kernel << std::endl;
 				_stream << kernel;
 				/// The kernel is deleted if it goes downstream
 				/// and does not carry its parent.

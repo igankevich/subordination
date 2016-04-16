@@ -25,6 +25,7 @@ struct Delayed_shutdown: public Kernel {
 			}
 			std::quick_exit(0);
 		} else {
+			this_log() << "shutdown gracefully this process" << std::endl;
 			factory()->shutdown();
 		}
 	}

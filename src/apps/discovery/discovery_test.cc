@@ -28,12 +28,10 @@ namespace stdx {
 	struct disable_log_category<factory::components::kernel_category>:
 	public std::true_type {};
 
-/*
 	template<>
 	struct disable_log_category<factory::components::server_category>:
 	public std::true_type {};
 
- * */
 }
 
 namespace factory {
@@ -66,6 +64,7 @@ using namespace factory::this_config;
 
 constexpr const char* role_master = "master";
 constexpr const char* role_slave = "slave";
+constexpr const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 
 template<class Address>
 struct Main: public Kernel {
@@ -109,7 +108,7 @@ struct Main: public Kernel {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 			const sys::endpoint bind_addr(_network.address(), _port);
 			this_server.remote_server()->bind(bind_addr, netmask);
-			const auto start_delay = (_network.address() == sys::ipv4_addr{127,0,0,1}) ? 0 : 3;
+			const auto start_delay = 5;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));
 			this_server.factory()->instances().register_instance(master);
@@ -126,7 +125,9 @@ struct Main: public Kernel {
 				schedule_spec_app(this_server);
 			}
 
-			schedule_shutdown_after(std::chrono::seconds(_timeout), master, this_server);
+			if (_timeout != do_not_kill) {
+				schedule_shutdown_after(std::chrono::seconds(_timeout), master, this_server);
+			}
 		}
 	}
 
@@ -152,14 +153,14 @@ private:
 	void
 	schedule_autoreg_app(Server& this_server) {
 		Autoreg_app* app = new Autoreg_app;
-		app->after(std::chrono::seconds(5));
+		app->after(std::chrono::seconds(10));
 		this_server.timer_server()->send(app);
 	}
 
 	void
 	schedule_spec_app(Server& this_server) {
 		Spec_app* app = new Spec_app;
-		app->after(std::chrono::seconds(5));
+		app->after(std::chrono::seconds(10));
 		this_server.timer_server()->send(app);
 	}
 
@@ -215,7 +216,6 @@ struct Hosts: public std::vector<Address> {
 int main(int argc, char* argv[]) {
 
 	sys::port_type discovery_port = 54321;
-	const uint32_t do_not_kill = std::numeric_limits<uint32_t>::max();
 	uint32_t kill_after = do_not_kill;
 	uint32_t kill_timeout = do_not_kill;
 	Hosts<sys::ipv4_addr> hosts2;
@@ -285,10 +285,10 @@ int main(int argc, char* argv[]) {
 
 		sys::process_group procs;
 		for (sys::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after] () {
+			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
-				uint32_t timeout = 60;
+				uint32_t timeout = kill_timeout;
 				bool normal = true;
 				if (endpoint.addr4() == kill_addr and kill_after != do_not_kill) {
 					timeout = kill_after;

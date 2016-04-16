@@ -3,8 +3,8 @@
 scp \
 	src/apps/discovery/master-failure-test \
 	src/apps/discovery/slave-failure-test \
-	../scripts/benchmark-on-ant \
-	../scripts/benchmark-all \
+	../scripts/benchmark-on-ant* \
+	../scripts/benchmark-all* \
 	MersenneTwister.dat \
 	ant.apmath.spbu.ru:discovery/
 

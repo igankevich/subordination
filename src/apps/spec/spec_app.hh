@@ -341,7 +341,11 @@ struct Station_kernel: public Kernel {
 //		this_log() << "Finished station = " << _station
 //			<< ", date = " << k->date()
 //			<< ", variance = " << k->variance() << std::endl;
-		if (++_count == _matrix.size()) {
+		++_count;
+//		if (_count % (_matrix.size()/10) == 0) {
+//			this_log() << "completed " << (float(_count) * 100.0f / float(_matrix.size())) << std::endl;
+//		}
+		if (_count == _matrix.size()) {
 			commit(remote_server());
 		}
 	}
@@ -523,8 +527,10 @@ struct Year_kernel: public Kernel {
 		}
 		k->write_output_to(_output_file, _year);
 		this_log() << "finished station " << k->station()
-			<< " [" << 1+_count << '/' << _observations.size() << "] ("
-			<< k->num_processed_spectra() << " spectra total)" << std::endl;
+			<< " [" << 1+_count << '/' << _observations.size() << "], "
+			<< k->num_processed_spectra() << " spectra total, from "
+			<< k->from()
+			<< std::endl;
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
 //			commit(remote_server());
@@ -655,9 +661,6 @@ struct Launcher: public Kernel {
 		Station_kernel* k1 = dynamic_cast<Station_kernel*>(kernel);
 		Year_kernel* k = _yearkernels[k1->year()];
 		k->react(k1);
-		this_log() << "kernel returned from " << k1->from()
-			<< ", completed " << k->num_processed_spectra() << " for " << k->year()
-			<< std::endl;
 		if (k->finished()) {
 			this_log() << "finished year " << k->year() << std::endl;
 			_count_spectra += k->num_processed_spectra();

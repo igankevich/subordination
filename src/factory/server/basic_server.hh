@@ -280,7 +280,7 @@ namespace factory {
 			virtual void
 			do_run() = 0;
 
-			void
+			virtual void
 			run(Global_thread_context* context) {
 				if (context) {
 					context->register_thread();

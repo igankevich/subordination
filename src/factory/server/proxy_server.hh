@@ -89,6 +89,15 @@ namespace factory {
 			virtual void
 			accept_connection(sys::poll_event&) {}
 
+			void
+			run(Global_thread_context*) override {
+				do_run();
+				/**
+				do nothing with the context, because we can not
+				reliably garbage collect kernels sent from other nodes
+				*/
+			}
+
 		private:
 
 			void

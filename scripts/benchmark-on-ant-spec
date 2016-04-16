@@ -59,7 +59,7 @@ echo "----------------------------------------"
 
 size=$(wc -l < input)
 for i in $(seq 1 12); do
-	./$prefix-failure-test --num-hosts $i --network 10.0.0.1/24 --master $master --timeout 120 $args
+	./$prefix-failure-test --num-hosts $i --network 10.0.0.1/24 --master $master --timeout 240 $args
 	t=$(cat time.log)
 	echo "$i,$t,$size,$prefix,$master,$kill,$after" >> time.csv
 	sleep 10
