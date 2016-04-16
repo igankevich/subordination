@@ -113,6 +113,7 @@ namespace factory {
 				if (not kernel->moves_everywhere()) {
 					delete_kernel = true;
 				}
+				std::clog << "send " << *kernel << std::endl;
 				_stream << kernel;
 				/// The kernel is deleted if it goes downstream
 				/// and does not carry its parent.
@@ -238,6 +239,7 @@ namespace factory {
 
 			void recover_kernel(kernel_type* k) {
 				if (k->moves_upstream()) {
+					std::clog << "Recovering kernel " << *k << std::endl;
 					this->parent()->send(k);
 				} else if (k->moves_somewhere()) {
 					k->from(k->to());

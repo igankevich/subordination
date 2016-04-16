@@ -356,7 +356,7 @@ struct Station_kernel: public Kernel {
 			[this] (const decltype(_observations)::value_type& pair) {
 				const Observation& ob = pair.second;
 //				this_log() << _station << ' ' << pair.first << ' ' << pair.second << std::endl;
-				this_log() << "reading " << sys::canonical_path(ob.filename()) << std::endl;
+//				this_log() << "reading " << sys::canonical_path(ob.filename()) << std::endl;
 				::gzFile file = ::gzopen(ob.filename().c_str(), "rb");
 				if (file == NULL) {
 					std::stringstream msg;
@@ -627,6 +627,7 @@ struct Launcher: public Kernel {
 	}
 
 	void act() override {
+		this_log() << "launcher start" << std::endl;
 		_time0 = current_time_nano();
 		std::ifstream in("input");
 		std::unordered_map<Year,
@@ -654,6 +655,9 @@ struct Launcher: public Kernel {
 		Station_kernel* k1 = dynamic_cast<Station_kernel*>(kernel);
 		Year_kernel* k = _yearkernels[k1->year()];
 		k->react(k1);
+		this_log() << "kernel returned from " << k1->from()
+			<< ", completed " << k->num_processed_spectra() << " for " << k->year()
+			<< std::endl;
 		if (k->finished()) {
 			this_log() << "finished year " << k->year() << std::endl;
 			_count_spectra += k->num_processed_spectra();
@@ -738,6 +742,7 @@ struct Spec_app: public Kernel {
 
 	void
 	act() override {
+		this_log() << "program start" << std::endl;
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream(local_server(), new Launcher);
 		#else
@@ -748,6 +753,24 @@ struct Spec_app: public Kernel {
 	void
 	react(Kernel*) {
 		commit(local_server());
+	}
+
+	const Type<Kernel>
+	type() const noexcept override {
+		return static_type();
+	}
+
+	static const Type<Kernel>
+	static_type() noexcept {
+		return Type<Kernel>{
+			20011,
+			"Spec_app",
+			[] (sys::packetstream& in) {
+				Spec_app* k = new Spec_app;
+				k->read(in);
+				return k;
+			}
+		};
 	}
 
 };

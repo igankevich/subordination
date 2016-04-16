@@ -28,10 +28,12 @@ namespace stdx {
 	struct disable_log_category<factory::components::kernel_category>:
 	public std::true_type {};
 
+/*
 	template<>
 	struct disable_log_category<factory::components::server_category>:
 	public std::true_type {};
 
+ * */
 }
 
 namespace factory {
@@ -100,6 +102,7 @@ struct Main: public Kernel {
 		this_server.factory()->types().register_type(Launcher::static_type());
 		this_server.factory()->types().register_type(Year_kernel::static_type());
 		this_server.factory()->types().register_type(Station_kernel::static_type());
+		this_server.factory()->types().register_type(Spec_app::static_type());
 		if (this_server.factory()->exit_code()) {
 			commit(this_server.local_server());
 		} else {
@@ -156,7 +159,7 @@ private:
 	void
 	schedule_spec_app(Server& this_server) {
 		Spec_app* app = new Spec_app;
-		app->after(std::chrono::seconds(5));
+		app->after(std::chrono::seconds(4));
 		this_server.timer_server()->send(app);
 	}
 
