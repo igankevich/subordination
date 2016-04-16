@@ -159,7 +159,7 @@ private:
 	void
 	schedule_spec_app(Server& this_server) {
 		Spec_app* app = new Spec_app;
-		app->after(std::chrono::seconds(4));
+		app->after(std::chrono::seconds(5));
 		this_server.timer_server()->send(app);
 	}
 
