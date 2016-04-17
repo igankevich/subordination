@@ -175,6 +175,7 @@ namespace sys {
 		std::streamsize
 		do_flush() {
 			const std::streamsize m = pptr() - pbase();
+			if (m == 0) return 0;
 			const std::streamsize n = streambuf_traits_type::write(_fd, pbase(), m);
 			const bool success = n==m;
 			if (success) {

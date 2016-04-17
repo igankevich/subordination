@@ -338,14 +338,12 @@ struct Station_kernel: public Kernel {
 	void react(Kernel* kernel) override {
 		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(kernel);
 		_out_matrix[k->date()] = k->variance();
-//		this_log() << "Finished station = " << _station
-//			<< ", date = " << k->date()
-//			<< ", variance = " << k->variance() << std::endl;
-		++_count;
-//		if (_count % (_matrix.size()/10) == 0) {
-//			this_log() << "completed " << (float(_count) * 100.0f / float(_matrix.size())) << std::endl;
-//		}
-		if (_count == _matrix.size()) {
+		if (--_count == 0) {
+			this_log() << "finished station " << station() << ", year " << _year << ", "
+				<< num_processed_spectra() << " spectra total"
+				<< std::endl;
+			_observations.clear();
+			_spectra.clear();
 			commit(remote_server());
 		}
 	}
@@ -394,24 +392,26 @@ struct Station_kernel: public Kernel {
 						contents.putback(ch);
 						float value;
 						contents >> value;
-						_matrix[date][ob.variable()].push_back(value);
+						_spectra[date][ob.variable()].push_back(value);
 					}
 				}
 				::gzclose(file);
 			}
 		);
 		// remove incomplete records for given date
-		const size_t old_size = _matrix.size();
-		for (auto it=_matrix.begin(); it!=_matrix.end(); ) {
+		const size_t old_size = _spectra.size();
+		for (auto it=_spectra.begin(); it!=_spectra.end(); ) {
 			if (it->second.size() != NUM_VARIABLES) {
-				it = _matrix.erase(it);
+				it = _spectra.erase(it);
 			} else {
 				++it;
 			}
 		}
-		const size_t new_size = _matrix.size();
+		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
-			this_log() << "removed " << (old_size-new_size) << " incomplete records" << std::endl;
+			this_log() << "removed " << (old_size-new_size) << " incomplete records "
+				"station " << _station << ", year " << _year
+				<< std::endl;
 		}
 
 		/*this_log log;
@@ -424,8 +424,9 @@ struct Station_kernel: public Kernel {
 		);
 		log << std::endl;*/
 
-		std::for_each(_matrix.begin(), _matrix.end(),
-			[this] (decltype(_matrix)::value_type& pair) {
+		_count = _spectra.size();
+		std::for_each(_spectra.begin(), _spectra.end(),
+			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(Kernel::Flag::priority_service);
 				this->upstream(local_server(), k);
@@ -435,7 +436,7 @@ struct Station_kernel: public Kernel {
 
 	Year year() const { return _year; }
 	Station station() const { return _station; }
-	int32_t num_processed_spectra() const { return _matrix.size(); }
+	int32_t num_processed_spectra() const { return _out_matrix.size(); }
 
 	const Type<Kernel>
 	type() const noexcept override {
@@ -461,7 +462,6 @@ struct Station_kernel: public Kernel {
 		in >> _observations;
 		in >> _station;
 		in >> _year;
-		in >> _matrix;
 		in >> _frequencies;
 		in >> _count;
 		in >> _out_matrix;
@@ -473,7 +473,6 @@ struct Station_kernel: public Kernel {
 		out << _observations;
 		out << _station;
 		out << _year;
-		out << _matrix;
 		out << _frequencies;
 		out << _count;
 		out << _out_matrix;
@@ -483,9 +482,9 @@ private:
 	Map _observations;
 	Station _station;
 	Year _year;
-	std::map<Date, std::unordered_map<Variable, std::vector<float>>> _matrix;
 	std::vector<float> _frequencies;
-	uint32_t _count;
+	uint32_t _count = 0;
+	std::map<Date, std::unordered_map<Variable, std::vector<float>>> _spectra;
 	std::map<Date, float> _out_matrix;
 
 	static const int NUM_VARIABLES = 5;
@@ -526,7 +525,7 @@ struct Year_kernel: public Kernel {
 			_output_file.open(output_filename());
 		}
 		k->write_output_to(_output_file, _year);
-		this_log() << "finished station " << k->station()
+		this_log() << "finished station " << k->station() << ", year " << _year
 			<< " [" << 1+_count << '/' << _observations.size() << "], "
 			<< k->num_processed_spectra() << " spectra total, from "
 			<< k->from()
@@ -672,6 +671,10 @@ struct Launcher: public Kernel {
 					Time time1 = current_time_nano();
 					std::ofstream timerun_log("time.log");
 					timerun_log << float(time1 - _time0)/1000/1000/1000 << std::endl;
+				}
+				{
+					std::ofstream log("nspectra.log");
+					log << _count_spectra << std::endl;
 				}
 				#if defined(FACTORY_TEST_SLAVE_FAILURE)
 				commit(local_server());
