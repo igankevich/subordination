@@ -48,8 +48,15 @@ test_argstream() {
 	test::equal(args.argv()[args.argc()], (char*)nullptr, "bad last arg");
 }
 
+void
+test_dirname_basename() {
+	sys::canonical_path cwd(".");
+	test::equal(sys::canonical_path(cwd.dirname(), cwd.basename()), cwd, "bad dirname/basename");
+}
+
 int main() {
 	test_dirent_iterator();
 	test_argstream();
+	test_dirname_basename();
 	return 0;
 }

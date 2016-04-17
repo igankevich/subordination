@@ -6,6 +6,7 @@
 
 #include <string>
 #include <memory>
+#include <algorithm>
 
 namespace sys {
 
@@ -18,11 +19,18 @@ namespace sys {
 		_str(rhs)
 		{}
 
+		const_path(const std::string& rhs) noexcept:
+		_str(rhs.data())
+		{}
+
 		const_path(const path&) noexcept;
 
 		operator const char*() const noexcept {
 			return _str;
 		}
+
+		bool operator==(const const_path&) = delete;
+		bool operator!=(const const_path&) = delete;
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const const_path& rhs) {
@@ -40,6 +48,11 @@ namespace sys {
 		static const char separator = '/';
 
 		path() = default;
+
+		explicit
+		path(const char* rhs):
+		_path(rhs)
+		{}
 
 		explicit
 		path(const_path rhs):
@@ -74,6 +87,9 @@ namespace sys {
 		path&
 		operator=(const path&) = default;
 
+		bool operator==(const path&) = delete;
+		bool operator!=(const path&) = delete;
+
 		friend class const_path;
 
 		friend std::ostream&
@@ -81,7 +97,7 @@ namespace sys {
 			return out << rhs._path;
 		}
 
-	private:
+	protected:
 
 		std::string _path;
 
@@ -106,6 +122,10 @@ namespace sys {
 		path(std::forward<path>(rhs))
 		{}
 
+		canonical_path(const canonical_path& rhs):
+		path(rhs)
+		{}
+
 		template<class T>
 		explicit
 		canonical_path(T&& rhs):
@@ -119,8 +139,35 @@ namespace sys {
 				static_cast<char*>(nullptr),
 				__FILE__, __LINE__, __func__
 			));
-			return path(const_path(ptr.get()));
+			return path(ptr.get());
 		}
+
+		path
+		basename() const {
+			const size_t pos = _path.find_last_of(path::separator);
+			return (pos == std::string::npos)
+				? path(*this)
+				: path(std::move(_path.substr(pos+1)));
+		}
+
+		path
+		dirname() const {
+			const size_t pos = _path.find_last_of(path::separator);
+			return (pos == std::string::npos)
+				? path(*this)
+				: path(std::move(_path.substr(0, pos)));
+		}
+
+		bool
+		operator==(const canonical_path& rhs) const noexcept {
+			return _path == rhs._path;
+		}
+
+		bool
+		operator!=(const canonical_path& rhs) const noexcept {
+			return !operator==(rhs);
+		}
+
 
 	};
 
