@@ -45,7 +45,12 @@ namespace sys {
 
 	struct path {
 
+		#if defined(_WIN64) || defined(_WIN32)
+		// The only thing I know about windows...
+		static const char separator = '\\';
+		#else
 		static const char separator = '/';
+		#endif
 
 		path() = default;
 
