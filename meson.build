@@ -2,7 +2,6 @@ project('factory', 'cpp', version: '0.2', default_options: ['cpp_std=c++14'])
 
 libpthread = find_library('pthread')
 librt = find_library('rt')
-libeigen3 = dependency('eigen3')
 threads = [libpthread]
 #threads = [libpthread, librt]
 
