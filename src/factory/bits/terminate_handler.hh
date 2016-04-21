@@ -4,39 +4,10 @@
 #include <factory/error.hh>
 #include <stdx/log.hh>
 #include <sys/bits/check.hh>
-#include <sys/log_color.hh>
 
 namespace factory {
 
 	namespace components {
-
-		template<class T>
-		struct Red {
-
-			explicit
-			Red(const T& rhs) noexcept:
-			_object(rhs)
-			{}
-
-			friend std::ostream&
-			operator<<(std::ostream& out, const Red& rhs) {
-				return
-				out << sys::log_color::FG_LIGHT_RED
-					<< rhs._object
-					<< sys::log_color::RESET;
-			}
-
-		private:
-
-			const T& _object;
-
-		};
-
-		template<class T>
-		Red<T>
-		make_red(const T& rhs) noexcept {
-			return Red<T>(rhs);
-		}
 
 		struct Thread_id {
 			friend std::ostream&
@@ -77,12 +48,12 @@ namespace factory {
 					} catch (Error& err) {
 						this_log() << err << Thread_id() << std::endl;
 					} catch (std::exception& err) {
-						this_log() << make_red(err) << Thread_id() << std::endl;
+						this_log() << err << Thread_id() << std::endl;
 					} catch (...) {
-						this_log() << make_red("unknown exception caught") << Thread_id() << std::endl;
+						this_log() << "unknown exception caught" << Thread_id() << std::endl;
 					}
 				} else {
-					this_log() << make_red("terminate called without an active exception") << Thread_id() << std::endl;
+					this_log() << "terminate called without an active exception" << Thread_id() << std::endl;
 				}
 				stop_root_server(exit_code::failure);
 			}
