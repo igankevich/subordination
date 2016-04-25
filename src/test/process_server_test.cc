@@ -205,8 +205,6 @@ private:
 };
 */
 
-const Application::id_type MY_APP_ID = 123;
-
 struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
@@ -215,8 +213,9 @@ struct Main: public Kernel {
 		auto& __factory = *this_server.factory();
 		__factory.types().register_type(Test_socket::static_type());
 		#if defined(FACTORY_TEST_SERVER)
-		std::cout << "App = " << XSTRINGIFY(FACTORY_APP_PATH) << std::endl;
-		__factory.remote_server()->add(Application(XSTRINGIFY(FACTORY_APP_PATH), MY_APP_ID));
+		Application app(XSTRINGIFY(FACTORY_APP_PATH));
+		std::cout << "App = " << app << std::endl;
+		__factory.remote_server()->add(app);
 		#endif
 	}
 

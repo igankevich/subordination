@@ -8,67 +8,13 @@
 #include <factory/server/basic_server.hh>
 #include <sys/proc/process.hh>
 #include <sys/packetstream.hh>
+#include "result.hh"
 
 namespace factory {
 
 	namespace components {
 
 		struct kernel_category {};
-
-		typedef uint16_t result_type;
-
-		enum struct Result: result_type {
-			success = 0,
-			undefined = 1,
-			error = 2,
-			endpoint_not_connected = 3,
-			no_principal_found = 4
-		};
-
-		inline std::ostream&
-		operator<<(std::ostream& out, Result rhs) {
-			switch (rhs) {
-				case Result::success: out << "success"; break;
-				case Result::undefined: out << "undefined"; break;
-				case Result::endpoint_not_connected: out << "endpoint_not_connected"; break;
-				case Result::no_principal_found: out << "no_principal_found"; break;
-				default: out << "unknown_result";
-			}
-			return out;
-		}
-
-		struct Application {
-
-			typedef uint16_t id_type;
-			typedef std::string path_type;
-
-			static const id_type ROOT = 0;
-
-			Application(): _execpath(), _id(ROOT) {}
-
-			explicit
-			Application(const path_type& exec, id_type id):
-				_execpath(exec), _id(id) {}
-
-			int
-			execute() const {
-				return sys::this_process::execute(this->_execpath);
-			}
-
-			bool
-			operator<(const Application& rhs) const {
-				return this->_id < rhs._id;
-			}
-
-			friend std::ostream&
-			operator<<(std::ostream& out, const Application& rhs) {
-				return stdx::format_fields(out, "exec", rhs._execpath);
-			}
-
-		private:
-			path_type _execpath;
-			id_type _id;
-		};
 
 		struct Basic_kernel {
 
@@ -144,7 +90,7 @@ namespace factory {
 				return this->isset(Flag::carries_parent);
 			}
 
-		private:
+		protected:
 
 			Result _result = Result::undefined;
 			Time_point _at = Time_point(Duration::zero());
@@ -154,7 +100,7 @@ namespace factory {
 
 		struct Kernel_header {
 
-			typedef Application::id_type app_type;
+			typedef uint16_t app_type;
 
 			Kernel_header() = default;
 			Kernel_header(const Kernel_header&) = default;
@@ -193,14 +139,17 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Kernel_header& rhs) {
-				return stdx::format_fields(out, "src", rhs._src,
-					"dst", rhs._dst, "app", rhs._app);
+				return out << stdx::make_fields(
+					"src", rhs._src,
+					"dst", rhs._dst,
+					"app", rhs._app
+				);
 			}
 
 		private:
 			sys::endpoint _src{};
 			sys::endpoint _dst{};
-			Application::id_type _app = 0;
+			app_type _app = 0;
 		};
 
 		struct Mobile_kernel: public Basic_kernel, public Kernel_header {
@@ -210,18 +159,12 @@ namespace factory {
 
 			virtual void
 			read(sys::packetstream& in) {
-				typedef std::underlying_type<Result>::type Raw_result;
-				Raw_result r;
-				in >> r;
-				this->result(static_cast<Result>(r));
-				in >> _id;
+				in >> _result >> _id;
 			}
 
 			virtual void
 			write(sys::packetstream& out) {
-				typedef std::underlying_type<Result>::type Raw_result;
-				Raw_result r = static_cast<Raw_result>(this->result());
-				out << r << this->_id;
+				out << _result << _id;
 			}
 
 			id_type
@@ -590,6 +533,34 @@ namespace factory {
 				id_type _principal_id;
 			};
 			server_type* _server = nullptr;
+
+		};
+
+		struct Application {
+
+			typedef std::string path_type;
+
+			static const Kernel_header::app_type ROOT = 0;
+
+			Application() = default;
+
+			explicit
+			Application(const path_type& exec):
+				_execpath(exec) {}
+
+			int
+			execute() const {
+				return sys::this_process::execute(this->_execpath);
+			}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Application& rhs) {
+				return stdx::format_fields(out, "exec", rhs._execpath);
+			}
+
+		private:
+
+			path_type _execpath;
 
 		};
 
