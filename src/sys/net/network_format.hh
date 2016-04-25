@@ -336,8 +336,8 @@ namespace sys {
 		return bits::is_network_byte_order() ? n : bits::byte_swap<T>(n);
 	}
 
-	struct Auto_check_endiannes {
-		Auto_check_endiannes() {
+	struct endiannes_guard {
+		endiannes_guard() {
 			union Endian {
 				constexpr Endian() {}
 				uint32_t i = UINT32_C(1);

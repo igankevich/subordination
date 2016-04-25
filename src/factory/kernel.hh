@@ -50,11 +50,6 @@ namespace factory {
 			Application(const path_type& exec, id_type id):
 				_execpath(exec), _id(id) {}
 
-			id_type
-			id() const {
-				return this->_id;
-			}
-
 			int
 			execute() const {
 				return sys::this_process::execute(this->_execpath);

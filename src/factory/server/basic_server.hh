@@ -169,12 +169,22 @@ namespace factory {
 				return _state == server_state::started;
 			}
 
+			int
+			exit_code() const noexcept {
+				return _exitcode;
+			}
+
+			void
+			set_exit_code(int rhs) noexcept {
+				_exitcode = rhs;
+			}
 
 		protected:
 
 			factory_type* _root = nullptr;
 			Server* _parent = nullptr;
 			volatile server_state _state = server_state::initial;
+			int _exitcode = 0;
 
 		};
 

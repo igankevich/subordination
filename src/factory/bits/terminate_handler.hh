@@ -17,23 +17,23 @@ namespace factory {
 		};
 
 		template<class Server>
-		struct Auto_set_terminate_handler {
+		struct Terminate_guard {
 
-			typedef stdx::log<Auto_set_terminate_handler> this_log;
+			typedef stdx::log<Terminate_guard> this_log;
 			typedef Server server_type;
 
 			explicit
-			Auto_set_terminate_handler(server_type* root) noexcept {
+			Terminate_guard(server_type* root) noexcept {
 				_root = root;
-				std::set_terminate(Auto_set_terminate_handler::error_printing_handler);
+				std::set_terminate(Terminate_guard::error_printing_handler);
 				init_signal_handlers();
 			}
 
 		private:
 
-			enum struct exit_code: int {
-				success = 0,
-				failure = -1
+			enum struct Exit_code: int {
+				Success = 0,
+				Failure = -1
 			};
 
 			static void
@@ -55,7 +55,7 @@ namespace factory {
 				} else {
 					this_log() << "terminate called without an active exception" << Thread_id() << std::endl;
 				}
-				stop_root_server(exit_code::failure);
+				stop_root_server(Exit_code::Failure);
 			}
 
 			void
@@ -67,16 +67,16 @@ namespace factory {
 
 			static void
 			normal_shutdown(int) noexcept {
-				stop_root_server(exit_code::success);
+				stop_root_server(Exit_code::Success);
 			}
 
 			static void
 			emergency_shutdown(int sig) noexcept {
-				stop_root_server(exit_code(sig));
+				stop_root_server(Exit_code(sig));
 			}
 
 			static void
-			stop_root_server(exit_code retval) {
+			stop_root_server(Exit_code retval) {
 				if (_root) {
 					_root->set_exit_code(int(retval));
 					_root->shutdown();
@@ -87,8 +87,8 @@ namespace factory {
 		};
 
 		template<class Server>
-		typename Auto_set_terminate_handler<Server>::server_type*
-		Auto_set_terminate_handler<Server>::_root = nullptr;
+		typename Terminate_guard<Server>::server_type*
+		Terminate_guard<Server>::_root = nullptr;
 
 	}
 

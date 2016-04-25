@@ -30,15 +30,7 @@ namespace factory {
 	namespace components {
 
 		template<class Config>
-		struct Basic_factory:
-		public Server<Config>,
-//		private sys::Disable_sync_with_stdio,
-		private sys::Auto_check_endiannes,
-//		private sys::Auto_filter_bad_chars_on_cout_and_cerr,
-//		private sys::Auto_open_standard_file_descriptors,
-		private Auto_set_terminate_handler<Basic_factory<Config>>,
-		public sys::Install_syslog
-		{
+		struct Basic_factory: public Server<Config> {
 
 			typedef Server<Config> base_server;
 			using typename base_server::kernel_type;
@@ -50,11 +42,8 @@ namespace factory {
 			typedef typename kernel_type::id_type id_type;
 
 			Basic_factory(Global_thread_context& context):
-			Auto_set_terminate_handler<Basic_factory>(this),
-			Install_syslog(std::clog),
 			_globalcon(&context)
 			{
-				Install_syslog::tee(true);
 				this->setfactory(this);
 				init_parents();
 			}
@@ -97,7 +86,30 @@ namespace factory {
 				stop();
 			}
 
-			void send(kernel_type* k) override { this->_local_server.send(k); }
+			void
+			send(kernel_type* k) override {
+				this->_local_server.send(k);
+			}
+
+			void
+			compute(kernel_type* k) {
+				this->_local_server.send(k);
+			}
+
+			void
+			spill(kernel_type* k) {
+				this->_remote_server.send(k);
+			}
+
+			void
+			io(kernel_type* k) {
+				this->_io_server.send(k);
+			}
+
+			void
+			schedule(kernel_type* k) {
+				this->_timer_server.send(k);
+			}
 
 			local_server_type* local_server() { return &_local_server; }
 			remote_server_type* remote_server() { return &_remote_server; }
@@ -113,7 +125,7 @@ namespace factory {
 					this->wait();
 				} catch (std::exception& e) {
 					std::cerr << e.what() << std::endl;
-					set_exit_code(EXIT_FAILURE);
+					this->set_exit_code(1);
 				}
 			}
 
@@ -122,16 +134,6 @@ namespace factory {
 
 			virtual void
 			do_config(int argc, char* argv[]) {}
-
-			int
-			exit_code() const noexcept {
-				return _exitcode;
-			}
-
-			void
-			set_exit_code(int rhs) noexcept {
-				_exitcode = rhs;
-			}
 
 			Instances<kernel_type>& instances() {
 				return _instances;
@@ -164,7 +166,6 @@ namespace factory {
 			remote_server_type _remote_server;
 			timer_server_type _timer_server;
 			io_server_type _io_server;
-			int _exitcode = 0;
 			Instances<kernel_type> _instances;
 			Types<Type<kernel_type>> _types;
 			Global_thread_context* _globalcon = nullptr;
@@ -202,8 +203,10 @@ namespace factory {
 	template<class Main, class Config>
 	int
 	factory_main(int argc, char* argv[]) noexcept {
-		factory::components::Global_thread_context ctx;
-		factory::components::App<Main,Config> app(ctx);
+		using namespace factory::components;
+		Global_thread_context ctx;
+		App<Main,Config> app(ctx);
+		Terminate_guard<Server<Config>> g(&app);
 		app.run(argc, argv);
 		return app.exit_code();
 	}

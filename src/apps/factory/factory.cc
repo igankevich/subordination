@@ -1,4 +1,6 @@
 #include "security.hh"
+#include <sys/net/network_format.hh>
+#include <sys/log.hh>
 
 void
 proceed_with_security_checks_or_exit() {
@@ -25,5 +27,7 @@ int main() {
 		std::cerr << err.what() << std::endl;
 		return bail_out();
 	}
+	sys::endiannes_guard g1;
+	sys::syslog_guard g2(std::clog, sys::syslog_guard::tee);
 	return 0;
 }

@@ -61,7 +61,7 @@ namespace sys {
 		write_log() {
 			buf_type& buf = this_thread_buf();
 			if (!buf.empty()) {
-				write_syslog(buf.c_str());
+				// write_syslog(buf.c_str());
 				if (_tee) {
 					_oldbuf->sputc('[');
 					const std::string pid = std::to_string(sys::this_process::id());
@@ -92,20 +92,23 @@ namespace sys {
 		bool _tee = false;
 	};
 
-	struct Install_syslog {
+	struct syslog_guard {
+
+		enum options {
+			tee=1
+		};
 
 		explicit
-		Install_syslog(std::ostream& s):
+		syslog_guard(std::ostream& s, options opts=options(0)):
 		str(s), newbuf(s), oldbuf(str.rdbuf(&newbuf))
-		{}
-
-		~Install_syslog() {
-			str.rdbuf(oldbuf);
+		{
+			if (opts & tee) {
+				newbuf.tee(true);
+			}
 		}
 
-		void
-		tee(bool rhs) {
-			newbuf.tee(rhs);
+		~syslog_guard() {
+			str.rdbuf(oldbuf);
 		}
 
 	private:

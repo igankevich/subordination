@@ -510,11 +510,27 @@ namespace sys {
 		inline uid_type
 		user() noexcept { return ::getuid(); }
 
+		inline void
+		set_user(uid_type rhs) {
+			bits::check(
+				::setuid(rhs),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
 		inline uid_type
 		effective_user() noexcept { return ::geteuid(); }
 
 		inline gid_type
 		group() noexcept { return ::getgid(); }
+
+		inline void
+		set_group(gid_type rhs) {
+			bits::check(
+				::setgid(rhs),
+				__FILE__, __LINE__, __func__
+			);
+		}
 
 		inline gid_type
 		effective_group() noexcept { return ::getegid(); }
