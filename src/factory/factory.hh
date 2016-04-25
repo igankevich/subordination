@@ -92,22 +92,27 @@ namespace factory {
 			}
 
 			void
-			compute(kernel_type* k) {
+			compute(kernel_type* k) override {
 				this->_local_server.send(k);
 			}
 
 			void
-			spill(kernel_type* k) {
+			spill(kernel_type* k) override {
 				this->_remote_server.send(k);
 			}
 
 			void
-			io(kernel_type* k) {
+			input(kernel_type* k) override {
 				this->_io_server.send(k);
 			}
 
 			void
-			schedule(kernel_type* k) {
+			output(kernel_type* k) override {
+				this->_io_server.send(k);
+			}
+
+			void
+			schedule(kernel_type* k) override {
 				this->_timer_server.send(k);
 			}
 

@@ -52,11 +52,12 @@ struct Autoreg_app: public Kernel {
 			std::cerr << e.what();
 			exit(1);
 		}
-		upstream(local_server(), model);
+		compute(call(model));
 	}
 
 	void react(factory::Kernel*) {
-		commit(local_server());
+		return_to_parent();
+		compute(this);
 	}
 
 private:

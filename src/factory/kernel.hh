@@ -477,24 +477,28 @@ namespace factory {
 				return _server->factory();
 			}
 
+			/// @deprecated
 			server_type*
 			local_server() noexcept {
 				assert(_server != nullptr);
 				return _server->local_server();
 			}
 
+			/// @deprecated
 			server_type*
 			io_server() noexcept {
 				assert(_server != nullptr);
 				return _server->io_server();
 			}
 
+			/// @deprecated
 			server_type*
 			remote_server() noexcept {
 				assert(_server != nullptr);
 				return _server->remote_server();
 			}
 
+			/// @deprecated
 			template<class S>
 			void
 			upstream(S* this_server, Principal* a) {
@@ -502,6 +506,7 @@ namespace factory {
 				this_server->send(a);
 			}
 
+			/// @deprecated
 			template<class S>
 			void
 			upstream_carry(S* this_server, Principal* a) {
@@ -510,22 +515,7 @@ namespace factory {
 				this_server->send(a);
 			}
 
-			template<class S>
-			void
-			downstream(S* this_server, Principal* a) {
-				a->parent(this);
-				a->principal(this);
-				this_server->send(a);
-			}
-
-			template<class S>
-			void
-			downstream(S* this_server, Principal* a, Principal* b) {
-				a->principal(b);
-				this->result(Result::success);
-				this_server->send(a);
-			}
-
+			/// @deprecated
 			template<class S>
 			void
 			commit(S* srv, Result res = Result::success) {
@@ -533,6 +523,47 @@ namespace factory {
 				this->result(res);
 				srv->send(this);
 			}
+
+			/// New API
+
+			inline Principal*
+			call(Principal* rhs) noexcept {
+				rhs->parent(this);
+				return rhs;
+			}
+
+			inline Principal*
+			carry_parent(Principal* rhs) noexcept {
+				rhs->parent(this);
+				rhs->setf(Flag::carries_parent);
+				return rhs;
+			}
+
+			inline void
+			return_to_parent(Result ret = Result::success) noexcept {
+				return_to(_parent, ret);
+			}
+
+			inline void
+			return_to(Principal* rhs, Result ret = Result::success) noexcept {
+				this->principal(rhs);
+				this->result(ret);
+			}
+
+			inline void
+			recurse() noexcept {
+				this->principal(this);
+			}
+
+			/// Server API
+
+			inline void compute(Principal* rhs) { factory()->compute(rhs); }
+			inline void spill(Principal* rhs) { factory()->spill(rhs); }
+			inline void input(Principal* rhs) { factory()->input(rhs); }
+			inline void output(Principal* rhs) { factory()->output(rhs); }
+			inline void schedule(Principal* rhs) { factory()->schedule(rhs); }
+			inline void yield() { compute(this); }
+			inline void collect() { spill(this); }
 
 			template<class It>
 			void

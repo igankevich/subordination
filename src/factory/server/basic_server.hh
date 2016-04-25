@@ -82,6 +82,13 @@ namespace factory {
 			virtual void send(kernel_type*) = 0;
 			virtual void send(kernel_type**, size_t) {}
 
+			virtual void compute(kernel_type* k) {}
+			virtual void spill(kernel_type* k) {}
+			virtual void input(kernel_type* k) {}
+			virtual void output(kernel_type* k) {}
+			virtual void schedule(kernel_type* k) {}
+
+
 			factory_type*
 			factory() noexcept {
 				return _root;
