@@ -137,6 +137,11 @@ namespace factory {
 				this->_app = rhs;
 			}
 
+			bool
+			is_foreign() const noexcept {
+				return static_cast<bool>(_src);
+			}
+
 			friend std::ostream&
 			operator<<(std::ostream& out, const Kernel_header& rhs) {
 				return out << stdx::make_fields(
