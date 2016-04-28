@@ -46,7 +46,7 @@ struct Test_buffer: public test::Parametric_test<Test_buffer<T,B>,std::array<siz
 		std::vector<T> output(size);
 		buf.read(&output[0], size);
 		test::equal(buf.empty(), true, "buffer is not empty after read", "size=", buf.size());
-		test::compare_bytes(input, output);
+		test::compare_bytes(input, output, "input does not match output");
 	}
 
 };

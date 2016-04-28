@@ -186,12 +186,6 @@ struct Test_semaphore: public Parametric_test<Test_semaphore<Mutex,Semaphore,I>>
 //		<< std::endl;
 //}
 
-struct self_signal_semaphore: public sys::signal_semaphore {
-	self_signal_semaphore():
-	sys::signal_semaphore(sys::this_process::id(), SIGUSR1)
-	{}
-};
-
 int main() {
 //	sys::init_signal_semaphore init(SIGUSR1);
 	return test::Test_suite{

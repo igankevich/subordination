@@ -13,8 +13,8 @@ void test_paired_iterator() {
 	auto end1 = stdx::make_paired(x.end(), y.end());
 	auto beg2 = stdx::make_paired(z.begin(), w.begin());
 	std::copy(beg1, end1, beg2);
-	test::compare(x, z);
-	test::compare(y, w);
+	test::compare(x, z, "x != z");
+	test::compare(y, w, "y != w");
 }
 
 int main() {
