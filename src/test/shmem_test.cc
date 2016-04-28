@@ -43,7 +43,7 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 //		mem2.sync();
 //		test::equal(mem2.size(), new_size, "bad size after sync: mem2=", std::cref(mem2));
 		std::generate(mem1.begin(), mem1.end(), test::randomval<T>);
-		test::compare(mem1, mem2);
+		test::compare(mem1, mem2, "mem1 does not match mem2");
 	}
 
 };

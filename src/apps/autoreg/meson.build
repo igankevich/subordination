@@ -1,6 +1,6 @@
-libgsl = dependency('gsl')
-liblapack = find_library('lapack')
-libblas = find_library('blas')
+#libgsl = dependency('gsl')
+liblapack = cpp.find_library('lapack')
+libblas = cpp.find_library('blas')
 #libgfortran = find_library('gfortran')
 
 executable(

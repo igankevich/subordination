@@ -234,7 +234,7 @@ namespace test {
 	}
 
 	template<class Container1, class Container2, class Func, class ... Args>
-	void do_compare(const Container1& cnt1, const Container2& cnt2, Func format, const char* text="input and output does not match", Args&& ... args) {
+	void do_compare(const Container1& cnt1, const Container2& cnt2, Func format, const char* text, Args&& ... args) {
 		auto pair = std::mismatch(cnt1.begin(), cnt1.end(), cnt2.begin());
 		if (pair.first != cnt1.end()) {
 			auto pos = pair.first - cnt1.begin();
@@ -250,7 +250,7 @@ namespace test {
 	}
 
 	template<class Container1, class Container2, class ... Args>
-	void compare(const Container1& cnt1, const Container2& cnt2, const char* text="input and output does not match", Args&& ... args) {
+	void compare(const Container1& cnt1, const Container2& cnt2, const char* text, Args&& ... args) {
 		typedef typename Container1::value_type value_type;
 		do_compare(
 			cnt1,
@@ -262,7 +262,7 @@ namespace test {
 	}
 
 	template<class Container1, class Container2, class ... Args>
-	void compare_bytes(const Container1& cnt1, const Container2& cnt2, const char* text="input and output does not match", Args&& ... args) {
+	void compare_bytes(const Container1& cnt1, const Container2& cnt2, const char* text, Args&& ... args) {
 		typedef typename Container1::value_type value_type;
 		do_compare(
 			cnt1,
@@ -345,7 +345,7 @@ namespace test {
 			std::back_inserter(addrs2)
 		);
 
-		test::compare(addrs, addrs2);
+		test::compare(addrs, addrs2, "addrs does not match addrs2");
 	}
 
 }

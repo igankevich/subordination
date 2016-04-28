@@ -5,7 +5,6 @@
 #include <valarray>
 #include <iostream>
 #include <iomanip>
-#include <gsl/gsl_math.h>
 #include "domain.hh"
 
 namespace autoreg {

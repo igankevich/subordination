@@ -140,7 +140,7 @@ public:
 		};
 	}
 
-	void react(factory::Kernel* child);
+	void react(factory::Kernel* child) override;
 
 	void gather_statistics();
 

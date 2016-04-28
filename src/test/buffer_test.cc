@@ -111,7 +111,7 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 				str >> rhs;
 			});
 
-			test::compare_bytes(input, output);
+			test::compare_bytes(input, output, "input does not match output");
 		}
 	}
 };

@@ -154,7 +154,7 @@ struct Topology {
 				if (city and country) {
 					std::valarray<float_type>& x = coords[city];
 					if (x.size() != 3) x.resize(3);
-					x += {lat, lon, float_type(1)};
+					x += std::valarray<float_type>{lat, lon, float_type(1)};
 				}
 			}
 		);

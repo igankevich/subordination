@@ -95,7 +95,7 @@ namespace sys {
 		bool operator==(const path&) = delete;
 		bool operator!=(const path&) = delete;
 
-		friend class const_path;
+		friend struct const_path;
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const path& rhs) {

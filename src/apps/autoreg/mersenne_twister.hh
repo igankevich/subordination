@@ -60,13 +60,13 @@ namespace autoreg {
 			return x;
 		}
 
-		result_type
-		min() const noexcept {
+		static constexpr result_type
+		min() noexcept {
 			return std::numeric_limits<result_type>::min();
 		}
 
-		result_type
-		max() const noexcept {
+		static constexpr result_type
+		max() noexcept {
 			return std::numeric_limits<result_type>::max();
 		}
 

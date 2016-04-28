@@ -37,7 +37,7 @@ private:
 				return std::make_pair(std::get<0>(rhs), std::get<1>(rhs));
 			}
 		);
-		test::compare_bytes(result, dataset);
+		test::compare_bytes(result, dataset, "result does not match dataset");
 	}
 
 private:

@@ -303,8 +303,10 @@ private:
 	const std::vector<float>& _frequencies;
 	float _variance;
 
-	static constexpr float PI = std::acos(-1.0f);
+	static const float PI;
 };
+
+const float Spectrum_kernel::PI = std::acos(-1.0f);
 
 struct Station_kernel: public Kernel {
 
@@ -757,7 +759,7 @@ struct Spec_app: public Kernel {
 	}
 
 	void
-	react(Kernel*) {
+	react(Kernel*) override {
 		commit(local_server());
 	}
 

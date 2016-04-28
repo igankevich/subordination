@@ -31,7 +31,9 @@ namespace sys {
 		terminal_output = SIGTTOU,
 		// POSIX.1-2001
 		bad_memory_access = SIGBUS,
+		#ifdef SIGPOLL
 		poll = SIGPOLL,
+		#endif
 		profile = SIGPROF,
 		bad_argument = SIGSYS,
 		breakpoint = SIGTRAP,
@@ -74,7 +76,9 @@ namespace sys {
 			case signal::terminal_input: out << "terminal_input"; break;
 			case signal::terminal_output: out << "terminal_output"; break;
 			case signal::bad_memory_access: out << "bad_memory_access"; break;
+			#ifdef SIGPOLL
 			case signal::poll: out << "poll"; break;
+			#endif
 			case signal::profile: out << "profile"; break;
 			case signal::bad_argument: out << "bad_argument"; break;
 			case signal::breakpoint: out << "breakpoint"; break;

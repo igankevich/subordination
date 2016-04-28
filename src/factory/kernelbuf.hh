@@ -2,6 +2,7 @@
 #define FACTORY_KERNELBUF_HH
 
 #include <iomanip>
+#include <sstream>
 #include <type_traits>
 
 #include <stdx/log.hh>

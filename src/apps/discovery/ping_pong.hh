@@ -11,17 +11,17 @@ struct Ping: public Kernel {
 	Ping(int x): _data(x) {
 	}
 
-	void act(Server& this_server) {
+	void act(Server& this_server) override {
 		this_log() << "act()" << std::endl;
 		commit(this_server.remote_server());
 	}
 
-	void write(sys::packetstream& out) {
+	void write(sys::packetstream& out) override {
 		Kernel::write(out);
 		out << _data;
 	}
 
-	void read(sys::packetstream& in) {
+	void read(sys::packetstream& in) override {
 		this_log() << "Ping::read()" << std::endl;
 		Kernel::read(in);
 		in >> _data;
@@ -82,7 +82,7 @@ struct Ping_pong: public Kernel {
 	}
 
 	void
-	react(Server& this_server, Kernel* child) {
+	react(Server& this_server, Kernel* child) override {
 		Ping* ping = dynamic_cast<Ping*>(child);
 		this_log() << "ping returned from " << ping->from() << " with " << ping->result() << std::endl;
 		_realsum += ping->get_x();

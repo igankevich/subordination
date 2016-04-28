@@ -283,9 +283,15 @@ namespace autoreg {
 		Vector<T, 3> _delta;
 		Valarray3D<Vec3> _potential;
 
-		static constexpr T _2PI = T(2)*std::acos(T(-1));
-		static constexpr T PI = std::acos(T(-1));
+		static T _2PI;
+		static T PI;
 	};
+
+	template<class T>
+	T Velocity_potential<T>::_2PI = T(2)*std::acos(T(-1));
+
+	template<class T>
+	T Velocity_potential<T>::PI = std::acos(T(-1));
 
 }
 

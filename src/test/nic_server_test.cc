@@ -187,8 +187,8 @@ struct Sender: public Kernel {
 
 	Sender(uint32_t n, uint32_t s):
 	_vector_size(n),
-	_input(_vector_size),
-	_sleep(s) {}
+	_input(_vector_size)
+	{}
 
 	void act() override {
 		this_log() << "Sender "
@@ -235,7 +235,6 @@ private:
 	uint32_t _vector_size;
 
 	std::vector<Datum> _input;
-	uint32_t _sleep = 0;
 };
 
 struct Main: public Kernel {
