@@ -59,7 +59,7 @@ test(
 )
 
 test(
-	'sysx::endpoint',
+	'sys::endpoint',
 	executable(
 		'endpoint-test',
 		sources: 'endpoint_test.cc',

@@ -18,7 +18,7 @@ namespace factory {
 
 		struct Basic_kernel {
 
-			typedef std::chrono::steady_clock Clock;
+			typedef std::chrono::system_clock Clock;
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
 			typedef std::bitset<3> Flags;
