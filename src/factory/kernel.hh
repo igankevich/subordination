@@ -218,8 +218,6 @@ namespace factory {
 			typedef Mobile_kernel base_kernel;
 			typedef Basic_kernel::Flag Flag;
 			typedef stdx::log<Principal> this_log;
-			typedef typename Config::server server_type;
-			typedef typename Config::factory factory_type;
 			using Mobile_kernel::id_type;
 
 			const Principal*
@@ -347,53 +345,6 @@ namespace factory {
 				return Type<Principal>{0};
 			}
 
-			void
-			run_act(server_type& this_server) {
-				_server = &this_server;
-				if (_principal) {
-					_principal->_server = &this_server;
-				}
-				switch (this->result()) {
-					case Result::undefined:
-						if (_principal) {
-							_principal->react(this);
-						} else {
-							this->act();
-//							if (this->moves_everywhere()) {
-//								delete this;
-//							}
-						}
-						break;
-					case Result::success:
-					case Result::endpoint_not_connected:
-					case Result::no_principal_found:
-					default:
-						this_log() << "Result is defined" << std::endl;
-						if (!_principal) {
-							this_log() << "Principal is null" << std::endl;
-							if (!_parent) {
-								delete this;
-								this_log() << "SHUTDOWN" << std::endl;
-								this_server.factory()->shutdown();
-							}
-						} else {
-							this_log() << "Principal is not null" << std::endl;
-							bool del = *_principal == *_parent;
-							if (this->result() == Result::success) {
-								_principal->react(this);
-								this_log() << "Principal end react" << std::endl;
-							} else {
-								this_log() << "Principal error" << std::endl;
-								_principal->error(this);
-							}
-							if (del) {
-								this_log() << "delete " << *this << std::endl;
-								delete this;
-							}
-						}
-				}
-			}
-
 			friend std::ostream&
 			operator<<(std::ostream& out, const Principal& rhs) {
 				const char state[] = {
@@ -417,66 +368,6 @@ namespace factory {
 			}
 
 		public:
-
-			factory_type*
-			factory() noexcept {
-				assert(_server != nullptr);
-				return _server->factory();
-			}
-
-			/// @deprecated
-			server_type*
-			local_server() noexcept {
-				assert(_server != nullptr);
-				return _server->local_server();
-			}
-
-			/// @deprecated
-			server_type*
-			timer_server() noexcept {
-				assert(_server != nullptr);
-				return _server->timer_server();
-			}
-
-			/// @deprecated
-			server_type*
-			io_server() noexcept {
-				assert(_server != nullptr);
-				return _server->io_server();
-			}
-
-			/// @deprecated
-			server_type*
-			remote_server() noexcept {
-				assert(_server != nullptr);
-				return _server->remote_server();
-			}
-
-			/// @deprecated
-			template<class S>
-			void
-			upstream(S* this_server, Principal* a) {
-				a->parent(this);
-				this_server->send(a);
-			}
-
-			/// @deprecated
-			template<class S>
-			void
-			upstream_carry(S* this_server, Principal* a) {
-				a->parent(this);
-				a->setf(Flag::carries_parent);
-				this_server->send(a);
-			}
-
-			/// @deprecated
-			template<class S>
-			void
-			commit(S* srv, Result res = Result::success) {
-				this->principal(_parent);
-				this->result(res);
-				srv->send(this);
-			}
 
 			/// New API
 
@@ -509,16 +400,6 @@ namespace factory {
 				this->principal(this);
 			}
 
-			/// Server API
-
-			inline void compute(Principal* rhs) { factory()->compute(rhs); }
-			inline void spill(Principal* rhs) { factory()->spill(rhs); }
-			inline void input(Principal* rhs) { factory()->input(rhs); }
-			inline void output(Principal* rhs) { factory()->output(rhs); }
-			inline void schedule(Principal* rhs) { factory()->schedule(rhs); }
-			inline void yield() { compute(this); }
-			inline void collect() { spill(this); }
-
 			template<class It>
 			void
 			mark_as_deleted(It result) noexcept {
@@ -543,7 +424,6 @@ namespace factory {
 				Principal* _principal = nullptr;
 				id_type _principal_id;
 			};
-			server_type* _server = nullptr;
 
 		};
 

@@ -199,6 +199,76 @@ namespace factory {
 			Main* _main;
 		};
 
+			factory_type*
+			factory() noexcept {
+				assert(_server != nullptr);
+				return _server->factory();
+			}
+
+			/// @deprecated
+			server_type*
+			local_server() noexcept {
+				assert(_server != nullptr);
+				return _server->local_server();
+			}
+
+			/// @deprecated
+			server_type*
+			timer_server() noexcept {
+				assert(_server != nullptr);
+				return _server->timer_server();
+			}
+
+			/// @deprecated
+			server_type*
+			io_server() noexcept {
+				assert(_server != nullptr);
+				return _server->io_server();
+			}
+
+			/// @deprecated
+			server_type*
+			remote_server() noexcept {
+				assert(_server != nullptr);
+				return _server->remote_server();
+			}
+
+			/// @deprecated
+			template<class S>
+			void
+			upstream(S* this_server, Principal* a) {
+				a->parent(this);
+				this_server->send(a);
+			}
+
+			/// @deprecated
+			template<class S>
+			void
+			upstream_carry(S* this_server, Principal* a) {
+				a->parent(this);
+				a->setf(Flag::carries_parent);
+				this_server->send(a);
+			}
+
+			/// @deprecated
+			template<class S>
+			void
+			commit(S* srv, Result res = Result::success) {
+				this->principal(_parent);
+				this->result(res);
+				srv->send(this);
+			}
+
+			/// Server API
+
+			inline void compute(Principal* rhs) { factory()->compute(rhs); }
+			inline void spill(Principal* rhs) { factory()->spill(rhs); }
+			inline void input(Principal* rhs) { factory()->input(rhs); }
+			inline void output(Principal* rhs) { factory()->output(rhs); }
+			inline void schedule(Principal* rhs) { factory()->schedule(rhs); }
+			inline void yield() { compute(this); }
+			inline void collect() { spill(this); }
+
 	}
 
 }

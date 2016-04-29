@@ -34,6 +34,43 @@ namespace factory {
 			Basic_CPU_server& operator=(const Basic_CPU_server&) = delete;
 			~Basic_CPU_server() = default;
 
+		protected:
+
+			void
+			do_act(kernel_type* kernel) {
+				if (kernel->result() == Result::undefined) {
+					if (kernel->principal()) {
+						kernel->principal()->react(this);
+					} else {
+						kernel->act();
+					}
+				} else {
+					this_log() << "Result is defined" << std::endl;
+					if (!kernel->principal()) {
+						this_log() << "Principal is null" << std::endl;
+						if (!kernel->parent()) {
+							delete kernel;
+							this_log() << "SHUTDOWN" << std::endl;
+							this_server.factory()->shutdown();
+						}
+					} else {
+						this_log() << "Principal is not null" << std::endl;
+						bool del = *kernel->principal() == *kernel->parent();
+						if (this->result() == Result::success) {
+							kernel->principal()->react(kernel);
+							this_log() << "Principal end react" << std::endl;
+						} else {
+							this_log() << "Principal error" << std::endl;
+							kernel->principal()->error(kernel);
+						}
+						if (del) {
+							this_log() << "delete " << *kernel << std::endl;
+							delete kernel;
+						}
+					}
+				}
+			}
+
 		private:
 
 			void
@@ -45,7 +82,7 @@ namespace factory {
 						stdx::pop(this->_kernels);
 						stdx::unlock_guard<lock_type> g(lock);
 						try {
-							kernel->run_act(*this);
+							do_act(kernel);
 						} catch (std::exception& x) {
 							throw Error(x.what(), {__FILE__, __LINE__, __func__});
 						}
