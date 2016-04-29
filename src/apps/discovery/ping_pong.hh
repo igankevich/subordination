@@ -11,9 +11,9 @@ struct Ping: public Kernel {
 	Ping(int x): _data(x) {
 	}
 
-	void act(Server& this_server) override {
+	void act() override {
 		this_log() << "act()" << std::endl;
-		commit(this_server.remote_server());
+		commit(remote_server());
 	}
 
 	void write(sys::packetstream& out) override {
@@ -68,21 +68,21 @@ struct Ping_pong: public Kernel {
 	{}
 
 	void
-	act(Server& this_server) override {
+	act() override {
 		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
 		int x = 1;
 		_expectedsum += x;
-		upstream(this_server.remote_server(), new Ping(x));
+		upstream(remote_server(), new Ping(x));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
-			this_server.timer_server()->send(this);
+			timer_server()->send(this);
 		} else {
 			this_log() << "finished sending pings" << std::endl;
 		}
 	}
 
 	void
-	react(Server& this_server, Kernel* child) override {
+	react(Kernel* child) override {
 		Ping* ping = dynamic_cast<Ping*>(child);
 		this_log() << "ping returned from " << ping->from() << " with " << ping->result() << std::endl;
 		_realsum += ping->get_x();
@@ -100,11 +100,11 @@ struct Ping_pong: public Kernel {
 				"representative", _some_kernels_came_from_a_remote_server
 			) << std::endl;
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
-			this_server.factory()->set_exit_code(success ? EXIT_SUCCESS : EXIT_FAILURE);
-			commit(this_server.local_server());
+			factory()->set_exit_code(success ? EXIT_SUCCESS : EXIT_FAILURE);
+			commit(local_server());
 			// TODO 2016-02-20 why do we need this and the following lines???
-			this_server.factory()->shutdown();
-			this_server.factory()->stop();
+			factory()->shutdown();
+			factory()->stop();
 		}
 	}
 

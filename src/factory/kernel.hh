@@ -201,6 +201,11 @@ namespace factory {
 				);
 			}
 
+			bool
+			operator!=(const Mobile_kernel& rhs) const noexcept {
+				return !operator==(rhs);
+			}
+
 		private:
 
 			id_type _id = no_id;
@@ -316,17 +321,7 @@ namespace factory {
 			}
 
 			virtual void
-			act(server_type& this_server) {
-				act();
-			}
-
-			virtual void
 			act() {}
-
-			virtual void
-			react(server_type&, Principal* child) {
-				react(child);
-			}
 
 			virtual void
 			react(Principal*) {
@@ -343,8 +338,8 @@ namespace factory {
 			}
 
 			virtual void
-			error(server_type& this_server, Principal* rhs) {
-				react(this_server, rhs);
+			error(Principal* rhs) {
+				react(rhs);
 			}
 
 			virtual const Type<Principal>
@@ -361,9 +356,9 @@ namespace factory {
 				switch (this->result()) {
 					case Result::undefined:
 						if (_principal) {
-							_principal->react(this_server, this);
+							_principal->react(this);
 						} else {
-							this->act(this_server);
+							this->act();
 //							if (this->moves_everywhere()) {
 //								delete this;
 //							}
@@ -385,11 +380,11 @@ namespace factory {
 							this_log() << "Principal is not null" << std::endl;
 							bool del = *_principal == *_parent;
 							if (this->result() == Result::success) {
-								_principal->react(this_server, this);
+								_principal->react(this);
 								this_log() << "Principal end react" << std::endl;
 							} else {
 								this_log() << "Principal error" << std::endl;
-								_principal->error(this_server, this);
+								_principal->error(this);
 							}
 							if (del) {
 								this_log() << "delete " << *this << std::endl;
@@ -430,6 +425,13 @@ namespace factory {
 			local_server() noexcept {
 				assert(_server != nullptr);
 				return _server->local_server();
+			}
+
+			/// @deprecated
+			server_type*
+			timer_server() noexcept {
+				assert(_server != nullptr);
+				return _server->timer_server();
 			}
 
 			/// @deprecated
