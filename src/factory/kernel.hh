@@ -396,20 +396,24 @@ namespace factory {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Principal& rhs) {
-				return out << '{'
-					<< (rhs.moves_upstream()   ? 'u' : '-')
-					<< (rhs.moves_downstream() ? 'd' : '-')
-					<< (rhs.moves_somewhere()  ? 's' : '-')
-					<< (rhs.moves_everywhere() ? 'b' : '-')
-					<< ",tp=" << rhs.type()
-					<< ",id=" << rhs.id()
-					<< ",src=" << rhs.from()
-					<< ",dst=" << rhs.to()
-					<< ",rslt=" << rhs.result()
-					<< ",app=" << rhs.app()
-					<< ",parent=" << rhs._parent
-					<< ",principal=" << rhs._principal
-					<< '}';
+				const char state[] = {
+					(rhs.moves_upstream()   ? 'u' : '-'),
+					(rhs.moves_downstream() ? 'd' : '-'),
+					(rhs.moves_somewhere()  ? 's' : '-'),
+					(rhs.moves_everywhere() ? 'b' : '-'),
+					'\0'
+				};
+				return out << stdx::make_fields(
+					"state", state,
+					"type", rhs.type(),
+					"id", rhs.id(),
+					"src", rhs.from(),
+					"dst", rhs.to(),
+					"ret", rhs.result(),
+					"app", rhs.app(),
+					"parent", rhs._parent,
+					"principal", rhs._principal
+				);
 			}
 
 		public:
