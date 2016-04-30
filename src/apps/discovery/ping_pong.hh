@@ -1,6 +1,8 @@
 #ifndef APPS_DISCOVERY_PING_PONG_HH
 #define APPS_DISCOVERY_PING_PONG_HH
 
+#include <factory/factory.hh>
+
 struct Ping: public Kernel {
 
 	typedef stdx::log<Ping> this_log;
@@ -13,7 +15,7 @@ struct Ping: public Kernel {
 
 	void act() override {
 		this_log() << "act()" << std::endl;
-		commit(remote_server());
+		factory::collect(this);
 	}
 
 	void write(sys::packetstream& out) override {
@@ -72,10 +74,10 @@ struct Ping_pong: public Kernel {
 		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
 		int x = 1;
 		_expectedsum += x;
-		upstream(remote_server(), new Ping(x));
+		factory::spill(call(new Ping(x)));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
-			timer_server()->send(this);
+			factory::schedule(this);
 		} else {
 			this_log() << "finished sending pings" << std::endl;
 		}
@@ -100,11 +102,7 @@ struct Ping_pong: public Kernel {
 				"representative", _some_kernels_came_from_a_remote_server
 			) << std::endl;
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
-			factory()->set_exit_code(success ? EXIT_SUCCESS : EXIT_FAILURE);
-			commit(local_server());
-			// TODO 2016-02-20 why do we need this and the following lines???
-			factory()->shutdown();
-			factory()->stop();
+			factory::commit(this, success ? Result::success : Result::error);
 		}
 	}
 

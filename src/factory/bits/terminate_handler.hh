@@ -16,6 +16,7 @@ namespace factory {
 			}
 		};
 
+		// TODO 2016-04-30 do we need this, or default behaviour is OK?
 		template<class Server>
 		struct Terminate_guard {
 

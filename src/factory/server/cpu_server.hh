@@ -1,6 +1,7 @@
 #ifndef FACTORY_SERVER_CPU_SERVER_HH
 #define FACTORY_SERVER_CPU_SERVER_HH
 
+#include <stdx/log.hh>
 #include <stdx/mutex.hh>
 #include <sys/system.hh>
 #include <factory/server/intro.hh>
@@ -16,6 +17,7 @@ namespace factory {
 			typedef Standard_server_with_pool<T> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::lock_type;
+			typedef stdx::log<Basic_CPU_server> this_log;
 
 			Basic_CPU_server(Basic_CPU_server&& rhs) noexcept:
 			base_server(std::move(rhs))
@@ -45,28 +47,21 @@ namespace factory {
 						kernel->act();
 					}
 				} else {
-					this_log() << "Result is defined" << std::endl;
+					bool del = false;
 					if (!kernel->principal()) {
-						this_log() << "Principal is null" << std::endl;
-						if (!kernel->parent()) {
-							delete kernel;
-							this_log() << "SHUTDOWN" << std::endl;
-							this_server.factory()->shutdown();
-						}
+						del = !kernel->parent();
 					} else {
-						this_log() << "Principal is not null" << std::endl;
-						bool del = *kernel->principal() == *kernel->parent();
+						del = *kernel->principal() == *kernel->parent();
 						if (this->result() == Result::success) {
 							kernel->principal()->react(kernel);
-							this_log() << "Principal end react" << std::endl;
 						} else {
 							this_log() << "Principal error" << std::endl;
 							kernel->principal()->error(kernel);
 						}
-						if (del) {
-							this_log() << "delete " << *kernel << std::endl;
-							delete kernel;
-						}
+					}
+					if (del) {
+						this_log() << "delete " << *kernel << std::endl;
+						delete kernel;
 					}
 				}
 			}

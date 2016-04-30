@@ -28,7 +28,7 @@ namespace factory {
 
 		struct config {
 			typedef components::Server<config> server;
-			typedef components::Principal<config> kernel;
+			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
 			typedef components::Timer_server<config> timer_server;
@@ -47,7 +47,7 @@ namespace factory {
 
 		struct config {
 			typedef components::Server<config> server;
-			typedef components::Principal<config> kernel;
+			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::Sub_Iserver<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
@@ -97,7 +97,6 @@ std::atomic<uint32_t> shutdown_counter(0);
 struct Test_socket: public Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
-	using typename Kernel::server_type;
 
 	Test_socket(): _data() {
 		++kernel_count;
@@ -183,7 +182,6 @@ private:
 
 struct Sender: public Kernel {
 	typedef stdx::log<Sender> this_log;
-	using typename Kernel::server_type;
 
 	Sender(uint32_t n, uint32_t s):
 	_vector_size(n),
@@ -240,7 +238,6 @@ private:
 struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
-	using typename Kernel::server_type;
 
 	Main(Server& this_server, int argc, char* argv[]) {
 		if (argc != 3)

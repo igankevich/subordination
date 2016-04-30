@@ -62,99 +62,13 @@ namespace factory {
 			stopped
 		};
 
-		template<class Config>
-		struct Server {
+		struct Server_base {
 
-			typedef typename Config::kernel kernel_type;
-			typedef typename Config::factory factory_type;
-			typedef typename Config::local_server Local_server;
-			typedef typename Config::remote_server Remote_server;
-			typedef typename Config::timer_server Timer_server;
-			typedef typename Config::io_server IO_server;
-			typedef typename Config::app_server App_server;
-
-			Server() = default;
-			virtual ~Server() = default;
-			Server(Server&&) = default;
-			Server(const Server&) = delete;
-			Server& operator=(Server&) = delete;
-
-			virtual void send(kernel_type*) = 0;
-			virtual void send(kernel_type**, size_t) {}
-
-			virtual void compute(kernel_type* k) {}
-			virtual void spill(kernel_type* k) {}
-			virtual void input(kernel_type* k) {}
-			virtual void output(kernel_type* k) {}
-			virtual void schedule(kernel_type* k) {}
-
-
-			factory_type*
-			factory() noexcept {
-				return _root;
-			}
-
-			void
-			setfactory(factory_type* rhs) noexcept {
-				_root = rhs;
-			}
-
-			void
-			setparent(Server* rhs) {
-				if (rhs) {
-					setfactory(rhs->_root);
-				}
-				if (rhs != this) {
-					_parent = rhs;
-				}
-			}
-
-			inline Server*
-			parent() const noexcept {
-				return _parent;
-			}
-
-			inline Server*
-			root() noexcept {
-				return _parent
-					? _parent->root()
-					: this;
-			}
-
-			inline const Server*
-			root() const noexcept {
-				return _parent ? _parent->root() : this;
-			}
-
-			Local_server* local_server() { return _root->local_server(); }
-			Remote_server* remote_server() { return _root->remote_server(); }
-			Timer_server* timer_server() { return _root->timer_server(); }
-			IO_server* io_server() { return _root->io_server(); }
-			App_server* app_server() { return _root->app_server(); }
-
-			virtual Global_thread_context*
-			global_context() noexcept {
-				Server* rt = root();
-				return rt == this ? nullptr : rt->global_context();
-			}
-
-			virtual void
-			start() {
-				setstate(server_state::started);
-			}
-
-			virtual void
-			shutdown() {
-				setstate(server_state::stopping);
-			}
-
-			virtual void
-			stop() {
-				setstate(server_state::stopped);
-			}
-
-			virtual void
-			wait() {}
+			Server_base() = default;
+			virtual ~Server_base() = default;
+			Server_base(Server_base&&) = default;
+			Server_base(const Server_base&) = delete;
+			Server_base& operator=(Server_base&) = delete;
 
 			void
 			setstate(server_state rhs) noexcept {
@@ -162,36 +76,23 @@ namespace factory {
 			}
 
 			bool
-			stopped() const noexcept {
+			is_stopped() const noexcept {
 				return _state == server_state::stopped;
 			}
 
 			bool
-			stopping() const noexcept {
+			is_stopping() const noexcept {
 				return _state == server_state::stopping;
 			}
 
 			bool
-			started() const noexcept {
+			is_started() const noexcept {
 				return _state == server_state::started;
-			}
-
-			int
-			exit_code() const noexcept {
-				return _exitcode;
-			}
-
-			void
-			set_exit_code(int rhs) noexcept {
-				_exitcode = rhs;
 			}
 
 		protected:
 
-			factory_type* _root = nullptr;
-			Server* _parent = nullptr;
 			volatile server_state _state = server_state::initial;
-			int _exitcode = 0;
 
 		};
 
@@ -203,10 +104,9 @@ namespace factory {
 			class Lock=std::unique_lock<Mutex>,
 			class Semaphore=sys::thread_semaphore
 		>
-		struct Server_with_pool: public Server<T> {
+		struct Server_with_pool: public Server_base {
 
-			typedef Server<T> base_server;
-			using typename base_server::kernel_type;
+			typedef T kernel_type;
 			typedef Kernels kernel_pool;
 			typedef Threads thread_pool;
 			typedef Mutex mutex_type;
@@ -264,8 +164,8 @@ namespace factory {
 			}
 
 			void
-			start() override {
-				base_server::start();
+			start() {
+				setstate(server_state::started);
 				std::generate(
 					_threads.begin(), _threads.end(),
 					std::bind(&Server_with_pool::new_thread, this)
@@ -273,15 +173,14 @@ namespace factory {
 			}
 
 			void
-			stop() override {
+			stop() {
 				lock_type lock(_mutex);
-				base_server::stop();
+				setstate(server_state::stopped);
 				_semaphore.notify_all();
 			}
 
 			void
-			wait() override {
-				base_server::wait();
+			wait() {
 				std::for_each(
 					_threads.begin(), _threads.end(),
 					[] (std::thread& rhs) {

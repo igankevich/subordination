@@ -24,7 +24,7 @@ namespace factory {
 
 		struct config {
 			typedef components::Server<config> server;
-			typedef components::Principal<config> kernel;
+			typedef components::Principal kernel;
 			typedef components::No_server<config> local_server;
 			typedef components::No_server<config> remote_server;
 			typedef components::No_server<config> timer_server;

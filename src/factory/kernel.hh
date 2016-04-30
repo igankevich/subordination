@@ -22,7 +22,6 @@ namespace factory {
 			typedef Clock::time_point Time_point;
 			typedef Clock::duration Duration;
 			typedef std::bitset<3> Flags;
-			typedef stdx::log<Basic_kernel> this_log;
 
 			enum struct Flag {
 				DELETED = 0,
@@ -212,12 +211,10 @@ namespace factory {
 
 		};
 
-		template<class Config>
 		struct Principal: public Mobile_kernel {
 
 			typedef Mobile_kernel base_kernel;
 			typedef Basic_kernel::Flag Flag;
-			typedef stdx::log<Principal> this_log;
 			using Mobile_kernel::id_type;
 
 			const Principal*
@@ -318,6 +315,11 @@ namespace factory {
 				}
 			}
 
+			inline void
+			operator()() {
+				this->act();
+			}
+
 			virtual void
 			act() {}
 
@@ -404,7 +406,6 @@ namespace factory {
 			void
 			mark_as_deleted(It result) noexcept {
 				if (!this->isset(Flag::DELETED)) {
-					this_log() << "marked for death " << *this << std::endl;
 					this->setf(Flag::DELETED);
 					if (this->_parent) {
 						this->_parent->mark_as_deleted(result);
@@ -465,17 +466,8 @@ namespace factory {
 	};
 
 	using components::Result;
-
-}
-
-namespace stdx {
-
-	template<class T>
-	struct type_traits<factory::components::Principal<T>> {
-		static constexpr const char*
-		short_name() { return "kernel"; }
-		typedef factory::components::kernel_category category;
-	};
+	using components::Principal;
+	typedef components::Principal Kernel;
 
 }
 

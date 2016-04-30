@@ -8,7 +8,7 @@ namespace factory {
 
 		struct config {
 			typedef components::Server<config> server;
-			typedef components::Principal<config> kernel;
+			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, sys::socket> remote_server;
 			typedef components::Timer_server<config> timer_server;

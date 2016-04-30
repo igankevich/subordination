@@ -332,6 +332,7 @@ namespace factory {
 	}
 
 	using components::Type;
+	using components::Types;
 
 }
 

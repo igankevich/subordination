@@ -39,7 +39,7 @@ namespace factory {
 
 		struct config {
 			typedef components::Server<config> server;
-			typedef components::Principal<config> kernel;
+			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, sys::socket> remote_server;
 			typedef components::Timer_server<config> timer_server;
@@ -91,42 +91,40 @@ struct Main: public Kernel {
 
 	void
 	act(Server& this_server) {
-		parse_cmdline_args(this_server);
-		this_server.factory()->types().register_type(negotiator_type::static_type());
-		this_server.factory()->types().register_type(Ping::static_type());
-		this_server.factory()->types().register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
-		this_server.factory()->types().register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
-		this_server.factory()->types().register_type(autoreg::Autoreg_model<float>::static_type());
-		this_server.factory()->types().register_type(Secret_agent::static_type());
-		this_server.factory()->types().register_type(Launcher::static_type());
-		this_server.factory()->types().register_type(Year_kernel::static_type());
-		this_server.factory()->types().register_type(Station_kernel::static_type());
-		this_server.factory()->types().register_type(Spec_app::static_type());
-		if (this_server.factory()->exit_code()) {
-			commit(this_server.local_server());
+		parse_cmdline_args();
+		factory::types.register_type(negotiator_type::static_type());
+		factory::types.register_type(Ping::static_type());
+		factory::types.register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
+		factory::types.register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
+		factory::types.register_type(autoreg::Autoreg_model<float>::static_type());
+		factory::types.register_type(Secret_agent::static_type());
+		factory::types.register_type(Launcher::static_type());
+		factory::types.register_type(Year_kernel::static_type());
+		factory::types.register_type(Station_kernel::static_type());
+		factory::types.register_type(Spec_app::static_type());
+		if (this->result() != Result::success) {
+			factory::commit(this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 			const sys::endpoint bind_addr(_network.address(), _port);
-			this_server.remote_server()->bind(bind_addr, netmask);
+			factory::remote_server.bind(bind_addr, netmask);
 			const auto start_delay = 5;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));
-			this_server.factory()->instances().register_instance(master);
-			master->after(std::chrono::seconds(start_delay));
-//			master->at(Kernel::Time_point(std::chrono::seconds(start_time)));
-			this_server.timer_server()->send(master);
+			factory::instances.register_instance(master);
+			factory::schedule_after(std::chrono::seconds(start_delay), master);
 
 //			if (_network.address() == traits_type::localhost()) {
-//				schedule_pingpong_after(std::chrono::seconds(0), this_server);
+//				schedule_pingpong_after(std::chrono::seconds(0));
 //			}
 
 			if (_network.address() == _masteraddr) {
-//				schedule_autoreg_app(this_server);
-				schedule_spec_app(this_server);
+//				schedule_autoreg_app();
+				schedule_spec_app();
 			}
 
 			if (_timeout != do_not_kill) {
-				schedule_shutdown_after(std::chrono::seconds(_timeout), master, this_server);
+				schedule_shutdown_after(std::chrono::seconds(_timeout), master);
 			}
 		}
 	}
@@ -135,37 +133,37 @@ private:
 
 	template<class Time>
 	void
-	schedule_pingpong_after(Time delay, Server& this_server) {
+	schedule_pingpong_after(Time delay) {
 		Ping_pong* p = new Ping_pong(_numpings);
 		p->after(delay);
-		this_server.timer_server()->send(p);
+		factory::timer_server.send(p);
 	}
 
 	template<class Time>
 	void
-	schedule_shutdown_after(Time delay, discoverer_type* master, Server& this_server) {
+	schedule_shutdown_after(Time delay, discoverer_type* master) {
 		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy(), _normal);
 		shutdowner->after(delay);
 		shutdowner->parent(this);
-		this_server.timer_server()->send(shutdowner);
+		factory::timer_server.send(shutdowner);
 	}
 
 	void
-	schedule_autoreg_app(Server& this_server) {
+	schedule_autoreg_app() {
 		Autoreg_app* app = new Autoreg_app;
 		app->after(std::chrono::seconds(10));
-		this_server.timer_server()->send(app);
+		factory::timer_server.send(app);
 	}
 
 	void
-	schedule_spec_app(Server& this_server) {
+	schedule_spec_app() {
 		Spec_app* app = new Spec_app;
 		app->after(std::chrono::seconds(20));
-		this_server.timer_server()->send(app);
+		factory::timer_server.send(app);
 	}
 
 	void
-	parse_cmdline_args(Server& this_server) {
+	parse_cmdline_args() {
 		try {
 			_cmdline.parse();
 			if (!_network) {
@@ -176,7 +174,7 @@ private:
 			}
 		} catch (sys::invalid_cmdline_argument& err) {
 			std::cerr << err.what() << ": " << err.arg() << std::endl;
-			this_server.factory()->set_exit_code(1);
+			this->result(Result::error);
 		}
 	}
 
