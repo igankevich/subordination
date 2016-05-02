@@ -111,6 +111,8 @@ namespace test {
 			assert(minval.size() == maxval.size());
 		}
 
+		virtual ~Parametric_test() = default;
+
 		void xrun() override {
 			const size_type ndim = _minval.size();
 			array_type idx = _minval;

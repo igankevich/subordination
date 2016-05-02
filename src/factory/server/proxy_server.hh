@@ -18,7 +18,7 @@ namespace factory {
 	namespace components {
 
 		template<class T, class Rserver,
-		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Kernels=std::queue<T*>,
 		class Threads=std::vector<std::thread>>
 		using Proxy_server_base = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,

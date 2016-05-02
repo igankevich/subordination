@@ -23,7 +23,7 @@ namespace factory {
 	Server_guard<components::CPU_server<Kernel>> local_server;
 	Server_guard<components::Timer_server<Kernel>> timer_server;
 	Server_guard<components::IO_server<Kernel>> io_server;
-	Global_thread_context _globalcon;
+	components::Global_thread_context _globalcon;
 
 	Server_guard<components::NIC_server<Kernel,sys::socket>> remote_server;
 	Instances<Kernel> instances;
@@ -93,6 +93,7 @@ namespace factory {
 		this_server->send(a);
 	}
 
+	/*
 	/// @deprecated
 	template<class S>
 	void
@@ -101,6 +102,7 @@ namespace factory {
 		this->result(res);
 		srv->send(this);
 	}
+	*/
 
 }
 

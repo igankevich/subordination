@@ -116,7 +116,7 @@ namespace factory {
 			~CPU_server() = default;
 
 			void
-			send(kernel_type* kernel) override {
+			send(kernel_type* kernel) {
 				#if defined(FACTORY_PRIORITY_SCHEDULING)
 				if (kernel->isset(kernel_type::Flag::priority_service)) {
 					_servers.back().send(kernel);
@@ -131,7 +131,7 @@ namespace factory {
 			}
 
 			void
-			start() override {
+			start() {
 				base_server::start();
 				std::for_each(
 					_servers.begin(),
@@ -144,7 +144,7 @@ namespace factory {
 			}
 
 			void
-			stop() override {
+			stop() {
 				base_server::stop();
 				std::for_each(
 					_servers.begin(),
@@ -154,7 +154,7 @@ namespace factory {
 			}
 
 			void
-			wait() override {
+			wait() {
 				base_server::wait();
 				std::for_each(
 					_servers.begin(),

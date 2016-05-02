@@ -27,12 +27,12 @@ namespace factory {
 		template<
 		class T,
 		class Socket,
-		class Kernels=std::deque<typename Server<T>::kernel_type*>
+		class Kernels=std::deque<T*>
 		>
 		struct Remote_Rserver: public Server<T> {
 
 			typedef Server<T> base_server;
-			using typename base_server::kernel_type;
+			typedef T kernel_type;
 			using typename base_server::factory_type;
 			typedef char Ch;
 			typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
@@ -101,7 +101,7 @@ namespace factory {
 			}
 
 			void
-			send(kernel_type* kernel) override {
+			send(kernel_type* kernel) {
 				bool delete_kernel = false;
 				if (kernel_goes_in_upstream_buffer(kernel)) {
 					_sentupstream.push_back(kernel);

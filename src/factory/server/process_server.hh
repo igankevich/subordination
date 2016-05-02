@@ -13,6 +13,7 @@
 #include <sys/packetstream.hh>
 
 #include <factory/server/intro.hh>
+#include <factory/server/basic_server.hh>
 #include <factory/server/proxy_server.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
@@ -20,11 +21,11 @@
 namespace factory {
 	namespace components {
 
-		template<class T, class Kernels=std::deque<typename Server<T>::kernel_type*>>
-		struct Buffered_server: public Server<T> {
+		template<class T, class Kernels=std::deque<T*>>
+		struct Buffered_server: public Server_base {
 
-			typedef Server<T> base_server;
-			using typename base_server::kernel_type;
+			typedef Server_base base_server;
+			typedef T kernel_type;
 			typedef Kernels pool_type;
 			typedef stdx::log<Buffered_server> this_log;
 

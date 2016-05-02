@@ -98,7 +98,7 @@ namespace factory {
 
 		template<
 			class T,
-			class Kernels=std::queue<typename Server<T>::kernel_type*>,
+			class Kernels=std::queue<T*>,
 			class Threads=std::vector<std::thread>,
 			class Mutex=stdx::spin_mutex,
 			class Lock=std::unique_lock<Mutex>,
@@ -142,14 +142,14 @@ namespace factory {
 			Server_with_pool& operator=(const Server_with_pool&) = delete;
 
 			void
-			send(kernel_type* kernel) override {
+			send(kernel_type* kernel) {
 				lock_type lock(_mutex);
 				_kernels.push(kernel);
 				_semaphore.notify_one();
 			}
 
 			void
-			send(kernel_type** kernels, size_t n) override {
+			send(kernel_type** kernels, size_t n) {
 				lock_type lock(_mutex);
 				#ifndef NDEBUG
 				assert(
@@ -257,24 +257,17 @@ namespace factory {
 		};
 
 		template<class T,
-		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Kernels=std::queue<T*>,
 		class Threads=std::vector<std::thread>>
 		using Fast_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, sys::thread_semaphore>;
 
 		template<class T,
-		class Kernels=std::queue<typename Server<T>::kernel_type*>,
+		class Kernels=std::queue<T*>,
 		class Threads=std::vector<std::thread>>
 		using Standard_server_with_pool = Server_with_pool<T, Kernels, Threads,
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
-		template<class Unused>
-		struct No_server: public Server<Unused> {
-			using typename Server<Unused>::kernel_type;
-			void send(kernel_type*) override {}
-			template<class ... Args>
-			void forward(Args&& ...) {}
-		};
 	}
 
 }
