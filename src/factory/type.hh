@@ -5,6 +5,7 @@
 
 #include <stdx/log.hh>
 #include <sys/packetstream.hh>
+#include <factory/error.hh>
 
 namespace factory {
 
@@ -333,6 +334,7 @@ namespace factory {
 
 	using components::Type;
 	using components::Types;
+	using components::Instances;
 
 }
 

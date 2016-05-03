@@ -2,6 +2,7 @@
 #define SYS_SYSTEM_HH
 
 #include <unistd.h>
+#include <thread>
 
 #if defined(PAGESIZE)
 	#define FACTORY_SYSCONF_PAGE_SIZE PAGESIZE

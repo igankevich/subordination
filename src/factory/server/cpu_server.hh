@@ -6,6 +6,7 @@
 #include <sys/system.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
+#include <factory/result.hh>
 
 namespace factory {
 
@@ -137,7 +138,7 @@ namespace factory {
 					_servers.begin(),
 					_servers.end(),
 					[this] (base_server& rhs) {
-						rhs.setparent(this);
+						// rhs.setparent(this);
 						rhs.start();
 					}
 				);

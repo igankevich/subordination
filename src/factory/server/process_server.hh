@@ -17,6 +17,8 @@
 #include <factory/server/proxy_server.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
+#include <factory/result.hh>
+#include <factory/kernel.hh>
 
 namespace factory {
 	namespace components {
@@ -46,7 +48,7 @@ namespace factory {
 			}
 
 			void
-			send(kernel_type* kernel) override {
+			send(kernel_type* kernel) {
 				bool erase_kernel = true;
 				if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
 					_buffer.push_back(kernel);
@@ -178,7 +180,7 @@ namespace factory {
 			}
 
 			void
-			send(kernel_type* kernel) override {
+			send(kernel_type* kernel) {
 				/*
 				TODO we need IDs only when forwarding kernels to other hosts
 				if (!kernel->identifiable() && !kernel->moves_everywhere()) {

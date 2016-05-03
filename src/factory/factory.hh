@@ -17,6 +17,7 @@
 #include <factory/server/timer_server.hh>
 #include <factory/server/nic_server.hh>
 #include <factory/server_guard.hh>
+#include <factory/reflection.hh>
 
 namespace factory {
 
@@ -26,23 +27,8 @@ namespace factory {
 	components::Global_thread_context _globalcon;
 
 	Server_guard<components::NIC_server<Kernel,sys::socket>> remote_server;
-	Instances<Kernel> instances;
-	Types<Type<Kernel>> types;
 
 	/// Server API
-	void
-	shutdown() {
-		this_log() << "SHUTDOWN" << std::endl;
-		local_server.shutdown();
-		remote_server.shutdown();
-		io_server.shutdown();
-		timer_server.shutdown();
-		local_server.stop();
-		remote_server.stop();
-		io_server.stop();
-		timer_server.stop();
-	}
-
 	inline void compute(Kernel* rhs) { local_server.send(rhs); }
 	inline void spill(Kernel* rhs) { remote_server.send(rhs); }
 	inline void input(Kernel* rhs) { io_server.send(rhs); }
@@ -56,7 +42,8 @@ namespace factory {
 		timer_server.send(rhs);
 	}
 
-//	inline void yield() { compute(this); }
+	inline void yield(Kernel* rhs) { compute(rhs); }
+
 	inline void collect(Kernel* rhs) {
 		rhs->return_to_parent();
 		spill(rhs);
@@ -64,7 +51,7 @@ namespace factory {
 
 	inline void commit(Kernel* rhs, Result ret) {
 		if (!rhs->parent()) {
-			shutdown();
+			factory::return_value.set_value(static_cast<int>(rhs.result()));
 		} else {
 			rhs->return_to_parent(ret);
 			compute(rhs);

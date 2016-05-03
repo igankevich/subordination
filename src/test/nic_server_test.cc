@@ -27,18 +27,11 @@ namespace factory {
 	inline namespace this_config {
 
 		struct config {
-			typedef components::Server<config> server;
-			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
 			typedef components::Timer_server<config> timer_server;
-			typedef components::No_server<config> io_server;
-			typedef components::No_server<config> app_server;
-			typedef components::Basic_factory<config> factory;
 		};
 
-		typedef config::kernel Kernel;
-		typedef config::server Server;
 	}
 #endif
 
@@ -46,18 +39,11 @@ namespace factory {
 	inline namespace this_config {
 
 		struct config {
-			typedef components::Server<config> server;
-			typedef components::Principal kernel;
 			typedef components::CPU_server<config> local_server;
 			typedef components::Sub_Iserver<config> remote_server;
 			typedef components::Timer_server<config> timer_server;
-			typedef components::No_server<config> io_server;
-			typedef components::No_server<config> app_server;
-			typedef components::Basic_factory<config> factory;
 		};
 
-		typedef config::kernel Kernel;
-		typedef config::server Server;
 	}
 #endif
 }

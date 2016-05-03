@@ -103,7 +103,7 @@ struct Variance_WN: public Kernel {
 	void react(factory::Kernel*) override {
 		_sum = acf[0] - _sum;
 		return_to_parent();
-		yield();
+		yield(this);
 	}
 
 	T
@@ -162,7 +162,7 @@ struct Yule_walker: public Kernel {
 	void react(factory::Kernel*) override {
 		if (++count == 2) {
 			return_to_parent();
-			yield();
+			yield(this);
 		}
 	}
 

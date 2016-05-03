@@ -16,7 +16,7 @@ namespace factory {
 				f(f_), a(a_), b(b_) {}
 			void act() {
 				for (I i=a; i<b; ++i) f(i);
-				commit(local_server());
+				commit(this);
 			}
 			F& f;
 			I a, b;

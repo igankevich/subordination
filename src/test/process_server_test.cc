@@ -1,60 +1,20 @@
-#include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 #include <factory/server/process_server.hh>
+#include <factory/server_guard.hh>
+#include <factory/reflection.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
+namespace factory {
+Server_guard<components::CPU_server<Kernel>> local_server;
 #if defined(FACTORY_TEST_SERVER)
-
-namespace factory {
-
-	inline namespace daemon_config {
-
-		struct config {
-			typedef components::Server<config> server;
-			typedef components::Principal kernel;
-			typedef components::CPU_server<config> local_server;
-//			typedef components::Sub_Iserver<config> remote_server;
-			typedef components::Process_iserver<config> remote_server;
-			typedef components::Timer_server<config> timer_server;
-			typedef components::No_server<config> io_server;
-			typedef components::No_server<config> app_server;
-			typedef components::Basic_factory<config> factory;
-		};
-
-		typedef config::kernel Kernel;
-		typedef config::server Server;
-	}
-
-}
-using namespace factory::daemon_config;
+components::Process_iserver<Kernel> remote_server;
 #else
-//#elif defined(FACTORY_TEST_APP)
-namespace factory {
-
-	inline namespace app_config {
-
-		struct config {
-			typedef components::Server<config> server;
-			typedef components::Principal kernel;
-			typedef components::CPU_server<config> local_server;
-//			typedef components::Principal_server<config> remote_server;
-			typedef components::Process_child_server<config> remote_server;
-			typedef components::Timer_server<config> timer_server;
-			typedef components::No_server<config> io_server;
-			typedef components::No_server<config> app_server;
-			typedef components::Basic_factory<config> factory;
-		};
-
-		typedef config::kernel Kernel;
-		typedef config::server Server;
-	}
-
-}
-using namespace factory::app_config;
+Server_guard<components::Process_child_server<Kernel>> remote_server;
 #endif
+}
 
 namespace stdx {
 
@@ -209,13 +169,12 @@ struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
 
-	Main(Server& this_server, int argc, char* argv[]) {
-		auto& __factory = *this_server.factory();
-		__factory.types().register_type(Test_socket::static_type());
+	Main(int argc, char* argv[]) {
+		factory::types.register_type(Test_socket::static_type());
 		#if defined(FACTORY_TEST_SERVER)
 		Application app(XSTRINGIFY(FACTORY_APP_PATH));
 		std::cout << "App = " << app << std::endl;
-		__factory.remote_server()->add(app);
+		remote_server.add(app);
 		#endif
 	}
 
@@ -223,7 +182,7 @@ struct Main: public Kernel {
 		#if defined(FACTORY_TEST_APP)
 		Test_socket* kernel = new Test_socket;
 		kernel->setapp(sys::this_process::id());
-		upstream(remote_server(), kernel);
+		upstream(remote_server, kernel);
 		#endif
 		#if defined(FACTORY_TEST_SERVER)
 		std::this_thread::sleep_for(std::chrono::seconds(5));

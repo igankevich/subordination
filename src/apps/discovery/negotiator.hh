@@ -100,24 +100,24 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 	{}
 
 	void
-	act(Server& this_server) override {
-		send_negotiator(this_server, _newprinc);
+	act() override {
+		send_negotiator(_newprinc);
 	}
 
 	void
-	react(Server& this_server, Kernel* k) override {
+	react(Kernel* k) override {
 		bool finished = true;
 		if (_numsent == 1) {
 			this_log() << "Tried " << k->from() << ": " << k->result() << std::endl;
 			this->result(k->result());
 			if (k->result() == Result::success and _oldprinc) {
 				finished = false;
-				send_negotiator(this_server, _oldprinc);
+				send_negotiator(_oldprinc);
 			}
 		}
 		if (finished) {
 			this->principal(this->parent());
-			local_server()->send(this);
+			local_server.send(this);
 		}
 	}
 
@@ -134,12 +134,12 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 private:
 
 	void
-	send_negotiator(Server& this_server, sys::endpoint addr) {
+	send_negotiator(sys::endpoint addr) {
 		++_numsent;
 		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
 		n->to(addr);
-		upstream(this_server.remote_server(), n);
+		upstream(remote_server, n);
 	}
 
 	sys::endpoint _oldprinc;

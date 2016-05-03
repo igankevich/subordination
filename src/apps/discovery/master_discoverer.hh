@@ -90,7 +90,7 @@ private:
 	void
 	try_next_host(Server& this_server) {
 		advance_through_ranked_list();
-		run_negotiator(this_server);
+		run_negotiator();
 	}
 
 	void
@@ -116,12 +116,12 @@ private:
 	}
 
 	void
-	run_negotiator(Server& this_server) {
+	run_negotiator() {
 		if (_currenthost != _rankedhosts.end()) {
 			const sys::endpoint new_princ(_currenthost->second, _port);
 			this_log() << "trying " << new_princ << std::endl;
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
-			upstream(this_server.local_server(), _negotiator);
+			upstream(local_server, _negotiator);
 		}
 	}
 
@@ -132,7 +132,7 @@ private:
 //		_secretagent->id(factory()->factory_generate_id());
 		_secretagent->parent(this);
 		_secretagent->set_principal_id(_secretagent->to().address());
-		remote_server()->send(_secretagent);
+		remote_server.send(_secretagent);
 	}
 
 	hierarchy_type _hierarchy;

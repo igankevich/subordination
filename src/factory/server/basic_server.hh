@@ -4,6 +4,7 @@
 #include <thread>
 #include <queue>
 #include <cassert>
+#include <future>
 
 #include <stdx/algorithm.hh>
 #include <stdx/iterator.hh>
@@ -16,6 +17,13 @@
 #include <factory/type.hh>
 
 namespace factory {
+
+	std::promise<int> return_value;
+
+	int
+	wait_and_return() {
+		return return_value.get_future().get();
+	}
 
 	namespace components {
 

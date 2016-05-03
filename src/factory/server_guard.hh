@@ -13,9 +13,7 @@ namespace factory {
 
 		virtual
 		~Server_guard() {
-			this->shutdown();
 			this->stop();
-			this->wait();
 		}
 
 	};
