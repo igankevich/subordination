@@ -29,18 +29,17 @@ namespace factory {
 		class Socket,
 		class Kernels=std::deque<T*>
 		>
-		struct Remote_Rserver: public Server<T> {
+		struct Remote_Rserver: public Server_base {
 
-			typedef Server<T> base_server;
+			typedef Server base_server;
 			typedef T kernel_type;
-			using typename base_server::factory_type;
 			typedef char Ch;
 			typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
 			typedef Kernel_stream<kernel_type> stream_type;
 			typedef Server<T> server_type;
 			typedef Socket socket_type;
 			typedef Kernels pool_type;
-			typedef typename kernel_type::app_type app_type;
+			typedef application_type app_type;
 			typedef stdx::log<Remote_Rserver> this_log;
 
 			static_assert(
@@ -56,8 +55,6 @@ namespace factory {
 			_stream(&_packetbuf),
 			_sentupstream()
 			{
-				_stream.setapp(factory->app());
-				_stream.settypes(&factory->types());
 				_stream.setforward(
 					[this] (app_type app, stream_type&) {
 						this->app_server()->forward(app, _vaddr, _packetbuf);

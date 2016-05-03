@@ -7,6 +7,7 @@
 #include <sys/packetstream.hh>
 #include <factory/type.hh>
 #include <factory/error.hh>
+#include <factory/reflection.hh>
 
 namespace factory {
 
@@ -72,12 +73,11 @@ namespace factory {
 				if (app != _thisapp) {
 					_doforward(app, *this);
 				} else {
-					assert(_types != nullptr);
 					try {
-						kernel = Type<kernel_type>::read_object(*_types, *this);
+						kernel = Type<kernel_type>::read_object(::factory::types, *this);
 						kernel->setapp(app);
 						if (kernel->carries_parent()) {
-							kernel_type* parent = Type<kernel_type>::read_object(*_types, *this);
+							kernel_type* parent = Type<kernel_type>::read_object(::factory::types, *this);
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
@@ -94,18 +94,8 @@ namespace factory {
 		}
 
 		void
-		setapp(app_type rhs) noexcept {
-			_thisapp = rhs;
-		}
-
-		void
 		setforward(forward_func rhs) noexcept {
 			_doforward = rhs;
-		}
-
-		void
-		settypes(types* rhs) noexcept {
-			_types = rhs;
 		}
 
 		void
@@ -160,9 +150,8 @@ namespace factory {
 			return out;
 		}
 
-		app_type _thisapp = 0;
+		app_type _thisapp = ::factory::application_id();
 		forward_func _doforward;
-		types* _types = nullptr;
 		state _rdstate = state::good;
 
 	};

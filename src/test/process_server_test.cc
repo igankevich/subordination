@@ -3,6 +3,7 @@
 #include <factory/server/process_server.hh>
 #include <factory/server_guard.hh>
 #include <factory/reflection.hh>
+#include <factory/factory.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
@@ -186,7 +187,7 @@ struct Main: public Kernel {
 		#endif
 		#if defined(FACTORY_TEST_SERVER)
 		std::this_thread::sleep_for(std::chrono::seconds(5));
-		commit(local_server());
+		commit(this);
 		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
 //			upstream(local_server(), new Sender(i, _sleep));
@@ -196,7 +197,7 @@ struct Main: public Kernel {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
-			commit(local_server());
+			commit(this);
 		}
 	}
 
