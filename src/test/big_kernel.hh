@@ -2,21 +2,22 @@
 #define TEST_BIG_KERNEL_HH
 
 #include "datum.hh"
+#include <factory/algorithm.hh>
 
 template<uint32_t Size>
-struct Big_kernel: public Kernel {
+struct Big_kernel: public factory::Kernel {
 
 	Big_kernel():
 	_data(Size)
 	{}
 
 	void act() override {
-		commit(remote_server, this);
+		factory::commit(remote_server, this);
 	}
 
 	void
 	write(sys::packetstream& out) override {
-		Kernel::write(out);
+		factory::Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -24,7 +25,7 @@ struct Big_kernel: public Kernel {
 
 	void
 	read(sys::packetstream& in) override {
-		Kernel::read(in);
+		factory::Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -57,14 +58,14 @@ struct Big_kernel: public Kernel {
 		return out;
 	}
 
-	const Type<Kernel>
+	const factory::Type<factory::Kernel>
 	type() const noexcept override {
 		return static_type();
 	}
 
-	static const Type<Kernel>
+	static const factory::Type<factory::Kernel>
 	static_type() noexcept {
-		return Type<Kernel>{
+		return factory::Type<factory::Kernel>{
 			12345u + Size,
 			"Big_kernel",
 			[] (sys::packetstream& in) {

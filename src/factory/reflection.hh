@@ -11,10 +11,16 @@ namespace factory {
 
 	Instances<Kernel> instances;
 	Types<Type<Kernel>> types;
+	application_type appid = sys::this_process::id();
 
 	application_type
 	application_id() noexcept {
-		return sys::this_process::id();
+		return appid;
+	}
+
+	void
+	set_application_id(application_type rhs) noexcept {
+		appid = rhs;
 	}
 
 }

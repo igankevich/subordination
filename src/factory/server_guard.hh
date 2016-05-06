@@ -14,6 +14,7 @@ namespace factory {
 		virtual
 		~Server_guard() {
 			this->stop();
+			this->wait();
 		}
 
 	};

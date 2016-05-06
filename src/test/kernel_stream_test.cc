@@ -1,11 +1,10 @@
 #include <sys/net/network_format.hh>
 #include <sys/io/fildesbuf.hh>
 
-#include <factory/factory.hh>
-#include <factory/server/basic_server.hh>
 #include <factory/kernel.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
+#include <factory/reflection.hh>
 
 #include "test.hh"
 #include "datum.hh"
@@ -19,33 +18,15 @@ namespace stdx {
 
 }
 
-using namespace factory;
+struct Dummy_remote_server {
+	template<class T>
+	void send(T*) {}
+} remote_server;
 
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*);
-
-		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
-			assert(false);
-		}
-
-	};
-
-	components::NIC_server<Kernel,sys::socket,Router> remote_server;
-
-	void
-	Router::send_remote(Kernel* rhs) {
-		remote_server.send(rhs);
-	}
 
 #include "big_kernel.hh"
+
+using namespace factory;
 
 struct Good_kernel: public Kernel {
 
@@ -258,10 +239,18 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 	typedef typename stream_type::types types;
 	typedef stdx::log<Test_kernel_stream> this_log;
 
+	template<class T>
+	static void
+	register_type(T rhs) {
+		if (not factory::types.lookup(rhs.id())) {
+			factory::types.register_type(rhs);
+		}
+	}
+
 	Test_kernel_stream() {
-		_types.register_type(Carrier::static_type());
+		register_type(Carrier::static_type());
 		if (not std::is_same<Parent,Dummy_kernel>::value) {
-			_types.register_type(Parent::static_type());
+			register_type(Parent::static_type());
 		}
 	}
 
@@ -279,7 +268,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 		buffer_type buffer{sink_type{}};
 		stream_type stream(&buffer);
 		test::equal(static_cast<bool>(stream), true, "bad rdstate after construction");
-		// stream.settypes(&_types);
+		// stream.settypes(&factory::types);
 		for (Carrier& k : expected) {
 			stream << k;
 		}
@@ -296,18 +285,16 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 		}
 	}
 
-private:
-
-	types _types;
-
 };
 
 int main() {
-	return test::Test_suite{
+	factory::set_application_id(0);
+	int ret= test::Test_suite{
 		new Test_kernel_stream<Kernel, Good_kernel>,
 		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
 		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>,
 		new Test_kernel_stream<Kernel, Kernel_that_carries_its_parent, Good_kernel>,
 		new Test_kernel_stream<Kernel, Big_kernel<100>>
 	}.run();
+	return ret;
 }
