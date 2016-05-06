@@ -24,22 +24,19 @@ namespace factory {
 
 	namespace components {
 
-		template<
-		class T,
-		class Socket,
-		class Kernels=std::deque<T*>
-		>
+		template<class T, class Socket, class Kernels=std::deque<T*>>
 		struct Remote_Rserver: public Server_base {
 
-			typedef Server base_server;
+			typedef Server_base base_server;
 			typedef T kernel_type;
 			typedef char Ch;
 			typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
 			typedef Kernel_stream<kernel_type> stream_type;
-			typedef Server<T> server_type;
+			typedef Server_base server_type;
 			typedef Socket socket_type;
 			typedef Kernels pool_type;
 			typedef application_type app_type;
+			typedef typename stream_type::forward_func forward_func;
 			typedef stdx::log<Remote_Rserver> this_log;
 
 			static_assert(
@@ -49,17 +46,13 @@ namespace factory {
 
 			Remote_Rserver() = default;
 
-			Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, factory_type* factory):
+			Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, forward_func callback):
 			_vaddr(vaddr),
 			_packetbuf(),
 			_stream(&_packetbuf),
 			_sentupstream()
 			{
-				_stream.setforward(
-					[this] (app_type app, stream_type&) {
-						this->app_server()->forward(app, _vaddr, _packetbuf);
-					}
-				);
+				_stream.setforward(callback);
 				_packetbuf.setfd(std::move(sock));
 			}
 
@@ -213,7 +206,7 @@ namespace factory {
 				if (k->moves_downstream()) {
 					this->clear_kernel_buffer(k);
 				} else if (k->principal_id()) {
-					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
+					kernel_type* p = factory::instances.lookup(k->principal_id());
 					if (p == nullptr) {
 						k->result(Result::no_principal_found);
 						ok = false;
@@ -296,6 +289,7 @@ namespace factory {
 			typedef network_type::rep_type rep_type;
 			typedef Mobile_kernel::id_type id_type;
 			typedef stdx::log<NIC_server> this_log;
+			typedef typename server_type::forward_func forward_func;
 
 			static_assert(
 				std::is_move_constructible<server_type>::value,
@@ -386,7 +380,7 @@ namespace factory {
 				_socket.listen();
 				poller().insert_special(sys::poll_event{_socket.fd(),
 					sys::poll_event::In});
-				if (!this->stopped()) {
+				if (not this->is_stopped()) {
 					this->_semaphore.notify_one();
 				}
 			}
@@ -394,6 +388,11 @@ namespace factory {
 			inline sys::endpoint
 			server_addr() const {
 				return _socket.bind_addr();
+			}
+
+			void
+			setforward(forward_func rhs) noexcept {
+				_doforward = rhs;
 			}
 
 		private:
@@ -544,8 +543,8 @@ namespace factory {
 				sys::poll_event::legacy_event revents=0)
 			{
 				sys::fd_type fd = sock.fd();
-				server_type s(std::move(sock), vaddr, this->factory());
-				s.setparent(this);
+				server_type s(std::move(sock), vaddr, _doforward);
+				// s.setparent(this);
 				auto result = emplace_server(vaddr, std::move(s));
 				poller().emplace(
 					sys::poll_event{fd, events, revents},
@@ -560,6 +559,7 @@ namespace factory {
 			iterator_type _iterator;
 			bool _endreached = false;
 			std::atomic<id_type> _counter{0};
+			forward_func _doforward;
 		};
 
 	}

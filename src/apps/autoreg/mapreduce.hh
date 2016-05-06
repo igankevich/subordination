@@ -1,6 +1,8 @@
 #ifndef APPS_AUTOREG_MAPREDUCE_HH
 #define APPS_AUTOREG_MAPREDUCE_HH
 
+#include <factory/algorithm.hh>
+
 namespace factory {
 
 	class Notification: public Kernel {};
@@ -16,21 +18,21 @@ namespace factory {
 				f(f_), a(a_), b(b_) {}
 			void act() {
 				for (I i=a; i<b; ++i) f(i);
-				commit(this);
+				commit(local_server, this);
 			}
 			F& f;
 			I a, b;
 		};
 
 		void act() {
-			for (I i=a; i<b; i+=bs) upstream(local_server(), new Worker(f, i, std::min(i+bs, b)));
+			for (I i=a; i<b; i+=bs) upstream(local_server, this, new Worker(f, i, std::min(i+bs, b)));
 		}
 
 		void react(Kernel* kernel) {
 			Worker* w = dynamic_cast<Worker*>(kernel);
 			I x1 = w->a, x2 = w->b;
 			for (I i=x1; i<x2; ++i) g(i);
-			if (++n == m) commit(local_server());
+			if (++n == m) commit(local_server, this);
 		}
 
 	private:

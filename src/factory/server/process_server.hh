@@ -109,11 +109,12 @@ namespace factory {
 				if (k->moves_everywhere()) {
 					delete k;
 				} else {
-					assert(this->root() != nullptr);
+					// TODO 2016-05-06 fix this
+					// assert(this->root() != nullptr);
 					k->from(k->to());
 					k->result(Result::endpoint_not_connected);
 					k->principal(k->parent());
-					this->root()->send(k);
+					// this->root()->send(k);
 				}
 			}
 
@@ -161,8 +162,6 @@ namespace factory {
 			{
 				_inbuf.fd().validate();
 				_outbuf.fd().validate();
-				this_log() << "root after move ctr " << this->root()
-					<< ",this=" << this << std::endl;
 			}
 
 			explicit
@@ -377,8 +376,8 @@ namespace factory {
 				sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 				sys::fd_type parent_out = data_pipe.parent_out().get_fd();
 				rserver_type child(p.id(), std::move(data_pipe));
-				child.setparent(this);
-				assert(child.root() != nullptr);
+				// child.setparent(this);
+				// assert(child.root() != nullptr);
 				this_log() << "starting child process: " << child << std::endl;
 				auto result = _apps.emplace(process_id, std::move(child));
 				poller().emplace(

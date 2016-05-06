@@ -9,7 +9,6 @@
 #define STRINGIFY(x) #x
 
 namespace factory {
-Server_guard<components::CPU_server<Kernel>> local_server;
 #if defined(FACTORY_TEST_SERVER)
 components::Process_iserver<Kernel> remote_server;
 #else
@@ -57,7 +56,7 @@ struct Test_socket: public Kernel {
 
 	void act() override {
 		std::cout << "Test_socket::act(): It works!" << std::endl;
-		commit(remote_server());
+		commit(remote_server, this);
 	}
 
 	void write(sys::packetstream& out) override {
@@ -170,7 +169,7 @@ struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
 
-	Main(int argc, char* argv[]) {
+	Main() {
 		factory::types.register_type(Test_socket::static_type());
 		#if defined(FACTORY_TEST_SERVER)
 		Application app(XSTRINGIFY(FACTORY_APP_PATH));
@@ -183,11 +182,11 @@ struct Main: public Kernel {
 		#if defined(FACTORY_TEST_APP)
 		Test_socket* kernel = new Test_socket;
 		kernel->setapp(sys::this_process::id());
-		upstream(remote_server, kernel);
+		upstream(remote_server, this, kernel);
 		#endif
 		#if defined(FACTORY_TEST_SERVER)
 		std::this_thread::sleep_for(std::chrono::seconds(5));
-		commit(this);
+		commit(local_server, this);
 		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
 //			upstream(local_server(), new Sender(i, _sleep));
@@ -207,6 +206,6 @@ private:
 
 
 int main(int argc, char* argv[]) {
-	using namespace factory;
-	return factory_main<Main,config>(argc, argv);
+	local_server.send(new Main);
+	return factory::wait_and_return();
 }

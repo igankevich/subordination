@@ -305,8 +305,7 @@ struct ACF_generator: public Kernel {
 	}
 
 	void react(factory::Kernel*) override {
-		return_to_parent();
-		yield();
+		commit(local_server, this);
 	}
 
 private:
@@ -408,8 +407,7 @@ struct Solve_Yule_Walker: public Kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
 		}
-		return_to_parent();
-		yield();
+		commit(local_server, this);
 	}
 
 private:
@@ -430,16 +428,15 @@ struct Autoreg_coefs: public Kernel {
 	{}
 
 	void act() override {
-		compute(call(new Yule_walker<T>(acf_model, acf_size, a, b)));
+		upstream(local_server, this, new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
 	void react(factory::Kernel*) override {
 		state++;
 		if (state == 1) {
-			compute(call(new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size)));
+			upstream(local_server, this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
 		} else {
-			return_to_parent();
-			yield();
+			commit(local_server, this);
 		}
 	}
 
@@ -634,8 +631,7 @@ struct Generator1: public Kernel {
 	void act() override {
 		if (_writefile) {
 			write_part_to_file(zeta);
-			return_to_parent();
-			collect();
+			commit(remote_server, this);
 		} else {
 			this_log() << "running" << std::endl;
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
@@ -668,14 +664,12 @@ struct Generator1: public Kernel {
 					compute(note);
 //					downstream(local_server(), new Note(), left_neighbour);
 				}
-				recurse();
-				yield();
+				send(local_server, this, this);
 //				downstream(local_server(), this, this);
 			} else {
 				trim_zeta(zeta2, zsize2, zsize, zeta);
 				_writefile = true;
-				yield();
-				// local_server()->send(this);
+				local_server.send(this);
 			}
 		}
 	}

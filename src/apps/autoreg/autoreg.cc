@@ -13,6 +13,7 @@ namespace factory {
 		};
 
 	}
+	components::NIC_server<Kernel, sys::socket> remote_server;
 }
 
 using namespace factory;

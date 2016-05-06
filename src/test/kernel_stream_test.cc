@@ -19,18 +19,9 @@ namespace stdx {
 
 }
 
-namespace factory {
-	inline namespace this_config {
-
-		struct config {
-		};
-
-	}
-}
-
 using namespace factory;
-using namespace factory::this_config;
 
+components::NIC_server<Kernel,sys::socket> remote_server;
 #include "big_kernel.hh"
 
 struct Good_kernel: public Kernel {

@@ -11,7 +11,7 @@ struct Big_kernel: public Kernel {
 	{}
 
 	void act() override {
-		commit(remote_server());
+		commit(remote_server, this);
 	}
 
 	void

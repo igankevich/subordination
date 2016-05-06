@@ -63,6 +63,8 @@ namespace factory {
 			std::condition_variable _semaphore;
 		};
 
+		Global_thread_context _globalcon;
+
 		enum struct server_state {
 			initial,
 			started,
@@ -253,7 +255,7 @@ namespace factory {
 			new_thread(Server_with_pool* rhs) noexcept {
 				return std::thread(
 					&Server_with_pool::run, rhs,
-					rhs->global_context()
+					&_globalcon
 				);
 			}
 

@@ -1,4 +1,5 @@
 #include <factory/factory.hh>
+#include <factory/algorithm.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
 
@@ -24,32 +25,15 @@
 
 namespace factory {
 #if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
-	inline namespace this_config {
-
-		struct config {
-			typedef components::CPU_server<config> local_server;
-			typedef components::NIC_server<config, FACTORY_SOCKET_TYPE> remote_server;
-			typedef components::Timer_server<config> timer_server;
-		};
-
-	}
+	components::NIC_server<Kernel, FACTORY_SOCKET_TYPE> remote_server;
 #endif
 
 #if defined(FACTORY_TEST_APPSERVER)
-	inline namespace this_config {
-
-		struct config {
-			typedef components::CPU_server<config> local_server;
-			typedef components::Sub_Iserver<config> remote_server;
-			typedef components::Timer_server<config> timer_server;
-		};
-
-	}
+	components::Sub_Iserver<config> remote_server;
 #endif
 }
 
 using namespace factory;
-using namespace factory::this_config;
 
 namespace stdx {
 
@@ -109,7 +93,7 @@ struct Test_socket: public Kernel {
 			std::exit(0);
 		}
 		#else
-		commit(remote_server());
+		commit(remote_server, this);
 		#endif
 	}
 
@@ -181,7 +165,7 @@ struct Sender: public Kernel {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			upstream(remote_server(), new Test_socket(_input));
+			upstream(remote_server, this, new Test_socket(_input));
 		}
 	}
 
@@ -209,7 +193,7 @@ struct Sender: public Kernel {
 
 		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
-			commit(local_server());
+			commit(local_server, this);
 		}
 	}
 
@@ -225,27 +209,27 @@ struct Main: public Kernel {
 
 	typedef stdx::log<Main> this_log;
 
-	Main(Server& this_server, int argc, char* argv[]) {
+	Main(int argc, char* argv[]) {
 		if (argc != 3)
 			throw std::runtime_error("Wrong number of arguments.");
 		_role = argv[1][0];
 		if (_role == 'x') {
-			this_server.factory()->remote_server()->bind(server_endpoint, netmask);
+			remote_server.bind(server_endpoint, netmask);
 		}
 		if (_role == 'y') {
-			this_server.factory()->remote_server()->bind(client_endpoint, netmask);
-			this_server.factory()->remote_server()->peer(server_endpoint);
+			remote_server.bind(client_endpoint, netmask);
+			remote_server.peer(server_endpoint);
 		}
 	}
 
 	void
 	act() override {
-		factory()->types().register_type(Test_socket::static_type());
+		factory::types.register_type(Test_socket::static_type());
 //		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
-				upstream(local_server(), new Sender(sz, _sleep));
+				upstream(local_server, this, new Sender(sz, _sleep));
 			}
 		}
 	}
@@ -255,7 +239,7 @@ struct Main: public Kernel {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == POWERS.size()) {
-			commit(local_server());
+			commit(local_server, this);
 		}
 	}
 
@@ -295,7 +279,8 @@ main(int argc, char* argv[]) {
 		retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
 		retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
 	} else {
-		retval = factory_main<Main,config>(argc, argv);
+		local_server.send(new Main(argc, argv));
+		retval = wait_and_return();
 	}
 	std::cout << "KERNEL count = " << kernel_count << std::endl;
 	if (kernel_count > 0) {

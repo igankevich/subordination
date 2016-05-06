@@ -18,19 +18,23 @@
 #include <factory/server/nic_server.hh>
 #include <factory/server_guard.hh>
 #include <factory/reflection.hh>
+#include <factory/algorithm.hh>
 
 namespace factory {
 
 	Server_guard<components::CPU_server<Kernel>> local_server;
 	Server_guard<components::Timer_server<Kernel>> timer_server;
 	Server_guard<components::IO_server<Kernel>> io_server;
-	components::Global_thread_context _globalcon;
 
-	Server_guard<components::NIC_server<Kernel,sys::socket>> remote_server;
+	/*
+		[this] (app_type app, stream_type&) {
+		 	this->app_server()->forward(app, _vaddr, _packetbuf);
+		}
+	*/
 
 	/// Server API
 	inline void compute(Kernel* rhs) { local_server.send(rhs); }
-	inline void spill(Kernel* rhs) { remote_server.send(rhs); }
+//	inline void spill(Kernel* rhs) { remote_server.send(rhs); }
 	inline void input(Kernel* rhs) { io_server.send(rhs); }
 	inline void output(Kernel* rhs) { io_server.send(rhs); }
 
@@ -44,14 +48,16 @@ namespace factory {
 
 	inline void yield(Kernel* rhs) { compute(rhs); }
 
+	/*
 	inline void collect(Kernel* rhs) {
 		rhs->return_to_parent();
 		spill(rhs);
 	}
+	*/
 
 	inline void commit(Kernel* rhs, Result ret) {
 		if (!rhs->parent()) {
-			factory::return_value.set_value(static_cast<int>(rhs.result()));
+			factory::return_value.set_value(static_cast<int>(rhs->result()));
 		} else {
 			rhs->return_to_parent(ret);
 			compute(rhs);
@@ -61,23 +67,6 @@ namespace factory {
 	inline void commit(Kernel* rhs) {
 		Result ret = rhs->result();
 		commit(rhs, ret == Result::undefined ? Result::success : ret);
-	}
-
-	/// @deprecated
-	template<class S>
-	void
-	upstream(S& this_server, Principal* a) {
-		a->parent(this);
-		this_server->send(a);
-	}
-
-	/// @deprecated
-	template<class S>
-	void
-	upstream_carry(S& this_server, Principal* a) {
-		a->parent(this);
-		a->setf(Flag::carries_parent);
-		this_server->send(a);
 	}
 
 	/*
