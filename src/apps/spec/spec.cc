@@ -4,6 +4,7 @@
 #include <factory/server/timer_server.hh>
 #include <factory/server/io_server.hh>
 #include <factory/server/nic_server.hh>
+#include <factory/kernel.hh>
 
 // disable logs
 namespace stdx {
@@ -24,24 +25,38 @@ namespace stdx {
 
 
 namespace factory {
-	inline namespace this_config {
+	struct Router {
 
-		struct config {
-			typedef components::CPU_server<config> local_server;
-			typedef components::NIC_server<config, sys::socket> remote_server;
-			typedef components::Timer_server<config> timer_server;
-			typedef components::IO_server<config> io_server;
-		};
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
 
+		void
+		send_remote(Kernel*);
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+			assert(false);
+		}
+
+	};
+
+	components::NIC_server<Kernel, sys::socket, Router> remote_server;
+
+	void
+	Router::send_remote(Kernel* rhs) {
+		remote_server.send(rhs);
 	}
+
 }
 
 using namespace factory;
-using namespace factory::this_config;
 
 #include "spec_app.hh"
 
 int
 main(int argc, char** argv) {
-	return factory_main<Spec_app,config>(argc, argv);
+	local_server.send(new Spec_app);
+	return wait_and_return();
 }

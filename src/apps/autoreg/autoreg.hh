@@ -815,7 +815,7 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			spill(call(generators[i]));
+			factory::upstream(remote_server, this, generators[i]);
 		}
 		delete[] generators;
 	}
@@ -825,8 +825,7 @@ struct Wave_surface_generator: public Kernel {
 			<< ", completed " << count+1 << " of " << grid.num_parts()
 			<< std::endl;
 		if (++count == grid.num_parts()) {
-			return_to_parent();
-			collect();
+			commit(remote_server, this);
 		}
 	}
 

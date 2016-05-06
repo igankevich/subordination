@@ -467,6 +467,7 @@ namespace factory {
 
 	using components::Result;
 	using components::Principal;
+	using components::Kernel_header;
 	typedef components::Principal Kernel;
 
 }

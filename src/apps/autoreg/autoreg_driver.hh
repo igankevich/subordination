@@ -306,9 +306,9 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			interval, zsize, zdelta, grid, grid_2
 		);
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		compute(call(kernel));
+		upstream(local_server, this, kernel);
 		#else
-		spill(carry_parent(kernel));
+		upstream_carry(remote_server, this, kernel);
 		#endif
 	}
 	if (typeid(*child) == typeid(generator_type)) {
@@ -383,7 +383,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			}
 		}
 
-		commit(local_server());
+		commit(local_server, this);
 	}
 
 }

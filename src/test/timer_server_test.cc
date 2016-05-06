@@ -39,7 +39,7 @@ struct Sleepy_kernel: public Kernel {
 	void pos(size_t p) { position = p; }
 	size_t pos() const { return position; }
 
-	void act(Server& this_server) {
+	void act() {
 		const auto now = current_time_nano();
 		const auto at = this->at().time_since_epoch().count();
 		std::cout
@@ -47,7 +47,7 @@ struct Sleepy_kernel: public Kernel {
 			<< ", scheduled at " << at
 			<< ", delta=" << now-at
 			<< std::endl;
-		commit(this_server.local_server());
+		commit(local_server, this);
 	}
 
 	size_t position = 0;
@@ -55,21 +55,20 @@ struct Sleepy_kernel: public Kernel {
 
 struct Main: public Kernel {
 	typedef stdx::log<Main> this_log;
-	Main(Server& this_server, int argc, char* argv[]) {}
-	void act(Server& this_server) {
+	void act() {
 		std::vector<Kernel*> kernels(NUM_KERNELS);
 		// send kernels in inverse chronological order
 		for (size_t i=0; i<NUM_KERNELS; ++i) {
 			kernels[i] = new_sleepy_kernel(NUM_KERNELS - i, NUM_KERNELS - i);
 		}
-		factory()->timer_server()->send(kernels.data(), kernels.size());
+		timer_server.send(kernels.data(), kernels.size());
 	}
-	void react(Server& this_server, Kernel* child) {
+	void react(Kernel* child) {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
 		test::equal(k->pos(), last_pos+1, "Invalid order of timed kernels");
 		++last_pos;
 		if (++count == NUM_KERNELS) {
-			commit(local_server());
+			commit(local_server, this);
 		}
 	}
 
@@ -92,6 +91,6 @@ private:
 
 int
 main(int argc, char* argv[]) {
-	using namespace factory;
-	return factory_main<Main,config>(argc, argv);
+	local_server.send(new Main);
+	return factory::wait_and_return();
 }

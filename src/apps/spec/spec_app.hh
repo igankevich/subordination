@@ -272,7 +272,7 @@ struct Spectrum_kernel: public Kernel {
 	void act() override {
 		// TODO Filter 999 values.
 		_variance = compute_variance();
-		commit(local_server());
+		commit(local_server, this);
 	}
 
 	float spectrum(int32_t i, float angle) {
@@ -346,14 +346,14 @@ struct Station_kernel: public Kernel {
 				<< std::endl;
 			_observations.clear();
 			_spectra.clear();
-			commit(remote_server());
+			commit(remote_server, this);
 		}
 	}
 
 	void act() override {
 		// skip records when some variables are missing
 		if (_observations.size() != NUM_VARIABLES) {
-			commit(remote_server());
+			commit(remote_server, this);
 			return;
 		}
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -431,7 +431,7 @@ struct Station_kernel: public Kernel {
 			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(Kernel::Flag::priority_service);
-				this->upstream(local_server(), k);
+				upstream(local_server, this, k);
 			}
 		);
 	}
@@ -541,7 +541,7 @@ struct Year_kernel: public Kernel {
 	void act() override {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				this->upstream(remote_server(), new Station_kernel(pair.second, pair.first, _year));
+				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
 //				std::for_each(pair.second.cbegin(), pair.second.cend(),
 //					[this] (const decltype(pair.second)::value_type& pair2) {
 //						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
@@ -679,9 +679,9 @@ struct Launcher: public Kernel {
 					log << _count_spectra << std::endl;
 				}
 				#if defined(FACTORY_TEST_SLAVE_FAILURE)
-				commit(local_server());
+				commit(local_server, this);
 				#else
-				commit(remote_server());
+				commit(remote_server, this);
 				#endif
 			}
 		}
@@ -721,7 +721,7 @@ struct Launcher: public Kernel {
 	submit_station_kernels(Map _observations, Year _year) {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-				this->upstream(remote_server(), new Station_kernel(pair.second, pair.first, _year));
+				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
 //				std::for_each(pair.second.cbegin(), pair.second.cend(),
 //					[this] (const decltype(pair.second)::value_type& pair2) {
 //						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
@@ -743,24 +743,19 @@ struct Spec_app: public Kernel {
 
 	typedef stdx::log<Spec_app> this_log;
 
-	Spec_app() = default;
-
-	Spec_app(Server& this_server, int argc, char** argv) {
-	}
-
 	void
 	act() override {
 		this_log() << "program start" << std::endl;
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		upstream(local_server(), new Launcher);
+		upstream(local_server, this, new Launcher);
 		#else
-		upstream_carry(remote_server(), new Launcher);
+		upstream_carry(remote_server, this, new Launcher);
 		#endif
 	}
 
 	void
 	react(Kernel*) override {
-		commit(local_server());
+		commit(local_server, this);
 	}
 
 	const Type<Kernel>

@@ -35,20 +35,34 @@ namespace stdx {
 }
 
 namespace factory {
-	inline namespace this_config {
 
-		struct config {
-			typedef components::CPU_server<config> local_server;
-			typedef components::NIC_server<config, sys::socket> remote_server;
-			typedef components::Timer_server<config> timer_server;
-			typedef components::IO_server<config> io_server;
-		};
+	struct Router {
 
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
+
+		void
+		send_remote(Kernel*);
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+			assert(false);
+		}
+
+	};
+
+	components::NIC_server<Kernel, sys::socket, Router> remote_server;
+
+	void
+	Router::send_remote(Kernel* rhs) {
+		remote_server.send(rhs);
 	}
+
 }
 
 using namespace factory;
-using namespace factory::this_config;
 
 #include "apps/autoreg/autoreg_app.hh"
 #include "apps/spec/spec_app.hh"
@@ -71,7 +85,7 @@ struct Main: public Kernel {
 	typedef Master_discoverer<addr_type, hierarchy_type, distance_type> discoverer_type;
 	typedef stdx::log<Main> this_log;
 
-	Main(Server& this_server, int argc, char* argv[]):
+	Main(int argc, char* argv[]):
 	_cmdline(argc, argv, {
 		sys::cmd::ignore_first_arg(),
 		sys::cmd::make_option({"--role"}, _role),
@@ -84,7 +98,7 @@ struct Main: public Kernel {
 	{}
 
 	void
-	act(Server& this_server) {
+	act() {
 		parse_cmdline_args();
 		factory::types.register_type(negotiator_type::static_type());
 		factory::types.register_type(Ping::static_type());
@@ -307,7 +321,8 @@ int main(int argc, char* argv[]) {
 
 	} else {
 		using namespace factory;
-		retval = factory_main<Main<sys::ipv4_addr>,config>(argc, argv);
+		local_server.send(new Main<sys::ipv4_addr>(argc, argv));
+		retval = factory::wait_and_return();
 	}
 
 	return retval;

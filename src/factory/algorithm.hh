@@ -45,6 +45,32 @@ namespace factory {
 		ppl.send(lhs);
 	}
 
+	void
+	act(Kernel* kernel) {
+		if (kernel->result() == Result::undefined) {
+			if (kernel->principal()) {
+				kernel->principal()->react(kernel);
+			} else {
+				kernel->act();
+			}
+		} else {
+			bool del = false;
+			if (!kernel->principal()) {
+				del = !kernel->parent();
+			} else {
+				del = *kernel->principal() == *kernel->parent();
+				if (kernel->result() == Result::success) {
+					kernel->principal()->react(kernel);
+				} else {
+					kernel->principal()->error(kernel);
+				}
+			}
+			if (del) {
+				delete kernel;
+			}
+		}
+	}
+
 }
 
 #endif // FACTORY_ALGORITHM_HH

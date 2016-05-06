@@ -15,7 +15,7 @@ struct Ping: public Kernel {
 
 	void act() override {
 		this_log() << "act()" << std::endl;
-		factory::collect(this);
+		commit(remote_server, this);
 	}
 
 	void write(sys::packetstream& out) override {
@@ -74,7 +74,7 @@ struct Ping_pong: public Kernel {
 		this_log() << "sending ping #" << _currentkernel + 1 << std::endl;
 		int x = 1;
 		_expectedsum += x;
-		factory::spill(call(new Ping(x)));
+		factory::upstream(remote_server, this, new Ping(x));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
 			factory::schedule(this);

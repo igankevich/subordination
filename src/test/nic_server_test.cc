@@ -2,6 +2,7 @@
 #include <factory/algorithm.hh>
 #include <factory/server/cpu_server.hh>
 #include <factory/server/timer_server.hh>
+#include <factory/kernel.hh>
 
 #include <cassert>
 
@@ -25,7 +26,29 @@
 
 namespace factory {
 #if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
-	components::NIC_server<Kernel, FACTORY_SOCKET_TYPE> remote_server;
+	struct Router {
+
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
+
+		void
+		send_remote(Kernel*);
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+			assert(false);
+		}
+
+	};
+
+	components::NIC_server<Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
+
+	void
+	Router::send_remote(Kernel* rhs) {
+		remote_server.send(rhs);
+	}
 #endif
 
 #if defined(FACTORY_TEST_APPSERVER)

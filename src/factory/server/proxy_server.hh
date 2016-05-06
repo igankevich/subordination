@@ -122,7 +122,7 @@ namespace factory {
 
 			void
 			process_kernels_if_any() {
-				if (this->stopped()) {
+				if (this->is_stopped()) {
 					this->try_to_stop_gracefully();
 				} else {
 					poller().for_each_pipe_fd([this] (sys::poll_event& ev) {

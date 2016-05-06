@@ -16,7 +16,7 @@ namespace factory {
 
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
-		typedef std::function<void(app_type,Kernel_stream&)> forward_func;
+		typedef std::function<void(app_type)> forward_func;
 		typedef components::Types<Type<kernel_type>> types;
 		typedef stdx::log<Kernel_stream> this_log;
 
@@ -71,7 +71,7 @@ namespace factory {
 				app_type app;
 				*this >> app;
 				if (app != _thisapp) {
-					_doforward(app, *this);
+					_doforward(app);
 				} else {
 					try {
 						kernel = Type<kernel_type>::read_object(::factory::types, *this);

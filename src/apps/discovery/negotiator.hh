@@ -22,7 +22,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 
 	template<class Hierarchy>
 	void
-	negotiate(Server& this_server, Hierarchy& hierarchy) {
+	negotiate(Hierarchy& hierarchy) {
 		const sys::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
 		this->result(Result::success);
@@ -48,7 +48,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 				hierarchy.remove_subordinate(this->from());
 			}
 		}
-		this_server.remote_server()->send(this);
+		remote_server.send(this);
 	}
 
 	void write(sys::packetstream& out) override {
@@ -139,7 +139,7 @@ private:
 		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
 		n->to(addr);
-		upstream(remote_server, n);
+		upstream(remote_server, this, n);
 	}
 
 	sys::endpoint _oldprinc;

@@ -4,6 +4,7 @@
 #include <sys/semaphore.hh>
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
+#include <factory/algorithm.hh>
 
 namespace factory {
 
@@ -48,15 +49,15 @@ namespace factory {
 
 			void
 			do_run() override {
-				while (!this->stopped()) {
+				while (!this->is_stopped()) {
 					lock_type lock(this->_mutex);
 					wait_until_kernel_arrives(lock);
-					if (!this->stopped()) {
+					if (!this->is_stopped()) {
 						kernel_type* kernel = stdx::front(this->_kernels);
 						if (!wait_until_kernel_is_ready(lock, kernel)) {
 							stdx::pop(this->_kernels);
 							lock.unlock();
-							kernel->run_act(*this);
+							::factory::act(kernel);
 						}
 					}
 				}
@@ -65,14 +66,14 @@ namespace factory {
 			inline void
 			wait_until_kernel_arrives(lock_type& lock) {
 				this->_semaphore.wait(lock, [this] () {
-					return this->stopped() || !this->_kernels.empty();
+					return this->is_stopped() || !this->_kernels.empty();
 				});
 			}
 
 			inline bool
 			wait_until_kernel_is_ready(lock_type& lock, kernel_type* kernel) {
 				return this->_semaphore.wait_until(lock, kernel->at(),
-					[this] { return this->stopped(); });
+					[this] { return this->is_stopped(); });
 			}
 
 		};

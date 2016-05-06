@@ -24,7 +24,7 @@ namespace factory {
 
 	namespace components {
 
-		template<class T, class Socket, class Kernels=std::deque<T*>>
+		template<class T, class Socket, class Router, class Kernels=std::deque<T*>>
 		struct Remote_Rserver: public Server_base {
 
 			typedef Server_base base_server;
@@ -34,6 +34,7 @@ namespace factory {
 			typedef Kernel_stream<kernel_type> stream_type;
 			typedef Server_base server_type;
 			typedef Socket socket_type;
+			typedef Router router_type;
 			typedef Kernels pool_type;
 			typedef application_type app_type;
 			typedef typename stream_type::forward_func forward_func;
@@ -46,13 +47,21 @@ namespace factory {
 
 			Remote_Rserver() = default;
 
-			Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, forward_func callback):
+			Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, router_type& router):
 			_vaddr(vaddr),
 			_packetbuf(),
 			_stream(&_packetbuf),
-			_sentupstream()
+			_sentupstream(),
+			_router(router)
 			{
-				_stream.setforward(callback);
+				_stream.setforward(
+					[this] (app_type app) {
+						Kernel_header hdr;
+						hdr.from(_vaddr);
+						hdr.setapp(app);
+						_router.forward(hdr, _stream);
+					}
+				);
 				_packetbuf.setfd(std::move(sock));
 			}
 
@@ -64,7 +73,8 @@ namespace factory {
 			_vaddr(rhs._vaddr),
 			_packetbuf(std::move(rhs._packetbuf)),
 			_stream(std::move(rhs._stream)),
-			_sentupstream(std::move(rhs._sentupstream))
+			_sentupstream(std::move(rhs._sentupstream)),
+			_router(rhs._router)
 			{
 				_stream.rdbuf(&_packetbuf);
 			}
@@ -217,7 +227,7 @@ namespace factory {
 				if (!ok) {
 					return_kernel(k);
 				} else {
-					this->root()->send(k);
+					_router.send_local(k);
 				}
 			}
 
@@ -230,15 +240,16 @@ namespace factory {
 			void recover_kernel(kernel_type* k) {
 				if (k->moves_upstream()) {
 					std::clog << "Recovering kernel " << *k << std::endl;
-					this->parent()->send(k);
+					// this->parent()->send(k);
+					_router.send_remote(k);
 				} else if (k->moves_somewhere()) {
 					k->from(k->to());
 					k->result(Result::endpoint_not_connected);
 					k->principal(k->parent());
-					this->root()->send(k);
+					_router.send_local(k);
 				} else if (k->moves_downstream() and k->carries_parent()) {
 					std::clog << "Reviving parent kernel on a subordinate node" << std::endl;
-					this->root()->send(k);
+					_router.send_local(k);
 				} else {
 					assert(false and "Bad kernel in sent buffer");
 				}
@@ -264,14 +275,16 @@ namespace factory {
 			stream_type _stream;
 			pool_type _sentupstream;
 			pool_type _sentdownstream;
+			router_type& _router;
 		};
 
-		template<class T, class Socket>
-		struct NIC_server: public Proxy_server<T,Remote_Rserver<T,Socket>> {
+		template<class T, class Socket, class Router>
+		struct NIC_server: public Proxy_server<T,Remote_Rserver<T,Socket,Router>> {
 
 			typedef Socket socket_type;
+			typedef Router router_type;
 
-			typedef Proxy_server<T,Remote_Rserver<T,Socket>> base_server;
+			typedef Proxy_server<T,Remote_Rserver<T,Socket,Router>> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
@@ -280,6 +293,7 @@ namespace factory {
 			using typename base_server::server_type;
 
 			using base_server::poller;
+			using base_server::send;
 
 			typedef std::map<sys::endpoint,server_type> upstream_type;
 			typedef typename upstream_type::iterator iterator_type;
@@ -313,7 +327,8 @@ namespace factory {
 			NIC_server(const NIC_server&) = delete;
 			NIC_server& operator=(const NIC_server&) = delete;
 
-			void remove_server(server_type* ptr) override {
+			void
+			remove_server(server_type* ptr) override {
 				// TODO: occasional ``Bad file descriptor''
 				this_log() << "Removing server " << *ptr << std::endl;
 				auto result = _upstream.find(ptr->vaddr());
@@ -349,7 +364,7 @@ namespace factory {
 						log << "replacing peer " << s;
 						poller().disable(s.socket().fd());
 						server_type new_s(std::move(s));
-						new_s.setparent(this);
+						// new_s.setparent(this);
 						new_s.socket(std::move(sock));
 						remove_valid_server(res);
 //						_upstream.erase(res);
@@ -390,11 +405,6 @@ namespace factory {
 				return _socket.bind_addr();
 			}
 
-			void
-			setforward(forward_func rhs) noexcept {
-				_doforward = rhs;
-			}
-
 		private:
 
 			id_type
@@ -432,7 +442,7 @@ namespace factory {
 				if (result == _iterator) {
 					advance_upstream_iterator();
 				}
-				result->second.stop();
+				result->second.setstate(server_state::stopped);
 				_upstream.erase(result);
 			}
 
@@ -471,7 +481,7 @@ namespace factory {
 			void
 			process_kernel(kernel_type* k) {
 				if (this->server_addr() && k->to() == this->server_addr()) {
-					this->root()->send(k);
+					_router.send_local(k);
 //					std::ostringstream msg;
 //					msg << "Kernel is sent to local node. From="
 //						<< this->server_addr() << ", to=" << k->to();
@@ -490,14 +500,14 @@ namespace factory {
 						// in a somewhat half-assed fashion
 						_endreached = false;
 						// short-circuit kernels when no upstream servers are available
-						this->root()->send(k);
+						_router.send_local(k);
 					} else {
 						// skip stopped hosts
 						iterator_type old_iterator = _iterator;
-						if (_iterator->second.stopped()) {
+						if (_iterator->second.is_stopped()) {
 							do {
 								advance_upstream_iterator();
-							} while (_iterator->second.stopped() and old_iterator != _iterator);
+							} while (_iterator->second.is_stopped() and old_iterator != _iterator);
 						}
 						// round robin over upstream hosts
 						ensure_identity(k);
@@ -508,7 +518,7 @@ namespace factory {
 					// kernel @k was sent to local node
 					// because no upstream servers had
 					// been available
-					this->root()->send(k);
+					_router.send_local(k);
 				} else {
 					// create endpoint if necessary, and send kernel
 					if (not k->to()) {
@@ -543,7 +553,7 @@ namespace factory {
 				sys::poll_event::legacy_event revents=0)
 			{
 				sys::fd_type fd = sock.fd();
-				server_type s(std::move(sock), vaddr, _doforward);
+				server_type s(std::move(sock), vaddr, _router);
 				// s.setparent(this);
 				auto result = emplace_server(vaddr, std::move(s));
 				poller().emplace(
@@ -559,7 +569,7 @@ namespace factory {
 			iterator_type _iterator;
 			bool _endreached = false;
 			std::atomic<id_type> _counter{0};
-			forward_func _doforward;
+			router_type _router;
 		};
 
 	}
@@ -568,15 +578,15 @@ namespace factory {
 
 namespace stdx {
 
-	template<class T, class Socket>
-	struct type_traits<factory::components::NIC_server<T,Socket>> {
+	template<class T, class Socket, class Router>
+	struct type_traits<factory::components::NIC_server<T,Socket,Router>> {
 		static constexpr const char*
 		short_name() { return "nic_server"; }
 		typedef factory::components::server_category category;
 	};
 
-	template<class T, class Socket, class Kernels>
-	struct type_traits<factory::components::Remote_Rserver<T, Socket, Kernels>> {
+	template<class T, class Socket, class Router, class Kernels>
+	struct type_traits<factory::components::Remote_Rserver<T, Socket, Router, Kernels>> {
 		static constexpr const char*
 		short_name() { return "nic_rserver"; }
 		typedef factory::components::server_category category;

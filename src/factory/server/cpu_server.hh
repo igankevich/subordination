@@ -7,6 +7,7 @@
 #include <factory/server/intro.hh>
 #include <factory/server/basic_server.hh>
 #include <factory/result.hh>
+#include <factory/algorithm.hh>
 
 namespace factory {
 
@@ -37,36 +38,6 @@ namespace factory {
 			Basic_CPU_server& operator=(const Basic_CPU_server&) = delete;
 			~Basic_CPU_server() = default;
 
-		protected:
-
-			void
-			do_act(kernel_type* kernel) {
-				if (kernel->result() == Result::undefined) {
-					if (kernel->principal()) {
-						kernel->principal()->react(this);
-					} else {
-						kernel->act();
-					}
-				} else {
-					bool del = false;
-					if (!kernel->principal()) {
-						del = !kernel->parent();
-					} else {
-						del = *kernel->principal() == *kernel->parent();
-						if (this->result() == Result::success) {
-							kernel->principal()->react(kernel);
-						} else {
-							this_log() << "Principal error" << std::endl;
-							kernel->principal()->error(kernel);
-						}
-					}
-					if (del) {
-						this_log() << "delete " << *kernel << std::endl;
-						delete kernel;
-					}
-				}
-			}
-
 		private:
 
 			void
@@ -78,12 +49,12 @@ namespace factory {
 						stdx::pop(this->_kernels);
 						stdx::unlock_guard<lock_type> g(lock);
 						try {
-							do_act(kernel);
+							::factory::act(kernel);
 						} catch (std::exception& x) {
 							throw Error(x.what(), {__FILE__, __LINE__, __func__});
 						}
 					}
-					return this->stopped();
+					return this->is_stopped();
 				});
 			}
 

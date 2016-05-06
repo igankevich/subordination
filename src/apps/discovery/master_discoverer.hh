@@ -31,12 +31,12 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	Master_discoverer& operator=(const Master_discoverer&) = delete;
 
 	void
-	act(Server& this_server) override {
-		try_next_host(this_server);
+	act() override {
+		try_next_host();
 	}
 
 	void
-	react(Server& this_server, Kernel* k) override {
+	react(Kernel* k) override {
 		if (_negotiator == k) {
 			if (k->result() == Result::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
@@ -44,7 +44,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 				_negotiator = nullptr;
 				deploy_secret_agent();
 			} else {
-				try_next_host(this_server);
+				try_next_host();
 			}
 		} else
 		if (_secretagent == k) {
@@ -55,12 +55,12 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			if (k->result() == Result::endpoint_not_connected) {
 				_hierarchy.unset_principal();
 				log << "hierarchy: " << _hierarchy << std::endl;
-				try_next_host(this_server);
+				try_next_host();
 			}
 		} else
 		if (k->type() == negotiator_type::static_type()) {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
-			neg->negotiate(this_server, _hierarchy);
+			neg->negotiate(_hierarchy);
 			this_log() << "hierarchy: " << _hierarchy << std::endl;
 		}
 	}
@@ -88,7 +88,7 @@ private:
 	}
 
 	void
-	try_next_host(Server& this_server) {
+	try_next_host() {
 		advance_through_ranked_list();
 		run_negotiator();
 	}
@@ -121,7 +121,7 @@ private:
 			const sys::endpoint new_princ(_currenthost->second, _port);
 			this_log() << "trying " << new_princ << std::endl;
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
-			upstream(local_server, _negotiator);
+			upstream(local_server, this, _negotiator);
 		}
 	}
 

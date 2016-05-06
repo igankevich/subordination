@@ -20,6 +20,11 @@ namespace factory {
 
 	std::promise<int> return_value;
 
+	void
+	graceful_shutdown(int ret) {
+		return_value.set_value(ret);
+	}
+
 	int
 	wait_and_return() {
 		return return_value.get_future().get();
@@ -279,6 +284,8 @@ namespace factory {
 			std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
 	}
+
+	using components::server_state;
 
 }
 #endif // FACTORY_SERVER_BASIC_SERVER_HH

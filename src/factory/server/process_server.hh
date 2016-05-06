@@ -23,19 +23,24 @@
 namespace factory {
 	namespace components {
 
-		template<class T, class Kernels=std::deque<T*>>
+		template<class T, class Router, class Kernels=std::deque<T*>>
 		struct Buffered_server: public Server_base {
 
 			typedef Server_base base_server;
 			typedef T kernel_type;
+			typedef Router router_type;
 			typedef Kernels pool_type;
 			typedef stdx::log<Buffered_server> this_log;
 
-			Buffered_server() = default;
+			explicit
+			Buffered_server(router_type& router):
+			_router(router)
+			{}
 
 			Buffered_server(Buffered_server&& rhs):
 			base_server(std::move(rhs)),
-			_buffer(std::move(rhs._buffer))
+			_buffer(std::move(rhs._buffer)),
+			_router(rhs._router)
 			{}
 
 			Buffered_server(const Buffered_server&) = delete;
@@ -114,7 +119,7 @@ namespace factory {
 					k->from(k->to());
 					k->result(Result::endpoint_not_connected);
 					k->principal(k->parent());
-					// this->root()->send(k);
+					_router.send_local(k);
 				}
 			}
 
@@ -129,19 +134,27 @@ namespace factory {
 
 			pool_type _buffer;
 
+		protected:
+
+			router_type& _router;
+
 		};
 
-		template<class T>
-		struct Process_rserver: public Buffered_server<T> {
+		template<class T, class Router>
+		struct Process_rserver: public Buffered_server<T,Router> {
 
-			typedef Buffered_server<T> base_server;
+			typedef Buffered_server<T,Router> base_server;
 			using typename base_server::kernel_type;
+			using typename base_server::router_type;
 			typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
 			typedef sys::packetstream stream_type;
 			typedef typename kernel_type::app_type app_type;
 			typedef stdx::log<Process_rserver> this_log;
 
-			Process_rserver(sys::pid_type&& child, sys::two_way_pipe&& pipe):
+			using base_server::_router;
+
+			Process_rserver(sys::pid_type&& child, sys::two_way_pipe&& pipe, router_type& router):
+			base_server(router),
 			_childpid(child),
 			_outbuf(std::move(pipe.parent_out())),
 			_ostream(&_outbuf),
@@ -165,7 +178,8 @@ namespace factory {
 			}
 
 			explicit
-			Process_rserver(sys::pipe&& pipe):
+			Process_rserver(sys::pipe&& pipe, router_type& router):
+			base_server(router),
 			_childpid(sys::this_process::id()),
 			_outbuf(std::move(pipe.out())),
 			_ostream(&_outbuf),
@@ -256,7 +270,7 @@ namespace factory {
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
 				if (app == Application::ROOT || _childpid == sys::this_process::id()) {
-					Type<kernel_type>::read_object(this->factory()->types(), _istream,
+					Type<kernel_type>::read_object(factory::types, _istream,
 						[this,app] (kernel_type* k) {
 							receive_kernel(k, app);
 						}
@@ -264,7 +278,7 @@ namespace factory {
 				} else {
 					Kernel_header hdr;
 					hdr.setapp(app);
-					this->factory()->remote_server()->forward(hdr, _istream);
+					_router.forward(hdr, _istream);
 				}
 			}
 
@@ -277,7 +291,7 @@ namespace factory {
 					// TODO
 					this->clear_kernel_buffer(k);
 				} else if (k->principal_id()) {
-					kernel_type* p = this->factory()->instances().lookup(k->principal_id());
+					kernel_type* p = ::factory::instances.lookup(k->principal_id());
 					if (p == nullptr) {
 						k->result(Result::no_principal_found);
 						ok = false;
@@ -287,7 +301,7 @@ namespace factory {
 				if (!ok) {
 					return_kernel(k);
 				} else {
-					this->root()->send(k);
+					_router.send_local(k);
 				}
 			}
 
@@ -312,10 +326,11 @@ namespace factory {
 			Out = 101
 		};
 
-		template<class T>
-		struct Process_iserver: public Proxy_server<T,Process_rserver<T>> {
+		template<class T, class Router>
+		struct Process_iserver: public Proxy_server<T,Process_rserver<T,Router>> {
 
-			typedef Proxy_server<T,Process_rserver<T>> base_server;
+			typedef Process_rserver<T,Router> rserver_type;
+			typedef Proxy_server<T,rserver_type> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
@@ -323,11 +338,11 @@ namespace factory {
 			using typename base_server::kernel_pool;
 			using typename base_server::server_type;
 			using typename base_server::handler_type;
+			typedef typename rserver_type::router_type router_type;
 
 			using base_server::poller;
 
 			typedef sys::pid_type key_type;
-			typedef Process_rserver<T> rserver_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef stdx::log<Process_iserver> this_log;
 
@@ -375,7 +390,7 @@ namespace factory {
 				this_log() << "pipe=" << data_pipe << std::endl;
 				sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 				sys::fd_type parent_out = data_pipe.parent_out().get_fd();
-				rserver_type child(p.id(), std::move(data_pipe));
+				rserver_type child(p.id(), std::move(data_pipe), _router);
 				// child.setparent(this);
 				// assert(child.root() != nullptr);
 				this_log() << "starting child process: " << child << std::endl;
@@ -432,7 +447,7 @@ namespace factory {
 
 			bool
 			apps_are_running() const {
-				return !(this->stopped() and _apps.empty());
+				return !(this->is_stopped() and _apps.empty());
 			}
 
 			void
@@ -462,12 +477,14 @@ namespace factory {
 
 			map_type _apps;
 			sys::process_group _procs;
+			router_type _router;
 		};
 
-		template<class T>
-		struct Process_child_server: public Proxy_server<T,Process_rserver<T>> {
+		template<class T, class Router>
+		struct Process_child_server: public Proxy_server<T,Process_rserver<T,Router>> {
 
-			typedef Proxy_server<T,Process_rserver<T>> base_server;
+			typedef Process_rserver<T,Router> rserver_type;
+			typedef Proxy_server<T,rserver_type> base_server;
 			using typename base_server::kernel_type;
 			using typename base_server::mutex_type;
 			using typename base_server::lock_type;
@@ -475,16 +492,16 @@ namespace factory {
 			using typename base_server::kernel_pool;
 			using typename base_server::server_type;
 			using typename base_server::handler_type;
+			typedef typename rserver_type::router_type router_type;
 
 			using base_server::poller;
 
 			typedef sys::pid_type key_type;
-			typedef Process_rserver<T> rserver_type;
 			typedef std::map<key_type, rserver_type> map_type;
 			typedef stdx::log<Process_child_server> this_log;
 
 			Process_child_server():
-			_parent(sys::pipe{Shared_fildes::In, Shared_fildes::Out})
+			_parent(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router)
 			{}
 
 			Process_child_server(Process_child_server&& rhs) noexcept:
@@ -496,9 +513,9 @@ namespace factory {
 			void
 			remove_server(server_type* ptr) override {
 				this_log() << "Stopping server because parent died" << std::endl;
-				if (!this->stopped()) {
+				if (!this->is_stopped()) {
 					this->stop();
-					this->factory()->stop();
+					// this->factory()->stop();
 				}
 			}
 
@@ -528,7 +545,7 @@ namespace factory {
 
 			void
 			init_server() {
-				_parent.setparent(this);
+				// _parent.setparent(this);
 				std::cout << "HELLO WORLD " << sys::poll_event(Shared_fildes::Out, 0, 0)  << std::endl;
 				this_log() << "DEBUG=" << sys::poll_event(Shared_fildes::Out, 0, 0) << std::endl;
 				poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, handler_type(&_parent));
@@ -540,6 +557,7 @@ namespace factory {
 				_parent.send(k);
 			}
 
+			router_type _router;
 			rserver_type _parent;
 		};
 
@@ -549,22 +567,22 @@ namespace factory {
 
 namespace stdx {
 
-	template<class T>
-	struct type_traits<factory::components::Process_rserver<T>> {
+	template<class T, class Router>
+	struct type_traits<factory::components::Process_rserver<T,Router>> {
 		static constexpr const char*
 		short_name() { return "process_rserver"; }
 		typedef factory::components::server_category category;
 	};
 
-	template<class T>
-	struct type_traits<factory::components::Process_iserver<T>> {
+	template<class T, class Router>
+	struct type_traits<factory::components::Process_iserver<T,Router>> {
 		static constexpr const char*
 		short_name() { return "process_iserver"; }
 		typedef factory::components::server_category category;
 	};
 
-	template<class T>
-	struct type_traits<factory::components::Process_child_server<T>> {
+	template<class T, class Router>
+	struct type_traits<factory::components::Process_child_server<T,Router>> {
 		static constexpr const char*
 		short_name() { return "process_child_server"; }
 		typedef factory::components::server_category category;

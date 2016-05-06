@@ -21,7 +21,30 @@ namespace stdx {
 
 using namespace factory;
 
-components::NIC_server<Kernel,sys::socket> remote_server;
+	struct Router {
+
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
+
+		void
+		send_remote(Kernel*);
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+			assert(false);
+		}
+
+	};
+
+	components::NIC_server<Kernel,sys::socket,Router> remote_server;
+
+	void
+	Router::send_remote(Kernel* rhs) {
+		remote_server.send(rhs);
+	}
+
 #include "big_kernel.hh"
 
 struct Good_kernel: public Kernel {
@@ -256,7 +279,7 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 		buffer_type buffer{sink_type{}};
 		stream_type stream(&buffer);
 		test::equal(static_cast<bool>(stream), true, "bad rdstate after construction");
-		stream.settypes(&_types);
+		// stream.settypes(&_types);
 		for (Carrier& k : expected) {
 			stream << k;
 		}

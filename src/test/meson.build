@@ -11,6 +11,7 @@ test(
 	'kernel-stream',
 	executable(
 		'kernel-stream-test',
+		dependencies: threads,
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir
 	)

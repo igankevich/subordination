@@ -10,9 +10,53 @@
 
 namespace factory {
 #if defined(FACTORY_TEST_SERVER)
-components::Process_iserver<Kernel> remote_server;
+	struct Router {
+
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
+
+		void
+		send_remote(Kernel*) {
+			assert(false);
+		}
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr);
+
+	};
+
+	components::Process_iserver<Kernel,Router> remote_server;
+
+	void
+	Router::forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		remote_server.forward(hdr, istr);
+	}
 #else
-Server_guard<components::Process_child_server<Kernel>> remote_server;
+	struct Router {
+
+		void
+		send_local(Kernel* rhs) {
+			local_server.send(rhs);
+		}
+
+		void
+		send_remote(Kernel*);
+
+		void
+		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+			assert(false);
+		}
+
+	};
+
+	Server_guard<components::Process_child_server<Kernel,Router>> remote_server;
+
+	void
+	Router::send_remote(Kernel* rhs) {
+		remote_server.send(rhs);
+	}
 #endif
 }
 
