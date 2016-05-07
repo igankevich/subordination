@@ -62,24 +62,6 @@ struct Negotiator: public Priority_kernel<Kernel> {
 		in >> _oldprinc >> _newprinc;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			8,
-			"Negotiator",
-			[] (sys::packetstream& in) {
-				Negotiator<Address>* k = new Negotiator<Address>;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 private:
 
 	sys::endpoint _oldprinc;

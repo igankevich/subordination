@@ -146,24 +146,6 @@ struct Test_socket: public Kernel {
 		return _data;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			1,
-			"Test_socket",
-			[] (sys::packetstream& in) {
-				Test_socket* k = new Test_socket;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 //	static void init_type(Type* t) {
 //		t->id(1);
 //		t->name("Test_socket");
@@ -247,7 +229,7 @@ struct Main: public Kernel {
 
 	void
 	act() override {
-		factory::types.register_type(Test_socket::static_type());
+		factory::types.register_type<Test_socket>();
 //		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {

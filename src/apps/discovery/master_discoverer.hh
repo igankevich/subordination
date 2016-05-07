@@ -58,7 +58,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 				try_next_host();
 			}
 		} else
-		if (k->type() == negotiator_type::static_type()) {
+		if (typeid(*k) == typeid(negotiator_type)) {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(_hierarchy);
 			this_log() << "hierarchy: " << _hierarchy << std::endl;

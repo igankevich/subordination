@@ -100,16 +100,16 @@ struct Main: public Kernel {
 	void
 	act() {
 		parse_cmdline_args();
-		factory::types.register_type(negotiator_type::static_type());
-		factory::types.register_type(Ping::static_type());
-		factory::types.register_type(autoreg::Generator1<float,autoreg::Uniform_grid>::static_type());
-		factory::types.register_type(autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>::static_type());
-		factory::types.register_type(autoreg::Autoreg_model<float>::static_type());
-		factory::types.register_type(Secret_agent::static_type());
-		factory::types.register_type(Launcher::static_type());
-		factory::types.register_type(Year_kernel::static_type());
-		factory::types.register_type(Station_kernel::static_type());
-		factory::types.register_type(Spec_app::static_type());
+		factory::types.register_type<negotiator_type>();
+		factory::types.register_type<Ping>();
+		factory::types.register_type<autoreg::Generator1<float,autoreg::Uniform_grid>>();
+		factory::types.register_type<autoreg::Wave_surface_generator<float,autoreg::Uniform_grid>>();
+		factory::types.register_type<autoreg::Autoreg_model<float>>();
+		factory::types.register_type<Secret_agent>();
+		factory::types.register_type<Launcher>();
+		factory::types.register_type<Year_kernel>();
+		factory::types.register_type<Station_kernel>();
+		factory::types.register_type<Spec_app>();
 		if (this->result() != Result::success) {
 			factory::commit(this);
 		} else {

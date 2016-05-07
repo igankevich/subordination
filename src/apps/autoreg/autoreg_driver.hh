@@ -122,24 +122,6 @@ public:
 		in >> _time0 >> _time1;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			10000,
-			"Autoreg_model",
-			[] (sys::packetstream& in) {
-				Autoreg_model* k = new Autoreg_model;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 	void react(factory::Kernel* child) override;
 
 	void gather_statistics();

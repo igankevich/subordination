@@ -15,24 +15,6 @@ struct Secret_agent: public Priority_kernel<Kernel> {
 		delete this;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			112,
-			"Secret_agent",
-			[] (sys::packetstream& in) {
-				Secret_agent* k = new Secret_agent;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 };
 
 #endif // APPS_DISCOVERY_SECRET_AGENT_HH

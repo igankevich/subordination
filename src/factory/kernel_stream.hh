@@ -17,7 +17,7 @@ namespace factory {
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
 		typedef std::function<void(app_type)> forward_func;
-		typedef components::Types<Type<kernel_type>> types;
+		typedef Types types;
 		typedef stdx::log<Kernel_stream> this_log;
 
 		enum struct state {
@@ -40,7 +40,7 @@ namespace factory {
 
 		Kernel_stream&
 		operator<<(kernel_type& kernel) {
-			const Type<kernel_type> type = kernel.type();
+			const Type* type = ::factory::types.lookup(typeid(kernel));
 			if (not type) {
 				throw components::Bad_type(
 					"no type is defined for the kernel",
@@ -49,14 +49,15 @@ namespace factory {
 				);
 			}
 			begin_packet();
-			*this << kernel.app() << type.id();
+			*this << kernel.app() << type->id();
 			kernel.write(*this);
 			if (kernel.carries_parent()) {
 				// embed parent into the current kernel
 				kernel_type* parent = kernel.parent();
 				assert(parent and "Trying to embed non-existent parent kernel.");
-				assert(parent->type() and "Trying to embed parent kernel with undefined type.");
-				*this << parent->type().id();
+				const Type* parent_type = ::factory::types.lookup(typeid(*parent));
+				assert(parent_type and "Trying to embed parent kernel with undefined type.");
+				*this << parent_type->id();
 				parent->write(*this);
 			}
 			end_packet();
@@ -74,10 +75,10 @@ namespace factory {
 					_doforward(app);
 				} else {
 					try {
-						kernel = Type<kernel_type>::read_object(::factory::types, *this);
+						kernel = static_cast<kernel_type*>(Types::read_object(::factory::types, *this));
 						kernel->setapp(app);
 						if (kernel->carries_parent()) {
-							kernel_type* parent = Type<kernel_type>::read_object(::factory::types, *this);
+							kernel_type* parent = static_cast<kernel_type*>(Types::read_object(::factory::types, *this));
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
@@ -138,6 +139,11 @@ namespace factory {
 			_rdstate = state::good;
 		}
 
+		void
+		setapp(app_type rhs) noexcept {
+			_thisapp = rhs;
+		}
+
 	private:
 
 		friend std::ostream&
@@ -150,7 +156,7 @@ namespace factory {
 			return out;
 		}
 
-		app_type _thisapp = ::factory::application_id();
+		app_type _thisapp = 0;
 		forward_func _doforward;
 		state _rdstate = state::good;
 

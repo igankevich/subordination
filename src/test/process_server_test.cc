@@ -129,24 +129,6 @@ struct Test_socket: public Kernel {
 		return _data;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			1,
-			"Test_socket",
-			[] (sys::packetstream& in) {
-				Test_socket* k = new Test_socket;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 private:
 	std::vector<Datum> _data;
 };
@@ -214,7 +196,7 @@ struct Main: public Kernel {
 	typedef stdx::log<Main> this_log;
 
 	Main() {
-		factory::types.register_type(Test_socket::static_type());
+		factory::types.register_type<Test_socket>();
 		#if defined(FACTORY_TEST_SERVER)
 		Application app(XSTRINGIFY(FACTORY_APP_PATH));
 		std::cout << "App = " << app << std::endl;

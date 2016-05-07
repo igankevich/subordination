@@ -5,7 +5,7 @@
 #include <factory/algorithm.hh>
 
 template<uint32_t Size>
-struct Big_kernel: public factory::Kernel {
+struct Big_kernel: public factory::Kernel, public factory::Register_type<Big_kernel<Size>> {
 
 	Big_kernel():
 	_data(Size)
@@ -56,24 +56,6 @@ struct Big_kernel: public factory::Kernel {
 			out << sys::make_bytes(x);
 		}
 		return out;
-	}
-
-	const factory::Type<factory::Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const factory::Type<factory::Kernel>
-	static_type() noexcept {
-		return factory::Type<factory::Kernel>{
-			12345u + Size,
-			"Big_kernel",
-			[] (sys::packetstream& in) {
-				Big_kernel<Size>* k = new Big_kernel<Size>;
-				k->read(in);
-				return k;
-			}
-		};
 	}
 
 private:

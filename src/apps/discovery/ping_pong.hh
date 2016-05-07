@@ -34,24 +34,6 @@ struct Ping: public Kernel {
 		return _data;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			111,
-			"Ping",
-			[] (sys::packetstream& in) {
-				Ping* k = new Ping;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 private:
 
 	int _data;

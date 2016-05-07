@@ -28,7 +28,7 @@ struct Dummy_remote_server {
 
 using namespace factory;
 
-struct Good_kernel: public Kernel {
+struct Good_kernel: public Kernel, public Register_type<Good_kernel> {
 
 	void
 	write(sys::packetstream& out) override {
@@ -40,24 +40,6 @@ struct Good_kernel: public Kernel {
 	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> _data;
-	}
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			1,
-			"Good_kernel",
-			[] (sys::packetstream& in) {
-				Good_kernel* k = new Good_kernel;
-				k->read(in);
-				return k;
-			}
-		};
 	}
 
 	bool
@@ -87,7 +69,10 @@ private:
 
 };
 
-struct Kernel_that_writes_more_than_reads: public Good_kernel {
+struct Kernel_that_writes_more_than_reads:
+public Good_kernel,
+public Register_type<Kernel_that_writes_more_than_reads>
+{
 
 	void
 	write(sys::packetstream& out) override {
@@ -96,27 +81,12 @@ struct Kernel_that_writes_more_than_reads: public Good_kernel {
 		out << Datum();
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			2,
-			"Kernel_that_writes_more_than_reads",
-			[] (sys::packetstream& in) {
-				Kernel_that_writes_more_than_reads* k = new Kernel_that_writes_more_than_reads;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 };
 
-struct Kernel_that_reads_more_than_writes: public Good_kernel {
+struct Kernel_that_reads_more_than_writes:
+public Good_kernel,
+public Register_type<Kernel_that_reads_more_than_writes>
+{
 
 	void
 	read(sys::packetstream& in) override {
@@ -124,24 +94,6 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 		Datum dummy;
 		// read dummy object from the stream
 		in >> dummy;
-	}
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			3,
-			"Kernel_that_reads_more_than_writes",
-			[] (sys::packetstream& in) {
-				Kernel_that_reads_more_than_writes* k = new Kernel_that_reads_more_than_writes;
-				k->read(in);
-				return k;
-			}
-		};
 	}
 
 };
@@ -166,25 +118,6 @@ struct Kernel_that_carries_its_parent: public Kernel {
 	read(sys::packetstream& in) override {
 		Kernel::read(in);
 		in >> _data;
-	}
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			4,
-			"Kernel_that_carries_its_parent",
-			[] (sys::packetstream& in) {
-				Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
-				k->read(in);
-				assert(k->carries_parent());
-				return k;
-			}
-		};
 	}
 
 	bool
@@ -222,11 +155,7 @@ private:
 
 };
 
-struct Dummy_kernel: public Kernel {
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{};
-	}
+struct Dummy_kernel: public Kernel, public Register_type<Dummy_kernel> {
 };
 
 template<class Kernel, class Carrier, class Parent=Dummy_kernel, class Ch=char>
@@ -238,21 +167,6 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 	typedef Kernel_stream<kernel_type> stream_type;
 	typedef typename stream_type::types types;
 	typedef stdx::log<Test_kernel_stream> this_log;
-
-	template<class T>
-	static void
-	register_type(T rhs) {
-		if (not factory::types.lookup(rhs.id())) {
-			factory::types.register_type(rhs);
-		}
-	}
-
-	Test_kernel_stream() {
-		register_type(Carrier::static_type());
-		if (not std::is_same<Parent,Dummy_kernel>::value) {
-			register_type(Parent::static_type());
-		}
-	}
 
 	void
 	xrun() override {
@@ -288,13 +202,20 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 };
 
 int main() {
-	factory::set_application_id(0);
-	int ret= test::Test_suite{
+	std::clog << factory::types << std::endl;
+	factory::register_type({
+		[] (sys::packetstream& in) {
+			Kernel_that_carries_its_parent* kernel = new Kernel_that_carries_its_parent(0);
+			kernel->read(in);
+			return kernel;
+		},
+		typeid(Kernel_that_carries_its_parent)
+	});
+	return test::Test_suite{
 		new Test_kernel_stream<Kernel, Good_kernel>,
 		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
 		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>,
 		new Test_kernel_stream<Kernel, Kernel_that_carries_its_parent, Good_kernel>,
 		new Test_kernel_stream<Kernel, Big_kernel<100>>
 	}.run();
-	return ret;
 }

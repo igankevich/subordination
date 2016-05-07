@@ -203,7 +203,16 @@ namespace factory {
 				*/
 				_ostream.begin_packet();
 				_ostream << kernel->app() << kernel->from();
-				Type<kernel_type>::write_object(*kernel, _ostream);
+				const Type* type = ::factory::types.lookup(typeid(*kernel));
+				if (not type) {
+					throw components::Bad_type(
+						"no type is defined for the kernel",
+						{__FILE__, __LINE__, __func__},
+						kernel->id()
+					);
+				}
+				_ostream << type->id();
+				kernel->write(_ostream);
 				_ostream.end_packet();
 				stdx::log_func<this_log>(__func__, "kernel", *kernel);
 				base_server::send(kernel);
@@ -270,8 +279,9 @@ namespace factory {
 				this_log() << "recv ok" << std::endl;
 				this_log() << "recv app=" << app << std::endl;
 				if (app == Application::ROOT || _childpid == sys::this_process::id()) {
-					Type<kernel_type>::read_object(factory::types, _istream,
-						[this,app] (kernel_type* k) {
+					Types::read_object(factory::types, _istream,
+						[this,app] (void* rhs) {
+							kernel_type* k = static_cast<kernel_type*>(rhs);
 							receive_kernel(k, app);
 						}
 					);

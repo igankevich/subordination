@@ -326,25 +326,13 @@ namespace factory {
 			virtual void
 			react(Principal*) {
 				std::stringstream msg;
-				msg << "Empty react in ";
-				const Type<Principal> tp = type();
-				if (tp) {
-					msg << tp;
-				} else {
-					msg << "unknown type";
-					msg << " typeid=" << typeid(*this).name();
-				}
+				msg << "Empty react: type=" << typeid(*this).name();
 				throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 
 			virtual void
 			error(Principal* rhs) {
 				react(rhs);
-			}
-
-			virtual const Type<Principal>
-			type() const noexcept {
-				return Type<Principal>{0};
 			}
 
 			friend std::ostream&
@@ -358,7 +346,7 @@ namespace factory {
 				};
 				return out << stdx::make_fields(
 					"state", state,
-					"type", rhs.type(),
+					"type", typeid(rhs).name(),
 					"id", rhs.id(),
 					"src", rhs.from(),
 					"dst", rhs.to(),

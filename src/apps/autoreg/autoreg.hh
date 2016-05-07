@@ -733,24 +733,6 @@ struct Generator1: public Kernel {
 		in >> grid_2;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			10002,
-			"Generator",
-			[] (sys::packetstream& in) {
-				Generator1* k = new Generator1;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 private:
 
 	struct Note: public factory::Kernel {};
@@ -855,24 +837,6 @@ struct Wave_surface_generator: public Kernel {
 		in >> grid;
 		in >> grid_2;
 		in >> count;
-	}
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			10001,
-			"Wave_surface_generator",
-			[] (sys::packetstream& in) {
-				Wave_surface_generator* k = new Wave_surface_generator;
-				k->read(in);
-				return k;
-			}
-		};
 	}
 
 //	void write(const Surface_part& part) {

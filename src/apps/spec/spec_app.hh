@@ -440,24 +440,6 @@ struct Station_kernel: public Kernel {
 	Station station() const { return _station; }
 	int32_t num_processed_spectra() const { return _out_matrix.size(); }
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			20002,
-			"Station_kernel",
-			[] (sys::packetstream& in) {
-				Station_kernel* k = new Station_kernel;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 	void
 	read(sys::packetstream& in) override {
 		Kernel::read(in);
@@ -587,24 +569,6 @@ struct Year_kernel: public Kernel {
 		out << _num_spectra;
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			20000,
-			"Year_kernel",
-			[] (sys::packetstream& in) {
-				Year_kernel* k = new Year_kernel;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 	Year year() const { return _year; }
 	int32_t num_processed_spectra() const { return _num_spectra; }
 
@@ -687,24 +651,6 @@ struct Launcher: public Kernel {
 		}
 	}
 
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			20001,
-			"Launcher",
-			[] (sys::packetstream& in) {
-				Launcher* k = new Launcher;
-				k->read(in);
-				return k;
-			}
-		};
-	}
-
 	void
 	read(sys::packetstream& in) override {
 		Kernel::read(in);
@@ -756,24 +702,6 @@ struct Spec_app: public Kernel {
 	void
 	react(Kernel*) override {
 		commit(local_server, this);
-	}
-
-	const Type<Kernel>
-	type() const noexcept override {
-		return static_type();
-	}
-
-	static const Type<Kernel>
-	static_type() noexcept {
-		return Type<Kernel>{
-			20011,
-			"Spec_app",
-			[] (sys::packetstream& in) {
-				Spec_app* k = new Spec_app;
-				k->read(in);
-				return k;
-			}
-		};
 	}
 
 };
