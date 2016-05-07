@@ -5,8 +5,8 @@
 
 #include "test.hh"
 
-factory::components::CPU_server<factory::Kernel> local_server;
-factory::components::Timer_server<factory::Kernel> timer_server;
+factory::CPU_server<factory::Kernel> local_server;
+factory::Timer_server<factory::Kernel> timer_server;
 
 struct Sleepy_kernel: public factory::Kernel {
 

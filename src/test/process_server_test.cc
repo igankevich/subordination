@@ -27,7 +27,7 @@ namespace factory {
 
 	};
 
-	components::Process_iserver<Kernel,Router> remote_server;
+	Process_iserver<Kernel,Router> remote_server;
 
 	void
 	Router::forward(const Kernel_header& hdr, sys::packetstream& istr) {
@@ -51,7 +51,7 @@ namespace factory {
 
 	};
 
-	components::Process_child_server<Kernel,Router> remote_server;
+	Process_child_server<Kernel,Router> remote_server;
 
 	void
 	Router::send_remote(Kernel* rhs) {
@@ -61,7 +61,7 @@ namespace factory {
 }
 
 using namespace factory;
-using factory::components::Application;
+using factory::Application;
 
 #include "datum.hh"
 

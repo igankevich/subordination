@@ -11,7 +11,7 @@
 #if defined(FACTORY_TEST_WEBSOCKET)
 #include <factory/nic_server.hh>
 #include <web/websocket.hh>
-#define FACTORY_SOCKET_TYPE factory::components::Web_socket
+#define FACTORY_SOCKET_TYPE factory::Web_socket
 #endif
 
 #if defined(FACTORY_TEST_APPSERVER)
@@ -43,7 +43,7 @@ namespace factory {
 
 	};
 
-	components::NIC_server<Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
+	NIC_server<Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
 
 	void
 	Router::send_remote(Kernel* rhs) {
@@ -52,7 +52,7 @@ namespace factory {
 #endif
 
 #if defined(FACTORY_TEST_APPSERVER)
-	components::Sub_Iserver<config> remote_server;
+	Sub_Iserver<config> remote_server;
 #endif
 }
 
@@ -281,11 +281,11 @@ main(int argc, char* argv[]) {
 	}
 	std::cout << "KERNEL count = " << kernel_count << std::endl;
 	if (kernel_count > 0) {
-		throw components::Error("some kernels were not deleted",
+		throw Error("some kernels were not deleted",
 			__FILE__, __LINE__, __func__);
 	}
 	if (kernel_count < 0) {
-		throw components::Error("some kernels were deleted multiple times",
+		throw Error("some kernels were deleted multiple times",
 			__FILE__, __LINE__, __func__);
 	}
 	return retval;

@@ -22,9 +22,9 @@
 
 namespace factory {
 
-	components::CPU_server<Kernel> local_server;
-	components::Timer_server<Kernel> timer_server;
-	components::IO_server<Kernel> io_server;
+	CPU_server<Kernel> local_server;
+	Timer_server<Kernel> timer_server;
+	IO_server<Kernel> io_server;
 
 	/*
 		[this] (app_type app, stream_type&) {

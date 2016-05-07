@@ -42,7 +42,7 @@ namespace factory {
 		operator<<(kernel_type& kernel) {
 			const Type* type = ::factory::types.lookup(typeid(kernel));
 			if (not type) {
-				throw components::Bad_type(
+				throw Bad_type(
 					"no type is defined for the kernel",
 					{__FILE__, __LINE__, __func__},
 					kernel.id()
@@ -82,7 +82,7 @@ namespace factory {
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
-					} catch (components::Bad_kernel& err) {
+					} catch (Bad_kernel& err) {
 						setstate(state::bad_kernel);
 						this_log() << err << std::endl;
 					}

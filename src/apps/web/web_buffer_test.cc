@@ -7,8 +7,8 @@
 #include "datum.hh"
 
 using namespace factory;
-using factory::components::Error;
-using factory::components::LBuffer;
+using factory::Error;
+using factory::LBuffer;
 
 const char* prefix = "tmp.web_buffer_test.";
 

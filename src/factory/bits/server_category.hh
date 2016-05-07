@@ -3,11 +3,7 @@
 
 namespace factory {
 
-	namespace components {
-
-		struct server_category {};
-
-	}
+	struct server_category {};
 
 }
 #endif // FACTORY_BITS_SERVER_CATEGORY_HH

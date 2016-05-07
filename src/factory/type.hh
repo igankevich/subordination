@@ -12,9 +12,6 @@
 
 namespace factory {
 
-	using components::Bad_kernel;
-	using components::Error;
-
 	struct Type {
 
 		/// A portable type id

@@ -36,7 +36,7 @@ namespace factory {
 
 	};
 
-	components::NIC_server<Kernel, sys::socket, Router> remote_server;
+	NIC_server<Kernel, sys::socket, Router> remote_server;
 
 	void
 	Router::send_remote(Kernel* rhs) {

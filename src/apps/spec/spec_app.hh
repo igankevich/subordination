@@ -323,7 +323,7 @@ struct Station_kernel: public Kernel {
 		if (ret == -1) {
 			std::stringstream msg;
 			msg << "Error while reading file '" << filename << "'.";
-			throw components::Error(msg.str(), __FILE__, __LINE__, __func__);
+			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 		return ret;
 	}
@@ -365,7 +365,7 @@ struct Station_kernel: public Kernel {
 				if (file == NULL) {
 					std::stringstream msg;
 					msg << "Can not open file '" << ob.filename() << "' for reading.";
-					throw components::Error(msg.str(), __FILE__, __LINE__, __func__);
+					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 				}
 				char buf[64];
 				int count = 0;

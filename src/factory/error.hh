@@ -15,101 +15,97 @@ namespace std {
 
 namespace factory {
 
-	namespace components {
+	struct Error_location {
 
-		struct Error_location {
+		Error_location(const char* file, const int line, const char* func) noexcept:
+		_file(file),
+		_line(line),
+		_func(func)
+		{}
 
-			Error_location(const char* file, const int line, const char* func) noexcept:
-			_file(file),
-			_line(line),
-			_func(func)
-			{}
+		friend std::ostream&
+		operator<<(std::ostream& out, const Error_location& rhs) {
+			return
+			out << rhs._file << ':'
+				<< rhs._line << ':'
+				<< rhs._func;
+		}
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const Error_location& rhs) {
-				return
-				out << rhs._file << ':'
-					<< rhs._line << ':'
-					<< rhs._func;
-			}
+	private:
 
-		private:
+		const char* _file;
+		const int _line;
+		const char* _func;
 
-			const char* _file;
-			const int _line;
-			const char* _func;
+	};
 
-		};
+	struct Error: public std::runtime_error {
 
-		struct Error: public std::runtime_error {
+		Error(std::string&& msg, const char* file, const int line, const char* function) noexcept:
+		std::runtime_error(std::forward<std::string>(msg)),
+		_location{file, line, function}
+		{}
 
-			Error(std::string&& msg, const char* file, const int line, const char* function) noexcept:
-			std::runtime_error(std::forward<std::string>(msg)),
-			_location{file, line, function}
-			{}
+		Error(const char* msg, const Error_location& loc) noexcept:
+		std::runtime_error(msg),
+		_location(loc)
+		{}
 
-			Error(const char* msg, const Error_location& loc) noexcept:
-			std::runtime_error(msg),
-			_location(loc)
-			{}
+		friend std::ostream&
+		operator<<(std::ostream& out, const Error& rhs) {
+			return
+			out << rhs._location << ' '
+				<< std::this_thread::get_id() << ' '
+				<< rhs.what();
+		}
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const Error& rhs) {
-				return
-				out << rhs._location << ' '
-					<< std::this_thread::get_id() << ' '
-					<< rhs.what();
-			}
+	private:
 
-		private:
+		Error_location _location;
 
-			Error_location _location;
+	};
 
-		};
+	struct Bad_kernel: public Error {
 
-		struct Bad_kernel: public Error {
+		typedef std::uintmax_t id_type;
 
-			typedef std::uintmax_t id_type;
+		Bad_kernel(const char* msg, const Error_location& loc, id_type type_id) noexcept:
+		Error(msg, loc),
+		_id(type_id)
+		{}
 
-			Bad_kernel(const char* msg, const Error_location& loc, id_type type_id) noexcept:
-			Error(msg, loc),
-			_id(type_id)
-			{}
+		friend std::ostream&
+		operator<<(std::ostream& out, const Bad_kernel& rhs) {
+			operator<<(out, static_cast<const Error&>(rhs));
+			return out << ' ' << "type_id" << '=' << rhs._id;
+		}
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const Bad_kernel& rhs) {
-				operator<<(out, static_cast<const Error&>(rhs));
-				return out << ' ' << "type_id" << '=' << rhs._id;
-			}
+	private:
 
-		private:
+		id_type _id;
 
-			id_type _id;
+	};
 
-		};
+	struct Bad_type: public Error {
 
-		struct Bad_type: public Error {
+		typedef std::uintmax_t id_type;
 
-			typedef std::uintmax_t id_type;
+		Bad_type(const char* msg, const Error_location& loc, id_type kernel_id) noexcept:
+		Error(msg, loc),
+		_id(kernel_id)
+		{}
 
-			Bad_type(const char* msg, const Error_location& loc, id_type kernel_id) noexcept:
-			Error(msg, loc),
-			_id(kernel_id)
-			{}
+		friend std::ostream&
+		operator<<(std::ostream& out, const Bad_type& rhs) {
+			operator<<(out, static_cast<const Error&>(rhs));
+			return out << ' ' << "id" << '=' << rhs._id;
+		}
 
-			friend std::ostream&
-			operator<<(std::ostream& out, const Bad_type& rhs) {
-				operator<<(out, static_cast<const Error&>(rhs));
-				return out << ' ' << "id" << '=' << rhs._id;
-			}
+	private:
 
-		private:
+		id_type _id;
 
-			id_type _id;
-
-		};
-
-	}
+	};
 
 }
 

@@ -4,7 +4,6 @@
 #include "test.hh"
 
 using namespace factory;
-using namespace factory::components;
 
 std::random_device rng;
 

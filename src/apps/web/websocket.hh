@@ -10,8 +10,6 @@
 
 namespace factory {
 
-	namespace components {
-
 		/*
 		 * WebSocket lib with support for "wss://" encryption.
 		 * Copyright 2010 Joel Martin
@@ -540,7 +538,7 @@ namespace factory {
 ////				this->_frame.opcode(opcode::binary_frame);
 ////				this->_frame.fin(1);
 ////				this->_frame.payload_size(input_size);
-////				this->_frame.mask(components::rng());
+////				this->_frame.mask(rng());
 ////				this->_frame.encode(result);
 ////				this->_frame.copy_payload(first, last, result);
 ////				this_log() << "send header " << this->frame << std::endl;
@@ -806,9 +804,6 @@ namespace factory {
 //		constexpr static const char* HTTP_FIELD_SEPARATOR = "\r\n";
 //		constexpr static const char* BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n\r\n";
 //	};
-
-
-	}
 
 }
 
