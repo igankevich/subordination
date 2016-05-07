@@ -4,18 +4,20 @@
 namespace factory {
 
 	template<class Server>
-	struct Server_guard: public Server {
+	struct Server_guard {
 
-		template<class ... Args>
-		Server_guard(Args&& ... args):
-		Server(std::forward<Args>(args)...)
-		{ this->start(); }
+		Server_guard(Server& rhs):
+		_server(rhs)
+		{ _server.start(); }
 
-		virtual
 		~Server_guard() {
-			this->stop();
-			this->wait();
+			_server.stop();
+			_server.wait();
 		}
+
+	private:
+
+		Server& _server;
 
 	};
 

@@ -51,7 +51,7 @@ namespace factory {
 
 	};
 
-	Server_guard<components::Process_child_server<Kernel,Router>> remote_server;
+	components::Process_child_server<Kernel,Router> remote_server;
 
 	void
 	Router::send_remote(Kernel* rhs) {
