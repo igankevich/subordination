@@ -58,14 +58,6 @@ namespace factory {
 
 using namespace factory;
 
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
-
-}
-
 const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
 sys::endpoint server_endpoint("127.0.0.1", 10001);

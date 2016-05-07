@@ -17,23 +17,6 @@
 #include "hierarchy_with_graph.hh"
 #include "test.hh"
 
-// disable logs
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::true_type {};
-
-	template<>
-	struct disable_log_category<factory::components::kernel_category>:
-	public std::true_type {};
-
-	template<>
-	struct disable_log_category<factory::components::server_category>:
-	public std::true_type {};
-
-}
-
 namespace factory {
 
 	struct Router {

@@ -1,11 +1,15 @@
 #ifndef TEST_BIG_KERNEL_HH
 #define TEST_BIG_KERNEL_HH
 
-#include "datum.hh"
 #include <factory/algorithm.hh>
 
+#include "datum.hh"
+
 template<uint32_t Size>
-struct Big_kernel: public factory::Kernel, public factory::Register_type<Big_kernel<Size>> {
+struct Big_kernel:
+public factory::Kernel,
+public factory::Register_type<Big_kernel<Size>>
+{
 
 	Big_kernel():
 	_data(Size)

@@ -9,15 +9,6 @@
 
 using namespace factory;
 
-// disable logs
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
-
-}
-
 std::random_device rng;
 
 template<class T, class Fd>

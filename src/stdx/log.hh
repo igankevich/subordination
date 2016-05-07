@@ -18,12 +18,12 @@ namespace stdx {
 	template<class T>
 	std::string
 	demangle_name() {
-	#if defined(FACTORY_TEST_HAVE_CXXABI)
+		#if defined(FACTORY_TEST_HAVE_CXXABI)
 		int status;
 		return std::string(abi::__cxa_demangle(typeid(T).name(), 0, 0, &status));
-	#else
+		#else
 		return std::string(typeid(T).name());
-	#endif
+		#endif
 	}
 
 	struct no_category {};
@@ -42,9 +42,9 @@ namespace stdx {
 	template<class T>
 	std::string type_traits<T>::_name = demangle_name<T>();
 
+	/// disable all debug logs by default
 	template<class Category>
-	struct disable_log_category:
-	public std::integral_constant<bool, false> {};
+	struct enable_log: public std::false_type {};
 
 	struct no_log {
 
@@ -102,8 +102,12 @@ namespace stdx {
 
 	template<class T>
 	struct log: public
-	std::conditional<disable_log_category<typename type_traits<T>::category>::value,
-	no_log, basic_log<T>>::type {};
+	std::conditional<
+		enable_log<typename type_traits<T>::category>::value,
+		basic_log<T>,
+		no_log
+	>::type
+	{};
 
 
 	namespace bits {

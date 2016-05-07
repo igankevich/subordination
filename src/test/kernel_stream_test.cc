@@ -9,12 +9,12 @@
 #include "test.hh"
 #include "datum.hh"
 
-// disable logs
 namespace stdx {
 
 	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
+	struct enable_log<sys::buffer_category>:
+	public std::false_type
+	{};
 
 }
 
@@ -28,7 +28,10 @@ struct Dummy_remote_server {
 
 using namespace factory;
 
-struct Good_kernel: public Kernel, public Register_type<Good_kernel> {
+struct Good_kernel:
+public Kernel,
+public Register_type<Good_kernel>
+{
 
 	void
 	write(sys::packetstream& out) override {
@@ -155,8 +158,10 @@ private:
 
 };
 
-struct Dummy_kernel: public Kernel, public Register_type<Dummy_kernel> {
-};
+struct Dummy_kernel:
+public Kernel,
+public Register_type<Dummy_kernel>
+{};
 
 template<class Kernel, class Carrier, class Parent=Dummy_kernel, class Ch=char>
 struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,Parent,Ch>> {
@@ -202,7 +207,6 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,P
 };
 
 int main() {
-	std::clog << factory::types << std::endl;
 	factory::register_type({
 		[] (sys::packetstream& in) {
 			Kernel_that_carries_its_parent* kernel = new Kernel_that_carries_its_parent(0);

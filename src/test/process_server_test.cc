@@ -60,14 +60,6 @@ namespace factory {
 #endif
 }
 
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
-
-}
-
 using namespace factory;
 using factory::components::Application;
 

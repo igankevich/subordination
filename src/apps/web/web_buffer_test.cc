@@ -10,15 +10,6 @@ using namespace factory;
 using factory::components::Error;
 using factory::components::LBuffer;
 
-// disable logs
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
-
-}
-
 const char* prefix = "tmp.web_buffer_test.";
 
 std::random_device rng;

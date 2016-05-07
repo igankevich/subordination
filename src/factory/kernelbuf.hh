@@ -44,8 +44,10 @@ namespace factory {
 		typedef stdx::log<basic_kernelbuf> this_log;
 
 		typedef stdx::basic_packetbuf<char_type,traits_type> good_base_type;
-		static_assert(std::is_base_of<good_base_type, Base>::value,
-			"bad base class");
+		static_assert(
+			std::is_base_of<good_base_type, Base>::value,
+			"bad base class"
+		);
 
 		enum struct State {
 			initial,
@@ -229,39 +231,6 @@ namespace factory {
 		State _rstate = State::initial;
 		pos_type _packetpos = 0;
 	};
-
-	//template<class Base>
-	//struct basic_kstream: public std::basic_iostream<typename Base::char_type, typename Base::traits_type> {
-
-	//	typedef basic_kernelbuf<Base> kernelbuf_type;
-	//	typedef typename Base::char_type Ch;
-	//	typedef typename Base::traits_type Tr;
-	//	typedef std::basic_iostream<Ch,Tr> iostream_type;
-
-	//	basic_kstream(): iostream_type(nullptr), _kernelbuf()
-	//	{ this->init(&_kernelbuf); }
-
-	//	void
-	//	begin_packet() {
-	//		_kernelbuf.begin_packet();
-	//	}
-
-	//	void
-	//	end_packet() {
-	//		_kernelbuf.end_packet();
-	//	}
-
-	//	bool
-	//	update_state() {
-	//		return _kernelbuf.update_state();
-	//	}
-
-	//private:
-	//	kernelbuf_type _kernelbuf;
-	//};
-
-
-	//typedef basic_kstream<char> kstream;
 
 }
 
