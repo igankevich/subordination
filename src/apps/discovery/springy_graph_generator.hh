@@ -3,7 +3,7 @@
 
 #include <chrono>
 
-#include <sys/net/endpoint.hh>
+#include <sys/endpoint.hh>
 
 namespace springy {
 

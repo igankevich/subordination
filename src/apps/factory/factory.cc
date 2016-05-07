@@ -1,5 +1,5 @@
 #include "security.hh"
-#include <sys/net/network_format.hh>
+#include <sys/network_format.hh>
 #include <sys/log.hh>
 
 void

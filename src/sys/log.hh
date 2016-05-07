@@ -8,7 +8,7 @@
 
 #include <stdx/mutex.hh>
 
-#include <sys/proc/process.hh>
+#include <sys/process.hh>
 
 namespace sys {
 

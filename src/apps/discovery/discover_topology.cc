@@ -9,8 +9,10 @@
 
 #include <stdx/log.hh>
 
-#include <sys/net.hh>
-#include <sys/proc/cmdline.hh>
+#include <sys/endpoint.hh>
+#include <sys/socket.hh>
+#include <sys/ifaddr.hh>
+#include <sys/cmdline.hh>
 
 #include "location.hh"
 #include "csv_tuple.hh"

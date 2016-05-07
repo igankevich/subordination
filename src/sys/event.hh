@@ -1,5 +1,5 @@
-#ifndef SYS_IO_EVENT_HH
-#define SYS_IO_EVENT_HH
+#ifndef SYS_EVENT_HH
+#define SYS_EVENT_HH
 
 #include <poll.h>
 #include <sys/socket.h>
@@ -509,4 +509,4 @@ namespace sys {
 
 }
 
-#endif // SYS_IO_EVENT_HH
+#endif // SYS_EVENT_HH

@@ -1,5 +1,5 @@
 #include <apps/factory/security.hh>
-#include <sys/io/fildesbuf.hh>
+#include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>
 #include <factory/error.hh>
 #include <factory/kernelbuf.hh>

@@ -5,7 +5,7 @@
 #include <istream>
 #include <ostream>
 
-#include "net/network_format.hh"
+#include "network_format.hh"
 #include <stdx/packetbuf.hh>
 
 namespace sys {

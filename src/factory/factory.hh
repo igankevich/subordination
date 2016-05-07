@@ -5,7 +5,7 @@
 	#error Factory requires C++11 compiler.
 #endif
 
-#include <sys/proc/process.hh>
+#include <sys/process.hh>
 #include <sys/log.hh>
 #include <sys/packetstream.hh>
 

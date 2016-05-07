@@ -1,5 +1,5 @@
-#ifndef SYS_IO_PIPE_HH
-#define SYS_IO_PIPE_HH
+#ifndef SYS_PIPE_HH
+#define SYS_PIPE_HH
 
 #include <unistd.h>
 
@@ -7,7 +7,7 @@
 
 #include <sys/bits/check.hh>
 #include <sys/bits/safe_calls.hh>
-#include <sys/proc/process.hh>
+#include <sys/process.hh>
 
 #include "fildes.hh"
 
@@ -176,4 +176,4 @@ namespace sys {
 
 }
 
-#endif // SYS_IO_PIPE_HH
+#endif // SYS_PIPE_HH

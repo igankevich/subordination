@@ -1,5 +1,5 @@
-#ifndef SYS_FS_DIR_HH
-#define SYS_FS_DIR_HH
+#ifndef SYS_DIR_HH
+#define SYS_DIR_HH
 
 #include <dirent.h>
 #include <cstring>
@@ -332,4 +332,4 @@ namespace sys {
 
 }
 
-#endif // SYS_FS_DIR_HH
+#endif // SYS_DIR_HH

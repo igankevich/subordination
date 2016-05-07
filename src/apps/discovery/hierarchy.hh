@@ -6,8 +6,8 @@
 
 #include <stdx/log.hh>
 
-#include <sys/net/endpoint.hh>
-#include <sys/net/ifaddr.hh>
+#include <sys/endpoint.hh>
+#include <sys/ifaddr.hh>
 
 namespace discovery {
 

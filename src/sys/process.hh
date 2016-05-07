@@ -1,5 +1,5 @@
-#ifndef SYS_PROC_PROCESS_HH
-#define SYS_PROC_PROCESS_HH
+#ifndef SYS_PROCESS_HH
+#define SYS_PROCESS_HH
 
 #include <unistd.h>
 #include <sys/wait.h>
@@ -561,4 +561,4 @@ namespace sys {
 
 }
 
-#endif // SYS_PROC_PROCESS_HH
+#endif // SYS_PROCESS_HH

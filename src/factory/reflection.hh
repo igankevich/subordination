@@ -3,7 +3,7 @@
 
 #include <factory/type.hh>
 #include <factory/kernel.hh>
-#include <sys/proc/process.hh>
+#include <sys/process.hh>
 
 namespace factory {
 

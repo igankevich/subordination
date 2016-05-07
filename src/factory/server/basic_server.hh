@@ -11,7 +11,7 @@
 #include <stdx/mutex.hh>
 
 #include <sys/semaphore.hh>
-#include <sys/net/endpoint.hh>
+#include <sys/endpoint.hh>
 #include <sys/system.hh>
 
 #include <factory/type.hh>
@@ -286,6 +286,11 @@ namespace factory {
 	}
 
 	using components::server_state;
+
+	struct Dummy_server {
+		template<class T>
+		void send(T*) {}
+	};
 
 }
 #endif // FACTORY_SERVER_BASIC_SERVER_HH

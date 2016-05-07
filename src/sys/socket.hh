@@ -1,5 +1,5 @@
-#ifndef SYS_IO_SOCKET_HH
-#define SYS_IO_SOCKET_HH
+#ifndef SYS_SOCKET_HH
+#define SYS_SOCKET_HH
 
 #include <sys/socket.h>
 #include <unistd.h>
@@ -19,7 +19,7 @@
 #include <stdx/log.hh>
 #include <stdx/mutex.hh>
 
-#include <sys/net/endpoint.hh>
+#include <sys/endpoint.hh>
 
 #include "fildes.hh"
 
@@ -258,4 +258,4 @@ namespace stdx {
 
 }
 
-#endif // SYS_IO_SOCKET_HH
+#endif // SYS_SOCKET_HH

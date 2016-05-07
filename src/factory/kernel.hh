@@ -6,7 +6,7 @@
 #include <stdx/log.hh>
 
 #include <factory/server/basic_server.hh>
-#include <sys/proc/process.hh>
+#include <sys/process.hh>
 #include <sys/packetstream.hh>
 #include "result.hh"
 

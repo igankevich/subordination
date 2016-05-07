@@ -1,5 +1,7 @@
-#include <sys/filesys.hh>
-#include <sys/proc/argstream.hh>
+#include <sys/dir.hh>
+#include <sys/file.hh>
+#include <sys/path.hh>
+#include <sys/argstream.hh>
 
 #include "test.hh"
 

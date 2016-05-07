@@ -5,7 +5,7 @@
 #include <random>
 
 #include <stdx/random.hh>
-#include <sys/net/ifaddr_list.hh>
+#include <sys/ifaddr_list.hh>
 #include <test.hh>
 
 #include "distance.hh"

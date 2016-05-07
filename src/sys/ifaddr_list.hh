@@ -1,5 +1,5 @@
-#ifndef SYS_NET_IFADDR_LIST_HH
-#define SYS_NET_IFADDR_LIST_HH
+#ifndef SYS_IFADDR_LIST_HH
+#define SYS_IFADDR_LIST_HH
 
 #include "bits/ifaddrs_iterator.hh"
 #include "ifaddr.hh"
@@ -76,4 +76,4 @@ namespace sys {
 
 }
 
-#endif // SYS_NET_IFADDR_LIST_HH
+#endif // SYS_IFADDR_LIST_HH

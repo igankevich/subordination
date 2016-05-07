@@ -1,8 +1,8 @@
 #include <map>
 
-#include <sys/io/socket.hh>
-#include <sys/proc/cmdline.hh>
-#include <sys/net/ifaddr.hh>
+#include <sys/socket.hh>
+#include <sys/cmdline.hh>
+#include <sys/ifaddr.hh>
 
 #include <factory/factory.hh>
 #include <factory/server/cpu_server.hh>

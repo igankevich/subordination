@@ -1,11 +1,11 @@
-#ifndef APPS_SPEC_SPEC_HH
-#define APPS_SPEC_SPEC_HH
+#ifndef APPS_SPEC_SPEC_APP_HH
+#define APPS_SPEC_SPEC_APP_HH
 
 #include <zlib.h>
 
 #include <fstream>
 
-#include <sys/fs/path.hh>
+#include <sys/path.hh>
 
 typedef int32_t Year;
 typedef int32_t Month;
@@ -707,4 +707,4 @@ struct Spec_app: public Kernel {
 };
 
 
-#endif // APPS_SPEC_SPEC_HH
+#endif // APPS_SPEC_SPEC_APP_HH

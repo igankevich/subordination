@@ -1,5 +1,4 @@
-#include <sys/net/network_format.hh>
-#include <sys/io/fildesbuf.hh>
+#include <sys/fildesbuf.hh>
 
 #include <factory/kernel.hh>
 #include <factory/kernelbuf.hh>
@@ -9,39 +8,24 @@
 #include "test.hh"
 #include "datum.hh"
 
-namespace stdx {
-
-	template<>
-	struct enable_log<sys::buffer_category>:
-	public std::false_type
-	{};
-
-}
-
-struct Dummy_remote_server {
-	template<class T>
-	void send(T*) {}
-} remote_server;
-
+factory::Dummy_server remote_server;
 
 #include "big_kernel.hh"
 
-using namespace factory;
-
 struct Good_kernel:
-public Kernel,
-public Register_type<Good_kernel>
+public factory::Kernel,
+public factory::Register_type<Good_kernel>
 {
 
 	void
 	write(sys::packetstream& out) override {
-		Kernel::write(out);
+		factory::Kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::packetstream& in) override {
-		Kernel::read(in);
+		factory::Kernel::read(in);
 		in >> _data;
 	}
 
@@ -57,7 +41,6 @@ public Register_type<Good_kernel>
 
 	friend std::ostream&
 	operator<<(std::ostream& out, const Good_kernel& rhs) {
-//		operator<<(out, static_cast<const Kernel&>(rhs));
 		return out << sys::make_bytes(rhs._data);
 	}
 
@@ -74,7 +57,7 @@ private:
 
 struct Kernel_that_writes_more_than_reads:
 public Good_kernel,
-public Register_type<Kernel_that_writes_more_than_reads>
+public factory::Register_type<Kernel_that_writes_more_than_reads>
 {
 
 	void
@@ -88,7 +71,7 @@ public Register_type<Kernel_that_writes_more_than_reads>
 
 struct Kernel_that_reads_more_than_writes:
 public Good_kernel,
-public Register_type<Kernel_that_reads_more_than_writes>
+public factory::Register_type<Kernel_that_reads_more_than_writes>
 {
 
 	void
@@ -101,10 +84,10 @@ public Register_type<Kernel_that_reads_more_than_writes>
 
 };
 
-struct Kernel_that_carries_its_parent: public Kernel {
+struct Kernel_that_carries_its_parent: public factory::Kernel {
 
 	Kernel_that_carries_its_parent() {
-		this->setf(Kernel::Flag::carries_parent);
+		this->setf(factory::Kernel::Flag::carries_parent);
 		this->parent(&_carry);
 		assert(parent());
 	}
@@ -113,13 +96,13 @@ struct Kernel_that_carries_its_parent: public Kernel {
 
 	void
 	write(sys::packetstream& out) override {
-		Kernel::write(out);
+		factory::Kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::packetstream& in) override {
-		Kernel::read(in);
+		factory::Kernel::read(in);
 		in >> _data;
 	}
 
@@ -159,17 +142,17 @@ private:
 };
 
 struct Dummy_kernel:
-public Kernel,
-public Register_type<Dummy_kernel>
+public factory::Kernel,
+public factory::Register_type<Dummy_kernel>
 {};
 
-template<class Kernel, class Carrier, class Parent=Dummy_kernel, class Ch=char>
-struct Test_kernel_stream: public test::Test<Test_kernel_stream<Kernel,Carrier,Parent,Ch>> {
+template<class Carrier, class Parent=Dummy_kernel>
+struct Test_kernel_stream: public test::Test<Test_kernel_stream<Carrier,Parent>> {
 
-	typedef Kernel kernel_type;
-	typedef std::basic_stringbuf<Ch> sink_type;
-	typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sink_type>> buffer_type;
-	typedef Kernel_stream<kernel_type> stream_type;
+	typedef factory::Kernel kernel_type;
+	typedef std::stringbuf sink_type;
+	typedef factory::basic_kernelbuf<sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>> buffer_type;
+	typedef factory::Kernel_stream<kernel_type> stream_type;
 	typedef typename stream_type::types types;
 	typedef stdx::log<Test_kernel_stream> this_log;
 
@@ -216,10 +199,10 @@ int main() {
 		typeid(Kernel_that_carries_its_parent)
 	});
 	return test::Test_suite{
-		new Test_kernel_stream<Kernel, Good_kernel>,
-		new Test_kernel_stream<Kernel, Kernel_that_writes_more_than_reads>,
-		new Test_kernel_stream<Kernel, Kernel_that_reads_more_than_writes>,
-		new Test_kernel_stream<Kernel, Kernel_that_carries_its_parent, Good_kernel>,
-		new Test_kernel_stream<Kernel, Big_kernel<100>>
+		new Test_kernel_stream<Good_kernel>,
+		new Test_kernel_stream<Kernel_that_writes_more_than_reads>,
+		new Test_kernel_stream<Kernel_that_reads_more_than_writes>,
+		new Test_kernel_stream<Kernel_that_carries_its_parent, Good_kernel>,
+		new Test_kernel_stream<Big_kernel<100>>
 	}.run();
 }
