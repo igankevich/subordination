@@ -1,5 +1,5 @@
-#ifndef FACTORY_SERVER_PROXY_SERVER_HH
-#define FACTORY_SERVER_PROXY_SERVER_HH
+#ifndef FACTORY_PROXY_SERVER_HH
+#define FACTORY_PROXY_SERVER_HH
 
 #include <stdx/algorithm.hh>
 #include <stdx/iterator.hh>
@@ -9,7 +9,7 @@
 #include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
-#include <factory/server/intro.hh>
+#include <factory/bits/server_category.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 
@@ -177,4 +177,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_SERVER_PROXY_SERVER_HH
+#endif // FACTORY_PROXY_SERVER_HH

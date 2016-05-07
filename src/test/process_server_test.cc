@@ -1,6 +1,6 @@
-#include <factory/server/cpu_server.hh>
-#include <factory/server/timer_server.hh>
-#include <factory/server/process_server.hh>
+#include <factory/cpu_server.hh>
+#include <factory/timer_server.hh>
+#include <factory/process_server.hh>
 #include <factory/server_guard.hh>
 #include <factory/reflection.hh>
 #include <factory/factory.hh>

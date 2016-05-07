@@ -12,10 +12,10 @@
 #include <factory/bits/terminate_handler.hh>
 #include <factory/kernel.hh>
 
-#include <factory/server/cpu_server.hh>
-#include <factory/server/io_server.hh>
-#include <factory/server/timer_server.hh>
-#include <factory/server/nic_server.hh>
+#include <factory/cpu_server.hh>
+#include <factory/io_server.hh>
+#include <factory/timer_server.hh>
+#include <factory/nic_server.hh>
 #include <factory/server_guard.hh>
 #include <factory/reflection.hh>
 #include <factory/algorithm.hh>

@@ -5,10 +5,10 @@
 #include <sys/ifaddr.hh>
 
 #include <factory/factory.hh>
-#include <factory/server/cpu_server.hh>
-#include <factory/server/timer_server.hh>
-#include <factory/server/io_server.hh>
-#include <factory/server/nic_server.hh>
+#include <factory/cpu_server.hh>
+#include <factory/timer_server.hh>
+#include <factory/io_server.hh>
+#include <factory/nic_server.hh>
 
 #include "distance.hh"
 #include "cache_guard.hh"

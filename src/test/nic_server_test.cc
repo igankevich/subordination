@@ -1,7 +1,7 @@
 #include <factory/factory.hh>
 #include <factory/algorithm.hh>
-#include <factory/server/cpu_server.hh>
-#include <factory/server/timer_server.hh>
+#include <factory/cpu_server.hh>
+#include <factory/timer_server.hh>
 #include <factory/kernel.hh>
 
 #include <cassert>
@@ -9,17 +9,17 @@
 #include "datum.hh"
 
 #if defined(FACTORY_TEST_WEBSOCKET)
-#include <factory/server/nic_server.hh>
+#include <factory/nic_server.hh>
 #include <web/websocket.hh>
 #define FACTORY_SOCKET_TYPE factory::components::Web_socket
 #endif
 
 #if defined(FACTORY_TEST_APPSERVER)
-#include <factory/server/app_server.hh>
+#include <factory/app_server.hh>
 #endif
 
 #if !defined(FACTORY_SOCKET_TYPE)
-#include <factory/server/nic_server.hh>
+#include <factory/nic_server.hh>
 #define FACTORY_TEST_SOCKET
 #define FACTORY_SOCKET_TYPE sys::socket
 #endif

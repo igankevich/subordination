@@ -1,5 +1,5 @@
-#ifndef FACTORY_SERVER_NIC_SERVER_HH
-#define FACTORY_SERVER_NIC_SERVER_HH
+#ifndef FACTORY_NIC_SERVER_HH
+#define FACTORY_NIC_SERVER_HH
 
 #include <map>
 #include <type_traits>
@@ -15,8 +15,8 @@
 #include <sys/endpoint.hh>
 #include <sys/ifaddr.hh>
 
-#include <factory/server/intro.hh>
-#include <factory/server/proxy_server.hh>
+#include <factory/bits/server_category.hh>
+#include <factory/proxy_server.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 
@@ -597,4 +597,4 @@ namespace stdx {
 	//public std::integral_constant<bool, true> {};
 
 }
-#endif // FACTORY_SERVER_NIC_SERVER_HH
+#endif // FACTORY_NIC_SERVER_HH

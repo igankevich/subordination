@@ -1,11 +1,11 @@
-#ifndef FACTORY_SERVER_CPU_SERVER_HH
-#define FACTORY_SERVER_CPU_SERVER_HH
+#ifndef FACTORY_CPU_SERVER_HH
+#define FACTORY_CPU_SERVER_HH
 
 #include <stdx/log.hh>
 #include <stdx/mutex.hh>
 #include <sys/system.hh>
-#include <factory/server/intro.hh>
-#include <factory/server/basic_server.hh>
+#include <factory/bits/server_category.hh>
+#include <factory/basic_server.hh>
 #include <factory/result.hh>
 #include <factory/algorithm.hh>
 
@@ -163,4 +163,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_SERVER_CPU_SERVER_HH
+#endif // FACTORY_CPU_SERVER_HH

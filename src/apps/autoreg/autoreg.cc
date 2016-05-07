@@ -1,7 +1,7 @@
 #include <factory/factory.hh>
-#include <factory/server/cpu_server.hh>
-#include <factory/server/timer_server.hh>
-#include <factory/server/nic_server.hh>
+#include <factory/cpu_server.hh>
+#include <factory/timer_server.hh>
+#include <factory/nic_server.hh>
 #include <factory/kernel.hh>
 
 namespace factory {

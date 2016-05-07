@@ -1,5 +1,5 @@
-#ifndef FACTORY_SERVER_PROCESS_SERVER_HH
-#define FACTORY_SERVER_PROCESS_SERVER_HH
+#ifndef FACTORY_PROCESS_SERVER_HH
+#define FACTORY_PROCESS_SERVER_HH
 
 #include <map>
 #include <cassert>
@@ -12,9 +12,9 @@
 #include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
-#include <factory/server/intro.hh>
-#include <factory/server/basic_server.hh>
-#include <factory/server/proxy_server.hh>
+#include <factory/bits/server_category.hh>
+#include <factory/basic_server.hh>
+#include <factory/proxy_server.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 #include <factory/result.hh>
@@ -600,4 +600,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_SERVER_PROCESS_SERVER_HH
+#endif // FACTORY_PROCESS_SERVER_HH

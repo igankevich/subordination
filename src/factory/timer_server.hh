@@ -1,9 +1,9 @@
-#ifndef FACTORY_SERVER_TIMER_SERVER_HH
-#define FACTORY_SERVER_TIMER_SERVER_HH
+#ifndef FACTORY_TIMER_SERVER_HH
+#define FACTORY_TIMER_SERVER_HH
 
 #include <sys/semaphore.hh>
-#include <factory/server/intro.hh>
-#include <factory/server/basic_server.hh>
+#include <factory/bits/server_category.hh>
+#include <factory/basic_server.hh>
 #include <factory/algorithm.hh>
 
 namespace factory {
@@ -93,4 +93,4 @@ namespace stdx {
 
 }
 
-#endif // FACTORY_SERVER_TIMER_SERVER_HH
+#endif // FACTORY_TIMER_SERVER_HH
