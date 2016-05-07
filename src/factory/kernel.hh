@@ -209,18 +209,18 @@ namespace factory {
 
 	};
 
-	struct Principal: public Mobile_kernel {
+	struct Kernel: public Mobile_kernel {
 
 		typedef Mobile_kernel base_kernel;
 		typedef Basic_kernel::Flag Flag;
 		using Mobile_kernel::id_type;
 
-		const Principal*
+		const Kernel*
 		principal() const {
 			return _principal;
 		}
 
-		Principal*
+		Kernel*
 		principal() {
 			return _principal;
 		}
@@ -236,16 +236,16 @@ namespace factory {
 		}
 
 		void
-		principal(Principal* rhs) {
+		principal(Kernel* rhs) {
 			_principal = rhs;
 		}
 
-		const Principal*
+		const Kernel*
 		parent() const {
 			return _parent;
 		}
 
-		Principal*
+		Kernel*
 		parent() {
 			return _parent;
 		}
@@ -256,7 +256,7 @@ namespace factory {
 		}
 
 		void
-		parent(Principal* p) {
+		parent(Kernel* p) {
 			_parent = p;
 		}
 
@@ -297,7 +297,7 @@ namespace factory {
 			}
 			assert(not _parent and "Parent is not null while reading from the data stream.");
 			in >> _parent_id;
-			assert(not _principal and "Principal kernel is not null while reading from the data stream.");
+			assert(not _principal and "Principal is not null while reading from the data stream.");
 			in >> _principal_id;
 		}
 
@@ -322,19 +322,19 @@ namespace factory {
 		act() {}
 
 		virtual void
-		react(Principal*) {
+		react(Kernel*) {
 			std::stringstream msg;
 			msg << "Empty react: type=" << typeid(*this).name();
 			throw Error(msg.str(), __FILE__, __LINE__, __func__);
 		}
 
 		virtual void
-		error(Principal* rhs) {
+		error(Kernel* rhs) {
 			react(rhs);
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Principal& rhs) {
+		operator<<(std::ostream& out, const Kernel& rhs) {
 			const char state[] = {
 				(rhs.moves_upstream()   ? 'u' : '-'),
 				(rhs.moves_downstream() ? 'd' : '-'),
@@ -359,14 +359,14 @@ namespace factory {
 
 		/// New API
 
-		inline Principal*
-		call(Principal* rhs) noexcept {
+		inline Kernel*
+		call(Kernel* rhs) noexcept {
 			rhs->parent(this);
 			return rhs;
 		}
 
-		inline Principal*
-		carry_parent(Principal* rhs) noexcept {
+		inline Kernel*
+		carry_parent(Kernel* rhs) noexcept {
 			rhs->parent(this);
 			rhs->setf(Flag::carries_parent);
 			return rhs;
@@ -378,7 +378,7 @@ namespace factory {
 		}
 
 		inline void
-		return_to(Principal* rhs, Result ret = Result::success) noexcept {
+		return_to(Kernel* rhs, Result ret = Result::success) noexcept {
 			this->principal(rhs);
 			this->result(ret);
 		}
@@ -396,7 +396,7 @@ namespace factory {
 				if (this->_parent) {
 					this->_parent->mark_as_deleted(result);
 				}
-				*result = std::unique_ptr<Principal>(this);
+				*result = std::unique_ptr<Kernel>(this);
 				++result;
 			}
 		}
@@ -404,11 +404,11 @@ namespace factory {
 	private:
 
 		union {
-			Principal* _parent = nullptr;
+			Kernel* _parent = nullptr;
 			id_type _parent_id;
 		};
 		union {
-			Principal* _principal = nullptr;
+			Kernel* _principal = nullptr;
 			id_type _principal_id;
 		};
 
@@ -448,8 +448,6 @@ namespace factory {
 			this->setf(Basic_kernel::Flag::priority_service);
 		}
 	};
-
-	typedef Principal Kernel;
 
 }
 
