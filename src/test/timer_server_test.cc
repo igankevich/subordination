@@ -31,7 +31,6 @@ private:
 
 struct Main: public factory::Kernel {
 
-	explicit
 	Main(size_t nkernels, std::chrono::milliseconds period):
 	_nkernels(nkernels),
 	_period(period)
