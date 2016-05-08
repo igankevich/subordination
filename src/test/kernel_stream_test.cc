@@ -12,10 +12,7 @@ factory::Dummy_server remote_server;
 
 #include "big_kernel.hh"
 
-struct Good_kernel:
-public factory::Kernel,
-public factory::Register_type<Good_kernel>
-{
+struct Good_kernel: public factory::Kernel {
 
 	void
 	write(sys::packetstream& out) override {
@@ -55,10 +52,7 @@ private:
 
 };
 
-struct Kernel_that_writes_more_than_reads:
-public Good_kernel,
-public factory::Register_type<Kernel_that_writes_more_than_reads>
-{
+struct Kernel_that_writes_more_than_reads: public Good_kernel {
 
 	void
 	write(sys::packetstream& out) override {
@@ -69,10 +63,7 @@ public factory::Register_type<Kernel_that_writes_more_than_reads>
 
 };
 
-struct Kernel_that_reads_more_than_writes:
-public Good_kernel,
-public factory::Register_type<Kernel_that_reads_more_than_writes>
-{
+struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 	void
 	read(sys::packetstream& in) override {
@@ -141,10 +132,7 @@ private:
 
 };
 
-struct Dummy_kernel:
-public factory::Kernel,
-public factory::Register_type<Dummy_kernel>
-{};
+struct Dummy_kernel: public factory::Kernel {};
 
 template<class Carrier, class Parent=Dummy_kernel>
 struct Test_kernel_stream: public test::Test<Test_kernel_stream<Carrier,Parent>> {
@@ -190,6 +178,12 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Carrier,Parent>>
 };
 
 int main() {
+	typedef Big_kernel<100> Big_kernel_type;
+	factory::register_type<Good_kernel>();
+	factory::register_type<Kernel_that_writes_more_than_reads>();
+	factory::register_type<Kernel_that_reads_more_than_writes>();
+	factory::register_type<Dummy_kernel>();
+	factory::register_type<Big_kernel_type>();
 	factory::register_type({
 		[] (sys::packetstream& in) {
 			Kernel_that_carries_its_parent* kernel = new Kernel_that_carries_its_parent(0);
@@ -198,11 +192,12 @@ int main() {
 		},
 		typeid(Kernel_that_carries_its_parent)
 	});
+	std::clog << "Registered types:\n:" << factory::types << std::flush;
 	return test::Test_suite{
 		new Test_kernel_stream<Good_kernel>,
 		new Test_kernel_stream<Kernel_that_writes_more_than_reads>,
 		new Test_kernel_stream<Kernel_that_reads_more_than_writes>,
 		new Test_kernel_stream<Kernel_that_carries_its_parent, Good_kernel>,
-		new Test_kernel_stream<Big_kernel<100>>
+		new Test_kernel_stream<Big_kernel_type>
 	}.run();
 }

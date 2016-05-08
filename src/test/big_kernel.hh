@@ -6,10 +6,7 @@
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel:
-public factory::Kernel,
-public factory::Register_type<Big_kernel<Size>>
-{
+struct Big_kernel: public factory::Kernel {
 
 	Big_kernel():
 	_data(Size)

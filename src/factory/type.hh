@@ -124,6 +124,12 @@ namespace factory {
 
 		void
 		register_type(Type type) {
+			if (const Type* existing_type = this->lookup(type.index())) {
+				std::stringstream msg;
+				msg << "'" << type << "' and '" << *existing_type
+					<< "' have the same type index.";
+				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			}
 			if (type) {
 				if (const Type* existing_type = this->lookup(type.id())) {
 					std::stringstream msg;

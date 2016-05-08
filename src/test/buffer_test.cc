@@ -75,9 +75,9 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 		typedef Fd sink_type;
 		typedef factory::basic_kernelbuf<sys::basic_fildesbuf<T,Tr,Fd>> basebuf;
 
-		const I MAX_SIZE_POWER = 12;
+		const I MAX_SIZE_POWER = 10;
 
-		for (I k=0; k<=10; ++k) {
+		for (I k=0; k<=MAX_SIZE_POWER; ++k) {
 
 			const I size = I(1) << k;
 			std::vector<Datum> input(size);
@@ -110,7 +110,6 @@ struct test_packetstream: public test::Test<test_packetstream<T,Fd>> {
 int main() {
 	return test::Test_suite{
 		new Test_fildesbuf<char, std::basic_stringbuf<char>>,
-		new Test_fildesbuf<unsigned char, std::basic_stringbuf<unsigned char>>,
 		new Test_packetbuf<char, std::basic_stringbuf<char>>,
 		new test_packetstream<char, std::basic_stringbuf<char>>
 	}.run();

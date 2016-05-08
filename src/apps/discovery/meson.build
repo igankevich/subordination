@@ -2,6 +2,9 @@ liblapack = cpp.find_library('lapack')
 libblas = cpp.find_library('blas')
 libz = dependency('zlib')
 static_linking = ['-static-libgcc', '-static-libstdc++', '-static', '-llapack', '-lblas', '-lgfortran', '-lquadmath', '-lpthread' , '-lm', '-lz']
+if host_machine.system() == 'darwin'
+	static_linking = ['-llapack', '-lblas', '-lpthread' , '-lm', '-lz']
+endif
 
 #test(
 #	'discovery',

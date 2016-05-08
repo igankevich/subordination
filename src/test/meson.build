@@ -11,7 +11,7 @@ test(
 	'kernel-stream',
 	executable(
 		'kernel-stream-test',
-		dependencies: threads,
+#		dependencies: threads,
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir
 	)
@@ -23,8 +23,7 @@ test(
 		'nic-server-test',
 		sources: 'nic_server_test.cc',
 		dependencies: threads,
-		include_directories: srcdir,
-		link_args: static_link_flags
+		include_directories: srcdir
 	)
 )
 

@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <memory>
 #include <cassert>
+#include <array>
 
 #if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
 #define FACTORY_TEST_HAVE_CXXABI

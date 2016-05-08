@@ -82,7 +82,7 @@ namespace discovery {
 
 		constexpr static pair_type
 		pair_sub(rep_type fanout, pair_type a, pair_type b) noexcept {
-			const rep_type k = a.first < b.first ? b.first-a.first : 0;
+			//const rep_type k = a.first < b.first ? b.first-a.first : 0;
 			return std::make_pair(
 				lvl_sub(a.first, b.first),
 				abs_sub(a.second, b.second/fanout)

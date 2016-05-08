@@ -5,7 +5,11 @@ cpp = meson.get_compiler('cpp')
 libpthread = cpp.find_library('pthread')
 threads = [libpthread]
 
-static_link_flags = ['-static-libstdc++', '-static-libgcc']
+if host_machine.system() == 'darwin'
+	static_link_flags = []
+else
+	static_link_flags = ['-static-libstdc++', '-static-libgcc']
+endif
 
 srcdir = include_directories('src')
 

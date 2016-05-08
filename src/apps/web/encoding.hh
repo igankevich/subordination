@@ -606,7 +606,6 @@ namespace factory {
 			using namespace constants;
 			if (is_masked()) {
 				sys::Bytes<Mask> m = mask();
-				size_t i = 0;
 				return *first ^ m[nread%4];
 			} else {
 				return *first;
