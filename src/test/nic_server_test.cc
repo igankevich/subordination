@@ -260,24 +260,32 @@ main(int argc, char* argv[]) {
 			<< "server=" << server_endpoint
 			<< ",client=" << client_endpoint
 			<< std::endl;
-		sys::process_group procs;
-		procs.add([&argv] () {
-			return sys::this_process::execute(argv[0], 'x');
-		});
-		// wait for the child to start
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		procs.add([&argv] () {
-			return sys::this_process::execute(argv[0], 'y');
-		});
+		sys::process_group procs{
+			[&argv] () { return sys::this_process::execute(argv[0], 'y'); },
+			[&argv] () { return sys::this_process::execute(argv[0], 'x'); }
+		};
 		std::clog << "sys::process group = " << procs << std::endl;
-		const sys::proc_status stat = procs.back().wait();
+		sys::proc_status stat = procs.front().wait();
 		std::clog << "master process terminated: " << stat << std::endl;
-		procs.front().terminate();
-		const sys::proc_status stat2 = procs.front().wait();
-		std::clog << "child process terminated: " << stat2 << std::endl;
+		std::for_each(
+			procs.begin()+1, procs.end(),
+			[&retval] (sys::process& rhs) {
+				if (rhs) {
+					rhs.terminate();
+				}
+				sys::proc_status stat2 = rhs.wait();
+				std::clog << "child process terminated: " << stat2 << std::endl;
+				if (stat2.term_signal() != sys::signal::terminate) {
+					retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
+				}
+			}
+		);
 		retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
-		//retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
 	} else {
+		if (argv[1][0] == 'y') {
+			// wait for the child to start
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		}
 		factory::Server_guard<decltype(local_server)> g1(local_server);
 		factory::Server_guard<decltype(remote_server)> g2(remote_server);
 		local_server.send(new Main(argc, argv));

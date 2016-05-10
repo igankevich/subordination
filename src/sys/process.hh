@@ -26,6 +26,83 @@ namespace sys {
 	typedef ::uid_t uid_type;
 	typedef ::gid_t gid_type;
 
+	constexpr uid_type
+	superuser() noexcept { return 0; }
+
+	constexpr gid_type
+	supergroup() noexcept { return 0; }
+
+	namespace this_process {
+
+		inline pid_type
+		id() noexcept { return ::getpid(); }
+
+		inline pid_type
+		parent_id() noexcept { return ::getppid(); }
+
+		/*
+		inline pid_type
+		group_id() noexcept { return ::getpgrp(); }
+
+		inline void
+		set_group_id(pid_type rhs) {
+			bits::check(::setpgid(this_process::id(), rhs),
+				__FILE__, __LINE__, __func__);
+		}
+		*/
+
+		inline uid_type
+		user() noexcept { return ::getuid(); }
+
+		inline void
+		set_user(uid_type rhs) {
+			bits::check(
+				::setuid(rhs),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+		inline uid_type
+		effective_user() noexcept { return ::geteuid(); }
+
+		inline gid_type
+		group() noexcept { return ::getgid(); }
+
+		inline void
+		set_group(gid_type rhs) {
+			bits::check(
+				::setgid(rhs),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+		inline gid_type
+		effective_group() noexcept { return ::getegid(); }
+
+		template<class ... Args>
+		int
+		execute(const Args& ... args) {
+			sys::argstream str;
+			str.append(args...);
+			assert(str.argc() == sizeof...(Args));
+			char** argv = str.argv();
+			char* const no_env[1] = {0};
+			return bits::check(
+				::execve(argv[0], argv, no_env),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+		void
+		send(signal sig) {
+			bits::check(
+				::kill(::sys::this_process::id(), signal_type(sig)),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
+	}
+
 	pid_type
 	safe_fork() {
 		bits::global_lock_type lock(bits::__forkmutex);
@@ -232,8 +309,6 @@ namespace sys {
 
 	struct process {
 
-		process() = default;
-
 		template<class F>
 		explicit inline
 		process(F f) {
@@ -244,11 +319,13 @@ namespace sys {
 			}
 		}
 
-		process(const process&) = delete;
-
+		explicit
 		process(pid_type rhs) noexcept:
 		_pid(rhs)
 		{}
+
+		process() = default;
+		process(const process&) = delete;
 
 		inline
 		process(process&& rhs) noexcept:
@@ -263,10 +340,9 @@ namespace sys {
 			}
 		}
 
-		inline process&
+		process&
 		operator=(process&& rhs) noexcept {
-			_pid = rhs._pid;
-			rhs._pid = 0;
+			std::swap(_pid, rhs._pid);
 			return *this;
 		}
 
@@ -346,20 +422,19 @@ namespace sys {
 		typedef stdx::log<process_group> this_log;
 		typedef std::vector<process>::iterator iterator;
 
-		template<class F>
-		const process&
-		add(F child_main) {
-			process p(child_main);
-			if (_procs.empty()) {
-				_gid = p.id();
-			}
-			p.set_group_id(_gid);
-			_procs.push_back(std::move(p));
-			return _procs.back();
+		template<class ... Args>
+		explicit
+		process_group(Args&& ... args) {
+			emplace(std::forward<Args>(args)...);
 		}
 
+		process_group() = default;
+		process_group(const process_group&) = delete;
+		process_group(process_group&&) = default;
+		~process_group() = default;
+
 		template<class F>
-		void
+		const process&
 		emplace(F&& childmain) {
 			_procs.emplace_back(std::forward<F>(childmain));
 			process& proc = _procs.back();
@@ -367,6 +442,14 @@ namespace sys {
 				_gid = proc.id();
 			}
 			proc.set_group_id(_gid);
+			return proc;
+		}
+
+		template<class Func, class ... Args>
+		void
+		emplace(Func&& main, Args&& ... args) {
+			this->emplace(std::forward<Func>(main));
+			this->emplace(std::forward<Args>(args)...);
 		}
 
 		int
@@ -481,83 +564,6 @@ namespace sys {
 		std::vector<process> _procs;
 		pid_type _gid = 0;
 	};
-
-	constexpr uid_type
-	superuser() noexcept { return 0; }
-
-	constexpr gid_type
-	supergroup() noexcept { return 0; }
-
-	namespace this_process {
-
-		inline pid_type
-		id() noexcept { return ::getpid(); }
-
-		inline pid_type
-		parent_id() noexcept { return ::getppid(); }
-
-		/*
-		inline pid_type
-		group_id() noexcept { return ::getpgrp(); }
-
-		inline void
-		set_group_id(pid_type rhs) {
-			bits::check(::setpgid(this_process::id(), rhs),
-				__FILE__, __LINE__, __func__);
-		}
-		*/
-
-		inline uid_type
-		user() noexcept { return ::getuid(); }
-
-		inline void
-		set_user(uid_type rhs) {
-			bits::check(
-				::setuid(rhs),
-				__FILE__, __LINE__, __func__
-			);
-		}
-
-		inline uid_type
-		effective_user() noexcept { return ::geteuid(); }
-
-		inline gid_type
-		group() noexcept { return ::getgid(); }
-
-		inline void
-		set_group(gid_type rhs) {
-			bits::check(
-				::setgid(rhs),
-				__FILE__, __LINE__, __func__
-			);
-		}
-
-		inline gid_type
-		effective_group() noexcept { return ::getegid(); }
-
-		template<class ... Args>
-		int
-		execute(const Args& ... args) {
-			sys::argstream str;
-			str.append(args...);
-			assert(str.argc() == sizeof...(Args));
-			char** argv = str.argv();
-			char* const no_env[1] = {0};
-			return bits::check(
-				::execve(argv[0], argv, no_env),
-				__FILE__, __LINE__, __func__
-			);
-		}
-
-		void
-		send(signal sig) {
-			bits::check(
-				::kill(::sys::this_process::id(), signal_type(sig)),
-				__FILE__, __LINE__, __func__
-			);
-		}
-
-	}
 
 }
 

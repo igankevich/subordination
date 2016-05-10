@@ -387,7 +387,7 @@ namespace factory {
 			this_log() << "starting app=" << app << std::endl;
 			lock_type lock(this->_mutex);
 			sys::two_way_pipe data_pipe;
-			const sys::process& p = _procs.add([&app,this,&data_pipe] () {
+			const sys::process& p = _procs.emplace([&app,this,&data_pipe] () {
 				data_pipe.close_in_child();
 				data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 				data_pipe.validate();
