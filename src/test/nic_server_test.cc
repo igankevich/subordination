@@ -1,8 +1,9 @@
-#include <factory/factory.hh>
 #include <factory/algorithm.hh>
 #include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
 #include <factory/kernel.hh>
+#include <factory/server_guard.hh>
+
+#include <sys/log.hh>
 
 #include <cassert>
 
@@ -14,56 +15,60 @@
 #define FACTORY_SOCKET_TYPE factory::Web_socket
 #endif
 
-#if defined(FACTORY_TEST_APPSERVER)
-#include <factory/app_server.hh>
-#endif
-
 #if !defined(FACTORY_SOCKET_TYPE)
 #include <factory/nic_server.hh>
 #define FACTORY_TEST_SOCKET
 #define FACTORY_SOCKET_TYPE sys::socket
 #endif
 
-namespace factory {
+factory::CPU_server<factory::Kernel> local_server;
+
 #if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*);
-
-		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
-			assert(false);
-		}
-
-	};
-
-	NIC_server<Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
+struct Router {
 
 	void
-	Router::send_remote(Kernel* rhs) {
-		remote_server.send(rhs);
+	send_local(factory::Kernel* rhs) {
+		local_server.send(rhs);
 	}
+
+	void
+	send_remote(factory::Kernel*);
+
+	void
+	forward(const factory::Kernel_header& hdr, sys::packetstream& istr) {
+		assert(false);
+	}
+
+};
+
+factory::NIC_server<factory::Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
+
+void
+Router::send_remote(factory::Kernel* rhs) {
+	remote_server.send(rhs);
+}
 #endif
 
-#if defined(FACTORY_TEST_APPSERVER)
-	Sub_Iserver<config> remote_server;
-#endif
+namespace stdx {
+
+	template<>
+	struct enable_log<factory::server_category>: public std::true_type {};
+
+	//template<>
+	//struct enable_log<sys::Buffer_category>: public std::true_type {};
+
+	template<>
+	struct enable_log<factory::kernel_category>: public std::true_type {};
+
 }
 
-using namespace factory;
 
 const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
-sys::endpoint server_endpoint("127.0.0.1", 10001);
+sys::endpoint server_endpoint({127,0,0,1}, 10001);
 sys::endpoint client_endpoint({127,0,0,1}, 20001);
 #else
-sys::endpoint server_endpoint("127.0.0.1", 10002);
+sys::endpoint server_endpoint({127,0,0,1}, 10002);
 sys::endpoint client_endpoint({127,0,0,1}, 20002);
 #endif
 
@@ -79,25 +84,26 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
-struct Test_socket: public Kernel {
+struct Test_socket: public factory::Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
 
-	Test_socket(): _data() {
-		++kernel_count;
-	}
+	Test_socket():
+	_data()
+	{ ++kernel_count; }
 
-	explicit Test_socket(std::vector<Datum> x): _data(x) {
-		++kernel_count;
-	}
+	explicit
+	Test_socket(std::vector<Datum> x):
+	_data(x)
+	{ ++kernel_count; }
 
-	virtual ~Test_socket() {
+	virtual
+	~Test_socket() {
 		--kernel_count;
 	}
 
 	void act() override {
-		this_log() << "act: kernel no. "
-			<< kernel_count << std::endl;
+		this_log() << "act: kernel no. " << kernel_count << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
 		// Delete kernel for Valgrind memory checker.
 		delete this;
@@ -108,13 +114,13 @@ struct Test_socket: public Kernel {
 			std::exit(0);
 		}
 		#else
-		commit(remote_server, this);
+		factory::commit(remote_server, this);
 		#endif
 	}
 
 	void
 	write(sys::packetstream& out) override {
-		Kernel::write(out);
+		factory::Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -122,7 +128,7 @@ struct Test_socket: public Kernel {
 
 	void
 	read(sys::packetstream& in) override {
-		Kernel::read(in);
+		factory::Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -147,10 +153,11 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public Kernel {
+struct Sender: public factory::Kernel {
 	typedef stdx::log<Sender> this_log;
 
-	Sender(uint32_t n, uint32_t s):
+	explicit
+	Sender(uint32_t n):
 	_vector_size(n),
 	_input(_vector_size)
 	{}
@@ -162,11 +169,11 @@ struct Sender: public Kernel {
 			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
 			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			upstream(remote_server, this, new Test_socket(_input));
+			factory::upstream(remote_server, this, new Test_socket(_input));
 		}
 	}
 
-	void react(Kernel* child) override {
+	void react(factory::Kernel* child) override {
 
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
@@ -190,7 +197,7 @@ struct Sender: public Kernel {
 
 		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
-			commit(local_server, this);
+			factory::commit(local_server, this);
 		}
 	}
 
@@ -202,12 +209,12 @@ private:
 	std::vector<Datum> _input;
 };
 
-struct Main: public Kernel {
+struct Main: public factory::Kernel {
 
 	typedef stdx::log<Main> this_log;
 
 	Main(int argc, char* argv[]) {
-		if (argc != 3)
+		if (argc != 2)
 			throw std::runtime_error("Wrong number of arguments.");
 		_role = argv[1][0];
 		if (_role == 'x') {
@@ -221,71 +228,68 @@ struct Main: public Kernel {
 
 	void
 	act() override {
-		factory::types.register_type<Test_socket>();
-//		factory()->dump_hierarchy(std::cout);
 		if (_role == 'y') {
 			for (uint32_t i=0; i<POWERS.size(); ++i) {
 				size_t sz = 1 << POWERS[i];
-				upstream(local_server, this, new Sender(sz, _sleep));
+				factory::upstream(local_server, this, new Sender(sz));
 			}
 		}
 	}
 
 	void
-	react(Kernel*) override {
+	react(factory::Kernel*) override {
 		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
 		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == POWERS.size()) {
-			commit(local_server, this);
+			factory::commit(local_server, this, factory::Result::success);
 		}
 	}
 
 private:
 	uint32_t _num_returned = 0;
-	uint32_t _sleep = 0;
 	char _role = 'm';
 };
 
 int
 main(int argc, char* argv[]) {
-	using namespace factory;
-	struct mainfunc {};
-	typedef stdx::log<mainfunc> this_log;
+	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
+	factory::register_type<Test_socket>();
 	int retval = 0;
 	if (argc <= 1) {
-		this_log()
+		std::clog
 			<< "server=" << server_endpoint
 			<< ",client=" << client_endpoint
 			<< std::endl;
-		uint32_t sleep = 0;
 		sys::process_group procs;
-		procs.add([&argv, sleep] () {
-			return sys::this_process::execute(argv[0], 'x', sleep);
+		procs.add([&argv] () {
+			return sys::this_process::execute(argv[0], 'x');
 		});
 		// wait for the child to start
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		procs.add([&argv, sleep] () {
-			return sys::this_process::execute(argv[0], 'y', sleep);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		procs.add([&argv] () {
+			return sys::this_process::execute(argv[0], 'y');
 		});
-		this_log() << "sys::process group = " << procs << std::endl;
+		std::clog << "sys::process group = " << procs << std::endl;
 		const sys::proc_status stat = procs.back().wait();
-		this_log() << "master process terminated: " << stat << std::endl;
+		std::clog << "master process terminated: " << stat << std::endl;
 		procs.front().terminate();
 		const sys::proc_status stat2 = procs.front().wait();
-		this_log() << "child process terminated: " << stat2 << std::endl;
+		std::clog << "child process terminated: " << stat2 << std::endl;
 		retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
-		retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
+		//retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
 	} else {
+		factory::Server_guard<decltype(local_server)> g1(local_server);
+		factory::Server_guard<decltype(remote_server)> g2(remote_server);
 		local_server.send(new Main(argc, argv));
-		retval = wait_and_return();
+		retval = factory::wait_and_return();
 	}
-	std::cout << "KERNEL count = " << kernel_count << std::endl;
+	std::clog << "KERNEL count = " << kernel_count << std::endl;
 	if (kernel_count > 0) {
-		throw Error("some kernels were not deleted",
+		throw factory::Error("some kernels were not deleted",
 			__FILE__, __LINE__, __func__);
 	}
 	if (kernel_count < 0) {
-		throw Error("some kernels were deleted multiple times",
+		throw factory::Error("some kernels were deleted multiple times",
 			__FILE__, __LINE__, __func__);
 	}
 	return retval;

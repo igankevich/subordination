@@ -19,6 +19,7 @@ namespace factory {
 	class Kernels=std::queue<T*>,
 	class Threads=std::vector<std::thread>>
 	using Proxy_server_base = Server_with_pool<T, Kernels, Threads,
+		//std::mutex, std::unique_lock<std::mutex>,
 		stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
 		sys::event_poller<Rserver*>>;
 

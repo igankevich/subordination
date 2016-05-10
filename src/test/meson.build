@@ -24,6 +24,9 @@ test(
 		sources: 'nic_server_test.cc',
 		dependencies: threads,
 		include_directories: srcdir
+#		,
+#		cpp_args: ['-fsanitize=null', '-fsanitize=thread', '-fsanitize=undefined'],
+#		link_args: ['-fsanitize=null', '-fsanitize=thread', '-fsanitize=undefined']
 	)
 )
 

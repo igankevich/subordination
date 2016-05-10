@@ -275,6 +275,7 @@ namespace factory {
 	class Threads=std::vector<std::thread>>
 	using Fast_server_with_pool = Server_with_pool<T, Kernels, Threads,
 		stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, sys::thread_semaphore>;
+		//std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
 	template<class T,
 	class Kernels=std::queue<T*>,

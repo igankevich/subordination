@@ -35,7 +35,6 @@ namespace factory {
 		typedef Router router_type;
 		typedef Kernels pool_type;
 		typedef application_type app_type;
-		typedef typename stream_type::forward_func forward_func;
 		typedef stdx::log<Remote_Rserver> this_log;
 
 		static_assert(
@@ -301,7 +300,6 @@ namespace factory {
 		typedef network_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
 		typedef stdx::log<NIC_server> this_log;
-		typedef typename server_type::forward_func forward_func;
 
 		static_assert(
 			std::is_move_constructible<server_type>::value,
@@ -317,7 +315,8 @@ namespace factory {
 		base_server(std::move(rhs)),
 		_upstream(),
 		_iterator(_upstream.end()),
-		_counter(rhs._counter)
+		_counter(rhs._counter),
+		_router(rhs._router)
 		{}
 
 		NIC_server() = default;
@@ -377,6 +376,7 @@ namespace factory {
 		}
 
 		void peer(sys::endpoint addr) {
+			lock_type lock(this->_mutex);
 			this->connect_to_server(addr, sys::poll_event::In);
 		}
 

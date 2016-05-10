@@ -192,7 +192,7 @@ int main() {
 		},
 		typeid(Kernel_that_carries_its_parent)
 	});
-	std::clog << "Registered types:\n:" << factory::types << std::flush;
+	std::clog << "Registered types:\n" << factory::types << std::flush;
 	return test::Test_suite{
 		new Test_kernel_stream<Good_kernel>,
 		new Test_kernel_stream<Kernel_that_writes_more_than_reads>,
