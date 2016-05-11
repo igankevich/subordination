@@ -29,6 +29,9 @@ namespace sys {
 			_rawargs.push_back(nullptr);
 		}
 
+		basic_argbuf(basic_argbuf&&) = default;
+		basic_argbuf(const basic_argbuf&) = delete;
+
 		~basic_argbuf() = default;
 
 		int_type
@@ -59,6 +62,11 @@ namespace sys {
 
 		char**
 		argv() noexcept {
+			return _rawargs.data();
+		}
+
+		char* const*
+		argv() const noexcept {
 			return _rawargs.data();
 		}
 
@@ -93,8 +101,18 @@ namespace sys {
 		std::ostream(nullptr)
 		{ this->init(&_argbuf); }
 
+		argstream(argstream&& rhs):
+		std::ostream(std::move(rhs)),
+		_argbuf(std::move(rhs._argbuf))
+		{ this->init(&_argbuf); }
+
 		char**
 		argv() noexcept {
+			return _argbuf.argv();
+		}
+
+		char* const*
+		argv() const noexcept {
 			return _argbuf.argv();
 		}
 
@@ -103,13 +121,16 @@ namespace sys {
 			return _argbuf.argc();
 		}
 
+		template<class T>
 		void
-		append() {}
+		append(const T& rhs) {
+			*this << rhs << '\0';
+		}
 
 		template<class T, class ... Args>
 		void
 		append(const T& first, const Args& ... args) {
-			*this << first << '\0';
+			append(first);
 			append(args...);
 		}
 

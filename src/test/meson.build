@@ -17,6 +17,12 @@ test(
 	)
 )
 
+executable(
+	'test-runner',
+	sources: 'test_runner.cc',
+	include_directories: srcdir
+)
+
 test(
 	'nic-server',
 	executable(

@@ -93,6 +93,15 @@ namespace sys {
 			);
 		}
 
+		int
+		execute(char* const argv[]) {
+			char* const no_env[1] = {0};
+			return bits::check(
+				::execve(argv[0], argv, no_env),
+				__FILE__, __LINE__, __func__
+			);
+		}
+
 		void
 		send(signal sig) {
 			bits::check(
