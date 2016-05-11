@@ -3,10 +3,11 @@
 #include <factory/kernel.hh>
 #include <factory/server_guard.hh>
 
-#include <sys/log.hh>
+#include <sys/cmdline.hh>
 
 #include <cassert>
 
+#include "role.hh"
 #include "datum.hh"
 
 #if defined(FACTORY_TEST_WEBSOCKET)
@@ -20,6 +21,8 @@
 #define FACTORY_TEST_SOCKET
 #define FACTORY_SOCKET_TYPE sys::socket
 #endif
+
+using test::Role;
 
 factory::CPU_server<factory::Kernel> local_server;
 
@@ -54,9 +57,6 @@ namespace stdx {
 	template<>
 	struct enable_log<factory::server_category>: public std::true_type {};
 
-	//template<>
-	//struct enable_log<sys::Buffer_category>: public std::true_type {};
-
 	template<>
 	struct enable_log<factory::kernel_category>: public std::true_type {};
 
@@ -77,9 +77,6 @@ const std::vector<size_t> POWERS = {1,2,3,4};
 //const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 7;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
-//const uint32_t NUM_SIZES = 1;
-//const uint32_t NUM_KERNELS = 2;
-//const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
@@ -103,7 +100,7 @@ struct Test_socket: public factory::Kernel {
 	}
 
 	void act() override {
-		this_log() << "act: kernel no. " << kernel_count << std::endl;
+		//std::clog << "Test_socket::act()" << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
 		// Delete kernel for Valgrind memory checker.
 		delete this;
@@ -213,26 +210,11 @@ struct Main: public factory::Kernel {
 
 	typedef stdx::log<Main> this_log;
 
-	Main(int argc, char* argv[]) {
-		if (argc != 2)
-			throw std::runtime_error("Wrong number of arguments.");
-		_role = argv[1][0];
-		if (_role == 'x') {
-			remote_server.bind(server_endpoint, netmask);
-		}
-		if (_role == 'y') {
-			remote_server.bind(client_endpoint, netmask);
-			remote_server.peer(server_endpoint);
-		}
-	}
-
 	void
 	act() override {
-		if (_role == 'y') {
-			for (uint32_t i=0; i<POWERS.size(); ++i) {
-				size_t sz = 1 << POWERS[i];
-				factory::upstream(local_server, this, new Sender(sz));
-			}
+		for (uint32_t i=0; i<POWERS.size(); ++i) {
+			size_t sz = 1 << POWERS[i];
+			factory::upstream(local_server, this, new Sender(sz));
 		}
 	}
 
@@ -246,51 +228,37 @@ struct Main: public factory::Kernel {
 	}
 
 private:
+
 	uint32_t _num_returned = 0;
-	char _role = 'm';
+
 };
 
 int
 main(int argc, char* argv[]) {
-	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
+	Role role = Role::Master;
+	sys::cmdline cmdline(argc, argv, {
+		sys::cmd::ignore_first_arg(),
+		sys::cmd::make_option({"--role"}, role)
+	});
+	cmdline.parse();
 	factory::register_type<Test_socket>();
-	int retval = 0;
-	if (argc <= 1) {
-		std::clog
-			<< "server=" << server_endpoint
-			<< ",client=" << client_endpoint
-			<< std::endl;
-		sys::process_group procs{
-			[&argv] () { return sys::this_process::execute(argv[0], 'y'); },
-			[&argv] () { return sys::this_process::execute(argv[0], 'x'); }
-		};
-		std::clog << "sys::process group = " << procs << std::endl;
-		sys::proc_status stat = procs.front().wait();
-		std::clog << "master process terminated: " << stat << std::endl;
-		std::for_each(
-			procs.begin()+1, procs.end(),
-			[&retval] (sys::process& rhs) {
-				if (rhs) {
-					rhs.terminate();
-				}
-				sys::proc_status stat2 = rhs.wait();
-				std::clog << "child process terminated: " << stat2 << std::endl;
-				if (stat2.term_signal() != sys::signal::terminate) {
-					retval |= stat2.exit_code() | sys::signal_type(stat2.term_signal());
-				}
-			}
-		);
-		retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
-	} else {
-		if (argv[1][0] == 'y') {
-			// wait for the child to start
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		}
-		factory::Server_guard<decltype(local_server)> g1(local_server);
-		factory::Server_guard<decltype(remote_server)> g2(remote_server);
-		local_server.send(new Main(argc, argv));
-		retval = factory::wait_and_return();
+
+	if (role == Role::Master) {
+		// wait for the child to start
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
+	factory::Server_guard<decltype(local_server)> g1(local_server);
+	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	if (role == Role::Slave) {
+		remote_server.bind(server_endpoint, netmask);
+	}
+	if (role == Role::Master) {
+		remote_server.bind(client_endpoint, netmask);
+		remote_server.peer(server_endpoint);
+	}
+	local_server.send(new Main);
+	int retval = factory::wait_and_return();
+
 	std::clog << "KERNEL count = " << kernel_count << std::endl;
 	if (kernel_count > 0) {
 		throw factory::Error("some kernels were not deleted",

@@ -131,6 +131,7 @@ namespace factory {
 					receive_kernel(kernel);
 				}
 			}
+			prepare(event);
 		}
 
 		void

@@ -11,42 +11,51 @@ test(
 	'kernel-stream',
 	executable(
 		'kernel-stream-test',
-#		dependencies: threads,
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir
 	)
 )
 
-executable(
+test_runner = executable(
 	'test-runner',
 	sources: 'test_runner.cc',
 	include_directories: srcdir
 )
 
+sanitize_flags = ['-fsanitize=null', '-fsanitize=undefined']
+
+executable(
+	'nic-server-test',
+	sources: 'nic_server_test.cc',
+	dependencies: threads,
+	include_directories: srcdir
+	,
+	cpp_args: sanitize_flags,
+	link_args: sanitize_flags
+)
+
 test(
 	'nic-server',
-	executable(
-		'nic-server-test',
-		sources: 'nic_server_test.cc',
-		dependencies: threads,
-		include_directories: srcdir
-#		,
-#		cpp_args: ['-fsanitize=null', '-fsanitize=thread', '-fsanitize=undefined'],
-#		link_args: ['-fsanitize=null', '-fsanitize=thread', '-fsanitize=undefined']
-	)
+	test_runner,
+	args: [
+		'--strategy', 'master-slave',
+		'--exec', './nic-server-test', '--role', 'master',
+		'--exec', './nic-server-test', '--role', 'slave'
+	],
+	workdir: meson.current_build_dir()
 )
 
-test(
-	'nic-server-offline',
-	executable(
-		'nic-server-offline-test',
-		sources: 'nic_server_test.cc',
-		dependencies: threads,
-		cpp_args: '-DFACTORY_TEST_OFFLINE',
-		include_directories: srcdir
-	)
-)
-
+#test(
+#	'nic-server-offline',
+#	executable(
+#		'nic-server-offline-test',
+#		sources: 'nic_server_test.cc',
+#		dependencies: threads,
+#		cpp_args: '-DFACTORY_TEST_OFFLINE',
+#		include_directories: srcdir
+#	)
+#)
+#
 test(
 	'shmem',
 	executable(
@@ -122,25 +131,25 @@ test(
 		include_directories: srcdir
 	)
 )
-
-app_exe = executable(
-	'process-server-test-app',
-	sources: 'process_server_test.cc',
-	dependencies: threads,
-	include_directories: srcdir,
-	cpp_args: '-DFACTORY_TEST_APP'
-)
-
-srv_exe = executable(
-	'process-server-test',
-	sources: 'process_server_test.cc',
-	dependencies: threads,
-	include_directories: srcdir,
-	cpp_args: ['-DFACTORY_TEST_SERVER', '-DFACTORY_APP_PATH=./src/test/process-server-test-app']
-)
-
-test('process-server', srv_exe)
-
+#
+#app_exe = executable(
+#	'process-server-test-app',
+#	sources: 'process_server_test.cc',
+#	dependencies: threads,
+#	include_directories: srcdir,
+#	cpp_args: '-DFACTORY_TEST_APP'
+#)
+#
+#srv_exe = executable(
+#	'process-server-test',
+#	sources: 'process_server_test.cc',
+#	dependencies: threads,
+#	include_directories: srcdir,
+#	cpp_args: ['-DFACTORY_TEST_SERVER', '-DFACTORY_APP_PATH=./src/test/process-server-test-app']
+#)
+#
+#test('process-server', srv_exe)
+#
 executable(
 	'posix-compliance',
 	sources: 'posix_test.cc',
