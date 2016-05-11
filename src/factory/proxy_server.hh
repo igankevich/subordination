@@ -67,12 +67,12 @@ namespace factory {
 			poller().notify_one();
 			lock_type lock(this->_mutex);
 			while (!this->is_stopped()) {
+				prepare_poll_events();
 				poller().wait(lock);
 				stdx::unlock_guard<lock_type> g(lock);
 				process_kernels_if_any();
 				accept_connections_if_any();
 				handle_events();
-				//prepare_poll_events();
 				remove_servers_if_any();
 			}
 			// prevent double free or corruption
@@ -103,7 +103,9 @@ namespace factory {
 		prepare_poll_events() {
 			poller().for_each_ordinary_fd(
 				[this] (sys::poll_event& ev, handler_type& h) {
-					h->prepare(ev);
+					if (ev) {
+						h->prepare(ev);
+					}
 				}
 			);
 		}

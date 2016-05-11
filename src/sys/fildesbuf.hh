@@ -180,7 +180,7 @@ namespace sys {
 			const bool success = n==m;
 			if (success) {
 				setp(pfirst(), plast());
-			} else if (n >= 0) {
+			} else if (n > 0) {
 				setp(pbase()+n, epptr());
 				pbump(m-n);
 			}

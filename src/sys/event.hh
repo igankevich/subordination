@@ -13,7 +13,6 @@
 
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
-#include <stdx/log.hh>
 
 #include <sys/bits/check.hh>
 
@@ -387,7 +386,10 @@ namespace sys {
 		template<class It, class Pred>
 		inline void
 		remove_specials_if(It first, It last, Pred pred) {
+			const size_type old_size = _events.size();
 			_events.erase(std::remove_if(first, last, pred), last);
+			_nspecials -= old_size - _events.size();
+			assert_invariant(__func__);
 		}
 
 		template<class Pred>
@@ -398,7 +400,6 @@ namespace sys {
 				stdx::make_paired(ordinary_begin(), _handlers.begin()),
 				stdx::make_paired(_events.end(), _handlers.end()),
 				stdx::apply_to<0>(pred));
-			assert_invariant(__func__);
 		}
 
 		template<class It>
@@ -478,17 +479,6 @@ namespace sys {
 			assert(special_begin() <= special_end());
 			assert(special_end() == ordinary_begin());
 			assert(ordinary_end() == _events.end());
-			// TODO 2016-02-26 sometimes it fails on the following line
-			// (probably due to a race condition)
-			if (not (ordinary_begin() <= ordinary_end())) {
-				stdx::log<event_poller>() << stdx::make_fields(
-					"_events.size", _events.size(),
-					"_handlers.size", _handlers.size(),
-					"_specials.size", _specials.size(),
-					"_nspecials", _nspecials,
-					"__func__", func
-				) << std::endl;
-			}
 			assert(special_end() - special_begin() == static_cast<std::make_signed<size_type>::type>(_nspecials));
 			assert(pipes_end() - pipes_begin() == NPIPES);
 			assert(ordinary_end() - ordinary_begin() == _handlers.end() - _handlers.begin());

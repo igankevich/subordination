@@ -86,6 +86,7 @@ struct Executor {
 			// wait for master process
 			if (procs.front()) {
 				sys::proc_status stat = procs.front().wait();
+				std::clog << "master process terminated: " << stat << std::endl;
 				retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
 			}
 			// wait for child processes
@@ -134,6 +135,7 @@ private:
 };
 
 int main(int argc, char* argv[]) {
+	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	Executor exe(argc, argv);
 	std::clog << exe << std::flush;
 	exe.execute();

@@ -22,7 +22,7 @@ test_runner = executable(
 	include_directories: srcdir
 )
 
-sanitize_flags = ['-fsanitize=null', '-fsanitize=undefined']
+sanitize_flags = ['-fsanitize=null', '-fsanitize=address', '-fsanitize=undefined']
 
 executable(
 	'nic-server-test',
@@ -32,6 +32,14 @@ executable(
 	,
 	cpp_args: sanitize_flags,
 	link_args: sanitize_flags
+)
+
+executable(
+	'nic-server-offline-test',
+	sources: 'nic_server_test.cc',
+	dependencies: threads,
+	include_directories: srcdir,
+	cpp_args: [ '-DFACTORY_TEST_OFFLINE' ]
 )
 
 test(
@@ -45,17 +53,17 @@ test(
 	workdir: meson.current_build_dir()
 )
 
-#test(
-#	'nic-server-offline',
-#	executable(
-#		'nic-server-offline-test',
-#		sources: 'nic_server_test.cc',
-#		dependencies: threads,
-#		cpp_args: '-DFACTORY_TEST_OFFLINE',
-#		include_directories: srcdir
-#	)
-#)
-#
+test(
+	'nic-server-offline',
+	test_runner,
+	args: [
+		'--strategy', 'master-slave',
+		'--exec', './nic-server-offline-test', '--role', 'master',
+		'--exec', './nic-server-offline-test', '--role', 'slave'
+	],
+	workdir: meson.current_build_dir()
+)
+
 test(
 	'shmem',
 	executable(

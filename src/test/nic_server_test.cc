@@ -9,6 +9,7 @@
 
 #include "role.hh"
 #include "datum.hh"
+#include "test.hh"
 
 #if defined(FACTORY_TEST_WEBSOCKET)
 #include <factory/nic_server.hh>
@@ -81,6 +82,8 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
+Role role = Role::Master;
+
 struct Test_socket: public factory::Kernel {
 
 	typedef stdx::log<Test_socket> this_log;
@@ -102,13 +105,15 @@ struct Test_socket: public factory::Kernel {
 	void act() override {
 		//std::clog << "Test_socket::act()" << std::endl;
 		#if defined(FACTORY_TEST_OFFLINE)
-		// Delete kernel for Valgrind memory checker.
-		delete this;
-		this_log() << "shutdown counter " << shutdown_counter << std::endl;
-		if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
-			this_log() << "go offline" << std::endl;
-//			factory()->stop();
-			std::exit(0);
+		if (role == Role::Slave) {
+			// Delete kernel for Valgrind memory checker.
+			delete this;
+			if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
+				std::clog << "go offline" << std::endl;
+				factory::graceful_shutdown(0);
+			}
+		} else {
+			factory::commit(local_server, this);
 		}
 		#else
 		factory::commit(remote_server, this);
@@ -134,24 +139,14 @@ struct Test_socket: public factory::Kernel {
 	}
 
 	std::vector<Datum> data() const {
-		this_log()
-			<< "parent.id = " << (parent() ? parent()->id() : 12345)
-			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
-			<< std::endl;
 		return _data;
 	}
-
-//	static void init_type(Type* t) {
-//		t->id(1);
-//		t->name("Test_socket");
-//	}
 
 private:
 	std::vector<Datum> _data;
 };
 
 struct Sender: public factory::Kernel {
-	typedef stdx::log<Sender> this_log;
 
 	explicit
 	Sender(uint32_t n):
@@ -160,11 +155,6 @@ struct Sender: public factory::Kernel {
 	{}
 
 	void act() override {
-		this_log() << "Sender "
-			<< "id = " << id()
-			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
-			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
-			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			factory::upstream(remote_server, this, new Test_socket(_input));
 		}
@@ -175,24 +165,13 @@ struct Sender: public factory::Kernel {
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 
-		this_log() << "kernel = " << *test_kernel << std::endl;
-		#if defined(FACTORY_TEST_OFFLINE)
-		assert(not child->from());
-		#endif
+//		#if defined(FACTORY_TEST_OFFLINE)
+//		assert(not child->from());
+//		#endif
 
-		if (_input.size() != output.size())
-			throw std::runtime_error("test_socket. Input and output size does not match.");
+		test::equal(_input.size(), output.size(), "Input and output size does not match");
+		test::compare(_input, output,  "Input and output data does not match");
 
-		for (size_t i=0; i<_input.size(); ++i) {
-			if (_input[i] != output[i]) {
-				std::stringstream msg;
-				msg << "test_socket. Input and output does not match: i=" << i << ", ";
-				msg << _input[i] << " != " << output[i];
-				throw std::runtime_error(msg.str());
-			}
-		}
-
-		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			factory::commit(local_server, this);
 		}
@@ -208,8 +187,6 @@ private:
 
 struct Main: public factory::Kernel {
 
-	typedef stdx::log<Main> this_log;
-
 	void
 	act() override {
 		for (uint32_t i=0; i<POWERS.size(); ++i) {
@@ -220,8 +197,6 @@ struct Main: public factory::Kernel {
 
 	void
 	react(factory::Kernel*) override {
-		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
-		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == POWERS.size()) {
 			factory::commit(local_server, this, factory::Result::success);
 		}
@@ -235,7 +210,7 @@ private:
 
 int
 main(int argc, char* argv[]) {
-	Role role = Role::Master;
+	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::cmdline cmdline(argc, argv, {
 		sys::cmd::ignore_first_arg(),
 		sys::cmd::make_option({"--role"}, role)
@@ -243,30 +218,37 @@ main(int argc, char* argv[]) {
 	cmdline.parse();
 	factory::register_type<Test_socket>();
 
-	if (role == Role::Master) {
-		// wait for the child to start
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	}
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(remote_server)> g2(remote_server);
 	if (role == Role::Slave) {
 		remote_server.bind(server_endpoint, netmask);
 	}
 	if (role == Role::Master) {
 		remote_server.bind(client_endpoint, netmask);
+		// wait for the child to start
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		remote_server.peer(server_endpoint);
 	}
-	local_server.send(new Main);
+
+	factory::Server_guard<decltype(local_server)> g1(local_server);
+	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	if (role == Role::Master) {
+		local_server.send(new Main);
+	}
+
 	int retval = factory::wait_and_return();
 
-	std::clog << "KERNEL count = " << kernel_count << std::endl;
-	if (kernel_count > 0) {
-		throw factory::Error("some kernels were not deleted",
-			__FILE__, __LINE__, __func__);
-	}
-	if (kernel_count < 0) {
-		throw factory::Error("some kernels were deleted multiple times",
-			__FILE__, __LINE__, __func__);
+	#if defined(FACTORY_TEST_OFFLINE)
+	if (role == Role::Master)
+	#endif
+	{
+		std::clog << "KERNEL count = " << kernel_count << std::endl;
+		if (kernel_count > 0) {
+			throw factory::Error("some kernels were not deleted",
+				__FILE__, __LINE__, __func__);
+		}
+		if (kernel_count < 0) {
+			throw factory::Error("some kernels were deleted multiple times",
+				__FILE__, __LINE__, __func__);
+		}
 	}
 	return retval;
 }

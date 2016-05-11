@@ -24,6 +24,7 @@ namespace factory {
 	void
 	commit(Pipeline& ppl, Kernel* rhs, Result ret) {
 		if (!rhs->parent()) {
+			delete rhs;
 			factory::graceful_shutdown(static_cast<int>(ret));
 		} else {
 			rhs->return_to_parent(ret);
