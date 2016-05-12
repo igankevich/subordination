@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include <iostream>
+#include <mutex>
 
 #if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
 #define FACTORY_TEST_HAVE_CXXABI
@@ -41,6 +42,89 @@ namespace stdx {
 
 	template<class T>
 	std::string type_traits<T>::_name = demangle_name<T>();
+
+	template<class T>
+	struct trace {
+
+		explicit
+		trace(const T& obj):
+		trace(obj, static_cast<size_t>(std::addressof(obj)))
+		{}
+
+		explicit
+		trace(const T& obj, size_t id):
+		trace(obj, stdx::type_traits<T>::short_name(), id)
+		{}
+
+		explicit
+		trace(const T& obj, std::string type):
+		trace(obj, type, 0)
+		{}
+
+		explicit
+		trace(const T& obj, std::string type, size_t id):
+		_type(type), _id(id), _obj(obj)
+		{}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const trace& rhs) {
+			out << rhs._type << ' ';
+			if (!rhs._id) {
+				out << '-';
+			} else {
+				out << rhs._id;
+			}
+			out << ' ';
+			out << rhs._obj;
+			return out;
+		}
+
+	private:
+
+		std::string _type;
+		size_t _id;
+		const T& _obj;
+
+	};
+
+	/**
+		Ideal debug log
+		- is thread-safe,
+		- supports class and object tags to trace messages of specific classes/objects,
+		- can be enabled/disabled compile-time,
+		- attaches to *any* existing output stream.
+	*/
+	class debug_log {
+
+		typedef std::recursive_mutex mutex_type;
+		typedef std::unique_lock<mutex_type> lock_type;
+
+	public:
+
+		debug_log(std::ostream& str) noexcept:
+		_out(str)
+		{}
+
+		~debug_log() = default;
+		debug_log(const debug_log&) = delete;
+		debug_log& operator=(const debug_log&) = delete;
+
+		template<class T>
+		debug_log&
+		operator<<(const T& rhs) {
+			lock_type lock(_mutex);
+			_out << rhs;
+			return *this;
+		}
+
+	private:
+
+		std::ostream& _out;
+		mutex_type _mutex;
+
+	};
+
+	debug_log cdbg(std::clog);
 
 	/// disable all debug logs by default
 	template<class Category>

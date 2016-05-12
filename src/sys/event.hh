@@ -239,7 +239,7 @@ namespace sys {
 			bool success = false;
 			while (!success && !pred()) {
 				stdx::unlock_guard<Lock> g(lock);
-				success = do_wait();
+				success = do_wait(no_timeout);
 			}
 		}
 
@@ -422,7 +422,7 @@ namespace sys {
 		}
 
 		bool
-		do_wait() {
+		do_wait(int timeout_millis) {
 
 			bool success = false;
 
@@ -431,7 +431,7 @@ namespace sys {
 
 //			std::clog << "before poll(this=" << *this << ")" << std::endl;
 			bits::check_if_not<std::errc::interrupted>(
-				::poll(_events.data(), _events.size(), no_timeout),
+				::poll(_events.data(), _events.size(), timeout_millis),
 				__FILE__, __LINE__, __func__
 			);
 			success = errno != EINTR;
@@ -494,7 +494,7 @@ namespace sys {
 		static constexpr const size_type
 		NPIPES = 1;
 
-		enum: int { no_timeout = -1 };
+		static const int no_timeout = -1;
 	};
 
 }
