@@ -22,7 +22,8 @@ test_runner = executable(
 	include_directories: srcdir
 )
 
-sanitize_flags = ['-fsanitize=null', '-fsanitize=address', '-fsanitize=undefined']
+#sanitize_flags = ['-fsanitize=null', '-fsanitize=address', '-fsanitize=undefined']
+sanitize_flags = []
 
 executable(
 	'nic-server-test',

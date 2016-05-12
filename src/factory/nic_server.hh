@@ -121,15 +121,11 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
-			if (not event.hup()) {
-				_stream.clear();
-				_stream.sync();
-			}
-			if (event.in()) {
-				kernel_type* kernel = nullptr;
-				while (_stream >> kernel) {
-					receive_kernel(kernel);
-				}
+			_stream.clear();
+			_stream.sync();
+			kernel_type* kernel = nullptr;
+			while (_stream >> kernel) {
+				receive_kernel(kernel);
 			}
 		}
 

@@ -4,6 +4,7 @@
 #include <factory/server_guard.hh>
 
 #include <sys/cmdline.hh>
+#include <sys/log.hh>
 
 #include <cassert>
 
@@ -210,6 +211,7 @@ private:
 
 int
 main(int argc, char* argv[]) {
+	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::cmdline cmdline(argc, argv, {
 		sys::cmd::ignore_first_arg(),
