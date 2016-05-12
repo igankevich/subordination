@@ -4,8 +4,6 @@
 #include <random>
 #include <chrono>
 
-#include <stdx/log.hh>
-
 #include "discrete_function.hh"
 #include "mersenne_twister.hh"
 #include "grid.hh"

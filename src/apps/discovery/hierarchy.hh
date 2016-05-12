@@ -4,8 +4,6 @@
 #include <map>
 #include <set>
 
-#include <stdx/log.hh>
-
 #include <sys/endpoint.hh>
 #include <sys/ifaddr.hh>
 

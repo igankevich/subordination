@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <iomanip>
 
 #include "encoding.hh"

@@ -2,7 +2,6 @@
 #define FACTORY_BITS_TERMINATE_HANDLER_HH
 
 #include <factory/error.hh>
-#include <stdx/log.hh>
 #include <sys/bits/check.hh>
 
 namespace factory {

@@ -6,8 +6,6 @@
 #include <vector>
 #include <algorithm>
 
-#include <stdx/log.hh>
-
 namespace factory {
 
 	// TODO: remove this class

@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <iostream>
 #include <stdx/uint128.hh>
 #include "test.hh"

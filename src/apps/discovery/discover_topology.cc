@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <map>
 #include <unordered_map>
 #include <set>
@@ -6,8 +8,6 @@
 #include <iterator>
 #include <fstream>
 #include <valarray>
-
-#include <stdx/log.hh>
 
 #include <sys/endpoint.hh>
 #include <sys/socket.hh>

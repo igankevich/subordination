@@ -16,7 +16,6 @@
 	#define FACTORY_SOCK_CLOEXEC SOCK_CLOEXEC
 #endif
 
-#include <stdx/log.hh>
 #include <stdx/mutex.hh>
 
 #include <sys/endpoint.hh>

@@ -5,7 +5,6 @@
 
 #include <sys/endpoint.hh>
 #include <stdx/random.hh>
-#include <stdx/log.hh>
 #include <factory/error.hh>
 
 // This code is adapted from Omnifarious answer to Stackoverflow question.

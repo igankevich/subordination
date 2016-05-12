@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <stdx/iterator.hh>
 #include <stdx/random.hh>
 

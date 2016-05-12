@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <iterator>
 
-#include <stdx/log.hh>
-
 #include <sys/bits/check.hh>
 #include "endpoint.hh"
 #include "subnet_iterator.hh"

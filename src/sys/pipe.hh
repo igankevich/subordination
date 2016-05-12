@@ -3,8 +3,6 @@
 
 #include <unistd.h>
 
-#include <stdx/log.hh>
-
 #include <sys/bits/check.hh>
 #include <sys/bits/safe_calls.hh>
 #include <sys/process.hh>

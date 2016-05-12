@@ -5,7 +5,6 @@
 #include <cassert>
 
 #include <stdx/streambuf.hh>
-#include <stdx/log.hh>
 
 namespace stdx {
 

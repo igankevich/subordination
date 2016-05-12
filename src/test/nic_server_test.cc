@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <factory/algorithm.hh>
 #include <factory/cpu_server.hh>
 #include <factory/kernel.hh>

@@ -5,8 +5,6 @@
 #include <sstream>
 #include <fstream>
 
-#include <stdx/log.hh>
-
 namespace discovery {
 
 	template<class T>

@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <sys/dir.hh>
 #include <sys/file.hh>
 #include <sys/path.hh>

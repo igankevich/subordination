@@ -2,7 +2,6 @@
 #define APPS_DISCOVERY_LOCATION_HH
 
 #include <cmath>
-#include <stdx/log.hh>
 
 namespace stdx {
 	template<class T>

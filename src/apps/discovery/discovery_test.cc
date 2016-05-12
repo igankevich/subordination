@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <map>
 
 #include <sys/socket.hh>

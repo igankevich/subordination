@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <vector>
 
-#include <stdx/log.hh>
 #include <stdx/iterator.hh>
 
 #include <sys/bits/check.hh>

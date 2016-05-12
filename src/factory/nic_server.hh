@@ -35,7 +35,6 @@ namespace factory {
 		typedef Router router_type;
 		typedef Kernels pool_type;
 		typedef application_type app_type;
-		typedef stdx::log<Remote_Rserver> this_log;
 
 		static_assert(
 			std::is_move_constructible<stream_type>::value,
@@ -104,13 +103,14 @@ namespace factory {
 				_sentupstream.push_back(kernel);
 			} else
 			if (kernel_goes_in_downstream_buffer(kernel)) {
-				std::clog << "Put kernel into downstream buffer" << std::endl;
 				_sentdownstream.push_back(kernel);
 			} else
 			if (not kernel->moves_everywhere()) {
 				delete_kernel = true;
 			}
-			std::clog << "send to " << vaddr() << ' ' << *kernel << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("nic", "send", stdx::make_fields("to", vaddr(), "kernel", *kernel));
+			#endif
 			_stream << kernel;
 			/// The kernel is deleted if it goes downstream
 			/// and does not carry its parent.
@@ -216,7 +216,9 @@ namespace factory {
 				}
 				k->principal(p);
 			}
-			this_log() << "recv kernel=" << *k << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("nic", "recv kernel", *k);
+			#endif
 			if (!ok) {
 				return_kernel(k);
 			} else {
@@ -225,23 +227,31 @@ namespace factory {
 		}
 
 		void return_kernel(kernel_type* k) {
-			this_log() << "No principal found for " << *k << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("nic", "No principal found for ", *k);
+			#endif
 			k->principal(k->parent());
 			this->send(k);
 		}
 
 		void recover_kernel(kernel_type* k) {
 			if (k->moves_upstream()) {
-				std::clog << "Recovering kernel " << *k << std::endl;
-				// this->parent()->send(k);
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("nic", "Recovering kernel ", *k);
+				#endif
 				_router.send_remote(k);
 			} else if (k->moves_somewhere()) {
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("nic", "Destination is unreachable for ", *k);
+				#endif
 				k->from(k->to());
 				k->result(Result::endpoint_not_connected);
 				k->principal(k->parent());
 				_router.send_local(k);
 			} else if (k->moves_downstream() and k->carries_parent()) {
-				std::clog << "Reviving parent kernel on a subordinate node" << std::endl;
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("nic", "Reviving parent kernel on a backup node", *k);
+				#endif
 				_router.send_local(k);
 			} else {
 				assert(false and "Bad kernel in sent buffer");

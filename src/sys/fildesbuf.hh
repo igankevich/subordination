@@ -6,7 +6,6 @@
 
 #include <sys/bits/buffer_category.hh>
 #include <stdx/packetbuf.hh>
-#include <stdx/log.hh>
 #include <stdx/streambuf.hh>
 
 #include "fildes.hh"

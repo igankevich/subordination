@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <sys/fildesbuf.hh>
 
 #include <factory/kernel.hh>

@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include <iostream>
+#include <iomanip>
 #include <mutex>
 
 #if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
@@ -29,6 +30,7 @@ namespace stdx {
 
 	struct no_category {};
 
+	/// @deprecated in favour of manual log message tagging
 	template<class T>
 	struct type_traits {
 		static constexpr const char*
@@ -47,52 +49,68 @@ namespace stdx {
 	struct trace {
 
 		explicit
-		trace(const T& obj):
-		trace(obj, static_cast<size_t>(std::addressof(obj)))
+		trace(const char* msg, const T& obj):
+		trace(msg, obj, reinterpret_cast<size_t>(std::addressof(obj)))
 		{}
 
 		explicit
-		trace(const T& obj, size_t id):
-		trace(obj, stdx::type_traits<T>::short_name(), id)
+		trace(const char* msg, const T& obj, size_t id):
+		trace(msg, obj, stdx::type_traits<T>::short_name(), id)
 		{}
 
 		explicit
-		trace(const T& obj, std::string type):
-		trace(obj, type, 0)
+		trace(const char* msg, const T& obj, std::string type):
+		trace(msg, obj, type, 0)
 		{}
 
 		explicit
-		trace(const T& obj, std::string type, size_t id):
-		_type(type), _id(id), _obj(obj)
+		trace(const char* msg, const T& obj, std::string type, size_t id):
+		_message(msg), _type(type), _id(id), _obj(obj)
 		{}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const trace& rhs) {
-			out << rhs._type << ' ';
-			if (!rhs._id) {
-				out << '-';
-			} else {
-				out << rhs._id;
+			if (!rhs._type.empty()) {
+				out << rhs._type << ' ';
 			}
-			out << ' ';
+			out << rhs._message << ' ';
+			if (rhs._id) {
+				out << rhs._id << ' ';
+			}
 			out << rhs._obj;
 			return out;
 		}
 
 	private:
 
+		const char* _message;
 		std::string _type;
 		size_t _id;
 		const T& _obj;
 
 	};
 
+	template<class T>
+	trace<T>
+	make_trace(const char* msg, const T& rhs) {
+		return trace<T>(msg, rhs);
+	}
+
+	template<class T>
+	trace<T>
+	make_trace(const char* tag, const char* msg, const T& rhs) {
+		return trace<T>(msg, rhs, tag);
+	}
+
+	struct dbgstream: public std::ostream {};
+
 	/**
 		Ideal debug log
 		- is thread-safe,
 		- supports class and object tags to trace messages of specific classes/objects,
 		- can be enabled/disabled compile-time,
-		- attaches to *any* existing output stream.
+		- attaches to *any* existing output stream,
+		- each message occupies a single line.
 	*/
 	class debug_log {
 
@@ -101,8 +119,9 @@ namespace stdx {
 
 	public:
 
+		explicit
 		debug_log(std::ostream& str) noexcept:
-		_out(str)
+		_out(reinterpret_cast<dbgstream&>(str))
 		{}
 
 		~debug_log() = default;
@@ -113,18 +132,18 @@ namespace stdx {
 		debug_log&
 		operator<<(const T& rhs) {
 			lock_type lock(_mutex);
-			_out << rhs;
+			_out << rhs << std::endl;
 			return *this;
 		}
 
 	private:
 
-		std::ostream& _out;
+		dbgstream& _out;
 		mutex_type _mutex;
 
 	};
 
-	debug_log cdbg(std::clog);
+	debug_log dbg(std::clog);
 
 	/// disable all debug logs by default
 	template<class Category>
@@ -230,8 +249,8 @@ namespace stdx {
 
 			friend std::ostream&
 			operator<<(std::ostream& out, const Field& rhs) {
-				return out << static_cast<Field<Args...>>(rhs)
-					<< ',' << rhs._key << '=' << rhs._val;
+				return out << rhs._key << '=' << rhs._val << ','
+					<< static_cast<Field<Args...>>(rhs);
 			}
 
 		private:

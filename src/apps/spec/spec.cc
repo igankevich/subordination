@@ -1,3 +1,4 @@
+#include <stdx/debug.hh>
 
 #include <factory/factory.hh>
 #include <factory/cpu_server.hh>

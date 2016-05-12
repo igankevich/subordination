@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <apps/factory/security.hh>
 #include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>

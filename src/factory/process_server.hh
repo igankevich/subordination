@@ -4,7 +4,6 @@
 #include <map>
 #include <cassert>
 
-#include <stdx/log.hh>
 #include <stdx/iterator.hh>
 
 #include <sys/process.hh>

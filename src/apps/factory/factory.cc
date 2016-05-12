@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include "security.hh"
 #include <sys/network_format.hh>
 #include <sys/log.hh>

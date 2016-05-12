@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>

@@ -1,3 +1,4 @@
+#include <stdx/debug.hh>
 #include <sys/sharedmem.hh>
 //#include <sys/shmembuf.hh>
 

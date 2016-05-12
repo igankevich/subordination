@@ -1,3 +1,5 @@
+#include <stdx/debug.hh>
+
 #include "lbuffer.hh"
 #include <factory/error.hh>
 #include <sys/bits/buffer_category.hh>

@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <sys/shm.h>
 
-#include <stdx/log.hh>
-
 #include <sys/fildes.hh>
 #include <sys/process.hh>
 

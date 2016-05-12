@@ -3,7 +3,6 @@
 
 #include <cassert>
 
-#include <stdx/log.hh>
 #include <sys/packetstream.hh>
 #include <factory/type.hh>
 #include <factory/error.hh>

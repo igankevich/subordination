@@ -1,7 +1,6 @@
 #ifndef FACTORY_CPU_SERVER_HH
 #define FACTORY_CPU_SERVER_HH
 
-#include <stdx/log.hh>
 #include <stdx/mutex.hh>
 #include <sys/system.hh>
 #include <factory/bits/server_category.hh>

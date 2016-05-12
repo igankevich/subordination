@@ -3,8 +3,6 @@
 
 #include <bitset>
 
-#include <stdx/log.hh>
-
 #include <factory/basic_server.hh>
 #include <sys/process.hh>
 #include <sys/packetstream.hh>
