@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <numeric>
 
 #include <stdx/iterator.hh>
 #include <sys/process.hh>
@@ -56,6 +57,7 @@ struct Executor {
 			}
 		});
 		cmdline.parse();
+		assert(!arguments.empty());
 	}
 
 	void
@@ -74,22 +76,15 @@ struct Executor {
 	wait() {
 		int retval = 0;
 		if (strat == Strategy::Peer_to_peer) {
-			std::for_each(
-				procs.begin(), procs.end(),
-				[&retval] (sys::process& rhs) {
-					sys::proc_status stat = rhs.wait();
-					std::clog << "child process terminated: " << stat << std::endl;
-					retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
-				}
-			);
+			retval = accumulate_return_value(procs.begin(), procs.end());
 		} else if (strat == Strategy::Master_slave) {
 			// wait for master process
 			if (procs.front()) {
 				sys::proc_status stat = procs.front().wait();
 				std::clog << "master process terminated: " << stat << std::endl;
-				retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
+				retval = stat.exit_code() | sys::signal_type(stat.term_signal());
 			}
-			// wait for child processes
+			// terminate child processes
 			if (procs.size() > 1) {
 				std::for_each(
 					procs.begin()+1, procs.end(),
@@ -99,9 +94,6 @@ struct Executor {
 						}
 						sys::proc_status stat = rhs.wait();
 						std::clog << "child process terminated: " << stat << std::endl;
-						if (stat.term_signal() != sys::signal::terminate) {
-							retval |= stat.exit_code() | sys::signal_type(stat.term_signal());
-						}
 					}
 				);
 			}
@@ -115,7 +107,6 @@ struct Executor {
 		std::for_each(
 			rhs.arguments.begin(), rhs.arguments.end(),
 			[&out] (const sys::argstream& rhs) {
-				out << "argc=" << rhs.argc() << ' ';
 				std::copy(
 					rhs.argv(), rhs.argv() + rhs.argc(),
 					stdx::intersperse_iterator<char*,char>(out, ' ')
@@ -127,6 +118,19 @@ struct Executor {
 	}
 
 private:
+
+	template<class Iterator>
+	int
+	accumulate_return_value(Iterator first, Iterator last) {
+		return std::accumulate(
+			first, last, 0,
+			[] (int ret, sys::process& rhs) {
+				sys::proc_status stat = rhs.wait();
+				std::clog << "child process terminated: " << stat << std::endl;
+				return ret | stat.exit_code() | sys::signal_type(stat.term_signal());
+			}
+		);
+	}
 
 	Strategy strat = Strategy::Peer_to_peer;
 	std::vector<sys::argstream> arguments;
