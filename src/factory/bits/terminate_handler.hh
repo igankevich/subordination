@@ -17,7 +17,6 @@ namespace factory {
 	template<class Server>
 	struct Terminate_guard {
 
-		typedef stdx::log<Terminate_guard> this_log;
 		typedef Server server_type;
 
 		explicit
@@ -44,14 +43,14 @@ namespace factory {
 				try {
 					std::rethrow_exception(ptr);
 				} catch (Error& err) {
-					this_log() << err << Thread_id() << std::endl;
+					std::cerr << err << Thread_id() << std::endl;
 				} catch (std::exception& err) {
-					this_log() << err << Thread_id() << std::endl;
+					std::cerr << err << Thread_id() << std::endl;
 				} catch (...) {
-					this_log() << "unknown exception caught" << Thread_id() << std::endl;
+					std::cerr << "unknown exception caught" << Thread_id() << std::endl;
 				}
 			} else {
-				this_log() << "terminate called without an active exception" << Thread_id() << std::endl;
+				std::cerr << "terminate called without an active exception" << Thread_id() << std::endl;
 			}
 			stop_root_server(Exit_code::Failure);
 		}

@@ -1,49 +1,11 @@
 #ifndef STDX_LOG_HH
 #define STDX_LOG_HH
 
-#include <typeinfo>
-#include <type_traits>
 #include <iostream>
 #include <iomanip>
 #include <mutex>
 
-#if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
-#define FACTORY_TEST_HAVE_CXXABI
-#endif
-
-#if defined(FACTORY_TEST_HAVE_CXXABI)
-#include <cxxabi.h>
-#endif
-
 namespace stdx {
-
-	template<class T>
-	std::string
-	demangle_name() {
-		#if defined(FACTORY_TEST_HAVE_CXXABI)
-		int status;
-		return std::string(abi::__cxa_demangle(typeid(T).name(), 0, 0, &status));
-		#else
-		return std::string(typeid(T).name());
-		#endif
-	}
-
-	struct no_category {};
-
-	/// @deprecated in favour of manual log message tagging
-	template<class T>
-	struct type_traits {
-		static constexpr const char*
-		short_name() noexcept {
-			return _name.data();
-		}
-		typedef no_category category;
-	private:
-		static std::string _name;
-	};
-
-	template<class T>
-	std::string type_traits<T>::_name = demangle_name<T>();
 
 	template<class T>
 	struct trace {
@@ -51,11 +13,6 @@ namespace stdx {
 		explicit
 		trace(const char* msg, const T& obj):
 		trace(msg, obj, reinterpret_cast<size_t>(std::addressof(obj)))
-		{}
-
-		explicit
-		trace(const char* msg, const T& obj, size_t id):
-		trace(msg, obj, stdx::type_traits<T>::short_name(), id)
 		{}
 
 		explicit
@@ -102,7 +59,7 @@ namespace stdx {
 		return trace<T>(msg, rhs, tag);
 	}
 
-	struct dbgstream: public std::ostream {};
+	class debug_message;
 
 	/**
 		Ideal debug log
@@ -121,7 +78,7 @@ namespace stdx {
 
 		explicit
 		debug_log(std::ostream& str) noexcept:
-		_out(reinterpret_cast<dbgstream&>(str))
+		_out(str)
 		{}
 
 		~debug_log() = default;
@@ -136,82 +93,58 @@ namespace stdx {
 			return *this;
 		}
 
+		friend class debug_message;
+
 	private:
 
-		dbgstream& _out;
+		std::ostream& _out;
 		mutex_type _mutex;
 
 	};
 
-	debug_log dbg(std::clog);
+	class debug_message {
 
-	/// disable all debug logs by default
-	template<class Category>
-	struct enable_log: public std::false_type {};
+		typedef debug_log::mutex_type mutex_type;
+		typedef debug_log::lock_type lock_type;
 
-	struct no_log {
+	public:
+
+		explicit
+		debug_message(debug_log& rhs, const char* tag):
+		_log(rhs)
+		{
+			_log._mutex.lock();
+			_log._out << tag << ' ';
+		}
+
+		~debug_message() {
+			_log._out << std::endl;
+			_log._mutex.unlock();
+		}
 
 		template<class T>
-		inline constexpr const no_log&
-		operator<<(const T&) const noexcept {
-			return *this;
-		}
-
-		inline constexpr const no_log&
-		operator<<(std::ostream& (*pf)(std::ostream&)) const noexcept {
-			return *this;
-		}
-
-	};
-
-	#if defined(FACTORY_DISABLE_LOGS)
-	template<class Tp> struct basic_log: public no_log {};
-	#else
-	template<class Tp>
-	struct basic_log {
-
-		basic_log() {
-			write_header(std::clog,
-			stdx::type_traits<Tp>::short_name());
-		}
-
-		constexpr basic_log(const basic_log&) {}
-		basic_log& operator=(const basic_log&) = delete;
-
-		template<class T>
-		basic_log<Tp>&
+		std::ostream&
 		operator<<(const T& rhs) {
-			std::clog << rhs;
-			return *this;
+			return _log._out << rhs;
 		}
 
-		basic_log<Tp>&
+		std::ostream&
 		operator<<(std::ostream& (*rhs)(std::ostream&)) {
-			std::clog << rhs;
-			return *this;
+			return _log._out << rhs;
+		}
+
+		std::ostream&
+		out() noexcept {
+			return _log._out;
 		}
 
 	private:
 
-		static void
-		write_header(std::ostream& out, const char* func) {
-			if (func) {
-				out << func << ' ';
-			}
-		}
+		debug_log& _log;
 
 	};
-	#endif
 
-	template<class T>
-	struct log: public
-	std::conditional<
-		enable_log<typename type_traits<T>::category>::value,
-		basic_log<T>,
-		no_log
-	>::type
-	{};
-
+	debug_log dbg(std::clog);
 
 	namespace bits {
 
@@ -276,6 +209,25 @@ namespace stdx {
 			const char* _name;
 		};
 
+		template<class T>
+		struct Object {
+
+			explicit
+			Object(const T& rhs):
+			_obj(rhs)
+			{}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const Object& rhs) {
+				return out << rhs._obj;
+			}
+
+		private:
+
+			const T& _obj;
+
+		};
+
 	}
 
 	template<class ... Args>
@@ -285,37 +237,15 @@ namespace stdx {
 	}
 
 	template<class ... Args>
+	bits::Object<bits::Field<Args...>>
+	make_object(const Args& ... args) {
+		return bits::Object<bits::Field<Args...>>(make_fields(args...));
+	}
+
+	template<class ... Args>
 	bits::Function<Args...>
 	make_func(const char* name, const Args& ... args) {
 		return bits::Function<Args...>(name, args...);
-	}
-
-	std::ostream&
-	format_fields_impl(std::ostream& out) {
-		return out;
-	}
-
-	template<class K, class V, class ... Args>
-	std::ostream&
-	format_fields_impl(std::ostream& out, const K& key, const V& value, const Args& ... args) {
-		out << ',' << key << '=' << value;
-		return format_fields_impl(out, args...);
-	}
-
-	template<class K, class V, class ... Args>
-	std::ostream&
-	format_fields(std::ostream& out, const K& key, const V& value, const Args& ... args) {
-		out << '{';
-		out << key << '=' << value;
-		format_fields_impl(out, args...);
-		out << '}';
-		return out;
-	}
-
-	template<class Out, class ... Args>
-	void
-	log_func(const char* func, const Args& ... args) {
-		Out() << make_func(func, args...) << std::endl;
 	}
 
 }

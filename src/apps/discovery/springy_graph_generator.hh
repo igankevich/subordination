@@ -29,7 +29,6 @@ namespace springy {
 	struct Springy_graph {
 
 		typedef std::chrono::nanoseconds::rep Time;
-		typedef stdx::log<Springy_graph> this_log;
 
 		Springy_graph():
 		_start(now())
@@ -37,17 +36,16 @@ namespace springy {
 
 		void
 		start() {
-			this_log()
-				<< "startTime.push("
+			stdx::debug_message msg(stdx::dbg, "graph");
+			msg << "startTime.push("
 				<< now() - _start
-				<< "*1e-6);"
-				<< std::endl;
+				<< "*1e-6);";
 		}
 
 		void
 		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
-			this_log()
-				<< "log[logline++] = {"
+			stdx::debug_message msg(stdx::dbg, "graph");
+			msg << "log[logline++] = {"
 				<< "redo: function () {"
 				<< "g." << Edge(addr, principal_addr) << " = graph.newEdge("
 				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
@@ -56,14 +54,13 @@ namespace springy {
 				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ")"
 				<< "},"
 				<< "time: " << now() - _start << "*1e-6"
-				<< "};"
-				<< std::endl;
+				<< "};";
 		}
 
 		void
 		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
-			this_log()
-				<< "log[logline++] = {"
+			stdx::debug_message msg(stdx::dbg, "graph");
+			msg << "log[logline++] = {"
 				<< "redo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ')'
 				<< "}, undo: function() {"
@@ -71,19 +68,17 @@ namespace springy {
 				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
 				<< "},"
 				<< "time: " << now() - _start << "*1e-6"
-				<< "};"
-				<< std::endl;
+				<< "};";
 		}
 
 		void
 		add_node(sys::endpoint addr) {
-			this_log()
-				<< "log[logline++] = {"
+			stdx::debug_message msg(stdx::dbg, "graph");
+			msg << "log[logline++] = {"
 				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")},"
 				<< "time: " << now() - _start << "*1e-6"
-				<< "};"
-				<< std::endl;
+				<< "};";
 		}
 
 		template<class It>

@@ -16,7 +16,6 @@ namespace factory {
 		typedef Standard_server_with_pool<T> base_server;
 		using typename base_server::kernel_type;
 		using typename base_server::lock_type;
-		typedef stdx::log<Basic_CPU_server> this_log;
 
 		Basic_CPU_server(Basic_CPU_server&& rhs) noexcept:
 		base_server(std::move(rhs))
@@ -143,17 +142,6 @@ namespace factory {
 		priority_server = 0;
 		#endif
 
-	};
-
-}
-
-namespace stdx {
-
-	template<class T>
-	struct type_traits<factory::CPU_server<T>> {
-		static constexpr const char*
-		short_name() { return "cpu_server"; }
-		typedef factory::server_category category;
 	};
 
 }

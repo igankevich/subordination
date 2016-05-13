@@ -56,17 +56,6 @@ Router::send_remote(factory::Kernel* rhs) {
 }
 #endif
 
-namespace stdx {
-
-	template<>
-	struct enable_log<factory::server_category>: public std::true_type {};
-
-	template<>
-	struct enable_log<factory::kernel_category>: public std::true_type {};
-
-}
-
-
 const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
 sys::endpoint server_endpoint({127,0,0,1}, 10001);
@@ -88,8 +77,6 @@ std::atomic<uint32_t> shutdown_counter(0);
 Role role = Role::Master;
 
 struct Test_socket: public factory::Kernel {
-
-	typedef stdx::log<Test_socket> this_log;
 
 	Test_socket():
 	_data()

@@ -14,7 +14,6 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
 	typedef typename rankedlist_type::iterator rankedlist_iterator;
 	typedef Negotiator<addr_type> negotiator_type;
-	typedef stdx::log<Master_discoverer> this_log;
 
 	Master_discoverer(const network_type& network, const sys::port_type port):
 	_hierarchy(network, port),
@@ -40,7 +39,9 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 		if (_negotiator == k) {
 			if (k->result() == Result::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
-				this_log() << "hierarchy: " << _hierarchy << std::endl;
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("dscvr", "hierarchy", _hierarchy);
+				#endif
 				_negotiator = nullptr;
 				deploy_secret_agent();
 			} else {
@@ -48,20 +49,24 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			}
 		} else
 		if (_secretagent == k) {
-			this_log log;
-			log << "secret agent returned from "
-				<< k->from() << ": " << k->result()
-				<< std::endl;
+			{
+				stdx::debug_message msg(stdx::dbg, "dscvr");
+				msg << "secret agent returned from " << k->from() << ": " << k->result();
+			}
 			if (k->result() == Result::endpoint_not_connected) {
 				_hierarchy.unset_principal();
-				log << "hierarchy: " << _hierarchy << std::endl;
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("dscvr", "hierarchy", _hierarchy);
+				#endif
 				try_next_host();
 			}
 		} else
 		if (typeid(*k) == typeid(negotiator_type)) {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(_hierarchy);
-			this_log() << "hierarchy: " << _hierarchy << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("dscvr", "hierarchy", _hierarchy);
+			#endif
 		}
 	}
 
@@ -119,7 +124,9 @@ private:
 	run_negotiator() {
 		if (_currenthost != _rankedhosts.end()) {
 			const sys::endpoint new_princ(_currenthost->second, _port);
-			this_log() << "trying " << new_princ << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("dscvr", "trying", new_princ);
+			#endif
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
 			upstream(local_server, this, _negotiator);
 		}

@@ -71,7 +71,6 @@ struct Topology {
 	typedef std::multiset<discovery::Location> locationset_type;
 	typedef std::unordered_map<country_type,locationset_type> locationmap_type;
 	typedef std::unordered_map<city_type,discovery::Point<float_type>> coordinate_container;
-	typedef stdx::log<Topology> this_log;
 
 	Topology(
 		const std::string& location_file,
@@ -95,7 +94,7 @@ struct Topology {
 		const std::string& filter_continent
 	)
 	{
-		this_log() << "Reading locations from " << filename << std::endl;
+		std::clog << "Reading locations from " << filename << std::endl;
 		using namespace discovery;
 		typedef csv_tuple<',',
 			city_type,
@@ -122,12 +121,12 @@ struct Topology {
 				}
 			}
 		);
-		this_log() << "Total no. of cities = " << _countries.size() << std::endl;
+		std::clog << "Total no. of cities = " << _countries.size() << std::endl;
 	}
 
 	void
 	load_city_coordinates(const std::string& filename) {
-		this_log() << "Reading city coordinates from " << filename << std::endl;
+		std::clog << "Reading city coordinates from " << filename << std::endl;
 		using namespace discovery;
 		typedef csv_tuple<',',
 			ignore_field,
@@ -173,7 +172,7 @@ struct Topology {
 	}
 
 	void load_sub_networks(const std::string& filename) {
-		this_log() << "Reading sub-networks from " << filename << std::endl;
+		std::clog << "Reading sub-networks from " << filename << std::endl;
 		using namespace discovery;
 		typedef csv_tuple<',',
 			network_type,
@@ -207,7 +206,7 @@ struct Topology {
 				}
 			}
 		);
-		this_log() << "No. of cities with at least one sub-network = " << nhosts.size() << std::endl;
+		std::clog << "No. of cities with at least one sub-network = " << nhosts.size() << std::endl;
 		std::for_each(
 			locs.begin(),
 			locs.end(),
@@ -259,7 +258,7 @@ struct Topology {
 			sorted_locs.begin(),
 			sorted_locs.end(),
 			[&graph,&vectors] (const typename locationmap_type::value_type& rhs) {
-				this_log() << "No. of cities with at least one sub-network in "
+				std::clog << "No. of cities with at least one sub-network in "
 					<< decode_as_string(rhs.first) << " = " << rhs.second.size() << std::endl;
 				const auto last = rhs.second.end();
 				for (auto it=rhs.second.begin(); it!=last; ++it) {

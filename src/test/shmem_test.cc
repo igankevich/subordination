@@ -18,7 +18,6 @@ namespace stdx {
 template<class T>
 struct Test_shmem: public test::Test<Test_shmem<T>> {
 
-	typedef stdx::log<Test_shmem> this_log;
 	typedef typename sys::shared_mem<T>::size_type size_type;
 	typedef sys::shared_mem<T> shmem;
 
@@ -53,7 +52,6 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 template<class T>
 struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 
-	typedef stdx::log<Test_shmembuf> this_log;
 	typedef typename sys::shared_mem<T>::size_type size_type;
 	typedef sys::shared_mem<T> shmem;
 	typedef sys::basic_shmembuf<T> shmembuf;
@@ -63,7 +61,7 @@ struct Test_shmembuf: public test::Test<Test_shmembuf<T>> {
 		shmembuf buf2("/test-shmem-2");
 		for (int i=0; i<12; ++i) {
 			const size_t size = 2u << i;
-			this_log() << "test_shmembuf() middle: size=" << size << std::endl;
+			std::clog << "test_shmembuf() middle: size=" << size << std::endl;
 			std::vector<T> input(size);
 			std::generate(input.begin(), input.end(), test::randomval<T>);
 			buf1.lock();

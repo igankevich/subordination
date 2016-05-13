@@ -637,7 +637,6 @@ namespace factory {
 
 	template<class It, class Res, class Random>
 	void websocket_encode(It first, It last, Res result, Random& rng) {
-		typedef stdx::log<websocket_encode_t> this_log;
 		size_t input_size = last - first;
 		if (input_size == 0) return;
 		Web_socket_frame frame;
@@ -647,17 +646,20 @@ namespace factory {
 		frame.mask(stdx::n_random_bytes<Web_socket_frame::Mask>(rng));
 		frame.encode(result);
 		frame.copy_payload(first, last, result);
-		this_log() << "send header " << frame << std::endl;
+		#ifndef NDEBUG
+		stdx::dbg << stdx::make_trace("wbs", "send frame", frame);
+		#endif
 	}
 
 
 	template<class It, class Res>
 	size_t websocket_decode(It first, It last, Res output, Opcode* opcode) {
-		typedef stdx::log<websocket_decode_t> this_log;
 		Web_socket_frame frame;
 		std::pair<It,It> payload = frame.decode(first, last);
 		if (payload.first == first) return 0;
-		this_log() << "recv header " << frame << std::endl;
+		#ifndef NDEBUG
+		stdx::dbg << stdx::make_trace("wbs", "recv frame", frame);
+		#endif
 		*opcode = frame.opcode();
 		// ignore non-binary and invalid frames
 		if (frame.is_binary() && frame.has_valid_opcode()) {

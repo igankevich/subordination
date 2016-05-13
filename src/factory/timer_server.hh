@@ -78,15 +78,4 @@ namespace factory {
 
 }
 
-namespace stdx {
-
-	template<class T>
-	struct type_traits<factory::Timer_server<T>> {
-		static constexpr const char*
-		short_name() { return "tm_server"; }
-		typedef factory::server_category category;
-	};
-
-}
-
 #endif // FACTORY_TIMER_SERVER_HH

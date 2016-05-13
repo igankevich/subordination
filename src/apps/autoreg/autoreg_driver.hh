@@ -22,7 +22,6 @@ public:
 
 	typedef Uniform_grid grid_type;
 	typedef Wave_surface_generator<T, grid_type> generator_type;
-	typedef stdx::log<Autoreg_model> this_log;
 
 	typedef std::chrono::nanoseconds::rep Time;
 	typedef std::chrono::nanoseconds Nanoseconds;

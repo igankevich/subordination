@@ -81,8 +81,7 @@ namespace sys {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const pipe& rhs) {
-			return stdx::format_fields(out, "in", rhs.out(),
-				"out", rhs.in());
+			return out << stdx::make_object("in", rhs.out(), "out", rhs.in());
 		}
 
 	private:
@@ -160,8 +159,7 @@ namespace sys {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const two_way_pipe& rhs) {
-			return stdx::format_fields(out, "pipe1", rhs._pipe1,
-				"pipe2", rhs._pipe2);
+			return out << stdx::make_object("pipe1", rhs._pipe1, "pipe2", rhs._pipe2);
 		}
 
 	private:

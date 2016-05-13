@@ -79,8 +79,6 @@ std::atomic<int> kernel_count(0);
 
 struct Test_socket: public Kernel {
 
-	typedef stdx::log<Test_socket> this_log;
-
 	Test_socket(): _data() {
 	}
 
@@ -93,12 +91,12 @@ struct Test_socket: public Kernel {
 	}
 
 	void act() override {
-		std::cout << "Test_socket::act(): It works!" << std::endl;
+		stdx::dbg << "Test_socket::act(): It works!";
 		commit(remote_server, this);
 	}
 
 	void write(sys::packetstream& out) override {
-		this_log() << "Test_socket::write()" << std::endl;
+		stdx::dbg << "Test_socket::write()";
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -106,7 +104,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void read(sys::packetstream& in) override {
-		this_log() << "Test_socket::read()" << std::endl;
+		stdx::dbg << "Test_socket::read()";
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -116,10 +114,6 @@ struct Test_socket: public Kernel {
 	}
 
 	std::vector<Datum> data() const {
-		this_log()
-			<< "parent.id = " << (parent() ? parent()->id() : 12345)
-			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
-			<< std::endl;
 		return _data;
 	}
 
@@ -130,23 +124,15 @@ private:
 /*
 struct Sender: public Kernel {
 
-	typedef stdx::log<Sender> this_log;
-
 	Sender(uint32_t n, uint32_t s):
 		_vector_size(n),
 		_input(_vector_size),
 		_sleep(s) {}
 
 	void act(Server& this_server) {
-		this_log() << "Sender "
-			<< "id = " << id()
-			<< ", parent.id = " << (parent() ? parent()->id() : 12345)
-			<< ", principal.id = " << (principal() ? principal()->id() : 12345)
-			<< std::endl;
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
 			upstream(this_server.remote_server(), new Test_socket(_input));
-//			this_log() << " Sender id = " << this->id() << std::endl;
 		}
 	}
 
@@ -154,8 +140,6 @@ struct Sender: public Kernel {
 
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
-
-		this_log() << "kernel = " << *test_kernel << std::endl;
 
 		if (_input.size() != output.size())
 			throw std::runtime_error("test_socket. Input and output size does not match.");
@@ -169,7 +153,6 @@ struct Sender: public Kernel {
 			}
 		}
 
-		this_log() << "Sender::kernel count = " << _num_returned+1 << std::endl;
 		if (++_num_returned == NUM_KERNELS) {
 			commit(this_server.local_server());
 		}
@@ -186,8 +169,6 @@ private:
 */
 
 struct Main: public Kernel {
-
-	typedef stdx::log<Main> this_log;
 
 	Main() {
 		factory::types.register_type<Test_socket>();
@@ -213,8 +194,6 @@ struct Main: public Kernel {
 	}
 
 	void react(Kernel*) override {
-		this_log() << "Main::kernel count = " << _num_returned+1 << std::endl;
-		this_log() << "global kernel count = " << kernel_count << std::endl;
 		if (++_num_returned == NUM_SIZES) {
 			commit(this);
 		}

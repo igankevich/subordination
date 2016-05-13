@@ -68,7 +68,6 @@ struct Main: public Kernel {
 	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef Master_discoverer<addr_type, hierarchy_type, distance_type> discoverer_type;
-	typedef stdx::log<Main> this_log;
 
 	Main(int argc, char* argv[]):
 	_cmdline(argc, argv, {
@@ -213,7 +212,6 @@ int main(int argc, char* argv[]) {
 	sys::ipv4_addr master_addr{127,0,0,1};
 	sys::ipv4_addr kill_addr{127,0,0,2};
 
-	typedef stdx::log<decltype(main)> this_log;
 	int retval = 0;
 	sys::ifaddr<sys::ipv4_addr> network;
 	size_t nhosts = 0;
@@ -246,10 +244,15 @@ int main(int argc, char* argv[]) {
 
 	if (role == role_master) {
 
-		this_log() << "Network = " << network << std::endl;
-		this_log() << "Num peers = " << nhosts << std::endl;
-		this_log() << "Role = " << role << std::endl;
-		this_log() << "start,mid = " << *network.begin() << ',' << *network.middle() << std::endl;
+		#ifndef NDEBUG
+		{
+			stdx::debug_message msg(stdx::dbg, "tst");
+			msg << "Network = " << network << '\n';
+			msg << "Num peers = " << nhosts << '\n';
+			msg << "Role = " << role << '\n';
+			msg << "start,mid = " << *network.begin() << ',' << *network.middle();
+		}
+		#endif
 
 		std::vector<sys::endpoint> hosts;
 		if (network) {
@@ -301,7 +304,10 @@ int main(int argc, char* argv[]) {
 			});
 		}
 
-		this_log() << "Forked " << procs << std::endl;
+		#ifndef NDEBUG
+		stdx::debug_message msg(stdx::dbg, "tst");
+		msg << "Forked " << procs;
+		#endif
 		retval = procs.wait();
 
 	} else {

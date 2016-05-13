@@ -8,7 +8,6 @@ struct Negotiator: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
 	typedef discovery::Hierarchy<addr_type> hierarchy_type;
-	typedef stdx::log<Negotiator> this_log;
 
 	Negotiator() noexcept:
 	_oldprinc(),
@@ -74,7 +73,6 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
 	typedef Negotiator<addr_type> negotiator_type;
-	typedef stdx::log<Master_negotiator> this_log;
 
 	Master_negotiator(sys::endpoint oldp, sys::endpoint newp):
 	_oldprinc(oldp),
@@ -90,7 +88,10 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 	react(Kernel* k) override {
 		bool finished = true;
 		if (_numsent == 1) {
-			this_log() << "Tried " << k->from() << ": " << k->result() << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("dscvr", "try",
+				stdx::make_fields("dst", k->from(), "rslt", k->result()));
+			#endif
 			this->result(k->result());
 			if (k->result() == Result::success and _oldprinc) {
 				finished = false;

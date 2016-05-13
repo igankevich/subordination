@@ -311,7 +311,6 @@ const float Spectrum_kernel::PI = std::acos(-1.0f);
 struct Station_kernel: public Kernel {
 
 	typedef std::unordered_map<Variable, Observation> Map;
-	typedef stdx::log<Station_kernel> this_log;
 
 	Station_kernel() = default;
 
@@ -341,9 +340,11 @@ struct Station_kernel: public Kernel {
 		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(kernel);
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
-			this_log() << "finished station " << station() << ", year " << _year << ", "
-				<< num_processed_spectra() << " spectra total"
-				<< std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message msg(stdx::dbg, "spec");
+			msg << "finished station " << station() << ", year " << _year << ", "
+				<< num_processed_spectra() << " spectra total";
+			#endif
 			_observations.clear();
 			_spectra.clear();
 			commit(remote_server, this);
@@ -359,8 +360,6 @@ struct Station_kernel: public Kernel {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
 				const Observation& ob = pair.second;
-//				this_log() << _station << ' ' << pair.first << ' ' << pair.second << std::endl;
-//				this_log() << "reading " << sys::canonical_path(ob.filename()) << std::endl;
 				::gzFile file = ::gzopen(ob.filename().c_str(), "rb");
 				if (file == NULL) {
 					std::stringstream msg;
@@ -411,20 +410,12 @@ struct Station_kernel: public Kernel {
 		}
 		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
-			this_log() << "removed " << (old_size-new_size) << " incomplete records "
-				"station " << _station << ", year " << _year
-				<< std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message msg(stdx::dbg, "spec");
+			msg << "removed " << (old_size-new_size) << " incomplete records "
+				"station " << _station << ", year " << _year;
+			#endif
 		}
-
-		/*this_log log;
-		log << "Frequencies: ";
-		std::for_each(
-			_frequencies.cbegin(), _frequencies.cend(),
-			[&log] (float rhs) {
-				log << rhs << ' ';
-			}
-		);
-		log << std::endl;*/
 
 		_count = _spectra.size();
 		std::for_each(_spectra.begin(), _spectra.end(),
@@ -478,7 +469,6 @@ struct Year_kernel: public Kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
-	typedef stdx::log<Year_kernel> this_log;
 
 	Year_kernel():
 		_count(0), _num_spectra(0),
@@ -509,11 +499,13 @@ struct Year_kernel: public Kernel {
 			_output_file.open(output_filename());
 		}
 		k->write_output_to(_output_file, _year);
-		this_log() << "finished station " << k->station() << ", year " << _year
+		#ifndef NDEBUG
+		stdx::debug_message msg(stdx::dbg, "spec");
+		msg << "finished station " << k->station() << ", year " << _year
 			<< " [" << 1+_count << '/' << _observations.size() << "], "
 			<< k->num_processed_spectra() << " spectra total, from "
-			<< k->from()
-			<< std::endl;
+			<< k->from();
+		#endif
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
 //			commit(remote_server());
@@ -524,11 +516,6 @@ struct Year_kernel: public Kernel {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
 				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
-//				std::for_each(pair.second.cbegin(), pair.second.cend(),
-//					[this] (const decltype(pair.second)::value_type& pair2) {
-//						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
-//					}
-//				);
 			}
 		);
 	}
@@ -585,7 +572,6 @@ struct Launcher: public Kernel {
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
 
-	typedef stdx::log<Launcher> this_log;
 	typedef std::chrono::nanoseconds::rep Time;
 
 	Launcher(): _count(0), _count_spectra(0) {}
@@ -598,7 +584,12 @@ struct Launcher: public Kernel {
 	}
 
 	void act() override {
-		this_log() << "launcher start" << std::endl;
+		#ifndef NDEBUG
+		{
+			stdx::debug_message msg(stdx::dbg, "spec");
+			msg << "launcher start";
+		}
+		#endif
 		_time0 = current_time_nano();
 		std::ifstream in("input");
 		std::unordered_map<Year,
@@ -627,12 +618,22 @@ struct Launcher: public Kernel {
 		Year_kernel* k = _yearkernels[k1->year()];
 		k->react(k1);
 		if (k->finished()) {
-			this_log() << "finished year " << k->year() << std::endl;
+			#ifndef NDEBUG
+			{
+				stdx::debug_message msg(stdx::dbg, "spec");
+				msg << "finished year " << k->year();
+			}
+			#endif
 			_count_spectra += k->num_processed_spectra();
 			_yearkernels.erase(k1->year());
 			delete k;
 			if (++_count == 0) {
-				this_log() << "total number of processed spectra: " << _count_spectra << std::endl;
+				#ifndef NDEBUG
+				{
+					stdx::debug_message msg(stdx::dbg, "spec");
+					msg << "total number of processed spectra: " << _count_spectra;
+				}
+				#endif
 				{
 					Time time1 = current_time_nano();
 					std::ofstream timerun_log("time.log");
@@ -668,11 +669,6 @@ struct Launcher: public Kernel {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
 				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
-//				std::for_each(pair.second.cbegin(), pair.second.cend(),
-//					[this] (const decltype(pair.second)::value_type& pair2) {
-//						this_log() << _year << ' ' << pair2.first << ' ' << pair2.second << std::endl;
-//					}
-//				);
 			}
 		);
 	}
@@ -687,11 +683,14 @@ private:
 
 struct Spec_app: public Kernel {
 
-	typedef stdx::log<Spec_app> this_log;
-
 	void
 	act() override {
-		this_log() << "program start" << std::endl;
+		#ifndef NDEBUG
+		{
+			stdx::debug_message msg(stdx::dbg, "spec");
+			msg << "program start";
+		}
+		#endif
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream(local_server, this, new Launcher);
 		#else

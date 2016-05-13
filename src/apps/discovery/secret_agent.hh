@@ -7,11 +7,8 @@ fails, or in case of network failure.
 */
 struct Secret_agent: public Priority_kernel<Kernel> {
 
-	typedef stdx::log<Secret_agent> this_log;
-
 	void
 	act() override {
-		this_log() << "is deployed" << std::endl;
 		delete this;
 	}
 

@@ -217,7 +217,7 @@ namespace factory {
 				k->principal(p);
 			}
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("nic", "recv kernel", *k);
+			stdx::dbg << stdx::make_trace("nic", "recv", *k);
 			#endif
 			if (!ok) {
 				return_kernel(k);
@@ -305,7 +305,6 @@ namespace factory {
 		typedef sys::ifaddr<sys::ipv4_addr> network_type;
 		typedef network_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
-		typedef stdx::log<NIC_server> this_log;
 
 		static_assert(
 			std::is_move_constructible<server_type>::value,
@@ -333,7 +332,9 @@ namespace factory {
 		void
 		remove_server(server_type* ptr) override {
 			// TODO: occasional ``Bad file descriptor''
-			this_log() << "Removing server " << *ptr << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("nic", "remove", *ptr);
+			#endif
 			auto result = _upstream.find(ptr->vaddr());
 			if (result != _upstream.end()) {
 				remove_valid_server(result);
@@ -347,24 +348,17 @@ namespace factory {
 			sys::endpoint vaddr = virtual_addr(addr);
 			auto res = _upstream.find(vaddr);
 			if (res == _upstream.end()) {
-				this->add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
-				this_log() << "connected peer " << vaddr << std::endl;
+				server_type* ptr = add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("nic", "accept", *ptr);
+				#endif
 			} else {
 				server_type& s = res->second;
-				const sys::port_type
-				local_port = s.socket().bind_addr().port();
-				this_log()
-					<< "ports: "
-					<< addr.port() << ' '
-					<< local_port
-					<< std::endl;
-				if (addr.port() < local_port) {
-					this_log()
-						<< "not replacing peer " << s
-						<< std::endl;
-				} else {
-					this_log log;
-					log << "replacing peer " << s;
+				const sys::port_type local_port = s.socket().bind_addr().port();
+				if (!(addr.port() < local_port)) {
+					#ifndef NDEBUG
+					stdx::dbg << stdx::make_trace("nic", "replace", s);
+					#endif
 					poller().disable(s.socket().fd());
 					server_type new_s(std::move(s));
 					// new_s.setparent(this);
@@ -376,7 +370,6 @@ namespace factory {
 					poller().emplace(
 						sys::poll_event{res->second.socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout},
 						handler_type(&res->second));
-					log << " with " << res->second << std::endl;
 				}
 			}
 		}
@@ -563,7 +556,9 @@ namespace factory {
 			poller().emplace(
 				sys::poll_event{fd, events, revents},
 				handler_type(&result.first->second));
-			this_log() << "add server " << result.first->second << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("nic", "add", result.first->second);
+			#endif
 			return &result.first->second;
 		}
 
@@ -578,25 +573,4 @@ namespace factory {
 
 }
 
-namespace stdx {
-
-	template<class T, class Socket, class Router>
-	struct type_traits<factory::NIC_server<T,Socket,Router>> {
-		static constexpr const char*
-		short_name() { return "nic_server"; }
-		typedef factory::server_category category;
-	};
-
-	template<class T, class Socket, class Router, class Kernels>
-	struct type_traits<factory::Remote_Rserver<T, Socket, Router, Kernels>> {
-		static constexpr const char*
-		short_name() { return "nic_rserver"; }
-		typedef factory::server_category category;
-	};
-
-	//template<>
-	//struct disable_log_category<server_category>:
-	//public std::integral_constant<bool, true> {};
-
-}
 #endif // FACTORY_NIC_SERVER_HH

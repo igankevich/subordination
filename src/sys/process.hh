@@ -427,7 +427,6 @@ namespace sys {
 
 	struct process_group {
 
-		typedef stdx::log<process_group> this_log;
 		typedef std::vector<process>::iterator iterator;
 
 		template<class ... Args>
@@ -465,9 +464,10 @@ namespace sys {
 			int ret = 0;
 			for (process& p : _procs) {
 				sys::proc_status x = p.wait();
-				this_log() << "process terminated:"
-					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal())
-					<< std::endl;
+				#ifndef NDEBUG
+				stdx::debug_message(stdx::dbg, "sys") << "process terminated:"
+					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal());
+				#endif
 				ret |= x.exit_code() | signal_type(x.term_signal());
 			}
 			return ret;

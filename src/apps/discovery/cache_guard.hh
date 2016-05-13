@@ -10,8 +10,6 @@ namespace discovery {
 	template<class T>
 	struct Cache_guard {
 
-		typedef stdx::log<Cache_guard> this_log;
-
 		template<class Key>
 		Cache_guard(const Key& key, T& obj):
 		_filename(generate_filename(key)),
@@ -26,7 +24,6 @@ namespace discovery {
 
 		bool
 		load() {
-			stdx::log_func<this_log>(__func__, "filename", _filename);
 			std::ifstream in(_filename);
 			if (in.is_open()) {
 				in >> _object;

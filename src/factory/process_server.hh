@@ -28,7 +28,6 @@ namespace factory {
 		typedef T kernel_type;
 		typedef Router router_type;
 		typedef Kernels pool_type;
-		typedef stdx::log<Buffered_server> this_log;
 
 		explicit
 		Buffered_server(router_type& router):
@@ -58,7 +57,6 @@ namespace factory {
 				erase_kernel = false;
 			}
 			if (erase_kernel && !kernel->moves_everywhere()) {
-				this_log() << "Delete kernel " << *kernel << std::endl;
 				delete kernel;
 			}
 		}
@@ -70,15 +68,11 @@ namespace factory {
 			auto pos = std::find_if(_buffer.begin(), _buffer.end(),
 				[k] (kernel_type* rhs) { return *rhs == *k; });
 			if (pos != _buffer.end()) {
-				this_log() << "Kernel erased " << k->id() << std::endl;
 				kernel_type* orig = *pos;
 				k->parent(orig->parent());
 				k->principal(k->parent());
 				delete orig;
 				_buffer.erase(pos);
-				this_log() << "Buffer size = " << _buffer.size() << std::endl;
-			} else {
-				this_log() << "Kernel not found " << k->id() << std::endl;
 			}
 		}
 
@@ -92,11 +86,6 @@ namespace factory {
 			// from which they must be recovered with recover_kernels().
 			// sys::poll_event ev{socket().fd(), sys::poll_event::In};
 			// handle(ev);
-
-			this_log()
-				<< "Kernels left: "
-				<< _buffer.size()
-				<< std::endl;
 
 			// recover kernels written to output buffer
 			using namespace std::placeholders;
@@ -147,7 +136,6 @@ namespace factory {
 		typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
 		typedef sys::packetstream stream_type;
 		typedef typename kernel_type::app_type app_type;
-		typedef stdx::log<Process_rserver> this_log;
 
 		using base_server::_router;
 
@@ -196,7 +184,6 @@ namespace factory {
 			TODO we need IDs only when forwarding kernels to other hosts
 			if (!kernel->identifiable() && !kernel->moves_everywhere()) {
 				kernel->id(this->factory()->factory_generate_id());
-				this_log() << "Kernel generate id = " << kernel->id() << std::endl;
 			}
 			*/
 			_ostream.begin_packet();
@@ -212,7 +199,9 @@ namespace factory {
 			_ostream << type->id();
 			kernel->write(_ostream);
 			_ostream.end_packet();
-			stdx::log_func<this_log>(__func__, "kernel", *kernel);
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("app", "send", stdx::make_fields("to", _childpid, "kernel", *kernel));
+			#endif
 			base_server::send(kernel);
 		}
 
@@ -229,16 +218,12 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
-			stdx::log_func<this_log>(__func__, "ev", event);
 			if (event.fd() == _outbuf.fd()) {
 				if (_outbuf.dirty()) {
 					event.setrev(sys::poll_event::Out);
 				}
 				if (event.out() && !event.hup()) {
 					_ostream.flush();
-					if (!_outbuf.dirty()) {
-						this_log() << "Flushed." << std::endl;
-					}
 				}
 			} else {
 				assert(
@@ -261,12 +246,14 @@ namespace factory {
 			_ostream.begin_packet();
 			_ostream.append_payload(istr);
 			_ostream.end_packet();
-			stdx::log_func<this_log>(__func__, "hdr", hdr);
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("app", "forward", stdx::make_fields("header", hdr));
+			#endif
 		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Process_rserver& rhs) {
-			return stdx::format_fields(out, "childpid", rhs._childpid);
+			return out << stdx::make_object("childpid", rhs._childpid);
 		}
 
 	private:
@@ -274,8 +261,6 @@ namespace factory {
 		void read_and_receive_kernel() {
 			app_type app; sys::endpoint from;
 			_istream >> app >> from;
-			this_log() << "recv ok" << std::endl;
-			this_log() << "recv app=" << app << std::endl;
 			if (app == Application::ROOT || _childpid == sys::this_process::id()) {
 				Types::read_object(factory::types, _istream,
 					[this,app] (void* rhs) {
@@ -293,7 +278,9 @@ namespace factory {
 		void
 		receive_kernel(kernel_type* k, app_type app) {
 			k->setapp(app);
-			stdx::log_func<this_log>(__func__, "kernel", *k);
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("app", "recv", *k);
+			#endif
 			bool ok = true;
 			if (k->moves_downstream()) {
 				// TODO
@@ -314,9 +301,9 @@ namespace factory {
 		}
 
 		void return_kernel(kernel_type* k) {
-			this_log()
-				<< "No principal found for "
-				<< *k << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("app", "No principal found for ", *k);
+			#endif
 			k->principal(k->parent());
 			this->send(k);
 		}
@@ -352,7 +339,6 @@ namespace factory {
 
 		typedef sys::pid_type key_type;
 		typedef std::map<key_type, rserver_type> map_type;
-		typedef stdx::log<Process_iserver> this_log;
 
 		Process_iserver() = default;
 
@@ -372,7 +358,6 @@ namespace factory {
 
 		void
 		process_kernels() override {
-			stdx::log_func<this_log>(__func__);
 			stdx::front_pop_iterator<kernel_pool> it_end;
 			lock_type lock(this->_mutex);
 			stdx::for_each_thread_safe(lock,
@@ -383,7 +368,9 @@ namespace factory {
 
 		void
 		add(const Application& app) {
-			this_log() << "starting app=" << app << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("app", "exec", *app);
+			#endif
 			lock_type lock(this->_mutex);
 			sys::two_way_pipe data_pipe;
 			const sys::process& p = _procs.emplace([&app,this,&data_pipe] () {
@@ -395,13 +382,11 @@ namespace factory {
 			sys::pid_type process_id = p.id();
 			data_pipe.close_in_parent();
 			data_pipe.validate();
-			this_log() << "pipe=" << data_pipe << std::endl;
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
 			rserver_type child(p.id(), std::move(data_pipe), _router);
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
-			this_log() << "starting child process: " << child << std::endl;
 			auto result = _apps.emplace(process_id, std::move(child));
 			poller().emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
@@ -470,15 +455,17 @@ namespace factory {
 
 		void
 		on_process_exit(sys::process& p, sys::proc_info status) {
-			stdx::log_func<this_log>(__func__, "process", p);
 			lock_type lock(this->_mutex);
 			auto result = _apps.find(p.id());
 			if (result != this->_apps.end()) {
-				this_log() << "finished app="
-					<< result->first
-					<< ",ret=" << status.exit_code()
-					<< ",sig=" << status.term_signal()
-					<< std::endl;
+				#ifndef NDEBUG
+				stdx::dbg << stdx::make_trace("app", "exit",
+					stdx::make_fields(
+						"status", status,
+						"app", result->first
+					)
+				);
+				#endif
 				_apps.erase(result);
 			}
 		}
@@ -506,7 +493,6 @@ namespace factory {
 
 		typedef sys::pid_type key_type;
 		typedef std::map<key_type, rserver_type> map_type;
-		typedef stdx::log<Process_child_server> this_log;
 
 		Process_child_server():
 		_parent(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router)
@@ -520,7 +506,6 @@ namespace factory {
 
 		void
 		remove_server(server_type* ptr) override {
-			this_log() << "Stopping server because parent died" << std::endl;
 			if (!this->is_stopped()) {
 				this->stop();
 				// this->factory()->stop();
@@ -529,7 +514,6 @@ namespace factory {
 
 		void
 		process_kernels() override {
-			stdx::log_func<this_log>(__func__);
 			stdx::front_pop_iterator<kernel_pool> it_end;
 			lock_type lock(this->_mutex);
 			stdx::for_each_thread_safe(lock,
@@ -554,8 +538,6 @@ namespace factory {
 		void
 		init_server() {
 			// _parent.setparent(this);
-			std::cout << "HELLO WORLD " << sys::poll_event(Shared_fildes::Out, 0, 0)  << std::endl;
-			this_log() << "DEBUG=" << sys::poll_event(Shared_fildes::Out, 0, 0) << std::endl;
 			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, handler_type(&_parent));
 			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), handler_type(&_parent));
 		}
@@ -567,31 +549,6 @@ namespace factory {
 
 		router_type _router;
 		rserver_type _parent;
-	};
-
-}
-
-namespace stdx {
-
-	template<class T, class Router>
-	struct type_traits<factory::Process_rserver<T,Router>> {
-		static constexpr const char*
-		short_name() { return "process_rserver"; }
-		typedef factory::server_category category;
-	};
-
-	template<class T, class Router>
-	struct type_traits<factory::Process_iserver<T,Router>> {
-		static constexpr const char*
-		short_name() { return "process_iserver"; }
-		typedef factory::server_category category;
-	};
-
-	template<class T, class Router>
-	struct type_traits<factory::Process_child_server<T,Router>> {
-		static constexpr const char*
-		short_name() { return "process_child_server"; }
-		typedef factory::server_category category;
 	};
 
 }

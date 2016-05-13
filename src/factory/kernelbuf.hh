@@ -40,7 +40,6 @@ namespace factory {
 		using typename base_type::char_type;
 		using typename base_type::pos_type;
 		typedef uint32_t size_type;
-		typedef stdx::log<basic_kernelbuf> this_log;
 
 		typedef stdx::basic_packetbuf<char_type,traits_type> good_base_type;
 		static_assert(
@@ -66,7 +65,9 @@ namespace factory {
 		int
 		sync() override {
 			int ret = Base::sync();
+			#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
 			this->debug_state(__func__);
+			#endif
 			return ret;
 		}
 
@@ -131,7 +132,11 @@ namespace factory {
 					const pos_type p = gptr() - eback();
 					setpacket(p, p + pos_type(header_size()), size);
 					this->gbump(this->header_size());
+					#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
 					this->sets(State::header_is_ready, __func__);
+					#else
+					this->sets(State::header_is_ready);
+					#endif
 				} else {
 					this->gbump(this->header_size());
 				}
@@ -145,7 +150,11 @@ namespace factory {
 			}
 			if (egptr() >= packet_end()) {
 				this->setg(eback(), payload_begin(), payload_end());
+				#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
 				this->sets(State::payload_is_ready, __func__);
+				#else
+				this->sets(State::payload_is_ready);
+				#endif
 			}
 		}
 
@@ -163,7 +172,11 @@ namespace factory {
 			}
 			setpacket(0, 0, 0);
 			_oldendpos = 0;
+			#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
 			this->sets(State::initial, __func__);
+			#else
+			this->sets(State::initial);
+			#endif
 		}
 
 		friend std::ostream&
@@ -177,33 +190,49 @@ namespace factory {
 			return out;
 		}
 
+		#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
+		struct transition {
+
+			transition(const char* where, State olds, State news, basic_kernelbuf& buf):
+			_where(where), _oldstate(olds), _newstate(news), _buf(buf)
+			{}
+
+			friend std::ostream&
+			operator<<(std::ostream& out, const transition& rhs) {
+				std::stringstream statestr;
+				statestr << std::setw(40) << rhs._oldstate << "->" << rhs._newstate;
+				return out << std::setw(40) << std::left << rhs._where
+					<< statestr.rdbuf() << rhs._buf;
+			}
+
+		private:
+
+			const char* _where;
+			State _oldstate, _newstate;
+			basic_kernelbuf& _buf;
+
+		};
+
 		void
-		debug_state(const char* where=nullptr) {
+		debug_state(const char* where) {
 			sets(_rstate, where);
 		}
 
 		void
-		sets(State rhs, const char* where=nullptr) {
-			#ifndef NDEBUG
-			std::stringstream tmp;
-			tmp << _rstate << "->" << rhs;
-			this_log log;
-			if (where) {
-				log << std::setw(40) << std::left << where;
-			}
-			log << std::setw(40) << tmp.str()
-				<< "put={" << pptr() - pbase() << ',' << epptr() - pbase() << '}'
-				<< ",get={" << gptr() - eback() << ',' << egptr() - eback() << '}'
-				<< ",packet={"
-				<< packet_begin() - eback() << ','
-				<< payload_begin() - eback() << ','
-				<< packet_end() - eback()
-				<< '}'
-				<< ",save_egptr=" << _oldendpos
-				<< std::endl;
-			#endif
+		sets(State rhs, const char* where) {
+			const State olds = _rstate;
+			_rstate = rhs;
+			stdx::dbg << stdx::make_trace(
+				"buf", "kernelbuf",
+				transition(where, olds, _rstate, *this)
+			);
+		}
+		#else
+		void
+		sets(State rhs) {
 			_rstate = rhs;
 		}
+		#endif
 
 		// output buffer
 		void
@@ -226,20 +255,29 @@ namespace factory {
 			return sizeof(size_type);
 		}
 
+		#if !defined(NDEBUG) && defined(FACTORY_DEBUG_KERNELBUF)
+		void
+		dump_state(std::ostream& out) {
+			out << "put={" << pptr() - pbase() << ',' << epptr() - pbase() << '}'
+				<< ",get={" << gptr() - eback() << ',' << egptr() - eback() << '}'
+				<< ",packet={"
+				<< packet_begin() - eback() << ','
+				<< payload_begin() - eback() << ','
+				<< packet_end() - eback()
+				<< '}'
+				<< ",save_egptr=" << _oldendpos;
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, basic_kernelbuf& rhs) {
+			rhs.dump_state(out);
+			return out;
+		}
+		#endif
+
 		pos_type _oldendpos = 0;
 		State _rstate = State::initial;
 		pos_type _packetpos = 0;
-	};
-
-}
-
-namespace stdx {
-
-	template<class Base>
-	struct type_traits<factory::basic_kernelbuf<Base>> {
-		static constexpr const char*
-		short_name() { return "kernelbuf"; }
-		typedef sys::buffer_category category;
 	};
 
 }

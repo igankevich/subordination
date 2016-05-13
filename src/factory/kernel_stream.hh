@@ -17,7 +17,6 @@ namespace factory {
 		typedef typename kernel_type::app_type app_type;
 		typedef std::function<void(app_type)> forward_func;
 		typedef Types types;
-		typedef stdx::log<Kernel_stream> this_log;
 
 		enum struct state {
 			good = 0,
@@ -83,7 +82,9 @@ namespace factory {
 						}
 					} catch (Bad_kernel& err) {
 						setstate(state::bad_kernel);
-						this_log() << err << std::endl;
+						#ifndef NDEBUG
+						stdx::dbg << err;
+						#endif
 					}
 					// eat remaining bytes
 					rdbuf()->skip_packet();

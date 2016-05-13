@@ -32,8 +32,6 @@ typedef float Real;
 
 struct Autoreg_app: public Kernel {
 
-	typedef stdx::log<Autoreg_app> this_log;
-
 	Autoreg_app():
 	model_filename("autoreg.model")
 	{}

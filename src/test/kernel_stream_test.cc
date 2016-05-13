@@ -144,7 +144,6 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Carrier,Parent>>
 	typedef factory::basic_kernelbuf<sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>> buffer_type;
 	typedef factory::Kernel_stream<kernel_type> stream_type;
 	typedef typename stream_type::types types;
-	typedef stdx::log<Test_kernel_stream> this_log;
 
 	void
 	xrun() override {

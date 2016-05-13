@@ -598,8 +598,6 @@ namespace autoreg {
 template<class T, class Grid>
 struct Generator1: public Kernel {
 
-	typedef stdx::log<Generator1> this_log;
-
 	Generator1() = default;
 
 	Generator1(Surface_part part_, Surface_part part2_,
@@ -631,7 +629,9 @@ struct Generator1: public Kernel {
 			write_part_to_file(zeta);
 			commit(remote_server, this);
 		} else {
-			this_log() << "running" << std::endl;
+			#ifndef NDEBUG
+			stdx::dbg << stdx::make_trace("autoreg", "running generator", part2);
+			#endif
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
 			zsize = part_size;
@@ -641,14 +641,16 @@ struct Generator1: public Kernel {
 				zeta.resize(zsize);
 				zeta2.resize(zsize2);
 			} catch (std::exception& x) {
-				std::clog << "resize failed" << std::endl;
-				std::clog << stdx::make_fields(
+				#ifndef NDEBUG
+				stdx::debug_message msg(stdx::dbg, "autoreg");
+				msg << "resize failed\n" << stdx::make_fields(
 					"zsize", zsize,
 					"zsize2", zsize2,
 					"fsize", fsize,
 					"part1", part,
 					"part2", part2
-				) << std::endl;
+				);
+				#endif
 			}
 //			cout << "compute part = " << part.part() << endl;
 			generate_white_noise(zeta2, var_eps, part2);
@@ -753,8 +755,6 @@ private:
 template<class T, class Grid>
 struct Wave_surface_generator: public Kernel {
 
-	typedef stdx::log<Wave_surface_generator> this_log;
-
 	Wave_surface_generator() = default;
 
 	Wave_surface_generator(const std::valarray<T>& phi_,
@@ -801,9 +801,11 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void react(Kernel* child) override {
-		this_log() << "generator returned from " << child->from()
-			<< ", completed " << count+1 << " of " << grid.num_parts()
-			<< std::endl;
+		#ifndef NDEBUG
+		stdx::debug_message msg(stdx::dbg, "autoreg");
+		msg << "generator returned from " << child->from()
+			<< ", completed " << count+1 << " of " << grid.num_parts();
+		#endif
 		if (++count == grid.num_parts()) {
 			commit(remote_server, this);
 		}

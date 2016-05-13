@@ -20,7 +20,6 @@ namespace sys {
 
 		typedef typename sys::shared_mem<char_type>::size_type size_type;
 		typedef stdx::spin_mutex mutex_type;
-		typedef stdx::log<basic_shmembuf> this_log;
 
 		explicit
 		basic_shmembuf(path_type&& path, sys::mode_type mode):
@@ -30,7 +29,9 @@ namespace sys {
 			char_type* ptr = _sharedmem.begin() + sizeof(shmem_header);
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, _sharedmem.end());
+			#ifndef NDEBUG
 			this->debug("basic_shmembuf()");
+			#endif
 		}
 
 		explicit
@@ -42,7 +43,9 @@ namespace sys {
 			this->setg(ptr, ptr, ptr);
 			this->setp(ptr, _sharedmem.end());
 			this->sync_sharedmem();
+			#ifndef NDEBUG
 			this->debug("basic_shmembuf(int)");
+			#endif
 		}
 
 		basic_shmembuf(basic_shmembuf&& rhs):
@@ -81,7 +84,9 @@ namespace sys {
 
 		std::streamsize
 		xsputn(const char_type* s, std::streamsize n) override {
+			#ifndef NDEBUG
 			this->debug("xsputn");
+			#endif
 			char_type* first = const_cast<char_type*>(s);
 			char_type* last = first + n;
 			while (first != last) {
@@ -99,39 +104,51 @@ namespace sys {
 		}
 
 		void lock() {
+			#ifndef NDEBUG
 			this->debug("locking");
+			#endif
 			this->sync_sharedmem();
 			this->mutex().lock();
+			#ifndef NDEBUG
 			this->debug("locked");
+			#endif
 		}
 
 		void unlock() {
 			this->writeoffs();
 			this->mutex().unlock();
+			#ifndef NDEBUG
 			this->debug("unlock");
+			#endif
 		}
 
 	private:
 
 		mutex_type& mutex() { return _sharedpart->mtx; }
 
-		void debug(const char* msg) {
-			this_log() << msg
-				<< " goff=" << _sharedpart->goff
+		#ifndef NDEBUG
+		void debug(const char* tag) {
+			stdx::debug_message msg(stdx::dbg, "shmembuf");
+			msg << tag
+				<< "goff=" << _sharedpart->goff
 				<< ",poff=" << _sharedpart->poff
 				<< ",gptr=" << static_cast<std::ptrdiff_t>(this->gptr() - this->eback())
 				<< ",pptr=" << static_cast<std::ptrdiff_t>(this->pptr() - this->pbase())
-				<< ",shmem=" << _sharedmem
-				<< std::endl;
+				<< ",shmem=" << _sharedmem;
 		}
+		#endif
 
 		void
 		grow_sharedmem() {
+			#ifndef NDEBUG
 			debug("grow");
+			#endif
 			_sharedmem.resize(_sharedmem.size() * size_type(2));
 			_sharedpart = static_cast<shmem_header*>(_sharedmem.ptr());
 			this->updatebufs();
+			#ifndef NDEBUG
 			debug("after grow");
+			#endif
 		}
 
 		void
@@ -156,7 +173,9 @@ namespace sys {
 		writeoffs() {
 			_sharedpart->goff = static_cast<pos_type>(this->gptr() - this->eback());
 			_sharedpart->poff = static_cast<pos_type>(this->pptr() - this->pbase());
+			#ifndef NDEBUG
 			this->debug("writeoffs");
+			#endif
 		}
 
 		void
@@ -168,7 +187,9 @@ namespace sys {
 			this->setp(base, end);
 			this->pbump(poff);
 			this->setg(base, base + goff, base + poff);
+			#ifndef NDEBUG
 			this->debug("readoffs");
+			#endif
 		}
 
 		sys::shared_mem<char_type> _sharedmem;

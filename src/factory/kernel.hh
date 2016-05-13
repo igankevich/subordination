@@ -431,7 +431,7 @@ namespace factory {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Application& rhs) {
-			return stdx::format_fields(out, "exec", rhs._execpath);
+			return out << stdx::make_object("exec", rhs._execpath);
 		}
 
 	private:

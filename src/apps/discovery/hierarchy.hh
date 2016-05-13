@@ -15,7 +15,6 @@ namespace discovery {
 		typedef Addr addr_type;
 		typedef sys::ifaddr<addr_type> network_type;
 		typedef std::set<sys::endpoint>::size_type size_type;
-		typedef stdx::log<Hierarchy> this_log;
 
 		explicit
 		Hierarchy(const network_type& net, const sys::port_type port):
@@ -50,20 +49,29 @@ namespace discovery {
 
 		void
 		set_principal(const sys::endpoint& new_princ) {
-			this_log() << "Set principal to " << new_princ << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message msg(stdx::dbg, "dscvr");
+			msg << "Set principal to " << new_princ;
+			#endif
 			_principal = new_princ;
 			_subordinates.erase(new_princ);
 		}
 
 		void
 		add_subordinate(const sys::endpoint& addr) {
-			this_log() << "Adding subordinate = " << addr << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message msg(stdx::dbg, "dscvr");
+			msg << "Add subordinate " << addr;
+			#endif
 			_subordinates.insert(addr);
 		}
 
 		void
 		remove_subordinate(const sys::endpoint& addr) {
-			this_log() << "Removing subordinate = " << addr << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message msg(stdx::dbg, "dscvr");
+			msg << "Remove subordinate " << addr;
+			#endif
 			_subordinates.erase(addr);
 		}
 

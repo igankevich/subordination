@@ -38,7 +38,6 @@ namespace sys {
 		typedef std::ios_base::openmode openmode;
 		typedef std::ios_base::seekdir seekdir;
 		typedef Fd fd_type;
-		typedef stdx::log<basic_fildesbuf> this_log;
 		typedef typename std::vector<char_type>::size_type size_type;
 		typedef typename std::make_signed<size_type>::type signed_size_type;
 
@@ -94,18 +93,15 @@ namespace sys {
 		seekoff(off_type off, seekdir way, openmode which) override {
 			pos_type ret(off_type(-1));
 			if (way == std::ios_base::beg) {
-				this_log() << "seekoff way=beg,off=" << off << std::endl;
 				ret = seekpos(off, which);
 			}
 			if (way == std::ios_base::cur) {
-				this_log() << "seekoff way=cur,off=" << off << std::endl;
 				const pos_type pos = which & std::ios_base::in
 					? static_cast<pos_type>(gptr() - eback())
 					: static_cast<pos_type>(pptr() - pbase());
 				ret = off == 0 ? pos : seekpos(pos + off, which);
 			}
 			if (way == std::ios_base::end) {
-				this_log() << "seekoff way=end,off=" << off << std::endl;
 				const pos_type pos = which & std::ios_base::in
 					? static_cast<pos_type>(egptr() - eback())
 					: static_cast<pos_type>(epptr() - pbase());
@@ -281,17 +277,6 @@ namespace sys {
 	typedef basic_fildesbuf<char> fildesbuf;
 	typedef basic_ifdstream<char> ifdstream;
 	typedef basic_ofdstream<char> ofdstream;
-
-}
-
-namespace stdx {
-
-	template<class Ch, class Tr, class Fd>
-	struct type_traits<sys::basic_fildesbuf<Ch,Tr,Fd>> {
-		static constexpr const char*
-		short_name() { return "fildesbuf"; }
-		typedef sys::buffer_category category;
-	};
 
 }
 

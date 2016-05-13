@@ -44,7 +44,6 @@ namespace sys {
 	struct socket: public fildes {
 
 		typedef int opt_type;
-		typedef stdx::log<socket> this_log;
 
 		enum option: opt_type {
 			reuse_addr = SO_REUSEADDR,
@@ -105,20 +104,26 @@ namespace sys {
 		void bind(const endpoint& e) {
 			this->create_socket_if_necessary();
 			this->setopt(reuse_addr);
-			this_log() << "Binding to " << e << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message(stdx::dbg, "sys") << "Binding to " << e;
+			#endif
 			bits::check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
 		}
 
 		void listen() {
-			this_log() << "Listening on " << this->name() << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message(stdx::dbg, "sys") << "Listening to " << this->name();
+			#endif
 			bits::check(::listen(this->_fd, SOMAXCONN),
 				__FILE__, __LINE__, __func__);
 		}
 
 		void connect(const endpoint& e) {
 			this->create_socket_if_necessary();
-			this_log() << "Connecting to " << e << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message(stdx::dbg, "sys") << "Connecting to " << e;
+			#endif
 			bits::check_if_not<std::errc::operation_in_progress>(
 				::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
@@ -130,7 +135,9 @@ namespace sys {
 			sock._fd = bits::check(::accept(this->_fd, addr.sockaddr(), &len),
 				__FILE__, __LINE__, __func__);
 			bits::set_mandatory_flags(sock._fd);
-			this_log() << "Accepted connection from " << addr << std::endl;
+			#ifndef NDEBUG
+			stdx::debug_message(stdx::dbg, "sys") << "Accepted connection from " << addr;
+			#endif
 		}
 
 		void shutdown(shutdown_how how) {

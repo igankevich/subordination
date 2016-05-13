@@ -27,7 +27,6 @@ namespace factory {
 	struct Proxy_server: public Proxy_server_base<T,Rserver> {
 
 		typedef Rserver server_type;
-		typedef stdx::log<Proxy_server> this_log;
 		typedef server_type* handler_type;
 
 		typedef Proxy_server_base<T,Rserver> base_server;
