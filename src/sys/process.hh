@@ -465,8 +465,7 @@ namespace sys {
 			for (process& p : _procs) {
 				sys::proc_status x = p.wait();
 				#ifndef NDEBUG
-				stdx::debug_message("sys", "process terminated")
-					<< stdx::make_object("process", p, "status", x);
+				stdx::debug_message("sys", "process _ terminated with status _", p, x);
 				#endif
 				ret |= x.exit_code() | signal_type(x.term_signal());
 			}

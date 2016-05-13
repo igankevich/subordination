@@ -4,6 +4,8 @@
 #include <iostream>
 #include <iomanip>
 #include <mutex>
+#include <stdexcept>
+#include <cassert>
 
 namespace stdx {
 
@@ -210,11 +212,24 @@ namespace stdx {
 		debug_message(debug_log& rhs, const char* name, const Args& ... tokens):
 		_log(rhs)
 		{
+			assert(name);
 			_log._mutex.lock();
 			_log._out << std::setw(10) << std::right << name << ": ";
 			if (sizeof...(tokens) > 0) {
 				_log._out << make_sentence(tokens...) << ' ';
 			}
+		}
+
+		template<class ... Args>
+		explicit
+		debug_message(debug_log& rhs, const char* name, const char* fmt, const Args& ... tokens):
+		_log(rhs)
+		{
+			assert(name);
+			assert(fmt);
+			_log._mutex.lock();
+			_log._out << std::setw(10) << std::right << name << ": ";
+			format_msg(_log._out, fmt, tokens...);
 		}
 
 		template<class ... Args>
@@ -245,6 +260,21 @@ namespace stdx {
 		}
 
 	private:
+
+		static void
+		format_msg(std::ostream& out, const char* s) {
+			out << s;
+		}
+
+		template<class T, class ... Args>
+		static void
+		format_msg(std::ostream& out, const char* s, const T& value, const Args& ... args) {
+			const char* first = s;
+			while (*s++ != '_');
+			out.write(first, s-first);
+			out << value;
+			format_msg(out, ++s, args...);
+		}
 
 		debug_log& _log;
 

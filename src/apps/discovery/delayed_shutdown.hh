@@ -15,24 +15,21 @@ struct Delayed_shutdown: public Kernel {
 
 	void
 	act() override {
-		#ifndef NDEBUG
-		stdx::debug_message msg("tst");
-		#endif
 		if (not _normal) {
 			try {
 				sys::endpoint addr = remote_server.server_addr();
 				#ifndef NDEBUG
-				msg << "killing " << addr;
+				stdx::debug_message("tst", "killing _", addr);
 				#endif
 			} catch (...) {
 				#ifndef NDEBUG
-				msg << "killing this process";
+				stdx::debug_message("tst", "killing this process");
 				#endif
 			}
 			std::exit(0);
 		} else {
 			#ifndef NDEBUG
-			msg << "shutdown gracefully this process";
+			stdx::debug_message("tst", "shutdown this process");
 			#endif
 			factory::graceful_shutdown(0);
 		}

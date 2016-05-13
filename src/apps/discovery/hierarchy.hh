@@ -50,7 +50,7 @@ namespace discovery {
 		void
 		set_principal(const sys::endpoint& new_princ) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "Set principal to", new_princ);
+			stdx::debug_message("dscvr", "set principal to _", new_princ);
 			#endif
 			_principal = new_princ;
 			_subordinates.erase(new_princ);
@@ -59,7 +59,7 @@ namespace discovery {
 		void
 		add_subordinate(const sys::endpoint& addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "Add subordinate", addr);
+			stdx::debug_message("dscvr", "add subordinate _", addr);
 			#endif
 			_subordinates.insert(addr);
 		}
@@ -67,7 +67,7 @@ namespace discovery {
 		void
 		remove_subordinate(const sys::endpoint& addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "Remove subordinate", addr);
+			stdx::debug_message("dscvr", "remove subordinate _", addr);
 			#endif
 			_subordinates.erase(addr);
 		}

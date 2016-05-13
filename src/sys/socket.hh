@@ -105,7 +105,7 @@ namespace sys {
 			this->create_socket_if_necessary();
 			this->setopt(reuse_addr);
 			#ifndef NDEBUG
-			stdx::debug_message("sys") << "Binding to " << e;
+			stdx::debug_message("sys", "binding to _", e);
 			#endif
 			bits::check(::bind(this->_fd, e.sockaddr(), e.sockaddrlen()),
 				__FILE__, __LINE__, __func__);
@@ -113,7 +113,7 @@ namespace sys {
 
 		void listen() {
 			#ifndef NDEBUG
-			stdx::debug_message("sys") << "Listening to " << this->name();
+			stdx::debug_message("sys", "listen on _", this->name());
 			#endif
 			bits::check(::listen(this->_fd, SOMAXCONN),
 				__FILE__, __LINE__, __func__);
@@ -122,7 +122,7 @@ namespace sys {
 		void connect(const endpoint& e) {
 			this->create_socket_if_necessary();
 			#ifndef NDEBUG
-			stdx::debug_message("sys") << "Connecting to " << e;
+			stdx::debug_message("sys", "connect to _", e);
 			#endif
 			bits::check_if_not<std::errc::operation_in_progress>(
 				::connect(this->_fd, e.sockaddr(), e.sockaddrlen()),
@@ -136,7 +136,7 @@ namespace sys {
 				__FILE__, __LINE__, __func__);
 			bits::set_mandatory_flags(sock._fd);
 			#ifndef NDEBUG
-			stdx::debug_message("sys") << "Accepted connection from " << addr;
+			stdx::debug_message("sys", "accept connection from _", addr);
 			#endif
 		}
 

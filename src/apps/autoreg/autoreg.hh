@@ -630,7 +630,7 @@ struct Generator1: public Kernel {
 			commit(remote_server, this);
 		} else {
 			#ifndef NDEBUG
-			stdx::debug_message("autoreg", "Running generator", stdx::make_object("part2=", part2));
+			stdx::debug_message("autoreg", "generating part _", part2);
 			#endif
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
@@ -642,7 +642,7 @@ struct Generator1: public Kernel {
 				zeta2.resize(zsize2);
 			} catch (std::exception& x) {
 				#ifndef NDEBUG
-				stdx::debug_message("autoreg", "resize failed", stdx::make_object(
+				stdx::debug_message("autoreg", "resize failed _", stdx::make_object(
 					"zsize", zsize,
 					"zsize2", zsize2,
 					"fsize", fsize,
@@ -801,8 +801,11 @@ struct Wave_surface_generator: public Kernel {
 
 	void react(Kernel* child) override {
 		#ifndef NDEBUG
-		stdx::debug_message("autoreg", "generator returned from", child->from(),
-			", completed", count+1, "of", grid.num_parts());
+		stdx::debug_message(
+			"autoreg",
+			"generator returned from _, completed _ of _",
+			child->from(), count+1, grid.num_parts()
+		);
 		#endif
 		if (++count == grid.num_parts()) {
 			commit(remote_server, this);

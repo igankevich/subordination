@@ -341,8 +341,11 @@ struct Station_kernel: public Kernel {
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec", "finished station", station(), "year", _year, "total",
-				num_processed_spectra(), "no. of spectra");
+			stdx::debug_message(
+				"spec",
+				"finished station _, year _, total no. of spectra _",
+				station(), _year, num_processed_spectra()
+			);
 			#endif
 			_observations.clear();
 			_spectra.clear();
@@ -410,8 +413,11 @@ struct Station_kernel: public Kernel {
 		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec", "removed", old_size-new_size, "incomplete records from",
-				"station", _station, "year", _year);
+			stdx::debug_message(
+				"spec",
+				"removed _ incomplete records from station _, year _",
+				old_size-new_size, _station, _year
+			);
 			#endif
 		}
 
@@ -498,11 +504,12 @@ struct Year_kernel: public Kernel {
 		}
 		k->write_output_to(_output_file, _year);
 		#ifndef NDEBUG
-		stdx::debug_message("spec")
-			<< "finished station " << k->station() << ", year " << _year
-			<< " [" << 1+_count << '/' << _observations.size() << "], "
-			<< k->num_processed_spectra() << " spectra total, from "
-			<< k->from();
+		stdx::debug_message(
+			"spec",
+			"finished station _, year _, [_/_], total no. of spectra _, from _",
+			k->station(), _year, 1+_count, _observations.size(),
+			k->num_processed_spectra(), k->from()
+		);
 		#endif
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
@@ -614,14 +621,14 @@ struct Launcher: public Kernel {
 		k->react(k1);
 		if (k->finished()) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec", "finished year", k->year());
+			stdx::debug_message("spec", "finished year _", k->year());
 			#endif
 			_count_spectra += k->num_processed_spectra();
 			_yearkernels.erase(k1->year());
 			delete k;
 			if (++_count == 0) {
 				#ifndef NDEBUG
-				stdx::debug_message("spec", "total number of processed spectra", _count_spectra);
+				stdx::debug_message("spec", "total number of processed spectra _", _count_spectra);
 				#endif
 				{
 					Time time1 = current_time_nano();

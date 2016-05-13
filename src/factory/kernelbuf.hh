@@ -222,7 +222,7 @@ namespace factory {
 		sets(State rhs, const char* where) {
 			const State olds = _rstate;
 			_rstate = rhs;
-			stdx::debug_message("buf", "kernelbuf", transition(where, olds, _rstate, *this));
+			stdx::debug_message("buf", "kernelbuf _", transition(where, olds, _rstate, *this));
 		}
 		#else
 		void
