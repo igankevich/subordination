@@ -109,7 +109,7 @@ namespace factory {
 				delete_kernel = true;
 			}
 			#ifndef NDEBUG
-			stdx::debug_message("nic") << "send " << stdx::make_object("to", vaddr(), "kernel", *kernel);
+			stdx::debug_message("nic", "send", stdx::make_object("to", vaddr(), "kernel", *kernel));
 			#endif
 			_stream << kernel;
 			/// The kernel is deleted if it goes downstream
@@ -217,7 +217,7 @@ namespace factory {
 				k->principal(p);
 			}
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "recv") << *k;
+			stdx::debug_message("nic", "recv", *k);
 			#endif
 			if (!ok) {
 				return_kernel(k);
@@ -228,7 +228,7 @@ namespace factory {
 
 		void return_kernel(kernel_type* k) {
 			#ifndef NDEBUG
-			stdx::debug_message("nic") << "No principal found for " << *k;
+			stdx::debug_message("nic", "No principal found for", *k);
 			#endif
 			k->principal(k->parent());
 			this->send(k);
@@ -237,12 +237,12 @@ namespace factory {
 		void recover_kernel(kernel_type* k) {
 			if (k->moves_upstream()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic") << "Recovering kernel " << *k;
+				stdx::debug_message("nic", "Recovering kernel", *k);
 				#endif
 				_router.send_remote(k);
 			} else if (k->moves_somewhere()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic") << "Destination is unreachable for " << *k;
+				stdx::debug_message("nic", "Destination is unreachable for", *k);
 				#endif
 				k->from(k->to());
 				k->result(Result::endpoint_not_connected);
@@ -250,7 +250,7 @@ namespace factory {
 				_router.send_local(k);
 			} else if (k->moves_downstream() and k->carries_parent()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic") << "Reviving parent kernel on a backup node " << *k;
+				stdx::debug_message("nic", "Reviving parent kernel on a backup node", *k);
 				#endif
 				_router.send_local(k);
 			} else {
@@ -333,7 +333,7 @@ namespace factory {
 		remove_server(server_type* ptr) override {
 			// TODO: occasional ``Bad file descriptor''
 			#ifndef NDEBUG
-			stdx::debug_message("nic") << "remove " << *ptr;
+			stdx::debug_message("nic", "remove", *ptr);
 			#endif
 			auto result = _upstream.find(ptr->vaddr());
 			if (result != _upstream.end()) {
@@ -350,14 +350,14 @@ namespace factory {
 			if (res == _upstream.end()) {
 				server_type* ptr = add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
 				#ifndef NDEBUG
-				stdx::debug_message("nic") << "accept " << *ptr;
+				stdx::debug_message("nic", "accept", *ptr);
 				#endif
 			} else {
 				server_type& s = res->second;
 				const sys::port_type local_port = s.socket().bind_addr().port();
 				if (!(addr.port() < local_port)) {
 					#ifndef NDEBUG
-					stdx::debug_message("nic") << "replace " << s;
+					stdx::debug_message("nic",  "replace ", s);
 					#endif
 					poller().disable(s.socket().fd());
 					server_type new_s(std::move(s));
@@ -557,7 +557,7 @@ namespace factory {
 				sys::poll_event{fd, events, revents},
 				handler_type(&result.first->second));
 			#ifndef NDEBUG
-			stdx::debug_message("nic") << "add " << result.first->second;
+			stdx::debug_message("nic", "add", result.first->second);
 			#endif
 			return &result.first->second;
 		}

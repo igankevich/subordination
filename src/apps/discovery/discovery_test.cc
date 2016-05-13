@@ -245,13 +245,11 @@ int main(int argc, char* argv[]) {
 	if (role == role_master) {
 
 		#ifndef NDEBUG
-		{
-			stdx::debug_message("tst")
-				<< "Network = " << network << '\n'
-				<< "Num peers = " << nhosts << '\n'
-				<< "Role = " << role << '\n'
-				<< "start,mid = " << *network.begin() << ',' << *network.middle();
-		}
+		stdx::debug_message("tst", "params",
+			"Network = ", network, '\n',
+			"Num peers = ", nhosts, '\n',
+			"Role = ", role, '\n',
+			"start,mid = ", *network.begin(), *network.middle());
 		#endif
 
 		std::vector<sys::endpoint> hosts;
@@ -305,7 +303,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		#ifndef NDEBUG
-		stdx::debug_message("tst", "Forked") << procs;
+		stdx::debug_message("tst", "Forked", procs);
 		#endif
 		retval = procs.wait();
 

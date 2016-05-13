@@ -167,9 +167,13 @@ namespace sys {
 			if (!*this) {
 				ret = -1;
 			} else {
-				socklen_type sz = sizeof(opt);
-				bits::check_if_not<std::errc::not_a_socket>(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
-					__FILE__, __LINE__, __func__);
+				try {
+					socklen_type sz = sizeof(opt);
+					bits::check(::getsockopt(this->_fd, SOL_SOCKET, SO_ERROR, &opt, &sz),
+						__FILE__, __LINE__, __func__);
+				} catch (...) {
+					ret = -1;
+				}
 			}
 			// ignore EAGAIN since it is common 'error' in asynchronous programming
 			if (opt == EAGAIN || opt == EINPROGRESS) {

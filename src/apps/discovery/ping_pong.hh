@@ -48,7 +48,7 @@ struct Ping_pong: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		stdx::debug_message("tst") << "sending ping #" << _currentkernel + 1;
+		stdx::debug_message("tst", "sending ping #", _currentkernel + 1);
 		#endif
 		int x = 1;
 		_expectedsum += x;
@@ -67,7 +67,7 @@ struct Ping_pong: public Kernel {
 	react(Kernel* child) override {
 		Ping* ping = dynamic_cast<Ping*>(child);
 		#ifndef NDEBUG
-		stdx::debug_message("tst") << "ping returned from " << ping->from() << " with " << ping->result();
+		stdx::debug_message("tst", "ping returned from", ping->from(), "with", ping->result());
 		#endif
 		_realsum += ping->get_x();
 		if (
@@ -78,13 +78,13 @@ struct Ping_pong: public Kernel {
 		}
 		if (++_numreceived == _numkernels) {
 			#ifndef NDEBUG
-			stdx::debug_message("tst")
-				<< stdx::make_object(
+			stdx::debug_message("tst",
+				stdx::make_object(
 				"num_kernels", _numkernels,
 				"expected_sum", _expectedsum,
 				"real_sum", _realsum,
 				"representative", _some_kernels_came_from_a_remote_server
-			);
+			));
 			#endif
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
 			factory::commit(this, success ? Result::success : Result::error);

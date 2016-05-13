@@ -341,9 +341,8 @@ struct Station_kernel: public Kernel {
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec")
-				<< "finished station " << station() << ", year " << _year << ", "
-				<< num_processed_spectra() << " spectra total";
+			stdx::debug_message("spec", "finished station", station(), "year", _year, "total",
+				num_processed_spectra(), "no. of spectra");
 			#endif
 			_observations.clear();
 			_spectra.clear();
@@ -411,9 +410,8 @@ struct Station_kernel: public Kernel {
 		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec")
-				<< "removed " << (old_size-new_size) << " incomplete records "
-				"station " << _station << ", year " << _year;
+			stdx::debug_message("spec", "removed", old_size-new_size, "incomplete records from",
+				"station", _station, "year", _year);
 			#endif
 		}
 
@@ -616,14 +614,14 @@ struct Launcher: public Kernel {
 		k->react(k1);
 		if (k->finished()) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec", "finished year") << k->year();
+			stdx::debug_message("spec", "finished year", k->year());
 			#endif
 			_count_spectra += k->num_processed_spectra();
 			_yearkernels.erase(k1->year());
 			delete k;
 			if (++_count == 0) {
 				#ifndef NDEBUG
-				stdx::debug_message("wbs", "total number of processed spectra") << _count_spectra;
+				stdx::debug_message("spec", "total number of processed spectra", _count_spectra);
 				#endif
 				{
 					Time time1 = current_time_nano();

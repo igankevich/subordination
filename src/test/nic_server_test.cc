@@ -4,6 +4,7 @@
 #include <factory/cpu_server.hh>
 #include <factory/kernel.hh>
 #include <factory/server_guard.hh>
+#include <factory/bits/terminate_handler.hh>
 
 #include <sys/cmdline.hh>
 #include <sys/log.hh>
@@ -200,6 +201,7 @@ private:
 
 int
 main(int argc, char* argv[]) {
+	factory::Terminate_guard g00;
 	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::cmdline cmdline(argc, argv, {

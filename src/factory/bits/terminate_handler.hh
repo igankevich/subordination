@@ -14,14 +14,9 @@ namespace factory {
 	};
 
 	// TODO 2016-04-30 do we need this, or default behaviour is OK?
-	template<class Server>
 	struct Terminate_guard {
 
-		typedef Server server_type;
-
-		explicit
-		Terminate_guard(server_type* root) noexcept {
-			_root = root;
+		Terminate_guard() noexcept {
 			std::set_terminate(Terminate_guard::error_printing_handler);
 			init_signal_handlers();
 		}
@@ -38,11 +33,12 @@ namespace factory {
 			static volatile bool called = false;
 			if (called) { return; }
 			called = true;
-			std::exception_ptr ptr = std::current_exception();
-			if (ptr) {
+			if (std::exception_ptr ptr = std::current_exception()) {
 				try {
 					std::rethrow_exception(ptr);
 				} catch (Error& err) {
+					std::cerr << err << Thread_id() << std::endl;
+				} catch (sys::bits::bad_call& err) {
 					std::cerr << err << Thread_id() << std::endl;
 				} catch (std::exception& err) {
 					std::cerr << err << Thread_id() << std::endl;
@@ -52,40 +48,16 @@ namespace factory {
 			} else {
 				std::cerr << "terminate called without an active exception" << Thread_id() << std::endl;
 			}
-			stop_root_server(Exit_code::Failure);
 		}
 
 		void
 		init_signal_handlers() noexcept {
-			sys::this_process::bind_signal(sys::signal::terminate, normal_shutdown);
-			sys::this_process::bind_signal(sys::signal::keyboard_interrupt, normal_shutdown);
+			//sys::this_process::bind_signal(sys::signal::terminate, normal_shutdown);
+			//sys::this_process::bind_signal(sys::signal::keyboard_interrupt, normal_shutdown);
 			sys::this_process::ignore_signal(sys::signal::broken_pipe);
 		}
 
-		static void
-		normal_shutdown(int) noexcept {
-			stop_root_server(Exit_code::Success);
-		}
-
-		static void
-		emergency_shutdown(int sig) noexcept {
-			stop_root_server(Exit_code(sig));
-		}
-
-		static void
-		stop_root_server(Exit_code retval) {
-			if (_root) {
-				_root->set_exit_code(int(retval));
-				_root->shutdown();
-			}
-		}
-
-		static server_type* _root;
 	};
-
-	template<class Server>
-	typename Terminate_guard<Server>::server_type*
-	Terminate_guard<Server>::_root = nullptr;
 
 }
 #endif // FACTORY_BITS_TERMINATE_HANDLER_HH
