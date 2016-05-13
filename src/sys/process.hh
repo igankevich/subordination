@@ -191,18 +191,18 @@ namespace sys {
 		friend std::ostream&
 		operator<<(std::ostream& out, const basic_status& rhs) {
 			if (rhs.exited()) {
-				out << stdx::make_fields("status", "exited", "exit_code", rhs.exit_code());
+				out << stdx::make_object("status", "exited", "exit_code", rhs.exit_code());
 			} else
 			if (rhs.killed()) {
-				out << stdx::make_fields("status", "killed", "term_signal", rhs.term_signal());
+				out << stdx::make_object("status", "killed", "term_signal", rhs.term_signal());
 			} else
 			if (rhs.stopped()) {
-				out << stdx::make_fields("status", "stopped", "stop_signal", rhs.stop_signal());
+				out << stdx::make_object("status", "stopped", "stop_signal", rhs.stop_signal());
 			} else
 			if (rhs.continued()) {
-				out << stdx::make_fields("status", "continued");
+				out << stdx::make_object("status", "continued");
 			} else {
-				out << stdx::make_fields("status", "unknown");
+				out << stdx::make_object("status", "unknown");
 			}
 			return out;
 		}
@@ -391,7 +391,7 @@ namespace sys {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const process& rhs) {
-			return out << stdx::make_fields("id", rhs.id(), "gid", rhs.group_id());
+			return out << stdx::make_object("id", rhs.id(), "gid", rhs.group_id());
 		}
 
 		pid_type
@@ -465,8 +465,8 @@ namespace sys {
 			for (process& p : _procs) {
 				sys::proc_status x = p.wait();
 				#ifndef NDEBUG
-				stdx::debug_message(stdx::dbg, "sys") << "process terminated:"
-					<< stdx::make_fields("process", p, "exit_code", x.exit_code(), "term_signal", x.term_signal());
+				stdx::debug_message("sys", "process terminated")
+					<< stdx::make_object("process", p, "status", x);
 				#endif
 				ret |= x.exit_code() | signal_type(x.term_signal());
 			}

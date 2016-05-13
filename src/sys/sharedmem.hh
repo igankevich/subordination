@@ -300,7 +300,7 @@ namespace sys {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const shared_mem& rhs) {
-			return out << stdx::make_fields(
+			return out << stdx::make_object(
 				"addr", rhs.ptr(),
 				"size", rhs.size(),
 				"owner", rhs.is_owner(),

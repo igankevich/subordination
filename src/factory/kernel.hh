@@ -139,7 +139,7 @@ namespace factory {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Kernel_header& rhs) {
-			return out << stdx::make_fields(
+			return out << stdx::make_object(
 				"src", rhs._src,
 				"dst", rhs._dst,
 				"app", rhs._app
@@ -340,7 +340,7 @@ namespace factory {
 				(rhs.moves_everywhere() ? 'b' : '-'),
 				'\0'
 			};
-			return out << stdx::make_fields(
+			return out << stdx::make_object(
 				"state", state,
 				"type", typeid(rhs).name(),
 				"id", rhs.id(),

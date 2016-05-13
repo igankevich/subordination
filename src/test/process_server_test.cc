@@ -91,12 +91,12 @@ struct Test_socket: public Kernel {
 	}
 
 	void act() override {
-		stdx::dbg << "Test_socket::act(): It works!";
+		stdx::debug_message("tst", "Test_socket::act(): It works!");
 		commit(remote_server, this);
 	}
 
 	void write(sys::packetstream& out) override {
-		stdx::dbg << "Test_socket::write()";
+		stdx::debug_message("tst", "Test_socket::write()");
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -104,7 +104,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void read(sys::packetstream& in) override {
-		stdx::dbg << "Test_socket::read()";
+		stdx::debug_message("tst", "Test_socket::read()");
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;

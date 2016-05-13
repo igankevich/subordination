@@ -128,8 +128,7 @@ namespace sys {
 
 		#ifndef NDEBUG
 		void debug(const char* tag) {
-			stdx::debug_message msg(stdx::dbg, "shmembuf");
-			msg << tag
+			stdx::debug_message("shmembuf", tag)
 				<< "goff=" << _sharedpart->goff
 				<< ",poff=" << _sharedpart->poff
 				<< ",gptr=" << static_cast<std::ptrdiff_t>(this->gptr() - this->eback())

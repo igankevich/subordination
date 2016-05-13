@@ -89,8 +89,8 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 		bool finished = true;
 		if (_numsent == 1) {
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("dscvr", "try",
-				stdx::make_fields("dst", k->from(), "rslt", k->result()));
+			stdx::debug_message(stdx::dbg, "dscvr", "tried")
+				<< k->from() << ": " << k->result();
 			#endif
 			this->result(k->result());
 			if (k->result() == Result::success and _oldprinc) {

@@ -83,7 +83,7 @@ namespace factory {
 					} catch (Bad_kernel& err) {
 						setstate(state::bad_kernel);
 						#ifndef NDEBUG
-						stdx::dbg << err;
+						stdx::debug_message("err") << err;
 						#endif
 					}
 					// eat remaining bytes

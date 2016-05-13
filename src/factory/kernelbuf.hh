@@ -222,10 +222,8 @@ namespace factory {
 		sets(State rhs, const char* where) {
 			const State olds = _rstate;
 			_rstate = rhs;
-			stdx::dbg << stdx::make_trace(
-				"buf", "kernelbuf",
-				transition(where, olds, _rstate, *this)
-			);
+			stdx::debug_message("buf") << "kernelbuf"
+				<< transition(where, olds, _rstate, *this)
 		}
 		#else
 		void

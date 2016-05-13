@@ -36,16 +36,16 @@ namespace springy {
 
 		void
 		start() {
-			stdx::debug_message msg(stdx::dbg, "graph");
-			msg << "startTime.push("
+			stdx::debug_message("graph")
+				<< "startTime.push("
 				<< now() - _start
 				<< "*1e-6);";
 		}
 
 		void
 		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
-			stdx::debug_message msg(stdx::dbg, "graph");
-			msg << "log[logline++] = {"
+			stdx::debug_message("graph")
+				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "g." << Edge(addr, principal_addr) << " = graph.newEdge("
 				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
@@ -59,8 +59,8 @@ namespace springy {
 
 		void
 		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
-			stdx::debug_message msg(stdx::dbg, "graph");
-			msg << "log[logline++] = {"
+			stdx::debug_message("graph")
+				<< "log[logline++] = {"
 				<< "redo: function () {"
 				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ')'
 				<< "}, undo: function() {"
@@ -73,8 +73,8 @@ namespace springy {
 
 		void
 		add_node(sys::endpoint addr) {
-			stdx::debug_message msg(stdx::dbg, "graph");
-			msg << "log[logline++] = {"
+			stdx::debug_message("graph")
+				<< "log[logline++] = {"
 				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")},"
 				<< "time: " << now() - _start << "*1e-6"

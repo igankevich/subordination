@@ -16,7 +16,7 @@ struct Delayed_shutdown: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "tst");
+		stdx::debug_message msg("tst");
 		#endif
 		if (not _normal) {
 			try {

@@ -18,7 +18,7 @@ namespace std {
 	template<class X, class Y>
 	std::ostream&
 	operator<<(std::ostream& out, const std::pair<X,Y>& rhs) {
-		return out << stdx::make_fields("rank", rhs.first, "addr", rhs.second);
+		return out << stdx::make_object("rank", rhs.first, "addr", rhs.second);
 	}
 
 }

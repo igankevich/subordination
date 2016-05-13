@@ -48,8 +48,7 @@ struct Ping_pong: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "tst");
-		msg << "sending ping #" << _currentkernel + 1;
+		stdx::debug_message("tst") << "sending ping #" << _currentkernel + 1;
 		#endif
 		int x = 1;
 		_expectedsum += x;
@@ -59,8 +58,7 @@ struct Ping_pong: public Kernel {
 			factory::schedule(this);
 		} else {
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "tst");
-			msg << "finished sending pings";
+			stdx::debug_message("tst", "finished sending pings");
 			#endif
 		}
 	}
@@ -69,8 +67,7 @@ struct Ping_pong: public Kernel {
 	react(Kernel* child) override {
 		Ping* ping = dynamic_cast<Ping*>(child);
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "tst");
-		msg << "ping returned from " << ping->from() << " with " << ping->result();
+		stdx::debug_message("tst") << "ping returned from " << ping->from() << " with " << ping->result();
 		#endif
 		_realsum += ping->get_x();
 		if (
@@ -81,7 +78,8 @@ struct Ping_pong: public Kernel {
 		}
 		if (++_numreceived == _numkernels) {
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_fields(
+			stdx::debug_message("tst")
+				<< stdx::make_object(
 				"num_kernels", _numkernels,
 				"expected_sum", _expectedsum,
 				"real_sum", _realsum,

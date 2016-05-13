@@ -200,7 +200,8 @@ namespace factory {
 			kernel->write(_ostream);
 			_ostream.end_packet();
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("app", "send", stdx::make_fields("to", _childpid, "kernel", *kernel));
+			stdx::debug_message("app", "send")
+				<< stdx::make_object("to", _childpid, "kernel", *kernel);
 			#endif
 			base_server::send(kernel);
 		}
@@ -247,7 +248,8 @@ namespace factory {
 			_ostream.append_payload(istr);
 			_ostream.end_packet();
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("app", "forward", stdx::make_fields("header", hdr));
+			stdx::debug_message("app", "forward")
+				<< stdx::make_object("header", hdr);
 			#endif
 		}
 
@@ -279,7 +281,7 @@ namespace factory {
 		receive_kernel(kernel_type* k, app_type app) {
 			k->setapp(app);
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("app", "recv", *k);
+			stdx::debug_message("app") << "recv " << *k;
 			#endif
 			bool ok = true;
 			if (k->moves_downstream()) {
@@ -302,7 +304,7 @@ namespace factory {
 
 		void return_kernel(kernel_type* k) {
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("app", "No principal found for ", *k);
+			stdx::debug_message("app") << "No principal found for " << *k;
 			#endif
 			k->principal(k->parent());
 			this->send(k);
@@ -369,7 +371,7 @@ namespace factory {
 		void
 		add(const Application& app) {
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("app", "exec", *app);
+			stdx::debug_message("app") << "exec " << app;
 			#endif
 			lock_type lock(this->_mutex);
 			sys::two_way_pipe data_pipe;
@@ -459,12 +461,8 @@ namespace factory {
 			auto result = _apps.find(p.id());
 			if (result != this->_apps.end()) {
 				#ifndef NDEBUG
-				stdx::dbg << stdx::make_trace("app", "exit",
-					stdx::make_fields(
-						"status", status,
-						"app", result->first
-					)
-				);
+				stdx::debug_message("app", "exit")
+					<< stdx::make_object("status", status, "app", result->first);
 				#endif
 				_apps.erase(result);
 			}

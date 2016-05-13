@@ -182,8 +182,8 @@ namespace factory {
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "recv buffer"
+					stdx::debug_message("wbs")
+						<< "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
 						<< std::setw(40) << recv_buffer;
 					#endif
@@ -191,8 +191,7 @@ namespace factory {
 				}
 				if (opcode == Opcode::conn_close) {
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "Close frame";
+					stdx::debug_message("wbs", "Close frame");
 					#endif
 					this->close();
 				} else {
@@ -208,8 +207,8 @@ namespace factory {
 			size_t old_size = send_buffer.size();
 			send_buffer.flush<sys::socket&>(*this);
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "wbs");
-			msg << "send buffer"
+			stdx::debug_message("wbs")
+				<< "send buffer"
 				<< '(' << old_size - send_buffer.size() << ')';
 			#endif
 			return send_buffer.empty();
@@ -242,22 +241,19 @@ namespace factory {
 					if (sep2 != std::string::npos && line.compare(sep1, sep2-sep1, "101")) {
 						state = State::PARSING_HEADERS;
 						#ifndef NDEBUG
-						stdx::debug_message msg(stdx::dbg, "wbs");
-						msg << "parsing headers";
+						stdx::debug_message("wbs", "parsing headers");
 						#endif
 					} else {
 						state = State::PARSING_ERROR;
 						#ifndef NDEBUG
-						stdx::debug_message msg(stdx::dbg, "wbs");
-						msg << "bad HTTP status in web socket hand shake";
+						stdx::debug_message("wbs", "bad HTTP status in web socket hand shake");
 						#endif
 					}
 				}
 			} else {
 				state = State::PARSING_ERROR;
 				#ifndef NDEBUG
-				stdx::debug_message msg(stdx::dbg, "wbs");
-				msg << "bad method in web socket hand shake";
+				stdx::debug_message("wbs", "bad method in web socket hand shake");
 				#endif
 			}
 		}
@@ -268,14 +264,12 @@ namespace factory {
 			if (std::search(first, last, GET, GET + sizeof(GET)-1) != last) {
 				state = State::PARSING_HEADERS;
 				#ifndef NDEBUG
-				stdx::debug_message msg(stdx::dbg, "wbs");
-				msg << "parsing headers";
+				stdx::debug_message("wbs", "parsing headers");
 				#endif
 			} else {
 				state = State::PARSING_ERROR;
 				#ifndef NDEBUG
-				stdx::debug_message msg(stdx::dbg, "wbs");
-				msg << "bad method in web socket hand shake";
+				stdx::debug_message("wbs", "bad method in web socket hand shake");
 				#endif
 			}
 		}
@@ -290,20 +284,17 @@ namespace factory {
 				if (_http_headers.size() == MAX_HEADERS) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "too many headers in HTTP request";
+					stdx::debug_message("wbs", "too many headers in HTTP request");
 					#endif
 				} else if (_http_headers.contain(key.c_str())) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "duplicate HTTP header: '" << key << '\'';
+					stdx::debug_message("wbs") << "duplicate HTTP header: '" << key << '\'';
 					#endif
 				} else {
 					_http_headers[key] = value;
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "Header['" << key << "'] = '" << value << "'";
+					stdx::debug_message("wbs") << "Header['" << key << "'] = '" << value << "'";
 					#endif
 				}
 			}
@@ -383,14 +374,12 @@ namespace factory {
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "parsing error";
+					stdx::debug_message("wbs", "parsing error");
 					#endif
 				} else {
 					state = State::PARSING_SUCCESS;
 					#ifndef NDEBUG
-					stdx::debug_message msg(stdx::dbg, "wbs");
-					msg << "parsing success";
+					stdx::debug_message("wbs", "parsing success");
 					#endif
 				}
 			}
@@ -398,8 +387,7 @@ namespace factory {
 
 		void reply_success() {
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "wbs");
-			msg << "replying success";
+			stdx::debug_message("wbs", "replying success");
 			#endif
 			std::string accept_header(ACCEPT_HEADER_LENGTH, 0);
 			websocket_accept_header(_http_headers["Sec-WebSocket-Key"], accept_header.begin());
@@ -438,8 +426,7 @@ namespace factory {
 			send_buffer.write(buf.data(), buf.size());
 			state = State::WRITING_HANDSHAKE;
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "wbs");
-			msg << "writing handshake " << request.str();
+			stdx::debug_message("wbs", "writing handshake") << request.str();
 			#endif
 		}
 

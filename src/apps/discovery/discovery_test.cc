@@ -246,11 +246,11 @@ int main(int argc, char* argv[]) {
 
 		#ifndef NDEBUG
 		{
-			stdx::debug_message msg(stdx::dbg, "tst");
-			msg << "Network = " << network << '\n';
-			msg << "Num peers = " << nhosts << '\n';
-			msg << "Role = " << role << '\n';
-			msg << "start,mid = " << *network.begin() << ',' << *network.middle();
+			stdx::debug_message("tst")
+				<< "Network = " << network << '\n'
+				<< "Num peers = " << nhosts << '\n'
+				<< "Role = " << role << '\n'
+				<< "start,mid = " << *network.begin() << ',' << *network.middle();
 		}
 		#endif
 
@@ -305,8 +305,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "tst");
-		msg << "Forked " << procs;
+		stdx::debug_message("tst", "Forked") << procs;
 		#endif
 		retval = procs.wait();
 

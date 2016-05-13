@@ -630,7 +630,8 @@ struct Generator1: public Kernel {
 			commit(remote_server, this);
 		} else {
 			#ifndef NDEBUG
-			stdx::dbg << stdx::make_trace("autoreg", "running generator", part2);
+			stdx::debug_message("autoreg", "Running generator")
+				<< stdx::make_object("part2=", part2);
 			#endif
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
@@ -642,14 +643,14 @@ struct Generator1: public Kernel {
 				zeta2.resize(zsize2);
 			} catch (std::exception& x) {
 				#ifndef NDEBUG
-				stdx::debug_message msg(stdx::dbg, "autoreg");
-				msg << "resize failed\n" << stdx::make_fields(
-					"zsize", zsize,
-					"zsize2", zsize2,
-					"fsize", fsize,
-					"part1", part,
-					"part2", part2
-				);
+				stdx::debug_message("autoreg")
+					<< "resize failed\n" << stdx::make_object(
+						"zsize", zsize,
+						"zsize2", zsize2,
+						"fsize", fsize,
+						"part1", part,
+						"part2", part2
+					);
 				#endif
 			}
 //			cout << "compute part = " << part.part() << endl;
@@ -802,8 +803,8 @@ struct Wave_surface_generator: public Kernel {
 
 	void react(Kernel* child) override {
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "autoreg");
-		msg << "generator returned from " << child->from()
+		stdx::debug_message("autoreg")
+			<< "generator returned from " << child->from()
 			<< ", completed " << count+1 << " of " << grid.num_parts();
 		#endif
 		if (++count == grid.num_parts()) {

@@ -647,7 +647,7 @@ namespace factory {
 		frame.encode(result);
 		frame.copy_payload(first, last, result);
 		#ifndef NDEBUG
-		stdx::dbg << stdx::make_trace("wbs", "send frame", frame);
+		stdx::debug_message("wbs", "Send") << frame;
 		#endif
 	}
 
@@ -658,7 +658,7 @@ namespace factory {
 		std::pair<It,It> payload = frame.decode(first, last);
 		if (payload.first == first) return 0;
 		#ifndef NDEBUG
-		stdx::dbg << stdx::make_trace("wbs", "recv frame", frame);
+		stdx::debug_message("wbs", "Recv") << frame;
 		#endif
 		*opcode = frame.opcode();
 		// ignore non-binary and invalid frames

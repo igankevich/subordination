@@ -341,8 +341,8 @@ struct Station_kernel: public Kernel {
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "spec");
-			msg << "finished station " << station() << ", year " << _year << ", "
+			stdx::debug_message("spec")
+				<< "finished station " << station() << ", year " << _year << ", "
 				<< num_processed_spectra() << " spectra total";
 			#endif
 			_observations.clear();
@@ -411,8 +411,8 @@ struct Station_kernel: public Kernel {
 		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
 			#ifndef NDEBUG
-			stdx::debug_message msg(stdx::dbg, "spec");
-			msg << "removed " << (old_size-new_size) << " incomplete records "
+			stdx::debug_message("spec")
+				<< "removed " << (old_size-new_size) << " incomplete records "
 				"station " << _station << ", year " << _year;
 			#endif
 		}
@@ -500,8 +500,8 @@ struct Year_kernel: public Kernel {
 		}
 		k->write_output_to(_output_file, _year);
 		#ifndef NDEBUG
-		stdx::debug_message msg(stdx::dbg, "spec");
-		msg << "finished station " << k->station() << ", year " << _year
+		stdx::debug_message("spec")
+			<< "finished station " << k->station() << ", year " << _year
 			<< " [" << 1+_count << '/' << _observations.size() << "], "
 			<< k->num_processed_spectra() << " spectra total, from "
 			<< k->from();
@@ -585,10 +585,7 @@ struct Launcher: public Kernel {
 
 	void act() override {
 		#ifndef NDEBUG
-		{
-			stdx::debug_message msg(stdx::dbg, "spec");
-			msg << "launcher start";
-		}
+		stdx::debug_message("spec", "launcher start");
 		#endif
 		_time0 = current_time_nano();
 		std::ifstream in("input");
@@ -619,20 +616,14 @@ struct Launcher: public Kernel {
 		k->react(k1);
 		if (k->finished()) {
 			#ifndef NDEBUG
-			{
-				stdx::debug_message msg(stdx::dbg, "spec");
-				msg << "finished year " << k->year();
-			}
+			stdx::debug_message("spec", "finished year") << k->year();
 			#endif
 			_count_spectra += k->num_processed_spectra();
 			_yearkernels.erase(k1->year());
 			delete k;
 			if (++_count == 0) {
 				#ifndef NDEBUG
-				{
-					stdx::debug_message msg(stdx::dbg, "spec");
-					msg << "total number of processed spectra: " << _count_spectra;
-				}
+				stdx::debug_message("wbs", "total number of processed spectra") << _count_spectra;
 				#endif
 				{
 					Time time1 = current_time_nano();
@@ -686,10 +677,7 @@ struct Spec_app: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		{
-			stdx::debug_message msg(stdx::dbg, "spec");
-			msg << "program start";
-		}
+		stdx::debug_message("spec", "program start");
 		#endif
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream(local_server, this, new Launcher);

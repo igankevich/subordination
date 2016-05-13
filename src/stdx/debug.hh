@@ -7,58 +7,6 @@
 
 namespace stdx {
 
-	template<class T>
-	struct trace {
-
-		explicit
-		trace(const char* msg, const T& obj):
-		trace(msg, obj, reinterpret_cast<size_t>(std::addressof(obj)))
-		{}
-
-		explicit
-		trace(const char* msg, const T& obj, std::string type):
-		trace(msg, obj, type, 0)
-		{}
-
-		explicit
-		trace(const char* msg, const T& obj, std::string type, size_t id):
-		_message(msg), _type(type), _id(id), _obj(obj)
-		{}
-
-		friend std::ostream&
-		operator<<(std::ostream& out, const trace& rhs) {
-			if (!rhs._type.empty()) {
-				out << rhs._type << ' ';
-			}
-			out << rhs._message << ' ';
-			if (rhs._id) {
-				out << rhs._id << ' ';
-			}
-			out << rhs._obj;
-			return out;
-		}
-
-	private:
-
-		const char* _message;
-		std::string _type;
-		size_t _id;
-		const T& _obj;
-
-	};
-
-	template<class T>
-	trace<T>
-	make_trace(const char* msg, const T& rhs) {
-		return trace<T>(msg, rhs);
-	}
-
-	template<class T>
-	trace<T>
-	make_trace(const char* tag, const char* msg, const T& rhs) {
-		return trace<T>(msg, rhs, tag);
-	}
-
 	class debug_message;
 
 	/**
@@ -102,6 +50,8 @@ namespace stdx {
 
 	};
 
+	debug_log dbg(std::clog);
+
 	class debug_message {
 
 		typedef debug_log::mutex_type mutex_type;
@@ -110,12 +60,20 @@ namespace stdx {
 	public:
 
 		explicit
-		debug_message(debug_log& rhs, const char* tag):
+		debug_message(debug_log& rhs, const char* name, const char* msg=nullptr):
 		_log(rhs)
 		{
 			_log._mutex.lock();
-			_log._out << tag << ' ';
+			_log._out << std::setw(10) << std::right << name << ": ";
+			if (msg) {
+				_log._out << msg << ' ';
+			}
 		}
+
+		explicit
+		debug_message(const char* name, const char* msg=nullptr):
+		debug_message(::stdx::dbg, name, msg)
+		{}
 
 		~debug_message() {
 			_log._out << std::endl;
@@ -143,8 +101,6 @@ namespace stdx {
 		debug_log& _log;
 
 	};
-
-	debug_log dbg(std::clog);
 
 	namespace bits {
 
