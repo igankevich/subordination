@@ -224,15 +224,22 @@ namespace stdx {
 
 		template<class ... Args>
 		explicit
-		debug_message(debug_log& rhs, const char* name, const char* fmt, const Args& ... tokens):
-		_log(rhs)
+		debug_message(debug_log& rhs, char spec, const char* name, const char* fmt, const Args& ... tokens):
+		_log(rhs),
+		_spec(spec)
 		{
 			assert(name);
 			assert(fmt);
 			_log._mutex.lock();
 			_log._out << std::setw(10) << std::right << name << ": ";
-			format_msg(_log._out, fmt, tokens...);
+			format_msg(fmt, tokens...);
 		}
+
+		template<class ... Args>
+		explicit
+		debug_message(debug_log& rhs, const char* name, const char* fmt, const Args& ... tokens):
+		debug_message(rhs, '_', name, fmt, tokens...)
+		{}
 
 		template<class ... Args>
 		explicit
@@ -269,22 +276,23 @@ namespace stdx {
 
 	private:
 
-		static void
-		format_msg(std::ostream& out, const char* s) {
-			out << s;
+		void
+		format_msg(const char* s) {
+			_log._out << s;
 		}
 
 		template<class T, class ... Args>
-		static void
-		format_msg(std::ostream& out, const char* s, const T& value, const Args& ... args) {
-			while (*s != '_') {
-				out << *s++;
+		void
+		format_msg(const char* s, const T& value, const Args& ... args) {
+			while (*s != _spec) {
+				_log._out << *s++;
 			};
-			out << value;
-			format_msg(out, ++s, args...);
+			_log._out << value;
+			format_msg(++s, args...);
 		}
 
 		debug_log& _log;
+		char _spec = '_';
 
 	};
 	#endif

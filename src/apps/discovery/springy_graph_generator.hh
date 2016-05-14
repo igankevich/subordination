@@ -29,63 +29,66 @@ namespace springy {
 	struct Springy_graph {
 
 		typedef std::chrono::nanoseconds::rep Time;
+		typedef std::chrono::system_clock clock_type;
+		typedef std::chrono::system_clock::time_point time_point;
 
 		Springy_graph():
-		_start(now())
+		_start(clock_type::now())
 		{}
 
 		void
 		start() {
 			#ifndef NDEBUG
-			stdx::debug_message("graph")
-				<< "startTime.push("
-				<< now() - _start
-				<< "*1e-6);";
+			stdx::debug_message("graph", '?', "startTime.push(?*1e-6);", millis_since_start());
 			#endif
 		}
 
 		void
 		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("graph")
-				<< "log[logline++] = {"
-				<< "redo: function () {"
-				<< "g." << Edge(addr, principal_addr) << " = graph.newEdge("
-				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
-				<< "}, "
-				<< "undo: function () {"
-				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ")"
-				<< "},"
-				<< "time: " << now() - _start << "*1e-6"
-				<< "};";
+			Edge edge(addr, principal_addr);
+			Node from(addr);
+			Node to(principal_addr);
+			stdx::debug_message("graph", '?',
+				"log[logline++] = {"
+				"redo: function() {g.? = graph.newEdge(g.?,g.?)},"
+				"undo: function () {graph.removeEdge(g.?)},"
+				"time: ?*1e-6"
+				"};",
+				edge, from, to, edge, millis_since_start()
+			);
 			#endif
 		}
 
 		void
 		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("graph")
-				<< "log[logline++] = {"
-				<< "redo: function () {"
-				<< "graph.removeEdge(g." << Edge(addr, principal_addr) << ')'
-				<< "}, undo: function() {"
-				<< "g." << Edge(addr, principal_addr) << " = graph.newEdge("
-				<< "g." << Node(addr) << ',' << "g." << Node(principal_addr) << ')'
-				<< "},"
-				<< "time: " << now() - _start << "*1e-6"
-				<< "};";
+			Edge edge(addr, principal_addr);
+			Node from(addr);
+			Node to(principal_addr);
+			stdx::debug_message("graph", '?',
+				"log[logline++] = {"
+				"redo: function () {graph.removeEdge(g.?)},"
+				"undo: function() {g.? = graph.newEdge(g.?,g.?)},"
+				"time: ?*1e-6"
+				"};",
+				edge, edge, from, to, millis_since_start()
+			);
 			#endif
 		}
 
 		void
 		add_node(sys::endpoint addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("graph")
-				<< "log[logline++] = {"
-				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
-				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")},"
-				<< "time: " << now() - _start << "*1e-6"
-				<< "};";
+			Node node(addr);
+			stdx::debug_message("graph", '?',
+				"log[logline++] = {"
+				"redo: function () {g.? = graph.newNode({label:'?'})},"
+				"undo: function() {graph.removeNode(g.?)},"
+				"time: ?*1e-6"
+				"};",
+				node, addr, node, millis_since_start()
+			);
 			#endif
 		}
 
@@ -106,14 +109,13 @@ namespace springy {
 
 	private:
 
-		Time
-		now() {
+		std::chrono::milliseconds::rep
+		millis_since_start() {
 			using namespace std::chrono;
-			typedef std::chrono::steady_clock Clock;
-			return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+			return duration_cast<milliseconds>(clock_type::now() - _start).count();
 		}
 
-		Time _start;
+		time_point _start;
 
 	};
 
