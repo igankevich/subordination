@@ -1,5 +1,71 @@
 test(
-	'buffer',
+	'std::uint128 (builtin)',
+	executable(
+		'uint128-test',
+		sources: 'uint128_test.cc',
+		include_directories: srcdir
+	)
+)
+
+test(
+	'std::uint128 (emulate)',
+	executable(
+		'uint128-emulate-test',
+		sources: 'uint128_test.cc',
+		cpp_args: '-DFACTORY_FORCE_CUSTOM_UINT128',
+		include_directories: srcdir
+	)
+)
+
+test(
+	'stdx::spin_mutex, sys::sysv_semaphore',
+	executable(
+		'locks-test',
+		sources: 'locks_test.cc',
+		dependencies: threads,
+		include_directories: srcdir
+	)
+)
+
+test(
+	'sys::shared_mem',
+	executable(
+		'shmem-test',
+		sources: 'shmem_test.cc',
+		dependencies: threads,
+		include_directories: srcdir
+	)
+)
+
+test(
+	'sys::endpoint',
+	executable(
+		'endpoint-test',
+		sources: 'endpoint_test.cc',
+		include_directories: srcdir
+	)
+)
+
+test(
+	'sys::event_poller',
+	executable(
+		'poller-test',
+		sources: 'poller_test.cc',
+		include_directories: srcdir
+	)
+)
+
+test(
+	'sys::file, sys::direntry, sys::path',
+	executable(
+		'sys-test',
+		sources: 'sys_test.cc',
+		include_directories: srcdir
+	)
+)
+
+test(
+	'sys::fildesbuf',
 	executable(
 		'buffer-test',
 		sources: 'buffer_test.cc',
@@ -8,7 +74,7 @@ test(
 )
 
 test(
-	'kernel-stream',
+	'factory::Kernel_stream',
 	executable(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
@@ -44,7 +110,7 @@ executable(
 )
 
 test(
-	'nic-server',
+	'factory::NIC_server (normal)',
 	test_runner,
 	args: [
 		'--strategy', 'master-slave',
@@ -55,7 +121,7 @@ test(
 )
 
 test(
-	'nic-server-offline',
+	'factory::NIC_server (slave failure)',
 	test_runner,
 	args: [
 		'--strategy', 'master-slave',
@@ -66,36 +132,7 @@ test(
 )
 
 test(
-	'shmem',
-	executable(
-		'shmem-test',
-		sources: 'shmem_test.cc',
-		dependencies: threads,
-		include_directories: srcdir
-	)
-)
-
-test(
-	'locks',
-	executable(
-		'locks-test',
-		sources: 'locks_test.cc',
-		dependencies: threads,
-		include_directories: srcdir
-	)
-)
-
-test(
-	'sys::endpoint',
-	executable(
-		'endpoint-test',
-		sources: 'endpoint_test.cc',
-		include_directories: srcdir
-	)
-)
-
-test(
-	'timer-server',
+	'factory::Timer_server',
 	executable(
 		'timer-server-test',
 		sources: 'timer_server_test.cc',
@@ -104,42 +141,6 @@ test(
 	)
 )
 
-test(
-	'std::uint128 (builtin)',
-	executable(
-		'uint128-test',
-		sources: 'uint128_test.cc',
-		include_directories: srcdir
-	)
-)
-
-test(
-	'std::uint128 (emulate)',
-	executable(
-		'uint128-emulate-test',
-		sources: 'uint128_test.cc',
-		cpp_args: '-DFACTORY_FORCE_CUSTOM_UINT128',
-		include_directories: srcdir
-	)
-)
-
-test(
-	'poller',
-	executable(
-		'poller-test',
-		sources: 'poller_test.cc',
-		include_directories: srcdir
-	)
-)
-
-test(
-	'sys',
-	executable(
-		'sys-test',
-		sources: 'sys_test.cc',
-		include_directories: srcdir
-	)
-)
 #
 #app_exe = executable(
 #	'process-server-test-app',
@@ -160,7 +161,7 @@ test(
 #test('process-server', srv_exe)
 #
 executable(
-	'posix-compliance',
+	'POSIX compliance',
 	sources: 'posix_test.cc',
 	include_directories: srcdir
 )

@@ -202,7 +202,7 @@ private:
 int
 main(int argc, char* argv[]) {
 	factory::Terminate_guard g00;
-	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
+//	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::cmdline cmdline(argc, argv, {
 		sys::cmd::ignore_first_arg(),

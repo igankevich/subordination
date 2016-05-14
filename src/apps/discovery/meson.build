@@ -47,7 +47,8 @@ executable(
 	]
 )
 
-test('discovery-ranking',
+test(
+	'discovery::Distance_in_tree',
 	executable(
 		'discovery-ranking-test',
 		sources: 'discovery_ranking_test.cc',
@@ -61,7 +62,8 @@ run_target(
 	meson.source_root() + '/scripts/discovery-animation'
 )
 
-test('csv',
+test(
+	'discovery::csv_tuple',
 	executable(
 		'csv-test',
 		sources: 'csv_test.cc',
