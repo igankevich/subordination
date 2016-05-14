@@ -265,7 +265,9 @@ namespace autoreg {
 
 template<class T>
 void Autoreg_model<T>::react(factory::Kernel* child) {
-	std::clog << "react: child=" << typeid(*child).name() << std::endl;
+	#ifndef NDEBUG
+	stdx::debug_message("autoreg", "finished _", typeid(*child).name());
+	#endif
 	if (typeid(*child) == typeid(ACF_generator<T>)) {
 		do_it();
 	}
@@ -276,8 +278,10 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	}
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
-		std::clog << "var_acf=" << var_acf(acf_model) << std::endl;
-		std::clog << "var_wn=" << var_wn << std::endl;
+		#ifndef NDEBUG
+		stdx::debug_message("autoreg", "var(acf) = _", var_acf(acf_model));
+		stdx::debug_message("autoreg", "var(eps) = _", var_wn);
+		#endif
 		std::size_t max_num_parts = zsize[0] / part_size();
 //		std::size_t modulo = homogeneous ? 1 : 2;
 		grid_type grid_2(zsize2[0], max_num_parts);
@@ -293,17 +297,13 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 		#endif
 	}
 	if (typeid(*child) == typeid(generator_type)) {
-		std::clog << "react: done" << std::endl;
-		this->parent(nullptr);
-//		const std::valarray<T>& water_surface
-//			= reinterpret_cast<Wave_surface_generator<T, grid_type>*>(child)->get_water_surface();
+		//this->parent(nullptr);
 		_time1 = current_time_nano();
 		{
 			std::ofstream timerun_log("time.log");
 			timerun_log << float(_time1 - _time0)/1000/1000/1000 << std::endl;
 		}
-		return_to_parent();
-		compute(this);
+		factory::commit(local_server, this);
 //		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);

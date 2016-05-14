@@ -155,6 +155,7 @@ namespace stdx {
 		return bits::Sentence<Args...>(args...);
 	}
 
+	#ifndef NDEBUG
 	class debug_message;
 
 	/**
@@ -286,6 +287,7 @@ namespace stdx {
 		debug_log& _log;
 
 	};
+	#endif
 
 }
 

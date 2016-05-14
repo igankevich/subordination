@@ -36,14 +36,17 @@ namespace springy {
 
 		void
 		start() {
+			#ifndef NDEBUG
 			stdx::debug_message("graph")
 				<< "startTime.push("
 				<< now() - _start
 				<< "*1e-6);";
+			#endif
 		}
 
 		void
 		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
+			#ifndef NDEBUG
 			stdx::debug_message("graph")
 				<< "log[logline++] = {"
 				<< "redo: function () {"
@@ -55,10 +58,12 @@ namespace springy {
 				<< "},"
 				<< "time: " << now() - _start << "*1e-6"
 				<< "};";
+			#endif
 		}
 
 		void
 		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
+			#ifndef NDEBUG
 			stdx::debug_message("graph")
 				<< "log[logline++] = {"
 				<< "redo: function () {"
@@ -69,16 +74,19 @@ namespace springy {
 				<< "},"
 				<< "time: " << now() - _start << "*1e-6"
 				<< "};";
+			#endif
 		}
 
 		void
 		add_node(sys::endpoint addr) {
+			#ifndef NDEBUG
 			stdx::debug_message("graph")
 				<< "log[logline++] = {"
 				<< "redo: function() { g." << Node(addr) << " = graph.newNode({label:'" << addr << "'}) }, "
 				<< "undo: function() { graph.removeNode(g." << Node(addr) << ")},"
 				<< "time: " << now() - _start << "*1e-6"
 				<< "};";
+			#endif
 		}
 
 		template<class It>

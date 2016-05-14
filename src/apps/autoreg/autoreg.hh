@@ -346,9 +346,6 @@ struct Solve_Yule_Walker: public Kernel {
 		ar_coefs(ar_coefs2), a(aa), b(bb), _acf_size(acf_size)
 	{}
 
-	const char* name() const { return "YW2"; }
-	bool is_profiled() const { return false; }
-
 	/*
 	void
 	solve_linear_system(std::valarray<T>& a, std::valarray<T>& b) {
@@ -375,14 +372,15 @@ struct Solve_Yule_Walker: public Kernel {
 	void act() {
 
 		int m = ar_coefs.size()-1;
-		int info = 0;
 //		solve_linear_system(a, b);
-		sysv<T>('U', m, 1, &a[0], m, &b[0], m, &info);
-		if (info != 0) {
-			std::stringstream s;
-			s << "ssysv error, D(" << info << ", " << info << ")=0";
-			throw std::invalid_argument(s.str());
-		}
+//		gaussian_elimintation(&a[0], &b[0], m);
+		cholesky(&a[0], &b[0], m);
+//		sysv<T>('U', m, 1, &a[0], m, &b[0], m, &info);
+//		if (info != 0) {
+//			std::stringstream s;
+//			s << "ssysv error, D(" << info << ", " << info << ")=0";
+//			throw std::invalid_argument(s.str());
+//		}
 
 		std::copy(&b[0], &b[m], &ar_coefs[1]);
 		ar_coefs[0] = 0;
@@ -616,8 +614,6 @@ struct Generator1: public Kernel {
 
 	~Generator1() {}
 
-	const char* name() const { return "G"; }
-
 	void set_neighbour(Generator1<T, Grid>* neighbour) {
 		left_neighbour = neighbour;
 	}
@@ -692,20 +688,10 @@ struct Generator1: public Kernel {
 		std::stringstream filename;
 		filename << "zeta-" << std::setw(2) << std::setfill('0') << part.part();
 		std::ofstream out(filename.str());
-		const Index<3> idz(zsize);
-		const int t0 = part.t0();
-		const int t1 = part.t1();
-		const int x1 = zsize[1];
-		const int y1 = zsize[2];
-	    for (int t=0; t<t1-t0; t++) {
-	        for (int x=0; x<x1; x++) {
-	            for (int y=0; y<y1; y++) {
-					out.write((char*) &zeta[idz(t, x, y)], sizeof(T));
-//					out << zeta[idz(t, x, y)] << ' ';
-				}
-//				out << '\n';
-			}
-		}
+		std::copy(
+			std::begin(zeta), std::end(zeta),
+			std::ostream_iterator<T>(out, "\n")
+		);
 	}
 
 	void
@@ -776,27 +762,27 @@ struct Wave_surface_generator: public Kernel {
 	void
 	act() override {
 		std::size_t num_parts = grid.num_parts();
-		std::stringstream tmp;
-		tmp << "Num. of parts = " << num_parts << std::endl;
-		Generator1<T, Grid>** generators = new Generator1<T, Grid>*[num_parts];
+		#ifndef NDEBUG
+		stdx::debug_message("autoreg", "no. of parts = _", num_parts);
+		#endif
+		std::vector<Generator1<T, Grid>*> generators(num_parts);
 		std::size_t sum = 0;
 		for (std::size_t i=0; i<num_parts; ++i) {
 			Surface_part part = grid.part(i);
 			Surface_part part2 = grid_2.part(i);
-//	    	Surface_part part(zsize, i, num_parts), part2(zsize2, i, num_parts);
-			tmp << "Part " << i << ": " << part << endl;
+			#ifndef NDEBUG
+			stdx::debug_message("autoreg", "part #_ = _", i, part);
+			#endif
 			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
 			sum += part.part_size();
 		}
-		std::clog << tmp.rdbuf() << std::flush;
-		std::clog << "Checksum: " << sum - zsize[0] << std::endl;
+		assert(sum - zsize[0] == 0);
 		for (std::size_t i=1; i<num_parts; ++i) {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
 			factory::upstream(remote_server, this, generators[i]);
 		}
-		delete[] generators;
 	}
 
 	void react(Kernel* child) override {

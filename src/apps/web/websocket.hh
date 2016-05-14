@@ -204,7 +204,9 @@ namespace factory {
 		bool empty() const { return send_buffer.empty(); }
 
 		bool flush() {
+			#ifndef NDEBUG
 			size_t old_size = send_buffer.size();
+			#endif
 			send_buffer.flush<sys::socket&>(*this);
 			#ifndef NDEBUG
 			stdx::debug_message("wbs")

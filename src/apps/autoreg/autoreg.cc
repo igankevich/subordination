@@ -40,6 +40,9 @@ using namespace factory;
 
 int
 main(int argc, char** argv) {
+	factory::Terminate_guard g00;
+	factory::Server_guard<decltype(local_server)> g1(local_server);
+	factory::Server_guard<decltype(remote_server)> g2(remote_server);
 	local_server.send(new Autoreg_app);
 	return factory::wait_and_return();
 }

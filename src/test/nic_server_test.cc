@@ -70,7 +70,9 @@ sys::endpoint client_endpoint({127,0,0,1}, 20002);
 const std::vector<size_t> POWERS = {1,2,3,4};
 //const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 7;
+#if defined(FACTORY_TEST_OFFLINE)
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
+#endif
 
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);

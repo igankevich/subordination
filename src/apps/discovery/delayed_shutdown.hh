@@ -17,8 +17,8 @@ struct Delayed_shutdown: public Kernel {
 	act() override {
 		if (not _normal) {
 			try {
-				sys::endpoint addr = remote_server.server_addr();
 				#ifndef NDEBUG
+				sys::endpoint addr = remote_server.server_addr();
 				stdx::debug_message("tst", "killing _", addr);
 				#endif
 			} catch (...) {

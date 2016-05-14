@@ -3,7 +3,7 @@ test(
 	executable(
 		'encoding-test',
 		sources: 'encoding_test.cc',
-		include_directories: [srcdir, testdir]
+		include_directories: [srcdir, testdir],
 	)
 )
 
@@ -12,6 +12,6 @@ test(
 	executable(
 		'web-buffer-test',
 		sources: 'web_buffer_test.cc',
-		include_directories: [srcdir, testdir]
+		include_directories: [srcdir, testdir],
 	)
 )

@@ -348,7 +348,10 @@ namespace factory {
 			sys::endpoint vaddr = virtual_addr(addr);
 			auto res = _upstream.find(vaddr);
 			if (res == _upstream.end()) {
-				server_type* ptr = add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
+				#ifndef NDEBUG
+				server_type* ptr =
+				#endif
+				add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
 				#ifndef NDEBUG
 				stdx::debug_message("nic", "accept _", *ptr);
 				#endif
