@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
 				}
 			);
 		}
-		springy::Springy_graph graph;
+		springy::Springy_graph<sys::endpoint> graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
 		sys::process_group procs;

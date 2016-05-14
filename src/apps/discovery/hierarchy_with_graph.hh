@@ -36,7 +36,7 @@ namespace discovery {
 
 	private:
 
-		springy::Springy_graph _graph;
+		springy::Springy_graph<sys::endpoint> _graph;
 
 	};
 

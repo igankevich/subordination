@@ -715,4 +715,21 @@ namespace sys {
 
 }
 
+namespace std {
+
+	template<>
+	struct hash<sys::endpoint> {
+
+		typedef size_t result_type;
+		typedef sys::endpoint argument_type;
+
+		size_t
+		operator()(const sys::endpoint& rhs) const noexcept {
+			return size_t(rhs.address()) * size_t(rhs.port());
+		}
+
+	};
+
+}
+
 #endif // SYS_ENDPOINT_HH

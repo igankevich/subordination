@@ -3,34 +3,54 @@
 
 #include <chrono>
 
-#include <sys/endpoint.hh>
-
 namespace springy {
 
+	template<class T>
 	struct Node {
-		explicit Node(const sys::endpoint& rhs): addr(rhs) {}
-		friend std::ostream& operator<<(std::ostream& out, const Node& rhs) {
-			return out << "n" << uint64_t(rhs.addr.address()) * uint64_t(rhs.addr.port());
+
+		explicit
+		Node(const T& rhs) noexcept:
+		addr(rhs)
+		{}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const Node& rhs) {
+			std::hash<T> hsh;
+			return out << 'n' << hsh(rhs.addr);
 		}
+
 	private:
-		const sys::endpoint& addr;
+
+		const T& addr;
+
 	};
 
+	template<class T>
 	struct Edge {
-		Edge(const sys::endpoint& a, const sys::endpoint& b): x(a), y(b) {}
-		friend std::ostream& operator<<(std::ostream& out, const Edge& rhs) {
-			return out << Node(rhs.x) << '_' << Node(rhs.y);
+
+		Edge(const T& a, const T& b) noexcept:
+		x(a), y(b)
+		{}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const Edge& rhs) {
+			return out << Node<T>(rhs.x) << '_' << Node<T>(rhs.y);
 		}
+
 	private:
-		const sys::endpoint& x;
-		const sys::endpoint& y;
+
+		const T& x, y;
+
 	};
 
+	template<class T>
 	struct Springy_graph {
 
-		typedef std::chrono::nanoseconds::rep Time;
 		typedef std::chrono::system_clock clock_type;
 		typedef std::chrono::system_clock::time_point time_point;
+		typedef T value_type;
+		typedef Node<T> node_type;
+		typedef Edge<T> edge_type;
 
 		Springy_graph():
 		_start(clock_type::now())
@@ -44,11 +64,11 @@ namespace springy {
 		}
 
 		void
-		add_edge(sys::endpoint addr, sys::endpoint principal_addr) {
+		add_edge(const value_type& addr, const value_type& principal_addr) {
 			#ifndef NDEBUG
-			Edge edge(addr, principal_addr);
-			Node from(addr);
-			Node to(principal_addr);
+			edge_type edge(addr, principal_addr);
+			node_type from(addr);
+			node_type to(principal_addr);
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newEdge(g.?,g.?)},"
@@ -61,11 +81,11 @@ namespace springy {
 		}
 
 		void
-		remove_edge(sys::endpoint addr, sys::endpoint principal_addr) {
+		remove_edge(const value_type& addr, const value_type& principal_addr) {
 			#ifndef NDEBUG
-			Edge edge(addr, principal_addr);
-			Node from(addr);
-			Node to(principal_addr);
+			edge_type edge(addr, principal_addr);
+			node_type from(addr);
+			node_type to(principal_addr);
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
 				"redo: function () {graph.removeEdge(g.?)},"
@@ -78,9 +98,9 @@ namespace springy {
 		}
 
 		void
-		add_node(sys::endpoint addr) {
+		add_node(const value_type& addr) {
 			#ifndef NDEBUG
-			Node node(addr);
+			node_type node(addr);
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
 				"redo: function () {g.? = graph.newNode({label:'?'})},"
@@ -98,12 +118,12 @@ namespace springy {
 			using namespace std::placeholders;
 			std::for_each(
 				first, last,
-				std::bind(&Springy_graph::add_node, this, _1)
+				std::bind(&Springy_graph<T>::add_node, this, _1)
 			);
 		}
 
 		void
-		push_back(const sys::endpoint& rhs) {
+		push_back(const value_type& rhs) {
 			add_node(rhs);
 		}
 
