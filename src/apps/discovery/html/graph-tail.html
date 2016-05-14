@@ -45,7 +45,10 @@ $(document).ready(function(){
 	showLineNo()
 	resizeCanvas()
 	var springy = $('#springydemo').springy({
-		graph: graph
+		graph: graph,
+		stiffness: 200.0, // Spring stiffness
+		repulsion: 200.0, // Node repulsion
+		damping: 0.1 // Damping
 	});
 	$('#logSlider').slider({
 		value: 0,

@@ -23,6 +23,11 @@ namespace springy {
 			return addr;
 		}
 
+		float
+		mass() const noexcept {
+			return 1.f;
+		}
+
 		friend std::ostream&
 		operator<<(std::ostream& out, const Node& rhs) {
 			std::hash<T> hsh;
@@ -120,11 +125,11 @@ namespace springy {
 			node_type node(addr);
 			stdx::debug_message(_log, "graph", '?',
 				"log[logline++] = {"
-				"redo: function() {g.? = graph.newNode({label:'?'})},"
+				"redo: function() {g.? = graph.newNode({label:'?',mass:?})},"
 				"undo: function() {graph.removeNode(g.?)},"
 				"time: ?"
 				"};",
-				node, node.label(), node, millis_since_start()
+				node, node.label(), node.mass(), node, millis_since_start()
 			);
 			#endif
 		}
@@ -136,10 +141,10 @@ namespace springy {
 			stdx::debug_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {graph.removeNode(g.?)},"
-				"undo: function() {g.? = graph.newNode({label:'?'})},"
+				"undo: function() {g.? = graph.newNode({label:'?',mass:?})},"
 				"time: ?"
 				"};",
-				node, node, node.label(), millis_since_start()
+				node, node, node.label(), node.mass(), millis_since_start()
 			);
 			#endif
 		}

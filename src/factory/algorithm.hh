@@ -18,6 +18,9 @@ namespace factory {
 	upstream(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
 		rhs->parent(lhs);
 		#ifdef SPRINGY
+		if (lhs) {
+			rhs->_mass = 0.9 * lhs->_mass;
+		}
 		graph.add_node(*rhs);
 		if (lhs) {
 			graph.add_edge(*lhs, *rhs);

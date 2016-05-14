@@ -85,6 +85,10 @@ namespace factory {
 			return this->isset(Flag::carries_parent);
 		}
 
+		#ifdef SPRINGY
+		float _mass = 1.f;
+		#endif
+
 	protected:
 
 		Result _result = Result::undefined;
@@ -481,6 +485,11 @@ namespace springy {
 		std::string
 		label() const noexcept {
 			return test::short_name(test::demangle_name(typeid(_kernel).name()));
+		}
+
+		float
+		mass() const noexcept {
+			return _kernel._mass;
 		}
 
 		friend std::ostream&
