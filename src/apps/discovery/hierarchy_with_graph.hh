@@ -1,7 +1,7 @@
 #ifndef APPS_DISCOVERY_HIERARCHY_WITH_GRAPH_HH
 #define APPS_DISCOVERY_HIERARCHY_WITH_GRAPH_HH
 
-#include "springy_graph_generator.hh"
+#include <springy/springy.hh>
 
 namespace discovery {
 

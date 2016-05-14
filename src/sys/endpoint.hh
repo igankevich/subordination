@@ -9,6 +9,7 @@
 #include <tuple>
 #include <bitset>
 #include <limits>
+#include <functional>
 
 #include <stdx/uint128.hh>
 #include <stdx/ios.hh>

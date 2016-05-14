@@ -15,7 +15,7 @@
 #include "distance.hh"
 #include "cache_guard.hh"
 #include "hierarchy.hh"
-#include "springy_graph_generator.hh"
+#include <springy/springy.hh>
 #include "hierarchy_with_graph.hh"
 #include "test.hh"
 

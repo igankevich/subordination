@@ -2,6 +2,8 @@
 #define APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
 
 #include <chrono>
+#include <ostream>
+#include <functional>
 
 namespace springy {
 
@@ -59,7 +61,7 @@ namespace springy {
 		void
 		start() {
 			#ifndef NDEBUG
-			stdx::debug_message("graph", '?', "startTime.push(?*1e-6);", millis_since_start());
+			stdx::debug_message("graph", '?', "startTime.push(?);", millis_since_start());
 			#endif
 		}
 
@@ -72,8 +74,8 @@ namespace springy {
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newEdge(g.?,g.?)},"
-				"undo: function () {graph.removeEdge(g.?)},"
-				"time: ?*1e-6"
+				"undo: function() {graph.removeEdge(g.?)},"
+				"time: ?"
 				"};",
 				edge, from, to, edge, millis_since_start()
 			);
@@ -88,9 +90,9 @@ namespace springy {
 			node_type to(principal_addr);
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
-				"redo: function () {graph.removeEdge(g.?)},"
+				"redo: function() {graph.removeEdge(g.?)},"
 				"undo: function() {g.? = graph.newEdge(g.?,g.?)},"
-				"time: ?*1e-6"
+				"time: ?"
 				"};",
 				edge, edge, from, to, millis_since_start()
 			);
@@ -103,9 +105,9 @@ namespace springy {
 			node_type node(addr);
 			stdx::debug_message("graph", '?',
 				"log[logline++] = {"
-				"redo: function () {g.? = graph.newNode({label:'?'})},"
+				"redo: function() {g.? = graph.newNode({label:'?'})},"
 				"undo: function() {graph.removeNode(g.?)},"
-				"time: ?*1e-6"
+				"time: ?"
 				"};",
 				node, addr, node, millis_since_start()
 			);

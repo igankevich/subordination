@@ -3,6 +3,9 @@
 
 #include <factory/kernel.hh>
 #include <factory/result.hh>
+#ifdef SPRINGY
+#include <springy/springy.hh>
+#endif
 
 namespace factory {
 
