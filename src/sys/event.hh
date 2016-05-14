@@ -10,6 +10,8 @@
 #endif
 
 #include <cassert>
+#include <chrono>
+#include <condition_variable>
 
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
@@ -198,6 +200,7 @@ namespace sys {
 		typedef std::vector<poll_event> events_type;
 		typedef std::vector<handler_type> handlers_type;
 		typedef events_type::size_type size_type;
+		typedef std::chrono::system_clock clock_type;
 
 		inline
 		event_poller():
@@ -236,10 +239,10 @@ namespace sys {
 		void
 		wait(Lock& lock, Pred pred) {
 			insert_pending_specials();
-			bool success = false;
-			while (!success && !pred()) {
+			int ret = -1;
+			while (ret <= 0 && !pred()) {
 				stdx::unlock_guard<Lock> g(lock);
-				success = do_wait(no_timeout);
+				ret = do_poll(no_timeout);
 			}
 		}
 
@@ -247,6 +250,56 @@ namespace sys {
 		void
 		wait(Lock& lock) {
 			wait(lock, [] () { return false; });
+		}
+
+		template<class Lock, class Rep, class Period>
+		std::cv_status
+		wait_for(Lock& lock, const std::chrono::duration<Rep,Period>& dur) {
+			using namespace std::chrono;
+			stdx::unlock_guard<Lock> unlock(lock);
+			int ret = do_poll(duration_cast<milliseconds>(dur));
+			return ret == 0 ? std::cv_status::timeout : std::cv_status::no_timeout;
+		}
+
+		template<class Lock, class Rep, class Period, class Pred>
+		bool
+		wait_for(Lock& lock, const std::chrono::duration<Rep,Period>& dur, Pred pred) {
+			while (!pred()) {
+				if (wait_for(lock, dur) == std::cv_status::timeout) {
+					return pred();
+				}
+			}
+			return true;
+		}
+
+		template<class Lock, class Duration>
+		std::cv_status
+		wait_until(Lock& lock, const std::chrono::time_point<clock_type,Duration>& tp) {
+			return wait_for(lock, tp-clock_type::now());
+		}
+
+		template<class Lock, class Duration, class Pred>
+		bool
+		wait_until(Lock& lock, const std::chrono::time_point<clock_type,Duration>& tp, Pred pred) {
+			return wait_for(lock, tp-clock_type::now(), pred);
+		}
+
+		template<class Lock, class Clock, class Duration>
+		std::cv_status
+		wait_until(Lock& lock, const std::chrono::time_point<Clock,Duration>& tp) {
+			typedef Clock other_clock;
+			const auto delta = tp - other_clock::now();
+			const auto new_tp = clock_type::now() + delta;
+			return wait_until(lock, new_tp);
+		}
+
+		template<class Lock, class Clock, class Duration, class Pred>
+		bool
+		wait_until(Lock& lock, const std::chrono::time_point<Clock,Duration>& tp, Pred pred) {
+			typedef Clock other_clock;
+			const auto delta = tp - other_clock::now();
+			const auto new_tp = clock_type::now() + delta;
+			return wait_until(lock, new_tp, pred);
 		}
 
 		inline fd_type
@@ -421,30 +474,27 @@ namespace sys {
 			assert_invariant(__func__);
 		}
 
-		bool
-		do_wait(int timeout_millis) {
+		int
+		do_poll(int timeout_millis) {
 
-			bool success = false;
+			timeout_millis = std::max(timeout_millis, 0);
 
 			remove_fds_if(std::logical_not<poll_event>());
 			insert_pending_specials();
 
-//			std::clog << "before poll(this=" << *this << ")" << std::endl;
-			bits::check_if_not<std::errc::interrupted>(
+			int ret = bits::check_if_not<std::errc::interrupted>(
 				::poll(_events.data(), _events.size(), timeout_millis),
 				__FILE__, __LINE__, __func__
 			);
-			success = errno != EINTR;
-//			std::clog << "after poll(this=" << *this << ")" << std::endl;
 
-			if (success) {
+			if (ret > 0) {
 				#if !defined(POLLRDHUP)
 				check_hup(_events.begin(), _events.end());
 				#endif
 				for_each_pipe_fd(&event_poller::consume);
 			}
 
-			return success;
+			return ret;
 		}
 
 		friend std::ostream&
