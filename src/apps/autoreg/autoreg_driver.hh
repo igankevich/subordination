@@ -71,7 +71,7 @@ public:
 		write_log("Interval:"   , interval);
 		write_log("Size factor:", size_factor());
 
-		compute(call(new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model)));
+		factory::upstream(local_server, this, new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
 //		do_it();
 	}
 
@@ -223,7 +223,7 @@ private:
 			interpolation_coefs<T>(nit_x0, nit_x1, INTERPOLATION_NODES, interp_coefs, cdf);
 			transform_acf<T>(interp_coefs, MAX_NIT_COEFS, acf_model);
 		}
-		compute(call(new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs)));
+		factory::upstream(local_server, this, new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
 	}
 
 	size3 zsize;
@@ -274,7 +274,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-		compute(call(new Variance_WN<T>(ar_coefs, acf_model)));
+		factory::upstream(local_server, this, new Variance_WN<T>(ar_coefs, acf_model));
 	}
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
@@ -291,9 +291,9 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			interval, zsize, zdelta, grid, grid_2
 		);
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		upstream(local_server, this, kernel);
+		factory::upstream(local_server, this, kernel);
 		#else
-		upstream_carry(remote_server, this, kernel);
+		factory::upstream_carry(remote_server, this, kernel);
 		#endif
 	}
 	if (typeid(*child) == typeid(generator_type)) {

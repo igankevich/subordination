@@ -4,6 +4,9 @@
 #include <chrono>
 #include <ostream>
 #include <functional>
+#include <fstream>
+
+#include <stdx/debug.hh>
 
 namespace springy {
 
@@ -14,6 +17,11 @@ namespace springy {
 		Node(const T& rhs) noexcept:
 		addr(rhs)
 		{}
+
+		const T&
+		label() const noexcept {
+			return addr;
+		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Node& rhs) {
@@ -30,18 +38,18 @@ namespace springy {
 	template<class T>
 	struct Edge {
 
-		Edge(const T& a, const T& b) noexcept:
+		Edge(const Node<T>& a, const Node<T>& b) noexcept:
 		x(a), y(b)
 		{}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Edge& rhs) {
-			return out << Node<T>(rhs.x) << '_' << Node<T>(rhs.y);
+			return out << rhs.x << '_' << rhs.y;
 		}
 
 	private:
 
-		const T& x, y;
+		const Node<T>& x, y;
 
 	};
 
@@ -54,24 +62,31 @@ namespace springy {
 		typedef Node<T> node_type;
 		typedef Edge<T> edge_type;
 
+		explicit
+		Springy_graph(const char* filename):
+		_start(clock_type::now()),
+		_outfile(filename),
+		_log(_outfile)
+		{}
+
 		Springy_graph():
-		_start(clock_type::now())
+		Springy_graph("springy.log")
 		{}
 
 		void
 		start() {
 			#ifndef NDEBUG
-			stdx::debug_message("graph", '?', "startTime.push(?);", millis_since_start());
+			stdx::debug_message(_log, "graph", '?', "startTime.push(?);", millis_since_start());
 			#endif
 		}
 
 		void
 		add_edge(const value_type& addr, const value_type& principal_addr) {
 			#ifndef NDEBUG
-			edge_type edge(addr, principal_addr);
 			node_type from(addr);
 			node_type to(principal_addr);
-			stdx::debug_message("graph", '?',
+			edge_type edge(from, to);
+			stdx::debug_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newEdge(g.?,g.?)},"
 				"undo: function() {graph.removeEdge(g.?)},"
@@ -85,10 +100,10 @@ namespace springy {
 		void
 		remove_edge(const value_type& addr, const value_type& principal_addr) {
 			#ifndef NDEBUG
-			edge_type edge(addr, principal_addr);
 			node_type from(addr);
 			node_type to(principal_addr);
-			stdx::debug_message("graph", '?',
+			edge_type edge(from, to);
+			stdx::debug_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {graph.removeEdge(g.?)},"
 				"undo: function() {g.? = graph.newEdge(g.?,g.?)},"
@@ -103,13 +118,28 @@ namespace springy {
 		add_node(const value_type& addr) {
 			#ifndef NDEBUG
 			node_type node(addr);
-			stdx::debug_message("graph", '?',
+			stdx::debug_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newNode({label:'?'})},"
 				"undo: function() {graph.removeNode(g.?)},"
 				"time: ?"
 				"};",
-				node, addr, node, millis_since_start()
+				node, node.label(), node, millis_since_start()
+			);
+			#endif
+		}
+
+		void
+		remove_node(const value_type& addr) {
+			#ifndef NDEBUG
+			node_type node(addr);
+			stdx::debug_message(_log, "graph", '?',
+				"log[logline++] = {"
+				"redo: function() {graph.removeNode(g.?)},"
+				"undo: function() {g.? = graph.newNode({label:'?'})},"
+				"time: ?"
+				"};",
+				node, node, node.label(), millis_since_start()
 			);
 			#endif
 		}
@@ -138,6 +168,8 @@ namespace springy {
 		}
 
 		time_point _start;
+		std::ofstream _outfile;
+		stdx::debug_log _log;
 
 	};
 

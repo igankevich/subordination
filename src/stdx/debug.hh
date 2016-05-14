@@ -215,7 +215,6 @@ namespace stdx {
 		{
 			assert(name);
 			_log._mutex.lock();
-			_log._out << 'Z';
 			_log._out << std::setw(10) << std::right << name << ": ";
 			if (sizeof...(tokens) > 0) {
 				_log._out << make_sentence(tokens...) << ' ';
@@ -224,7 +223,7 @@ namespace stdx {
 
 		template<class ... Args>
 		explicit
-		debug_message(debug_log& rhs, char spec, const char* name, const char* fmt, const Args& ... tokens):
+		debug_message(debug_log& rhs, const char* name, char spec, const char* fmt, const Args& ... tokens):
 		_log(rhs),
 		_spec(spec)
 		{
@@ -238,7 +237,7 @@ namespace stdx {
 		template<class ... Args>
 		explicit
 		debug_message(debug_log& rhs, const char* name, const char* fmt, const Args& ... tokens):
-		debug_message(rhs, '_', name, fmt, tokens...)
+		debug_message(rhs, name, '_', fmt, tokens...)
 		{}
 
 		template<class ... Args>
@@ -251,6 +250,12 @@ namespace stdx {
 		explicit
 		debug_message(const char* name, const char* fmt, const Args& ... tokens):
 		debug_message(::stdx::dbg, name, fmt, tokens...)
+		{}
+
+		template<class ... Args>
+		explicit
+		debug_message(const char* name, char spec, const char* fmt, const Args& ... tokens):
+		debug_message(::stdx::dbg, name, spec, fmt, tokens...)
 		{}
 
 		~debug_message() {

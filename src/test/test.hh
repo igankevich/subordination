@@ -16,36 +16,15 @@
 #include <cassert>
 #include <array>
 
-#if defined(__GLIBCXX__) || defined(__GLIBCPP__) || (defined(_LIBCPP_VERSION) && defined(__APPLE__))
-#define FACTORY_TEST_HAVE_CXXABI
-#endif
-
-#if defined(FACTORY_TEST_HAVE_CXXABI)
-#include <cxxabi.h>
-#endif
-
 #include <stdx/random.hh>
 #include <stdx/iterator.hh>
 
 #include <sys/network_format.hh>
 
 #include "color.hh"
+#include "demangle.hh"
 
 namespace test {
-
-	template<class T>
-	std::string
-	demangle_name() {
-	#if defined(FACTORY_TEST_HAVE_CXXABI)
-		int status;
-		char* buf = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
-		std::string name{buf};
-		std::free(buf);
-		return std::move(name);
-	#else
-		return std::string(typeid(T).name());
-	#endif
-	}
 
 	struct Basic_test {
 

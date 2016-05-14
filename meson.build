@@ -10,6 +10,10 @@ if get_option('buildtype') == 'release'
 	add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 
+if get_option('springy')
+	add_global_arguments('-DSPRINGY', language: 'cpp')
+endif
+
 cpp = meson.get_compiler('cpp')
 
 libpthread = cpp.find_library('pthread')

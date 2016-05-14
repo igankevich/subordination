@@ -93,15 +93,14 @@ struct Variance_WN: public Kernel {
 	void act() override {
 		int bs = 64;
 		int n = ar_coefs.size();
-		compute(call(mapreduce([](int) {}, [this](int i){
+		factory::upstream(local_server, this, mapreduce([](int) {}, [this](int i){
 			_sum += ar_coefs[i]*acf[i];
-		}, 0, n, bs)));
+		}, 0, n, bs));
 	}
 
 	void react(factory::Kernel*) override {
 		_sum = acf[0] - _sum;
-		return_to_parent();
-		yield(this);
+		factory::commit(local_server, this);
 	}
 
 	T
@@ -133,7 +132,7 @@ struct Yule_walker: public Kernel {
 		int block_size = 16*4;
 		int m = b.size();
 		auto identity = [](int){};
-		compute(call(mapreduce([this](int i) {
+		factory::upstream(local_server, this, mapreduce([this](int i) {
 			const int n = acf.size()-1;
 			const Index<3> id(acf_size);
 			const Index<2> ida(size2(n, n));
@@ -150,17 +149,16 @@ struct Yule_walker: public Kernel {
 //				}
 				a[i1] = acf[i2];
 			}
-		}, identity, 0, n, block_size)));
-		compute(call(mapreduce([this](int i) {
+		}, identity, 0, n, block_size));
+		factory::upstream(local_server, this, mapreduce([this](int i) {
 			const Index<3> id(acf_size);
 			b[i] = acf[id( id.t(i+1), id.x(i+1), id.y(i+1) )];
-		}, identity, 0, m, block_size)));
+		}, identity, 0, m, block_size));
 	}
 
 	void react(factory::Kernel*) override {
 		if (++count == 2) {
-			return_to_parent();
-			yield(this);
+			factory::commit(local_server, this);
 		}
 	}
 
@@ -287,7 +285,7 @@ struct ACF_generator: public Kernel {
 		int bs = 2;
 		int n = acf_size[0];
 		auto identity = [](int){};
-		compute(call(mapreduce([this](int t) {
+		factory::upstream(local_server, this, mapreduce([this](int t) {
 			const Index<3> id(acf_size);
 			int x1 = acf_size[1];
 			int y1 = acf_size[2];
@@ -299,11 +297,11 @@ struct ACF_generator: public Kernel {
 //					acf[id(t, x, y)] = gamm*exp(-alpha*k1)*cos(-beta*t*delta[0] + beta*x*delta[1] + beta*y*delta[2]);
 				}
 			}
-		}, identity, 0, n, bs)));
+		}, identity, 0, n, bs));
 	}
 
 	void react(factory::Kernel*) override {
-		commit(local_server, this);
+		factory::commit(local_server, this);
 	}
 
 private:
@@ -403,7 +401,7 @@ struct Solve_Yule_Walker: public Kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
 		}
-		commit(local_server, this);
+		factory::commit(local_server, this);
 	}
 
 private:
@@ -424,15 +422,15 @@ struct Autoreg_coefs: public Kernel {
 	{}
 
 	void act() override {
-		upstream(local_server, this, new Yule_walker<T>(acf_model, acf_size, a, b));
+		factory::upstream(local_server, this, new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
 	void react(factory::Kernel*) override {
 		state++;
 		if (state == 1) {
-			upstream(local_server, this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+			factory::upstream(local_server, this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
 		} else {
-			commit(local_server, this);
+			factory::commit(local_server, this);
 		}
 	}
 

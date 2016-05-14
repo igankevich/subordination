@@ -64,6 +64,6 @@ executable(
 )
 
 run_target(
-	'discovery-animation',
-	meson.source_root() + '/scripts/discovery-animation'
+	'springy',
+	meson.source_root() + '/scripts/springy-target'
 )

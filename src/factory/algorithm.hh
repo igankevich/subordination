@@ -9,10 +9,20 @@
 
 namespace factory {
 
+	#ifdef SPRINGY
+	springy::Springy_graph<Kernel> graph;
+	#endif
+
 	template<class Pipeline>
 	void
 	upstream(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
 		rhs->parent(lhs);
+		#ifdef SPRINGY
+		graph.add_node(*rhs);
+		if (lhs) {
+			graph.add_edge(*lhs, *rhs);
+		}
+		#endif
 		ppl.send(rhs);
 	}
 
@@ -27,10 +37,16 @@ namespace factory {
 	void
 	commit(Pipeline& ppl, Kernel* rhs, Result ret) {
 		if (!rhs->parent()) {
+			#ifdef SPRINGY
+			graph.remove_node(*rhs);
+			#endif
 			delete rhs;
 			factory::graceful_shutdown(static_cast<int>(ret));
 		} else {
 			rhs->return_to_parent(ret);
+			#ifdef SPRINGY
+			graph.add_edge(*rhs, *rhs->parent());
+			#endif
 			ppl.send(rhs);
 		}
 	}
@@ -70,6 +86,9 @@ namespace factory {
 				}
 			}
 			if (del) {
+				#ifdef SPRINGY
+				graph.remove_node(*kernel);
+				#endif
 				delete kernel;
 			}
 		}

@@ -449,4 +449,53 @@ namespace factory {
 
 }
 
+#ifdef SPRINGY
+#include <springy/springy.hh>
+#include <test/demangle.hh>
+namespace std {
+
+	template<>
+	struct hash<factory::Kernel> {
+
+		typedef size_t result_type;
+		typedef factory::Kernel argument_type;
+
+		size_t
+		operator()(const factory::Kernel& rhs) const noexcept {
+			return rhs.identifiable() ? rhs.id() : size_t(std::addressof(rhs));
+		}
+
+	};
+
+}
+namespace springy {
+
+	template<>
+	struct Node<factory::Kernel> {
+
+		explicit
+		Node(const factory::Kernel& rhs) noexcept:
+		_kernel(rhs)
+		{}
+
+		std::string
+		label() const noexcept {
+			return test::short_name(test::demangle_name(typeid(_kernel).name()));
+		}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const Node& rhs) {
+			std::hash<factory::Kernel> hsh;
+			return out << 'n' << hsh(rhs._kernel);
+		}
+
+	private:
+
+		const factory::Kernel& _kernel;
+
+	};
+
+}
+#endif
+
 #endif // FACTORY_KERNEL_HH

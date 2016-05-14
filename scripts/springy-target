@@ -1,7 +1,7 @@
 #!/bin/sh
 
-logfile="$MESON_BUILD_ROOT/discovery.log"
-outfile="$MESON_BUILD_ROOT/discovery.html"
+logfile="$MESON_BUILD_ROOT/springy.log"
+outfile="$MESON_BUILD_ROOT/springy.html"
 srcdir="$MESON_SOURCE_ROOT/$MESON_SUBDIR"
 
 echo "Input file: $logfile"
@@ -14,8 +14,8 @@ fi
 
 {
 	cat "$srcdir/html/graph-head.html"
-	grep 'Springy_graph' "$logfile" |
-	perl -pne 's/.*Springy_graph(.*)/\1/p'
+	grep 'graph:' "$logfile" |
+	perl -pne 's/\s*graph:\s*(.*)/\1/p'
 	cat "$srcdir/html/graph-tail.html"
 } > "$outfile"
 cp -r "$srcdir/js" "$MESON_BUILD_ROOT/"
