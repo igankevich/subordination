@@ -38,7 +38,10 @@ namespace test {
 	demangle_name() {
 	#if defined(FACTORY_TEST_HAVE_CXXABI)
 		int status;
-		return std::string(abi::__cxa_demangle(typeid(T).name(), 0, 0, &status));
+		char* buf = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+		std::string name{buf};
+		std::free(buf);
+		return std::move(name);
 	#else
 		return std::string(typeid(T).name());
 	#endif
@@ -95,6 +98,7 @@ namespace test {
 		explicit
 		Test(const std::string& name):
 		Basic_test(name) {}
+
 	};
 
 

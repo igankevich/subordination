@@ -139,11 +139,12 @@ namespace sys {
 
 		static path
 		canonicalise(path&& rhs) {
-			std::unique_ptr<char> ptr(bits::check<char*>(
-				::realpath(const_path(rhs), nullptr),
+			std::unique_ptr<char[]> ptr(new char[PATH_MAX]);
+			bits::check<char*>(
+				::realpath(const_path(rhs), ptr.get()),
 				static_cast<char*>(nullptr),
 				__FILE__, __LINE__, __func__
-			));
+			);
 			return path(ptr.get());
 		}
 

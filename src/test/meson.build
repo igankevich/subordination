@@ -1,9 +1,17 @@
+if cpp.get_id() == 'gcc' or cpp.get_id() == 'clang'
+	sanitize_flags = ['-fsanitize=null', '-fsanitize=address', '-fsanitize=undefined']
+else
+	sanitize_flags = []
+endif
+
 test(
 	'std::uint128 (builtin)',
 	executable(
 		'uint128-test',
 		sources: 'uint128_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -13,7 +21,9 @@ test(
 		'uint128-emulate-test',
 		sources: 'uint128_test.cc',
 		cpp_args: '-DFACTORY_FORCE_CUSTOM_UINT128',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -23,7 +33,9 @@ test(
 		'locks-test',
 		sources: 'locks_test.cc',
 		dependencies: threads,
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -33,7 +45,9 @@ test(
 		'shmem-test',
 		sources: 'shmem_test.cc',
 		dependencies: threads,
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -42,7 +56,9 @@ test(
 	executable(
 		'endpoint-test',
 		sources: 'endpoint_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -51,7 +67,9 @@ test(
 	executable(
 		'poller-test',
 		sources: 'poller_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -60,7 +78,9 @@ test(
 	executable(
 		'sys-test',
 		sources: 'sys_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -69,7 +89,9 @@ test(
 	executable(
 		'buffer-test',
 		sources: 'buffer_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -78,7 +100,9 @@ test(
 	executable(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -88,15 +112,11 @@ test_runner = executable(
 	include_directories: srcdir
 )
 
-#sanitize_flags = ['-fsanitize=null', '-fsanitize=address', '-fsanitize=undefined']
-sanitize_flags = []
-
 executable(
 	'nic-server-test',
 	sources: 'nic_server_test.cc',
 	dependencies: threads,
-	include_directories: srcdir
-	,
+	include_directories: srcdir,
 	cpp_args: sanitize_flags,
 	link_args: sanitize_flags
 )
@@ -137,7 +157,9 @@ test(
 		'timer-server-test',
 		sources: 'timer_server_test.cc',
 		dependencies: threads,
-		include_directories: srcdir
+		include_directories: srcdir,
+		cpp_args: sanitize_flags,
+		link_args: sanitize_flags
 	)
 )
 
@@ -161,7 +183,7 @@ test(
 #test('process-server', srv_exe)
 #
 executable(
-	'POSIX compliance',
+	'posix-compliance',
 	sources: 'posix_test.cc',
 	include_directories: srcdir
 )

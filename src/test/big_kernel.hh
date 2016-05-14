@@ -12,6 +12,8 @@ struct Big_kernel: public factory::Kernel {
 	_data(Size)
 	{}
 
+	virtual ~Big_kernel() = default;
+
 	void act() override {
 		factory::commit(remote_server, this);
 	}

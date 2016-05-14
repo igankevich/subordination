@@ -52,7 +52,6 @@ struct Negotiator: public Priority_kernel<Kernel> {
 
 	void write(sys::packetstream& out) override {
 		Kernel::write(out);
-		// TODO: if moves_upstream
 		out << _oldprinc << _newprinc;
 	}
 

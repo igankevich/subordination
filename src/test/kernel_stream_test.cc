@@ -173,6 +173,10 @@ struct Test_kernel_stream: public test::Test<Test_kernel_stream<Carrier,Parent>>
 		for (size_t i=0; i<result.size(); ++i) {
 			Carrier* tmp = dynamic_cast<Carrier*>(result[i]);
 			test::equal(*tmp, expected[i], "kernels are not equal", "i=", i);
+			if (tmp->parent()) {
+				delete tmp->parent();
+			}
+			delete tmp;
 		}
 	}
 

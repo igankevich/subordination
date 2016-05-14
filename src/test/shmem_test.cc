@@ -35,13 +35,6 @@ struct Test_shmem: public test::Test<Test_shmem<T>> {
 		const size_type real_size = mem1.size();
 		test::equal(mem1.size(), real_size, "bad size: mem1=", std::cref(mem1));
 		test::equal(mem2.size(), real_size, "bad size: mem2=", std::cref(mem2));
-//		mem2.sync();
-//		test::equal(mem2.size(), real_size, "bad size after sync: mem2=", std::cref(mem2));
-//		mem1.resize(real_size * 2);
-//		const size_type new_size = mem1.size();
-//		test::equal(mem1.size(), new_size, "bad size after resize: mem1=", std::cref(mem1));
-//		mem2.sync();
-//		test::equal(mem2.size(), new_size, "bad size after sync: mem2=", std::cref(mem2));
 		std::generate(mem1.begin(), mem1.end(), test::randomval<T>);
 		test::compare(mem1, mem2, "mem1 does not match mem2");
 	}

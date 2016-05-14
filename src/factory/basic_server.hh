@@ -235,24 +235,23 @@ namespace factory {
 
 		void
 		collect_kernels(Global_thread_context& context) {
-			// TODO 2016-05-07 fix it
-//				// Recursively collect kernel pointers to the sack
-//				// and delete them all at once. Collection process
-//				// is fully serial to prevent multiple deletions
-//				// and access to unitialised values.
-//				typedef Global_thread_context::slowlock_type lock_type;
-//				lock_type lock(context.slowmutex());
-//				//std::cout << "global_barrier #1" << std::endl;
-//				context.global_barrier(lock);
-//				//std::cout << "global_barrier #1 end" << std::endl;
-//				kernel_sack sack;
-//				collect_kernels(std::back_inserter(sack));
-//				// simple barrier for all threads participating in deletion
-//				//std::cout << "global_barrier #2" << std::endl;
-//				context.global_barrier(lock);
-//				//std::cout << "global_barrier #2 end" << std::endl;
-//				// destructors of scoped variables
-//				// will destroy all kernels automatically
+			// Recursively collect kernel pointers to the sack
+			// and delete them all at once. Collection process
+			// is fully serial to prevent multiple deletions
+			// and access to unitialised values.
+			typedef Global_thread_context::slowlock_type lock_type;
+			lock_type lock(context.slowmutex());
+			//std::cout << "global_barrier #1" << std::endl;
+			//context.global_barrier(lock);
+			//std::cout << "global_barrier #1 end" << std::endl;
+			kernel_sack sack;
+			collect_kernels(std::back_inserter(sack));
+			// simple barrier for all threads participating in deletion
+			//std::cout << "global_barrier #2" << std::endl;
+			//context.global_barrier(lock);
+			//std::cout << "global_barrier #2 end" << std::endl;
+			// destructors of scoped variables
+			// will destroy all kernels automatically
 		}
 
 		static inline std::thread
