@@ -1,4 +1,11 @@
-project('factory', 'cpp', version: '0.2', default_options: ['cpp_std=c++14'])
+project(
+	'factory',
+	'cpp',
+	version: '0.2',
+	meson_version: '>=0.31',
+	default_options: ['cpp_std=c++14']
+)
+
 if get_option('buildtype') == 'release'
 	add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
