@@ -62,8 +62,3 @@ executable(
 	sources: 'discover_topology.cc',
 	include_directories: [srcdir, testdir],
 )
-
-run_target(
-	'springy',
-	meson.source_root() + '/scripts/springy-target'
-)

@@ -23,5 +23,6 @@ srcdir = include_directories('src')
 run_target('cppcheck', meson.source_root() + '/scripts/cppcheck-target')
 run_target('gcov', meson.source_root() + '/scripts/gcov-target')
 run_target('iwyu', meson.source_root() + '/scripts/iwyu-target')
+run_target('springy', meson.source_root() + '/scripts/springy-target')
 
 subdir('src')
