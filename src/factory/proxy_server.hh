@@ -65,7 +65,7 @@ namespace factory {
 			poller().notify_one();
 			lock_type lock(this->_mutex);
 			while (!this->is_stopped()) {
-				prepare_poll_events();
+//				prepare_poll_events();
 				poller().wait(lock);
 				stdx::unlock_guard<lock_type> g(lock);
 				process_kernels_if_any();

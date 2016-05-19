@@ -68,9 +68,6 @@ using factory::Application;
 #include "datum.hh"
 
 
-sys::endpoint server_endpoint("127.0.0.1", 10000);
-sys::endpoint client_endpoint("127.0.0.1", 20000);
-
 const uint32_t NUM_SIZES = 1;
 const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
@@ -91,12 +88,12 @@ struct Test_socket: public Kernel {
 	}
 
 	void act() override {
-		stdx::debug_message("tst", "Test_socket::act(): It works!");
-		commit(remote_server, this);
+		stdx::debug_message("chld", "Test_socket::act(): It works!");
+		factory::commit(factory::remote_server, this);
 	}
 
 	void write(sys::packetstream& out) override {
-		stdx::debug_message("tst", "Test_socket::write()");
+		stdx::debug_message("chld", "Test_socket::write()");
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -104,7 +101,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void read(sys::packetstream& in) override {
-		stdx::debug_message("tst", "Test_socket::read()");
+		stdx::debug_message("chld", "Test_socket::read()");
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -170,32 +167,20 @@ private:
 
 struct Main: public Kernel {
 
-	Main() {
-		factory::types.register_type<Test_socket>();
-		#if defined(FACTORY_TEST_SERVER)
-		Application app(XSTRINGIFY(FACTORY_APP_PATH));
-		std::cout << "App = " << app << std::endl;
-		remote_server.add(app);
-		#endif
-	}
-
 	void act() override {
-		#if defined(FACTORY_TEST_APP)
 		Test_socket* kernel = new Test_socket;
 		kernel->setapp(sys::this_process::id());
 		upstream(remote_server, this, kernel);
-		#endif
-		#if defined(FACTORY_TEST_SERVER)
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		commit(local_server, this);
-		#endif
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
 //			upstream(local_server(), new Sender(i, _sleep));
 	}
 
 	void react(Kernel*) override {
 		if (++_num_returned == NUM_SIZES) {
-			commit(this);
+			#ifndef NDEBUG
+			stdx::debug_message("chld", "finished");
+			#endif
+			factory::commit(local_server, this, factory::Result::success);
 		}
 	}
 
@@ -205,6 +190,17 @@ private:
 
 
 int main(int argc, char* argv[]) {
+	factory::Terminate_guard g0;
+	factory::types.register_type<Test_socket>();
+	factory::Server_guard<decltype(local_server)> g1(local_server);
+	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	#if defined(FACTORY_TEST_SERVER)
+	Application app(XSTRINGIFY(FACTORY_APP_PATH));
+	remote_server.add(app);
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+	factory::graceful_shutdown(0);
+	#else
 	local_server.send(new Main);
+	#endif
 	return factory::wait_and_return();
 }

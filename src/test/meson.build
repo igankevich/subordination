@@ -135,25 +135,27 @@ test(
 	)
 )
 
-#
-#app_exe = executable(
-#	'process-server-test-app',
-#	sources: 'process_server_test.cc',
-#	dependencies: libpthread,
-#	include_directories: srcdir,
-#	cpp_args: '-DFACTORY_TEST_APP'
-#)
-#
-#srv_exe = executable(
-#	'process-server-test',
-#	sources: 'process_server_test.cc',
-#	dependencies: libpthread,
-#	include_directories: srcdir,
-#	cpp_args: ['-DFACTORY_TEST_SERVER', '-DFACTORY_APP_PATH=./src/test/process-server-test-app']
-#)
-#
+app_exe = executable(
+	'process-server-test-app',
+	sources: 'process_server_test.cc',
+	dependencies: libpthread,
+	include_directories: srcdir,
+	cpp_args: '-DFACTORY_TEST_APP'
+)
+
+srv_exe = executable(
+	'process-server-test',
+	sources: 'process_server_test.cc',
+	dependencies: libpthread,
+	include_directories: srcdir,
+	cpp_args: [
+		'-DFACTORY_TEST_SERVER',
+		'-DFACTORY_APP_PATH=./src/test/process-server-test-app'
+	]
+)
+
 #test('process-server', srv_exe)
-#
+
 executable(
 	'posix-compliance',
 	sources: 'posix_test.cc',

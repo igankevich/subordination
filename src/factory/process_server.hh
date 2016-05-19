@@ -178,6 +178,22 @@ namespace factory {
 		}
 
 		void
+		close() {
+			_outbuf.fd().close();
+			_inbuf.fd().close();
+		}
+
+		int
+		nrefs() const {
+			return _refcnt;
+		}
+
+		void
+		incref(int rhs) {
+			_refcnt += rhs;
+		}
+
+		void
 		send(kernel_type* kernel) {
 			/*
 			TODO we need IDs only when forwarding kernels to other hosts
@@ -218,12 +234,8 @@ namespace factory {
 		void
 		handle(sys::poll_event& event) {
 			if (event.fd() == _outbuf.fd()) {
-				if (_outbuf.dirty()) {
-					event.setrev(sys::poll_event::Out);
-				}
-				if (event.out() && !event.hup()) {
-					_ostream.flush();
-				}
+//				_ostream.clear();
+				_ostream.sync();
 			} else {
 				assert(
 					event.fd() == _inbuf.fd()
@@ -231,11 +243,10 @@ namespace factory {
 					or !event.bad_fd()
 				);
 				assert(!event.out() || event.hup());
-				if (event.in()) {
-					_istream.sync();
-					while (_istream.read_packet()) {
-						read_and_receive_kernel();
-					}
+//				_istream.clear();
+				_istream.sync();
+				while (_istream.read_packet()) {
+					read_and_receive_kernel();
 				}
 			}
 		}
@@ -312,6 +323,7 @@ namespace factory {
 		stream_type _ostream;
 		kernelbuf_type _inbuf;
 		stream_type _istream;
+		int _refcnt = 0;
 
 	};
 
@@ -352,7 +364,10 @@ namespace factory {
 
 		void
 		remove_server(server_type* ptr) override {
-			_apps.erase(ptr->childpid());
+			ptr->incref(-1);
+			if (ptr->nrefs() == 0) {
+				_apps.erase(ptr->childpid());
+			}
 		}
 
 		void
@@ -395,6 +410,7 @@ namespace factory {
 				sys::poll_event{parent_out, 0, 0},
 				handler_type(&result.first->second)
 			);
+			result.first->second.incref(2);
 		}
 
 		void
@@ -460,7 +476,7 @@ namespace factory {
 				#ifndef NDEBUG
 				stdx::debug_message("app", "exit, status=_, app=_", status, result->first);
 				#endif
-				_apps.erase(result);
+				result->second.close();
 			}
 		}
 
