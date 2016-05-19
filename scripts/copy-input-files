@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cp $MESON_SOURCE_ROOT/src/apps/autoreg/input/* $MESON_BUILD_ROOT/
