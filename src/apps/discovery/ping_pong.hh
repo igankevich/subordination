@@ -55,7 +55,7 @@ struct Ping_pong: public Kernel {
 		factory::upstream(remote_server, this, new Ping(x));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
-			factory::schedule(this);
+			factory::timer_server.send(this);
 		} else {
 			#ifndef NDEBUG
 			stdx::debug_message("tst", "finished sending pings");
@@ -90,7 +90,7 @@ struct Ping_pong: public Kernel {
 			);
 			#endif
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
-			factory::commit(this, success ? Result::success : Result::error);
+			factory::commit(factory::local_server, this, success ? Result::success : Result::error);
 		}
 	}
 

@@ -95,7 +95,7 @@ struct Main: public Kernel {
 		factory::types.register_type<Station_kernel>();
 		factory::types.register_type<Spec_app>();
 		if (this->result() != Result::success) {
-			factory::commit(this);
+			factory::commit(factory::local_server, this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 			const sys::endpoint bind_addr(_network.address(), _port);
@@ -104,7 +104,8 @@ struct Main: public Kernel {
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));
 			factory::instances.register_instance(master);
-			factory::schedule_after(std::chrono::seconds(start_delay), master);
+			master->after(std::chrono::seconds(start_delay));
+			factory::timer_server.send(master);
 
 //			if (_network.address() == traits_type::localhost()) {
 //				schedule_pingpong_after(std::chrono::seconds(0));

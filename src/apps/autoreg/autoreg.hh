@@ -654,7 +654,7 @@ struct Generator1: public Kernel {
 //					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
 					Note* note = new Note;
 					note->return_to(left_neighbour);
-					compute(note);
+					local_server.send(note);
 //					downstream(local_server(), new Note(), left_neighbour);
 				}
 				send(local_server, this, this);
