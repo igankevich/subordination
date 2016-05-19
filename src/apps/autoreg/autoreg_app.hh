@@ -45,7 +45,13 @@ struct Autoreg_app: public Kernel {
 		Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
 		try {
 			std::ifstream cfg(model_filename.c_str());
-			cfg >> *model;
+			if (cfg.is_open()) {
+				cfg >> *model;
+			} else {
+				#ifndef NDEBUG
+				stdx::debug_message("autoreg", "using default parameters");
+				#endif
+			}
 		} catch (std::exception& e) {
 			std::cerr << e.what();
 			exit(1);

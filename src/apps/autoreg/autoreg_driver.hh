@@ -35,14 +35,14 @@ public:
 
 	explicit
 	Autoreg_model(bool b = true):
-	zsize(768, 24, 24),
+	zsize(280, 32, 32),
 	zdelta(1, 1, 1),
 	acf_size(10, 10, 10),
 	acf_delta(zdelta),
 	fsize(acf_size),
-	linear(false),
-	skewness(0),
-	kurtosis(0),
+	linear(true),
+	skewness(0.25),
+	kurtosis(0.4),
 	interval(0),
 	zsize2(zsize),
 	acf_model(acf_size),
