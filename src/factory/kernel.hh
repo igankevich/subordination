@@ -10,8 +10,6 @@
 
 namespace factory {
 
-	struct kernel_category {};
-
 	struct Basic_kernel {
 
 		typedef std::chrono::system_clock Clock;

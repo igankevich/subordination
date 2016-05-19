@@ -4,17 +4,6 @@
 
 #include "test.hh"
 
-/*
-// disable logs
-namespace stdx {
-
-	template<>
-	struct disable_log_category<sys::buffer_category>:
-	public std::integral_constant<bool, true> {};
-
-}
-*/
-
 template<class T>
 struct Test_shmem: public test::Test<Test_shmem<T>> {
 

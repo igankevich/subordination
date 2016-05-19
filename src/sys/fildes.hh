@@ -70,8 +70,7 @@ namespace sys {
 
 		fildes&
 		operator=(fildes&& rhs) {
-			_fd = rhs._fd;
-			rhs._fd = bad;
+			std::swap(_fd, rhs._fd);
 			return *this;
 		}
 

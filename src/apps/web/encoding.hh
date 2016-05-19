@@ -631,10 +631,6 @@ namespace factory {
 		}
 	};
 
-	struct websocket_category {};
-	struct websocket_encode_t {};
-	struct websocket_decode_t {};
-
 	template<class It, class Res, class Random>
 	void websocket_encode(It first, It last, Res result, Random& rng) {
 		size_t input_size = last - first;

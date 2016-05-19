@@ -15,7 +15,6 @@
 #include <sys/endpoint.hh>
 #include <sys/ifaddr.hh>
 
-#include <factory/bits/server_category.hh>
 #include <factory/proxy_server.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>

@@ -4,7 +4,6 @@
 #include <vector>
 #include <cassert>
 
-#include <sys/bits/buffer_category.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/streambuf.hh>
 

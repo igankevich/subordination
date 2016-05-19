@@ -2,7 +2,6 @@
 
 #include "lbuffer.hh"
 #include <factory/error.hh>
-#include <sys/bits/buffer_category.hh>
 #include "websocket.hh"
 
 #include "test.hh"

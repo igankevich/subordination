@@ -3,7 +3,6 @@
 
 #include <stdx/mutex.hh>
 #include <sys/system.hh>
-#include <factory/bits/server_category.hh>
 #include <factory/basic_server.hh>
 #include <factory/result.hh>
 #include <factory/algorithm.hh>

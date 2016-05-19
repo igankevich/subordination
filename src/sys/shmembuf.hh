@@ -4,7 +4,6 @@
 #include <factory/error.hh>
 #include <stdx/packetbuf.hh>
 #include <stdx/mutex.hh>
-#include <sys/bits/buffer_category.hh>
 #include <sys/sharedmem.hh>
 
 namespace sys {
@@ -202,17 +201,6 @@ namespace sys {
 	};
 
 	typedef basic_shmembuf<char> shmembuf;
-
-}
-
-namespace stdx {
-
-	template<class Ch, class Tr>
-	struct type_traits<sys::basic_shmembuf<Ch,Tr>> {
-		static constexpr const char*
-		short_name() { return "shmembuf"; }
-		typedef sys::buffer_category category;
-	};
 
 }
 

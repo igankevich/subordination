@@ -9,7 +9,6 @@
 #include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
-#include <factory/bits/server_category.hh>
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
 

@@ -11,7 +11,6 @@
 #include <sys/fildesbuf.hh>
 #include <sys/packetstream.hh>
 
-#include <factory/bits/server_category.hh>
 #include <factory/basic_server.hh>
 #include <factory/proxy_server.hh>
 #include <factory/kernelbuf.hh>

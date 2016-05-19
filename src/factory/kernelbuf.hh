@@ -7,7 +7,6 @@
 
 #include <stdx/packetbuf.hh>
 #include <sys/network_format.hh>
-#include <sys/bits/buffer_category.hh>
 
 namespace factory {
 
