@@ -3,6 +3,7 @@
 
 #include <map>
 #include <cassert>
+#include <atomic>
 
 #include <stdx/iterator.hh>
 
@@ -221,17 +222,6 @@ namespace factory {
 		}
 
 		void
-		prepare(sys::poll_event& event) {
-//				if (event.fd() == _outbuf.fd()) {
-//					if (_outbuf.dirty()) {
-//						event.setev(sys::poll_event::Out);
-//					} else {
-//						event.unsetev(sys::poll_event::Out);
-//					}
-//				}
-		}
-
-		void
 		handle(sys::poll_event& event) {
 			if (event.fd() == _outbuf.fd()) {
 //				_ostream.clear();
@@ -288,9 +278,6 @@ namespace factory {
 		void
 		receive_kernel(kernel_type* k, app_type app) {
 			k->setapp(app);
-			#ifndef NDEBUG
-			stdx::debug_message("app", "recv _", *k);
-			#endif
 			bool ok = true;
 			if (k->moves_downstream()) {
 				// TODO
@@ -303,6 +290,9 @@ namespace factory {
 				}
 				k->principal(p);
 			}
+			#ifndef NDEBUG
+			stdx::debug_message("app", "recv _", *k);
+			#endif
 			if (!ok) {
 				return_kernel(k);
 			} else {
@@ -324,6 +314,7 @@ namespace factory {
 		kernelbuf_type _inbuf;
 		stream_type _istream;
 		int _refcnt = 0;
+		std::atomic<id_type> _counter{0};
 
 	};
 

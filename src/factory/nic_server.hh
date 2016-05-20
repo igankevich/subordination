@@ -128,15 +128,6 @@ namespace factory {
 			}
 		}
 
-		void
-		prepare(sys::poll_event& event) {
-			if (_packetbuf.dirty()) {
-				event.setev(sys::poll_event::Out);
-			} else {
-				event.unsetev(sys::poll_event::Out);
-			}
-		}
-
 		const socket_type&
 		socket() const {
 			return _packetbuf.fd();
