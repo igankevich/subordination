@@ -184,16 +184,6 @@ namespace factory {
 			_inbuf.fd().close();
 		}
 
-		int
-		nrefs() const {
-			return _refcnt;
-		}
-
-		void
-		incref(int rhs) {
-			_refcnt += rhs;
-		}
-
 		void
 		send(kernel_type* kernel) {
 			/*
@@ -325,8 +315,9 @@ namespace factory {
 	template<class T, class Router>
 	struct Process_iserver: public Proxy_server<T,Process_rserver<T,Router>> {
 
-		typedef Process_rserver<T,Router> rserver_type;
-		typedef Proxy_server<T,rserver_type> base_server;
+		typedef Router router_type;
+
+		typedef Proxy_server<T,Process_rserver<T,Router>> base_server;
 		using typename base_server::kernel_type;
 		using typename base_server::mutex_type;
 		using typename base_server::lock_type;
@@ -334,12 +325,11 @@ namespace factory {
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
 		using typename base_server::server_ptr;
-		typedef typename rserver_type::router_type router_type;
 
 		using base_server::poller;
 
 		typedef sys::pid_type key_type;
-		typedef std::map<key_type, rserver_type> map_type;
+		typedef std::map<key_type,server_ptr> map_type;
 
 		Process_iserver() = default;
 
@@ -354,10 +344,7 @@ namespace factory {
 
 		void
 		remove_server(server_ptr ptr) override {
-			ptr->incref(-1);
-			if (ptr->nrefs() == 0) {
-				_apps.erase(ptr->childpid());
-			}
+			_apps.erase(ptr->childpid());
 		}
 
 		void
@@ -388,19 +375,15 @@ namespace factory {
 			data_pipe.validate();
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
-			rserver_type child(p.id(), std::move(data_pipe), _router);
+			server_ptr child(new server_type(p.id(), std::move(data_pipe), _router));
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
-			auto result = _apps.emplace(process_id, std::move(child));
+			auto result = _apps.emplace(process_id, child);
 			poller().emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
-				server_ptr(&result.first->second)
+				result.first->second
 			);
-			poller().emplace(
-				sys::poll_event{parent_out, 0, 0},
-				server_ptr(&result.first->second)
-			);
-			result.first->second.incref(2);
+			poller().emplace(sys::poll_event{parent_out, 0, 0}, result.first->second);
 		}
 
 		void
@@ -420,7 +403,7 @@ namespace factory {
 			if (result == _apps.end()) {
 				throw Error("bad app id", __FILE__, __LINE__, __func__);
 			}
-			result->second.forward(hdr, istr);
+			result->second->forward(hdr, istr);
 		}
 
 	private:
@@ -431,7 +414,7 @@ namespace factory {
 			if (k->moves_everywhere()) {
 				std::for_each(_apps.begin(), _apps.end(),
 					[k] (value_type& rhs) {
-						rhs.second.send(k);
+						rhs.second->send(k);
 					}
 				);
 			} else {
@@ -439,7 +422,7 @@ namespace factory {
 				if (result == _apps.end()) {
 					throw Error("bad app id", __FILE__, __LINE__, __func__);
 				}
-				result->second.send(k);
+				result->second->send(k);
 			}
 		}
 
@@ -466,7 +449,7 @@ namespace factory {
 				#ifndef NDEBUG
 				stdx::debug_message("app", "exit, status=_, app=_", status, result->first);
 				#endif
-				result->second.close();
+				result->second->close();
 			}
 		}
 
@@ -495,7 +478,7 @@ namespace factory {
 		typedef std::map<key_type, rserver_type> map_type;
 
 		Process_child_server():
-		_parent(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router)
+		_parent(new server_type(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router))
 		{}
 
 		Process_child_server(Process_child_server&& rhs) noexcept:
@@ -538,17 +521,17 @@ namespace factory {
 		void
 		init_server() {
 			// _parent.setparent(this);
-			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, server_ptr(&_parent));
-			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), server_ptr(&_parent));
+			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, _parent);
+			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), _parent);
 		}
 
 		void
 		process_kernel(kernel_type* k) {
-			_parent.send(k);
+			_parent->send(k);
 		}
 
 		router_type _router;
-		rserver_type _parent;
+		server_ptr _parent;
 	};
 
 }
