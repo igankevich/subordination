@@ -321,9 +321,9 @@ namespace sys {
 		}
 
 		void
-		emplace(poll_event ev, handler_type&& handler) {
+		emplace(poll_event ev, handler_type handler) {
 			this->_events.push_back(ev);
-			this->_handlers.emplace_back(std::move(handler));
+			this->_handlers.emplace_back(handler);
 			assert_invariant(__func__);
 		}
 

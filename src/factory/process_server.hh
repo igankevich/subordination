@@ -314,7 +314,6 @@ namespace factory {
 		kernelbuf_type _inbuf;
 		stream_type _istream;
 		int _refcnt = 0;
-		std::atomic<id_type> _counter{0};
 
 	};
 
@@ -334,7 +333,7 @@ namespace factory {
 		using typename base_server::sem_type;
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
-		using typename base_server::handler_type;
+		using typename base_server::server_ptr;
 		typedef typename rserver_type::router_type router_type;
 
 		using base_server::poller;
@@ -354,7 +353,7 @@ namespace factory {
 		~Process_iserver() = default;
 
 		void
-		remove_server(server_type* ptr) override {
+		remove_server(server_ptr ptr) override {
 			ptr->incref(-1);
 			if (ptr->nrefs() == 0) {
 				_apps.erase(ptr->childpid());
@@ -395,11 +394,11 @@ namespace factory {
 			auto result = _apps.emplace(process_id, std::move(child));
 			poller().emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
-				handler_type(&result.first->second)
+				server_ptr(&result.first->second)
 			);
 			poller().emplace(
 				sys::poll_event{parent_out, 0, 0},
-				handler_type(&result.first->second)
+				server_ptr(&result.first->second)
 			);
 			result.first->second.incref(2);
 		}
@@ -487,7 +486,7 @@ namespace factory {
 		using typename base_server::sem_type;
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
-		using typename base_server::handler_type;
+		using typename base_server::server_ptr;
 		typedef typename rserver_type::router_type router_type;
 
 		using base_server::poller;
@@ -506,7 +505,7 @@ namespace factory {
 		virtual ~Process_child_server() = default;
 
 		void
-		remove_server(server_type* ptr) override {
+		remove_server(server_ptr ptr) override {
 			if (!this->is_stopped()) {
 				this->stop();
 				// this->factory()->stop();
@@ -539,8 +538,8 @@ namespace factory {
 		void
 		init_server() {
 			// _parent.setparent(this);
-			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, handler_type(&_parent));
-			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), handler_type(&_parent));
+			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, server_ptr(&_parent));
+			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), server_ptr(&_parent));
 		}
 
 		void

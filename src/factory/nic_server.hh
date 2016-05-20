@@ -284,14 +284,13 @@ namespace factory {
 		using typename base_server::sem_type;
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
+		using typename base_server::server_ptr;
 
 		using base_server::poller;
 		using base_server::send;
 
-		typedef std::map<sys::endpoint,server_type> upstream_type;
+		typedef std::map<sys::endpoint,server_ptr> upstream_type;
 		typedef typename upstream_type::iterator iterator_type;
-		typedef server_type* handler_type;
-		typedef sys::event_poller<handler_type> poller_type;
 		typedef sys::ifaddr<sys::ipv4_addr> network_type;
 		typedef network_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
@@ -320,7 +319,7 @@ namespace factory {
 		NIC_server& operator=(const NIC_server&) = delete;
 
 		void
-		remove_server(server_type* ptr) override {
+		remove_server(server_ptr ptr) override {
 			// TODO: occasional ``Bad file descriptor''
 			#ifndef NDEBUG
 			stdx::debug_message("nic", "remove _", *ptr);
@@ -339,31 +338,27 @@ namespace factory {
 			auto res = _upstream.find(vaddr);
 			if (res == _upstream.end()) {
 				#ifndef NDEBUG
-				server_type* ptr =
+				server_ptr ptr =
 				#endif
 				add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
 				#ifndef NDEBUG
 				stdx::debug_message("nic", "accept _", *ptr);
 				#endif
 			} else {
-				server_type& s = res->second;
-				const sys::port_type local_port = s.socket().bind_addr().port();
+				/*
+				server_ptr s = res->second;
+				const sys::port_type local_port = s->socket().bind_addr().port();
 				if (!(addr.port() < local_port)) {
 					#ifndef NDEBUG
 					stdx::debug_message("nic",  "replace _", s);
 					#endif
-					poller().disable(s.socket().fd());
-					server_type new_s(std::move(s));
-					// new_s.setparent(this);
-					new_s.socket(std::move(sock));
+					poller().disable(s->socket().fd());
+					s->socket(std::move(sock));
 					remove_valid_server(res);
-//						_upstream.erase(res);
-					_upstream.emplace(vaddr, std::move(new_s));
-//						_upstream.emplace(vaddr, std::move(*new_s));
-					poller().emplace(
-						sys::poll_event{res->second.socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout},
-						handler_type(&res->second));
+					_upstream.emplace(vaddr, std::move(s));
+					poller().emplace(sys::poll_event{s->socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout}, s);
 				}
+				*/
 			}
 		}
 
@@ -432,7 +427,7 @@ namespace factory {
 			if (result == _iterator) {
 				advance_upstream_iterator();
 			}
-			result->second.setstate(server_state::stopped);
+			result->second->setstate(server_state::stopped);
 			_upstream.erase(result);
 		}
 
@@ -445,7 +440,7 @@ namespace factory {
 		}
 
 		std::pair<iterator_type,bool>
-		emplace_server(const sys::endpoint& vaddr, server_type&& s) {
+		emplace_server(const sys::endpoint& vaddr, server_ptr&& s) {
 			auto result = _upstream.emplace(vaddr, std::move(s));
 			if (_upstream.size() == 1) {
 				_iterator = _upstream.begin();
@@ -480,7 +475,7 @@ namespace factory {
 
 			if (k->moves_everywhere()) {
 				for (auto& pair : _upstream) {
-					pair.second.send(k);
+					pair.second->send(k);
 				}
 				// delete broadcast kernel
 				delete k;
@@ -494,14 +489,14 @@ namespace factory {
 				} else {
 					// skip stopped hosts
 					iterator_type old_iterator = _iterator;
-					if (_iterator->second.is_stopped()) {
+					if (_iterator->second->is_stopped()) {
 						do {
 							advance_upstream_iterator();
-						} while (_iterator->second.is_stopped() and old_iterator != _iterator);
+						} while (_iterator->second->is_stopped() and old_iterator != _iterator);
 					}
 					// round robin over upstream hosts
 					ensure_identity(k);
-					_iterator->second.send(k);
+					_iterator->second->send(k);
 					advance_upstream_iterator();
 				}
 			} else if (k->moves_downstream() and not k->from()) {
@@ -521,38 +516,39 @@ namespace factory {
 			}
 		}
 
-		server_type* find_or_create_peer(const sys::endpoint& addr, sys::poll_event::legacy_event ev) {
-			server_type* ret;
+		server_ptr
+		find_or_create_peer(const sys::endpoint& addr, sys::poll_event::legacy_event ev) {
+			server_ptr ret;
 			auto result = _upstream.find(addr);
 			if (result == _upstream.end()) {
 				ret = this->connect_to_server(addr, ev);
 			} else {
-				ret = &result->second;
+				ret = result->second;
 			}
 			return ret;
 		}
 
-		server_type* connect_to_server(sys::endpoint addr, sys::poll_event::legacy_event events) {
+		server_ptr
+		connect_to_server(sys::endpoint addr, sys::poll_event::legacy_event events) {
 			// bind to server address with ephemeral port
 			sys::endpoint srv_addr(this->server_addr(), 0);
 			return this->add_connected_server(socket_type(srv_addr, addr), addr, events);
 		}
 
-		server_type* add_connected_server(socket_type&& sock, sys::endpoint vaddr,
+		server_ptr
+		add_connected_server(socket_type&& sock, sys::endpoint vaddr,
 			sys::poll_event::legacy_event events,
 			sys::poll_event::legacy_event revents=0)
 		{
 			sys::fd_type fd = sock.fd();
-			server_type s(std::move(sock), vaddr, _router);
+			server_ptr s(new server_type(std::move(sock), vaddr, _router));
 			// s.setparent(this);
 			auto result = emplace_server(vaddr, std::move(s));
-			poller().emplace(
-				sys::poll_event{fd, events, revents},
-				handler_type(&result.first->second));
+			poller().emplace(sys::poll_event{fd, events, revents}, result.first->second);
 			#ifndef NDEBUG
 			stdx::debug_message("nic", "add _", result.first->second);
 			#endif
-			return &result.first->second;
+			return result.first->second;
 		}
 
 		network_type _network;

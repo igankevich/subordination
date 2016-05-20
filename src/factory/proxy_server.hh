@@ -1,6 +1,8 @@
 #ifndef FACTORY_PROXY_SERVER_HH
 #define FACTORY_PROXY_SERVER_HH
 
+#include <memory>
+
 #include <stdx/algorithm.hh>
 #include <stdx/iterator.hh>
 #include <stdx/mutex.hh>
@@ -20,13 +22,12 @@ namespace factory {
 	using Proxy_server_base = Server_with_pool<T, Kernels, Threads,
 		//std::mutex, std::unique_lock<std::mutex>,
 		stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
-		sys::event_poller<Rserver*>>;
+		sys::event_poller<std::shared_ptr<Rserver>>>;
 
 	template<class T, class Rserver>
 	struct Proxy_server: public Proxy_server_base<T,Rserver> {
 
 		typedef Rserver server_type;
-		typedef server_type* handler_type;
 
 		typedef Proxy_server_base<T,Rserver> base_server;
 		using typename base_server::kernel_type;
@@ -34,6 +35,7 @@ namespace factory {
 		using typename base_server::lock_type;
 		using typename base_server::sem_type;
 		using typename base_server::kernel_pool;
+		typedef typename sem_type::handler_type server_ptr;
 
 		Proxy_server(Proxy_server&& rhs) noexcept:
 		base_server(std::move(rhs))
@@ -77,7 +79,7 @@ namespace factory {
 		}
 
 		virtual void
-		remove_server(server_type* ptr) = 0;
+		remove_server(server_ptr ptr) = 0;
 
 		virtual void
 		process_kernels() = 0;
@@ -99,7 +101,7 @@ namespace factory {
 		void
 		remove_servers_if_any() {
 			poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, handler_type& h) {
+				[this] (sys::poll_event& ev, server_ptr h) {
 					if (!ev) {
 						this->remove_server(h);
 					}
@@ -132,7 +134,7 @@ namespace factory {
 		void
 		handle_events() {
 			poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, handler_type& h) {
+				[this] (sys::poll_event& ev, server_ptr h) {
 					h->handle(ev);
 				}
 			);
