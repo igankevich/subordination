@@ -15,13 +15,13 @@ pipeline (there is a pipeline for CPU, I/O device and NIC) which allows them to 
 in parallel: process one part of data with CPU pipeline and simultaneously write
 another one with disk pipeline. Every pipeline work until application exit.
 
-Each programme begins with starting all necessary pipelines and sending the main
-kernel to one of the them. After that programme execution resembles that of
-sequential programme with each nested call to a procedure replaced with
-construction of a subordinate and sending it to appropriate pipeline. The
-difference is that pipelines process kernels \em asynchronously, so procedure
-code is decomposed into \link factory::Kernel::act() `act()`\endlink routine
-which constructs subordinates and \link factory::Kernel::react(Kernel*)
+Each programme begins with starting all necessary pipelines and sending the
+main kernel to one of the them. After that programme execution resembles that
+of sequential programme with each nested call to a procedure replaced with
+construction of a subordinate kernel and sending it to appropriate pipeline.
+The difference is that pipelines process kernels \em asynchronously, so
+procedure code is decomposed into \link factory::Kernel::act() `act()`\endlink
+routine which constructs subordinates and \link factory::Kernel::react(Kernel*)
 `react()`\endlink routine which processes results they return.
 
 \section api Developing distributed applications
@@ -122,7 +122,68 @@ int main() {
 Use \link factory::commit\endlink to return the kernel to its parent and
 reclaim system resources.
 
-\section architecture Framework architecture
+\section failover Automatic failure handling
+
+In general, there are two types of failures occurring in any hierarchical
+distributed system:
+
+- failure of a \em subordinate node --- a node which connects only to its
+  principal and no other node --- and
+- failure of a \em principal node --- a node with multiple connections.
+
+In Factory the "node" refers both to a cluster node and to a kernel, failures
+of which are handled differently.
+
+\subsection kernel-failures Handling kernel failures
+
+Since any subordinate kernel is part of a hierarchy the simplest method of
+handling its failure is to let its principal restart it on a healthy cluster
+node. Factory does this automatically for any kernel that has parent. This
+approach works well unless your hierarchy is deep and require restarting a lot
+of kernels upon a failure; however, this approach does not work for the main
+kernel --- the first kernel of an application that does not have a parent.
+
+In case of the main kernel failure the only option is to keep a copy of it on
+some other cluster node and restore from it when the former node fails. Factory
+implements this for any kernel with the \link
+factory::Basic_kernel::Flag::carries_parent\endlink flag set, but the approach
+works only for those principal kernels that have only one subordinate at a time
+(extending algorithm to cover more cases is one of the goals of ongoing
+research).
+
+At present, a kernel is considered failed when a node to which it was sent
+fails, and a node is considered failed when the corresponding connection closes
+unexpectedly. At the moment, there is no mechanism that deals with unreliable
+connections other than timeouts configured in underlying operating system.
+
+\subsection node-failures Handling cluster node failures
+
+Cluster node failures are much simpler to mitigate: there is no state to be
+lost and the only invariant that should be preserved in a cluster is
+connectivity of nodes. All nodes should "know" each other and be able to
+establish arbitrary connections between each other; in other words, nodes
+should be able to \em discover each other. Factory implements this
+functionality without distributed consensus algorithm: the framework builds tree
+hierarchy of nodes using IP addresses and pre-set fan-out value to rank nodes.
+Using this algorithm a node computes IP address of its would-be principal and
+tries to connect to it; if the connection fails it tries another node from the
+same or higher level of tree hierarchy. If it reaches the root of the tree and no
+node responds, it becomes the root node. This algorithm is used both during node
+bootstrap phase and upon a failure of any principal.
+
+\section hierarchy Hierarchical architecture
+
+At high-level Factory framework is composed of multiple layers:
+
+- physical layer (fully-connected servers and network switches),
+- middleware layer (hierarchy of nodes),
+- application layer (hierarchy of kernels).
+
+Load balancing is implemented by superimposing hierarchy of kernels on the
+hierarchy of nodes: When a node pipelines are overflown by kernels some of them
+may be "spilled" to subordinate nodes (planned feature), much like water flows
+from the top of a cocktail pyramid down to its bottom when volume of glasses
+in the current layer is to small to hold it.
 
 \section bottomup Bottom-up design
 

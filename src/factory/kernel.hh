@@ -17,11 +17,21 @@ namespace factory {
 		typedef Clock::duration Duration;
 		typedef std::bitset<3> Flags;
 
-		enum struct Flag {
-			DELETED = 0,
+		/// Various kernel flags.
+		enum struct Flag { DELETED = 0,
+			/**
+			Setting the flag tells \link factory::Kernel_stream\endlink that
+			the kernel carries a backup copy of its parent to the subordinate
+			node. This is the main mechanism of providing fault tolerance for
+			principal kernels, it works only when <em>principal kernel have
+			only one subordinate at a time</em>.
+			*/
 			carries_parent = 1,
-			priority_service = 2
-		};
+			/**
+			\deprecated This flag should not be used for purposes other than
+			debugging.
+			*/
+			priority_service = 2 };
 
 		virtual
 		~Basic_kernel() = default;
