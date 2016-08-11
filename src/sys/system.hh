@@ -14,6 +14,7 @@
 	#define FACTORY_SYSCONF_PAGE_SIZE _SC_PAGE_SIZE
 #endif
 
+/// POSIX and Linux system call wrappers.
 namespace sys {
 
 	typedef size_t size_type;
