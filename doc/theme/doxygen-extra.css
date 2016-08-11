@@ -108,6 +108,50 @@ a.qindexHL {
     color: #ffffff;
 }
 
+a {
+	text-decoration: underline !important;
+}
+
+a > code {
+	text-decoration: underline !important;
+}
+
+.note > dd {
+	text-indent: 0em;
+	text-align: justify;
+	hyphens: auto;
+	-webkit-hyphens: auto;
+	-moz-hyphens: auto;
+	-ms-hyphens: auto;
+	margin: 0px;
+}
+
+ul, ol {
+	margin: 0px !important;
+}
+
+.textblock > h1 + p,
+.textblock > h2 + p,
+.textblock > h3 + p,
+.textblock > h4 + p,
+.textblock > h5 + p,
+.textblock > h6 + p,
+.textblock > ul + p,
+.textblock > ol + p
+{
+	text-indent: 0em;
+}
+
+.textblock > p {
+	text-indent: 1em;
+	text-align: justify;
+	hyphens: auto;
+	-webkit-hyphens: auto;
+	-moz-hyphens: auto;
+	-ms-hyphens: auto;
+	margin: 0px;
+}
+
 a.code, a.code:visited, a.line, a.line:visited {
     color: #4665A2;
 }
@@ -124,7 +168,7 @@ dl.el {
 
 pre.fragment {
     border: 1px solid #C4CFE5;
-    background-color: #FBFCFD;
+	background-color: #FBFCFD;
     padding: 4px 6px;
     margin: 4px 8px 4px 2px;
     overflow: auto;
@@ -203,47 +247,33 @@ div.groupText {
 /* @group Code Colorization */
 
 span.keyword {
-    color: #008000
+    color: #7788dd;
 }
 
 span.keywordtype {
-    color: #604020
+    color: #7788dd;
 }
 
 span.keywordflow {
-    color: #e08000
+    color: #7788dd;
 }
 
 span.comment {
-    color: #800000
+    color: #444466;
 }
 
 span.preprocessor {
-    color: #806020
+    color: #7788dd;
 }
 
 span.stringliteral {
-    color: #002080
+    color: #7788dd;
+	background-color: #DCDCD2;
 }
 
 span.charliteral {
-    color: #008080
-}
-
-span.vhdldigit {
-    color: #ff00ff
-}
-
-span.vhdlchar {
-    color: #000000
-}
-
-span.vhdlkeyword {
-    color: #700070
-}
-
-span.vhdllogic {
-    color: #ff0000
+    color: #7788dd;
+	background-color: #354535;
 }
 
 blockquote {

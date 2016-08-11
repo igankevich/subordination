@@ -1,4 +1,5 @@
 $( document ).ready(function() {
+	$("html").attr("lang", "en-GB");
 
     $("div.headertitle").addClass("page-header");
     $("div.title").addClass("h1");
@@ -117,11 +118,4 @@ $( document ).ready(function() {
 			$(this).siblings('.memItemRight').remove();
 		}
 	});
-//    $(".fragment").each(function(i,node) {
-//        var $node = $(node);
-//        $node.html("<pre><code class='" +
-//                   $node.attr("class")+"'>" + 
-//                   $node.text()+"</code></pre>");
-//        hljs.highlightBlock(node);
-//    });
 });
