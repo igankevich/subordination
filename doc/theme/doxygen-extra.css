@@ -137,7 +137,8 @@ ul, ol {
 .textblock > h5 + p,
 .textblock > h6 + p,
 .textblock > ul + p,
-.textblock > ol + p
+.textblock > ol + p,
+.textblock > p:first-child
 {
 	text-indent: 0em;
 }

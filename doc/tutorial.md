@@ -1,7 +1,5 @@
 \page tutorial Tutorial
 
-\section intro Introduction
-
 Every Factory application is composed of computational \link factory::Kernel <em>
 kernels</em>\endlink --- self-contained objects which store data and have routines
 to process it. In each routine a kernel may create any number of \em
