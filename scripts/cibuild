@@ -1,5 +1,12 @@
 #!/bin/sh
 
+virtualenv py3 --python=/usr/bin/python3
+. py3/bin/activate
+pip install -q meson
+
+# build documentation
 mkdir build
 meson . build
 ninja -C build doc
+
+deactivate
