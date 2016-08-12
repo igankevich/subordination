@@ -1,0 +1,9 @@
+language: cpp
+before_install:
+- sudo apt-get update -qq
+- sudo apt-get install -qq -y ninja-build python3-pip zlib1g-dev
+- sudo pip3 install meson
+script: "./scripts/cibuild"
+branches:
+  only:
+  - "write-doc"
