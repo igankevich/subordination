@@ -3,7 +3,7 @@ dist: trusty
 language: cpp
 before_install:
 - sudo apt-get update -qq
-- sudo apt-get install -qq -y ninja-build python3.4 python-virtualenv doxygen zlib1g-dev
+- sudo apt-get install -qq -y python3.4 python-virtualenv doxygen zlib1g-dev graphviz
 script: "./scripts/cibuild"
 branches:
   only:

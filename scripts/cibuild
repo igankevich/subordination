@@ -4,6 +4,9 @@ virtualenv py3 --python=/usr/bin/python3.4
 . py3/bin/activate
 pip3 install -q meson
 
+curl -s https://github.com/ninja-build/ninja/releases/download/v1.7.1/ninja-linux.zip >/tmp/ninja.zip
+unzip -d py3/bin /tmp/ninja.zip
+
 # build documentation
 mkdir build
 meson.py . build
