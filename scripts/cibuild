@@ -1,6 +1,6 @@
 #!/bin/sh
 
-virtualenv py3 --python=/usr/bin/python3
+virtualenv py3 --python=/usr/bin/python3.4
 . py3/bin/activate
 pip3 install -q meson
 
