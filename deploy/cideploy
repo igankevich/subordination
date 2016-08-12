@@ -9,13 +9,13 @@ chmod 600 $keyfile
 ssh-add $keyfile
 
 # push to gh-pages branch
-git fetch origin gh-pages
-git checkout gh-pages
+repo_url=git@github.com:igankevich/factory 
+git clone --branch=gh-pages $repo_url gh-pages
+cd gh-pages
 git rm -rf .
-mv build/html/* .
-rm -rf build
+mv ../build/html/* .
 git add --all
 git config user.name "Travis CI"
 git config user.email "travis@travis-ci.org"
 git commit -m "Deploy to gh-pages."
-git push git@github.com:igankevich/factory gh-pages
+git push $repo_url gh-pages
