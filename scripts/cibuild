@@ -2,7 +2,8 @@
 
 virtualenv py3 --python=/usr/bin/python3
 . py3/bin/activate
-pip install -q meson
+pip install --upgrade pip
+pip install meson
 
 # build documentation
 mkdir build
