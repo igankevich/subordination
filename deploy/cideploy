@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# decrypt and add key to ssh-agent
+eval $(ssh-agent -s)
+keyfile=build/factory-id-rsa
+openssl aes-256-cbc -K $encrypted_a1843f98710d_key -iv $encrypted_a1843f98710d_iv \
+	-in deploy/factory-id-rsa.enc -out $keyfile -d
+chmod 600 $keyfile
+ssh-add $keyfile
+
+# push to gh-pages branch
+git checkout gh-pages
+mv build/html/* .
+rm -rf build
+git add --all
+git config user.name "Travis CI"
+git config user.email "$COMMIT_AUTHOR_EMAIL"
+git commit -m "Deploy to gh-pages."
+git push git@github.com:igankevich/factory gh-pages
