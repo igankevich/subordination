@@ -40,12 +40,16 @@ struct Main: public factory::Kernel {
 
 	void
 	act() override {
-		std::vector<factory::Kernel*> kernels(_nkernels);
 		// send kernels in inverse chronological order
-		for (size_t i=0; i<_nkernels; ++i) {
-			kernels[i] = new_sleepy_kernel(_nkernels - i, _nkernels - i);
-		}
-		timer_server.send(kernels.data(), kernels.size());
+		size_t i = 0;
+		timer_server.send(
+			[this,&i] () {
+				factory::Kernel* k =  new_sleepy_kernel(_nkernels - i, _nkernels - i);
+				++i;
+				return k;
+			},
+			_nkernels
+		);
 	}
 
 	void

@@ -161,19 +161,12 @@ namespace factory {
 			_semaphore.notify_one();
 		}
 
+		template<class Generator, class Size>
 		void
-		send(kernel_type** kernels, size_t n) {
+		send(Generator gen, Size n) {
 			lock_type lock(_mutex);
-			#ifndef NDEBUG
-			assert(
-				not std::any_of(
-					kernels, kernels+n,
-					std::mem_fn(&kernel_type::moves_downstream)
-				)
-			);
-			#endif
-			std::copy_n(kernels, n, stdx::back_inserter(_kernels));
-			_semaphore.notify_one();
+			std::generate_n(stdx::back_inserter(_kernels), n, gen);
+			_semaphore.notify_all();
 		}
 
 		void
