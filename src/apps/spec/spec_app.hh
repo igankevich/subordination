@@ -4,6 +4,7 @@
 #include <zlib.h>
 
 #include <fstream>
+#include <cmath>
 
 #include <sys/path.hh>
 

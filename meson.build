@@ -14,6 +14,8 @@ if get_option('springy')
 	add_global_arguments('-DSPRINGY', language: 'cpp')
 endif
 
+unistdx = dependency('unistdx')
+stdx = dependency('stdx')
 cpp = meson.get_compiler('cpp')
 libpthread = cpp.find_library('pthread')
 srcdir = include_directories('src')
