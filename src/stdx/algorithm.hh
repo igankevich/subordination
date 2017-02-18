@@ -1,6 +1,7 @@
 #ifndef STDX_ALGORITHM_HH
 #define STDX_ALGORITHM_HH
 
+/// Generic routines and classes that are missing in STL.
 namespace stdx {
 
 	template<class It>

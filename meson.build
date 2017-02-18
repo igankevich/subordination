@@ -23,5 +23,6 @@ run_target('cppcheck', 'scripts/cppcheck-target')
 run_target('gcov', 'scripts/gcov-target')
 run_target('iwyu', 'scripts/iwyu-target')
 run_target('springy', 'scripts/springy-target')
+run_target('doc', 'scripts/doc-target')
 
 subdir('src')
