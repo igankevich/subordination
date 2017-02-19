@@ -198,6 +198,7 @@ namespace factory {
 			k->from(_vaddr);
 			if (k->moves_downstream()) {
 				this->clear_kernel_buffer(k);
+				this->_router.erase_subordinate(k);
 			} else if (k->principal_id()) {
 				kernel_type* p = factory::instances.lookup(k->principal_id());
 				if (p == nullptr) {
@@ -496,6 +497,7 @@ namespace factory {
 					}
 					// round robin over upstream hosts
 					ensure_identity(k);
+					_router.add_subordinate(k);
 					_iterator->second->send(k);
 					advance_upstream_iterator();
 				}

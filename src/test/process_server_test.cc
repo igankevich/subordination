@@ -6,13 +6,14 @@
 #include <factory/server_guard.hh>
 #include <factory/reflection.hh>
 #include <factory/factory.hh>
+#include <factory/basic_router.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
 namespace factory {
 #if defined(FACTORY_TEST_SERVER)
-	struct Router {
+	struct Router: public Basic_router<Kernel> {
 
 		void
 		send_local(Kernel* rhs) {
@@ -36,7 +37,7 @@ namespace factory {
 		remote_server.forward(hdr, istr);
 	}
 #else
-	struct Router {
+	struct Router: public Basic_router<Kernel> {
 
 		void
 		send_local(Kernel* rhs) {

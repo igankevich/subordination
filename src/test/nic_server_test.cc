@@ -5,6 +5,7 @@
 #include <factory/kernel.hh>
 #include <factory/server_guard.hh>
 #include <factory/bits/terminate_handler.hh>
+#include <factory/basic_router.hh>
 
 #include <sys/cmdline.hh>
 #include <sys/log.hh>
@@ -32,7 +33,7 @@ using test::Role;
 factory::CPU_server<factory::Kernel> local_server;
 
 #if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
-struct Router {
+struct Router: public factory::Basic_router<factory::Kernel> {
 
 	void
 	send_local(factory::Kernel* rhs) {

@@ -17,6 +17,7 @@
 #include <factory/timer_server.hh>
 #include <factory/io_server.hh>
 #include <factory/nic_server.hh>
+#include <factory/basic_router.hh>
 
 #include "distance.hh"
 #include "cache_guard.hh"
@@ -27,7 +28,7 @@
 
 namespace factory {
 
-	struct Router {
+	struct Router: public Basic_router<Kernel> {
 
 		void
 		send_local(Kernel* rhs) {
