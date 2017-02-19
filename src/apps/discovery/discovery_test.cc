@@ -1,10 +1,16 @@
 #include <stdx/debug.hh>
 
 #include <map>
+#include <memory>
+
+#include <sys/ioctl.h>
 
 #include <sys/socket.hh>
 #include <sys/cmdline.hh>
 #include <sys/ifaddr.hh>
+#include <sys/event.hh>
+#include <sys/pipe.hh>
+#include <sys/fildesbuf.hh>
 
 #include <factory/factory.hh>
 #include <factory/cpu_server.hh>
@@ -94,7 +100,7 @@ struct Main: public Kernel {
 		factory::types.register_type<Year_kernel>();
 		factory::types.register_type<Station_kernel>();
 		factory::types.register_type<Spec_app>();
-		if (this->result() != Result::success) {
+		if (this->result() == Result::error) {
 			factory::commit(factory::local_server, this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
@@ -112,8 +118,8 @@ struct Main: public Kernel {
 //			}
 
 			if (_network.address() == _masteraddr) {
-//				schedule_autoreg_app();
-				schedule_spec_app();
+				schedule_autoreg_app();
+//				schedule_spec_app();
 			}
 
 			if (_timeout != do_not_kill) {
@@ -280,9 +286,34 @@ int main(int argc, char* argv[]) {
 		springy::Springy_graph<sys::endpoint> graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
 
+		struct Handler {
+			Handler(sys::fildes&& fd, sys::endpoint endp, int type):
+			in(std::move(fd)), _endp(endp), _type(type)
+			{ prefix(); }
+
+			void
+			prefix() {
+				buf << std::setw(15) << _endp.addr4() << ' ';
+			}
+
+			sys::ifdstream in;
+			sys::endpoint _endp;
+			int _type;
+			std::stringstream buf;
+		};
+		sys::event_poller<std::shared_ptr<Handler>> poller;
 		sys::process_group procs;
 		for (sys::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
+			sys::pipe opipe, epipe;
+			opipe.in().unsetf(sys::fildes::non_blocking);
+			opipe.out().unsetf(sys::fildes::non_blocking);
+			epipe.in().unsetf(sys::fildes::non_blocking);
+			epipe.out().unsetf(sys::fildes::non_blocking);
+			procs.emplace([endpoint, &opipe, &epipe, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
+                opipe.in().close();
+                opipe.out().remap(STDOUT_FILENO);
+                epipe.in().close();
+                epipe.out().remap(STDERR_FILENO);
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = kill_timeout;
@@ -305,15 +336,69 @@ int main(int argc, char* argv[]) {
 					"--master", master_addr
 				);
 			});
+			opipe.out().close();
+			epipe.out().close();
+			sys::fd_type ofd = opipe.in().get_fd();
+			poller.emplace(
+				sys::poll_event{ofd, sys::poll_event::In},
+				std::make_shared<Handler>(std::move(opipe.in()), endpoint, STDOUT_FILENO)
+			);
+			sys::fd_type efd = epipe.in().get_fd();
+			poller.emplace(
+				sys::poll_event{efd, sys::poll_event::In},
+				std::make_shared<Handler>(std::move(epipe.in()), endpoint, STDERR_FILENO)
+			);
 		}
 
 		#ifndef NDEBUG
 		stdx::debug_message("tst", "forked _", procs);
 		#endif
-		retval = procs.wait();
+
+		volatile bool stopped = false;
+		std::mutex mtx;
+		std::thread thr1([&poller,&stopped,&mtx] () {
+			std::unique_lock<std::mutex> lock(mtx);
+			while (!stopped) {
+				poller.wait(lock);
+				stdx::unlock_guard<std::mutex> g(mtx);
+				poller.for_each_ordinary_fd(
+					[] (const sys::poll_event& ev, std::shared_ptr<Handler> handler) {
+						if (ev.in()) {
+							handler->in.sync();
+							std::streamsize navail = handler->in.rdbuf()->in_avail();
+							for (int i=0; i<navail; ++i) {
+								char ch = handler->in.get();
+								handler->buf.put(ch);
+								if (ch == '\n') {
+									if (handler->_type == STDOUT_FILENO) {
+										std::cout << handler->buf.rdbuf();
+									} else {
+										std::cerr << handler->buf.rdbuf();
+									}
+									handler->buf.clear();
+									handler->prefix();
+								}
+							}
+						}
+					}
+				);
+			}
+		});
+		std::thread thr2([&procs,&retval,&stopped,&poller,&mtx] () {
+			retval = procs.wait();
+			std::unique_lock<std::mutex> lock(mtx);
+			stopped = true;
+			poller.notify_one();
+		});
+		thr1.join();
+		thr2.join();
 
 	} else {
 		using namespace factory;
+		factory::Terminate_guard g00;
+		factory::Server_guard<decltype(local_server)> g1(local_server);
+		factory::Server_guard<decltype(remote_server)> g2(remote_server);
+		factory::Server_guard<decltype(timer_server)> g3(timer_server);
 		local_server.send(new Main<sys::ipv4_addr>(argc, argv));
 		retval = factory::wait_and_return();
 	}
