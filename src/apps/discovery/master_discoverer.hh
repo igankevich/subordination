@@ -40,7 +40,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			if (k->result() == Result::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
 				#ifndef NDEBUG
-				stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+				stdx::debug_message("dscvr", "hierarchy=_", _hierarchy);
 				#endif
 				_negotiator = nullptr;
 				deploy_secret_agent();
@@ -55,7 +55,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			if (k->result() == Result::endpoint_not_connected) {
 				_hierarchy.unset_principal();
 				#ifndef NDEBUG
-				stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+				stdx::debug_message("dscvr", "hierarchy=_", _hierarchy);
 				#endif
 				try_next_host();
 			}
@@ -64,7 +64,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(_hierarchy);
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+			stdx::debug_message("dscvr", "hierarchy=_", _hierarchy);
 			#endif
 		}
 	}
