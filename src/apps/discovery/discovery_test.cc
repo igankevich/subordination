@@ -11,6 +11,7 @@
 #include <sys/event.hh>
 #include <sys/pipe.hh>
 #include <sys/fildesbuf.hh>
+#include <sys/argstream.hh>
 
 #include <factory/factory.hh>
 #include <factory/cpu_server.hh>
@@ -211,7 +212,8 @@ struct Hosts: public std::vector<Address> {
 
 };
 
-int main(int argc, char* argv[]) {
+
+class Fail_over_test {
 
 	sys::port_type discovery_port = 54321;
 	uint32_t kill_after = do_not_kill;
@@ -219,38 +221,36 @@ int main(int argc, char* argv[]) {
 	Hosts<sys::ipv4_addr> hosts2;
 	sys::ipv4_addr master_addr{127,0,0,1};
 	sys::ipv4_addr kill_addr{127,0,0,2};
-
-	int retval = 0;
+	bool ssh = false;
 	sys::ifaddr<sys::ipv4_addr> network;
 	size_t nhosts = 0;
 	std::string role = role_master;
-	try {
-		sys::cmdline cmd(argc, argv, {
-			sys::cmd::ignore_first_arg(),
-			sys::cmd::ignore_arg("--normal"),
-			sys::cmd::make_option({"--hosts"}, hosts2),
-			sys::cmd::make_option({"--network"}, network),
-			sys::cmd::make_option({"--num-hosts"}, nhosts),
-			sys::cmd::make_option({"--role"}, role),
-			sys::cmd::make_option({"--port"}, discovery_port),
-			sys::cmd::make_option({"--timeout"}, kill_timeout),
-			sys::cmd::make_option({"--master"}, master_addr),
-			sys::cmd::make_option({"--kill"}, kill_addr),
-			sys::cmd::make_option({"--kill-after"}, kill_after)
-		});
-		cmd.parse();
-		if (role != role_master and role != role_slave) {
-			throw sys::invalid_cmdline_argument("--role");
-		}
-		if (!network) {
-			throw sys::invalid_cmdline_argument("--network");
-		}
-	} catch (sys::invalid_cmdline_argument& err) {
-		std::cerr << err.what() << ": " << err.arg() << std::endl;
-		return 1;
+	char** _argv;
+	int retval = 0;
+
+public:
+
+	Fail_over_test(int argc, char* argv[]) {
+		_argv = argv;
+		parse_command_line(argc, argv);
 	}
 
-	if (role == role_master) {
+	int
+	return_value() const {
+		return retval;
+	}
+
+	void
+	run(int argc, char* argv[]) {
+		if (role == role_master) {
+			run_master();
+		} else {
+			run_slave(argc, argv);
+		}
+	}
+
+	void
+	run_master() {
 
 		#ifndef NDEBUG
 		stdx::debug_message(
@@ -270,7 +270,7 @@ int main(int argc, char* argv[]) {
 				network.begin(),
 				network.begin() + nhosts,
 				std::back_inserter(hosts),
-				[discovery_port] (const sys::ipv4_addr& addr) {
+				[this] (const sys::ipv4_addr& addr) {
 					return sys::endpoint(addr, discovery_port);
 				}
 			);
@@ -279,7 +279,7 @@ int main(int argc, char* argv[]) {
 				hosts2.begin(),
 				hosts2.begin() + std::min(hosts2.size(), nhosts),
 				std::back_inserter(hosts),
-				[discovery_port] (const sys::ipv4_addr& addr) {
+				[this] (const sys::ipv4_addr& addr) {
 					return sys::endpoint(addr, discovery_port);
 				}
 			);
@@ -310,7 +310,7 @@ int main(int argc, char* argv[]) {
 			opipe.out().unsetf(sys::fildes::non_blocking);
 			epipe.in().unsetf(sys::fildes::non_blocking);
 			epipe.out().unsetf(sys::fildes::non_blocking);
-			procs.emplace([endpoint, &opipe, &epipe, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
+			procs.emplace([endpoint, &opipe, &epipe, this] () {
                 opipe.in().close();
                 opipe.out().remap(STDOUT_FILENO);
                 epipe.in().close();
@@ -323,18 +323,32 @@ int main(int argc, char* argv[]) {
 					timeout = kill_after;
 					normal = false;
 				}
-				return sys::this_process::execute(
-					#if defined(FACTORY_TEST_USE_SSH)
-					"/usr/bin/ssh", "-n", "-o", "StrictHostKeyChecking no", endpoint.addr4(),
-					"cd", workdir, ';', "exec",
-					#endif
-					argv[0],
-					"--network", sys::ifaddr<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
+				sys::ifaddr<sys::ipv4_addr> ifaddr(
+					endpoint.addr4(),
+					network.netmask()
+				);
+				sys::argstream command;
+				if (ssh) {
+					command.append(
+						"/usr/bin/ssh",
+						"-n",
+						"-o",
+						"StrictHostKeyChecking no",
+						endpoint.addr4(),
+						"cd", workdir, ';', "exec"
+					);
+				}
+				command.append(
+					_argv[0],
+					"--network", ifaddr,
 					"--port", discovery_port,
 					"--role", "slave",
 					"--timeout", timeout,
 					"--normal", normal,
 					"--master", master_addr
+				);
+				return sys::this_process::execute(
+					const_cast<char* const*>(command.argv())
 				);
 			});
 			opipe.out().close();
@@ -385,7 +399,7 @@ int main(int argc, char* argv[]) {
 				);
 			}
 		});
-		std::thread thr2([&procs,&retval,&stopped,&poller,&mtx] () {
+		std::thread thr2([this,&procs,&stopped,&poller,&mtx] () {
 			retval = procs.wait();
 			std::unique_lock<std::mutex> lock(mtx);
 			stopped = true;
@@ -394,7 +408,10 @@ int main(int argc, char* argv[]) {
 		thr1.join();
 		thr2.join();
 
-	} else {
+	}
+
+	void
+	run_slave(int argc, char* argv[]) {
 		using namespace factory;
 		factory::Terminate_guard g00;
 		factory::Server_guard<decltype(local_server)> g1(local_server);
@@ -404,5 +421,40 @@ int main(int argc, char* argv[]) {
 		retval = factory::wait_and_return();
 	}
 
-	return retval;
+	void
+	parse_command_line(int argc, char* argv[]) {
+		sys::cmdline cmd(argc, argv, {
+			sys::cmd::ignore_first_arg(),
+			sys::cmd::ignore_arg("--normal"),
+			sys::cmd::make_option({"--hosts"}, hosts2),
+			sys::cmd::make_option({"--network"}, network),
+			sys::cmd::make_option({"--num-hosts"}, nhosts),
+			sys::cmd::make_option({"--role"}, role),
+			sys::cmd::make_option({"--port"}, discovery_port),
+			sys::cmd::make_option({"--timeout"}, kill_timeout),
+			sys::cmd::make_option({"--master"}, master_addr),
+			sys::cmd::make_option({"--kill"}, kill_addr),
+			sys::cmd::make_option({"--kill-after"}, kill_after),
+			sys::cmd::make_option({"--ssh"}, ssh)
+		});
+		cmd.parse();
+		if (role != role_master and role != role_slave) {
+			throw sys::invalid_cmdline_argument("--role");
+		}
+		if (!network) {
+			throw sys::invalid_cmdline_argument("--network");
+		}
+	}
+
+};
+
+int main(int argc, char* argv[]) {
+	try {
+		Fail_over_test test(argc, argv);
+		test.run(argc, argv);
+		return test.return_value();
+	} catch (sys::invalid_cmdline_argument& err) {
+		std::cerr << err.what() << ": " << err.arg() << std::endl;
+		return 1;
+	}
 }
