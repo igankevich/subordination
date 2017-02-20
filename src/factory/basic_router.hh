@@ -56,10 +56,13 @@ namespace factory {
 
 		void
 		erase_subordinate(kernel_type* k) {
-			assert(k != nullptr);
-			assert(k->identifiable());
-			assert(k->parent() != nullptr);
-			assert(k->parent()->identifiable());
+			if (k == nullptr ||
+				!k->identifiable() ||
+				k->parent() == nullptr ||
+				!k->parent()->identifiable())
+			{
+				return;
+			}
 			id_type parent_id = k->parent()->id();
 			queue_type& children = _subordinates[parent_id];
 			queue_iter result = std::find_if(
@@ -91,7 +94,9 @@ namespace factory {
 
 		void
 		add_principal(kernel_type* kernel) {
-			_principals.register_and_delete_existing(kernel);
+			kernel_type* old_parent = kernel->parent();
+			kernel_type* par = _principals.register_and_delete_existing(old_parent);
+			kernel->parent(par);
 		}
 
 		bool
@@ -102,10 +107,21 @@ namespace factory {
 			);
 			bool success = princ != nullptr;
 			if (success) {
+				#ifndef NDEBUG
+				stdx::debug_message("nbrs", "found principal for _ ", kernel);
+				#endif
 				kernel->parent(princ);
 				kernel->principal(princ);
 			}
 			return success;
+		}
+
+		void
+		register_principal(kernel_type* kernel) {
+			kernel_type* old = kernel->parent();
+			old =::factory::instances.register_and_delete_existing(old);
+			kernel->principal(old);
+			kernel->parent(old);
 		}
 
 	private:

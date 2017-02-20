@@ -43,12 +43,18 @@ namespace factory {
 
 		Remote_Rserver() = default;
 
-		Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, router_type& router):
+		Remote_Rserver(
+			socket_type&& sock,
+			sys::endpoint vaddr,
+			router_type& router,
+			sys::endpoint srvaddr
+		):
 		_vaddr(vaddr),
 		_packetbuf(),
 		_stream(&_packetbuf),
 		_sentupstream(),
-		_router(router)
+		_router(router),
+		_srvaddr(srvaddr)
 		{
 			_stream.setforward(
 				[this] (app_type app) {
@@ -70,7 +76,8 @@ namespace factory {
 		_packetbuf(std::move(rhs._packetbuf)),
 		_stream(std::move(rhs._stream)),
 		_sentupstream(std::move(rhs._sentupstream)),
-		_router(rhs._router)
+		_router(rhs._router),
+		_srvaddr(rhs._srvaddr)
 		{
 			_stream.rdbuf(&_packetbuf);
 		}
@@ -211,12 +218,20 @@ namespace factory {
 					#endif
 					recover_kernel(k);
 				} else {
-					if (!clear_kernel_buffer(k) and !_router.find_principal(k)) {
-						k->result(Result::no_principal_found);
-						k->to(_vaddr);
-						ok = false;
+					if (!clear_kernel_buffer(k)) {
+						if (!_router.find_principal(k)) {
+							k->unsetf(kernel_type::Flag::carries_parent);
+							k->result(Result::no_principal_found);
+							k->to(_vaddr);
+							ok = false;
+						} else {
+							kernel_type* old = k;
+							k = k->principal();
+							delete old;
+						}
+					} else {
+						this->_router.erase_subordinate(k);
 					}
-					this->_router.erase_subordinate(k);
 				}
 			} else if (k->principal_id()) {
 				kernel_type* p = factory::instances.lookup(k->principal_id());
@@ -227,7 +242,7 @@ namespace factory {
 				}
 				k->principal(p);
 			} else if (k->moves_upstream() and k->carries_parent()) {
-				_router.add_principal(k->parent());
+				_router.add_principal(k);
 				// TODO remove principal when the batch is complete
 			}
 			#ifndef NDEBUG
@@ -257,15 +272,25 @@ namespace factory {
 				k->result(Result::endpoint_not_connected);
 				k->principal(k->parent());
 				_router.send_local(k);
-			} else if (k->moves_downstream() and k->carries_parent()) {
+			} else if (k->moves_downstream()) {
 				neighbours_type& nbrs = k->neighbours();
-				if (nbrs.empty()) {
+				if (nbrs.empty() || nbrs.front() == _srvaddr) {
 					k->from(sys::endpoint());
+					_router.register_principal(k);
+					kernel_type* old = k;
+					k = k->principal();
+					delete old;
 					#ifndef NDEBUG
 					stdx::debug_message("nbrs", "restore parent locally _", *k);
 					#endif
 					_router.send_local(k);
 				} else {
+					k->unsetf(kernel_type::Flag::carries_parent);
+					auto par = k->parent()->id();
+					auto princ = k->principal()->id();
+					k->set_parent_id(par);
+					k->set_principal_id(princ);
+					k->to(nbrs.front());
 					k->from(nbrs.front());
 					nbrs.erase(nbrs.begin());
 					#ifndef NDEBUG
@@ -279,6 +304,9 @@ namespace factory {
 					_router.send_remote(k);
 				}
 			} else {
+				#ifndef NDEBUG
+				stdx::debug_message("nbrs", "bad kernel in buffer _", *k);
+				#endif
 				assert(false and "Bad kernel in sent buffer");
 			}
 		}
@@ -308,6 +336,7 @@ namespace factory {
 		pool_type _sentupstream;
 		pool_type _sentdownstream;
 		router_type& _router;
+		sys::endpoint _srvaddr;
 	};
 
 	template<class T, class Socket, class Router>
@@ -583,7 +612,12 @@ namespace factory {
 			sys::poll_event::legacy_event revents=0)
 		{
 			sys::fd_type fd = sock.fd();
-			server_ptr s(new server_type(std::move(sock), vaddr, _router));
+			server_ptr s(new server_type(
+				std::move(sock),
+				vaddr,
+				_router,
+				server_addr()
+			));
 			// s.setparent(this);
 			auto result = emplace_server(vaddr, std::move(s));
 			poller().emplace(sys::poll_event{fd, events, revents}, result.first->second);

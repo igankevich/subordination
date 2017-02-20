@@ -260,7 +260,7 @@ namespace factory {
 			_instances[inst->id()] = inst;
 		}
 
-		void
+		kernel_type*
 		register_and_delete_existing(kernel_type* inst) {
 			std::unique_lock<std::mutex> lock(_mutex);
 			auto result = _instances.find(inst->id());
@@ -268,10 +268,11 @@ namespace factory {
 				_instances[inst->id()] = inst;
 			} else {
 				if (result->second != inst) {
-					delete result->second;
-					result->second = inst;
+					delete inst;
+					inst = result->second;
 				}
 			}
+			return inst;
 		}
 
 		kernel_type*

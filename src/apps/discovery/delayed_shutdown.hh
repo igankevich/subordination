@@ -26,7 +26,7 @@ struct Delayed_shutdown: public Kernel {
 				stdx::debug_message("tst", "killing this process");
 				#endif
 			}
-			std::exit(0);
+			std::quick_exit(0);
 		} else {
 			#ifndef NDEBUG
 			stdx::debug_message("tst", "shutdown this process");

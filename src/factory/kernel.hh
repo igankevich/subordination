@@ -269,6 +269,11 @@ namespace factory {
 		}
 
 		void
+		set_parent_id(id_type id) {
+			_parent_id = id;
+		}
+
+		void
 		parent(Kernel* p) {
 			_parent = p;
 		}
@@ -385,7 +390,8 @@ namespace factory {
 				"ret", rhs.result(),
 				"app", rhs.app(),
 				"parent", rhs._parent,
-				"principal", rhs._principal
+				"principal", rhs._principal,
+				"carry", rhs.carries_parent()
 			);
 		}
 

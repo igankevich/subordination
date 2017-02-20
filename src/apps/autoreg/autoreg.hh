@@ -779,7 +779,7 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			factory::upstream(remote_server, this, generators[i]);
+			factory::upstream_carry(remote_server, this, generators[i]);
 		}
 	}
 
