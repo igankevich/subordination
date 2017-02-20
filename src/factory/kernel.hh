@@ -270,6 +270,26 @@ namespace factory {
 			_parent = p;
 		}
 
+		bool
+		has_neighbour() const noexcept {
+			return _neighbour != nullptr;
+		}
+
+		void
+		neighbour(Kernel* rhs) noexcept {
+			_neighbour = rhs;
+		}
+
+		const Kernel*
+		neighbour() const noexcept {
+			return _neighbour;
+		}
+
+		Kernel*
+		neighbour() noexcept {
+			return _neighbour;
+		}
+
 		size_t
 		hash() const {
 			return _principal && _principal->identifiable()
@@ -421,6 +441,7 @@ namespace factory {
 			Kernel* _principal = nullptr;
 			id_type _principal_id;
 		};
+		Kernel* _neighbour = nullptr;
 
 	};
 
