@@ -254,10 +254,10 @@ namespace factory {
 			return result == _instances.end() ? nullptr : result->second;
 		}
 
-		void
+		bool
 		register_instance(kernel_type* inst) {
 			std::unique_lock<std::mutex> lock(_mutex);
-			_instances[inst->id()] = inst;
+			return _instances.emplace(inst->id(), inst).second;
 		}
 
 		kernel_type*
@@ -275,13 +275,15 @@ namespace factory {
 			return inst;
 		}
 
-		kernel_type*
+		std::pair<kernel_type*,bool>
 		find_and_copy_existing(id_type id, Instances<kernel_type>& dest) {
 			std::unique_lock<std::mutex> lock(dest._mutex);
 			kernel_type* inst = nullptr;
+			bool existing = false;
 			auto result0 = dest._instances.find(id);
 			if (result0 != dest._instances.end()) {
 				inst = result0->second;
+				existing = true;
 			} else {
 				std::unique_lock<std::mutex> lock(_mutex);
 				auto result = _instances.find(id);
@@ -290,7 +292,7 @@ namespace factory {
 					dest._instances.emplace(id, inst);
 				}
 			}
-			return inst;
+			return std::make_pair(inst, existing);
 		}
 
 		void

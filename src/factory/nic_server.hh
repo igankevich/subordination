@@ -197,9 +197,7 @@ namespace factory {
 
 		static bool
 		kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
-			return rhs->moves_downstream() and
-				rhs->carries_parent() and
-				rhs->result() != Result::no_principal_found;
+			return rhs->moves_downstream() and rhs->carries_parent();
 		}
 
 		void
@@ -207,31 +205,10 @@ namespace factory {
 			bool ok = true;
 			k->from(_vaddr);
 			if (k->moves_downstream()) {
-				if (k->result() == Result::no_principal_found) {
-					#ifndef NDEBUG
-					stdx::debug_message(
-						"nbrs",
-						"no principal on _ for _",
-						vaddr(),
-						*k
-					);
-					#endif
-					recover_kernel(k);
+				if (!clear_kernel_buffer(k)) {
+					k = _router.restore_principal(k);
 				} else {
-					if (!clear_kernel_buffer(k)) {
-						if (!_router.find_principal(k)) {
-							k->unsetf(kernel_type::Flag::carries_parent);
-							k->result(Result::no_principal_found);
-							k->to(_vaddr);
-							ok = false;
-						} else {
-							kernel_type* old = k;
-							k = k->principal();
-							delete old;
-						}
-					} else {
-						this->_router.erase_subordinate(k);
-					}
+					this->_router.erase_subordinate(k);
 				}
 			} else if (k->principal_id()) {
 				kernel_type* p = factory::instances.lookup(k->principal_id());
@@ -245,16 +222,18 @@ namespace factory {
 				_router.add_principal(k);
 				// TODO remove principal when the batch is complete
 			}
-			#ifndef NDEBUG
-			stdx::debug_message("nic", "recv _", *k);
-			#endif
-			if (!ok) {
+			if (k) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic", "no principal found for _", *k);
+				stdx::debug_message("nic", "recv _", *k);
 				#endif
-				this->send(k);
-			} else {
-				_router.send_local(k);
+				if (!ok) {
+					#ifndef NDEBUG
+					stdx::debug_message("nic", "no principal found for _", *k);
+					#endif
+					this->send(k);
+				} else {
+					_router.send_local(k);
+				}
 			}
 		}
 
@@ -275,21 +254,19 @@ namespace factory {
 			} else if (k->moves_downstream()) {
 				neighbours_type& nbrs = k->neighbours();
 				if (nbrs.empty() || nbrs.front() == _srvaddr) {
-					k->from(sys::endpoint());
-					_router.register_principal(k);
-					kernel_type* old = k;
-					k = k->principal();
-					delete old;
-					#ifndef NDEBUG
-					stdx::debug_message("nbrs", "restore parent locally _", *k);
-					#endif
-					_router.send_local(k);
+					k = _router.restore_principal(k);
+					if (k) {
+						#ifndef NDEBUG
+						stdx::debug_message("nbrs", "restore parent locally _", *k);
+						#endif
+						_router.send_local(k);
+					}
 				} else {
-					k->unsetf(kernel_type::Flag::carries_parent);
-					auto par = k->parent()->id();
-					auto princ = k->principal()->id();
-					k->set_parent_id(par);
-					k->set_principal_id(princ);
+					//k->unsetf(kernel_type::Flag::carries_parent);
+					//auto par = k->parent()->id();
+					//auto princ = k->principal()->id();
+					//k->set_parent_id(par);
+					//k->set_principal_id(princ);
 					k->to(nbrs.front());
 					k->from(nbrs.front());
 					nbrs.erase(nbrs.begin());

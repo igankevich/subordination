@@ -99,29 +99,45 @@ namespace factory {
 			kernel->parent(par);
 		}
 
-		bool
+		std::pair<kernel_type*,bool>
 		find_principal(kernel_type* kernel) {
-			kernel_type* princ = _principals.find_and_copy_existing(
-				kernel->principal_id(),
+			std::pair<kernel_type*,bool> result = _principals.find_and_copy_existing(
+				kernel->parent_id(),
 				::factory::instances
 			);
-			bool success = princ != nullptr;
-			if (success) {
+			if (result.first) {
 				#ifndef NDEBUG
 				stdx::debug_message("nbrs", "found principal for _ ", kernel);
 				#endif
-				kernel->parent(princ);
-				kernel->principal(princ);
+				delete kernel;
 			}
-			return success;
+			return result;
 		}
 
-		void
-		register_principal(kernel_type* kernel) {
-			kernel_type* old = kernel->parent();
-			old =::factory::instances.register_and_delete_existing(old);
-			kernel->principal(old);
-			kernel->parent(old);
+		kernel_type*
+		restore_principal(kernel_type* kernel) {
+			kernel_type* parent;
+			if (kernel->carries_parent()) {
+				parent = kernel->parent();
+				if (!::factory::instances.register_instance(parent)) {
+					delete parent;
+					parent = nullptr;
+				} else {
+					#ifndef NDEBUG
+					stdx::debug_message("nbrs", "found principal _ ", parent);
+					#endif
+				}
+				delete kernel;
+			} else {
+				std::pair<kernel_type*,bool> result = find_principal(kernel);
+				if (!result.second) {
+					parent = result.first;
+					#ifndef NDEBUG
+					stdx::debug_message("nbrs", "found principal _ ", parent);
+					#endif
+				}
+			}
+			return parent;
 		}
 
 	private:
