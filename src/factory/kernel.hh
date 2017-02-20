@@ -2,6 +2,7 @@
 #define FACTORY_KERNEL_HH
 
 #include <bitset>
+#include <vector>
 
 #include <factory/basic_server.hh>
 #include <sys/process.hh>
@@ -219,11 +220,13 @@ namespace factory {
 
 	};
 
-	struct Kernel: public Mobile_kernel {
+	class Kernel: public Mobile_kernel {
 
+	public:
 		typedef Mobile_kernel base_kernel;
 		typedef Basic_kernel::Flag Flag;
 		using Mobile_kernel::id_type;
+		typedef std::vector<sys::endpoint> neighbours_type;
 
 		const Kernel*
 		principal() const {
@@ -272,22 +275,17 @@ namespace factory {
 
 		bool
 		has_neighbour() const noexcept {
-			return _neighbour != nullptr;
+			return !_neighbours.empty();
 		}
 
-		void
-		neighbour(Kernel* rhs) noexcept {
-			_neighbour = rhs;
+		const neighbours_type&
+		neighbours() const noexcept {
+			return _neighbours;
 		}
 
-		const Kernel*
-		neighbour() const noexcept {
-			return _neighbour;
-		}
-
-		Kernel*
-		neighbour() noexcept {
-			return _neighbour;
+		neighbours_type&
+		neighbours() noexcept {
+			return _neighbours;
 		}
 
 		size_t
@@ -329,6 +327,9 @@ namespace factory {
 			in >> _parent_id;
 			assert(not _principal and "Principal is not null while reading from the data stream.");
 			in >> _principal_id;
+			if (carries_parent()) {
+				read_neighbours(in);
+			}
 		}
 
 		void
@@ -340,6 +341,9 @@ namespace factory {
 			} else {
 				out << (not _parent ? Mobile_kernel::no_id : _parent->id());
 				out << (not _principal ? Mobile_kernel::no_id : _principal->id());
+				if (carries_parent()) {
+					write_neighbours(out);
+				}
 			}
 		}
 
@@ -433,6 +437,24 @@ namespace factory {
 
 	private:
 
+		void
+		write_neighbours(sys::packetstream& out) {
+			out << uint32_t(_neighbours.size());
+			for (const sys::endpoint& nbr : _neighbours) {
+				out << nbr;
+			}
+		}
+
+		void
+		read_neighbours(sys::packetstream& in) {
+			uint32_t n = 0;
+			in >> n;
+			_neighbours.resize(n);
+			for (uint32_t i=0; i<n; ++i) {
+				in >> _neighbours[i];
+			}
+		}
+
 		union {
 			Kernel* _parent = nullptr;
 			id_type _parent_id;
@@ -441,7 +463,7 @@ namespace factory {
 			Kernel* _principal = nullptr;
 			id_type _principal_id;
 		};
-		Kernel* _neighbour = nullptr;
+		neighbours_type _neighbours;
 
 	};
 

@@ -295,6 +295,7 @@ namespace factory {
 		typedef sys::ifaddr<sys::ipv4_addr> network_type;
 		typedef network_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
+		typedef typename sem_type::handler_type handler_type;
 
 		static_assert(
 			std::is_move_constructible<server_type>::value,
@@ -497,8 +498,9 @@ namespace factory {
 					}
 					// round robin over upstream hosts
 					ensure_identity(k);
-					_router.add_subordinate(k);
-					_iterator->second->send(k);
+					auto& server = _iterator->second;
+					_router.add_subordinate(k, server->vaddr());
+					server->send(k);
 					advance_upstream_iterator();
 				}
 			} else if (k->moves_downstream() and not k->from()) {
