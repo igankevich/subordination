@@ -261,6 +261,38 @@ namespace factory {
 		}
 
 		void
+		register_and_delete_existing(kernel_type* inst) {
+			std::unique_lock<std::mutex> lock(_mutex);
+			auto result = _instances.find(inst->id());
+			if (result == _instances.end()) {
+				_instances[inst->id()] = inst;
+			} else {
+				if (result->second != inst) {
+					delete result->second;
+					result->second = inst;
+				}
+			}
+		}
+
+		kernel_type*
+		find_and_copy_existing(id_type id, Instances<kernel_type>& dest) {
+			std::unique_lock<std::mutex> lock(dest._mutex);
+			kernel_type* inst = nullptr;
+			auto result0 = dest._instances.find(id);
+			if (result0 != dest._instances.end()) {
+				inst = result0->second;
+			} else {
+				std::unique_lock<std::mutex> lock(_mutex);
+				auto result = _instances.find(id);
+				if (result != _instances.end()) {
+					inst = result->second;
+					dest._instances.emplace(id, inst);
+				}
+			}
+			return inst;
+		}
+
+		void
 		free_instance(kernel_type* inst) {
 			std::unique_lock<std::mutex> lock(_mutex);
 			_instances.erase(inst->id());

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdx/iterator.hh>
 #include <sys/endpoint.hh>
+#include <factory/reflection.hh>
 
 namespace factory {
 
@@ -19,6 +20,7 @@ namespace factory {
 		typedef typename queue_type::iterator queue_iter;
 
 		std::unordered_map<id_type, queue_type> _subordinates;
+		Instances<kernel_type> _principals;
 
 	public:
 		void
@@ -51,16 +53,6 @@ namespace factory {
 			);
 			#endif
 		}
-
-		/*
-		kernel_type*
-		get_neighbour_of(kernel_type* k) {
-			const id_type parent_id = k->parent()->id();
-			queue_iter result = _subordinates.find(parent_id);
-			return (result == _subordinates.end())
-				? nullptr : result->back();
-		}
-		*/
 
 		void
 		erase_subordinate(kernel_type* k) {
@@ -95,6 +87,25 @@ namespace factory {
 					_subordinates.erase(parent_id);
 				}
 			}
+		}
+
+		void
+		add_principal(kernel_type* kernel) {
+			_principals.register_and_delete_existing(kernel);
+		}
+
+		bool
+		find_principal(kernel_type* kernel) {
+			kernel_type* princ = _principals.find_and_copy_existing(
+				kernel->principal_id(),
+				::factory::instances
+			);
+			bool success = princ != nullptr;
+			if (success) {
+				kernel->parent(princ);
+				kernel->principal(princ);
+			}
+			return success;
 		}
 
 	private:

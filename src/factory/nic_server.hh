@@ -34,6 +34,7 @@ namespace factory {
 		typedef Router router_type;
 		typedef Kernels pool_type;
 		typedef application_type app_type;
+		typedef typename kernel_type::neighbours_type neighbours_type;
 
 		static_assert(
 			std::is_move_constructible<stream_type>::value,
@@ -189,7 +190,9 @@ namespace factory {
 
 		static bool
 		kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
-			return rhs->moves_downstream() and rhs->carries_parent();
+			return rhs->moves_downstream() and
+				rhs->carries_parent() and
+				rhs->result() != Result::no_principal_found;
 		}
 
 		void
@@ -197,32 +200,47 @@ namespace factory {
 			bool ok = true;
 			k->from(_vaddr);
 			if (k->moves_downstream()) {
-				this->clear_kernel_buffer(k);
-				this->_router.erase_subordinate(k);
+				if (k->result() == Result::no_principal_found) {
+					#ifndef NDEBUG
+					stdx::debug_message(
+						"nbrs",
+						"no principal on _ for _",
+						vaddr(),
+						*k
+					);
+					#endif
+					recover_kernel(k);
+				} else {
+					if (!clear_kernel_buffer(k) and !_router.find_principal(k)) {
+						k->result(Result::no_principal_found);
+						k->to(_vaddr);
+						ok = false;
+					}
+					this->_router.erase_subordinate(k);
+				}
 			} else if (k->principal_id()) {
 				kernel_type* p = factory::instances.lookup(k->principal_id());
 				if (p == nullptr) {
 					k->result(Result::no_principal_found);
+					p = k->parent();
 					ok = false;
 				}
 				k->principal(p);
+			} else if (k->moves_upstream() and k->carries_parent()) {
+				_router.add_principal(k->parent());
+				// TODO remove principal when the batch is complete
 			}
 			#ifndef NDEBUG
 			stdx::debug_message("nic", "recv _", *k);
 			#endif
 			if (!ok) {
-				return_kernel(k);
+				#ifndef NDEBUG
+				stdx::debug_message("nic", "no principal found for _", *k);
+				#endif
+				this->send(k);
 			} else {
 				_router.send_local(k);
 			}
-		}
-
-		void return_kernel(kernel_type* k) {
-			#ifndef NDEBUG
-			stdx::debug_message("nic", "no principal found for _", *k);
-			#endif
-			k->principal(k->parent());
-			this->send(k);
 		}
 
 		void recover_kernel(kernel_type* k) {
@@ -240,16 +258,34 @@ namespace factory {
 				k->principal(k->parent());
 				_router.send_local(k);
 			} else if (k->moves_downstream() and k->carries_parent()) {
-				#ifndef NDEBUG
-				stdx::debug_message("nic", "restore parent _", *k);
-				#endif
-				_router.send_local(k);
+				neighbours_type& nbrs = k->neighbours();
+				if (nbrs.empty()) {
+					k->from(sys::endpoint());
+					#ifndef NDEBUG
+					stdx::debug_message("nbrs", "restore parent locally _", *k);
+					#endif
+					_router.send_local(k);
+				} else {
+					k->from(nbrs.front());
+					nbrs.erase(nbrs.begin());
+					#ifndef NDEBUG
+					stdx::debug_message(
+						"nbrs",
+						"restore parent on _ for _",
+						k->from(),
+						*k
+					);
+					#endif
+					_router.send_remote(k);
+				}
 			} else {
 				assert(false and "Bad kernel in sent buffer");
 			}
 		}
 
-		void clear_kernel_buffer(kernel_type* k) {
+		bool
+		clear_kernel_buffer(kernel_type* k) {
+			bool success = false;
 			auto pos = std::find_if(
 				_sentupstream.begin(),
 				_sentupstream.end(),
@@ -261,7 +297,9 @@ namespace factory {
 				k->principal(k->parent());
 				delete orig;
 				_sentupstream.erase(pos);
+				success = true;
 			}
+			return success;
 		}
 
 		sys::endpoint _vaddr;
@@ -292,8 +330,8 @@ namespace factory {
 
 		typedef std::map<sys::endpoint,server_ptr> upstream_type;
 		typedef typename upstream_type::iterator iterator_type;
-		typedef sys::ifaddr<sys::ipv4_addr> network_type;
-		typedef network_type::rep_type rep_type;
+		typedef sys::ifaddr<sys::ipv4_addr> ifaddr_type;
+		typedef ifaddr_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
 		typedef typename sem_type::handler_type handler_type;
 
@@ -371,7 +409,7 @@ namespace factory {
 
 		void
 		bind(const sys::endpoint& rhs, sys::ipv4_addr netmask) {
-			_network = network_type(rhs.addr4(), netmask);
+			_ifaddr = ifaddr_type(rhs.addr4(), netmask);
 			_counter = determine_initial_id();
 			socket(rhs);
 		}
@@ -401,12 +439,12 @@ namespace factory {
 
 		id_type
 		determine_initial_id() noexcept {
-			const id_type x0 = _network.begin()->position(_network.netmask());
-			const id_type x1 = _network.end()->position(_network.netmask());
+			const id_type x0 = _ifaddr.begin()->position(_ifaddr.netmask());
+			const id_type x1 = _ifaddr.end()->position(_ifaddr.netmask());
 			const id_type min_id = std::numeric_limits<id_type>::min();
 			const id_type max_id = std::numeric_limits<id_type>::max();
 			const id_type chunk_size = (max_id-min_id) / (x1-x0);
-			id_type initial_id = (_network.position()-x0+1) * chunk_size;
+			id_type initial_id = (_ifaddr.position()-x0+1) * chunk_size;
 			if (initial_id == 0) ++initial_id;
 			return initial_id;
 		}
@@ -467,7 +505,7 @@ namespace factory {
 
 		void
 		process_kernel(kernel_type* k) {
-			if (this->server_addr() && k->to() == this->server_addr()) {
+			if (server_addr() && k->to() == server_addr()) {
 				_router.send_local(k);
 //					std::ostringstream msg;
 //					msg << "Kernel is sent to local node. From="
@@ -555,7 +593,7 @@ namespace factory {
 			return result.first->second;
 		}
 
-		network_type _network;
+		ifaddr_type _ifaddr;
 		socket_type _socket;
 		upstream_type _upstream;
 		iterator_type _iterator;
