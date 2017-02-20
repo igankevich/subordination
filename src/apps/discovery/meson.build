@@ -23,8 +23,7 @@ executable(
 	dependencies: [libpthread, libz, unistdx],
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
-		'-DFACTORY_TEST_SLAVE_FAILURE',
-		'-DFACTORY_TEST_USE_SSH'
+		'-DFACTORY_TEST_SLAVE_FAILURE'
 	],
 )
 
@@ -33,10 +32,7 @@ executable(
 	sources: 'discovery_test.cc',
 	include_directories: [srcdir, testdir],
 	dependencies: [libpthread, libz, unistdx],
-	cpp_args: [
-		'-DFACTORY_PRIORITY_SCHEDULING',
-		'-DFACTORY_TEST_USE_SSH'
-	],
+	cpp_args: ['-DFACTORY_PRIORITY_SCHEDULING'],
 )
 
 test(
