@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Benchmark application performance in the presence
+# of failure of all nodes except one. 
+
+PREFIX=.
+
+for num_nodes in $(seq 2 12)
+do
+	echo "No. of nodes = $num_nodes"
+	for kernel_type in principal subordinate
+	do
+		case "$kernel_type" in
+			principal)
+				first=10.0.0.1
+				first_idx=2
+				;;
+			subordinate)
+				first=10.0.0.2
+				first_idx=3
+				;;
+		esac
+		victims=$(echo -n "$first"
+		for i in $(seq $first_idx $(expr $num_nodes - 1))
+		do
+			echo -n ",10.0.0.$i"
+		done
+		echo)
+		echo $victims
+#		$PREFIX/node-failure-test \
+#			--role master \
+#			--num-hosts $num_nodes \
+#			--network 10.0.0.1/24 \
+#			--test-duration 30 \
+#			--kill-after 15 \
+#			--victims $victims \
+#			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log
+	done
+done
