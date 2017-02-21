@@ -143,6 +143,14 @@ namespace factory {
 			return parent;
 		}
 
+		bool
+		principal_exists(kernel_type* kernel) {
+			auto id = kernel->carries_parent()
+				? kernel->parent()->id()
+				: kernel->parent_id();
+			return ::factory::instances.contain(id);
+		}
+
 	private:
 
 		static void

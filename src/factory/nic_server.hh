@@ -253,7 +253,10 @@ namespace factory {
 				_router.send_local(k);
 			} else if (k->moves_downstream()) {
 				neighbours_type& nbrs = k->neighbours();
-				if (nbrs.empty() || nbrs.front() == _srvaddr) {
+				if (nbrs.empty() ||
+					nbrs.front() == _srvaddr ||
+					_router.principal_exists(k))
+				{
 					k = _router.restore_principal(k);
 					if (k) {
 						#ifndef NDEBUG
@@ -262,11 +265,6 @@ namespace factory {
 						_router.send_local(k);
 					}
 				} else {
-					//k->unsetf(kernel_type::Flag::carries_parent);
-					//auto par = k->parent()->id();
-					//auto princ = k->principal()->id();
-					//k->set_parent_id(par);
-					//k->set_principal_id(princ);
 					k->to(nbrs.front());
 					k->from(nbrs.front());
 					nbrs.erase(nbrs.begin());

@@ -247,6 +247,11 @@ namespace factory {
 		typedef T kernel_type;
 		typedef typename kernel_type::id_type id_type;
 
+		bool
+		contain(id_type id) {
+			return _instances.count(id) > 0;
+		}
+
 		kernel_type*
 		lookup(id_type id) {
 			std::unique_lock<std::mutex> lock(_mutex);
