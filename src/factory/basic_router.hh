@@ -120,14 +120,17 @@ namespace factory {
 			if (kernel->carries_parent()) {
 				parent = kernel->parent();
 				if (!::factory::instances.register_instance(parent)) {
-					delete parent;
+					// TODO deleting the parent results in segfault
+					//delete parent;
 					parent = nullptr;
 				} else {
 					#ifndef NDEBUG
 					stdx::debug_message("nbrs", "found principal _ ", parent);
 					#endif
 				}
+				kernel->parent(nullptr);
 				delete kernel;
+				kernel = nullptr;
 			} else {
 				std::pair<kernel_type*,bool> result = find_principal(kernel);
 				if (!result.second) {

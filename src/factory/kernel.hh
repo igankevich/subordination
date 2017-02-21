@@ -332,8 +332,10 @@ namespace factory {
 			in >> _parent_id;
 			assert(not _principal and "Principal is not null while reading from the data stream.");
 			in >> _principal_id;
-			if (carries_parent()) {
-				read_neighbours(in);
+			if (!(moves_downstream() or moves_somewhere())) {
+				if (carries_parent()) {
+					read_neighbours(in);
+				}
 			}
 		}
 
