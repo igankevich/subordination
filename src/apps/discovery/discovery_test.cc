@@ -84,7 +84,6 @@ struct Main: public Kernel {
 		sys::cmd::make_option({"--network"}, _network),
 		sys::cmd::make_option({"--port"}, _port),
 		sys::cmd::make_option({"--test-duration"}, _timeout),
-		sys::cmd::make_option({"--normal"}, _normal),
 		sys::cmd::make_option({"--master"}, _masteraddr)
 	})
 	{}
@@ -184,7 +183,7 @@ private:
 	sys::port_type _port;
 	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
-	bool _normal = true;
+	bool _normal = false;
 	sys::ipv4_addr _masteraddr;
 	sys::cmdline _cmdline;
 
@@ -359,6 +358,10 @@ public:
 
 			void
 			prefix() {
+				using namespace std::chrono;
+				auto now = system_clock::now().time_since_epoch();
+				auto millis = duration_cast<milliseconds>(now).count();
+				buf << std::setw(15) << millis << ' ';
 				buf << std::setw(15) << _endp.addr4() << ' ';
 			}
 
@@ -383,10 +386,8 @@ public:
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = _testduration;
-				bool normal = true;
 				if (_victims.contain(endpoint.addr4()) and kill_after != do_not_kill) {
 					timeout = kill_after;
-					normal = false;
 				}
 				sys::ifaddr<sys::ipv4_addr> ifaddr(
 					endpoint.addr4(),
@@ -409,7 +410,6 @@ public:
 					"--port", discovery_port,
 					"--role", "slave",
 					"--test-duration", timeout,
-					"--normal", normal,
 					"--master", _master
 				);
 				return sys::this_process::execute(
@@ -490,7 +490,6 @@ public:
 	parse_command_line(int argc, char* argv[]) {
 		sys::cmdline cmd(argc, argv, {
 			sys::cmd::ignore_first_arg(),
-			sys::cmd::ignore_arg("--normal"),
 			sys::cmd::make_option({"--hosts"}, hosts2),
 			sys::cmd::make_option({"--network"}, network),
 			sys::cmd::make_option({"--num-hosts"}, nhosts),
