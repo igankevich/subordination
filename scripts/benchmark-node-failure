@@ -3,37 +3,81 @@
 # Benchmark application performance in the presence
 # of failure of all nodes except one. 
 
-PREFIX=.
+set -e
 
-for num_nodes in $(seq 2 12)
+ADDR_PREFIX=10.0
+cluster=physical
+PREFIX=.
+while [ -n "$1" ]
+do
+	case "$1" in
+		--virtual)
+			cluster=virtual
+			shift
+			;;
+		--physical)
+			cluster=physical
+			shift
+			;;
+		--prefix)
+			shift
+			PREFIX="$1"
+			shift
+			;;
+	esac
+done
+
+EXECUTABLE="$PREFIX/build/src/apps/discovery/node-failure-test"
+CLUSTER="$PREFIX/scripts/cluster"
+
+if ! test -x "$EXECUTABLE"
+then
+	echo "Unable to find executable: $EXECUTABLE"
+	exit 1
+fi	
+if ! test -x "$CLUSTER"
+then
+	echo "Unable to find virtual cluster script: $CLUSTER"
+	exit 2
+fi	
+export UNISTDX_CONCURRENCY=1
+
+for num_nodes in $(seq 2 2)
 do
 	echo "No. of nodes = $num_nodes"
 	for kernel_type in principal subordinate
 	do
 		case "$kernel_type" in
 			principal)
-				first=10.0.0.1
+				first=${ADDR_PREFIX}.0.1
 				first_idx=2
 				;;
 			subordinate)
-				first=10.0.0.2
+				first=${ADDR_PREFIX}.0.2
 				first_idx=3
 				;;
 		esac
 		victims=$(echo -n "$first"
 		for i in $(seq $first_idx $(expr $num_nodes - 1))
 		do
-			echo -n ",10.0.0.$i"
+			echo -n ",${ADDR_PREFIX}.0.$i"
 		done
 		echo)
-		echo $victims
-#		$PREFIX/node-failure-test \
-#			--role master \
-#			--num-hosts $num_nodes \
-#			--network 10.0.0.1/24 \
-#			--test-duration 30 \
-#			--kill-after 15 \
-#			--victims $victims \
-#			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log
+		if test "$cluster" = "virtual"
+		then
+			cmd_prefix="unshare -rnm $CLUSTER --name cat --nodes 1-$num_nodes --"
+		else
+			cmd_prefix=
+		fi
+#		echo $victims
+		$cmd_prefix \
+		$EXECUTABLE \
+			--role master \
+			--num-hosts $num_nodes \
+			--network ${ADDR_PREFIX}.0.1/24 \
+			--test-duration 30 \
+			--kill-after 15 \
+			--victims $victims \
+			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log
 	done
 done
