@@ -290,11 +290,8 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			ar_coefs, fsize, var_wn, zsize2,
 			interval, zsize, zdelta, grid, grid_2
 		);
-		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		factory::upstream(local_server, this, kernel);
-		#else
-		factory::upstream_carry(remote_server, this, kernel);
-		#endif
+		//factory::upstream_carry(remote_server, this, kernel);
 	}
 	if (typeid(*child) == typeid(generator_type)) {
 		//this->parent(nullptr);

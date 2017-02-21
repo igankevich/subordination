@@ -32,7 +32,10 @@ namespace factory {
 			\deprecated This flag should not be used for purposes other than
 			debugging.
 			*/
-			priority_service = 2 };
+			#if defined(FACTORY_PRIORITY_SCHEDULING)
+			priority_service = 2
+			#endif
+		};
 
 		virtual
 		~Basic_kernel() = default;
@@ -503,12 +506,14 @@ namespace factory {
 
 	};
 
+	#if defined(FACTORY_PRIORITY_SCHEDULING)
 	template<class Base>
 	struct Priority_kernel: public Base {
 		Priority_kernel() {
 			this->setf(Basic_kernel::Flag::priority_service);
 		}
 	};
+	#endif
 
 }
 

@@ -640,11 +640,8 @@ struct Launcher: public Kernel {
 					std::ofstream log("nspectra.log");
 					log << _count_spectra << std::endl;
 				}
-				#if defined(FACTORY_TEST_SLAVE_FAILURE)
 				commit(local_server, this);
-				#else
-				commit(remote_server, this);
-				#endif
+				//commit(remote_server, this);
 			}
 		}
 	}
@@ -685,11 +682,8 @@ struct Spec_app: public Kernel {
 		#ifndef NDEBUG
 		stdx::debug_message("spec", "program start");
 		#endif
-		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream(local_server, this, new Launcher);
-		#else
-		upstream_carry(remote_server, this, new Launcher);
-		#endif
+		//upstream_carry(remote_server, this, new Launcher);
 	}
 
 	void
