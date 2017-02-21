@@ -83,7 +83,7 @@ struct Main: public Kernel {
 		sys::cmd::make_option({"--role"}, _role),
 		sys::cmd::make_option({"--network"}, _network),
 		sys::cmd::make_option({"--port"}, _port),
-		sys::cmd::make_option({"--timeout"}, _timeout),
+		sys::cmd::make_option({"--test-duration"}, _timeout),
 		sys::cmd::make_option({"--normal"}, _normal),
 		sys::cmd::make_option({"--master"}, _masteraddr)
 	})
@@ -212,15 +212,74 @@ struct Hosts: public std::vector<Address> {
 
 };
 
+struct Kill_addresses {
+
+	friend std::istream&
+	operator>>(std::istream& in, Kill_addresses& rhs) {
+		std::stringstream token;
+		char ch;
+		in >> std::ws;
+		bool finished = false;
+		while (!finished && in) {
+			ch = in.get();
+			if (std::isspace(ch) || in.eof()) {
+				in.putback(ch);
+				finished = true;
+			}
+			if (ch == ',' || finished) {
+				sys::ipv4_addr a;
+				if (token >> a) {
+					rhs._addrs.emplace_back(a);
+					token.str("");
+					token.clear();
+				} else {
+					in.setstate(std::ios::failbit);
+				}
+			} else {
+				token.put(ch);
+			}
+		}
+		return in;
+	}
+
+	friend std::ostream&
+	operator<<(std::ostream& out, const Kill_addresses& rhs) {
+		std::copy(
+			rhs._addrs.begin(),
+			rhs._addrs.end(),
+			stdx::intersperse_iterator<sys::ipv4_addr,char>(out, ',')
+		);
+		return out;
+	}
+
+	const std::vector<sys::ipv4_addr>&
+	addrs() const noexcept {
+		return _addrs;
+	}
+
+	bool
+	contains(sys::ipv4_addr a) const noexcept {
+		return std::find(_addrs.begin(), _addrs.end(), a) != _addrs.end();
+	}
+
+	bool
+	contain(sys::ipv4_addr a) const noexcept {
+		return contains(a);
+	}
+
+private:
+	std::vector<sys::ipv4_addr> _addrs;
+};
+
 
 class Fail_over_test {
 
 	sys::port_type discovery_port = 54321;
 	uint32_t kill_after = do_not_kill;
-	uint32_t kill_timeout = do_not_kill;
+	uint32_t _testduration = do_not_kill;
 	Hosts<sys::ipv4_addr> hosts2;
-	sys::ipv4_addr master_addr{127,0,0,1};
-	sys::ipv4_addr kill_addr{127,0,0,2};
+	sys::ipv4_addr _master{127,0,0,1};
+	Kill_addresses _victims;
 	bool ssh = false;
 	sys::ifaddr<sys::ipv4_addr> network;
 	size_t nhosts = 0;
@@ -258,9 +317,15 @@ public:
 			"Network = _\n"
 			"Num peers = _\n"
 			"Role = _\n"
-			"Start,mid = _,_",
+			"Start,mid = _,_\n"
+			"Test duration = _\n"
+			"Kill after = _\n"
+			"Victims = _",
 			network, nhosts, role,
-			*network.begin(), *network.middle()
+			*network.begin(), *network.middle(),
+			_testduration,
+			kill_after,
+			_victims
 		);
 		#endif
 
@@ -317,9 +382,9 @@ public:
                 epipe.out().remap(STDERR_FILENO);
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
-				uint32_t timeout = kill_timeout;
+				uint32_t timeout = _testduration;
 				bool normal = true;
-				if (endpoint.addr4() == kill_addr and kill_after != do_not_kill) {
+				if (_victims.contain(endpoint.addr4()) and kill_after != do_not_kill) {
 					timeout = kill_after;
 					normal = false;
 				}
@@ -343,9 +408,9 @@ public:
 					"--network", ifaddr,
 					"--port", discovery_port,
 					"--role", "slave",
-					"--timeout", timeout,
+					"--test-duration", timeout,
 					"--normal", normal,
-					"--master", master_addr
+					"--master", _master
 				);
 				return sys::this_process::execute(
 					const_cast<char* const*>(command.argv())
@@ -431,9 +496,9 @@ public:
 			sys::cmd::make_option({"--num-hosts"}, nhosts),
 			sys::cmd::make_option({"--role"}, role),
 			sys::cmd::make_option({"--port"}, discovery_port),
-			sys::cmd::make_option({"--timeout"}, kill_timeout),
-			sys::cmd::make_option({"--master"}, master_addr),
-			sys::cmd::make_option({"--kill"}, kill_addr),
+			sys::cmd::make_option({"--test-duration"}, _testduration),
+			sys::cmd::make_option({"--master"}, _master),
+			sys::cmd::make_option({"--victims"}, _victims),
 			sys::cmd::make_option({"--kill-after"}, kill_after),
 			sys::cmd::make_option({"--ssh"}, ssh)
 		});
