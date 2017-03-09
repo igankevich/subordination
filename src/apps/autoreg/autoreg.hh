@@ -623,6 +623,9 @@ struct Generator1: public Kernel {
 			write_part_to_file(zeta);
 			commit(remote_server, this);
 		} else {
+			#ifdef FACTORY_TEST
+			simulate_failure();
+			#endif
 			#ifndef NDEBUG
 			stdx::debug_message("autoreg", "generating part _", part2);
 			#endif
@@ -759,6 +762,9 @@ struct Wave_surface_generator: public Kernel {
 
 	void
 	act() override {
+		#ifdef FACTORY_TEST
+		simulate_failure();
+		#endif
 		std::size_t num_parts = grid.num_parts();
 		#ifndef NDEBUG
 		stdx::debug_message("autoreg", "no. of parts = _", num_parts);

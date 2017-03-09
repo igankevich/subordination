@@ -77,7 +77,7 @@ do
 			--num-hosts $num_nodes \
 			--network ${ADDR_PREFIX}.0.1/24 \
 			--test-duration 30 \
-			--kill-after 15 \
+			--kill-after 1 \
 			--victims $victims \
 			--ssh 1 \
 			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log

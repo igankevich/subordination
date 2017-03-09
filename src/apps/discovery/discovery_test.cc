@@ -57,6 +57,20 @@ namespace factory {
 
 using namespace factory;
 
+
+#ifdef FACTORY_TEST
+std::promise<void> __failure;
+#include <future>
+extern std::promise<void> __failure;
+void
+simulate_failure() {
+	try {
+		__failure.set_value();
+	} catch (std::future_error& err) {
+		// ignore errors
+	}
+}
+#endif
 #include "apps/autoreg/autoreg_app.hh"
 #include "apps/spec/spec_app.hh"
 #include "ping_pong.hh"
@@ -124,7 +138,10 @@ struct Main: public Kernel {
 			}
 
 			if (_timeout != do_not_kill) {
-				schedule_shutdown_after(std::chrono::seconds(_timeout), master);
+				_shutdown_wait_thread = std::thread([this,master] () {
+					__failure.get_future().wait();
+					schedule_shutdown_after(std::chrono::seconds(_timeout), master);
+				});
 			}
 		}
 	}
@@ -186,6 +203,7 @@ private:
 	bool _normal = false;
 	sys::ipv4_addr _masteraddr;
 	sys::cmdline _cmdline;
+	std::thread _shutdown_wait_thread;
 
 };
 
