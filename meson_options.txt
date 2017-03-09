@@ -1,1 +1,7 @@
 option('springy', type: 'boolean', value: false)
+option(
+	'build_profile',
+	type: 'combo',
+	choices: ['dev', 'node_failure', 'release'],
+	value: 'dev'
+)

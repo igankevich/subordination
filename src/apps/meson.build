@@ -1,5 +1,7 @@
 subdir('discovery')
-subdir('autoreg')
-subdir('spec')
-subdir('factory')
-subdir('web')
+if get_option('build_profile') != 'node_failure'
+	subdir('autoreg')
+	subdir('spec')
+	subdir('factory')
+	subdir('web')
+endif

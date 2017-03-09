@@ -1,3 +1,5 @@
 testdir = include_directories('test')
-subdir('test')
+if get_option('build_profile') != 'node_failure'
+	subdir('test')
+endif
 subdir('apps')

@@ -7,7 +7,10 @@ libz = dependency('zlib')
 		sources: 'discovery_test.cc',
 		include_directories: [srcdir, testdir],
 		dependencies: [libpthread, libz, unistdx],
-		cpp_args: ['-DFACTORY_PRIORITY_SCHEDULING'],
+		cpp_args: [
+			'-DFACTORY_PRIORITY_SCHEDULING',
+			'-DFACTORY_TEST'
+		],
 	)
 #	,
 #	args: [
@@ -18,29 +21,31 @@ libz = dependency('zlib')
 #	env: ['UNISTDX_CONCURRENCY=1']
 #)
 
-test(
-	'discovery::Distance_in_tree',
+if get_option('build_profile') != 'node_failure'
+	test(
+		'discovery::Distance_in_tree',
+		executable(
+			'discovery-ranking-test',
+			sources: 'discovery_ranking_test.cc',
+			dependencies: [unistdx],
+			include_directories: [srcdir, testdir],
+		)
+	)
+	
+	test(
+		'discovery::csv_tuple',
+		executable(
+			'csv-test',
+			sources: 'csv_test.cc',
+			dependencies: [unistdx],
+			include_directories: [srcdir, testdir],
+		)
+	)
+	
 	executable(
-		'discovery-ranking-test',
-		sources: 'discovery_ranking_test.cc',
+		'discover-topology',
+		sources: 'discover_topology.cc',
 		dependencies: [unistdx],
 		include_directories: [srcdir, testdir],
 	)
-)
-
-test(
-	'discovery::csv_tuple',
-	executable(
-		'csv-test',
-		sources: 'csv_test.cc',
-		dependencies: [unistdx],
-		include_directories: [srcdir, testdir],
-	)
-)
-
-executable(
-	'discover-topology',
-	sources: 'discover_topology.cc',
-	dependencies: [unistdx],
-	include_directories: [srcdir, testdir],
-)
+endif
