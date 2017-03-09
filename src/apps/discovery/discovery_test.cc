@@ -277,7 +277,7 @@ class Fail_over_test {
 	uint32_t kill_after = do_not_kill;
 	uint32_t _testduration = do_not_kill;
 	Hosts<sys::ipv4_addr> hosts2;
-	sys::ipv4_addr _master{127,0,0,1};
+	sys::ipv4_addr _master;
 	Kill_addresses _victims;
 	bool ssh = false;
 	sys::ifaddr<sys::ipv4_addr> network;
@@ -507,6 +507,9 @@ public:
 		}
 		if (!network) {
 			throw sys::invalid_cmdline_argument("--network");
+		}
+		if (!_master) {
+			_master = network.address();
 		}
 	}
 

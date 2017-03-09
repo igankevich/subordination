@@ -357,7 +357,10 @@ namespace factory {
 		_router(rhs._router)
 		{}
 
-		NIC_server() = default;
+		NIC_server():
+		base_server()
+		{}
+
 		~NIC_server() = default;
 		NIC_server(const NIC_server&) = delete;
 		NIC_server& operator=(const NIC_server&) = delete;
@@ -523,7 +526,7 @@ namespace factory {
 				}
 				// delete broadcast kernel
 				delete k;
-			} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
+			} else if (k->moves_upstream() and not k->to()) {
 				if (_upstream.empty() or _endreached) {
 					// include localhost in round-robin
 					// in a somewhat half-assed fashion

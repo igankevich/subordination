@@ -7,7 +7,7 @@ set -e
 
 ADDR_PREFIX=10.0
 cluster=physical
-PREFIX=.
+PREFIX=$(pwd)
 while [ -n "$1" ]
 do
 	case "$1" in
@@ -41,6 +41,7 @@ then
 	exit 2
 fi	
 export UNISTDX_CONCURRENCY=1
+cd $PREFIX/build
 
 for num_nodes in $(seq 2 2)
 do
@@ -78,6 +79,7 @@ do
 			--test-duration 30 \
 			--kill-after 15 \
 			--victims $victims \
+			--ssh 1 \
 			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log
 	done
 done

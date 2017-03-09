@@ -52,8 +52,14 @@ namespace factory {
 			payload_is_ready
 		};
 
-		basic_kernelbuf() = default;
-		basic_kernelbuf(basic_kernelbuf&&) = default;
+		basic_kernelbuf():
+		base_type()
+		{}
+
+		basic_kernelbuf(basic_kernelbuf&& rhs):
+		base_type(std::forward<base_type>(rhs))
+		{}
+
 		basic_kernelbuf(const basic_kernelbuf&) = delete;
 		virtual ~basic_kernelbuf() = default;
 
