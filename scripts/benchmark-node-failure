@@ -29,6 +29,7 @@ done
 
 EXECUTABLE="$PREFIX/build/src/apps/discovery/node-failure-test"
 CLUSTER="$PREFIX/scripts/cluster"
+WORKDIR=$HOME/arma-test/run-4
 
 if ! test -x "$EXECUTABLE"
 then
@@ -40,46 +41,45 @@ then
 	echo "Unable to find virtual cluster script: $CLUSTER"
 	exit 2
 fi	
+mkdir -p $WORKDIR
 export UNISTDX_CONCURRENCY=1
-cd $PREFIX/build
+cp $PREFIX/build/autoreg.model $WORKDIR/
+cp $PREFIX/build/MersenneTwister.dat $WORKDIR/
+cd $WORKDIR/
 
-for num_nodes in $(seq 2 2)
+intersperse() { local IFS="$1"; shift; echo "$*"; }
+fmt="${ADDR_PREFIX}.0.%.f" 
+
+for num_nodes in $(seq 12 12)
 do
 	echo "No. of nodes = $num_nodes"
-	for kernel_type in principal subordinate
+	for i in $(seq $num_nodes)
 	do
-		case "$kernel_type" in
-			principal)
-				first=${ADDR_PREFIX}.0.1
-				first_idx=2
-				;;
-			subordinate)
-				first=${ADDR_PREFIX}.0.2
-				first_idx=3
-				;;
-		esac
-		victims=$(echo -n "$first"
-		for i in $(seq $first_idx $(expr $num_nodes - 1))
+		survivor="${ADDR_PREFIX}.0.${i}"
+		# kill every node except the survivor
+		victims=$(intersperse , $(
+		for a in $(seq -f "$fmt" $num_nodes)
 		do
-			echo -n ",${ADDR_PREFIX}.0.$i"
-		done
-		echo)
+			test "$a" = "$survivor" || echo "$a"
+		done))
+
 		if test "$cluster" = "virtual"
 		then
 			cmd_prefix="unshare -rnm $CLUSTER --name cat --nodes 1-$num_nodes --"
 		else
 			cmd_prefix=
 		fi
-#		echo $victims
+		echo $survivor
+		echo $victims
 		$cmd_prefix \
 		$EXECUTABLE \
 			--role master \
 			--num-hosts $num_nodes \
 			--network ${ADDR_PREFIX}.0.1/24 \
-			--test-duration 30 \
+			--test-duration 300 \
 			--kill-after 1 \
 			--victims $victims \
 			--ssh 1 \
-			2>&1 | tee benchmark-node-failure-${num_nodes}-${kernel_type}.log
+			2>&1 | tee benchmark-node-failure-$(printf "%02.f" $i)-${survivor}.log
 	done
 done
