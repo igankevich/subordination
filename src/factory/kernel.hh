@@ -281,6 +281,7 @@ namespace factory {
 			_parent = p;
 		}
 
+		#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 		bool
 		has_neighbour() const noexcept {
 			return !_neighbours.empty();
@@ -295,6 +296,7 @@ namespace factory {
 		neighbours() noexcept {
 			return _neighbours;
 		}
+		#endif
 
 		size_t
 		hash() const {
@@ -335,11 +337,13 @@ namespace factory {
 			in >> _parent_id;
 			assert(not _principal and "Principal is not null while reading from the data stream.");
 			in >> _principal_id;
+			#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 			if (!(moves_downstream() or moves_somewhere())) {
 				if (carries_parent()) {
 					read_neighbours(in);
 				}
 			}
+			#endif
 		}
 
 		void
@@ -351,9 +355,11 @@ namespace factory {
 			} else {
 				out << (not _parent ? Mobile_kernel::no_id : _parent->id());
 				out << (not _principal ? Mobile_kernel::no_id : _principal->id());
+				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 				if (carries_parent()) {
 					write_neighbours(out);
 				}
+				#endif
 			}
 		}
 
@@ -448,6 +454,7 @@ namespace factory {
 
 	private:
 
+		#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 		void
 		write_neighbours(sys::packetstream& out) {
 			out << uint32_t(_neighbours.size());
@@ -465,6 +472,7 @@ namespace factory {
 				in >> _neighbours[i];
 			}
 		}
+		#endif
 
 		union {
 			Kernel* _parent = nullptr;
@@ -474,7 +482,9 @@ namespace factory {
 			Kernel* _principal = nullptr;
 			id_type _principal_id;
 		};
+		#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 		neighbours_type _neighbours;
+		#endif
 
 	};
 

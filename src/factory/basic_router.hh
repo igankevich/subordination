@@ -23,6 +23,7 @@ namespace factory {
 		Instances<kernel_type> _principals;
 
 	public:
+		#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 		void
 		add_subordinate(kernel_type* k, const sys::endpoint& dest) {
 			assert(k != nullptr);
@@ -150,9 +151,11 @@ namespace factory {
 				: kernel->parent_id();
 			return ::factory::instances.contain(id);
 		}
+		#endif
 
 	private:
 
+		#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 		static void
 		print_neighbours(kernel_type* kernel, const sys::endpoint& dest) {
 			#ifndef NDEBUG
@@ -171,6 +174,7 @@ namespace factory {
 			);
 			#endif
 		}
+		#endif
 
 	};
 

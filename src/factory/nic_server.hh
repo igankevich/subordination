@@ -205,11 +205,15 @@ namespace factory {
 			bool ok = true;
 			k->from(_vaddr);
 			if (k->moves_downstream()) {
+				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 				if (!clear_kernel_buffer(k)) {
 					k = _router.restore_principal(k);
 				} else {
 					this->_router.erase_subordinate(k);
 				}
+				#else
+				clear_kernel_buffer(k);
+				#endif
 			} else if (k->principal_id()) {
 				kernel_type* p = factory::instances.lookup(k->principal_id());
 				if (p == nullptr) {
@@ -218,8 +222,12 @@ namespace factory {
 					ok = false;
 				}
 				k->principal(p);
-			} else if (k->moves_upstream() and k->carries_parent()) {
-				_router.add_principal(k);
+			} else {
+				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
+				if (k->moves_upstream() and k->carries_parent()) {
+					_router.add_principal(k);
+				}
+				#endif
 				// TODO remove principal when the batch is complete
 			}
 			if (k) {
@@ -251,7 +259,9 @@ namespace factory {
 				k->result(Result::endpoint_not_connected);
 				k->principal(k->parent());
 				_router.send_local(k);
-			} else if (k->moves_downstream()) {
+			} else
+			#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
+			if (k->moves_downstream()) {
 				neighbours_type& nbrs = k->neighbours();
 				if (nbrs.empty() ||
 					nbrs.front() == _srvaddr ||
@@ -278,7 +288,16 @@ namespace factory {
 					#endif
 					_router.send_remote(k);
 				}
-			} else {
+			}
+			#else
+			if (k->moves_downstream() and k->carries_parent()) {
+				#ifndef NDEBUG
+				stdx::debug_message("nic", "restore parent _", *k);
+				#endif
+				_router.send_local(k);
+			}
+			#endif
+			else {
 				#ifndef NDEBUG
 				stdx::debug_message("nbrs", "bad kernel in buffer _", *k);
 				#endif
@@ -544,7 +563,9 @@ namespace factory {
 					// round robin over upstream hosts
 					ensure_identity(k);
 					auto& server = _iterator->second;
+					#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 					_router.add_subordinate(k, server->vaddr());
+					#endif
 					server->send(k);
 					advance_upstream_iterator();
 				}

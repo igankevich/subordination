@@ -14,6 +14,10 @@ if get_option('springy')
 	add_global_arguments('-DSPRINGY', language: 'cpp')
 endif
 
+if get_option('handle_multiple_node_failures')
+	add_global_arguments('-DHANDLE_MULTIPLE_NODE_FAILURES', language: 'cpp')
+endif
+
 unistdx = dependency('unistdx')
 stdx = dependency('stdx')
 cpp = meson.get_compiler('cpp')

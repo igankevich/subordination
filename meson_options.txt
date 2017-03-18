@@ -5,3 +5,8 @@ option(
 	choices: ['dev', 'node_failure', 'release'],
 	value: 'dev'
 )
+option(
+	'handle_multiple_node_failures',
+	type: 'boolean',
+	value: true
+)
