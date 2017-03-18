@@ -8,6 +8,7 @@ set -e
 ADDR_PREFIX=10.0
 cluster=physical
 profile=failures
+nprocs=12
 PREFIX=$(pwd)
 while [ -n "$1" ]
 do
@@ -28,6 +29,11 @@ do
 			profile=no-failures
 			shift
 			;;
+		--nprocs|-n|-np)
+			shift
+			nprocs="$1"
+			shift
+			;;
 		--prefix)
 			shift
 			PREFIX="$1"
@@ -38,7 +44,7 @@ done
 
 EXECUTABLE="$PREFIX/build/src/apps/discovery/node-failure-test"
 CLUSTER="$PREFIX/scripts/cluster"
-WORKDIR=$HOME/arma-test/run-4
+WORKDIR=$HOME/arma-test/run-5
 
 if ! test -x "$EXECUTABLE"
 then
@@ -61,7 +67,7 @@ fmt="${ADDR_PREFIX}.0.%.f"
 
 if test "$profile" = "failures"
 then
-	for num_nodes in $(seq 12 12)
+	for num_nodes in $(seq $nprocs $nprocs)
 	do
 		echo "No. of nodes = $num_nodes"
 		for i in $(seq $num_nodes)
@@ -95,23 +101,26 @@ then
 		done
 	done
 else
-	for num_nodes in $(seq 1 12)
+	for num_nodes in $(seq $nprocs $nprocs)
 	do
 		echo "No. of nodes = $num_nodes"
 		if test "$cluster" = "virtual"
 		then
-			cmd_prefix="unshare -rnm $CLUSTER --name cat --nodes 1-$num_nodes --"
+			cluster_name="cat"
+			cmd_prefix="unshare -rnm $CLUSTER --name $cluster_name --nodes 1-$num_nodes --"
+			more_options="--cluster $cluster_name --netns 1"
 		else
 			cmd_prefix=
+			more_options="--ssh 1"
 		fi
 		$cmd_prefix \
 		$EXECUTABLE \
 			--role master \
 			--num-hosts $num_nodes \
 			--network ${ADDR_PREFIX}.0.1/24 \
-			--test-duration 300 \
+			--test-duration 120 \
 			--kill-after 1 \
-			--ssh 1 \
+			$more_options \
 			2>&1 | tee benchmark-no-failure-$(printf "%04.f" $num_nodes).log
 	done
 fi

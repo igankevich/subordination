@@ -298,6 +298,8 @@ class Fail_over_test {
 	sys::ipv4_addr _master;
 	Kill_addresses _victims;
 	bool ssh = false;
+	bool _netns = false;
+	std::string _cluster;
 	sys::ifaddr<sys::ipv4_addr> network;
 	size_t nhosts = 0;
 	std::string role = role_master;
@@ -390,19 +392,18 @@ public:
 		};
 		sys::event_poller<std::shared_ptr<Handler>> poller;
 		sys::process_group procs;
+		int proc_number = 1;
 		for (sys::endpoint endpoint : hosts) {
 			sys::pipe opipe, epipe;
 			opipe.in().unsetf(sys::fildes::non_blocking);
 			opipe.out().unsetf(sys::fildes::non_blocking);
 			epipe.in().unsetf(sys::fildes::non_blocking);
 			epipe.out().unsetf(sys::fildes::non_blocking);
-			procs.emplace([endpoint, &opipe, &epipe, this] () {
+			procs.emplace([endpoint, &opipe, &epipe, proc_number, this] () {
                 opipe.in().close();
                 opipe.out().remap(STDOUT_FILENO);
                 epipe.in().close();
                 epipe.out().remap(STDERR_FILENO);
-				char workdir[PATH_MAX];
-				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = _testduration;
 				if (_victims.contain(endpoint.addr4()) and kill_after != do_not_kill) {
 					timeout = kill_after;
@@ -413,6 +414,8 @@ public:
 				);
 				sys::argstream command;
 				if (ssh) {
+					char workdir[PATH_MAX];
+					::getcwd(workdir, PATH_MAX);
 					command.append(
 						"/usr/bin/ssh",
 						"-n",
@@ -420,6 +423,20 @@ public:
 						"StrictHostKeyChecking no",
 						endpoint.addr4(),
 						"cd", workdir, ';', "exec"
+					);
+				}
+				if (_netns) {
+					std::stringstream netns_name;
+					netns_name << _cluster << proc_number;
+					std::stringstream env;
+					for (char** first=environ; first!=0; ++first) {
+						env << *first << ' ';
+					}
+					command.append(
+						"/sbin/ip",
+						"netns",
+						"exec",
+						netns_name.str()
 					);
 				}
 				command.append(
@@ -446,6 +463,7 @@ public:
 				sys::poll_event{efd, sys::poll_event::In},
 				std::make_shared<Handler>(std::move(epipe.in()), endpoint, STDERR_FILENO)
 			);
+			++proc_number;
 		}
 
 		#ifndef NDEBUG
@@ -517,7 +535,9 @@ public:
 			sys::cmd::make_option({"--master"}, _master),
 			sys::cmd::make_option({"--victims"}, _victims),
 			sys::cmd::make_option({"--kill-after"}, kill_after),
-			sys::cmd::make_option({"--ssh"}, ssh)
+			sys::cmd::make_option({"--ssh"}, ssh),
+			sys::cmd::make_option({"--netns"}, _netns),
+			sys::cmd::make_option({"--cluster"}, _cluster)
 		});
 		cmd.parse();
 		if (role != role_master and role != role_slave) {
@@ -528,6 +548,9 @@ public:
 		}
 		if (!_master) {
 			_master = network.address();
+		}
+		if (_cluster.empty()) {
+			_cluster = "cat";
 		}
 	}
 

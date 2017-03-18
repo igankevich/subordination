@@ -97,32 +97,23 @@ for n in $(seq $node0 $node1); do
 done
 ip link set dev $cluster up
 
-script=$(mktemp)
-cat >$script << EOF
-set -x
-hostname m\$1
-exec $app
-EOF
-chmod +x $script
-for n in $(seq $node0 $node1); do
-	ip netns exec $cluster$n hostname
-done
+$app
 
-#submit_script=$(mktemp)
-#cat >$submit_script << EOF
-#hostname m\$1
-#$submit 
-#EOF
-#chmod +x $submit_script
-# run submission command (if any) with a delay
-if test -n "$script"; then
-	sleep 1
-	ip netns exec $cluster$node0 unshare -u $script $node0 &
-	wait
-fi
+#first_pid=
+#for n in $(seq $node0 $node1); do
+#	x0=$(expr $n / 255)
+#	x1=$(expr $n % 255)
+#	nohup ip netns exec $cluster$n $app --network 10.0.$x0.$x1/16 \
+#		>"$cluster$(printf '%04.f' $n).log" 2>&1 &
+#	pid=$1
+#	if test "$n" = "$node0"; then
+#		first_pid=$pid
+#	fi
+#done
+#wait -n $first_pid
+#pkill node-failure
 
 #cat $outdir/$cluster*.out
 #rm $outdir/$cluster*.out
-rm $script $submit_script
 
 del_cluster
