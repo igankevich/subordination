@@ -385,7 +385,7 @@ public:
 				buf << std::setw(15) << _endp.addr4() << ' ';
 			}
 
-			sys::ifdstream in;
+			sys::fildes in;
 			sys::endpoint _endp;
 			int _type;
 			std::stringstream buf;
@@ -428,16 +428,12 @@ public:
 				if (_netns) {
 					std::stringstream netns_name;
 					netns_name << _cluster << proc_number;
-					std::stringstream env;
-					for (char** first=environ; first!=0; ++first) {
-						env << *first << ' ';
+					command.append("/sbin/ip", "netns", "exec", netns_name.str());
+					std::clog << "exec " << netns_name.str() << std::endl;
+					command.append("env");
+					for (char** first=environ; *first; ++first) {
+						command.append(*first);
 					}
-					command.append(
-						"/sbin/ip",
-						"netns",
-						"exec",
-						netns_name.str()
-					);
 				}
 				command.append(
 					_argv[0],
@@ -479,11 +475,13 @@ public:
 				stdx::unlock_guard<std::mutex> g(mtx);
 				poller.for_each_ordinary_fd(
 					[] (const sys::poll_event& ev, std::shared_ptr<Handler> handler) {
+						typedef stdx::streambuf_traits<sys::fildes> traits_type;
 						if (ev.in()) {
-							handler->in.sync();
-							std::streamsize navail = handler->in.rdbuf()->in_avail();
+							const std::streamsize navail =
+							traits_type::in_avail(handler->in);
 							for (int i=0; i<navail; ++i) {
-								char ch = handler->in.get();
+								char ch = 0;
+								traits_type::read(handler->in, &ch, 1);
 								handler->buf.put(ch);
 								if (ch == '\n') {
 									if (handler->_type == STDOUT_FILENO) {
