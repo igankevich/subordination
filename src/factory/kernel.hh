@@ -9,7 +9,20 @@
 #include <sys/packetstream.hh>
 #include "result.hh"
 
+#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+#include <chrono>
+#include <atomic>
+#endif
+
 namespace factory {
+
+	#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+	namespace bits {
+		typedef std::chrono::system_clock mf_clock_type;
+		typedef mf_clock_type::rep mf_rep_type;
+		std::atomic<mf_rep_type> mf_overhead(0);
+	}
+	#endif
 
 	struct Basic_kernel {
 
@@ -340,7 +353,16 @@ namespace factory {
 			#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 			if (!(moves_downstream() or moves_somewhere())) {
 				if (carries_parent()) {
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					using namespace bits;
+					using namespace std::chrono;
+					auto t0 = mf_clock_type::now();
+					#endif
 					read_neighbours(in);
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					auto t1 = mf_clock_type::now();
+					mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+					#endif
 				}
 			}
 			#endif
@@ -357,7 +379,16 @@ namespace factory {
 				out << (not _principal ? Mobile_kernel::no_id : _principal->id());
 				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 				if (carries_parent()) {
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					using namespace bits;
+					using namespace std::chrono;
+					auto t0 = mf_clock_type::now();
+					#endif
 					write_neighbours(out);
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					auto t1 = mf_clock_type::now();
+					mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+					#endif
 				}
 				#endif
 			}

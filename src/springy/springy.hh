@@ -70,8 +70,10 @@ namespace springy {
 		explicit
 		Springy_graph(const char* filename):
 		_start(clock_type::now()),
-		_outfile(filename),
-		_log(_outfile)
+		_outfile(filename)
+		#ifndef NDEBUG
+		, _log(_outfile)
+		#endif
 		{}
 
 		Springy_graph():
@@ -174,7 +176,9 @@ namespace springy {
 
 		time_point _start;
 		std::ofstream _outfile;
+		#ifndef NDEBUG
 		stdx::debug_log _log;
+		#endif
 
 	};
 

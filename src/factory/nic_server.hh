@@ -206,11 +206,20 @@ namespace factory {
 			k->from(_vaddr);
 			if (k->moves_downstream()) {
 				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
+				#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+				using namespace bits;
+				using namespace std::chrono;
+				auto t0 = mf_clock_type::now();
+				#endif
 				if (!clear_kernel_buffer(k)) {
 					k = _router.restore_principal(k);
 				} else {
 					this->_router.erase_subordinate(k);
 				}
+				#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+				auto t1 = mf_clock_type::now();
+				mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+				#endif
 				#else
 				clear_kernel_buffer(k);
 				#endif
@@ -225,7 +234,16 @@ namespace factory {
 			} else {
 				#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 				if (k->moves_upstream() and k->carries_parent()) {
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					using namespace bits;
+					using namespace std::chrono;
+					auto t0 = mf_clock_type::now();
+					#endif
 					_router.add_principal(k);
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					auto t1 = mf_clock_type::now();
+					mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+					#endif
 				}
 				#endif
 				// TODO remove principal when the batch is complete
@@ -262,6 +280,11 @@ namespace factory {
 			} else
 			#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
 			if (k->moves_downstream()) {
+				#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+				using namespace bits;
+				using namespace std::chrono;
+				auto t0 = mf_clock_type::now();
+				#endif
 				neighbours_type& nbrs = k->neighbours();
 				if (nbrs.empty() ||
 					nbrs.front() == _srvaddr ||
@@ -288,6 +311,10 @@ namespace factory {
 					#endif
 					_router.send_remote(k);
 				}
+				#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+				auto t1 = mf_clock_type::now();
+				mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+				#endif
 			}
 			#else
 			if (k->moves_downstream() and k->carries_parent()) {
@@ -564,7 +591,16 @@ namespace factory {
 					ensure_identity(k);
 					auto& server = _iterator->second;
 					#if defined(HANDLE_MULTIPLE_NODE_FAILURES)
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					using namespace bits;
+					using namespace std::chrono;
+					auto t0 = mf_clock_type::now();
+					#endif
 					_router.add_subordinate(k, server->vaddr());
+					#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+					auto t1 = mf_clock_type::now();
+					mf_overhead += duration_cast<nanoseconds>(t1 - t0).count();
+					#endif
 					#endif
 					server->send(k);
 					advance_upstream_iterator();

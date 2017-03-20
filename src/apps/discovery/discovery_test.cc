@@ -429,7 +429,6 @@ public:
 					std::stringstream netns_name;
 					netns_name << _cluster << proc_number;
 					command.append("/sbin/ip", "netns", "exec", netns_name.str());
-					std::clog << "exec " << netns_name.str() << std::endl;
 					command.append("env");
 					for (char** first=environ; *first; ++first) {
 						command.append(*first);

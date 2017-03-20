@@ -44,7 +44,7 @@ done
 
 EXECUTABLE="$PREFIX/build/src/apps/discovery/node-failure-test"
 CLUSTER="$PREFIX/scripts/cluster"
-WORKDIR=$HOME/arma-test/run-5
+WORKDIR=$HOME/arma-test/run-15
 
 if ! test -x "$EXECUTABLE"
 then
@@ -118,7 +118,7 @@ else
 			--role master \
 			--num-hosts $num_nodes \
 			--network ${ADDR_PREFIX}.0.1/24 \
-			--test-duration 120 \
+			--test-duration 20 \
 			--kill-after 1 \
 			$more_options \
 			2>&1 | tee benchmark-no-failure-$(printf "%04.f" $num_nodes).log

@@ -18,6 +18,14 @@ if get_option('handle_multiple_node_failures')
 	add_global_arguments('-DHANDLE_MULTIPLE_NODE_FAILURES', language: 'cpp')
 endif
 
+if get_option('profile_multiple_node_failures')
+	add_global_arguments('-DPROFILE_MULTIPLE_NODE_FAILURES', language: 'cpp')
+endif
+
+if get_option('dry_run')
+	add_global_arguments('-DFACTORY_TEST_DRY_RUN', language: 'cpp')
+endif
+
 unistdx = dependency('unistdx')
 stdx = dependency('stdx')
 cpp = meson.get_compiler('cpp')

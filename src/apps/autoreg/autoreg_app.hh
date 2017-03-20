@@ -60,6 +60,13 @@ struct Autoreg_app: public Kernel {
 	}
 
 	void react(factory::Kernel*) {
+		#if defined(PROFILE_MULTIPLE_NODE_FAILURES)
+		std::stringstream msg;
+		msg << "autoreg "
+			"multiple node failure handling overhead is "
+			<< bits::mf_overhead << "ns\n";
+		std::clog << msg.rdbuf() << std::flush;
+		#endif
 		#ifndef NDEBUG
 		stdx::debug_message("autoreg", "finished all");
 		#endif

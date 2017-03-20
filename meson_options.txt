@@ -10,3 +10,13 @@ option(
 	type: 'boolean',
 	value: true
 )
+option(
+	'dry_run',
+	type: 'boolean',
+	value: false
+)
+option(
+	'profile_multiple_node_failures',
+	type: 'boolean',
+	value: false
+)

@@ -372,7 +372,9 @@ struct Solve_Yule_Walker: public Kernel {
 		int m = ar_coefs.size()-1;
 //		solve_linear_system(a, b);
 //		gaussian_elimintation(&a[0], &b[0], m);
+		#if !defined(FACTORY_TEST_DRY_RUN)
 		cholesky(&a[0], &b[0], m);
+		#endif
 //		sysv<T>('U', m, 1, &a[0], m, &b[0], m, &info);
 //		if (info != 0) {
 //			std::stringstream s;
@@ -620,7 +622,9 @@ struct Generator1: public Kernel {
 
 	void act() override {
 		if (_writefile) {
+			#if !defined(FACTORY_TEST_DRY_RUN)
 			write_part_to_file(zeta);
+			#endif
 			commit(remote_server, this);
 		} else {
 			#ifdef FACTORY_TEST
@@ -649,8 +653,10 @@ struct Generator1: public Kernel {
 				#endif
 			}
 //			cout << "compute part = " << part.part() << endl;
+			#if !defined(FACTORY_TEST_DRY_RUN)
 			generate_white_noise(zeta2, var_eps, part2);
 			generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
+			#endif
 			// TODO 2016-02-26 weaving is disabled for benchmarks
 			if (not _noweave) {
 				if (left_neighbour != nullptr) {
@@ -663,7 +669,9 @@ struct Generator1: public Kernel {
 				send(local_server, this, this);
 //				downstream(local_server(), this, this);
 			} else {
+				#if !defined(FACTORY_TEST_DRY_RUN)
 				trim_zeta(zeta2, zsize2, zsize, zeta);
+				#endif
 				_writefile = true;
 				local_server.send(this);
 			}
