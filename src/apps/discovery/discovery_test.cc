@@ -23,8 +23,10 @@
 #include "distance.hh"
 #include "cache_guard.hh"
 #include "hierarchy.hh"
+#if defined(SPRINGY)
 #include <springy/springy.hh>
 #include "hierarchy_with_graph.hh"
+#endif
 #include "test.hh"
 
 namespace factory {
@@ -87,7 +89,11 @@ struct Main: public Kernel {
 	typedef Address addr_type;
 	typedef typename sys::ipaddr_traits<addr_type> traits_type;
 	typedef Negotiator<addr_type> negotiator_type;
+	#if defined(SPRINGY)
 	typedef discovery::Hierarchy_with_graph<discovery::Hierarchy<addr_type>> hierarchy_type;
+	#else
+	typedef discovery::Hierarchy<addr_type> hierarchy_type;
+	#endif
 	typedef discovery::Distance_in_tree<addr_type> distance_type;
 	typedef Master_discoverer<addr_type, hierarchy_type, distance_type> discoverer_type;
 
@@ -368,8 +374,10 @@ public:
 				}
 			);
 		}
+		#if defined(SPRINGY)
 		springy::Springy_graph<sys::endpoint> graph;
 		graph.add_nodes(hosts.begin(), hosts.end());
+		#endif
 
 		struct Handler {
 			Handler(sys::fildes&& fd, sys::endpoint endp, int type):
