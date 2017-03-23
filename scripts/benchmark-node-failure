@@ -42,9 +42,15 @@ do
 	esac
 done
 
+if test -z "$RUN_ID"
+then
+	echo "Please, specify run id via RUN_ID"
+	exit 10
+fi
+
 EXECUTABLE="$PREFIX/build/src/apps/discovery/node-failure-test"
 CLUSTER="$PREFIX/scripts/cluster"
-WORKDIR=$HOME/arma-test/run-15
+WORKDIR=$HOME/arma-test/run-${RUN_ID}
 
 if ! test -x "$EXECUTABLE"
 then
@@ -67,43 +73,18 @@ fmt="${ADDR_PREFIX}.0.%.f"
 
 if test "$profile" = "failures"
 then
-	for num_nodes in $(seq $nprocs $nprocs)
+	num_nodes=$nprocs
+	echo "No. of nodes = $num_nodes"
+	for i in $(seq $num_nodes)
 	do
-		echo "No. of nodes = $num_nodes"
-		for i in $(seq $num_nodes)
+		survivor="${ADDR_PREFIX}.0.${i}"
+		# kill every node except the survivor
+		victims=$(intersperse , $(
+		for a in $(seq -f "$fmt" $num_nodes)
 		do
-			survivor="${ADDR_PREFIX}.0.${i}"
-			# kill every node except the survivor
-			victims=$(intersperse , $(
-			for a in $(seq -f "$fmt" $num_nodes)
-			do
-				test "$a" = "$survivor" || echo "$a"
-			done))
+			test "$a" = "$survivor" || echo "$a"
+		done))
 	
-			if test "$cluster" = "virtual"
-			then
-				cmd_prefix="unshare -rnm $CLUSTER --name cat --nodes 1-$num_nodes --"
-			else
-				cmd_prefix=
-			fi
-			echo $survivor
-			echo $victims
-			$cmd_prefix \
-			$EXECUTABLE \
-				--role master \
-				--num-hosts $num_nodes \
-				--network ${ADDR_PREFIX}.0.1/24 \
-				--test-duration 300 \
-				--kill-after 1 \
-				--victims $victims \
-				--ssh 1 \
-				2>&1 | tee benchmark-node-failure-$(printf "%02.f" $i)-${survivor}.log
-		done
-	done
-else
-	for num_nodes in $(seq $nprocs $nprocs)
-	do
-		echo "No. of nodes = $num_nodes"
 		if test "$cluster" = "virtual"
 		then
 			cluster_name="cat"
@@ -113,14 +94,38 @@ else
 			cmd_prefix=
 			more_options="--ssh 1"
 		fi
+		echo $survivor
+		echo $victims
 		$cmd_prefix \
 		$EXECUTABLE \
 			--role master \
 			--num-hosts $num_nodes \
 			--network ${ADDR_PREFIX}.0.1/24 \
-			--test-duration 20 \
+			--test-duration 120 \
 			--kill-after 1 \
+			--victims $victims \
 			$more_options \
-			2>&1 | tee benchmark-no-failure-$(printf "%04.f" $num_nodes).log
+			2>&1 | tee benchmark-node-failure-$(printf "%02.f" $i)-${survivor}.log
 	done
+else
+	num_nodes=$nprocs
+	echo "No. of nodes = $num_nodes"
+	if test "$cluster" = "virtual"
+	then
+		cluster_name="cat"
+		cmd_prefix="unshare -rnm $CLUSTER --name $cluster_name --nodes 1-$num_nodes --"
+		more_options="--cluster $cluster_name --netns 1"
+	else
+		cmd_prefix=
+		more_options="--ssh 1"
+	fi
+	$cmd_prefix \
+	$EXECUTABLE \
+		--role master \
+		--num-hosts $num_nodes \
+		--network ${ADDR_PREFIX}.0.1/24 \
+		--test-duration 120 \
+		--kill-after 1 \
+		$more_options \
+		2>&1 | tee benchmark-no-failure-$(printf "%04.f" $num_nodes).log
 fi

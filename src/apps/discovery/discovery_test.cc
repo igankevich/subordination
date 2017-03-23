@@ -432,6 +432,8 @@ public:
 						endpoint.addr4(),
 						"cd", workdir, ';', "exec"
 					);
+					command.append("env");
+					command.append("UNISTDX_CONCURRENCY=1");
 				}
 				if (_netns) {
 					std::stringstream netns_name;
