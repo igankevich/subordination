@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+ls -l /usr/bin/python*
 virtualenv py3 --python=/usr/bin/python3.4
 . py3/bin/activate
 pip3 install -q meson
@@ -9,7 +11,7 @@ unzip -d py3/bin /tmp/ninja.zip
 
 # build documentation
 mkdir build
-meson.py . build
+meson . build
 ninja -C build doc
 
 deactivate
