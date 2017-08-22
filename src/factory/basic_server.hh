@@ -8,7 +8,7 @@
 
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
-#include <unistdx/ipc/semaphore>
+#include <unistdx/ipc/thread_semaphore>
 #include <unistdx/it/container_traits>
 #include <unistdx/it/queue_popper>
 #include <unistdx/it/queue_pusher>
