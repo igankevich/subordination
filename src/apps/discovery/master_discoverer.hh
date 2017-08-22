@@ -40,7 +40,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			if (k->result() == Result::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
 				#ifndef NDEBUG
-				stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+				sys::log_message("dscvr", "hierarchy=", _hierarchy);
 				#endif
 				_negotiator = nullptr;
 				deploy_secret_agent();
@@ -50,12 +50,12 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 		} else
 		if (_secretagent == k) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "secret agent returned from _, result _", k->from(), k->result());
+			sys::log_message("dscvr", "secret agent returned from _, result _", k->from(), k->result());
 			#endif
 			if (k->result() == Result::endpoint_not_connected) {
 				_hierarchy.unset_principal();
 				#ifndef NDEBUG
-				stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+				sys::log_message("dscvr", "hierarchy=", _hierarchy);
 				#endif
 				try_next_host();
 			}
@@ -64,7 +64,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			negotiator_type* neg = dynamic_cast<negotiator_type*>(k);
 			neg->negotiate(_hierarchy);
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "hierarchy=", _hierarchy);
+			sys::log_message("dscvr", "hierarchy=", _hierarchy);
 			#endif
 		}
 	}
@@ -124,7 +124,7 @@ private:
 		if (_currenthost != _rankedhosts.end()) {
 			const sys::endpoint new_princ(_currenthost->second, _port);
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "trying _", new_princ);
+			sys::log_message("dscvr", "trying _", new_princ);
 			#endif
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
 			upstream(local_server, this, _negotiator);

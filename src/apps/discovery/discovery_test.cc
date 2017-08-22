@@ -1,10 +1,10 @@
-#include <stdx/debug.hh>
-
 #include <map>
+#include <vector>
 
-#include <sys/socket.hh>
-#include <sys/cmdline.hh>
-#include <sys/ifaddr.hh>
+#include <unistdx/base/cmdline>
+#include <unistdx/net/ifaddr>
+#include <unistdx/net/socket>
+#include <unistdx/ipc/process_group>
 
 #include <factory/factory.hh>
 #include <factory/cpu_server.hh>
@@ -32,7 +32,7 @@ namespace factory {
 		send_remote(Kernel*);
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			assert(false);
 		}
 
@@ -70,15 +70,18 @@ struct Main: public Kernel {
 	typedef Master_discoverer<addr_type, hierarchy_type, distance_type> discoverer_type;
 
 	Main(int argc, char* argv[]):
-	_cmdline(argc, argv, {
-		sys::cmd::ignore_first_arg(),
-		sys::cmd::make_option({"--role"}, _role),
-		sys::cmd::make_option({"--network"}, _network),
-		sys::cmd::make_option({"--port"}, _port),
-		sys::cmd::make_option({"--timeout"}, _timeout),
-		sys::cmd::make_option({"--normal"}, _normal),
-		sys::cmd::make_option({"--master"}, _masteraddr)
-	})
+	_argc(argc),
+	_argv(argv),
+	_options{
+		sys::ignore_first_argument(),
+		sys::make_key_value("role", _role),
+		sys::make_key_value("network", _network),
+		sys::make_key_value("port", _port),
+		sys::make_key_value("timeout", _timeout),
+		sys::make_key_value("normal", _normal),
+		sys::make_key_value("master", _masteraddr),
+		nullptr
+	}
 	{}
 
 	void
@@ -158,15 +161,15 @@ private:
 	void
 	parse_cmdline_args() {
 		try {
-			_cmdline.parse();
+			sys::parse_arguments(this->_argc, this->_argv, this->_options.data());
 			if (!_network) {
-				throw sys::invalid_cmdline_argument("--network");
+				throw sys::bad_argument("network");
 			}
 			if (_role != role_slave) {
-				throw sys::invalid_cmdline_argument("--role");
+				throw sys::bad_argument("role");
 			}
-		} catch (sys::invalid_cmdline_argument& err) {
-			std::cerr << err.what() << ": " << err.arg() << std::endl;
+		} catch (sys::bad_argument& err) {
+			std::cerr << err.what() << ": " << err.argument() << std::endl;
 			this->result(Result::error);
 		}
 	}
@@ -178,7 +181,9 @@ private:
 	uint32_t _timeout = 60;
 	bool _normal = true;
 	sys::ipv4_addr _masteraddr;
-	sys::cmdline _cmdline;
+	int _argc;
+	char** _argv;
+	std::vector<sys::input_operator_type> _options;
 
 };
 
@@ -218,35 +223,38 @@ int main(int argc, char* argv[]) {
 	size_t nhosts = 0;
 	std::string role = role_master;
 	try {
-		sys::cmdline cmd(argc, argv, {
-			sys::cmd::ignore_first_arg(),
-			sys::cmd::ignore_arg("--normal"),
-			sys::cmd::make_option({"--hosts"}, hosts2),
-			sys::cmd::make_option({"--network"}, network),
-			sys::cmd::make_option({"--num-hosts"}, nhosts),
-			sys::cmd::make_option({"--role"}, role),
-			sys::cmd::make_option({"--port"}, discovery_port),
-			sys::cmd::make_option({"--timeout"}, kill_timeout),
-			sys::cmd::make_option({"--master"}, master_addr),
-			sys::cmd::make_option({"--kill"}, kill_addr),
-			sys::cmd::make_option({"--kill-after"}, kill_after)
-		});
-		cmd.parse();
+		sys::input_operator_type options[] = {
+			sys::ignore_first_argument(),
+			[] (int, const std::string& arg) {
+				return arg.find("normal=") == 0;
+			},
+			sys::make_key_value("hosts", hosts2),
+			sys::make_key_value("network", network),
+			sys::make_key_value("num-hosts", nhosts),
+			sys::make_key_value("role", role),
+			sys::make_key_value("port", discovery_port),
+			sys::make_key_value("timeout", kill_timeout),
+			sys::make_key_value("master", master_addr),
+			sys::make_key_value("kill", kill_addr),
+			sys::make_key_value("kill-after", kill_after),
+			nullptr
+		};
+		sys::parse_arguments(argc, argv, options);
 		if (role != role_master and role != role_slave) {
-			throw sys::invalid_cmdline_argument("--role");
+			throw sys::bad_argument("role");
 		}
 		if (!network) {
-			throw sys::invalid_cmdline_argument("--network");
+			throw sys::bad_argument("network");
 		}
-	} catch (sys::invalid_cmdline_argument& err) {
-		std::cerr << err.what() << ": " << err.arg() << std::endl;
+	} catch (const sys::bad_argument& err) {
+		std::cerr << err.what() << ": " << err.argument() << std::endl;
 		return 1;
 	}
 
 	if (role == role_master) {
 
 		#ifndef NDEBUG
-		stdx::debug_message(
+		sys::log_message(
 			"tst",
 			"Network = _\n"
 			"Num peers = _\n"
@@ -308,7 +316,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		#ifndef NDEBUG
-		stdx::debug_message("tst", "forked _", procs);
+		sys::log_message("tst", "forked _", procs);
 		#endif
 		retval = procs.wait();
 

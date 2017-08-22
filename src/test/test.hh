@@ -15,11 +15,11 @@
 #include <memory>
 #include <cassert>
 #include <array>
+#include <queue>
 
-#include <stdx/random.hh>
-#include <stdx/iterator.hh>
-
-#include <sys/network_format.hh>
+#include <unistdx/base/n_random_bytes>
+#include <unistdx/it/queue_popper>
+#include <unistdx/net/bytes>
 
 #include "color.hh"
 #include "demangle.hh"
@@ -156,8 +156,8 @@ namespace test {
 				std::clog << this->name() << std::endl;
 			}
 			int ret = std::accumulate(
-				stdx::front_popper(_tests),
-				stdx::front_popper_end(_tests),
+				sys::deque_popper(_tests),
+				sys::deque_popper_end(_tests),
 				0,
 				[] (int sum, const value_type& tst) {
 					return sum |= tst->run();
@@ -283,7 +283,7 @@ namespace test {
 	randomise(It first, It last, Engine& rng) {
 		typedef typename std::decay<decltype(*first)>::type value_type;
 		while (first != last) {
-			*first = stdx::n_random_bytes<value_type>(rng);
+			*first = sys::n_random_bytes<value_type>(rng);
 			++first;
 		}
 	}

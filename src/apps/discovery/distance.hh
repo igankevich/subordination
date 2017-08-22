@@ -4,7 +4,7 @@
 #include <limits>
 #include <utility>
 
-#include <sys/endpoint.hh>
+#include <unistdx/net/endpoint>
 
 namespace discovery {
 

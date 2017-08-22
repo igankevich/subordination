@@ -1,8 +1,9 @@
 #ifndef FACTORY_BITS_TERMINATE_HANDLER_HH
 #define FACTORY_BITS_TERMINATE_HANDLER_HH
 
+#include <unistdx/ipc/signal>
 #include <factory/error.hh>
-#include <sys/bits/check.hh>
+#include <iostream>
 
 namespace factory {
 
@@ -36,11 +37,11 @@ namespace factory {
 			if (std::exception_ptr ptr = std::current_exception()) {
 				try {
 					std::rethrow_exception(ptr);
-				} catch (Error& err) {
+				} catch (const Error& err) {
 					std::cerr << err << Thread_id() << std::endl;
-				} catch (sys::bits::bad_call& err) {
+				} catch (const sys::bad_call& err) {
 					std::cerr << err << Thread_id() << std::endl;
-				} catch (std::exception& err) {
+				} catch (const std::exception& err) {
 					std::cerr << err << Thread_id() << std::endl;
 				} catch (...) {
 					std::cerr << "unknown exception caught" << Thread_id() << std::endl;

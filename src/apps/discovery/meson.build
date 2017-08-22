@@ -6,7 +6,7 @@ libz = dependency('zlib')
 		'discovery-test',
 		sources: 'discovery_test.cc',
 		include_directories: [srcdir, testdir],
-		dependencies: [libpthread, libz],
+		dependencies: [threads, libz, unistdx],
 		cpp_args: ['-DFACTORY_SINGLE_THREAD', '-DFACTORY_PRIORITY_SCHEDULING'],
 	)
 #	,
@@ -20,7 +20,7 @@ executable(
 	'slave-failure-test',
 	sources: 'discovery_test.cc',
 	include_directories: [srcdir, testdir],
-	dependencies: [libpthread, libz],
+	dependencies: [threads, libz, unistdx],
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
 		'-DFACTORY_TEST_SLAVE_FAILURE',
@@ -32,7 +32,7 @@ executable(
 	'master-failure-test',
 	sources: 'discovery_test.cc',
 	include_directories: [srcdir, testdir],
-	dependencies: [libpthread, libz],
+	dependencies: [threads, libz, unistdx],
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
 		'-DFACTORY_TEST_USE_SSH'
@@ -45,6 +45,7 @@ test(
 		'discovery-ranking-test',
 		sources: 'discovery_ranking_test.cc',
 		include_directories: [srcdir, testdir],
+		dependencies: [unistdx]
 	)
 )
 
@@ -54,6 +55,7 @@ test(
 		'csv-test',
 		sources: 'csv_test.cc',
 		include_directories: [srcdir, testdir],
+		dependencies: [unistdx]
 	)
 )
 
@@ -61,4 +63,5 @@ executable(
 	'discover-topology',
 	sources: 'discover_topology.cc',
 	include_directories: [srcdir, testdir],
+	dependencies: [unistdx]
 )

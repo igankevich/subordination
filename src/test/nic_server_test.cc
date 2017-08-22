@@ -1,13 +1,10 @@
-#include <stdx/debug.hh>
-
 #include <factory/algorithm.hh>
 #include <factory/cpu_server.hh>
 #include <factory/kernel.hh>
 #include <factory/server_guard.hh>
 #include <factory/bits/terminate_handler.hh>
 
-#include <sys/cmdline.hh>
-#include <sys/log.hh>
+#include <unistdx/base/cmdline>
 
 #include <cassert>
 
@@ -43,7 +40,7 @@ struct Router {
 	send_remote(factory::Kernel*);
 
 	void
-	forward(const factory::Kernel_header& hdr, sys::packetstream& istr) {
+	forward(const factory::Kernel_header& hdr, sys::pstream& istr) {
 		assert(false);
 	}
 
@@ -114,7 +111,7 @@ struct Test_socket: public factory::Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		factory::Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -122,7 +119,7 @@ struct Test_socket: public factory::Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		factory::Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -206,11 +203,12 @@ main(int argc, char* argv[]) {
 	factory::Terminate_guard g00;
 //	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
-	sys::cmdline cmdline(argc, argv, {
-		sys::cmd::ignore_first_arg(),
-		sys::cmd::make_option({"--role"}, role)
-	});
-	cmdline.parse();
+	sys::input_operator_type options[] = {
+		sys::ignore_first_argument(),
+		sys::make_key_value("role", role),
+		nullptr
+	};
+	sys::parse_arguments(argc, argv, options);
 	factory::register_type<Test_socket>();
 
 	if (role == Role::Slave) {

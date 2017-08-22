@@ -13,12 +13,13 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
+#include <cstring>
 
-#include <stdx/iterator.hh>
-
-#include <sys/bits/check.hh>
-#include <sys/event.hh>
-#include <sys/process.hh>
+#include <unistdx/check>
+#include <unistdx/io/poller>
+#include <unistdx/ipc/identity>
+#include <unistdx/ipc/process>
+#include <unistdx/it/cstring_iterator>
 
 namespace factory {
 
@@ -28,7 +29,7 @@ namespace factory {
 		void
 		for_each_open_file_descriptor(F func) {
 			struct ::rlimit rlim;
-			sys::bits::check(::getrlimit(RLIMIT_NOFILE, &rlim), __FILE__, __LINE__, __func__);
+			UNISTDX_CHECK(::getrlimit(RLIMIT_NOFILE, &rlim));
 			const int num_fds = rlim.rlim_cur == RLIM_INFINITY ? FD_SETSIZE : rlim.rlim_cur;
 			const int batch_size = FD_SETSIZE;
 			const int num_batches = num_fds / batch_size + (num_fds % FD_SETSIZE == 0 ? 0 : 1);
@@ -40,7 +41,7 @@ namespace factory {
 				for (int fd=from; fd<to; ++fd) {
 					fds.emplace_back(fd, 0, 0);
 				}
-				sys::bits::check(::poll(fds.data(), fds.size(), no_timeout), __FILE__, __LINE__, __func__);
+				UNISTDX_CHECK(::poll(fds.data(), fds.size(), no_timeout));
 				std::for_each(
 					fds.begin(), fds.end(),
 					[&func] (const sys::poll_event& rhs) {
@@ -56,7 +57,11 @@ namespace factory {
 		template<class F>
 		void
 		for_each_env(F func) {
-			std::for_each(std::begin(environ), std::end(environ), func);
+			std::for_each(
+				sys::cstring_iterator<char*>(environ),
+				sys::cstring_iterator<char*>(),
+				func
+			);
 		}
 
 	}
@@ -66,10 +71,7 @@ namespace factory {
 		const char* bad_prefix = "LD_";
 		bits::for_each_env(
 			[bad_prefix] (char* rhs) {
-				if (std::begin(rhs) == std::search(
-					std::begin(rhs), std::end(rhs),
-					std::begin(bad_prefix), std::end(bad_prefix)
-				)) {
+				if (std::strstr(rhs, bad_prefix)) {
 					throw std::runtime_error("LD_* environment variable detected");
 				};
 			}
@@ -80,7 +82,7 @@ namespace factory {
 	shred_environment() {
 		bits::for_each_env(
 			[] (char* rhs) {
-				std::fill(std::begin(rhs), std::end(rhs), '\0');
+				std::memset(rhs, 0, std::strlen(rhs));
 			}
 		);
 	}

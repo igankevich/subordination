@@ -1,5 +1,3 @@
-#include <stdx/debug.hh>
-
 #include <factory/cpu_server.hh>
 #include <factory/timer_server.hh>
 #include <factory/process_server.hh>
@@ -25,14 +23,14 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr);
+		forward(const Kernel_header& hdr, sys::pstream& istr);
 
 	};
 
 	Process_iserver<Kernel,Router> remote_server;
 
 	void
-	Router::forward(const Kernel_header& hdr, sys::packetstream& istr) {
+	Router::forward(const Kernel_header& hdr, sys::pstream& istr) {
 		remote_server.forward(hdr, istr);
 	}
 #else
@@ -47,7 +45,7 @@ namespace factory {
 		send_remote(Kernel*);
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			assert(false);
 		}
 
@@ -88,20 +86,20 @@ struct Test_socket: public Kernel {
 	}
 
 	void act() override {
-		stdx::debug_message("chld", "Test_socket::act(): It works!");
+		sys::log_message("chld", "Test_socket::act(): It works!");
 		factory::commit(factory::remote_server, this);
 	}
 
-	void write(sys::packetstream& out) override {
-		stdx::debug_message("chld", "Test_socket::write()");
+	void write(sys::pstream& out) override {
+		sys::log_message("chld", "Test_socket::write()");
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
 	}
 
-	void read(sys::packetstream& in) override {
-		stdx::debug_message("chld", "Test_socket::read()");
+	void read(sys::pstream& in) override {
+		sys::log_message("chld", "Test_socket::read()");
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -178,7 +176,7 @@ struct Main: public Kernel {
 	void react(Kernel*) override {
 		if (++_num_returned == NUM_SIZES) {
 			#ifndef NDEBUG
-			stdx::debug_message("chld", "finished");
+			sys::log_message("chld", "finished");
 			#endif
 			factory::commit(local_server, this, factory::Result::success);
 		}

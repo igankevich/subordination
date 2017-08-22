@@ -5,8 +5,8 @@
 #include <sstream>
 #include <type_traits>
 
-#include <stdx/packetbuf.hh>
-#include <sys/network_format.hh>
+#include <unistdx/base/packetbuf>
+#include <unistdx/net/byte_order>
 
 namespace factory {
 
@@ -40,7 +40,7 @@ namespace factory {
 		using typename base_type::pos_type;
 		typedef uint32_t size_type;
 
-		typedef stdx::basic_packetbuf<char_type,traits_type> good_base_type;
+		typedef sys::basic_packetbuf<char_type,traits_type> good_base_type;
 		static_assert(
 			std::is_base_of<good_base_type, Base>::value,
 			"bad base class"
@@ -120,7 +120,7 @@ namespace factory {
 		}
 
 	private:
-		typedef sys::Bytes<size_type, char_type> bytes_type;
+		typedef sys::bytes<size_type, char_type> bytes_type;
 
 		void read_kernel_packetsize() {
 			const size_type count = egptr() - gptr();
@@ -221,7 +221,7 @@ namespace factory {
 		sets(State rhs, const char* where) {
 			const State olds = _rstate;
 			_rstate = rhs;
-			stdx::debug_message("buf", "kernelbuf _", transition(where, olds, _rstate, *this));
+			sys::log_message("buf", "kernelbuf _", transition(where, olds, _rstate, *this));
 		}
 		#else
 		void

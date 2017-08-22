@@ -1,8 +1,5 @@
-#include <stdx/debug.hh>
-
 #include "security.hh"
-#include <sys/network_format.hh>
-#include <sys/log.hh>
+#include <unistdx/net/endian>
 
 void
 proceed_with_security_checks_or_exit() {
@@ -22,14 +19,13 @@ bail_out() {
 int main() {
 	try {
 		proceed_with_security_checks_or_exit();
-	} catch (sys::bits::bad_call& err) {
+	} catch (const sys::bad_call& err) {
 		std::cerr << err << std::endl;
 		return bail_out();
-	} catch (std::exception& err) {
+	} catch (const std::exception& err) {
 		std::cerr << err.what() << std::endl;
 		return bail_out();
 	}
-	sys::endiannes_guard g1;
-	sys::syslog_guard g2(std::clog, sys::syslog_guard::tee);
+	sys::endian_guard g1;
 	return 0;
 }

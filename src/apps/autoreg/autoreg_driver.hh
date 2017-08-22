@@ -76,7 +76,7 @@ public:
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << zsize;
 		out << zdelta;
@@ -99,7 +99,7 @@ public:
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> zsize;
 		in >> zdelta;
@@ -266,7 +266,7 @@ namespace autoreg {
 template<class T>
 void Autoreg_model<T>::react(factory::Kernel* child) {
 	#ifndef NDEBUG
-	stdx::debug_message("autoreg", "finished _", typeid(*child).name());
+	sys::log_message("autoreg", "finished _", typeid(*child).name());
 	#endif
 	if (typeid(*child) == typeid(ACF_generator<T>)) {
 		do_it();
@@ -279,8 +279,8 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
 		#ifndef NDEBUG
-		stdx::debug_message("autoreg", "var(acf) = _", var_acf(acf_model));
-		stdx::debug_message("autoreg", "var(eps) = _", var_wn);
+		sys::log_message("autoreg", "var(acf) = _", var_acf(acf_model));
+		sys::log_message("autoreg", "var(eps) = _", var_wn);
 		#endif
 		std::size_t max_num_parts = zsize[0] / part_size();
 //		std::size_t modulo = homogeneous ? 1 : 2;

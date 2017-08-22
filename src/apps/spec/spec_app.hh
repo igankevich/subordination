@@ -4,8 +4,9 @@
 #include <zlib.h>
 
 #include <fstream>
+#include <cmath>
 
-#include <sys/path.hh>
+#include <unistdx/fs/path>
 
 typedef int32_t Year;
 typedef int32_t Month;
@@ -68,13 +69,13 @@ struct Date {
 			<< std::setw(2) << rhs._minutes;
 	}
 
-	friend sys::packetstream&
-	operator>>(sys::packetstream& in, Date& rhs) {
+	friend sys::pstream&
+	operator>>(sys::pstream& in, Date& rhs) {
 		return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
 	}
 
-	friend sys::packetstream&
-	operator<<(sys::packetstream& out, const Date& rhs) {
+	friend sys::pstream&
+	operator<<(sys::pstream& out, const Date& rhs) {
 		return out << rhs._year << rhs._month << rhs._day << rhs._hours << rhs._minutes;
 	}
 
@@ -133,11 +134,11 @@ struct Observation {
 		return out << rhs._year << ',' << rhs._station<< ',' << rhs._var;
 	}
 
-	friend sys::packetstream& operator>>(sys::packetstream& in, Observation& rhs) {
+	friend sys::pstream& operator>>(sys::pstream& in, Observation& rhs) {
 		return in >> rhs._year >> rhs._station >> rhs._var;
 	}
 
-	friend sys::packetstream& operator<<(sys::packetstream& out, const Observation& rhs) {
+	friend sys::pstream& operator<<(sys::pstream& out, const Observation& rhs) {
 		return out << rhs._year << rhs._station << rhs._var;
 	}
 
@@ -152,8 +153,8 @@ namespace sys {
 	namespace bits {
 
 		template<class Container>
-		sys::packetstream&
-		write_container(sys::packetstream& out, const Container& rhs) {
+		sys::pstream&
+		write_container(sys::pstream& out, const Container& rhs) {
 			typedef typename Container::value_type value_type;
 			out << uint64_t(rhs.size());
 			std::for_each(
@@ -167,8 +168,8 @@ namespace sys {
 		}
 
 		template<class Container>
-		sys::packetstream&
-		read_container(sys::packetstream& in, Container& rhs) {
+		sys::pstream&
+		read_container(sys::pstream& in, Container& rhs) {
 			typedef typename Container::value_type value_type;
 			uint64_t n = 0;
 			in >> n;
@@ -184,8 +185,8 @@ namespace sys {
 		}
 
 		template<class Container>
-		sys::packetstream&
-		read_map(sys::packetstream& in, Container& rhs) {
+		sys::pstream&
+		read_map(sys::pstream& in, Container& rhs) {
 			typedef typename Container::key_type key_type;
 			typedef typename Container::mapped_type mapped_type;
 			uint64_t n = 0;
@@ -203,50 +204,50 @@ namespace sys {
 	}
 
 	template<class T>
-	sys::packetstream&
-	operator<<(sys::packetstream& out, const std::vector<T>& rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, const std::vector<T>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class T>
-	sys::packetstream&
-	operator>>(sys::packetstream& in, std::vector<T>& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, std::vector<T>& rhs) {
 		return bits::read_container(in, rhs);
 	}
 
 	template<class K, class V>
-	sys::packetstream&
-	operator<<(sys::packetstream& out, const std::unordered_map<K,V>& rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, const std::unordered_map<K,V>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class K, class V>
-	sys::packetstream&
-	operator>>(sys::packetstream& in, std::unordered_map<K,V>& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, std::unordered_map<K,V>& rhs) {
 		return bits::read_map(in, rhs);
 	}
 
 	template<class K, class V>
-	sys::packetstream&
-	operator<<(sys::packetstream& out, const std::map<K,V>& rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, const std::map<K,V>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class K, class V>
-	sys::packetstream&
-	operator>>(sys::packetstream& in, std::map<K,V>& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, std::map<K,V>& rhs) {
 		return bits::read_map(in, rhs);
 	}
 
 	template<class X, class Y>
-	sys::packetstream&
-	operator<<(sys::packetstream& out, const std::pair<X,Y>& rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, const std::pair<X,Y>& rhs) {
 		return out << rhs.first << rhs.second;
 	}
 
 	template<class X, class Y>
-	sys::packetstream&
-	operator>>(sys::packetstream& in, std::pair<X,Y>& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, std::pair<X,Y>& rhs) {
 		return in >> rhs.first >> rhs.second;
 	}
 
@@ -341,7 +342,7 @@ struct Station_kernel: public Kernel {
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
 			#ifndef NDEBUG
-			stdx::debug_message(
+			sys::log_message(
 				"spec",
 				"finished station _, year _, total no. of spectra _",
 				station(), _year, num_processed_spectra()
@@ -413,7 +414,7 @@ struct Station_kernel: public Kernel {
 		const size_t new_size = _spectra.size();
 		if (new_size < old_size) {
 			#ifndef NDEBUG
-			stdx::debug_message(
+			sys::log_message(
 				"spec",
 				"removed _ incomplete records from station _, year _",
 				old_size-new_size, _station, _year
@@ -436,7 +437,7 @@ struct Station_kernel: public Kernel {
 	int32_t num_processed_spectra() const { return _out_matrix.size(); }
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> _observations;
 		in >> _station;
@@ -447,7 +448,7 @@ struct Station_kernel: public Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << _observations;
 		out << _station;
@@ -504,7 +505,7 @@ struct Year_kernel: public Kernel {
 		}
 		k->write_output_to(_output_file, _year);
 		#ifndef NDEBUG
-		stdx::debug_message(
+		sys::log_message(
 			"spec",
 			"finished station _, year _, [_/_], total no. of spectra _, from _",
 			k->station(), _year, 1+_count, _observations.size(),
@@ -526,7 +527,7 @@ struct Year_kernel: public Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> _year;
 		int32_t num_stations;
@@ -544,7 +545,7 @@ struct Year_kernel: public Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << _year;
 		out << int32_t(_observations.size());
@@ -590,7 +591,7 @@ struct Launcher: public Kernel {
 
 	void act() override {
 		#ifndef NDEBUG
-		stdx::debug_message("spec", "launcher start");
+		sys::log_message("spec", "launcher start");
 		#endif
 		_time0 = current_time_nano();
 		std::ifstream in("input");
@@ -621,14 +622,14 @@ struct Launcher: public Kernel {
 		k->react(k1);
 		if (k->finished()) {
 			#ifndef NDEBUG
-			stdx::debug_message("spec", "finished year _", k->year());
+			sys::log_message("spec", "finished year _", k->year());
 			#endif
 			_count_spectra += k->num_processed_spectra();
 			_yearkernels.erase(k1->year());
 			delete k;
 			if (++_count == 0) {
 				#ifndef NDEBUG
-				stdx::debug_message("spec", "total number of processed spectra _", _count_spectra);
+				sys::log_message("spec", "total number of processed spectra _", _count_spectra);
 				#endif
 				{
 					Time time1 = current_time_nano();
@@ -649,13 +650,13 @@ struct Launcher: public Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> _count >> _count_spectra;
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << _count << _count_spectra;
 	}
@@ -682,7 +683,7 @@ struct Spec_app: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		stdx::debug_message("spec", "program start");
+		sys::log_message("spec", "program start");
 		#endif
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream(local_server, this, new Launcher);

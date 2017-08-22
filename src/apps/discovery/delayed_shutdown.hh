@@ -19,17 +19,17 @@ struct Delayed_shutdown: public Kernel {
 			try {
 				#ifndef NDEBUG
 				sys::endpoint addr = remote_server.server_addr();
-				stdx::debug_message("tst", "killing _", addr);
+				sys::log_message("tst", "killing _", addr);
 				#endif
 			} catch (...) {
 				#ifndef NDEBUG
-				stdx::debug_message("tst", "killing this process");
+				sys::log_message("tst", "killing this process");
 				#endif
 			}
 			std::exit(0);
 		} else {
 			#ifndef NDEBUG
-			stdx::debug_message("tst", "shutdown this process");
+			sys::log_message("tst", "shutdown this process");
 			#endif
 			factory::graceful_shutdown(0);
 		}

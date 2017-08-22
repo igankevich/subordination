@@ -4,16 +4,15 @@
 #include <map>
 #include <type_traits>
 
-#include <stdx/algorithm.hh>
-#include <stdx/iterator.hh>
-#include <stdx/mutex.hh>
-
-#include <sys/event.hh>
-#include <sys/socket.hh>
-#include <sys/fildesbuf.hh>
-#include <sys/packetstream.hh>
-#include <sys/endpoint.hh>
-#include <sys/ifaddr.hh>
+#include <unistdx/base/delete_each>
+#include <unistdx/base/unlock_guard>
+#include <unistdx/io/fildesbuf>
+#include <unistdx/io/poller>
+#include <unistdx/it/queue_popper>
+#include <unistdx/net/endpoint>
+#include <unistdx/net/ifaddr>
+#include <unistdx/net/pstream>
+#include <unistdx/net/socket>
 
 #include <factory/proxy_server.hh>
 #include <factory/kernelbuf.hh>
@@ -21,7 +20,8 @@
 
 namespace factory {
 
-	template<class T, class Socket, class Router, class Kernels=std::deque<T*>>
+	template<class T, class Socket, class Router, class Kernels=std::deque<T*>,
+		class Traits=sys::deque_traits<Kernels>>
 	struct Remote_Rserver: public Server_base {
 
 		typedef Server_base base_server;
@@ -34,6 +34,8 @@ namespace factory {
 		typedef Router router_type;
 		typedef Kernels pool_type;
 		typedef application_type app_type;
+		typedef Traits traits_type;
+		typedef sys::queue_pop_iterator<Kernels,Traits> queue_popper;
 
 		static_assert(
 			std::is_move_constructible<stream_type>::value,
@@ -108,7 +110,7 @@ namespace factory {
 				delete_kernel = true;
 			}
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "send to _ kernel _ ", vaddr(), *kernel);
+			sys::log_message("nic", "send to _ kernel _ ", vaddr(), *kernel);
 			#endif
 			_stream << kernel;
 			/// The kernel is deleted if it goes downstream
@@ -149,7 +151,7 @@ namespace factory {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Remote_Rserver& rhs) {
-			return out << stdx::make_object(
+			return out << sys::make_object(
 				"vaddr", rhs.vaddr(),
 				"socket", rhs.socket(),
 				"kernels", rhs._sentupstream.size()
@@ -162,8 +164,8 @@ namespace factory {
 		do_recover_kernels(pool_type& rhs) noexcept {
 			using namespace std::placeholders;
 			std::for_each(
-				stdx::front_popper(rhs),
-				stdx::front_popper_end(rhs),
+				queue_popper(rhs),
+				queue_popper(rhs),
 				std::bind(&Remote_Rserver::recover_kernel, this, _1)
 			);
 		}
@@ -176,10 +178,7 @@ namespace factory {
 
 		void
 		do_delete_kernels(pool_type& rhs) noexcept {
-			stdx::delete_each(
-				stdx::front_popper(rhs),
-				stdx::front_popper_end(rhs)
-			);
+			sys::delete_each(queue_popper(rhs), queue_popper());
 		}
 
 		static bool
@@ -207,7 +206,7 @@ namespace factory {
 				k->principal(p);
 			}
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "recv _", *k);
+			sys::log_message("nic", "recv _", *k);
 			#endif
 			if (!ok) {
 				return_kernel(k);
@@ -218,7 +217,7 @@ namespace factory {
 
 		void return_kernel(kernel_type* k) {
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "no principal found for _", *k);
+			sys::log_message("nic", "no principal found for _", *k);
 			#endif
 			k->principal(k->parent());
 			this->send(k);
@@ -227,12 +226,12 @@ namespace factory {
 		void recover_kernel(kernel_type* k) {
 			if (k->moves_upstream()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic", "recover _", *k);
+				sys::log_message("nic", "recover _", *k);
 				#endif
 				_router.send_remote(k);
 			} else if (k->moves_somewhere()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic", "destination is unreachable for _", *k);
+				sys::log_message("nic", "destination is unreachable for _", *k);
 				#endif
 				k->from(k->to());
 				k->result(Result::endpoint_not_connected);
@@ -240,7 +239,7 @@ namespace factory {
 				_router.send_local(k);
 			} else if (k->moves_downstream() and k->carries_parent()) {
 				#ifndef NDEBUG
-				stdx::debug_message("nic", "restore parent _", *k);
+				sys::log_message("nic", "restore parent _", *k);
 				#endif
 				_router.send_local(k);
 			} else {
@@ -322,7 +321,7 @@ namespace factory {
 		remove_server(server_ptr ptr) override {
 			// TODO: occasional ``Bad file descriptor''
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "remove _", *ptr);
+			sys::log_message("nic", "remove _", *ptr);
 			#endif
 			auto result = _upstream.find(ptr->vaddr());
 			if (result != _upstream.end()) {
@@ -342,7 +341,7 @@ namespace factory {
 				#endif
 				add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
 				#ifndef NDEBUG
-				stdx::debug_message("nic", "accept _", *ptr);
+				sys::log_message("nic", "accept _", *ptr);
 				#endif
 			} else {
 				/*
@@ -350,7 +349,7 @@ namespace factory {
 				const sys::port_type local_port = s->socket().bind_addr().port();
 				if (!(addr.port() < local_port)) {
 					#ifndef NDEBUG
-					stdx::debug_message("nic",  "replace _", s);
+					sys::log_message("nic",  "replace _", s);
 					#endif
 					poller().disable(s->socket().fd());
 					s->socket(std::move(sock));
@@ -455,10 +454,10 @@ namespace factory {
 
 		void
 		process_kernels() override {
-			stdx::front_pop_iterator<kernel_pool> it_end;
 			lock_type lock(this->_mutex);
-			stdx::for_each_thread_safe(lock,
-				stdx::front_popper(this->_kernels), it_end,
+			sys::for_each_unlock(lock,
+				sys::queue_popper(this->_kernels),
+				sys::queue_popper_end(this->_kernels),
 				[this] (kernel_type* rhs) { process_kernel(rhs); }
 			);
 		}
@@ -546,7 +545,7 @@ namespace factory {
 			auto result = emplace_server(vaddr, std::move(s));
 			poller().emplace(sys::poll_event{fd, events, revents}, result.first->second);
 			#ifndef NDEBUG
-			stdx::debug_message("nic", "add _", result.first->second);
+			sys::log_message("nic", "add _", result.first->second);
 			#endif
 			return result.first->second;
 		}

@@ -1,8 +1,9 @@
 #ifndef FACTORY_CPU_SERVER_HH
 #define FACTORY_CPU_SERVER_HH
 
-#include <stdx/mutex.hh>
-#include <sys/system.hh>
+#include <unistdx/base/unlock_guard>
+#include <unistdx/util/system>
+
 #include <factory/basic_server.hh>
 #include <factory/result.hh>
 #include <factory/algorithm.hh>
@@ -15,6 +16,7 @@ namespace factory {
 		typedef Standard_server_with_pool<T> base_server;
 		using typename base_server::kernel_type;
 		using typename base_server::lock_type;
+		using typename base_server::traits_type;
 
 		Basic_CPU_server(Basic_CPU_server&& rhs) noexcept:
 		base_server(std::move(rhs))
@@ -40,9 +42,9 @@ namespace factory {
 			lock_type lock(this->_mutex);
 			this->_semaphore.wait(lock, [this,&lock] () {
 				while (!this->_kernels.empty()) {
-					kernel_type* kernel = stdx::front(this->_kernels);
-					stdx::pop(this->_kernels);
-					stdx::unlock_guard<lock_type> g(lock);
+					kernel_type* kernel = traits_type::front(this->_kernels);
+					traits_type::pop(this->_kernels);
+					sys::unlock_guard<lock_type> g(lock);
 					try {
 						::factory::act(kernel);
 					} catch (std::exception& x) {

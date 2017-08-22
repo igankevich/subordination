@@ -30,13 +30,13 @@ namespace factory {
 		return out << to_string(rhs);
 	}
 
-	sys::packetstream&
-	operator<<(sys::packetstream& out, Result rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, Result rhs) {
 		return out << result_type(rhs);
 	}
 
-	sys::packetstream&
-	operator>>(sys::packetstream& in, Result& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, Result& rhs) {
 		result_type tmp;
 		in >> tmp;
 		rhs = Result(tmp);

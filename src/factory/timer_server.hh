@@ -1,7 +1,7 @@
 #ifndef FACTORY_TIMER_SERVER_HH
 #define FACTORY_TIMER_SERVER_HH
 
-#include <sys/semaphore.hh>
+#include <unistdx/ipc/semaphore>
 #include <factory/basic_server.hh>
 #include <factory/algorithm.hh>
 
@@ -19,7 +19,8 @@ namespace factory {
 	using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
 
 	template<class T>
-	using Timer_server_base = Standard_server_with_pool<T, Time_priority_pool<T>>;
+	using Timer_server_base = Standard_server_with_pool<T, Time_priority_pool<T>,
+		sys::priority_queue_traits<Time_priority_pool<T>>>;
 
 	template<class T>
 	struct Timer_server: public Timer_server_base<T> {
@@ -29,6 +30,7 @@ namespace factory {
 		using typename base_server::mutex_type;
 		using typename base_server::lock_type;
 		using typename base_server::sem_type;
+		using typename base_server::traits_type;
 
 		Timer_server(Timer_server&& rhs) noexcept:
 		base_server(std::move(rhs))
@@ -50,9 +52,9 @@ namespace factory {
 				lock_type lock(this->_mutex);
 				wait_until_kernel_arrives(lock);
 				if (!this->is_stopped()) {
-					kernel_type* kernel = stdx::front(this->_kernels);
+					kernel_type* kernel = traits_type::front(this->_kernels);
 					if (!wait_until_kernel_is_ready(lock, kernel)) {
-						stdx::pop(this->_kernels);
+						traits_type::pop(this->_kernels);
 						lock.unlock();
 						::factory::act(kernel);
 					}

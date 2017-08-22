@@ -1,8 +1,8 @@
-#include <stdx/debug.hh>
-
 #include "lbuffer.hh"
 #include <factory/error.hh>
 #include "websocket.hh"
+
+#include <unistdx/base/adapt_engine>
 
 #include "test.hh"
 #include "datum.hh"
@@ -27,7 +27,7 @@ struct Test_buffer: public test::Parametric_test<Test_buffer<T,B>,std::array<siz
 	{}
 
 	void parametric_run(size_t chunk_size, size_t i) override {
-		stdx::adapt_engine<std::random_device, T> rng2(rng);
+		sys::adapt_engine<std::random_device, T> rng2(rng);
 		const size_type size = size_type(2) << i;
 		std::vector<T> input(size);
 		test::randomise(input.begin(), input.end(), rng2);

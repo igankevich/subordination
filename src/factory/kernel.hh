@@ -3,10 +3,13 @@
 
 #include <bitset>
 
-#include <factory/basic_server.hh>
-#include <sys/process.hh>
-#include <sys/packetstream.hh>
+#include <unistdx/base/make_object>
+#include <unistdx/ipc/execute>
+#include <unistdx/ipc/process>
+#include <unistdx/net/pstream>
+
 #include "result.hh"
+#include <factory/basic_server.hh>
 
 namespace factory {
 
@@ -151,7 +154,7 @@ namespace factory {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Kernel_header& rhs) {
-			return out << stdx::make_object(
+			return out << sys::make_object(
 				"src", rhs._src,
 				"dst", rhs._dst,
 				"app", rhs._app
@@ -170,12 +173,12 @@ namespace factory {
 		static constexpr const id_type no_id = 0;
 
 		virtual void
-		read(sys::packetstream& in) {
+		read(sys::pstream& in) {
 			in >> _result >> _id;
 		}
 
 		virtual void
-		write(sys::packetstream& out) {
+		write(sys::pstream& out) {
 			out << _result << _id;
 		}
 
@@ -298,7 +301,7 @@ namespace factory {
 		}
 
 		void
-		read(sys::packetstream& in) override {
+		read(sys::pstream& in) override {
 			base_kernel::read(in);
 			bool b = false;
 			in >> b;
@@ -312,7 +315,7 @@ namespace factory {
 		}
 
 		void
-		write(sys::packetstream& out) override {
+		write(sys::pstream& out) override {
 			base_kernel::write(out);
 			out << carries_parent();
 			if (moves_downstream() or moves_somewhere()) {
@@ -352,7 +355,7 @@ namespace factory {
 				(rhs.moves_everywhere() ? 'b' : '-'),
 				'\0'
 			};
-			return out << stdx::make_object(
+			return out << sys::make_object(
 				"state", state,
 				"type", typeid(rhs).name(),
 				"id", rhs.id(),
@@ -443,7 +446,7 @@ namespace factory {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Application& rhs) {
-			return out << stdx::make_object("exec", rhs._execpath);
+			return out << sys::make_object("exec", rhs._execpath);
 		}
 
 	private:

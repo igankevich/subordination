@@ -5,12 +5,15 @@
 #include <cassert>
 #include <atomic>
 
-#include <stdx/iterator.hh>
-
-#include <sys/process.hh>
-#include <sys/pipe.hh>
-#include <sys/fildesbuf.hh>
-#include <sys/packetstream.hh>
+#include <unistdx/base/delete_each>
+#include <unistdx/base/unlock_guard>
+#include <unistdx/io/fildesbuf>
+#include <unistdx/io/pipe>
+#include <unistdx/io/two_way_pipe>
+#include <unistdx/ipc/process>
+#include <unistdx/ipc/process_group>
+#include <unistdx/it/queue_popper>
+#include <unistdx/net/pstream>
 
 #include <factory/basic_server.hh>
 #include <factory/proxy_server.hh>
@@ -21,13 +24,16 @@
 
 namespace factory {
 
-	template<class T, class Router, class Kernels=std::deque<T*>>
+	template<class T, class Router, class Kernels=std::deque<T*>,
+		class Traits=sys::deque_traits<Kernels>>
 	struct Buffered_server: public Server_base {
 
 		typedef Server_base base_server;
 		typedef T kernel_type;
 		typedef Router router_type;
 		typedef Kernels pool_type;
+		typedef Traits traits_type;
+		typedef sys::queue_pop_iterator<pool_type,traits_type> queue_popper;
 
 		explicit
 		Buffered_server(router_type& router):
@@ -90,8 +96,8 @@ namespace factory {
 			// recover kernels written to output buffer
 			using namespace std::placeholders;
 			std::for_each(
-				stdx::front_popper(_buffer),
-				stdx::front_popper_end(_buffer),
+				queue_popper(_buffer),
+				queue_popper(),
 				std::bind(&Buffered_server::recover_kernel, this, _1)
 			);
 		}
@@ -112,10 +118,7 @@ namespace factory {
 
 		void
 		delete_remaining_kernels() {
-			stdx::delete_each(
-				stdx::front_popper(_buffer),
-				stdx::front_popper_end(_buffer)
-			);
+			sys::delete_each(queue_popper(_buffer), queue_popper());
 		}
 
 
@@ -134,7 +137,7 @@ namespace factory {
 		using typename base_server::kernel_type;
 		using typename base_server::router_type;
 		typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
-		typedef sys::packetstream stream_type;
+		typedef sys::pstream stream_type;
 		typedef typename kernel_type::app_type app_type;
 
 		using base_server::_router;
@@ -206,7 +209,7 @@ namespace factory {
 			kernel->write(_ostream);
 			_ostream.end_packet();
 			#ifndef NDEBUG
-			stdx::debug_message("app", "send to _ kernel _", _childpid, *kernel);
+			sys::log_message("app", "send to _ kernel _", _childpid, *kernel);
 			#endif
 			base_server::send(kernel);
 		}
@@ -232,18 +235,18 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			_ostream.begin_packet();
 			_ostream.append_payload(istr);
 			_ostream.end_packet();
 			#ifndef NDEBUG
-			stdx::debug_message("app", "forward _", hdr);
+			sys::log_message("app", "forward _", hdr);
 			#endif
 		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Process_rserver& rhs) {
-			return out << stdx::make_object("childpid", rhs._childpid);
+			return out << sys::make_object("childpid", rhs._childpid);
 		}
 
 	private:
@@ -281,7 +284,7 @@ namespace factory {
 				k->principal(p);
 			}
 			#ifndef NDEBUG
-			stdx::debug_message("app", "recv _", *k);
+			sys::log_message("app", "recv _", *k);
 			#endif
 			if (!ok) {
 				return_kernel(k);
@@ -292,7 +295,7 @@ namespace factory {
 
 		void return_kernel(kernel_type* k) {
 			#ifndef NDEBUG
-			stdx::debug_message("app", "no principal found for _", *k);
+			sys::log_message("app", "no principal found for _", *k);
 			#endif
 			k->principal(k->parent());
 			this->send(k);
@@ -325,6 +328,7 @@ namespace factory {
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
 		using typename base_server::server_ptr;
+		using typename base_server::queue_popper;
 
 		using base_server::poller;
 
@@ -349,10 +353,10 @@ namespace factory {
 
 		void
 		process_kernels() override {
-			stdx::front_pop_iterator<kernel_pool> it_end;
 			lock_type lock(this->_mutex);
-			stdx::for_each_thread_safe(lock,
-				stdx::front_popper(this->_kernels), it_end,
+			sys::for_each_unlock(lock,
+				queue_popper(this->_kernels),
+				queue_popper(),
 				[this] (kernel_type* rhs) { process_kernel(rhs); }
 			);
 		}
@@ -360,7 +364,7 @@ namespace factory {
 		void
 		add(const Application& app) {
 			#ifndef NDEBUG
-			stdx::debug_message("app", "exec _", app);
+			sys::log_message("app", "exec _", app);
 			#endif
 			lock_type lock(this->_mutex);
 			sys::two_way_pipe data_pipe;
@@ -398,7 +402,7 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			auto result = _apps.find(hdr.app());
 			if (result == _apps.end()) {
 				throw Error("bad app id", __FILE__, __LINE__, __func__);
@@ -435,19 +439,19 @@ namespace factory {
 		wait_for_all_processes_to_finish() {
 			lock_type lock(this->_mutex);
 			while (apps_are_running()) {
-				stdx::unlock_guard<lock_type> g(lock);
+				sys::unlock_guard<lock_type> g(lock);
 				using namespace std::placeholders;
 				_procs.wait(std::bind(&Process_iserver::on_process_exit, this, _1, _2));
 			}
 		}
 
 		void
-		on_process_exit(sys::process& p, sys::proc_info status) {
+		on_process_exit(const sys::process& p, sys::proc_info status) {
 			lock_type lock(this->_mutex);
 			auto result = _apps.find(p.id());
 			if (result != this->_apps.end()) {
 				#ifndef NDEBUG
-				stdx::debug_message("app", "exit, status=_, app=_", status, result->first);
+				sys::log_message("app", "exit, status=_, app=_", status, result->first);
 				#endif
 				result->second->close();
 			}
@@ -470,6 +474,7 @@ namespace factory {
 		using typename base_server::kernel_pool;
 		using typename base_server::server_type;
 		using typename base_server::server_ptr;
+		using typename base_server::queue_popper;
 		typedef typename rserver_type::router_type router_type;
 
 		using base_server::poller;
@@ -497,16 +502,16 @@ namespace factory {
 
 		void
 		process_kernels() override {
-			stdx::front_pop_iterator<kernel_pool> it_end;
 			lock_type lock(this->_mutex);
-			stdx::for_each_thread_safe(lock,
-				stdx::front_popper(this->_kernels), it_end,
+			sys::for_each_unlock(lock,
+				queue_popper(this->_kernels),
+				queue_popper(),
 				[this] (kernel_type* rhs) { process_kernel(rhs); }
 			);
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			assert(false);
 		}
 

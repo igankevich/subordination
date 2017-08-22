@@ -3,7 +3,9 @@
 
 #include <cassert>
 
-#include <sys/packetstream.hh>
+#include <unistdx/base/log_message>
+#include <unistdx/net/pstream>
+
 #include <factory/type.hh>
 #include <factory/error.hh>
 #include <factory/reflection.hh>
@@ -11,7 +13,7 @@
 namespace factory {
 
 	template<class T>
-	struct Kernel_stream: public sys::packetstream {
+	struct Kernel_stream: public sys::pstream {
 
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
@@ -24,11 +26,11 @@ namespace factory {
 			bad_kernel
 		};
 
-		using sys::packetstream::operator<<;
-		using sys::packetstream::operator>>;
+		using sys::pstream::operator<<;
+		using sys::pstream::operator>>;
 
 		Kernel_stream() = default;
-		Kernel_stream(stdx::packetbuf* buf): sys::packetstream(buf) {}
+		Kernel_stream(sys::packetbuf* buf): sys::pstream(buf) {}
 		Kernel_stream(Kernel_stream&&) = default;
 
 		Kernel_stream&
@@ -83,7 +85,7 @@ namespace factory {
 					} catch (Bad_kernel& err) {
 						setstate(state::bad_kernel);
 						#ifndef NDEBUG
-						stdx::debug_message("err", "error _", err);
+						sys::log_message("err", "error _", err);
 						#endif
 					}
 					// eat remaining bytes

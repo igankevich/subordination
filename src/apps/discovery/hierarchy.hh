@@ -4,8 +4,8 @@
 #include <map>
 #include <set>
 
-#include <sys/endpoint.hh>
-#include <sys/ifaddr.hh>
+#include <unistdx/net/endpoint>
+#include <unistdx/net/ifaddr>
 
 namespace discovery {
 
@@ -50,7 +50,7 @@ namespace discovery {
 		void
 		set_principal(const sys::endpoint& new_princ) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "set principal to _", new_princ);
+			sys::log_message("dscvr", "set principal to _", new_princ);
 			#endif
 			_principal = new_princ;
 			_subordinates.erase(new_princ);
@@ -59,7 +59,7 @@ namespace discovery {
 		void
 		add_subordinate(const sys::endpoint& addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "add subordinate _", addr);
+			sys::log_message("dscvr", "add subordinate _", addr);
 			#endif
 			_subordinates.insert(addr);
 		}
@@ -67,7 +67,7 @@ namespace discovery {
 		void
 		remove_subordinate(const sys::endpoint& addr) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "remove subordinate _", addr);
+			sys::log_message("dscvr", "remove subordinate _", addr);
 			#endif
 			_subordinates.erase(addr);
 		}

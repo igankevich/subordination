@@ -57,7 +57,7 @@ namespace factory {
 		send_remote(Kernel*);
 
 		void
-		forward(const Kernel_header& hdr, sys::packetstream& istr) {
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			assert(false);
 		}
 

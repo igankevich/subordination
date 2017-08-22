@@ -50,12 +50,12 @@ struct Negotiator: public Priority_kernel<Kernel> {
 		remote_server.send(this);
 	}
 
-	void write(sys::packetstream& out) override {
+	void write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << _oldprinc << _newprinc;
 	}
 
-	void read(sys::packetstream& in) override {
+	void read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> _oldprinc >> _newprinc;
 	}
@@ -88,7 +88,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 		bool finished = true;
 		if (_numsent == 1) {
 			#ifndef NDEBUG
-			stdx::debug_message("dscvr", "tried _, result ", k->from(), k->result());
+			sys::log_message("dscvr", "tried _, result ", k->from(), k->result());
 			#endif
 			this->result(k->result());
 			if (k->result() == Result::success and _oldprinc) {

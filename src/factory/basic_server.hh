@@ -6,13 +6,14 @@
 #include <cassert>
 #include <future>
 
-#include <stdx/algorithm.hh>
-#include <stdx/iterator.hh>
-#include <stdx/mutex.hh>
-
-#include <sys/semaphore.hh>
-#include <sys/endpoint.hh>
-#include <sys/system.hh>
+#include <unistdx/base/simple_lock>
+#include <unistdx/base/spin_mutex>
+#include <unistdx/ipc/semaphore>
+#include <unistdx/it/container_traits>
+#include <unistdx/it/queue_popper>
+#include <unistdx/it/queue_pusher>
+#include <unistdx/net/endpoint>
+#include <unistdx/util/system>
 
 #include <factory/type.hh>
 
@@ -34,7 +35,7 @@ namespace factory {
 
 		typedef std::mutex slowmutex_type;
 		typedef std::unique_lock<slowmutex_type> slowlock_type;
-		typedef stdx::spin_mutex fastmutex_type;
+		typedef sys::spin_mutex fastmutex_type;
 
 		void
 		register_thread() noexcept {
@@ -112,8 +113,9 @@ namespace factory {
 	template<
 		class T,
 		class Kernels=std::queue<T*>,
+		class Traits=sys::queue_traits<Kernels>,
 		class Threads=std::vector<std::thread>,
-		class Mutex=stdx::spin_mutex,
+		class Mutex=sys::spin_mutex,
 		class Lock=std::unique_lock<Mutex>,
 		class Semaphore=sys::thread_semaphore
 	>
@@ -126,6 +128,8 @@ namespace factory {
 		typedef Lock lock_type;
 		typedef Semaphore sem_type;
 		typedef std::vector<std::unique_ptr<kernel_type>> kernel_sack;
+		typedef Traits traits_type;
+		typedef sys::queue_pop_iterator<kernel_pool,traits_type> queue_popper;
 
 		Server_with_pool() = default;
 
@@ -172,7 +176,7 @@ namespace factory {
 				)
 			);
 			#endif
-			std::copy_n(kernels, n, stdx::back_inserter(_kernels));
+			std::copy_n(kernels, n, sys::queue_pusher(_kernels));
 			_semaphore.notify_one();
 		}
 
@@ -227,8 +231,8 @@ namespace factory {
 		collect_kernels(It sack) {
 			using namespace std::placeholders;
 			std::for_each(
-				stdx::front_popper(_kernels),
-				stdx::front_popper_end(_kernels),
+				queue_popper(_kernels),
+				queue_popper(),
 				[sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); }
 			);
 		}
@@ -271,15 +275,17 @@ namespace factory {
 
 	template<class T,
 	class Kernels=std::queue<T*>,
+	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
-	using Fast_server_with_pool = Server_with_pool<T, Kernels, Threads,
-		stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>, sys::thread_semaphore>;
+	using Fast_server_with_pool = Server_with_pool<T, Kernels, Traits, Threads,
+		sys::spin_mutex, sys::simple_lock<sys::spin_mutex>, sys::thread_semaphore>;
 		//std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
 	template<class T,
 	class Kernels=std::queue<T*>,
+	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
-	using Standard_server_with_pool = Server_with_pool<T, Kernels, Threads,
+	using Standard_server_with_pool = Server_with_pool<T, Kernels, Traits, Threads,
 		std::mutex, std::unique_lock<std::mutex>, std::condition_variable>;
 
 	struct Dummy_server {

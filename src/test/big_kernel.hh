@@ -19,7 +19,7 @@ struct Big_kernel: public factory::Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		factory::Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -27,7 +27,7 @@ struct Big_kernel: public factory::Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		factory::Kernel::read(in);
 		uint32_t sz;
 		in >> sz;

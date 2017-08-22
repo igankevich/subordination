@@ -1,13 +1,12 @@
-#include <stdx/debug.hh>
-
 #include <vector>
 #include <iterator>
 #include <map>
 #include <algorithm>
 #include <random>
 
-#include <stdx/random.hh>
-#include <sys/ifaddr_list.hh>
+#include <unistdx/base/n_random_bytes>
+#include <unistdx/base/make_object>
+#include <unistdx/net/ifaddrs>
 #include <test.hh>
 
 #include "distance.hh"
@@ -18,7 +17,7 @@ namespace std {
 	template<class X, class Y>
 	std::ostream&
 	operator<<(std::ostream& out, const std::pair<X,Y>& rhs) {
-		return out << stdx::make_object("rank", rhs.first, "addr", rhs.second);
+		return out << sys::make_object("rank", rhs.first, "addr", rhs.second);
 	}
 
 }
@@ -134,7 +133,7 @@ private:
 
 	addr_type
 	random_addr() {
-		return addr_type(stdx::n_random_bytes<rep_type>(generator));
+		return addr_type(sys::n_random_bytes<rep_type>(generator));
 	}
 
 	sys::prefix_type

@@ -6,8 +6,9 @@
 #include <algorithm>
 #include <typeinfo>
 #include <typeindex>
+#include <sstream>
 
-#include <sys/packetstream.hh>
+#include <unistdx/net/pstream>
 #include <factory/error.hh>
 
 namespace factory {
@@ -16,7 +17,7 @@ namespace factory {
 
 		/// A portable type id
 		typedef uint16_t id_type;
-		typedef std::function<void* (sys::packetstream&)> read_type;
+		typedef std::function<void* (sys::pstream&)> read_type;
 
 		Type(id_type id, read_type f, std::type_index idx) noexcept:
 		_id(id),
@@ -38,7 +39,7 @@ namespace factory {
 		{}
 
 		void*
-		read(sys::packetstream& in) const {
+		read(sys::pstream& in) const {
 			return _read(in);
 		}
 
@@ -148,7 +149,7 @@ namespace factory {
 		register_type() {
 			_types.emplace(
 				generate_id(),
-				[] (sys::packetstream& in) -> void* {
+				[] (sys::pstream& in) -> void* {
 					X* kernel = new X;
 					kernel->read(in);
 					return kernel;
@@ -165,7 +166,7 @@ namespace factory {
 		}
 
 		static void*
-		read_object(Types& types, sys::packetstream& packet)
+		read_object(Types& types, sys::pstream& packet)
 		throw(Bad_kernel)
 		{
 			id_type id;
@@ -194,7 +195,7 @@ namespace factory {
 		/// @deprecated
 		template<class Func>
 		static void
-		read_object(Types& types, sys::packetstream& packet, Func callback) {
+		read_object(Types& types, sys::pstream& packet, Func callback) {
 			id_type id;
 			packet >> id;
 			const Type* type = types.lookup(id);

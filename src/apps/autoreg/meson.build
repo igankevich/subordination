@@ -4,6 +4,6 @@ benchmark(
 		'autoreg',
 		sources: 'autoreg.cc',
 		include_directories: [srcdir],
-		dependencies: [libpthread],
+		dependencies: [threads,unistdx],
 	)
 )

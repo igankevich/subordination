@@ -3,13 +3,11 @@
 
 #include <memory>
 
-#include <stdx/algorithm.hh>
-#include <stdx/iterator.hh>
-#include <stdx/mutex.hh>
-
-#include <sys/event.hh>
-#include <sys/fildesbuf.hh>
-#include <sys/packetstream.hh>
+#include <unistdx/base/simple_lock>
+#include <unistdx/base/spin_mutex>
+#include <unistdx/io/fildesbuf>
+#include <unistdx/io/poller>
+#include <unistdx/net/pstream>
 
 #include <factory/kernelbuf.hh>
 #include <factory/kernel_stream.hh>
@@ -18,10 +16,11 @@ namespace factory {
 
 	template<class T, class Rserver,
 	class Kernels=std::queue<T*>,
+	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
-	using Proxy_server_base = Server_with_pool<T, Kernels, Threads,
+	using Proxy_server_base = Server_with_pool<T, Kernels, Traits, Threads,
 		//std::mutex, std::unique_lock<std::mutex>,
-		stdx::spin_mutex, stdx::simple_lock<stdx::spin_mutex>,
+		sys::spin_mutex, sys::simple_lock<sys::spin_mutex>,
 		sys::event_poller<std::shared_ptr<Rserver>>>;
 
 	template<class T, class Rserver>
@@ -68,7 +67,7 @@ namespace factory {
 			lock_type lock(this->_mutex);
 			while (!this->is_stopped()) {
 				poller().wait(lock);
-				stdx::unlock_guard<lock_type> g(lock);
+				sys::unlock_guard<lock_type> g(lock);
 				process_kernels_if_any();
 				accept_connections_if_any();
 				handle_events();

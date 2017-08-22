@@ -1,6 +1,4 @@
-#include <stdx/debug.hh>
-
-#include <sys/fildesbuf.hh>
+#include <unistdx/io/fildesbuf>
 
 #include <factory/kernel.hh>
 #include <factory/kernelbuf.hh>
@@ -17,13 +15,13 @@ factory::Dummy_server remote_server;
 struct Good_kernel: public factory::Kernel {
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		factory::Kernel::write(out);
 		out << _data;
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		factory::Kernel::read(in);
 		in >> _data;
 	}
@@ -57,7 +55,7 @@ private:
 struct Kernel_that_writes_more_than_reads: public Good_kernel {
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Good_kernel::write(out);
 		// push dummy object to the stream
 		out << Datum();
@@ -68,7 +66,7 @@ struct Kernel_that_writes_more_than_reads: public Good_kernel {
 struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Good_kernel::read(in);
 		Datum dummy;
 		// read dummy object from the stream
@@ -88,13 +86,13 @@ struct Kernel_that_carries_its_parent: public factory::Kernel {
 	Kernel_that_carries_its_parent(int) {}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		factory::Kernel::write(out);
 		out << _data;
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		factory::Kernel::read(in);
 		in >> _data;
 	}
@@ -190,7 +188,7 @@ int main() {
 	factory::register_type<Dummy_kernel>();
 	factory::register_type<Big_kernel_type>();
 	factory::register_type({
-		[] (sys::packetstream& in) {
+		[] (sys::pstream& in) {
 			Kernel_that_carries_its_parent* kernel = new Kernel_that_carries_its_parent(0);
 			kernel->read(in);
 			return kernel;

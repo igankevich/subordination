@@ -49,7 +49,7 @@ struct Autoreg_app: public Kernel {
 				cfg >> *model;
 			} else {
 				#ifndef NDEBUG
-				stdx::debug_message("autoreg", "using default parameters");
+				sys::log_message("autoreg", "using default parameters");
 				#endif
 			}
 		} catch (std::exception& e) {
@@ -61,7 +61,7 @@ struct Autoreg_app: public Kernel {
 
 	void react(factory::Kernel*) {
 		#ifndef NDEBUG
-		stdx::debug_message("autoreg", "finished all");
+		sys::log_message("autoreg", "finished all");
 		#endif
 		factory::commit(local_server, this);
 	}

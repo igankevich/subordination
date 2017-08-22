@@ -1,5 +1,3 @@
-#include <stdx/debug.hh>
-
 #include <map>
 #include <unordered_map>
 #include <set>
@@ -8,11 +6,12 @@
 #include <iterator>
 #include <fstream>
 #include <valarray>
+#include <iostream>
 
-#include <sys/endpoint.hh>
-#include <sys/socket.hh>
-#include <sys/ifaddr.hh>
-#include <sys/cmdline.hh>
+#include <unistdx/base/cmdline>
+#include <unistdx/net/endpoint>
+#include <unistdx/net/ifaddr>
+#include <unistdx/net/socket>
 
 #include "location.hh"
 #include "csv_tuple.hh"
@@ -306,20 +305,21 @@ main(int argc, char* argv[]) {
 		locations = "GeoLite2-City-Locations-en.csv",
 		blocks = "GeoLite2-City-Blocks-IPv4.csv";
 
-	sys::cmdline cmd(argc, argv, {
-		sys::cmd::ignore_first_arg(),
-		sys::cmd::make_option({"--country"}, country),
-		sys::cmd::make_option({"--continent"}, continent),
-		sys::cmd::make_option({"--locations"}, locations),
-		sys::cmd::make_option({"--blocks"}, blocks),
-	});
+	sys::input_operator_type options[] = {
+		sys::ignore_first_argument(),
+		sys::make_key_value("country", country),
+		sys::make_key_value("continent", continent),
+		sys::make_key_value("locations", locations),
+		sys::make_key_value("blocks", blocks),
+		nullptr
+	};
 
 	try {
-		cmd.parse();
+		sys::parse_arguments(argc, argv, options);
 		transform_to_upper_case(country.begin(), country.end());
 		transform_to_upper_case(continent.begin(), continent.end());
-	} catch (sys::invalid_cmdline_argument& err) {
-		std::cerr << err.what() << ": " << err.arg() << std::endl;
+	} catch (const sys::bad_argument& err) {
+		std::cerr << err.what() << ": " << err.argument() << std::endl;
 		retval = -1;
 	}
 

@@ -24,4 +24,4 @@ set yrange [0:4]
 set xtics 100,100
 set ytics 0,1
 
-plot 'scalability.csv' using 1:($2*10**-9) with lines ls 1 notitle
+plot 'scalability.csv' using 1:($2*10**-9) smooth csplines with lines ls 1 notitle

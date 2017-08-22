@@ -84,14 +84,14 @@ public:
 	template <class A, size_t m> friend ostream& operator<<(ostream &out, const Vector<A, m> &v);
 	template <class A, size_t m> friend istream& operator>>(istream &in, Vector<A, m> &v);
 
-	friend sys::packetstream&
-	operator<<(sys::packetstream& out, const Vector& rhs) {
+	friend sys::pstream&
+	operator<<(sys::pstream& out, const Vector& rhs) {
 		for (size_t i=0; i<n; ++i) out << rhs.coord[i];
 		return out;
 	}
 
-	friend sys::packetstream&
-	operator>>(sys::packetstream& in, Vector& rhs) {
+	friend sys::pstream&
+	operator>>(sys::pstream& in, Vector& rhs) {
 		for (size_t i=0; i<n; ++i) in >> rhs.coord[i];
 		return in;
 	}

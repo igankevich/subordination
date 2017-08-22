@@ -11,8 +11,8 @@
 namespace std {
 
 	template<class T>
-	sys::packetstream&
-	operator<<(sys::packetstream& out, const std::valarray<T>& rhs) {
+	sys::pstream&
+	operator<<(sys::pstream& out, const std::valarray<T>& rhs) {
 		out << uint32_t(rhs.size());
 		for (size_t i=0; i<rhs.size(); ++i) {
 			out << rhs[i];
@@ -21,8 +21,8 @@ namespace std {
 	}
 
 	template<class T>
-	sys::packetstream&
-	operator>>(sys::packetstream& in, std::valarray<T>& rhs) {
+	sys::pstream&
+	operator>>(sys::pstream& in, std::valarray<T>& rhs) {
 		uint32_t n = 0;
 		in >> n;
 		rhs.resize(n);
@@ -624,7 +624,7 @@ struct Generator1: public Kernel {
 			commit(remote_server, this);
 		} else {
 			#ifndef NDEBUG
-			stdx::debug_message("autoreg", "generating part _", part2);
+			sys::log_message("autoreg", "generating part _", part2);
 			#endif
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);
@@ -636,7 +636,7 @@ struct Generator1: public Kernel {
 				zeta2.resize(zsize2);
 			} catch (std::exception& x) {
 				#ifndef NDEBUG
-				stdx::debug_message("autoreg", "resize failed _", stdx::make_object(
+				sys::log_message("autoreg", "resize failed _", sys::make_object(
 					"zsize", zsize,
 					"zsize2", zsize2,
 					"fsize", fsize,
@@ -693,7 +693,7 @@ struct Generator1: public Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
@@ -705,7 +705,7 @@ struct Generator1: public Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> part >> part2;
 		in >> phi >> fsize;
@@ -761,7 +761,7 @@ struct Wave_surface_generator: public Kernel {
 	act() override {
 		std::size_t num_parts = grid.num_parts();
 		#ifndef NDEBUG
-		stdx::debug_message("autoreg", "no. of parts = _", num_parts);
+		sys::log_message("autoreg", "no. of parts = _", num_parts);
 		#endif
 		std::vector<Generator1<T, Grid>*> generators(num_parts);
 		std::size_t sum = 0;
@@ -769,7 +769,7 @@ struct Wave_surface_generator: public Kernel {
 			Surface_part part = grid.part(i);
 			Surface_part part2 = grid_2.part(i);
 			#ifndef NDEBUG
-			stdx::debug_message("autoreg", "part #_ = _", i, part);
+			sys::log_message("autoreg", "part #_ = _", i, part);
 			#endif
 			generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
 			sum += part.part_size();
@@ -785,7 +785,7 @@ struct Wave_surface_generator: public Kernel {
 
 	void react(Kernel* child) override {
 		#ifndef NDEBUG
-		stdx::debug_message(
+		sys::log_message(
 			"autoreg",
 			"generator returned from _, completed _ of _",
 			child->from(), count+1, grid.num_parts()
@@ -797,7 +797,7 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void
-	write(sys::packetstream& out) override {
+	write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << phi;
 		out << fsize;
@@ -811,7 +811,7 @@ struct Wave_surface_generator: public Kernel {
 	}
 
 	void
-	read(sys::packetstream& in) override {
+	read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> phi;
 		in >> fsize;

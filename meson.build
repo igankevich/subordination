@@ -15,7 +15,7 @@ if get_option('springy')
 endif
 
 cpp = meson.get_compiler('cpp')
-libpthread = cpp.find_library('pthread')
+threads = dependency('threads')
 srcdir = include_directories('src')
 
 meson.add_postconf_script('scripts/copy-input-files')
@@ -24,5 +24,7 @@ run_target('gcov', command: 'scripts/gcov-target')
 run_target('iwyu', command: 'scripts/iwyu-target')
 run_target('springy', command: 'scripts/springy-target')
 run_target('doc', command: 'scripts/doc-target')
+
+unistdx = dependency('unistdx')
 
 subdir('src')

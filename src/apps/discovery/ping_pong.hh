@@ -15,12 +15,12 @@ struct Ping: public Kernel {
 		commit(remote_server, this);
 	}
 
-	void write(sys::packetstream& out) override {
+	void write(sys::pstream& out) override {
 		Kernel::write(out);
 		out << _data;
 	}
 
-	void read(sys::packetstream& in) override {
+	void read(sys::pstream& in) override {
 		Kernel::read(in);
 		in >> _data;
 	}
@@ -48,7 +48,7 @@ struct Ping_pong: public Kernel {
 	void
 	act() override {
 		#ifndef NDEBUG
-		stdx::debug_message("tst", "sending ping #_", _currentkernel + 1);
+		sys::log_message("tst", "sending ping #_", _currentkernel + 1);
 		#endif
 		int x = 1;
 		_expectedsum += x;
@@ -58,7 +58,7 @@ struct Ping_pong: public Kernel {
 			factory::timer_server.send(this);
 		} else {
 			#ifndef NDEBUG
-			stdx::debug_message("tst", "finished sending pings");
+			sys::log_message("tst", "finished sending pings");
 			#endif
 		}
 	}
@@ -67,7 +67,7 @@ struct Ping_pong: public Kernel {
 	react(Kernel* child) override {
 		Ping* ping = dynamic_cast<Ping*>(child);
 		#ifndef NDEBUG
-		stdx::debug_message("tst", "ping returned from _ with _", ping->from(), ping->result());
+		sys::log_message("tst", "ping returned from _ with _", ping->from(), ping->result());
 		#endif
 		_realsum += ping->get_x();
 		if (
@@ -78,10 +78,10 @@ struct Ping_pong: public Kernel {
 		}
 		if (++_numreceived == _numkernels) {
 			#ifndef NDEBUG
-			stdx::debug_message(
+			sys::log_message(
 				"tst",
 				"_",
-				stdx::make_object(
+				sys::make_object(
 					"num_kernels", _numkernels,
 					"expected_sum", _expectedsum,
 					"real_sum", _realsum,

@@ -1,5 +1,3 @@
-#include <stdx/debug.hh>
-
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -7,9 +5,12 @@
 #include <iomanip>
 #include <numeric>
 
-#include <stdx/iterator.hh>
-#include <sys/process.hh>
-#include <sys/cmdline.hh>
+#include <unistdx/base/cmdline>
+#include <unistdx/ipc/argstream>
+#include <unistdx/ipc/process>
+#include <unistdx/ipc/execute>
+#include <unistdx/ipc/process_group>
+#include <unistdx/it/intersperse_iterator>
 
 enum struct Strategy {
 	Master_slave,
@@ -46,19 +47,20 @@ operator>>(std::istream& in, Strategy& rhs) {
 struct Executor {
 
 	Executor(int argc, char* argv[]) {
-		sys::cmdline cmdline(argc, argv, {
-			sys::cmd::ignore_first_arg(),
-			sys::cmd::make_option({"--strategy"}, strat),
-			[this] (const sys::cmdline::arg_type& arg, sys::cmdline::pos_type, sys::cmdline::stream_type& str) {
+		sys::input_operator_type options[] = {
+			sys::ignore_first_argument(),
+			sys::make_key_value("--strategy", strat),
+			[this] (int pos, const std::string& arg) {
 				if (arg == "--exec") {
-					arguments.emplace_back();
+					this->arguments.emplace_back();
 				} else {
-					arguments.back().append(arg);
+					this->arguments.back().append(arg);
 				}
 				return true;
-			}
-		});
-		cmdline.parse();
+			},
+			nullptr
+		};
+		sys::parse_arguments(argc, argv, options);
 		assert(!arguments.empty());
 	}
 
@@ -111,7 +113,7 @@ struct Executor {
 			[&out] (const sys::argstream& rhs) {
 				std::copy(
 					rhs.argv(), rhs.argv() + rhs.argc(),
-					stdx::intersperse_iterator<char*,char>(out, ' ')
+					sys::intersperse_iterator<char*,char>(out, ' ')
 				);
 				out << '\n';
 			}

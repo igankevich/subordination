@@ -4,7 +4,7 @@
 #include <random>
 #include <unordered_map>
 
-#include <sys/socket.hh>
+#include <unistdx/net/socket>
 #include "lbuffer.hh"
 #include "encoding.hh"
 
@@ -182,7 +182,7 @@ namespace factory {
 						recv_buffer.read_end(), std::back_inserter(mid_buffer),
 						&opcode);
 					#ifndef NDEBUG
-					stdx::debug_message("wbs")
+					sys::log_message("wbs")
 						<< "recv buffer"
 						<< "(" << recv_buffer.size() << ") "
 						<< std::setw(40) << recv_buffer;
@@ -191,7 +191,7 @@ namespace factory {
 				}
 				if (opcode == Opcode::conn_close) {
 					#ifndef NDEBUG
-					stdx::debug_message("wbs", "Close frame");
+					sys::log_message("wbs", "Close frame");
 					#endif
 					this->close();
 				} else {
@@ -209,7 +209,7 @@ namespace factory {
 			#endif
 			send_buffer.flush<sys::socket&>(*this);
 			#ifndef NDEBUG
-			stdx::debug_message("wbs")
+			sys::log_message("wbs")
 				<< "send buffer"
 				<< '(' << old_size - send_buffer.size() << ')';
 			#endif
@@ -243,19 +243,19 @@ namespace factory {
 					if (sep2 != std::string::npos && line.compare(sep1, sep2-sep1, "101")) {
 						state = State::PARSING_HEADERS;
 						#ifndef NDEBUG
-						stdx::debug_message("wbs", "parsing headers");
+						sys::log_message("wbs", "parsing headers");
 						#endif
 					} else {
 						state = State::PARSING_ERROR;
 						#ifndef NDEBUG
-						stdx::debug_message("wbs", "bad HTTP status in web socket hand shake");
+						sys::log_message("wbs", "bad HTTP status in web socket hand shake");
 						#endif
 					}
 				}
 			} else {
 				state = State::PARSING_ERROR;
 				#ifndef NDEBUG
-				stdx::debug_message("wbs", "bad method in web socket hand shake");
+				sys::log_message("wbs", "bad method in web socket hand shake");
 				#endif
 			}
 		}
@@ -266,12 +266,12 @@ namespace factory {
 			if (std::search(first, last, GET, GET + sizeof(GET)-1) != last) {
 				state = State::PARSING_HEADERS;
 				#ifndef NDEBUG
-				stdx::debug_message("wbs", "parsing headers");
+				sys::log_message("wbs", "parsing headers");
 				#endif
 			} else {
 				state = State::PARSING_ERROR;
 				#ifndef NDEBUG
-				stdx::debug_message("wbs", "bad method in web socket hand shake");
+				sys::log_message("wbs", "bad method in web socket hand shake");
 				#endif
 			}
 		}
@@ -286,17 +286,17 @@ namespace factory {
 				if (_http_headers.size() == MAX_HEADERS) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message("wbs", "too many headers in HTTP request");
+					sys::log_message("wbs", "too many headers in HTTP request");
 					#endif
 				} else if (_http_headers.contain(key.c_str())) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message("wbs") << "duplicate HTTP header: '" << key << '\'';
+					sys::log_message("wbs") << "duplicate HTTP header: '" << key << '\'';
 					#endif
 				} else {
 					_http_headers[key] = value;
 					#ifndef NDEBUG
-					stdx::debug_message("wbs") << "Header['" << key << "'] = '" << value << "'";
+					sys::log_message("wbs") << "Header['" << key << "'] = '" << value << "'";
 					#endif
 				}
 			}
@@ -376,12 +376,12 @@ namespace factory {
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
-					stdx::debug_message("wbs", "parsing error");
+					sys::log_message("wbs", "parsing error");
 					#endif
 				} else {
 					state = State::PARSING_SUCCESS;
 					#ifndef NDEBUG
-					stdx::debug_message("wbs", "parsing success");
+					sys::log_message("wbs", "parsing success");
 					#endif
 				}
 			}
@@ -389,7 +389,7 @@ namespace factory {
 
 		void reply_success() {
 			#ifndef NDEBUG
-			stdx::debug_message("wbs", "replying success");
+			sys::log_message("wbs", "replying success");
 			#endif
 			std::string accept_header(ACCEPT_HEADER_LENGTH, 0);
 			websocket_accept_header(_http_headers["Sec-WebSocket-Key"], accept_header.begin());
@@ -428,7 +428,7 @@ namespace factory {
 			send_buffer.write(buf.data(), buf.size());
 			state = State::WRITING_HANDSHAKE;
 			#ifndef NDEBUG
-			stdx::debug_message("wbs", "writing handshake") << request.str();
+			sys::log_message("wbs", "writing handshake") << request.str();
 			#endif
 		}
 

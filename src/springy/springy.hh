@@ -2,11 +2,10 @@
 #define APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
 
 #include <chrono>
-#include <ostream>
-#include <functional>
 #include <fstream>
-
-#include <stdx/debug.hh>
+#include <functional>
+#include <ostream>
+#include <unistdx/base/log_message>
 
 namespace springy {
 
@@ -81,7 +80,7 @@ namespace springy {
 		void
 		start() {
 			#ifndef NDEBUG
-			stdx::debug_message(_log, "graph", '?', "startTime.push(?);", millis_since_start());
+			sys::log_message(_log, "graph", '?', "startTime.push(?);", millis_since_start());
 			#endif
 		}
 
@@ -91,7 +90,7 @@ namespace springy {
 			node_type from(addr);
 			node_type to(principal_addr);
 			edge_type edge(from, to);
-			stdx::debug_message(_log, "graph", '?',
+			sys::log_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newEdge(g.?,g.?)},"
 				"undo: function() {graph.removeEdge(g.?)},"
@@ -108,7 +107,7 @@ namespace springy {
 			node_type from(addr);
 			node_type to(principal_addr);
 			edge_type edge(from, to);
-			stdx::debug_message(_log, "graph", '?',
+			sys::log_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {graph.removeEdge(g.?)},"
 				"undo: function() {g.? = graph.newEdge(g.?,g.?)},"
@@ -123,7 +122,7 @@ namespace springy {
 		add_node(const value_type& addr) {
 			#ifndef NDEBUG
 			node_type node(addr);
-			stdx::debug_message(_log, "graph", '?',
+			sys::log_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {g.? = graph.newNode({label:'?',mass:?})},"
 				"undo: function() {graph.removeNode(g.?)},"
@@ -138,7 +137,7 @@ namespace springy {
 		remove_node(const value_type& addr) {
 			#ifndef NDEBUG
 			node_type node(addr);
-			stdx::debug_message(_log, "graph", '?',
+			sys::log_message(_log, "graph", '?',
 				"log[logline++] = {"
 				"redo: function() {graph.removeNode(g.?)},"
 				"undo: function() {g.? = graph.newNode({label:'?',mass:?})},"
@@ -174,7 +173,7 @@ namespace springy {
 
 		time_point _start;
 		std::ofstream _outfile;
-		stdx::debug_log _log;
+		std::ostream& _log;
 
 	};
 

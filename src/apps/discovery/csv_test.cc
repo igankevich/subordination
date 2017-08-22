@@ -1,5 +1,3 @@
-#include <stdx/debug.hh>
-
 #include <algorithm>
 #include <iterator>
 

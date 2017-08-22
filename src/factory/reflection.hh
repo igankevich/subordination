@@ -3,7 +3,7 @@
 
 #include <factory/type.hh>
 #include <factory/kernel.hh>
-#include <sys/process.hh>
+#include <unistdx/ipc/process>
 
 namespace factory {
 
@@ -35,7 +35,7 @@ namespace factory {
 			Init():
 			Type{
 				ID,
-				[] (sys::packetstream& in) {
+				[] (sys::pstream& in) {
 					T* kernel = new T;
 					kernel->read(in);
 					return kernel;

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"  standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg 
+ width="400" height="250"
+ viewBox="0 0 400 250"
+ xmlns="http://www.w3.org/2000/svg"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+>
+
+<title>Gnuplot</title>
+<desc>Produced by GNUPLOT 5.0 patchlevel 5 </desc>
+
+<g id="gnuplot_canvas">
+
+<rect x="0" y="0" width="400" height="250" fill="none"/>
+<defs>
+
+	<circle id='gpDot' r='0.5' stroke-width='0.5'/>
+	<path id='gpPt0' stroke-width='0.299' stroke='currentColor' d='M-1,0 h2 M0,-1 v2'/>
+	<path id='gpPt1' stroke-width='0.299' stroke='currentColor' d='M-1,-1 L1,1 M1,-1 L-1,1'/>
+	<path id='gpPt2' stroke-width='0.299' stroke='currentColor' d='M-1,0 L1,0 M0,-1 L0,1 M-1,-1 L1,1 M-1,1 L1,-1'/>
+	<rect id='gpPt3' stroke-width='0.299' stroke='currentColor' x='-1' y='-1' width='2' height='2'/>
+	<rect id='gpPt4' stroke-width='0.299' stroke='currentColor' fill='currentColor' x='-1' y='-1' width='2' height='2'/>
+	<circle id='gpPt5' stroke-width='0.299' stroke='currentColor' cx='0' cy='0' r='1'/>
+	<use xlink:href='#gpPt5' id='gpPt6' fill='currentColor' stroke='none'/>
+	<path id='gpPt7' stroke-width='0.299' stroke='currentColor' d='M0,-1.33 L-1.33,0.67 L1.33,0.67 z'/>
+	<use xlink:href='#gpPt7' id='gpPt8' fill='currentColor' stroke='none'/>
+	<use xlink:href='#gpPt7' id='gpPt9' stroke='currentColor' transform='rotate(180)'/>
+	<use xlink:href='#gpPt9' id='gpPt10' fill='currentColor' stroke='none'/>
+	<use xlink:href='#gpPt3' id='gpPt11' stroke='currentColor' transform='rotate(45)'/>
+	<use xlink:href='#gpPt11' id='gpPt12' fill='currentColor' stroke='none'/>
+	<path id='gpPt13' stroke-width='0.299' stroke='currentColor' d='M0,1.330 L1.265,0.411 L0.782,-1.067 L-0.782,-1.076 L-1.265,0.411 z'/>
+	<use xlink:href='#gpPt13' id='gpPt14' fill='currentColor' stroke='none'/>
+	<filter id='textbox' filterUnits='objectBoundingBox' x='0' y='0' height='1' width='1'>
+	  <feFlood flood-color='white' flood-opacity='1' result='bgnd'/>
+	  <feComposite in='SourceGraphic' in2='bgnd' operator='atop'/>
+	</filter>
+	<filter id='greybox' filterUnits='objectBoundingBox' x='0' y='0' height='1' width='1'>
+	  <feFlood flood-color='lightgrey' flood-opacity='1' result='grey'/>
+	  <feComposite in='SourceGraphic' in2='grey' operator='atop'/>
+	</filter>
+</defs>
+<g fill="none" color="white" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,200.1 L48.1,200.1  '/>	<g transform="translate(41.8,203.1)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 0</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,173.3 L48.1,173.3  '/>	<g transform="translate(41.8,176.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 10</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,146.6 L48.1,146.6  '/>	<g transform="translate(41.8,149.6)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 20</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,119.8 L48.1,119.8  '/>	<g transform="translate(41.8,122.8)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 30</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,93.0 L48.1,93.0  '/>	<g transform="translate(41.8,96.0)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 40</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,66.2 L48.1,66.2  '/>	<g transform="translate(41.8,69.2)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 50</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,39.5 L48.1,39.5  '/>	<g transform="translate(41.8,42.5)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 60</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,12.7 L48.1,12.7  '/>	<g transform="translate(41.8,15.7)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="end">
+		<text><tspan font-family="DejaVU Serif" > 70</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,200.1 L54.8,206.8  '/>	<g transform="translate(54.8,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 0</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M120.0,200.1 L120.0,206.8  '/>	<g transform="translate(120.0,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 20</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M185.3,200.1 L185.3,206.8  '/>	<g transform="translate(185.3,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 40</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M250.5,200.1 L250.5,206.8  '/>	<g transform="translate(250.5,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 60</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M315.8,200.1 L315.8,206.8  '/>	<g transform="translate(315.8,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 80</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M381.0,200.1 L381.0,206.8  '/>	<g transform="translate(381.0,223.3)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" > 100</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,12.7 L54.8,200.1 L381.0,200.1 M381.0,12.7 M54.8,12.7  '/></g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<g transform="translate(12.7,106.4) rotate(270)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" >No. of objects in buffer</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<g transform="translate(217.9,243.5)" stroke="none" fill="black" font-family="DejaVU Serif" font-size="9.00"  text-anchor="middle">
+		<text><tspan font-family="DejaVU Serif" >Delay [ms]</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+	<g id="gnuplot_plot_1" ><title>'buffer.log.save'</title>
+<g fill="none" color="white" stroke="currentColor" stroke-width="3.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="3.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='rgb(  0,   0,   0)'  d='M54.8,47.5 L58.1,13.4 L61.4,143.1 L64.7,159.8 L68.0,168.4 L71.3,173.6 L74.6,178.9 L77.9,181.5
+		L81.2,184.2 L84.5,184.0 L87.7,184.2 L91.0,186.9 L94.3,186.6 L97.6,187.0 L100.9,189.6 L104.2,189.3
+		L107.5,189.4 L110.8,189.4 L114.1,189.4 L117.4,189.3 L120.7,189.8 L124.0,192.3 L127.3,192.0 L130.6,192.1
+		L133.9,192.1 L137.2,192.1 L140.5,192.1 L143.8,192.1 L147.1,192.1 L150.4,192.1 L153.6,192.1 L156.9,192.1
+		L160.2,192.1 L163.5,192.1 L166.8,192.1 L170.1,192.1 L173.4,192.1 L176.7,192.1 L180.0,192.1 L183.3,191.8
+		L186.6,193.1 L189.9,195.0 L193.2,194.7 L196.5,194.8 L199.8,194.7 L203.1,194.7 L206.4,194.7 L209.7,194.7
+		L213.0,194.7 L216.3,194.7 L219.5,194.7 L222.8,194.7 L226.1,194.7 L229.4,194.7 L232.7,194.7 L236.0,194.7
+		L239.3,194.7 L242.6,194.7 L245.9,194.7 L249.2,194.7 L252.5,194.7 L255.8,194.7 L259.1,194.7 L262.4,194.7
+		L265.7,194.7 L269.0,194.7 L272.3,194.7 L275.6,194.7 L278.9,194.7 L282.2,194.7 L285.4,194.7 L288.7,194.7
+		L292.0,194.7 L295.3,194.7 L298.6,194.7 L301.9,194.8 L305.2,194.7 L308.5,194.8 L311.8,194.5 L315.1,197.0
+		L318.4,197.5 L321.7,197.4 L325.0,197.4 L328.3,197.4 L331.6,197.4 L334.9,197.4 L338.2,197.4 L341.5,197.4
+		L344.8,197.4 L348.1,197.4 L351.3,197.4 L354.6,197.4 L357.9,197.4 L361.2,197.4 L364.5,197.4 L367.8,197.4
+		L371.1,197.4 L374.4,197.4 L377.7,197.4 L381.0,197.4  '/></g>
+	</g>
+<g fill="none" color="white" stroke="rgb(  0,   0,   0)" stroke-width="2.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="2.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="black" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+	<path stroke='black'  d='M54.8,12.7 L54.8,200.1 L381.0,200.1 M381.0,12.7 M54.8,12.7  '/></g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round">
+</g>
+</g>
+</svg>
+

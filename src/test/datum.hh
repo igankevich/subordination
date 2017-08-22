@@ -3,7 +3,7 @@
 
 #include <random>
 #include <chrono>
-#include <sys/packetstream.hh>
+#include <unistdx/net/pstream>
 
 typedef std::chrono::nanoseconds::rep Time;
 
@@ -54,15 +54,15 @@ struct Datum {
 			u != rhs.u || v != rhs.v || w != rhs.w;
 	}
 
-	friend sys::packetstream&
-	operator<<(sys::packetstream& out, const Datum& rhs) {
+	friend sys::pstream&
+	operator<<(sys::pstream& out, const Datum& rhs) {
 		return out
 			<< rhs.x << rhs.y << rhs.z
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	friend sys::packetstream&
-	operator>>(sys::packetstream& in, Datum& rhs) {
+	friend sys::pstream&
+	operator>>(sys::pstream& in, Datum& rhs) {
 		return in
 			>> rhs.x >> rhs.y >> rhs.z
 			>> rhs.u >> rhs.v >> rhs.w;
@@ -101,22 +101,22 @@ private:
 	template<class T>
 	static void
 	write_raw(std::ostream& out, const T& rhs) {
-		sys::Bytes<T> raw = rhs;
+		sys::bytes<T> raw = rhs;
 		out.write(raw.begin(), raw.size());
 	}
 
 	template<class T>
 	static void
 	read_raw(std::istream& in, T& rhs) {
-		sys::Bytes<T> raw;
+		sys::bytes<T> raw;
 		in.read(raw.begin(), raw.size());
 		rhs = raw;
 	}
 
 	int64_t x;
 	int32_t y;
-	sys::Bytes<float> z;
-	sys::Bytes<double> u;
+	sys::bytes<float> z;
+	sys::bytes<double> u;
 	int16_t v;
 	int8_t w;
 	char padding[5] = {};
