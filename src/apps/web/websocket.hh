@@ -69,9 +69,9 @@ namespace factory {
 		Web_socket():
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-			send_buffer(BUFFER_SIZE),
-			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE),
+			_sendbuf(BUFFER_SIZE),
+			_recvbuf(BUFFER_SIZE),
+			_midbuf(BUFFER_SIZE),
 			_rng()
 			{}
 
@@ -79,9 +79,9 @@ namespace factory {
 //			sys::socket(fd),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-//			send_buffer(BUFFER_SIZE),
-//			recv_buffer(BUFFER_SIZE),
-//			mid_buffer(BUFFER_SIZE)
+//			_sendbuf(BUFFER_SIZE),
+//			_recvbuf(BUFFER_SIZE),
+//			_midbuf(BUFFER_SIZE)
 //			{}
 
 		// TODO: move all fields
@@ -89,9 +89,9 @@ namespace factory {
 			sys::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-			send_buffer(BUFFER_SIZE),
-			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE),
+			_sendbuf(BUFFER_SIZE),
+			_recvbuf(BUFFER_SIZE),
+			_midbuf(BUFFER_SIZE),
 			_rng()
 			{}
 
@@ -99,9 +99,9 @@ namespace factory {
 			sys::socket(std::move(rhs)),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-			send_buffer(BUFFER_SIZE),
-			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE),
+			_sendbuf(BUFFER_SIZE),
+			_recvbuf(BUFFER_SIZE),
+			_midbuf(BUFFER_SIZE),
 			_rng()
 			{}
 
@@ -109,9 +109,9 @@ namespace factory {
 			sys::socket(rhs),
 			_http_headers(),
 			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-			send_buffer(BUFFER_SIZE),
-			recv_buffer(BUFFER_SIZE),
-			mid_buffer(BUFFER_SIZE),
+			_sendbuf(BUFFER_SIZE),
+			_recvbuf(BUFFER_SIZE),
+			_midbuf(BUFFER_SIZE),
 			_rng()
 			{}
 
@@ -120,9 +120,9 @@ namespace factory {
 		sys::socket(bind_addr, conn_addr),
 		_http_headers(),
 		key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-		send_buffer(BUFFER_SIZE),
-		recv_buffer(BUFFER_SIZE),
-		mid_buffer(BUFFER_SIZE),
+		_sendbuf(BUFFER_SIZE),
+		_recvbuf(BUFFER_SIZE),
+		_midbuf(BUFFER_SIZE),
 		_rng()
 		{}
 
@@ -130,9 +130,9 @@ namespace factory {
 //			sys::socket(rhs),
 //			_http_headers(),
 //			key(WEBSOCKET_KEY_BASE64_LENGTH, 0),
-//			send_buffer(BUFFER_SIZE),
-//			recv_buffer(BUFFER_SIZE),
-//			mid_buffer(BUFFER_SIZE)
+//			_sendbuf(BUFFER_SIZE),
+//			_recvbuf(BUFFER_SIZE),
+//			_midbuf(BUFFER_SIZE)
 //			{}
 
 		virtual ~Web_socket() { this->close(); }
@@ -158,7 +158,7 @@ namespace factory {
 				handshake();
 			} else {
 				websocket_encode(buf, buf + size,
-					std::back_inserter(send_buffer), _rng);
+					std::back_inserter(_sendbuf), _rng);
 				this->flush();
 				ret = size;
 			}
@@ -176,18 +176,18 @@ namespace factory {
 				handshake();
 			} else {
 				Opcode opcode = Opcode::cont_frame;
-				if (mid_buffer.empty()) {
+				if (_midbuf.empty()) {
 					this->fill();
-					size_t len = websocket_decode(recv_buffer.read_begin(),
-						recv_buffer.read_end(), std::back_inserter(mid_buffer),
+					size_t len = websocket_decode(_recvbuf.read_begin(),
+						_recvbuf.read_end(), std::back_inserter(_midbuf),
 						&opcode);
 					#ifndef NDEBUG
 					sys::log_message("wbs")
 						<< "recv buffer"
-						<< "(" << recv_buffer.size() << ") "
-						<< std::setw(40) << recv_buffer;
+						<< "(" << _recvbuf.size() << ") "
+						<< std::setw(40) << _recvbuf;
 					#endif
-					recv_buffer.ignore(len);
+					_recvbuf.ignore(len);
 				}
 				if (opcode == Opcode::conn_close) {
 					#ifndef NDEBUG
@@ -195,25 +195,25 @@ namespace factory {
 					#endif
 					this->close();
 				} else {
-					bytes_read = mid_buffer.read(buf, size);
+					bytes_read = _midbuf.read(buf, size);
 				}
 			}
 			return bytes_read;
 		}
 
-		bool empty() const { return send_buffer.empty(); }
+		bool empty() const { return _sendbuf.empty(); }
 
 		bool flush() {
 			#ifndef NDEBUG
-			size_t old_size = send_buffer.size();
+			size_t old_size = _sendbuf.size();
 			#endif
-			send_buffer.flush<sys::socket&>(*this);
+			_sendbuf.flush<sys::socket&>(*this);
 			#ifndef NDEBUG
 			sys::log_message("wbs")
 				<< "send buffer"
-				<< '(' << old_size - send_buffer.size() << ')';
+				<< '(' << old_size - _sendbuf.size() << ')';
 			#endif
-			return send_buffer.empty();
+			return _sendbuf.empty();
 		}
 
 	private:
@@ -311,7 +311,7 @@ namespace factory {
 				case State::HANDSHAKE_SUCCESS: break;
 				case State::REPLYING_TO_HANDSHAKE:
 					this->flush();
-					if (send_buffer.empty()) {
+					if (_sendbuf.empty()) {
 						state = State::HANDSHAKE_SUCCESS;
 					}
 					break;
@@ -361,18 +361,18 @@ namespace factory {
 
 		void read_http_method_and_headers() {
 			this->fill();
-			typedef decltype(recv_buffer.begin()) It;
-			It pos = recv_buffer.begin();
+			typedef decltype(_recvbuf.begin()) It;
+			It pos = _recvbuf.begin();
 			It found;
-			while ((found = std::search(pos, recv_buffer.end(),
-				HTTP_FIELD_SEPARATOR, HTTP_FIELD_SEPARATOR + 2)) != recv_buffer.end()
+			while ((found = std::search(pos, _recvbuf.end(),
+				HTTP_FIELD_SEPARATOR, HTTP_FIELD_SEPARATOR + 2)) != _recvbuf.end()
 				&& pos != found && state != State::PARSING_ERROR)
 			{
 				read_header(pos, found);
 				pos = found + 2;
 			}
-			if (pos == found && pos != recv_buffer.begin()) {
-				recv_buffer.reset();
+			if (pos == found && pos != _recvbuf.begin()) {
+				_recvbuf.reset();
 				if (!validate_headers()) {
 					state = State::PARSING_ERROR;
 					#ifndef NDEBUG
@@ -402,12 +402,12 @@ namespace factory {
 				<< "Sec-WebSocket-Protocol: binary" << HTTP_FIELD_SEPARATOR
 				<< HTTP_FIELD_SEPARATOR;
 			std::string buf = response.str();
-			send_buffer.write(buf.data(), buf.size());
+			_sendbuf.write(buf.data(), buf.size());
 			state = State::REPLYING_TO_HANDSHAKE;
 		}
 
 		void reply_error() {
-			send_buffer.write(BAD_REQUEST, sizeof(BAD_REQUEST)-1);
+			_sendbuf.write(BAD_REQUEST, sizeof(BAD_REQUEST)-1);
 			state = State::REPLYING_TO_HANDSHAKE;
 		}
 
@@ -425,23 +425,23 @@ namespace factory {
 				<< "Sec-WebSocket-Key: " << key << HTTP_FIELD_SEPARATOR
 				<< HTTP_FIELD_SEPARATOR;
 			std::string buf = request.str();
-			send_buffer.write(buf.data(), buf.size());
+			_sendbuf.write(buf.data(), buf.size());
 			state = State::WRITING_HANDSHAKE;
 			#ifndef NDEBUG
 			sys::log_message("wbs", "writing handshake") << request.str();
 			#endif
 		}
 
-		void fill() { recv_buffer.fill<sys::socket&>(*this); }
+		void fill() { _recvbuf.fill<sys::socket&>(*this); }
 
 		State state = State::INITIAL_STATE;
 		Role role = Role::SERVER;
 		HTTP_headers _http_headers;
 		std::string key;
 
-		LBuffer<char> send_buffer;
-		LBuffer<char> recv_buffer;
-		LBuffer<char> mid_buffer;
+		LBuffer<char> _sendbuf;
+		LBuffer<char> _recvbuf;
+		LBuffer<char> _midbuf;
 
 		std::random_device _rng;
 

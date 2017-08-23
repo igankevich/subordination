@@ -3,7 +3,7 @@
 #include <factory/algorithm.hh>
 #include <factory/server_guard.hh>
 
-#include "test.hh"
+#include <gtest/gtest.h>
 
 factory::CPU_server<factory::Kernel> local_server;
 factory::Timer_server<factory::Kernel> timer_server;
@@ -41,7 +41,10 @@ struct Main: public factory::Kernel {
 		std::vector<factory::Kernel*> kernels(_nkernels);
 		// send kernels in inverse chronological order
 		for (size_t i=0; i<_nkernels; ++i) {
-			kernels[i] = new_sleepy_kernel(_nkernels - i, _nkernels - i);
+			kernels[i] = new_sleepy_kernel(
+				this->_nkernels - i,
+				this->_nkernels - i
+			);
 		}
 		timer_server.send(kernels.data(), kernels.size());
 	}
@@ -49,10 +52,10 @@ struct Main: public factory::Kernel {
 	void
 	react(factory::Kernel* child) override {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
-		test::equal(k->pos(), last_pos+1, "Invalid order of timed kernels");
+		EXPECT_EQ(k->pos(), last_pos+1) << "Invalid order of scheduled kernels";
 		++last_pos;
-		--_nkernels;
-		if (_nkernels == 0) {
+		--this->_nkernels;
+		if (this->_nkernels == 0) {
 			factory::commit(local_server, this);
 		}
 	}
@@ -74,10 +77,9 @@ private:
 
 };
 
-int
-main(int argc, char* argv[]) {
+TEST(TimerServerTest, All) {
 	factory::Server_guard<decltype(local_server)> g1(local_server);
 	factory::Server_guard<decltype(timer_server)> g2(timer_server);
 	local_server.send(new Main(10, std::chrono::milliseconds(500)));
-	return factory::wait_and_return();
+	EXPECT_EQ(0, factory::wait_and_return());
 }

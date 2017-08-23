@@ -13,12 +13,15 @@
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c
 namespace factory {
 
-	constexpr size_t
-	base64_encoded_size(size_t len) noexcept {
+	inline size_t
+	base64_encoded_size(size_t len) {
+		if (len > std::numeric_limits<size_t>::max()/4u*3u-2u) {
+			throw std::length_error("base64 length is too large");
+		}
 		return ((len + 2u) / 3u) * 4u;
 	}
 
-	constexpr size_t
+	inline constexpr size_t
 	base64_max_decoded_size(size_t len) noexcept {
 		return (len / 4u) * 3u;
 	}
@@ -35,12 +38,7 @@ namespace factory {
 
 		typedef typename std::remove_reference<decltype(*result)>::type char_type;
 
-		const size_t binlen = static_cast<size_t>(last - first);
-		if (binlen > base64_max_decoded_size(std::numeric_limits<size_t>::max())) {
-			throw std::length_error("Converting too large a string to base64.");
-		}
-
-		Res last_result = result + std::ptrdiff_t(base64_encoded_size(binlen));
+		Res last_result = result + base64_encoded_size(last - first);
 
 		int bits_collected = 0;
 		unsigned int accumulator = 0;

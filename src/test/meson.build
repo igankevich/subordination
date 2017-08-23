@@ -4,7 +4,7 @@ test(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir,
-		dependencies: unistdx
+		dependencies: [unistdx,gtest]
 	)
 )
 
@@ -18,14 +18,14 @@ test_runner = executable(
 executable(
 	'nic-server-test',
 	sources: 'nic_server_test.cc',
-	dependencies: [threads, unistdx],
+	dependencies: [threads, unistdx, gtest],
 	include_directories: srcdir,
 )
 
 executable(
 	'nic-server-offline-test',
 	sources: 'nic_server_test.cc',
-	dependencies: [threads, unistdx],
+	dependencies: [threads, unistdx, gtest],
 	include_directories: srcdir,
 	cpp_args: [ '-DFACTORY_TEST_OFFLINE' ],
 )
@@ -57,7 +57,7 @@ test(
 	executable(
 		'timer-server-test',
 		sources: 'timer_server_test.cc',
-		dependencies: [threads, unistdx],
+		dependencies: [threads, unistdx, gtest],
 		include_directories: srcdir,
 	)
 )

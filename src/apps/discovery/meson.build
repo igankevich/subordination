@@ -45,7 +45,7 @@ test(
 		'discovery-ranking-test',
 		sources: 'discovery_ranking_test.cc',
 		include_directories: [srcdir, testdir],
-		dependencies: [unistdx]
+		dependencies: [unistdx, gtest]
 	)
 )
 
@@ -55,7 +55,7 @@ test(
 		'csv-test',
 		sources: 'csv_test.cc',
 		include_directories: [srcdir, testdir],
-		dependencies: [unistdx]
+		dependencies: [unistdx, gtest]
 	)
 )
 

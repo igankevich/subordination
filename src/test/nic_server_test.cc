@@ -6,11 +6,10 @@
 
 #include <unistdx/base/cmdline>
 
-#include <cassert>
-
 #include "role.hh"
 #include "datum.hh"
-#include "test.hh"
+
+#include <gtest/gtest.h>
 
 #if defined(FACTORY_TEST_WEBSOCKET)
 #include <factory/nic_server.hh>
@@ -41,7 +40,7 @@ struct Router {
 
 	void
 	forward(const factory::Kernel_header& hdr, sys::pstream& istr) {
-		assert(false);
+		FAIL() << "must not get here";
 	}
 
 };
@@ -155,12 +154,8 @@ struct Sender: public factory::Kernel {
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 
-//		#if defined(FACTORY_TEST_OFFLINE)
-//		assert(not child->from());
-//		#endif
-
-		test::equal(_input.size(), output.size(), "Input and output size does not match");
-		test::compare(_input, output,  "Input and output data does not match");
+		EXPECT_EQ(this->_input.size(), output.size());
+		EXPECT_EQ(this->_input, output);
 
 		if (++_num_returned == NUM_KERNELS) {
 			factory::commit(local_server, this);
@@ -198,26 +193,17 @@ private:
 
 };
 
-int
-main(int argc, char* argv[]) {
-	factory::Terminate_guard g00;
-//	sys::syslog_guard g0(std::clog, sys::syslog_guard::tee);
-	sys::this_process::ignore_signal(sys::signal::broken_pipe);
-	sys::input_operator_type options[] = {
-		sys::ignore_first_argument(),
-		sys::make_key_value("role", role),
-		nullptr
-	};
-	sys::parse_arguments(argc, argv, options);
+TEST(NICServerTest, All) {
 	factory::register_type<Test_socket>();
-
 	if (role == Role::Slave) {
 		remote_server.bind(server_endpoint, netmask);
 	}
 	if (role == Role::Master) {
 		remote_server.bind(client_endpoint, netmask);
 		// wait for the child to start
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		using namespace std::this_thread;
+		using namespace std::chrono;
+		sleep_for(milliseconds(1000));
 		remote_server.peer(server_endpoint);
 	}
 
@@ -233,15 +219,26 @@ main(int argc, char* argv[]) {
 	if (role == Role::Master)
 	#endif
 	{
-		std::clog << "KERNEL count = " << kernel_count << std::endl;
-		if (kernel_count > 0) {
-			throw factory::Error("some kernels were not deleted",
-				__FILE__, __LINE__, __func__);
-		}
-		if (kernel_count < 0) {
-			throw factory::Error("some kernels were deleted multiple times",
-				__FILE__, __LINE__, __func__);
-		}
+		EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
+			" or were deleted multiple times";
 	}
-	return retval;
+	EXPECT_EQ(0, retval);
+}
+
+int
+main(int argc, char* argv[]) {
+	// init gtest without argument to pass custom arguments
+	// from custom test runner
+	int no_argc = 0;
+	char** no_argv = nullptr;
+	::testing::InitGoogleTest(&no_argc, no_argv);
+	factory::Terminate_guard g00;
+	sys::this_process::ignore_signal(sys::signal::broken_pipe);
+	sys::input_operator_type options[] = {
+		sys::ignore_first_argument(),
+		sys::make_key_value("role", role),
+		nullptr
+	};
+	sys::parse_arguments(argc, argv, options);
+	return RUN_ALL_TESTS();
 }
