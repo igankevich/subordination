@@ -1,8 +1,6 @@
 #ifndef FACTORY_KERNEL_STREAM_HH
 #define FACTORY_KERNEL_STREAM_HH
 
-#include <cassert>
-
 #include <unistdx/base/log_message>
 #include <unistdx/net/pstream>
 
@@ -33,7 +31,7 @@ namespace factory {
 		Kernel_stream(sys::packetbuf* buf): sys::pstream(buf) {}
 		Kernel_stream(Kernel_stream&&) = default;
 
-		Kernel_stream&
+		inline Kernel_stream&
 		operator<<(kernel_type* kernel) {
 			return operator<<(*kernel);
 		}
@@ -41,22 +39,22 @@ namespace factory {
 		Kernel_stream&
 		operator<<(kernel_type& kernel) {
 			const Type* type = ::factory::types.lookup(typeid(kernel));
-			if (not type) {
-				throw Bad_type(
-					"no type is defined for the kernel",
-					{__FILE__, __LINE__, __func__},
-					kernel.id()
-				);
+			if (!type) {
+				throw std::invalid_argument("kernel type is null");
 			}
 			begin_packet();
 			*this << kernel.app() << type->id();
 			kernel.write(*this);
 			if (kernel.carries_parent()) {
-				// embed parent into the current kernel
+				// embed parent into the packet
 				kernel_type* parent = kernel.parent();
-				assert(parent and "Trying to embed non-existent parent kernel.");
+				if (!parent) {
+					throw std::invalid_argument("parent is null");
+				}
 				const Type* parent_type = ::factory::types.lookup(typeid(*parent));
-				assert(parent_type and "Trying to embed parent kernel with undefined type.");
+				if (!parent_type) {
+					throw std::invalid_argument("parent type is null");
+				}
 				*this << parent_type->id();
 				parent->write(*this);
 			}
@@ -66,13 +64,13 @@ namespace factory {
 
 		Kernel_stream&
 		operator>>(kernel_type*& kernel) {
-			if (not read_packet()) {
-				setstate(state::partial_packet);
+			if (!read_packet()) {
+				this->setstate(state::partial_packet);
 			} else {
 				app_type app;
 				*this >> app;
-				if (app != _thisapp) {
-					_doforward(app);
+				if (app != this->_thisapp) {
+					this->_doforward(app);
 				} else {
 					try {
 						kernel = static_cast<kernel_type*>(Types::read_object(::factory::types, *this));
@@ -82,73 +80,71 @@ namespace factory {
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
-					} catch (Bad_kernel& err) {
-						setstate(state::bad_kernel);
-						#ifndef NDEBUG
-						sys::log_message("err", "error _", err);
-						#endif
+					} catch (const Kernel_error& err) {
+						this->setstate(state::bad_kernel);
+						throw err;
 					}
 					// eat remaining bytes
-					rdbuf()->skip_packet();
+					this->rdbuf()->skip_packet();
 				}
 
 			}
 			return *this;
 		}
 
-		void
+		inline void
 		setforward(forward_func rhs) noexcept {
-			_doforward = rhs;
+			this->_doforward = rhs;
 		}
 
-		void
+		inline void
 		setstate(state rhs) noexcept {
-			_rdstate = rhs;
+			this->_rdstate = rhs;
 		}
 
-		state
+		inline state
 		rdstate() const noexcept {
-			return _rdstate;
+			return this->_rdstate;
 		}
 
-		explicit
+		inline explicit
 		operator bool() const noexcept {
-			return good();
+			return this->good();
 		}
 
-		bool
+		inline bool
 		operator!() const noexcept {
-			return !operator bool();
+			return !this->operator bool();
 		}
 
-		bool
+		inline bool
 		partial() const noexcept {
-			return _rdstate == state::partial_packet;
+			return this->_rdstate == state::partial_packet;
 		}
 
-		bool
+		inline bool
 		good() const noexcept {
-			return _rdstate == state::good;
+			return this->_rdstate == state::good;
 		}
 
-		bool
+		inline bool
 		bad() const noexcept {
-			return _rdstate == state::bad_kernel;
+			return this->_rdstate == state::bad_kernel;
 		}
 
-		void
+		inline void
 		clear() noexcept {
-			_rdstate = state::good;
+			this->_rdstate = state::good;
 		}
 
-		void
+		inline void
 		setapp(app_type rhs) noexcept {
-			_thisapp = rhs;
+			this->_thisapp = rhs;
 		}
 
 	private:
 
-		friend std::ostream&
+		inline friend std::ostream&
 		operator<<(std::ostream& out, state rhs) {
 			switch (rhs) {
 				case state::good: out << "good"; break;

@@ -14,6 +14,11 @@ if get_option('springy')
 	add_global_arguments('-DSPRINGY', language: 'cpp')
 endif
 
+cpp = meson.get_compiler('cpp')
+if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
+	add_global_link_arguments('-rdynamic', language: 'cpp')
+endif
+
 threads = dependency('threads')
 unistdx = dependency('unistdx')
 gtest = dependency('gtest', main: true)

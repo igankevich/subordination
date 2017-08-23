@@ -4,5 +4,5 @@ executable(
 	'spec',
 	sources: 'spec.cc',
 	include_directories: [srcdir],
-	dependencies: [threads, libz, unistdx]
+	dependencies: [threads, libz, unistdx, factory]
 )

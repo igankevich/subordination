@@ -10,7 +10,6 @@
 #include "make_types.hh"
 
 using namespace factory;
-using factory::Error;
 using factory::LBuffer;
 
 const char* prefix = "tmp.web_buffer_test.";

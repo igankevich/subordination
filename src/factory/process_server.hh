@@ -21,6 +21,7 @@
 #include <factory/kernel_stream.hh>
 #include <factory/result.hh>
 #include <factory/kernel.hh>
+#include <factory/kernel_error.hh>
 
 namespace factory {
 
@@ -198,12 +199,8 @@ namespace factory {
 			_ostream.begin_packet();
 			_ostream << kernel->app() << kernel->from();
 			const Type* type = ::factory::types.lookup(typeid(*kernel));
-			if (not type) {
-				throw Bad_type(
-					"no type is defined for the kernel",
-					{__FILE__, __LINE__, __func__},
-					kernel->id()
-				);
+			if (!type) {
+				throw Kernel_error("no type is defined for the kernel", kernel->id());
 			}
 			_ostream << type->id();
 			kernel->write(_ostream);
@@ -405,7 +402,7 @@ namespace factory {
 		forward(const Kernel_header& hdr, sys::pstream& istr) {
 			auto result = _apps.find(hdr.app());
 			if (result == _apps.end()) {
-				throw Error("bad app id", __FILE__, __LINE__, __func__);
+				FACTORY_THROW(Error, "bad application id");
 			}
 			result->second->forward(hdr, istr);
 		}
@@ -424,7 +421,7 @@ namespace factory {
 			} else {
 				auto result = _apps.find(k->app());
 				if (result == _apps.end()) {
-					throw Error("bad app id", __FILE__, __LINE__, __func__);
+					FACTORY_THROW(Error, "bad application id");
 				}
 				result->second->send(k);
 			}

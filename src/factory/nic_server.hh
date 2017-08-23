@@ -73,7 +73,7 @@ namespace factory {
 		_sentupstream(std::move(rhs._sentupstream)),
 		_router(rhs._router)
 		{
-			_stream.rdbuf(&_packetbuf);
+			this->_stream.rdbuf(&_packetbuf);
 		}
 
 		virtual
@@ -109,10 +109,16 @@ namespace factory {
 			if (not kernel->moves_everywhere()) {
 				delete_kernel = true;
 			}
-			#ifndef NDEBUG
-			sys::log_message("nic", "send to _ kernel _ ", vaddr(), *kernel);
-			#endif
-			_stream << kernel;
+			sys::log_message("nic", "send to _ kernel _ ", this->vaddr(), *kernel);
+			try {
+				this->_stream << kernel;
+			} catch (const Error& err) {
+				sys::log_message("nic", "write error _", err);
+			} catch (const std::exception& err) {
+				sys::log_message("nic", "write error _", err.what());
+			} catch (...) {
+				sys::log_message("nic", "write error _", "<unknown>");
+			}
 			/// The kernel is deleted if it goes downstream
 			/// and does not carry its parent.
 			if (delete_kernel) {
@@ -122,11 +128,19 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
-			_stream.clear();
-			_stream.sync();
+			this->_stream.clear();
+			this->_stream.sync();
 			kernel_type* kernel = nullptr;
-			while (_stream >> kernel) {
-				receive_kernel(kernel);
+			try {
+				while (this->_stream >> kernel) {
+					receive_kernel(kernel);
+				}
+			} catch (const Error& err) {
+				sys::log_message("nic", "read error _", err);
+			} catch (const std::exception& err) {
+				sys::log_message("nic", "read error _", err.what());
+			} catch (...) {
+				sys::log_message("nic", "read error _", "<unknown>");
 			}
 		}
 
@@ -243,7 +257,7 @@ namespace factory {
 				#endif
 				_router.send_local(k);
 			} else {
-				assert(false and "Bad kernel in sent buffer");
+				sys::log_message("nic", "bad kernel in sent buffer: _", *k);
 			}
 		}
 
@@ -466,10 +480,6 @@ namespace factory {
 		process_kernel(kernel_type* k) {
 			if (this->server_addr() && k->to() == this->server_addr()) {
 				_router.send_local(k);
-//					std::ostringstream msg;
-//					msg << "Kernel is sent to local node. From="
-//						<< this->server_addr() << ", to=" << k->to();
-//					throw Error(msg.str(), __FILE__, __LINE__, __func__);
 			}
 
 			if (k->moves_everywhere()) {

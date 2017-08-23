@@ -47,8 +47,8 @@ namespace factory {
 					sys::unlock_guard<lock_type> g(lock);
 					try {
 						::factory::act(kernel);
-					} catch (std::exception& x) {
-						throw Error(x.what(), {__FILE__, __LINE__, __func__});
+					} catch (const std::exception& x) {
+						FACTORY_THROW(Error, x.what());
 					}
 				}
 				return this->is_stopped();

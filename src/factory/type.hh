@@ -7,9 +7,13 @@
 #include <typeinfo>
 #include <typeindex>
 #include <sstream>
+#include <iosfwd>
+#include <functional>
+#include <mutex>
 
 #include <unistdx/net/pstream>
 #include <factory/error.hh>
+#include <factory/kernel_error.hh>
 
 namespace factory {
 
@@ -19,79 +23,79 @@ namespace factory {
 		typedef uint16_t id_type;
 		typedef std::function<void* (sys::pstream&)> read_type;
 
+		inline
 		Type(id_type id, read_type f, std::type_index idx) noexcept:
 		_id(id),
 		_read(f),
 		_index(idx)
 		{}
 
+		inline
 		Type(read_type f, std::type_index idx) noexcept:
 		_id(0),
 		_read(f),
 		_index(idx)
 		{}
 
-		explicit
+		inline explicit
 		Type(id_type id) noexcept:
 		_id(id),
 		_read(),
 		_index(typeid(void))
 		{}
 
-		void*
+		inline void*
 		read(sys::pstream& in) const {
-			return _read(in);
+			return this->_read(in);
 		}
 
-		std::type_index
+		inline std::type_index
 		index() const noexcept {
-			return _index;
+			return this->_index;
 		}
 
-		id_type
+		inline id_type
 		id() const noexcept {
-			return _id;
+			return this->_id;
 		}
 
-		void
+		inline void
 		setid(id_type rhs) noexcept {
-			_id = rhs;
+			this->_id = rhs;
 		}
 
-		const char*
+		inline const char*
 		name() const noexcept {
-			return _index.name();
+			return this->_index.name();
 		}
 
-		explicit
+		inline explicit
 		operator bool() const noexcept {
 			return this->_id != 0;
 		}
 
-		bool
+		inline bool
 		operator !() const noexcept {
 			return this->_id == 0;
 		}
 
-		bool
+		inline bool
 		operator==(const Type& rhs) const noexcept {
 			return this->_id == rhs._id;
 		}
 
-		bool
+		inline bool
 		operator!=(const Type& rhs) const noexcept {
-			return !operator==(rhs);
+			return !this->operator==(rhs);
 		}
 
-		bool
+		inline bool
 		operator<(const Type& rhs) const noexcept {
-			return _id < rhs._id;
+			return this->_id < rhs._id;
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Type& rhs) {
-			return out << rhs.name() << '(' << rhs.id() << ')';
-		}
+		operator<<(std::ostream& out, const Type& rhs);
 
 	private:
 
@@ -101,15 +105,36 @@ namespace factory {
 
 	};
 
+	std::ostream&
+	operator<<(std::ostream& out, const Type& rhs);
+
+	class Type_error: public Error {
+
+	private:
+		Type _tp1, _tp2;
+
+	public:
+		inline
+		Type_error(Type tp1, Type tp2, const Error_location& loc):
+		Error(loc),
+		_tp1(tp1),
+		_tp2(tp2)
+		{}
+
+		friend std::ostream&
+		operator<<(std::ostream& out, const Type_error& rhs);
+
+	};
+
+	std::ostream&
+	operator<<(std::ostream& out, const Type_error& rhs);
+
 	struct Types {
 
 		typedef Type::id_type id_type;
 
 		const Type*
-		lookup(id_type id) const noexcept {
-			auto result = _types.find(Type(id));
-			return result == _types.end() ? nullptr : &*result;
-		}
+		lookup(id_type id) const noexcept;
 
 		const Type*
 		lookup(std::type_index idx) const noexcept {
@@ -126,17 +151,11 @@ namespace factory {
 		void
 		register_type(Type type) {
 			if (const Type* existing_type = this->lookup(type.index())) {
-				std::stringstream msg;
-				msg << "'" << type << "' and '" << *existing_type
-					<< "' have the same type index.";
-				throw Error(msg.str(), __FILE__, __LINE__, __func__);
+				FACTORY_THROW(Type_error, type, *existing_type);
 			}
 			if (type) {
 				if (const Type* existing_type = this->lookup(type.id())) {
-					std::stringstream msg;
-					msg << "'" << type << "' and '" << *existing_type
-						<< "' have the same type identifiers.";
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+					FACTORY_THROW(Type_error, type, *existing_type);
 				}
 			} else {
 				type.setid(generate_id());
@@ -147,49 +166,30 @@ namespace factory {
 		template<class X>
 		void
 		register_type() {
-			_types.emplace(
+			const std::type_index idx = typeid(X);
+			this->_types.emplace(
 				generate_id(),
 				[] (sys::pstream& in) -> void* {
 					X* kernel = new X;
 					kernel->read(in);
 					return kernel;
 				},
-				typeid(X)
+				idx
 			);
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Types& rhs) {
-			std::ostream_iterator<Entry> it(out, "\n");
-			std::copy(rhs._types.begin(), rhs._types.end(), it);
-			return out;
-		}
+		operator<<(std::ostream& out, const Types& rhs);
 
 		static void*
-		read_object(Types& types, sys::pstream& packet)
-		throw(Bad_kernel)
-		{
+		read_object(Types& types, sys::pstream& packet) {
 			id_type id;
 			packet >> id;
 			const Type* type = types.lookup(id);
 			if (type == nullptr) {
-				throw Bad_kernel(
-					"bad kernel type when reading from Kernel_stream",
-					{__FILE__, __LINE__, __func__},
-					id
-				);
+				throw Kernel_error("unknown kernel type", id);
 			}
-			void* kernel = nullptr;
-			try {
-				kernel = type->read(packet);
-			} catch (std::bad_alloc& err) {
-				throw Bad_kernel(
-					err.what(),
-					{__FILE__, __LINE__, __func__},
-					id
-				);
-			}
-			return kernel;
+			return type->read(packet);
 		}
 
 		/// @deprecated
@@ -200,23 +200,9 @@ namespace factory {
 			packet >> id;
 			const Type* type = types.lookup(id);
 			if (type == nullptr) {
-				throw Bad_kernel(
-					"bad kernel type when reading from Kernel_stream",
-					{__FILE__, __LINE__, __func__},
-					id
-				);
+				throw Kernel_error("bad kernel type", id);
 			}
-			void* kernel = nullptr;
-			try {
-				kernel = type->read(packet);
-			} catch (std::bad_alloc& err) {
-				throw Bad_kernel(
-					err.what(),
-					{__FILE__, __LINE__, __func__},
-					id
-				);
-			}
-			callback(kernel);
+			callback(type->read(packet));
 		}
 
 	private:
@@ -226,21 +212,13 @@ namespace factory {
 			return ++_counter;
 		}
 
-		struct Entry {
-			Entry(const Type& rhs): _type(rhs) {}
-
-			friend std::ostream&
-			operator<<(std::ostream& out, const Entry& rhs) {
-				return out << "/type/" << rhs._type.id() << '/' << rhs._type;
-			}
-
-		private:
-			const Type& _type;
-		};
 
 		std::set<Type> _types;
 		id_type _counter = 0;
 	};
+
+	std::ostream&
+	operator<<(std::ostream& out, const Types& rhs);
 
 	template<class T>
 	struct Instances {

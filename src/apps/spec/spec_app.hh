@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cmath>
 
+#include <unistdx/base/log_message>
 #include <unistdx/fs/path>
 
 typedef int32_t Year;
@@ -321,9 +322,13 @@ struct Station_kernel: public Kernel {
 
 	int check_read(const std::string filename, int ret) {
 		if (ret == -1) {
-			std::stringstream msg;
-			msg << "Error while reading file '" << filename << "'.";
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			sys::log_message(
+				std::cerr,
+				"spec",
+				"error while reading file \"_\"",
+				filename
+			);
+			FACTORY_THROW(Error, "error while reading file");
 		}
 		return ret;
 	}
@@ -365,9 +370,13 @@ struct Station_kernel: public Kernel {
 				const Observation& ob = pair.second;
 				::gzFile file = ::gzopen(ob.filename().c_str(), "rb");
 				if (file == NULL) {
-					std::stringstream msg;
-					msg << "Can not open file '" << ob.filename() << "' for reading.";
-					throw Error(msg.str(), __FILE__, __LINE__, __func__);
+					sys::log_message(
+						std::cerr,
+						"spec",
+						"unable to open file \"_\" for reading",
+						ob.filename()
+					);
+					FACTORY_THROW(Error, "error opening a file for reading");
 				}
 				char buf[64];
 				int count = 0;

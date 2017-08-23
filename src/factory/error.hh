@@ -1,35 +1,28 @@
 #ifndef FACTORY_ERROR_HH
 #define FACTORY_ERROR_HH
 
+#include <ostream>
 #include <stdexcept>
-#include <thread>
-
-namespace std {
-
-	std::ostream&
-	operator<<(std::ostream& out, const std::exception& rhs) {
-		return out << rhs.what();
-	}
-
-}
+#include <unistd.h>
+#include <unistdx/util/backtrace>
 
 namespace factory {
 
 	struct Error_location {
 
-		Error_location(const char* file, const int line, const char* func) noexcept:
+		inline
+		Error_location(
+			const char* file,
+			const int line,
+			const char* func
+		) noexcept:
 		_file(file),
 		_line(line),
 		_func(func)
 		{}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Error_location& rhs) {
-			return
-			out << rhs._file << ':'
-				<< rhs._line << ':'
-				<< rhs._func;
-		}
+		operator<<(std::ostream& out, const Error_location& rhs);
 
 	private:
 
@@ -39,25 +32,26 @@ namespace factory {
 
 	};
 
+	std::ostream&
+	operator<<(std::ostream& out, const Error_location& rhs);
+
 	struct Error: public std::runtime_error {
 
-		Error(std::string&& msg, const char* file, const int line, const char* function) noexcept:
-		std::runtime_error(std::forward<std::string>(msg)),
-		_location{file, line, function}
+		inline
+		Error(const std::string& msg, const Error_location& loc) noexcept:
+		Error(msg.data(), loc)
 		{}
 
-		Error(const char* msg, const Error_location& loc) noexcept:
-		std::runtime_error(msg),
-		_location(loc)
+		Error(const char* msg, const Error_location& loc) noexcept;
+
+	protected:
+		inline explicit
+		Error(const Error_location& loc) noexcept:
+		Error("error", loc)
 		{}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Error& rhs) {
-			return
-			out << rhs._location << ' '
-				<< std::this_thread::get_id() << ' '
-				<< rhs.what();
-		}
+		operator<<(std::ostream& out, const Error& rhs);
 
 	private:
 
@@ -65,48 +59,12 @@ namespace factory {
 
 	};
 
-	struct Bad_kernel: public Error {
-
-		typedef std::uintmax_t id_type;
-
-		Bad_kernel(const char* msg, const Error_location& loc, id_type type_id) noexcept:
-		Error(msg, loc),
-		_id(type_id)
-		{}
-
-		friend std::ostream&
-		operator<<(std::ostream& out, const Bad_kernel& rhs) {
-			operator<<(out, static_cast<const Error&>(rhs));
-			return out << ' ' << "type_id" << '=' << rhs._id;
-		}
-
-	private:
-
-		id_type _id;
-
-	};
-
-	struct Bad_type: public Error {
-
-		typedef std::uintmax_t id_type;
-
-		Bad_type(const char* msg, const Error_location& loc, id_type kernel_id) noexcept:
-		Error(msg, loc),
-		_id(kernel_id)
-		{}
-
-		friend std::ostream&
-		operator<<(std::ostream& out, const Bad_type& rhs) {
-			operator<<(out, static_cast<const Error&>(rhs));
-			return out << ' ' << "id" << '=' << rhs._id;
-		}
-
-	private:
-
-		id_type _id;
-
-	};
+	std::ostream&
+	operator<<(std::ostream& out, const Error& rhs);
 
 }
+
+#define FACTORY_THROW(error, ...) \
+	throw ::factory::error(__VA_ARGS__, {__FILE__,__LINE__,__func__})
 
 #endif // FACTORY_ERROR_HH

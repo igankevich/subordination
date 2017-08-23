@@ -336,9 +336,7 @@ namespace factory {
 
 		virtual void
 		react(Kernel*) {
-			std::stringstream msg;
-			msg << "Empty react: type=" << typeid(*this).name();
-			throw Error(msg.str(), __FILE__, __LINE__, __func__);
+			FACTORY_THROW(Error, "empty react");
 		}
 
 		virtual void

@@ -4,7 +4,7 @@ test(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx,gtest]
+		dependencies: [unistdx, gtest, factory]
 	)
 )
 
@@ -18,14 +18,14 @@ test_runner = executable(
 executable(
 	'nic-server-test',
 	sources: 'nic_server_test.cc',
-	dependencies: [threads, unistdx, gtest],
+	dependencies: [threads, unistdx, gtest, factory],
 	include_directories: srcdir,
 )
 
 executable(
 	'nic-server-offline-test',
 	sources: 'nic_server_test.cc',
-	dependencies: [threads, unistdx, gtest],
+	dependencies: [threads, unistdx, gtest, factory],
 	include_directories: srcdir,
 	cpp_args: [ '-DFACTORY_TEST_OFFLINE' ],
 )
@@ -57,7 +57,7 @@ test(
 	executable(
 		'timer-server-test',
 		sources: 'timer_server_test.cc',
-		dependencies: [threads, unistdx, gtest],
+		dependencies: [threads, unistdx, gtest, factory],
 		include_directories: srcdir,
 	)
 )
@@ -65,7 +65,7 @@ test(
 app_exe = executable(
 	'process-server-test-app',
 	sources: 'process_server_test.cc',
-	dependencies: [threads, unistdx],
+	dependencies: [threads, unistdx, factory],
 	include_directories: srcdir,
 	cpp_args: '-DFACTORY_TEST_APP'
 )
@@ -73,7 +73,7 @@ app_exe = executable(
 srv_exe = executable(
 	'process-server-test',
 	sources: 'process_server_test.cc',
-	dependencies: [threads, unistdx],
+	dependencies: [threads, unistdx, factory],
 	include_directories: srcdir,
 	cpp_args: [
 		'-DFACTORY_TEST_SERVER',
