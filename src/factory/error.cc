@@ -1,10 +1,5 @@
 #include "error.hh"
-#include <thread>
-
-factory::Error::Error(const char* msg, const Error_location& loc) noexcept:
-std::runtime_error(msg),
-_location(loc)
-{ sys::backtrace(STDERR_FILENO); }
+#include <ostream>
 
 std::ostream&
 factory::operator<<(std::ostream& out, const Error_location& rhs) {
@@ -13,8 +8,6 @@ factory::operator<<(std::ostream& out, const Error_location& rhs) {
 
 std::ostream&
 factory::operator<<(std::ostream& out, const Error& rhs) {
-	return out << rhs._location << ' '
-		<< std::this_thread::get_id() << ' '
-		<< rhs.what();
+	return out << rhs._location << ' ' << rhs.what();
 }
 

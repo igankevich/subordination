@@ -9,8 +9,7 @@
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
-#include <factory/kernelbuf.hh>
-#include <factory/kernel_stream.hh>
+#include <factory/kernel/kernel_stream.hh>
 
 namespace factory {
 

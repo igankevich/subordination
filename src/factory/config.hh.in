@@ -1,0 +1,8 @@
+#ifndef FACTORY_CONFIG_HH_IN
+#define FACTORY_CONFIG_HH_IN
+
+#include "@kernel_header@"
+
+#define FACTORY_KERNEL_TYPE @kernel_type@
+
+#endif // FACTORY_CONFIG_HH_IN vim:filetype=cpp

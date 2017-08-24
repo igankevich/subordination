@@ -8,8 +8,8 @@
 #include <factory/timer_server.hh>
 #include <factory/nic_server.hh>
 #include <factory/server_guard.hh>
-#include <factory/reflection.hh>
-#include <factory/algorithm.hh>
+#include <factory/registry.hh>
+#include <factory/kernel/algorithm.hh>
 
 namespace factory {
 

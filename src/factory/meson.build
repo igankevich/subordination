@@ -1,11 +1,20 @@
+configure_file(
+	input: 'config.hh.in',
+	output: 'config.hh',
+	configuration: config
+)
+
 libfactory_src = files()
 
 subdir('bits')
+subdir('reg')
+subdir('kernel')
 
 libfactory_src += files([
 	'error.cc',
-	'kernel_error.cc',
-	'type.cc',
+	'registry.cc',
+	'basic_server.cc',
+	'application.cc',
 ])
 
 libfactory_shared = shared_library(

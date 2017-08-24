@@ -1,7 +1,7 @@
 #ifndef APPS_AUTOREG_MAPREDUCE_HH
 #define APPS_AUTOREG_MAPREDUCE_HH
 
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
 
 namespace factory {
 

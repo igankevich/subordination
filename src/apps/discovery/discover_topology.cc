@@ -195,8 +195,8 @@ struct Topology {
 			[&locs,&nhosts,this] (const mytuple& rhs) {
 				const network_type net = std::get<0>(rhs);
 				const city_type city = std::get<1>(rhs);
-				const float_type lat = std::get<7>(rhs);
-				const float_type lon = std::get<8>(rhs);
+				//const float_type lat = std::get<7>(rhs);
+				//const float_type lon = std::get<8>(rhs);
 				const country_type country = _countries[city];
 				if (city and country) {
 					nhosts[city] += net.count();

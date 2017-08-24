@@ -19,6 +19,11 @@ if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 	add_global_link_arguments('-rdynamic', language: 'cpp')
 endif
 
+# configuration
+config = configuration_data()
+config.set('kernel_type', get_option('kernel_type'))
+config.set('kernel_header', get_option('kernel_header'))
+
 threads = dependency('threads')
 unistdx = dependency('unistdx')
 gtest = dependency('gtest', main: true)

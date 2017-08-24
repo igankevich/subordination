@@ -17,11 +17,9 @@
 
 #include <factory/basic_server.hh>
 #include <factory/proxy_server.hh>
-#include <factory/kernelbuf.hh>
-#include <factory/kernel_stream.hh>
-#include <factory/result.hh>
-#include <factory/kernel.hh>
-#include <factory/kernel_error.hh>
+#include <factory/application.hh>
+#include <factory/kernel/kernel_stream.hh>
+#include <factory/kernel/kernel.hh>
 
 namespace factory {
 
@@ -59,7 +57,7 @@ namespace factory {
 		void
 		send(kernel_type* kernel) {
 			bool erase_kernel = true;
-			if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->identifiable()) {
+			if ((kernel->moves_upstream() || kernel->moves_somewhere()) && kernel->has_id()) {
 				_buffer.push_back(kernel);
 				erase_kernel = false;
 			}
@@ -192,14 +190,14 @@ namespace factory {
 		send(kernel_type* kernel) {
 			/*
 			TODO we need IDs only when forwarding kernels to other hosts
-			if (!kernel->identifiable() && !kernel->moves_everywhere()) {
+			if (!kernel->has_id() && !kernel->moves_everywhere()) {
 				kernel->id(this->factory()->factory_generate_id());
 			}
 			*/
 			_ostream.begin_packet();
 			_ostream << kernel->app() << kernel->from();
-			const Type* type = ::factory::types.lookup(typeid(*kernel));
-			if (!type) {
+			Types::const_iterator type = types.find(typeid(*kernel));
+			if (type == types.end()) {
 				throw Kernel_error("no type is defined for the kernel", kernel->id());
 			}
 			_ostream << type->id();
@@ -252,17 +250,18 @@ namespace factory {
 			app_type app; sys::endpoint from;
 			_istream >> app >> from;
 			if (app == Application::ROOT || _childpid == sys::this_process::id()) {
-				Types::read_object(factory::types, _istream,
-					[this,app] (void* rhs) {
-						kernel_type* k = static_cast<kernel_type*>(rhs);
-						receive_kernel(k, app);
-					}
-				);
+				kernel_type* k = this->read_kernel();
+				this->receive_kernel(k, app);
 			} else {
 				Kernel_header hdr;
 				hdr.setapp(app);
 				_router.forward(hdr, _istream);
 			}
+		}
+
+		inline kernel_type*
+		read_kernel() {
+			return static_cast<kernel_type*>(types.read_object(this->_istream));
 		}
 
 		void
@@ -273,12 +272,13 @@ namespace factory {
 				// TODO
 				this->clear_kernel_buffer(k);
 			} else if (k->principal_id()) {
-				kernel_type* p = ::factory::instances.lookup(k->principal_id());
-				if (p == nullptr) {
+				instances_guard g(instances);
+				auto result = instances.find(k->principal_id());
+				if (result == instances.end()) {
 					k->result(Result::no_principal_found);
 					ok = false;
 				}
-				k->principal(p);
+				k->principal(result->second);
 			}
 			#ifndef NDEBUG
 			sys::log_message("app", "recv _", *k);

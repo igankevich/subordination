@@ -5,6 +5,7 @@
 #include <unistdx/net/ifaddr>
 #include <unistdx/net/socket>
 #include <unistdx/ipc/process_group>
+#include <unistdx/ipc/execute>
 
 #include <factory/factory.hh>
 #include <factory/cpu_server.hh>
@@ -106,7 +107,10 @@ struct Main: public Kernel {
 			const auto start_delay = 5;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));
-			factory::instances.register_instance(master);
+			{
+				factory::instances_guard g(factory::instances);
+				factory::instances.register_instance(master);
+			}
 			master->after(std::chrono::seconds(start_delay));
 			factory::timer_server.send(master);
 

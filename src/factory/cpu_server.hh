@@ -5,8 +5,8 @@
 #include <unistdx/util/system>
 
 #include <factory/basic_server.hh>
-#include <factory/result.hh>
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
+#include <factory/error.hh>
 
 namespace factory {
 

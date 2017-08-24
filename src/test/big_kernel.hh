@@ -1,7 +1,7 @@
 #ifndef TEST_BIG_KERNEL_HH
 #define TEST_BIG_KERNEL_HH
 
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
 
 #include "datum.hh"
 

@@ -4,9 +4,10 @@
 #include <unistdx/base/log_message>
 #include <unistdx/net/pstream>
 
-#include <factory/type.hh>
 #include <factory/error.hh>
-#include <factory/reflection.hh>
+#include <factory/registry.hh>
+#include "kernel_error.hh"
+#include "kernelbuf.hh"
 
 namespace factory {
 
@@ -16,7 +17,6 @@ namespace factory {
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
 		typedef std::function<void(app_type)> forward_func;
-		typedef Types types;
 
 		enum struct state {
 			good = 0,
@@ -38,8 +38,8 @@ namespace factory {
 
 		Kernel_stream&
 		operator<<(kernel_type& kernel) {
-			const Type* type = ::factory::types.lookup(typeid(kernel));
-			if (!type) {
+			Types::const_iterator type = types.find(typeid(kernel));
+			if (type == types.end()) {
 				throw std::invalid_argument("kernel type is null");
 			}
 			begin_packet();
@@ -51,8 +51,8 @@ namespace factory {
 				if (!parent) {
 					throw std::invalid_argument("parent is null");
 				}
-				const Type* parent_type = ::factory::types.lookup(typeid(*parent));
-				if (!parent_type) {
+				Types::const_iterator parent_type = types.find(typeid(*parent));
+				if (parent_type == types.end()) {
 					throw std::invalid_argument("parent type is null");
 				}
 				*this << parent_type->id();
@@ -73,10 +73,10 @@ namespace factory {
 					this->_doforward(app);
 				} else {
 					try {
-						kernel = static_cast<kernel_type*>(Types::read_object(::factory::types, *this));
+						kernel = this->read_kernel();
 						kernel->setapp(app);
 						if (kernel->carries_parent()) {
-							kernel_type* parent = static_cast<kernel_type*>(Types::read_object(::factory::types, *this));
+							kernel_type* parent = this->read_kernel();
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
@@ -152,6 +152,11 @@ namespace factory {
 				case state::bad_kernel: out << "bad_kernel"; break;
 			}
 			return out;
+		}
+
+		inline kernel_type*
+		read_kernel() {
+			return static_cast<kernel_type*>(types.read_object(*this));
 		}
 
 		app_type _thisapp = 0;

@@ -2,7 +2,7 @@
 #include <factory/timer_server.hh>
 #include <factory/process_server.hh>
 #include <factory/server_guard.hh>
-#include <factory/reflection.hh>
+#include <factory/registry.hh>
 #include <factory/factory.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)

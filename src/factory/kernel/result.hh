@@ -1,6 +1,8 @@
 #ifndef FACTORY_RESULT_HH
 #define FACTORY_RESULT_HH
 
+#include <unistdx/net/pstream>
+
 namespace factory {
 
 	typedef uint16_t result_type;
@@ -14,28 +16,19 @@ namespace factory {
 	};
 
 	const char*
-	to_string(Result rhs) noexcept {
-		switch (rhs) {
-			case Result::success: return "success";
-			case Result::undefined: return "undefined";
-			case Result::endpoint_not_connected: return "endpoint_not_connected";
-			case Result::no_principal_found: return "no_principal_found";
-			case Result::error: return "error";
-			default: return "unknown_result";
-		}
-	}
+	to_string(factory::Result rhs) noexcept;
 
-	std::ostream&
+	inline std::ostream&
 	operator<<(std::ostream& out, Result rhs) {
 		return out << to_string(rhs);
 	}
 
-	sys::pstream&
+	inline sys::pstream&
 	operator<<(sys::pstream& out, Result rhs) {
 		return out << result_type(rhs);
 	}
 
-	sys::pstream&
+	inline sys::pstream&
 	operator>>(sys::pstream& in, Result& rhs) {
 		result_type tmp;
 		in >> tmp;

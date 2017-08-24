@@ -3,7 +3,7 @@
 
 #include <unistdx/ipc/semaphore>
 #include <factory/basic_server.hh>
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
 
 namespace factory {
 

@@ -12,24 +12,17 @@
 #include <unistdx/it/container_traits>
 #include <unistdx/it/queue_popper>
 #include <unistdx/it/queue_pusher>
-#include <unistdx/net/endpoint>
 #include <unistdx/util/system>
 
-#include <factory/type.hh>
+#include <factory/reg/type.hh>
 
 namespace factory {
 
-	std::promise<int> return_value;
-
 	void
-	graceful_shutdown(int ret) {
-		return_value.set_value(ret);
-	}
+	graceful_shutdown(int ret);
 
 	int
-	wait_and_return() {
-		return return_value.get_future().get();
-	}
+	wait_and_return();
 
 	struct Global_thread_context {
 
@@ -67,7 +60,7 @@ namespace factory {
 		std::condition_variable _semaphore;
 	};
 
-	Global_thread_context _globalcon;
+	extern Global_thread_context _globalcon;
 
 	enum struct server_state {
 		initial,

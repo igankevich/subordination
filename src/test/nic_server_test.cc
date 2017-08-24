@@ -1,4 +1,4 @@
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
 #include <factory/cpu_server.hh>
 #include <factory/kernel.hh>
 #include <factory/server_guard.hh>
@@ -227,12 +227,12 @@ TEST(NICServerTest, All) {
 
 int
 main(int argc, char* argv[]) {
+	factory::Terminate_guard g00;
 	// init gtest without argument to pass custom arguments
 	// from custom test runner
 	int no_argc = 0;
 	char** no_argv = nullptr;
 	::testing::InitGoogleTest(&no_argc, no_argv);
-	factory::Terminate_guard g00;
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),

@@ -1,1 +1,15 @@
 option('springy', type: 'boolean', value: false)
+
+option(
+	'kernel_type',
+	type: 'string',
+	value: '::factory::Kernel',
+	decription: 'base type for all kernels'
+)
+
+option(
+	'kernel_header',
+	type: 'string',
+	value: 'factory/kernel.hh',
+	decription: 'header file containing definition of kernel_type'
+)

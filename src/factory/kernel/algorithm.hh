@@ -1,8 +1,8 @@
 #ifndef FACTORY_ALGORITHM_HH
 #define FACTORY_ALGORITHM_HH
 
-#include <factory/kernel.hh>
-#include <factory/result.hh>
+#include <factory/kernel/kernel.hh>
+#include <factory/basic_server.hh>
 #ifdef SPRINGY
 #include <springy/springy.hh>
 #endif

@@ -1,9 +1,8 @@
 #include <unistdx/io/fildesbuf>
 
-#include <factory/kernel.hh>
-#include <factory/kernelbuf.hh>
-#include <factory/kernel_stream.hh>
-#include <factory/reflection.hh>
+#include <factory/kernel/kernel_stream.hh>
+#include <factory/registry.hh>
+#include <factory/basic_server.hh>
 
 #include "datum.hh"
 

@@ -15,8 +15,7 @@
 #include <unistdx/net/socket>
 
 #include <factory/proxy_server.hh>
-#include <factory/kernelbuf.hh>
-#include <factory/kernel_stream.hh>
+#include <factory/kernel/kernel_stream.hh>
 
 namespace factory {
 
@@ -212,12 +211,13 @@ namespace factory {
 			if (k->moves_downstream()) {
 				this->clear_kernel_buffer(k);
 			} else if (k->principal_id()) {
-				kernel_type* p = factory::instances.lookup(k->principal_id());
-				if (p == nullptr) {
+				instances_guard g(instances);
+				auto result = instances.find(k->principal_id());
+				if (result == instances.end()) {
 					k->result(Result::no_principal_found);
 					ok = false;
 				}
-				k->principal(p);
+				k->principal(result->second);
 			}
 			#ifndef NDEBUG
 			sys::log_message("nic", "recv _", *k);
@@ -424,7 +424,7 @@ namespace factory {
 
 		void
 		ensure_identity_helper(kernel_type* kernel) {
-			if (not kernel->identifiable()) {
+			if (not kernel->has_id()) {
 				kernel->set_id(generate_id());
 			}
 		}

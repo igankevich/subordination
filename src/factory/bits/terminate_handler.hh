@@ -7,7 +7,7 @@ namespace factory {
 	print_backtrace(int sig) noexcept;
 
 	void
-	error_printing_handler() noexcept;
+	print_error() noexcept;
 
 	struct Terminate_guard {
 

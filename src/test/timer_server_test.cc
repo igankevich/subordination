@@ -1,6 +1,6 @@
 #include <factory/cpu_server.hh>
 #include <factory/timer_server.hh>
-#include <factory/algorithm.hh>
+#include <factory/kernel/algorithm.hh>
 #include <factory/server_guard.hh>
 
 #include <gtest/gtest.h>
