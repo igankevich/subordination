@@ -1,8 +1,6 @@
 #include <factory/base/error_handler.hh>
 #include <factory/kernel.hh>
-#include <factory/kernel/algorithm.hh>
-#include <factory/ppl/cpu_server.hh>
-#include <factory/ppl/server_guard.hh>
+#include <factory/api.hh>
 
 #include <unistdx/base/cmdline>
 
@@ -11,47 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#if defined(FACTORY_TEST_WEBSOCKET)
-#include <factory/ppl/nic_server.hh>
-#include <web/websocket.hh>
-#define FACTORY_SOCKET_TYPE factory::Web_socket
-#endif
-
-#if !defined(FACTORY_SOCKET_TYPE)
-#include <factory/ppl/nic_server.hh>
-#define FACTORY_TEST_SOCKET
-#define FACTORY_SOCKET_TYPE sys::socket
-#endif
-
 using test::Role;
-
-factory::CPU_server<factory::Kernel> local_server;
-
-#if defined(FACTORY_TEST_SOCKET) || defined(FACTORY_TEST_WEBSOCKET)
-struct Router {
-
-	void
-	send_local(factory::Kernel* rhs) {
-		local_server.send(rhs);
-	}
-
-	void
-	send_remote(factory::Kernel*);
-
-	void
-	forward(const factory::Kernel_header& hdr, sys::pstream& istr) {
-		FAIL() << "must not get here";
-	}
-
-};
-
-factory::NIC_server<factory::Kernel, FACTORY_SOCKET_TYPE, Router> remote_server;
-
-void
-Router::send_remote(factory::Kernel* rhs) {
-	remote_server.send(rhs);
-}
-#endif
 
 const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
@@ -74,6 +32,8 @@ std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
 Role role = Role::Master;
+
+using namespace factory::api;
 
 struct Test_socket: public factory::Kernel {
 
@@ -102,10 +62,10 @@ struct Test_socket: public factory::Kernel {
 				factory::graceful_shutdown(0);
 			}
 		} else {
-			factory::commit(local_server, this);
+			commit<Local>(this);
 		}
 		#else
-		factory::commit(remote_server, this);
+		commit<Remote>(this);
 		#endif
 	}
 
@@ -145,20 +105,17 @@ struct Sender: public factory::Kernel {
 
 	void act() override {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			factory::upstream(remote_server, this, new Test_socket(_input));
+			upstream<Remote>(this, new Test_socket(_input));
 		}
 	}
 
 	void react(factory::Kernel* child) override {
-
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
-
 		EXPECT_EQ(this->_input.size(), output.size());
 		EXPECT_EQ(this->_input, output);
-
 		if (++_num_returned == NUM_KERNELS) {
-			factory::commit(local_server, this);
+			commit<Local>(this);
 		}
 	}
 
@@ -176,14 +133,14 @@ struct Main: public factory::Kernel {
 	act() override {
 		for (uint32_t i=0; i<POWERS.size(); ++i) {
 			size_t sz = 1 << POWERS[i];
-			factory::upstream(local_server, this, new Sender(sz));
+			upstream<Local>(this, new Sender(sz));
 		}
 	}
 
 	void
 	react(factory::Kernel*) override {
 		if (++_num_returned == POWERS.size()) {
-			factory::commit(local_server, this, factory::Result::success);
+			commit<Local>(this, factory::Result::success);
 		}
 	}
 
@@ -194,22 +151,23 @@ private:
 };
 
 TEST(NICServerTest, All) {
+	using factory::factory;
 	factory::register_type<Test_socket>();
 	if (role == Role::Slave) {
-		remote_server.bind(server_endpoint, netmask);
+		factory.nic().bind(server_endpoint, netmask);
 	}
 	if (role == Role::Master) {
-		remote_server.bind(client_endpoint, netmask);
+		factory.nic().bind(client_endpoint, netmask);
 		// wait for the child to start
 		using namespace std::this_thread;
 		using namespace std::chrono;
 		sleep_for(milliseconds(1000));
-		remote_server.peer(server_endpoint);
+		factory.nic().peer(server_endpoint);
 	}
 
-	factory::start_all(local_server, remote_server);
+	Factory_guard g;
 	if (role == Role::Master) {
-		local_server.send(new Main);
+		send<Local>(new Main);
 	}
 
 	int retval = factory::wait_and_return();
@@ -222,14 +180,12 @@ TEST(NICServerTest, All) {
 			" or were deleted multiple times";
 	}
 	EXPECT_EQ(0, retval);
-	factory::stop_all(local_server, remote_server);
-	factory::wait_all(local_server, remote_server);
 }
 
 int
 main(int argc, char* argv[]) {
 	factory::install_error_handler();
-	// init gtest without argument to pass custom arguments
+	// init gtest without arguments to pass custom arguments
 	// from custom test runner
 	int no_argc = 0;
 	char** no_argv = nullptr;

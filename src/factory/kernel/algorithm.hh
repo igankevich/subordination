@@ -3,70 +3,8 @@
 
 #include <factory/kernel/kernel.hh>
 #include <factory/ppl/basic_server.hh>
-#ifdef SPRINGY
-#include <springy/springy.hh>
-#endif
 
 namespace factory {
-
-	#ifdef SPRINGY
-	springy::Springy_graph<Kernel> graph;
-	#endif
-
-	template<class Pipeline>
-	void
-	upstream(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
-		rhs->parent(lhs);
-		#ifdef SPRINGY
-		if (lhs) {
-			rhs->_mass = 0.9 * lhs->_mass;
-		}
-		graph.add_node(*rhs);
-		if (lhs) {
-			graph.add_edge(*lhs, *rhs);
-		}
-		#endif
-		ppl.send(rhs);
-	}
-
-	template<class Pipeline>
-	void
-	upstream_carry(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
-		rhs->setf(Kernel::Flag::carries_parent);
-		upstream(ppl, lhs, rhs);
-	}
-
-	template<class Pipeline>
-	void
-	commit(Pipeline& ppl, Kernel* rhs, Result ret) {
-		if (!rhs->parent()) {
-			#ifdef SPRINGY
-			graph.remove_node(*rhs);
-			#endif
-			delete rhs;
-			factory::graceful_shutdown(static_cast<int>(ret));
-		} else {
-			rhs->return_to_parent(ret);
-			#ifdef SPRINGY
-			graph.add_edge(*rhs, *rhs->parent());
-			#endif
-			ppl.send(rhs);
-		}
-	}
-
-	template<class Pipeline>
-	void
-	commit(Pipeline& ppl, Kernel* rhs) {
-		Result ret = rhs->result();
-		commit(ppl, rhs, ret == Result::undefined ? Result::success : ret);
-	}
-
-	template<class Pipeline>
-	void
-	send(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
-		lhs->principal(rhs);
-		ppl.send(lhs);
-	}
 
 	inline void
 	act(Kernel* kernel) {
@@ -90,7 +28,7 @@ namespace factory {
 			}
 			if (del) {
 				#ifdef SPRINGY
-				graph.remove_node(*kernel);
+				::springy::graph.remove_node(kernel->unique_id());
 				#endif
 				delete kernel;
 			}

@@ -60,6 +60,12 @@ namespace factory {
 			return 0;
 		}
 
+		inline uint64_t
+		unique_id() const noexcept {
+			return this->has_id() ? this->id() : uint64_t(this);
+		}
+
+
 	};
 
 }

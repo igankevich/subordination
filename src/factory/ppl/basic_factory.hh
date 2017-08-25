@@ -2,15 +2,29 @@
 #define FACTORY_PPL_FACTORY_HH
 
 #include <factory/ppl/basic_server.hh>
-#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/basic_cpu_server.hh>
 #include <factory/ppl/io_server.hh>
 #include <factory/ppl/nic_server.hh>
-#include <factory/ppl/server_guard.hh>
 #include <factory/ppl/timer_server.hh>
 #include <factory/ppl/multi_pipeline.hh>
+#include <factory/config.hh>
 #include <vector>
 
 namespace factory {
+
+	template <class T>
+	struct Basic_router {
+
+		inline void
+		send_local(T* rhs);
+
+		inline void
+		send_remote(T*);
+
+		inline void
+		forward(const Kernel_header& hdr, sys::pstream& istr) {}
+
+	};
 
 	template <class T>
 	class Factory: public Server_base {
@@ -21,6 +35,7 @@ namespace factory {
 		typedef Timer_server<T> timer_server;
 		typedef IO_server<T> io_server;
 		typedef Multi_pipeline<T> downstream_server;
+		typedef NIC_server<T, sys::socket, Basic_router<T>> nic_server;
 
 	private:
 		cpu_server _upstream;
@@ -30,6 +45,7 @@ namespace factory {
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		cpu_server _prio;
 		#endif
+		nic_server _nic;
 
 	public:
 		Factory();
@@ -56,6 +72,16 @@ namespace factory {
 			}
 		}
 
+		inline void
+		send_remote(kernel_type* kernel) {
+			this->_nic.send(kernel);
+		}
+
+		inline nic_server&
+		nic() noexcept {
+			return this->_nic;
+		}
+
 		void
 		start();
 
@@ -67,6 +93,19 @@ namespace factory {
 
 	};
 
+	extern Factory<FACTORY_KERNEL_TYPE> factory;
+
+	template <class T>
+	void
+	Basic_router<T>::send_local(T* rhs) {
+		factory.send(rhs);
+	}
+
+	template <class T>
+	void
+	Basic_router<T>::send_remote(T* rhs) {
+		factory.send_remote(rhs);
+	}
 
 }
 

@@ -5,14 +5,6 @@
 #include <factory/registry.hh>
 
 #include "datum.hh"
-
-struct Dummy_server {
-	template<class T>
-	void send(T*) {}
-};
-
-Dummy_server remote_server;
-
 #include "big_kernel.hh"
 #include "make_types.hh"
 

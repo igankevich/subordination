@@ -1,7 +1,7 @@
 #ifndef TEST_BIG_KERNEL_HH
 #define TEST_BIG_KERNEL_HH
 
-#include <factory/kernel/algorithm.hh>
+#include <factory/api.hh>
 
 #include "datum.hh"
 
@@ -15,7 +15,8 @@ struct Big_kernel: public factory::Kernel {
 	virtual ~Big_kernel() = default;
 
 	void act() override {
-		factory::commit(remote_server, this);
+		using namespace factory::api;
+		commit<Remote>(this);
 	}
 
 	void

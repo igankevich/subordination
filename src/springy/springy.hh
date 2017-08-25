@@ -6,6 +6,7 @@
 #include <functional>
 #include <ostream>
 #include <unistdx/base/log_message>
+#include <cstdint>
 
 namespace springy {
 
@@ -176,6 +177,8 @@ namespace springy {
 		std::ostream& _log;
 
 	};
+
+	extern springy::Springy_graph<std::uint64_t> graph;
 
 }
 

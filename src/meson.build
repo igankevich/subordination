@@ -1,3 +1,4 @@
+subdir('springy')
 subdir('factory')
 testdir = include_directories('test')
 subdir('test')

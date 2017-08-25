@@ -9,6 +9,7 @@ _downstream(_upstream.concurrency()) {
 	this->_upstream.set_name("upstrm");
 	this->_downstream.set_name("dwnstrm");
 	this->_timer.set_name("tmr");
+	this->_nic.set_name("nic");
 	this->_io.set_name("io");
 }
 
@@ -20,6 +21,7 @@ factory::Factory<T>::start() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
+		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
@@ -36,6 +38,7 @@ factory::Factory<T>::stop() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
+		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
@@ -51,6 +54,7 @@ factory::Factory<T>::wait() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
+		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
@@ -59,3 +63,5 @@ factory::Factory<T>::wait() {
 }
 
 template class factory::Factory<FACTORY_KERNEL_TYPE>;
+
+factory::Factory<FACTORY_KERNEL_TYPE> factory::factory;

@@ -17,6 +17,10 @@ libfactory_src += files([
 	'factory.cc',
 ])
 
+if get_option('springy')
+	libfactory_src += springy_src
+endif
+
 libfactory_shared = shared_library(
 	'factory',
 	sources: libfactory_src,

@@ -3,11 +3,12 @@
 
 #include <factory/base/error_handler.hh>
 #include <factory/kernel.hh>
-#include <factory/kernel/algorithm.hh>
+#include <factory/api.hh>
 #include <factory/ppl/io_server.hh>
 #include <factory/ppl/nic_server.hh>
 #include <factory/ppl/server_guard.hh>
 #include <factory/ppl/timer_server.hh>
+#include <factory/ppl/basic_factory.hh>
 #include <factory/registry.hh>
 
 namespace factory {

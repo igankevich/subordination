@@ -1,4 +1,4 @@
-#include <factory/kernel/algorithm.hh>
+#include <factory/api.hh>
 #include <factory/ppl/cpu_server.hh>
 #include <factory/ppl/server_guard.hh>
 #include <factory/ppl/timer_server.hh>
