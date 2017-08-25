@@ -1,21 +1,20 @@
 #ifndef FACTORY_FACTORY_HH
 #define FACTORY_FACTORY_HH
 
-#include <factory/bits/terminate_handler.hh>
+#include <factory/base/error_handler.hh>
 #include <factory/kernel.hh>
-#include <factory/cpu_server.hh>
-#include <factory/io_server.hh>
-#include <factory/timer_server.hh>
-#include <factory/nic_server.hh>
-#include <factory/server_guard.hh>
-#include <factory/registry.hh>
 #include <factory/kernel/algorithm.hh>
+#include <factory/ppl/io_server.hh>
+#include <factory/ppl/nic_server.hh>
+#include <factory/ppl/server_guard.hh>
+#include <factory/ppl/timer_server.hh>
+#include <factory/registry.hh>
 
 namespace factory {
 
-	CPU_server<Kernel> local_server;
-	Timer_server<Kernel> timer_server;
-	IO_server<Kernel> io_server;
+	extern CPU_server<Kernel> local_server;
+	extern Timer_server<Kernel> timer_server;
+	extern IO_server<Kernel> io_server;
 
 }
 

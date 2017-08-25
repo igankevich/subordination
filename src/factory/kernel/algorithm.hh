@@ -2,7 +2,7 @@
 #define FACTORY_ALGORITHM_HH
 
 #include <factory/kernel/kernel.hh>
-#include <factory/basic_server.hh>
+#include <factory/ppl/basic_server.hh>
 #ifdef SPRINGY
 #include <springy/springy.hh>
 #endif
@@ -68,7 +68,7 @@ namespace factory {
 		ppl.send(lhs);
 	}
 
-	void
+	inline void
 	act(Kernel* kernel) {
 		if (kernel->result() == Result::undefined) {
 			if (kernel->principal()) {

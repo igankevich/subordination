@@ -15,9 +15,9 @@
 #include <unistdx/it/queue_popper>
 #include <unistdx/net/pstream>
 
-#include <factory/basic_server.hh>
-#include <factory/proxy_server.hh>
-#include <factory/application.hh>
+#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/proxy_server.hh>
+#include <factory/ppl/application.hh>
 #include <factory/kernel/kernel_stream.hh>
 #include <factory/kernel/kernel.hh>
 

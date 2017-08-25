@@ -14,7 +14,7 @@
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>
 
-#include <factory/proxy_server.hh>
+#include <factory/ppl/proxy_server.hh>
 #include <factory/kernel/kernel_stream.hh>
 
 namespace factory {

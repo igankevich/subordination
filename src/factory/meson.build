@@ -6,21 +6,21 @@ configure_file(
 
 libfactory_src = files()
 
-subdir('bits')
+subdir('base')
 subdir('reg')
 subdir('kernel')
+subdir('ppl')
 
 libfactory_src += files([
 	'error.cc',
 	'registry.cc',
-	'basic_server.cc',
-	'application.cc',
+	'factory.cc',
 ])
 
 libfactory_shared = shared_library(
 	'factory',
 	sources: libfactory_src,
-	dependencies: unistdx,
+	dependencies: [threads,unistdx],
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir

@@ -1,8 +1,8 @@
 #include <factory/factory.hh>
-#include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
-#include <factory/nic_server.hh>
 #include <factory/kernel.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/nic_server.hh>
+#include <factory/ppl/timer_server.hh>
 
 namespace factory {
 
@@ -38,9 +38,11 @@ using namespace factory;
 
 int
 main(int argc, char** argv) {
-	factory::Terminate_guard g00;
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	factory::install_error_handler();
+	factory::start_all(local_server, remote_server);
 	factory::upstream(local_server, nullptr, new Autoreg_app);
-	return factory::wait_and_return();
+	int ret = factory::wait_and_return();
+	factory::stop_all(local_server, remote_server);
+	factory::wait_all(local_server, remote_server);
+	return ret;
 }

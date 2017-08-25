@@ -1,8 +1,8 @@
 #include <factory/factory.hh>
-#include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
-#include <factory/io_server.hh>
-#include <factory/nic_server.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/timer_server.hh>
+#include <factory/ppl/io_server.hh>
+#include <factory/ppl/nic_server.hh>
 #include <factory/kernel.hh>
 
 namespace factory {

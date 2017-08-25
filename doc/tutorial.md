@@ -7,7 +7,7 @@ subordinates to decompose application into smaller parts. Some kernels can be
 transferred to another cluster node to make application distributed. An
 application exits when there are no kernels left to process.
 
-Kernels are processed by \link factory::Server_with_pool <em>pipelines</em>\endlink
+Kernels are processed by \link factory::Basic_server <em>pipelines</em>\endlink
 --- kernel queues with processing threads attached. Each device has its own
 pipeline (there is a pipeline for CPU, I/O device and NIC) which allows them to work
 in parallel: process one part of data with CPU pipeline and simultaneously write
@@ -109,11 +109,13 @@ one via \link factory::upstream\endlink function.
 int main() {
 	using factory::local_server;
 	using factory::remote_server;
-	factory::Terminate_guard g0;
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	factory::install_error_handler();
+	factory::start_all(local_server, remote_server);
 	factory::upstream(local_server, nullptr, new My_app);
-	return factory::wait_and_return();
+	int ret = factory::wait_and_return();
+	factory::stop_all(local_server, remote_server);
+	factory::wait_all(local_server, remote_server);
+	return ret;
 }
 \endcode
 

@@ -12,16 +12,18 @@ namespace factory {
 		using typename base_server::kernel_type;
 		using typename base_server::lock_type;
 
+		inline
 		IO_server(IO_server&& rhs) noexcept:
 		base_server(std::move(rhs))
 		{}
 
 		/// use only one thread to read/write data
+		inline
 		IO_server() noexcept:
 		IO_server(sys::io_concurrency() * 2u)
 		{}
 
-		explicit
+		inline explicit
 		IO_server(unsigned concurrency) noexcept:
 		base_server(concurrency)
 		{}

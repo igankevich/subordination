@@ -1,25 +1,18 @@
 #ifndef FACTORY_TIMER_SERVER_HH
 #define FACTORY_TIMER_SERVER_HH
 
-#include <unistdx/ipc/semaphore>
-#include <factory/basic_server.hh>
 #include <factory/kernel/algorithm.hh>
+#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/compare_time.hh>
+#include <unistdx/ipc/semaphore>
 
 namespace factory {
-
-	template<class T>
-	struct Compare_time {
-		inline bool
-		operator()(const T* lhs, const T* rhs) const noexcept {
-			return lhs->at() > rhs->at();
-		}
-	};
 
 	template<class T>
 	using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
 
 	template<class T>
-	using Timer_server_base = Standard_server_with_pool<T, Time_priority_pool<T>,
+	using Timer_server_base = Basic_server<T, Time_priority_pool<T>,
 		sys::priority_queue_traits<Time_priority_pool<T>>>;
 
 	template<class T>
@@ -32,10 +25,12 @@ namespace factory {
 		using typename base_server::sem_type;
 		using typename base_server::traits_type;
 
+		inline
 		Timer_server(Timer_server&& rhs) noexcept:
 		base_server(std::move(rhs))
 		{}
 
+		inline
 		Timer_server() noexcept:
 		base_server(1u)
 		{}
@@ -44,24 +39,11 @@ namespace factory {
 		Timer_server& operator=(const Timer_server&) = delete;
 		~Timer_server() = default;
 
-	private:
-
+	protected:
 		void
-		do_run() override {
-			while (!this->is_stopped()) {
-				lock_type lock(this->_mutex);
-				wait_until_kernel_arrives(lock);
-				if (!this->is_stopped()) {
-					kernel_type* kernel = traits_type::front(this->_kernels);
-					if (!wait_until_kernel_is_ready(lock, kernel)) {
-						traits_type::pop(this->_kernels);
-						lock.unlock();
-						::factory::act(kernel);
-					}
-				}
-			}
-		}
+		do_run() override;
 
+	private:
 		inline void
 		wait_until_kernel_arrives(lock_type& lock) {
 			this->_semaphore.wait(lock, [this] () {

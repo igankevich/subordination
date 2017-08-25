@@ -1,9 +1,9 @@
-#include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
-#include <factory/process_server.hh>
-#include <factory/server_guard.hh>
-#include <factory/registry.hh>
 #include <factory/factory.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/process_server.hh>
+#include <factory/ppl/server_guard.hh>
+#include <factory/ppl/timer_server.hh>
+#include <factory/registry.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
@@ -188,10 +188,9 @@ private:
 
 
 int main(int argc, char* argv[]) {
-	factory::Terminate_guard g0;
+	factory::install_error_handler();
 	factory::types.register_type<Test_socket>();
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	factory::start_all(local_server, remote_server);
 	#if defined(FACTORY_TEST_SERVER)
 	Application app(XSTRINGIFY(FACTORY_APP_PATH));
 	remote_server.add(app);
@@ -200,5 +199,8 @@ int main(int argc, char* argv[]) {
 	#else
 	local_server.send(new Main);
 	#endif
-	return factory::wait_and_return();
+	int ret = factory::wait_and_return();
+	factory::stop_all(local_server, remote_server);
+	factory::wait_all(local_server, remote_server);
+	return ret;
 }

@@ -17,7 +17,7 @@ namespace factory {
 	class Kernels=std::queue<T*>,
 	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
-	using Proxy_server_base = Server_with_pool<T, Kernels, Traits, Threads,
+	using Proxy_server_base = Basic_server<T, Kernels, Traits, Threads,
 		//std::mutex, std::unique_lock<std::mutex>,
 		sys::spin_mutex, sys::simple_lock<sys::spin_mutex>,
 		sys::event_poller<std::shared_ptr<Rserver>>>;
@@ -86,7 +86,7 @@ namespace factory {
 		accept_connection(sys::poll_event&) {}
 
 		void
-		run(Global_thread_context*) override {
+		run(Thread_context*) override {
 			do_run();
 			/**
 			do nothing with the context, because we can not

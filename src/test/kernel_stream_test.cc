@@ -1,12 +1,17 @@
 #include <unistdx/io/fildesbuf>
 
 #include <factory/kernel/kernel_stream.hh>
+#include <factory/ppl/basic_server.hh>
 #include <factory/registry.hh>
-#include <factory/basic_server.hh>
 
 #include "datum.hh"
 
-factory::Dummy_server remote_server;
+struct Dummy_server {
+	template<class T>
+	void send(T*) {}
+};
+
+Dummy_server remote_server;
 
 #include "big_kernel.hh"
 #include "make_types.hh"

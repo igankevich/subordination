@@ -1,7 +1,8 @@
-#include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
 #include <factory/kernel/algorithm.hh>
-#include <factory/server_guard.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/server_guard.hh>
+#include <factory/ppl/timer_server.hh>
+#include <factory/base/error_handler.hh>
 
 #include <gtest/gtest.h>
 
@@ -78,8 +79,10 @@ private:
 };
 
 TEST(TimerServerTest, All) {
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(timer_server)> g2(timer_server);
+	factory::install_error_handler();
+	factory::start_all(local_server, timer_server);
 	local_server.send(new Main(10, std::chrono::milliseconds(500)));
 	EXPECT_EQ(0, factory::wait_and_return());
+	factory::stop_all(local_server, timer_server);
+	factory::wait_all(local_server, timer_server);
 }

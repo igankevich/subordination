@@ -1,8 +1,8 @@
-#include <factory/kernel/algorithm.hh>
-#include <factory/cpu_server.hh>
+#include <factory/base/error_handler.hh>
 #include <factory/kernel.hh>
-#include <factory/server_guard.hh>
-#include <factory/bits/terminate_handler.hh>
+#include <factory/kernel/algorithm.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/server_guard.hh>
 
 #include <unistdx/base/cmdline>
 
@@ -12,13 +12,13 @@
 #include <gtest/gtest.h>
 
 #if defined(FACTORY_TEST_WEBSOCKET)
-#include <factory/nic_server.hh>
+#include <factory/ppl/nic_server.hh>
 #include <web/websocket.hh>
 #define FACTORY_SOCKET_TYPE factory::Web_socket
 #endif
 
 #if !defined(FACTORY_SOCKET_TYPE)
-#include <factory/nic_server.hh>
+#include <factory/ppl/nic_server.hh>
 #define FACTORY_TEST_SOCKET
 #define FACTORY_SOCKET_TYPE sys::socket
 #endif
@@ -207,8 +207,7 @@ TEST(NICServerTest, All) {
 		remote_server.peer(server_endpoint);
 	}
 
-	factory::Server_guard<decltype(local_server)> g1(local_server);
-	factory::Server_guard<decltype(remote_server)> g2(remote_server);
+	factory::start_all(local_server, remote_server);
 	if (role == Role::Master) {
 		local_server.send(new Main);
 	}
@@ -223,11 +222,13 @@ TEST(NICServerTest, All) {
 			" or were deleted multiple times";
 	}
 	EXPECT_EQ(0, retval);
+	factory::stop_all(local_server, remote_server);
+	factory::wait_all(local_server, remote_server);
 }
 
 int
 main(int argc, char* argv[]) {
-	factory::Terminate_guard g00;
+	factory::install_error_handler();
 	// init gtest without argument to pass custom arguments
 	// from custom test runner
 	int no_argc = 0;

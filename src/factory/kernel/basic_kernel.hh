@@ -51,7 +51,7 @@ namespace factory {
 			this->_result = rhs;
 		}
 
-		// timed kernels
+		// scheduled kernels
 		inline Time_point
 		at() const noexcept {
 			return this->_at;
@@ -68,7 +68,7 @@ namespace factory {
 		}
 
 		inline bool
-		timed() const noexcept {
+		scheduled() const noexcept {
 			return this->_at != Time_point(Duration::zero());
 		}
 
