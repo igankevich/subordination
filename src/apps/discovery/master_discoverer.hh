@@ -128,7 +128,7 @@ private:
 			sys::log_message("dscvr", "trying _", new_princ);
 			#endif
 			_negotiator = new Master_negotiator<addr_type>(_hierarchy.principal(), new_princ);
-			upstream(local_server, this, _negotiator);
+			factory::api::upstream<Local>(this, _negotiator);
 		}
 	}
 

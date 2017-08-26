@@ -32,72 +32,15 @@ T hermite(size_t n, T x)
 	return hn;
 }
 
-/* Calculates the T-function of Owen. Author: JC Young, Christoph Minder, C++
-version by John Burkardt. */
-template<class T>
-T owenT(T x, T fx) {
-
-	T fxs;
-	T r[5] = {0.1477621, 0.1346334, 0.1095432, 0.0747257, 0.0333357};
-	T u[5] = {0.0744372, 0.2166977, 0.3397048, 0.4325317, 0.4869533};
-	T tp  = 0.159155;
-	T tv1 = 1.0E-35;
-	T tv2 = 15.0;
-	T tv3 = 15.0;
-	T tv4 = 1.0E-05;
-	T x1, x2, xs;
-	T r1, r2, rt;
-
-	// Test for X near zero.
-	if (abs(x) < tv1) {
-		return tp*atan(fx);
-	}
-
-	// large values of abs(X) or FX near zero.
-	if (tv2 < abs(x) || abs(fx) < tv1) {
-		return 0.0;
-	}
-
-	// Test whether abs ( FX ) is so large that it must be truncated.
-	xs = -0.5*x*x;
-	x2 = fx;
-	fxs = fx*fx;
-
-	// Computation of truncation point by Newton iteration.
-	if (tv3 <= log(1.0 + fxs) - xs*fxs) {
-		x1 = 0.5*fx;
-		fxs = 0.25f*fxs;
-		for ( ; ; ) {
-			rt = fxs + 1.0;
-			x2 = x1 + (xs*fxs + tv3 - log(rt))/(2.0*x1*(1.0/rt - xs));
-			fxs = x2 * x2;
-
-			if (abs(x2 - x1) < tv4) {
-				break;
-			}
-			x1 = x2;
-		}
-	}
-
-	// Gaussian quadrature.
-	rt = 0.0;
-	for (int i=0; i<5; ++i) {
-		r1 = 1.0 + fxs*pow(0.5 + u[i], 2);
-		r2 = 1.0 + fxs*pow(0.5 - u[i], 2);
-		rt = rt + r[i]*(exp(xs*r1)/r1 + exp(xs*r2)/r2);
-	}
-
-	return rt*x2*tp;
-}
-
-
 template<class T>
 class Poly {
 	std::valarray<T> a;
 
 public:
 	Poly(): a() {}
+	explicit
 	Poly(size_t order): a(order+1) {}
+	explicit
 	Poly(const std::valarray<T>& coefs): a(coefs) {}
 	Poly(const Poly<T>& rhs): a(rhs.a) {}
 	~Poly() {}

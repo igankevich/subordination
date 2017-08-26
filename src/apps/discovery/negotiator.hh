@@ -100,7 +100,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 		}
 		if (finished) {
 			this->principal(this->parent());
-			local_server.send(this);
+			factory::api::send<Local>(this);
 		}
 	}
 

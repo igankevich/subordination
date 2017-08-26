@@ -77,7 +77,7 @@ struct Test_socket: public Kernel {
 	Test_socket(): _data() {
 	}
 
-	explicit Test_socket(std::vector<Datum> x): _data(x) {
+	explicit Test_socket(const std::vector<Datum>& x): _data(x) {
 		++kernel_count;
 	}
 

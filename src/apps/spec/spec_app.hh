@@ -22,23 +22,12 @@ typedef std::string Resource;
 
 struct Date {
 
-	Date() {}
-	Date(const Date& rhs):
-		_year(rhs._year),
-		_month(rhs._month),
-		_day(rhs._day),
-		_hours(rhs._hours),
-		_minutes(rhs._minutes)
-	{}
+	Date() = default;
 
-	Date& operator=(const Date& rhs) {
-		_year = rhs._year;
-		_month = rhs._month;
-		_day = rhs._day;
-		_hours = rhs._hours;
-		_minutes = rhs._minutes;
-		return *this;
-	}
+	Date(const Date&) = default;
+
+	Date&
+	operator=(const Date& rhs) = default;
 
 	bool operator==(const Date& rhs) const {
 		return _year == rhs._year &&
@@ -82,11 +71,11 @@ struct Date {
 	}
 
 private:
-	Year _year;
-	Month _month;
-	Day _day;
-	Hour _hours;
-	Minute _minutes;
+	Year _year = 0;
+	Month _month = 0;
+	Day _day = 0;
+	Hour _hours = 0;
+	Minute _minutes = 0;
 };
 
 /*
@@ -106,13 +95,14 @@ private:
 
 struct Observation {
 
-	Observation() {}
+	Observation() = default;
 
 	Observation(Year year, Station station, Variable var):
 		_year(year), _station(station), _var(var) {}
 
-	Observation(const Observation& rhs):
-		_year(rhs._year), _station(rhs._station), _var(rhs._var) {}
+	Observation(const Observation& rhs) = default;
+	Observation&
+	operator=(const Observation& rhs) = default;
 
 	Year year() const { return _year; }
 	Station station() const { return _station; }
@@ -145,9 +135,9 @@ struct Observation {
 	}
 
 private:
-	Year _year;
-	Station _station;
-	Variable _var;
+	Year _year = 0;
+	Station _station = 0;
+	Variable _var = 0;
 };
 
 namespace sys {
@@ -268,7 +258,7 @@ struct Spectrum_kernel: public Kernel {
 
 	typedef std::unordered_map<Variable, std::vector<float>> Map;
 
-	Spectrum_kernel(Map& m, Date d, const std::vector<float>& freq):
+	Spectrum_kernel(Map& m, const Date& d, const std::vector<float>& freq):
 		_data(m), _date(d), _frequencies(freq), _variance(0)
 	{}
 
@@ -322,7 +312,7 @@ struct Station_kernel: public Kernel {
 	_observations(m), _station(st), _year(year), _count(0)
 	{}
 
-	int check_read(const std::string filename, int ret) {
+	int check_read(const std::string& filename, int ret) {
 		if (ret == -1) {
 			sys::log_message(
 				std::cerr,
@@ -488,10 +478,7 @@ struct Year_kernel: public Kernel {
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
 
-	Year_kernel():
-		_count(0), _num_spectra(0),
-		_output_file()
-	{}
+	Year_kernel() = default;
 
 	Year_kernel(const Map& m, Year year):
 		_observations(m), _year(year), _count(0), _num_spectra(0),
@@ -585,9 +572,9 @@ struct Year_kernel: public Kernel {
 
 private:
 	Map _observations;
-	Year _year;
-	uint32_t _count;
-	int32_t _num_spectra;
+	Year _year = 0;
+	uint32_t _count = 0;
+	int32_t _num_spectra = 0;
 	std::ofstream _output_file;
 };
 

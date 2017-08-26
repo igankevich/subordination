@@ -1,5 +1,4 @@
 #include <factory/base/error_handler.hh>
-#include <factory/kernel.hh>
 #include <factory/api.hh>
 
 #include <unistdx/base/cmdline>
@@ -42,7 +41,7 @@ struct Test_socket: public factory::Kernel {
 	{ ++kernel_count; }
 
 	explicit
-	Test_socket(std::vector<Datum> x):
+	Test_socket(const std::vector<Datum>& x):
 	_data(x)
 	{ ++kernel_count; }
 

@@ -23,7 +23,7 @@ namespace std {
 	std::ostream&
 	operator<<(
 		std::ostream& out,
-		const std::multimap<Distance,Addr> rhs
+		const std::multimap<Distance,Addr>& rhs
 	) {
 		typedef std::pair<const Distance,Addr> pair_type;
 		std::copy(
@@ -91,11 +91,6 @@ debug_addrs() {
 			<< std::setw(20) << distance_type(2, addr, ipv4_addr{255,0,0,0})
 			<< std::endl;
 	}
-}
-
-ipv4_addr
-genaddr(ipv4_addr::oct_type last_octet) {
-	return {127,0,0,last_octet};
 }
 
 ipv4_ifaddr

@@ -78,7 +78,7 @@ struct Kernel_that_carries_its_parent: public factory::Kernel {
 	Kernel_that_carries_its_parent() {
 		this->setf(factory::Kernel::Flag::carries_parent);
 		this->parent(&_carry);
-		assert(parent());
+		assert(this->parent());
 	}
 
 	Kernel_that_carries_its_parent(int) {}

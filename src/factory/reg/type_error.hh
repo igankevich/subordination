@@ -13,7 +13,7 @@ namespace factory {
 
 	public:
 		inline
-		Type_error(Type tp1, Type tp2):
+		Type_error(const Type& tp1, const Type& tp2):
 		Error("types have the same type indices/identifiers"),
 		_tp1(tp1),
 		_tp2(tp2)

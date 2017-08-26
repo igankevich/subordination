@@ -58,6 +58,7 @@ namespace factory {
 		virtual ~basic_kernelbuf() = default;
 
 		template<class ... Args>
+		explicit
 		basic_kernelbuf(Args&& ... args):
 		Base(std::forward<Args>(args)...) {}
 

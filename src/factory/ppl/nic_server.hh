@@ -70,6 +70,7 @@ namespace factory {
 		_packetbuf(std::move(rhs._packetbuf)),
 		_stream(std::move(rhs._stream)),
 		_sentupstream(std::move(rhs._sentupstream)),
+		_sentdownstream(std::move(rhs._sentdownstream)),
 		_router(rhs._router)
 		{
 			this->_stream.rdbuf(&_packetbuf);
@@ -320,6 +321,8 @@ namespace factory {
 
 		NIC_server(NIC_server&& rhs) noexcept:
 		base_server(std::move(rhs)),
+		_network(std::move(rhs._network)),
+		_socket(std::move(rhs)),
 		_upstream(),
 		_iterator(_upstream.end()),
 		_counter(rhs._counter),

@@ -337,9 +337,7 @@ namespace factory {
 		Process_iserver(const Process_iserver&) = delete;
 		Process_iserver& operator=(const Process_iserver&) = delete;
 
-		Process_iserver(Process_iserver&& rhs) noexcept:
-		base_server(std::move(rhs))
-		{}
+		Process_iserver(Process_iserver&& rhs) = default;
 
 		~Process_iserver() = default;
 
@@ -483,9 +481,7 @@ namespace factory {
 		_parent(new server_type(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router))
 		{}
 
-		Process_child_server(Process_child_server&& rhs) noexcept:
-		base_server(std::move(rhs))
-		{}
+		Process_child_server(Process_child_server&& rhs) = default;
 
 		virtual ~Process_child_server() = default;
 

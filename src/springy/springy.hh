@@ -81,7 +81,7 @@ namespace springy {
 		void
 		start() {
 			#ifndef NDEBUG
-			sys::log_message(_log, "graph", '?', "startTime.push(?);", millis_since_start());
+			sys::log_message(_log, "graph", '?', "startTime.push(?);", this->millis_since_start());
 			#endif
 		}
 
@@ -97,7 +97,7 @@ namespace springy {
 				"undo: function() {graph.removeEdge(g.?)},"
 				"time: ?"
 				"};",
-				edge, from, to, edge, millis_since_start()
+				edge, from, to, edge, this->millis_since_start()
 			);
 			#endif
 		}
@@ -114,7 +114,7 @@ namespace springy {
 				"undo: function() {g.? = graph.newEdge(g.?,g.?)},"
 				"time: ?"
 				"};",
-				edge, edge, from, to, millis_since_start()
+				edge, edge, from, to, this->millis_since_start()
 			);
 			#endif
 		}
@@ -129,7 +129,7 @@ namespace springy {
 				"undo: function() {graph.removeNode(g.?)},"
 				"time: ?"
 				"};",
-				node, node.label(), node.mass(), node, millis_since_start()
+				node, node.label(), node.mass(), node, this->millis_since_start()
 			);
 			#endif
 		}
@@ -144,7 +144,7 @@ namespace springy {
 				"undo: function() {g.? = graph.newNode({label:'?',mass:?})},"
 				"time: ?"
 				"};",
-				node, node, node.label(), node.mass(), millis_since_start()
+				node, node, node.label(), node.mass(), this->millis_since_start()
 			);
 			#endif
 		}
@@ -166,10 +166,10 @@ namespace springy {
 
 	private:
 
-		std::chrono::milliseconds::rep
-		millis_since_start() {
+		inline std::chrono::milliseconds::rep
+		millis_since_start() const noexcept {
 			using namespace std::chrono;
-			return duration_cast<milliseconds>(clock_type::now() - _start).count();
+			return duration_cast<milliseconds>(clock_type::now() - this->_start).count();
 		}
 
 		time_point _start;

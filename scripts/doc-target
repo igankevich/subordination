@@ -1,3 +1,0 @@
-#!/bin/sh
-
-doxygen $MESON_SOURCE_ROOT/Doxyfile

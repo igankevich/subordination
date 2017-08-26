@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 
+#include <unistdx/base/log_message>
 #include <unistdx/net/endpoint>
 #include <unistdx/net/ifaddr>
 

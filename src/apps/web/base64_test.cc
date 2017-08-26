@@ -56,7 +56,6 @@ void test_base64(size_t k, bool spoil) {
 	string encoded(base64_encoded_size(k), '_');
 	string decoded(base64_max_decoded_size(encoded.size()), '_');
 	base64_encode(text.begin(), text.end(), encoded.begin());
-	size_t decoded_size;
 	if (spoil && !encoded.empty()) {
 		size_t pos = encoded.size()/2u;
 		encoded[pos] = 128;
@@ -65,7 +64,7 @@ void test_base64(size_t k, bool spoil) {
 			std::invalid_argument
 		);
 	} else {
-		decoded_size = base64_decode(encoded.begin(), encoded.end(), decoded.begin());
+		size_t decoded_size = base64_decode(encoded.begin(), encoded.end(), decoded.begin());
 		decoded = decoded.substr(0, decoded_size);
 		EXPECT_EQ(text, decoded);
 	}

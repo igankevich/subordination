@@ -236,7 +236,7 @@ namespace factory {
 		}
 
 		void parse_http_status(std::string line) {
-			if (line.find("HTTP") == 0) {
+			if (line.compare(0, 4, "HTTP", 4) == 0) {
 				auto sep1 = line.find(' ');
 				if (sep1 != std::string::npos) {
 					auto sep2 = line.find(' ', sep1);

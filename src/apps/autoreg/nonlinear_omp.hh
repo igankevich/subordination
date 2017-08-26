@@ -37,18 +37,6 @@ public:
 	}
 };
 
-/// skew normal distribution (one coefficient governs both skewness and kurtosis)
-template<class T>
-class Skew_normal_2 {
-	T alpha;
-public:
-	Skew_normal_2(T c): alpha(c) {}
-	inline T operator()(T x) const
-	{
-		return cdf_ugaussian(x) - T(2)*owenT(x, alpha);
-	}
-};
-
 template<class T>
 class Weibull {
 	T alpha;

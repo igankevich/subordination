@@ -38,6 +38,9 @@ struct Datum {
 		u(rhs.u), v(rhs.v), w(rhs.w)
 	{}
 
+	Datum&
+	operator=(const Datum&) = default;
+
 	bool
 	operator==(const Datum& rhs) const {
 		return

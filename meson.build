@@ -31,10 +31,41 @@ gtest = dependency('gtest', main: true)
 srcdir = include_directories('src')
 
 meson.add_postconf_script('scripts/copy-input-files')
-run_target('cppcheck', command: 'scripts/cppcheck-target')
 run_target('gcov', command: 'scripts/gcov-target')
 run_target('iwyu', command: 'scripts/iwyu-target')
 run_target('springy', command: 'scripts/springy-target')
-run_target('doc', command: 'scripts/doc-target')
 
 subdir('src')
+
+# Doxygen {{{
+doxygen = find_program('doxygen', required: false)
+if doxygen.found()
+	run_target(
+		'doc',
+		command: [
+			doxygen,
+			join_paths(meson.source_root(), 'Doxyfile'),
+		]
+	)
+endif
+# }}}
+cppcheck = find_program('cppcheck', required: false)
+if cppcheck.found()
+	run_target(
+		'cppcheck',
+		command: [
+			cppcheck,
+			'--enable=all',
+			'--quiet',
+			'--force',
+			'--language=c++',
+			'--std=c++11',
+			'--template=gcc',
+			'-I' + join_paths(meson.source_root(), 'src'),
+			'-I' + join_paths(meson.build_root(), 'src'),
+			join_paths(meson.source_root(), 'src'),
+		]
+	)
+endif
+
+

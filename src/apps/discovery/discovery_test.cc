@@ -7,12 +7,6 @@
 #include <unistdx/ipc/process_group>
 #include <unistdx/ipc/execute>
 
-#include <factory/factory.hh>
-#include <factory/ppl/cpu_server.hh>
-#include <factory/ppl/timer_server.hh>
-#include <factory/ppl/io_server.hh>
-#include <factory/ppl/nic_server.hh>
-
 #include "distance.hh"
 #include "cache_guard.hh"
 #include "hierarchy.hh"
@@ -20,6 +14,7 @@
 #include "hierarchy_with_graph.hh"
 #include "test.hh"
 
+#include <factory/api.hh>
 using namespace factory;
 
 #include "apps/autoreg/autoreg_app.hh"
@@ -299,7 +294,7 @@ int main(int argc, char* argv[]) {
 
 	} else {
 		using namespace factory;
-		local_server.send(new Main<sys::ipv4_addr>(argc, argv));
+		factory::api::send<Local>(new Main<sys::ipv4_addr>(argc, argv));
 		retval = factory::wait_and_return();
 	}
 

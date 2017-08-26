@@ -28,6 +28,7 @@ namespace factory {
 		using sys::pstream::operator>>;
 
 		Kernel_stream() = default;
+		inline explicit
 		Kernel_stream(sys::packetbuf* buf): sys::pstream(buf) {}
 		Kernel_stream(Kernel_stream&&) = default;
 
@@ -82,7 +83,7 @@ namespace factory {
 						}
 					} catch (const Kernel_error& err) {
 						this->setstate(state::bad_kernel);
-						throw err;
+						throw;
 					}
 					// eat remaining bytes
 					this->rdbuf()->skip_packet();
@@ -93,7 +94,7 @@ namespace factory {
 		}
 
 		inline void
-		setforward(forward_func rhs) noexcept {
+		setforward(const forward_func& rhs) noexcept {
 			this->_doforward = rhs;
 		}
 

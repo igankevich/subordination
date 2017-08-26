@@ -2,7 +2,6 @@
 #define FACTORY_FACTORY_HH
 
 #include <factory/base/error_handler.hh>
-#include <factory/kernel.hh>
 #include <factory/api.hh>
 #include <factory/ppl/io_server.hh>
 #include <factory/ppl/nic_server.hh>

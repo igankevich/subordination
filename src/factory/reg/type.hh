@@ -24,14 +24,14 @@ namespace factory {
 
 	public:
 		inline
-		Type(id_type id, read_type f, std::type_index idx) noexcept:
+		Type(id_type id, const read_type& f, std::type_index idx) noexcept:
 		_id(id),
 		_read(f),
 		_index(idx)
 		{}
 
 		inline
-		Type(read_type f, std::type_index idx) noexcept:
+		Type(const read_type& f, std::type_index idx) noexcept:
 		_id(0),
 		_read(f),
 		_index(idx)

@@ -22,7 +22,7 @@ namespace autoreg {
 
 		typedef Vector<T, 3> Vec3;
 
-		Velocity_potential(std::valarray<T> zeta, const size3& size, const Vector<T, 3>& delta):
+		Velocity_potential(const std::valarray<T>& zeta, const size3& size, const Vector<T, 3>& delta):
 			_zeta(zeta), _size(size), _delta(delta), _potential(Valarray2D<Vec3>(Valarray1D<Vec3>(size[2]), size[1]), size[0]) {}
 
 		void act() {
