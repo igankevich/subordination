@@ -1,6 +1,8 @@
 #ifndef APPS_DISCOVERY_DELAYED_SHUTDOWN_HH
 #define APPS_DISCOVERY_DELAYED_SHUTDOWN_HH
 
+#include <factory/api.hh>
+
 template<class Address>
 struct Delayed_shutdown: public Kernel {
 
@@ -15,10 +17,11 @@ struct Delayed_shutdown: public Kernel {
 
 	void
 	act() override {
+		using namespace factory::api;
 		if (not _normal) {
 			try {
 				#ifndef NDEBUG
-				sys::endpoint addr = remote_server.server_addr();
+				sys::endpoint addr = factory::factory.nic().server_addr();
 				sys::log_message("tst", "killing _", addr);
 				#endif
 			} catch (...) {

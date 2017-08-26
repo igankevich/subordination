@@ -56,14 +56,14 @@ struct Autoreg_app: public Kernel {
 			std::cerr << e.what();
 			exit(1);
 		}
-		factory::upstream(local_server, this, model);
+		upstream<Local>(this, model);
 	}
 
-	void react(factory::Kernel*) {
+	void react(Kernel*) {
 		#ifndef NDEBUG
 		sys::log_message("autoreg", "finished all");
 		#endif
-		factory::commit(local_server, this);
+		commit<Local>(this);
 	}
 
 private:

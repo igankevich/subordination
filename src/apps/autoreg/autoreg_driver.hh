@@ -71,7 +71,7 @@ public:
 		write_log("Interval:"   , interval);
 		write_log("Size factor:", size_factor());
 
-		factory::upstream(local_server, this, new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
+		upstream<Local>(this, new ACF_generator<T>(alpha, beta, gamm, acf_delta, acf_size, acf_model));
 //		do_it();
 	}
 
@@ -121,7 +121,7 @@ public:
 		in >> _time0 >> _time1;
 	}
 
-	void react(factory::Kernel* child) override;
+	void react(Kernel* child) override;
 
 	void gather_statistics();
 
@@ -223,7 +223,7 @@ private:
 			interpolation_coefs<T>(nit_x0, nit_x1, INTERPOLATION_NODES, interp_coefs, cdf);
 			transform_acf<T>(interp_coefs, MAX_NIT_COEFS, acf_model);
 		}
-		factory::upstream(local_server, this, new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
+		upstream<Local>(this, new Autoreg_coefs<T>(acf_model, acf_size, ar_coefs));
 	}
 
 	size3 zsize;
@@ -264,7 +264,7 @@ private:
 namespace autoreg {
 
 template<class T>
-void Autoreg_model<T>::react(factory::Kernel* child) {
+void Autoreg_model<T>::react(Kernel* child) {
 	#ifndef NDEBUG
 	sys::log_message("autoreg", "finished _", typeid(*child).name());
 	#endif
@@ -274,7 +274,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 	if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 		{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-		factory::upstream(local_server, this, new Variance_WN<T>(ar_coefs, acf_model));
+		upstream<Local>(this, new Variance_WN<T>(ar_coefs, acf_model));
 	}
 	if (typeid(*child) == typeid(Variance_WN<T>)) {
 		T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
@@ -291,9 +291,10 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			interval, zsize, zdelta, grid, grid_2
 		);
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		factory::upstream(local_server, this, kernel);
+		upstream<Local>(this, kernel);
 		#else
-		factory::upstream_carry(remote_server, this, kernel);
+		kernel->setf(Kernel::Flag::carries_parent);
+		upstream<Remote>(this, kernel);
 		#endif
 	}
 	if (typeid(*child) == typeid(generator_type)) {
@@ -303,7 +304,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			std::ofstream timerun_log("time.log");
 			timerun_log << float(_time1 - _time0)/1000/1000/1000 << std::endl;
 		}
-		factory::commit(local_server, this);
+		commit<Local>(this);
 //		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);
@@ -364,7 +365,7 @@ void Autoreg_model<T>::react(factory::Kernel* child) {
 			}
 		}
 
-		commit(local_server, this);
+		commit<Local>(this);
 	}
 
 }
@@ -441,83 +442,7 @@ istream& operator>>(istream& in, Autoreg_model<T>& m)
 //		std::cerr << "Neither ACF nor spectrum are specified. Generating default ACF.\n";
 //		approx_acf<T>(m.alpha, m.beta, m.gamm, m.acf_delta, m.acf_size, m.acf_model);
 	}
-
-//	// generate ACF
-//	if (inputType == INPUT_TYPE_DEFAULT_ACF) {
-//		std::cerr << "Neither ACF nor spectrum are specified. Generating default ACF.\n";
-//		approx_acf<T>(m.alpha, m.beta, m.gamm, m.acf_delta, m.acf_size, m.acf_model);
-//	}
-//
-//	// read spectrum and convert it to ACF using FFT
-//	if (inputType == INPUT_TYPE_SPECTRUM || inputType == INPUT_TYPE_SPECTRUM_FREQUENCY_DIRECTIONAL) {
-//		Domain<T, 2> spectrum_domain;
-//		std::ifstream in(input_filename.c_str());
-//		in >> spectrum_domain;
-//		size2 spectrum_size = spectrum_domain.count();
-//		std::valarray<T> spectrum(spectrum_size);
-//		in >> spectrum;
-//
-//		int nx = spectrum_size[0];
-//		int ny = spectrum_size[1];
-//		T g = 9.8;
-//
-//		if (inputType == INPUT_TYPE_SPECTRUM_FREQUENCY_DIRECTIONAL) {
-//
-//			// transform to spatial spectrum using corresponding jacobian
-//			for (int i=0; i<nx; ++i) {
-//				for (int j=0; j<ny; ++j) {
-//					T w = spectrum_domain.point(size2{i, j})[0];
-//					T jacobian = T(2) * w*w*w / (g*g);
-//					spectrum[i*ny + j] *= jacobian;
-//				}
-//			}
-//
-//			// transform min value
-//			Vector<T, 2> x0 = spectrum_domain.min();
-//			T w = x0[0];
-//			T theta = x0[1];
-//			spectrum_domain.min() = w*w * Vector<T, 2>(cos(theta), sin(theta)) / g;
-//
-//			// transform max value
-//			Vector<T, 2> x1 = spectrum_domain.max();
-//			w = x1[0];
-//			theta = x1[1];
-//			spectrum_domain.max() = w*w * Vector<T, 2>(cos(theta), sin(theta)) / g;
-//		}
-//
-//		int mt = m.acf_size[0];
-//		int mx = m.acf_size[1];
-//		int my = m.acf_size[2];
-//		Index<3> idx(m.acf_size);
-//		Vector<T, 2> spectrum_delta = spectrum_domain.delta();
-//		T du = spectrum_delta[1];
-//		T dv = spectrum_delta[2];
-//		for (int c=0; c<mt; ++c) {
-//			for (int p=0; p<mx; ++p) {
-//				for (int q=0; q<my; ++q) {
-//					T t = c * m.acf_delta[0];
-//					T x = p * m.acf_delta[1];
-//					T y = q * m.acf_delta[2];
-//					T sum = 0;
-//					for (int i=0; i<nx; ++i) {
-//						for (int j=0; j<ny; ++j) {
-//							Vector<T, 2> pt = spectrum_domain.point(size2{i, j});
-//							T u = pt[0];
-//							T v = pt[1];
-//							T omega = sqrt(g*(u*u + v*v));
-//							sum += spectrum[i*ny + j] * cos(x*u + y*v - omega*t);
-//						}
-//					}
-//					m.acf_model[idx(c, p, q)] = sum*du*dv;
-//				}
-//			}
-//		}
-//		{ std::ofstream out("acf_check"); out << Domain<T, 3>(m.acf_size, m.acf_delta) << m.acf_model; }
-//		exit(0);
-//	}
-
 	m.validate_parameters();
-
 	return in;
 }
 

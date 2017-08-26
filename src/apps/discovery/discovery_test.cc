@@ -20,34 +20,6 @@
 #include "hierarchy_with_graph.hh"
 #include "test.hh"
 
-namespace factory {
-
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*);
-
-		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
-			assert(false);
-		}
-
-	};
-
-	NIC_server<Kernel, sys::socket, Router> remote_server;
-
-	void
-	Router::send_remote(Kernel* rhs) {
-		remote_server.send(rhs);
-	}
-
-}
-
 using namespace factory;
 
 #include "apps/autoreg/autoreg_app.hh"
@@ -87,6 +59,7 @@ struct Main: public Kernel {
 
 	void
 	act() {
+		using namespace factory::api;
 		parse_cmdline_args();
 		factory::types.register_type<negotiator_type>();
 		factory::types.register_type<Ping>();
@@ -99,11 +72,11 @@ struct Main: public Kernel {
 		factory::types.register_type<Station_kernel>();
 		factory::types.register_type<Spec_app>();
 		if (this->result() != Result::success) {
-			factory::commit(factory::local_server, this);
+			commit<Local>(this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 			const sys::endpoint bind_addr(_network.address(), _port);
-			factory::remote_server.bind(bind_addr, netmask);
+			factory::factory.nic().bind(bind_addr, netmask);
 			const auto start_delay = 5;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));
@@ -112,7 +85,7 @@ struct Main: public Kernel {
 				factory::instances.register_instance(master);
 			}
 			master->after(std::chrono::seconds(start_delay));
-			factory::timer_server.send(master);
+			send<Local>(master);
 
 //			if (_network.address() == traits_type::localhost()) {
 //				schedule_pingpong_after(std::chrono::seconds(0));
@@ -136,7 +109,7 @@ private:
 	schedule_pingpong_after(Time delay) {
 		Ping_pong* p = new Ping_pong(_numpings);
 		p->after(delay);
-		factory::timer_server.send(p);
+		send<Local>(p);
 	}
 
 	template<class Time>
@@ -145,21 +118,21 @@ private:
 		Delayed_shutdown<addr_type>* shutdowner = new Delayed_shutdown<addr_type>(master->hierarchy(), _normal);
 		shutdowner->after(delay);
 		shutdowner->parent(this);
-		factory::timer_server.send(shutdowner);
+		send<Local>(shutdowner);
 	}
 
 	void
 	schedule_autoreg_app() {
 		Autoreg_app* app = new Autoreg_app;
 		app->after(std::chrono::seconds(10));
-		factory::timer_server.send(app);
+		send<Local>(app);
 	}
 
 	void
 	schedule_spec_app() {
 		Spec_app* app = new Spec_app;
 		app->after(std::chrono::seconds(20));
-		factory::timer_server.send(app);
+		send<Local>(app);
 	}
 
 	void

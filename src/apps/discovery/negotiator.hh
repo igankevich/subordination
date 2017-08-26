@@ -2,6 +2,7 @@
 #define APPS_DISCOVERY_NEGOTIATOR_HH
 
 #include "hierarchy.hh"
+#include <factory/api.hh>
 
 template<class Address>
 struct Negotiator: public Priority_kernel<Kernel> {
@@ -22,6 +23,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 	template<class Hierarchy>
 	void
 	negotiate(Hierarchy& hierarchy) {
+		using namespace factory::api;
 		const sys::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
 		this->result(Result::success);
@@ -47,7 +49,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 				hierarchy.remove_subordinate(this->from());
 			}
 		}
-		remote_server.send(this);
+		send<Remote>(this);
 	}
 
 	void write(sys::pstream& out) override {
@@ -116,11 +118,12 @@ private:
 
 	void
 	send_negotiator(sys::endpoint addr) {
+		using namespace factory::api;
 		++_numsent;
 		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
 		n->set_principal_id(addr.address());
 		n->to(addr);
-		upstream(remote_server, this, n);
+		upstream<Remote>(this, n);
 	}
 
 	sys::endpoint _oldprinc;

@@ -7,6 +7,9 @@
 #include "discrete_function.hh"
 #include "mersenne_twister.hh"
 #include "grid.hh"
+#include "mapreduce.hh"
+
+using namespace factory::api;
 
 namespace std {
 
@@ -93,14 +96,14 @@ struct Variance_WN: public Kernel {
 	void act() override {
 		int bs = 64;
 		int n = ar_coefs.size();
-		factory::upstream(local_server, this, mapreduce([](int) {}, [this](int i){
+		upstream<Local>(this, mapreduce([](int) {}, [this](int i){
 			_sum += ar_coefs[i]*acf[i];
 		}, 0, n, bs));
 	}
 
-	void react(factory::Kernel*) override {
+	void react(Kernel*) override {
 		_sum = acf[0] - _sum;
-		factory::commit(local_server, this);
+		commit<Local>(this);
 	}
 
 	T
@@ -132,7 +135,7 @@ struct Yule_walker: public Kernel {
 		int block_size = 16*4;
 		int m = b.size();
 		auto identity = [](int){};
-		factory::upstream(local_server, this, mapreduce([this](int i) {
+		upstream<Local>(this, mapreduce([this](int i) {
 			const int n = acf.size()-1;
 			const Index<3> id(acf_size);
 			const Index<2> ida(size2(n, n));
@@ -150,15 +153,15 @@ struct Yule_walker: public Kernel {
 				a[i1] = acf[i2];
 			}
 		}, identity, 0, n, block_size));
-		factory::upstream(local_server, this, mapreduce([this](int i) {
+		upstream<Local>(this, mapreduce([this](int i) {
 			const Index<3> id(acf_size);
 			b[i] = acf[id( id.t(i+1), id.x(i+1), id.y(i+1) )];
 		}, identity, 0, m, block_size));
 	}
 
-	void react(factory::Kernel*) override {
+	void react(Kernel*) override {
 		if (++count == 2) {
-			factory::commit(local_server, this);
+			commit<Local>(this);
 		}
 	}
 
@@ -285,7 +288,7 @@ struct ACF_generator: public Kernel {
 		int bs = 2;
 		int n = acf_size[0];
 		auto identity = [](int){};
-		factory::upstream(local_server, this, mapreduce([this](int t) {
+		upstream<Local>(this, mapreduce([this](int t) {
 			const Index<3> id(acf_size);
 			int x1 = acf_size[1];
 			int y1 = acf_size[2];
@@ -300,8 +303,8 @@ struct ACF_generator: public Kernel {
 		}, identity, 0, n, bs));
 	}
 
-	void react(factory::Kernel*) override {
-		factory::commit(local_server, this);
+	void react(Kernel*) override {
+		commit<Local>(this);
 	}
 
 private:
@@ -401,7 +404,7 @@ struct Solve_Yule_Walker: public Kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
 		}
-		factory::commit(local_server, this);
+		commit<Local>(this);
 	}
 
 private:
@@ -422,15 +425,15 @@ struct Autoreg_coefs: public Kernel {
 	{}
 
 	void act() override {
-		factory::upstream(local_server, this, new Yule_walker<T>(acf_model, acf_size, a, b));
+		upstream<Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
-	void react(factory::Kernel*) override {
+	void react(Kernel*) override {
 		state++;
 		if (state == 1) {
-			factory::upstream(local_server, this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+			upstream<Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
 		} else {
-			factory::commit(local_server, this);
+			commit<Local>(this);
 		}
 	}
 
@@ -621,7 +624,7 @@ struct Generator1: public Kernel {
 	void act() override {
 		if (_writefile) {
 			write_part_to_file(zeta);
-			commit(remote_server, this);
+			commit<Remote>(this);
 		} else {
 			#ifndef NDEBUG
 			sys::log_message("autoreg", "generating part _", part2);
@@ -654,30 +657,27 @@ struct Generator1: public Kernel {
 //					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
 					Note* note = new Note;
 					note->return_to(left_neighbour);
-					local_server.send(note);
+					send<Local>(note);
 //					downstream(local_server(), new Note(), left_neighbour);
 				}
-				send(local_server, this, this);
+				send<Local>(this, this);
 //				downstream(local_server(), this, this);
 			} else {
 				trim_zeta(zeta2, zsize2, zsize, zeta);
 				_writefile = true;
-				local_server.send(this);
+				send<Local>(this);
 			}
 		}
 	}
 
-	void react(factory::Kernel*) override {
+	void react(Kernel*) override {
 		count++;
 		// received two kernels or last part
 //		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
 ////			cout << "release part = " << part.part() << endl;
 //			weave(phi, fsize, zeta2, zsize2, part2, interval);
 //			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
-////			commit(local_server());
-////			commit(the_io_server() == nullptr ? local_server() : the_io_server());
-////			downstream(local_server(), this, parent());
-//			commit(remote_server());
+//			commit<Remote>(this);
 //		}
 	}
 
@@ -718,7 +718,7 @@ struct Generator1: public Kernel {
 
 private:
 
-	struct Note: public factory::Kernel {};
+	struct Note: public Kernel {};
 
 	Surface_part part, part2;
 	std::valarray<T> phi;
@@ -779,7 +779,7 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			factory::upstream(remote_server, this, generators[i]);
+			upstream<Remote>(this, generators[i]);
 		}
 	}
 
@@ -792,7 +792,7 @@ struct Wave_surface_generator: public Kernel {
 		);
 		#endif
 		if (++count == grid.num_parts()) {
-			commit(remote_server, this);
+			commit<Remote>(this);
 		}
 	}
 

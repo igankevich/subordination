@@ -1,9 +1,9 @@
 #ifndef APPS_DISCOVERY_PING_PONG_HH
 #define APPS_DISCOVERY_PING_PONG_HH
 
-#include <factory/factory.hh>
+#include <factory/api.hh>
 
-struct Ping: public Kernel {
+struct Ping: public factory::api::Kernel {
 
 	Ping(): _data() {}
 
@@ -12,15 +12,18 @@ struct Ping: public Kernel {
 	}
 
 	void act() override {
-		commit(remote_server, this);
+		using namespace factory::api;
+		commit<Remote>(this);
 	}
 
 	void write(sys::pstream& out) override {
+		using namespace factory::api;
 		Kernel::write(out);
 		out << _data;
 	}
 
 	void read(sys::pstream& in) override {
+		using namespace factory::api;
 		Kernel::read(in);
 		in >> _data;
 	}
@@ -47,15 +50,16 @@ struct Ping_pong: public Kernel {
 
 	void
 	act() override {
+		using namespace factory::api;
 		#ifndef NDEBUG
 		sys::log_message("tst", "sending ping #_", _currentkernel + 1);
 		#endif
 		int x = 1;
 		_expectedsum += x;
-		factory::upstream(remote_server, this, new Ping(x));
+		upstream<Remote>(this, new Ping(x));
 		if (++_currentkernel < _numkernels) {
 			this->after(std::chrono::seconds(1));
-			factory::timer_server.send(this);
+			send<Local>(this);
 		} else {
 			#ifndef NDEBUG
 			sys::log_message("tst", "finished sending pings");
@@ -65,6 +69,7 @@ struct Ping_pong: public Kernel {
 
 	void
 	react(Kernel* child) override {
+		using namespace factory::api;
 		Ping* ping = dynamic_cast<Ping*>(child);
 		#ifndef NDEBUG
 		sys::log_message("tst", "ping returned from _ with _", ping->from(), ping->result());
@@ -90,7 +95,7 @@ struct Ping_pong: public Kernel {
 			);
 			#endif
 			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
-			factory::commit(factory::local_server, this, success ? Result::success : Result::error);
+			commit<Local>(this, success ? Result::success : Result::error);
 		}
 	}
 

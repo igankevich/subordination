@@ -38,56 +38,25 @@ which pipeline is local and which one is remote. The following code snippet
 shows the usual way of doing this.
 
 \code{.cpp}
-#include <factory/factory.hh>
-#include <factory/cpu_server.hh>
-#include <factory/timer_server.hh>
-#include <factory/nic_server.hh>
-#include <factory/kernel.hh>
-
-namespace factory {
-
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*);
-
-		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
-			assert(false);
-		}
-
-	};
-
-	NIC_server<Kernel, sys::socket, Router> remote_server;
-
-	void
-	Router::send_remote(Kernel* rhs) {
-		remote_server.send(rhs);
-	}
-
-}
+#include <factory/api.hh>
+using namespace factory::api;
 \endcode
 
-The second step is to subclass \link factory::Kernel `factory::Kernel`\endlink
+The second step is to subclass \link factory::api::Kernel `Kernel`\endlink
 and implement `act()` and `react()` member functions for each sequential stage of
 your programme and for parallel parts of each stage.
 
 \code{.cpp}
-struct My_app: public factory::Kernel {
+struct My_app: public Kernel {
 
 	void
 	act() {
 		std::cout << "Hello world" << std::endl;
-		factory::commit(local_server, this);
+		commit<Local>(this);
 	}
 
 	void
-	react(factory::Kernel*) {
+	react(Kernel*) {
 		// not needed for such a simple programme
 	}
 
@@ -103,24 +72,20 @@ a separate kernel to read portions of the files via I/O pipeline and for each
 portion construct and send new kernel to CPU pipeline to process it in parallel.
 
 Finally, you need to start every pipeline and send the main kernel to the local
-one via \link factory::upstream\endlink function.
+one via \link factory::api::send `send`\endlink function.
 
 \code{.cpp}
 int main() {
-	using factory::local_server;
-	using factory::remote_server;
-	factory::install_error_handler();
-	factory::start_all(local_server, remote_server);
-	factory::upstream(local_server, nullptr, new My_app);
-	int ret = factory::wait_and_return();
-	factory::stop_all(local_server, remote_server);
-	factory::wait_all(local_server, remote_server);
-	return ret;
+	factory::install_error_handler();  // print backtrace on exception or signal
+	Factory_guard g;                   // automatically start and stop the factory
+	send<Local>(new My_app);           // start the programme by sending the first
+	                                   // kernel to the pipeline
+	return factory::wait_and_return(); // wait for the programme completion
 }
 \endcode
 
-Use \link factory::commit\endlink to return the kernel to its parent and
-reclaim system resources.
+Use \link factory::api::commit `commit`\endlink to return the kernel to its
+parent and reclaim system resources.
 
 \section failover Automatic failure handling
 

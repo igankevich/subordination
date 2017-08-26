@@ -3,6 +3,7 @@
 
 #include "negotiator.hh"
 #include "secret_agent.hh"
+#include <factory/api.hh>
 
 template<class Address, class Hierarchy, class Distance>
 struct Master_discoverer: public Priority_kernel<Kernel> {
@@ -133,12 +134,13 @@ private:
 
 	void
 	deploy_secret_agent() {
+		using namespace factory::api;
 		_secretagent = new Secret_agent;
 		_secretagent->to(_hierarchy.principal());
 //		_secretagent->id(factory()->factory_generate_id());
 		_secretagent->parent(this);
 		_secretagent->set_principal_id(_secretagent->to().address());
-		remote_server.send(_secretagent);
+		send<Remote>(_secretagent);
 	}
 
 	hierarchy_type _hierarchy;

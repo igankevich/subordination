@@ -9,6 +9,7 @@
 
 namespace factory {
 
+	/// Factory framework API.
 	namespace api {
 
 		typedef FACTORY_KERNEL_TYPE Kernel;
@@ -77,6 +78,13 @@ namespace factory {
 		commit(Kernel* rhs) {
 			Result ret = rhs->result();
 			commit<target>(rhs, ret == Result::undefined ? Result::success : ret);
+		}
+
+		template<Target target>
+		void
+		send(Kernel* lhs, Kernel* rhs) {
+			lhs->principal(rhs);
+			send<target>(lhs);
 		}
 
 		struct Factory_guard {

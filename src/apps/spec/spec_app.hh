@@ -8,6 +8,7 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/fs/path>
+#include <factory/api.hh>
 
 typedef int32_t Year;
 typedef int32_t Month;
@@ -272,9 +273,10 @@ struct Spectrum_kernel: public Kernel {
 	{}
 
 	void act() override {
+		using namespace factory::api;
 		// TODO Filter 999 values.
 		_variance = compute_variance();
-		commit(local_server, this);
+		commit<Local>(this);
 	}
 
 	float spectrum(int32_t i, float angle) {
@@ -343,6 +345,7 @@ struct Station_kernel: public Kernel {
 	}
 
 	void react(Kernel* kernel) override {
+		using namespace factory::api;
 		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(kernel);
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
@@ -355,14 +358,15 @@ struct Station_kernel: public Kernel {
 			#endif
 			_observations.clear();
 			_spectra.clear();
-			commit(remote_server, this);
+			commit<Remote>(this);
 		}
 	}
 
 	void act() override {
+		using namespace factory::api;
 		// skip records when some variables are missing
 		if (_observations.size() != NUM_VARIABLES) {
-			commit(remote_server, this);
+			commit<Remote>(this);
 			return;
 		}
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -436,7 +440,7 @@ struct Station_kernel: public Kernel {
 			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(Kernel::Flag::priority_service);
-				upstream(local_server, this, k);
+				upstream<Local>(this, k);
 			}
 		);
 	}
@@ -508,6 +512,7 @@ struct Year_kernel: public Kernel {
 	}
 
 	void react(Kernel* kernel) override {
+		using namespace factory::api;
 		Station_kernel* k = dynamic_cast<Station_kernel*>(kernel);
 		if (!_output_file.is_open()) {
 			_output_file.open(output_filename());
@@ -523,14 +528,18 @@ struct Year_kernel: public Kernel {
 		#endif
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
-//			commit(remote_server());
+			commit<Remote>(this);
 		}
 	}
 
 	void act() override {
+		using namespace factory::api;
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
+				upstream<Remote>(
+					this,
+					new Station_kernel(pair.second, pair.first, _year)
+				);
 			}
 		);
 	}
@@ -599,6 +608,7 @@ struct Launcher: public Kernel {
 	}
 
 	void act() override {
+		using namespace factory::api;
 		#ifndef NDEBUG
 		sys::log_message("spec", "launcher start");
 		#endif
@@ -619,12 +629,13 @@ struct Launcher: public Kernel {
 				Year year = pair.first;
 				_yearkernels[year] = new Year_kernel(pair.second, year);
 				submit_station_kernels(pair.second, year);
-				// this->upstream(remote_server(), new Year_kernel(pair.second, year));
+				// upstream<Remote>(new Year_kernel(pair.second, year));
 			}
 		);
 	}
 
 	void react(Kernel* kernel) override {
+		using namespace factory::api;
 		// Year_kernel* k = dynamic_cast<Year_kernel*>(kernel);
 		Station_kernel* k1 = dynamic_cast<Station_kernel*>(kernel);
 		Year_kernel* k = _yearkernels[k1->year()];
@@ -650,9 +661,9 @@ struct Launcher: public Kernel {
 					log << _count_spectra << std::endl;
 				}
 				#if defined(FACTORY_TEST_SLAVE_FAILURE)
-				commit(local_server, this);
+				commit<Local>(this);
 				#else
-				commit(remote_server, this);
+				commit<Remote>(this);
 				#endif
 			}
 		}
@@ -672,9 +683,13 @@ struct Launcher: public Kernel {
 
 	void
 	submit_station_kernels(Map _observations, Year _year) {
+		using namespace factory::api;
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-				upstream(remote_server, this, new Station_kernel(pair.second, pair.first, _year));
+				upstream<Remote>(
+					this,
+					new Station_kernel(pair.second, pair.first, _year)
+				);
 			}
 		);
 	}
@@ -691,19 +706,23 @@ struct Spec_app: public Kernel {
 
 	void
 	act() override {
+		using namespace factory::api;
 		#ifndef NDEBUG
 		sys::log_message("spec", "program start");
 		#endif
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		upstream(local_server, this, new Launcher);
+		upstream<Local>(this, new Launcher);
 		#else
-		upstream_carry(remote_server, this, new Launcher);
+		Launcher* launcher = new Launcher;
+		launcher->setf(Kernel::Flag::carries_parent);
+		upstream<Remote>(this, launcher);
 		#endif
 	}
 
 	void
 	react(Kernel*) override {
-		commit(local_server, this);
+		using namespace factory::api;
+		commit<Local>(this);
 	}
 
 };

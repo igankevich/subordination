@@ -82,6 +82,11 @@ namespace factory {
 			return this->_nic;
 		}
 
+		inline const nic_server&
+		nic() const noexcept {
+			return this->_nic;
+		}
+
 		void
 		start();
 

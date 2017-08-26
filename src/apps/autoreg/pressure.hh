@@ -27,7 +27,7 @@ namespace autoreg {
 
 		void act() {
 			velocity_potential();
-			commit(local_server, this);
+			commit<Local>(this);
 		}
 
 		const Valarray3D<Vec3>& potential() const { return _potential; }
