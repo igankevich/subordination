@@ -6,8 +6,7 @@
 
 #include <gtest/gtest.h>
 
-factory::CPU_server<factory::Kernel> local_server;
-factory::Timer_server<factory::Kernel> timer_server;
+using namespace factory::api;
 
 struct Sleepy_kernel: public factory::Kernel {
 
@@ -21,7 +20,7 @@ struct Sleepy_kernel: public factory::Kernel {
 		const auto delta = duration_cast<nanoseconds>(now-at).count();
 		std::clog << '#' << _pos << " wakes up "
 			<< delta << "ns later than scheduled\n";
-		factory::commit(local_server, this);
+		commit<Local>(this);
 	}
 
 private:
@@ -41,13 +40,13 @@ struct Main: public factory::Kernel {
 	act() override {
 		std::vector<factory::Kernel*> kernels(_nkernels);
 		// send kernels in inverse chronological order
-		for (size_t i=0; i<_nkernels; ++i) {
+		for (size_t i=0; i<this->_nkernels; ++i) {
 			kernels[i] = new_sleepy_kernel(
 				this->_nkernels - i,
 				this->_nkernels - i
 			);
 		}
-		timer_server.send(kernels.data(), kernels.size());
+		factory::factory.send_timer(kernels.data(), kernels.size());
 	}
 
 	void
@@ -57,7 +56,7 @@ struct Main: public factory::Kernel {
 		++last_pos;
 		--this->_nkernels;
 		if (this->_nkernels == 0) {
-			factory::commit(local_server, this);
+			commit<Local>(this);
 		}
 	}
 
@@ -80,9 +79,7 @@ private:
 
 TEST(TimerServerTest, All) {
 	factory::install_error_handler();
-	factory::start_all(local_server, timer_server);
-	local_server.send(new Main(10, std::chrono::milliseconds(500)));
+	Factory_guard g;
+	send<Local>(new Main(10, std::chrono::milliseconds(500)));
 	EXPECT_EQ(0, factory::wait_and_return());
-	factory::stop_all(local_server, timer_server);
-	factory::wait_all(local_server, timer_server);
 }

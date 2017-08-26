@@ -1,13 +1,20 @@
 #ifndef FACTORY_PPL_FACTORY_HH
 #define FACTORY_PPL_FACTORY_HH
 
-#include <factory/ppl/basic_server.hh>
-#include <factory/ppl/basic_cpu_server.hh>
-#include <factory/ppl/io_server.hh>
-#include <factory/ppl/nic_server.hh>
-#include <factory/ppl/timer_server.hh>
-#include <factory/ppl/multi_pipeline.hh>
+#if !defined(FACTORY_DAEMON) && !defined(FACTORY_APPLICATION)
+#define FACTORY_DAEMON
+#endif
+
 #include <factory/config.hh>
+#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/io_server.hh>
+#include <factory/ppl/multi_pipeline.hh>
+#if defined(FACTORY_DAEMON)
+#include <factory/ppl/nic_server.hh>
+#endif
+#include <factory/ppl/process_server.hh>
+#include <factory/ppl/timer_server.hh>
 #include <vector>
 
 namespace factory {
@@ -31,11 +38,19 @@ namespace factory {
 
 	public:
 		typedef T kernel_type;
-		typedef Basic_CPU_server<T> cpu_server;
+		typedef CPU_server<T> cpu_server;
 		typedef Timer_server<T> timer_server;
 		typedef IO_server<T> io_server;
 		typedef Multi_pipeline<T> downstream_server;
-		typedef NIC_server<T, sys::socket, Basic_router<T>> nic_server;
+		#if defined(FACTORY_APPLICATION)
+		typedef Process_child_server<T, Basic_router<T>> parent_server;
+		#endif
+		#if defined(FACTORY_DAEMON)
+		typedef NIC_server<T, sys::socket, Basic_router<T>> parent_server;
+		#endif
+		#if defined(FACTORY_DAEMON)
+		typedef Process_iserver<T, Basic_router<T>> child_server;
+		#endif
 
 	private:
 		cpu_server _upstream;
@@ -45,7 +60,10 @@ namespace factory {
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		cpu_server _prio;
 		#endif
-		nic_server _nic;
+		parent_server _parent;
+		#if defined(FACTORY_DAEMON)
+		child_server _child;
+		#endif
 
 	public:
 		Factory();
@@ -74,17 +92,66 @@ namespace factory {
 
 		inline void
 		send_remote(kernel_type* kernel) {
-			this->_nic.send(kernel);
+			this->_parent.send(kernel);
 		}
 
-		inline nic_server&
+		inline void
+		send_timer(kernel_type* kernel) {
+			this->_timer.send(kernel);
+		}
+
+		inline void
+		send_timer(kernel_type** kernel, size_t n) {
+			this->_timer.send(kernel, n);
+		}
+
+		#if defined(FACTORY_DAEMON)
+		inline void
+		send_child(kernel_type* kernel) {
+			this->_child.send(kernel);
+		}
+
+		inline child_server&
+		child() noexcept {
+			return this->_child;
+		}
+
+		inline const child_server&
+		child() const noexcept {
+			return this->_child;
+		}
+		#endif
+
+		inline parent_server&
+		parent() noexcept {
+			return this->_parent;
+		}
+
+		inline const parent_server&
+		parent() const noexcept {
+			return this->_parent;
+		}
+
+		#if defined(FACTORY_DAEMON)
+		inline parent_server&
 		nic() noexcept {
-			return this->_nic;
+			return this->_parent;
 		}
 
-		inline const nic_server&
+		inline const parent_server&
 		nic() const noexcept {
-			return this->_nic;
+			return this->_parent;
+		}
+		#endif
+
+		inline timer_server&
+		timer() noexcept {
+			return this->_timer;
+		}
+
+		inline const timer_server&
+		timer() const noexcept {
+			return this->_timer;
 		}
 
 		void

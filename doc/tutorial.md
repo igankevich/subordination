@@ -33,9 +33,9 @@ these are standard
   schedule-based execution of kernels).
 
 Standard pipelines for all devices except NIC are initialised in
-`factory/factory.hh` header. To initialise NIC pipeline you need to tell it
-which pipeline is local and which one is remote. The following code snippet
-shows the usual way of doing this.
+`factory/api.hh` header. To initialise NIC pipeline you need to tell it which
+pipeline is local and which one is remote. The following code snippet shows the
+usual way of doing this.
 
 \code{.cpp}
 #include <factory/api.hh>

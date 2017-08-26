@@ -1,31 +1,21 @@
 #include "cpu_server.hh"
 #include "config.hh"
 
-template <class T>
-void
-factory::CPU_server<T>::start() {
-	base_server::start();
-	for (base_server& srv : this->_servers) {
-		srv.start();
-	}
-}
+#include <factory/kernel/algorithm.hh>
 
 template <class T>
 void
-factory::CPU_server<T>::stop() {
-	base_server::stop();
-	for (base_server& srv : this->_servers) {
-		srv.stop();
-	}
-}
-
-template <class T>
-void
-factory::CPU_server<T>::wait() {
-	base_server::wait();
-	for (base_server& srv : this->_servers) {
-		srv.wait();
-	}
+factory::CPU_server<T>::do_run() {
+	lock_type lock(this->_mutex);
+	this->_semaphore.wait(lock, [this,&lock] () {
+		while (!this->_kernels.empty()) {
+			kernel_type* kernel = traits_type::front(this->_kernels);
+			traits_type::pop(this->_kernels);
+			sys::unlock_guard<lock_type> g(lock);
+			::factory::act(kernel);
+		}
+		return this->is_stopped();
+	});
 }
 
 template class factory::CPU_server<FACTORY_KERNEL_TYPE>;

@@ -22,7 +22,9 @@ namespace factory {
 
 		template <Target t>
 		inline void
-		send(Kernel* kernel);
+		send(Kernel* kernel) {
+			factory.send(kernel);
+		}
 
 		template <>
 		inline void
@@ -119,47 +121,6 @@ namespace factory {
 		#endif
 		ppl.send(rhs);
 	}
-
-	template<class Pipeline>
-	void
-	upstream_carry(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
-		rhs->setf(Kernel::Flag::carries_parent);
-		upstream(ppl, lhs, rhs);
-	}
-
-	template<class Pipeline>
-	void
-	commit(Pipeline& ppl, Kernel* rhs, Result ret) {
-		if (!rhs->parent()) {
-			#ifdef SPRINGY
-			::springy::graph.remove_node(*rhs);
-			#endif
-			delete rhs;
-			factory::graceful_shutdown(static_cast<int>(ret));
-		} else {
-			rhs->return_to_parent(ret);
-			#ifdef SPRINGY
-			::springy::graph.add_edge(*rhs, *rhs->parent());
-			#endif
-			ppl.send(rhs);
-		}
-	}
-
-	template<class Pipeline>
-	void
-	commit(Pipeline& ppl, Kernel* rhs) {
-		Result ret = rhs->result();
-		commit(ppl, rhs, ret == Result::undefined ? Result::success : ret);
-	}
-
-	template<class Pipeline>
-	void
-	send(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
-		lhs->principal(rhs);
-		ppl.send(lhs);
-	}
-
-
 
 }
 

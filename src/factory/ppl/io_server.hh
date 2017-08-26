@@ -6,9 +6,9 @@
 namespace factory {
 
 	template<class T>
-	struct IO_server: public Basic_CPU_server<T> {
+	struct IO_server: public CPU_server<T> {
 
-		typedef Basic_CPU_server<T> base_server;
+		typedef CPU_server<T> base_server;
 		using typename base_server::kernel_type;
 		using typename base_server::lock_type;
 

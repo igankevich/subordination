@@ -67,7 +67,10 @@ app_exe = executable(
 	sources: 'process_server_test.cc',
 	dependencies: [threads, unistdx, factory],
 	include_directories: srcdir,
-	cpp_args: '-DFACTORY_TEST_APP'
+	cpp_args: [
+		'-DFACTORY_APPLICATION',
+		'-DFACTORY_TEST_APP',
+	]
 )
 
 srv_exe = executable(
@@ -76,8 +79,9 @@ srv_exe = executable(
 	dependencies: [threads, unistdx, factory],
 	include_directories: srcdir,
 	cpp_args: [
+		'-DFACTORY_DAEMON',
 		'-DFACTORY_TEST_SERVER',
-		'-DFACTORY_APP_PATH=./src/test/process-server-test-app'
+		'-DFACTORY_APP_PATH=./src/test/process-server-test-app',
 	]
 )
 

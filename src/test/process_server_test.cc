@@ -1,66 +1,11 @@
-#include <factory/factory.hh>
-#include <factory/ppl/cpu_server.hh>
-#include <factory/ppl/process_server.hh>
-#include <factory/ppl/server_guard.hh>
-#include <factory/ppl/timer_server.hh>
+#include <factory/api.hh>
+#include <factory/base/error_handler.hh>
 #include <factory/registry.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
-namespace factory {
-#if defined(FACTORY_TEST_SERVER)
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*) {
-			assert(false);
-		}
-
-		void
-		forward(const Kernel_header& hdr, sys::pstream& istr);
-
-	};
-
-	Process_iserver<Kernel,Router> remote_server;
-
-	void
-	Router::forward(const Kernel_header& hdr, sys::pstream& istr) {
-		remote_server.forward(hdr, istr);
-	}
-#else
-	struct Router {
-
-		void
-		send_local(Kernel* rhs) {
-			local_server.send(rhs);
-		}
-
-		void
-		send_remote(Kernel*);
-
-		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
-			assert(false);
-		}
-
-	};
-
-	Process_child_server<Kernel,Router> remote_server;
-
-	void
-	Router::send_remote(Kernel* rhs) {
-		remote_server.send(rhs);
-	}
-#endif
-}
-
-using namespace factory;
+using namespace factory::api;
 using factory::Application;
 
 #include "datum.hh"
@@ -87,7 +32,7 @@ struct Test_socket: public Kernel {
 
 	void act() override {
 		sys::log_message("chld", "Test_socket::act(): It works!");
-		factory::commit(factory::remote_server, this);
+		commit<Remote>(this);
 	}
 
 	void write(sys::pstream& out) override {
@@ -168,9 +113,9 @@ struct Main: public Kernel {
 	void act() override {
 		Test_socket* kernel = new Test_socket;
 		kernel->setapp(sys::this_process::id());
-		upstream(remote_server, this, kernel);
+		upstream<Remote>(this, kernel);
 //		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-//			upstream(local_server(), new Sender(i, _sleep));
+//			upstream<Local>(new Sender(i, _sleep));
 	}
 
 	void react(Kernel*) override {
@@ -178,7 +123,7 @@ struct Main: public Kernel {
 			#ifndef NDEBUG
 			sys::log_message("chld", "finished");
 			#endif
-			factory::commit(local_server, this, factory::Result::success);
+			commit<Local>(this, factory::Result::success);
 		}
 	}
 
@@ -188,19 +133,17 @@ private:
 
 
 int main(int argc, char* argv[]) {
+	using namespace factory::api;
 	factory::install_error_handler();
 	factory::types.register_type<Test_socket>();
-	factory::start_all(local_server, remote_server);
+	Factory_guard g;
 	#if defined(FACTORY_TEST_SERVER)
 	Application app(XSTRINGIFY(FACTORY_APP_PATH));
-	remote_server.add(app);
+	factory::factory.child().add(app);
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	factory::graceful_shutdown(0);
 	#else
-	local_server.send(new Main);
+	send<Local>(new Main);
 	#endif
-	int ret = factory::wait_and_return();
-	factory::stop_all(local_server, remote_server);
-	factory::wait_all(local_server, remote_server);
-	return ret;
+	return factory::wait_and_return();
 }

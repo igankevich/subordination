@@ -9,8 +9,19 @@ _downstream(_upstream.concurrency()) {
 	this->_upstream.set_name("upstrm");
 	this->_downstream.set_name("dwnstrm");
 	this->_timer.set_name("tmr");
-	this->_nic.set_name("nic");
 	this->_io.set_name("io");
+	#if defined(FACTORY_PRIORITY_SCHEDULING)
+	this->_prio.set_name("prio");
+	#endif
+	#if defined(FACTORY_APPLICATION)
+	this->_parent.set_name("chld");
+	#endif
+	#if defined(FACTORY_DAEMON)
+	this->_parent.set_name("nic");
+	#endif
+	#if defined(FACTORY_DAEMON)
+	this->_child.set_name("proc");
+	#endif
 }
 
 template <class T>
@@ -21,10 +32,13 @@ factory::Factory<T>::start() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
-		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
+		#endif
+		, this->_parent
+		#if defined(FACTORY_DAEMON)
+		, this->_child
 		#endif
 	);
 	this->setstate(server_state::started);
@@ -38,10 +52,13 @@ factory::Factory<T>::stop() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
-		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
+		#endif
+		, this->_parent
+		#if defined(FACTORY_DAEMON)
+		, this->_child
 		#endif
 	);
 	this->setstate(server_state::stopped);
@@ -54,10 +71,13 @@ factory::Factory<T>::wait() {
 		this->_upstream,
 		this->_downstream,
 		this->_timer,
-		this->_nic,
 		this->_io
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
 		, this->_prio
+		#endif
+		, this->_parent
+		#if defined(FACTORY_DAEMON)
+		, this->_child
 		#endif
 	);
 }

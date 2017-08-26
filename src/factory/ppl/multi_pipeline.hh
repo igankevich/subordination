@@ -2,7 +2,7 @@
 #define FACTORY_PPL_MULTI_PIPELINE_HH
 
 #include <factory/ppl/basic_server.hh>
-#include <factory/ppl/basic_cpu_server.hh>
+#include <factory/ppl/cpu_server.hh>
 #include <vector>
 
 namespace factory {
@@ -12,7 +12,7 @@ namespace factory {
 
 	public:
 		typedef T kernel_type;
-		typedef Basic_CPU_server<T> base_server;
+		typedef CPU_server<T> base_server;
 
 	private:
 		std::vector<base_server> _servers;
