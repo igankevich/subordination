@@ -15,7 +15,7 @@
 #include <algorithm>
 #include <cstring>
 
-#include <unistdx/check>
+#include <unistdx/base/check>
 #include <unistdx/io/poller>
 #include <unistdx/ipc/identity>
 #include <unistdx/ipc/process>
