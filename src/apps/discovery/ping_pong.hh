@@ -110,4 +110,4 @@ private:
 
 };
 
-#endif // APPS_DISCOVERY_PING_PONG_HH
+#endif // vim:filetype=cpp

@@ -153,4 +153,4 @@ private:
 	Secret_agent* _secretagent = nullptr;
 };
 
-#endif // APPS_DISCOVERY_MASTER_DISCOVERER_HH
+#endif // vim:filetype=cpp

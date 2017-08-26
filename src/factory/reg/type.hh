@@ -1,5 +1,5 @@
-#ifndef FACTORY_TYPE_HH
-#define FACTORY_TYPE_HH
+#ifndef FACTORY_REG_TYPE_HH
+#define FACTORY_REG_TYPE_HH
 
 #include <typeinfo>
 #include <typeindex>
@@ -114,4 +114,4 @@ namespace std {
 
 }
 
-#endif // FACTORY_TYPE_HH
+#endif // vim:filetype=cpp

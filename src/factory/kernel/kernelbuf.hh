@@ -1,5 +1,5 @@
-#ifndef FACTORY_KERNELBUF_HH
-#define FACTORY_KERNELBUF_HH
+#ifndef FACTORY_KERNEL_KERNELBUF_HH
+#define FACTORY_KERNEL_KERNELBUF_HH
 
 #include <iomanip>
 #include <sstream>
@@ -279,4 +279,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_KERNELBUF_HH
+#endif // vim:filetype=cpp

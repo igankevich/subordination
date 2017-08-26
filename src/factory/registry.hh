@@ -1,5 +1,5 @@
-#ifndef FACTORY_REFLECTION_HH
-#define FACTORY_REFLECTION_HH
+#ifndef FACTORY_REGISTRY_HH
+#define FACTORY_REGISTRY_HH
 
 #include <factory/config.hh>
 #include <factory/reg/instance_registry.hh>
@@ -28,4 +28,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_REFLECTION_HH
+#endif // vim:filetype=cpp

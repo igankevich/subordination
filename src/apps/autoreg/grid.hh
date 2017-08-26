@@ -103,4 +103,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_GRID_HH
+#endif // vim:filetype=cpp

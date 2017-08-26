@@ -73,4 +73,4 @@ std::istream& operator>>(std::istream& in, Domain<T, D, S>& d) {
 
 }
 
-#endif // APPS_AUTOREG_DOMAIN_HH
+#endif // vim:filetype=cpp

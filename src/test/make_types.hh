@@ -11,5 +11,5 @@ struct TypePair {
 
 #define MAKE_TYPE_PAIR(a, b) ::TypePair<a,b>
 
-#endif // TEST_MAKE_TYPES_HH vim:filetype=cpp
+#endif // vim:filetype=cpp
 

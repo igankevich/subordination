@@ -102,4 +102,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_HIERARCHY_HH
+#endif // vim:filetype=cpp

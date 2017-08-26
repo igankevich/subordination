@@ -868,4 +868,4 @@ private:
 
 }
 
-#endif // APPS_AUTOREG_AUTOREG_HH
+#endif // vim:filetype=cpp

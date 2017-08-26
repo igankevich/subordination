@@ -234,4 +234,4 @@ void transform_water_surface(std::valarray<T>& a,
 
 }
 
-#endif // APPS_AUTOREG_NONLINEAR_OMP_HH
+#endif // vim:filetype=cpp

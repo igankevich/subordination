@@ -131,4 +131,4 @@ private:
 	uint32_t _numsent = 0;
 };
 
-#endif // APPS_DISCOVERY_NEGOTIATOR_HH
+#endif // vim:filetype=cpp

@@ -52,4 +52,4 @@ namespace std {
 	}
 }
 
-#endif // TEST_TEST_HH
+#endif // vim:filetype=cpp

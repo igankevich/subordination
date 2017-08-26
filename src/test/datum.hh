@@ -123,4 +123,4 @@ private:
 	char padding[5] = {};
 };
 
-#endif // TEST_DATUM_HH
+#endif // vim:filetype=cpp

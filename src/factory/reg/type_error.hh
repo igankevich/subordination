@@ -1,5 +1,5 @@
-#ifndef FACTORY_TYPE_ERROR_HH
-#define FACTORY_TYPE_ERROR_HH
+#ifndef FACTORY_REG_TYPE_ERROR_HH
+#define FACTORY_REG_TYPE_ERROR_HH
 
 #include <factory/error.hh>
 #include "type.hh"
@@ -29,4 +29,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_TYPE_ERROR_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

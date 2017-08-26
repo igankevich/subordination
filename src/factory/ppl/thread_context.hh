@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_GLOBAL_CONTEXT_HH
-#define FACTORY_PPL_GLOBAL_CONTEXT_HH
+#ifndef FACTORY_PPL_THREAD_CONTEXT_HH
+#define FACTORY_PPL_THREAD_CONTEXT_HH
 
 #include <mutex>
 #include <unistdx/base/simple_lock>
@@ -56,4 +56,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PPL_GLOBAL_CONTEXT_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

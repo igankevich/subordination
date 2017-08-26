@@ -68,4 +68,4 @@ private:
 
 };
 
-#endif // TEST_BIG_KERNEL_HH
+#endif // vim:filetype=cpp

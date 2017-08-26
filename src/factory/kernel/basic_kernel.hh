@@ -106,4 +106,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_KERNEL_BASIC_KERNEL_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

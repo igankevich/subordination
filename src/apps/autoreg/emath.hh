@@ -325,4 +325,4 @@ T lagrange(T x, T y, T z,
 
 }
 
-#endif // APPS_AUTOREG_EMATH_HH
+#endif // vim:filetype=cpp

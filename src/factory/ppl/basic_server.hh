@@ -1,5 +1,5 @@
-#ifndef FACTORY_BASIC_SERVER_HH
-#define FACTORY_BASIC_SERVER_HH
+#ifndef FACTORY_PPL_BASIC_SERVER_HH
+#define FACTORY_PPL_BASIC_SERVER_HH
 
 #include <thread>
 #include <queue>
@@ -251,4 +251,4 @@ namespace factory {
 	};
 
 }
-#endif // FACTORY_BASIC_SERVER_HH
+#endif // vim:filetype=cpp

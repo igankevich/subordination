@@ -124,4 +124,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_API_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

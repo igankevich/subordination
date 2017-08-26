@@ -58,4 +58,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_CACHE_GUARD_HH
+#endif // vim:filetype=cpp

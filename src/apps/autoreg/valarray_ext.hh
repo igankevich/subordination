@@ -55,4 +55,4 @@ inline std::ostream& operator<<(std::ostream& out, std::valarray< std::valarray<
 
 }
 
-#endif // APPS_AUTOREG_VALARRAY_EXT_HH
+#endif // vim:filetype=cpp

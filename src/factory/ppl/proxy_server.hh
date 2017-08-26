@@ -1,5 +1,5 @@
-#ifndef FACTORY_PROXY_SERVER_HH
-#define FACTORY_PROXY_SERVER_HH
+#ifndef FACTORY_PPL_PROXY_SERVER_HH
+#define FACTORY_PPL_PROXY_SERVER_HH
 
 #include <memory>
 
@@ -163,4 +163,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PROXY_SERVER_HH
+#endif // vim:filetype=cpp

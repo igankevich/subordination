@@ -1,5 +1,5 @@
-#ifndef FACTORY_KRN_KERNEL_HH
-#define FACTORY_KRN_KERNEL_HH
+#ifndef FACTORY_KERNEL_KERNEL_HH
+#define FACTORY_KERNEL_KERNEL_HH
 
 #include <unistdx/net/pstream>
 #include <memory>
@@ -236,4 +236,4 @@ namespace springy {
 }
 #endif
 
-#endif // FACTORY_KRN_KERNEL_HH
+#endif // vim:filetype=cpp

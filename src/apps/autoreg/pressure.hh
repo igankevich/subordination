@@ -295,4 +295,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_PRESSURE_HH
+#endif // vim:filetype=cpp

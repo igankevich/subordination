@@ -1,5 +1,5 @@
-#ifndef FACTORY_TYPE_REGISTRY_HH
-#define FACTORY_TYPE_REGISTRY_HH
+#ifndef FACTORY_REG_TYPE_REGISTRY_HH
+#define FACTORY_REG_TYPE_REGISTRY_HH
 
 #include <vector>
 #include <iosfwd>
@@ -75,4 +75,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_TYPE_REGISTRY_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

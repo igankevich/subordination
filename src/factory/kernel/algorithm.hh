@@ -1,5 +1,5 @@
-#ifndef FACTORY_ALGORITHM_HH
-#define FACTORY_ALGORITHM_HH
+#ifndef FACTORY_KERNEL_ALGORITHM_HH
+#define FACTORY_KERNEL_ALGORITHM_HH
 
 #include <factory/kernel/kernel.hh>
 #include <factory/ppl/basic_server.hh>
@@ -37,4 +37,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_ALGORITHM_HH
+#endif // vim:filetype=cpp

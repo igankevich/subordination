@@ -1,5 +1,5 @@
-#ifndef FACTORY_IO_SERVER_HH
-#define FACTORY_IO_SERVER_HH
+#ifndef FACTORY_PPL_IO_SERVER_HH
+#define FACTORY_PPL_IO_SERVER_HH
 
 #include "cpu_server.hh"
 
@@ -36,4 +36,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_IO_SERVER_HH
+#endif // vim:filetype=cpp

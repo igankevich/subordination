@@ -237,4 +237,4 @@ private:
 	std::valarray<std::complex<T>> _tmp_out;
 };
 
-#endif // APPS_AUTOREG_FOURIER_HH
+#endif // vim:filetype=cpp

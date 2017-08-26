@@ -178,4 +178,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_LOCATION_HH
+#endif // vim:filetype=cpp

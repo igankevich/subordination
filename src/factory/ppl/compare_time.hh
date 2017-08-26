@@ -14,4 +14,4 @@ namespace factory {
 }
 
 
-#endif // FACTORY_PPL_COMPARE_TIME_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

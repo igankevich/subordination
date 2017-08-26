@@ -1,5 +1,5 @@
-#ifndef FACTORY_PROCESS_SERVER_HH
-#define FACTORY_PROCESS_SERVER_HH
+#ifndef FACTORY_PPL_PROCESS_SERVER_HH
+#define FACTORY_PPL_PROCESS_SERVER_HH
 
 #include <map>
 #include <cassert>
@@ -534,4 +534,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PROCESS_SERVER_HH
+#endif // vim:filetype=cpp

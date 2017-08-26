@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_FACTORY_HH
-#define FACTORY_PPL_FACTORY_HH
+#ifndef FACTORY_PPL_BASIC_FACTORY_HH
+#define FACTORY_PPL_BASIC_FACTORY_HH
 
 #if !defined(FACTORY_DAEMON) && !defined(FACTORY_APPLICATION)
 #define FACTORY_DAEMON
@@ -181,4 +181,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PPL_FACTORY_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

@@ -1,5 +1,5 @@
-#ifndef FACTORY_TIMER_SERVER_HH
-#define FACTORY_TIMER_SERVER_HH
+#ifndef FACTORY_PPL_TIMER_SERVER_HH
+#define FACTORY_PPL_TIMER_SERVER_HH
 
 #include <factory/kernel/algorithm.hh>
 #include <factory/ppl/basic_server.hh>
@@ -61,4 +61,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_TIMER_SERVER_HH
+#endif // vim:filetype=cpp

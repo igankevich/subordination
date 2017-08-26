@@ -1,5 +1,5 @@
-#ifndef APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
-#define APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
+#ifndef SPRINGY_SPRINGY_HH
+#define SPRINGY_SPRINGY_HH
 
 #include <chrono>
 #include <fstream>
@@ -182,4 +182,4 @@ namespace springy {
 
 }
 
-#endif // APPS_DISCOVERY_SPRINGY_GRAPH_GENERATOR_HH
+#endif // vim:filetype=cpp

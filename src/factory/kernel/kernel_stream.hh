@@ -1,5 +1,5 @@
-#ifndef FACTORY_KERNEL_STREAM_HH
-#define FACTORY_KERNEL_STREAM_HH
+#ifndef FACTORY_KERNEL_KERNEL_STREAM_HH
+#define FACTORY_KERNEL_KERNEL_STREAM_HH
 
 #include <unistdx/base/log_message>
 #include <unistdx/net/pstream>
@@ -168,4 +168,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_KERNEL_STREAM_HH
+#endif // vim:filetype=cpp

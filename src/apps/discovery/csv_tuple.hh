@@ -133,4 +133,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_CSV_TUPLE_HH
+#endif // vim:filetype=cpp

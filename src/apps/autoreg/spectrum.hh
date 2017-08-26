@@ -28,4 +28,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_SPECTRUM_HH
+#endif // vim:filetype=cpp

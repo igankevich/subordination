@@ -12,4 +12,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_BASE_THREAD_NAME_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

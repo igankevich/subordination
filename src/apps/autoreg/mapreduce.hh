@@ -66,4 +66,4 @@ namespace factory {
 
 }
 
-#endif // APPS_AUTOREG_MAPREDUCE_HH
+#endif // vim:filetype=cpp

@@ -45,4 +45,4 @@ private:
 
 };
 
-#endif // APPS_DISCOVERY_DELAYED_SHUTDOWN_HH
+#endif // vim:filetype=cpp

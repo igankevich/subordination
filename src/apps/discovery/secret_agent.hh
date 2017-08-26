@@ -14,4 +14,4 @@ struct Secret_agent: public Priority_kernel<Kernel> {
 
 };
 
-#endif // APPS_DISCOVERY_SECRET_AGENT_HH
+#endif // vim:filetype=cpp

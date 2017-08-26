@@ -95,4 +95,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_DISCRETE_FUNCTION_HH
+#endif // vim:filetype=cpp

@@ -129,4 +129,4 @@ namespace factory {
 
 }
 
-#endif // APPS_FACTORY_SECURITY_HH
+#endif // vim:filetype=cpp

@@ -1,5 +1,5 @@
-#ifndef FACTORY_NIC_SERVER_HH
-#define FACTORY_NIC_SERVER_HH
+#ifndef FACTORY_PPL_NIC_SERVER_HH
+#define FACTORY_PPL_NIC_SERVER_HH
 
 #include <map>
 #include <type_traits>
@@ -574,4 +574,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_NIC_SERVER_HH
+#endif // vim:filetype=cpp

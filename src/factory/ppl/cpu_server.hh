@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_BASIC_CPU_SERVER_HH
-#define FACTORY_PPL_BASIC_CPU_SERVER_HH
+#ifndef FACTORY_PPL_CPU_SERVER_HH
+#define FACTORY_PPL_CPU_SERVER_HH
 
 #include "basic_server.hh"
 
@@ -42,4 +42,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PPL_BASIC_CPU_SERVER_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

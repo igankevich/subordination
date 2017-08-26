@@ -64,4 +64,4 @@ namespace test {
 
 }
 
-#endif // TEST_DEMANGLE_HH
+#endif // vim:filetype=cpp

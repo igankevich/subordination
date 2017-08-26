@@ -1,5 +1,5 @@
-#ifndef FACTORY_RESULT_HH
-#define FACTORY_RESULT_HH
+#ifndef FACTORY_KERNEL_RESULT_HH
+#define FACTORY_KERNEL_RESULT_HH
 
 #include <unistdx/net/pstream>
 
@@ -38,4 +38,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_RESULT_HH
+#endif // vim:filetype=cpp

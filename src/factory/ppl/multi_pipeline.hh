@@ -54,4 +54,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_PPL_MULTI_PIPELINE_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

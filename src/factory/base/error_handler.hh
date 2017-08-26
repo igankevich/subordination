@@ -1,5 +1,5 @@
-#ifndef FACTORY_BITS_TERMINATE_HANDLER_HH
-#define FACTORY_BITS_TERMINATE_HANDLER_HH
+#ifndef FACTORY_BASE_ERROR_HANDLER_HH
+#define FACTORY_BASE_ERROR_HANDLER_HH
 
 namespace factory {
 
@@ -13,4 +13,4 @@ namespace factory {
 	install_error_handler();
 
 }
-#endif // FACTORY_BITS_TERMINATE_HANDLER_HH
+#endif // vim:filetype=cpp

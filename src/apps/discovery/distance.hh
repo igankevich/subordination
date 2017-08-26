@@ -103,4 +103,4 @@ namespace discovery {
 
 }
 
-#endif // APPS_DISCOVERY_DISTANCE_HH
+#endif // vim:filetype=cpp

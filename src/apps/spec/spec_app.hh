@@ -715,4 +715,4 @@ struct Spec_app: public Kernel {
 };
 
 
-#endif // APPS_SPEC_SPEC_APP_HH
+#endif // vim:filetype=cpp

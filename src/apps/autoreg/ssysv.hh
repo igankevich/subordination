@@ -56,4 +56,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_SSYSV_HH
+#endif // vim:filetype=cpp

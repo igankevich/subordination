@@ -685,4 +685,4 @@ uint8_t          : 0;
 
 }
 
-#endif // APPS_WEB_ENCODING_HH
+#endif // vim:filetype=cpp

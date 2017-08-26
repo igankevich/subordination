@@ -269,4 +269,4 @@ istream& operator>>(istream &in, Vector<A, m> &v) {
 
 }
 
-#endif // APPS_AUTOREG_VECTOR_N_HH
+#endif // vim:filetype=cpp

@@ -1,5 +1,5 @@
-#ifndef FACTORY_BAD_TYPE_HH
-#define FACTORY_BAD_TYPE_HH
+#ifndef FACTORY_KERNEL_KERNEL_ERROR_HH
+#define FACTORY_KERNEL_KERNEL_ERROR_HH
 
 #include <stdexcept>
 #include <cstdint>
@@ -38,4 +38,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_BAD_TYPE_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

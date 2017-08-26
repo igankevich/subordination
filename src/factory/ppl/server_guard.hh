@@ -1,5 +1,5 @@
-#ifndef FACTORY_SERVER_GUARD_HH
-#define FACTORY_SERVER_GUARD_HH
+#ifndef FACTORY_PPL_SERVER_GUARD_HH
+#define FACTORY_PPL_SERVER_GUARD_HH
 
 namespace factory {
 
@@ -35,4 +35,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_SERVER_GUARD_HH
+#endif // vim:filetype=cpp

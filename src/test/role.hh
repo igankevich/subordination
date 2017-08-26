@@ -37,4 +37,4 @@ namespace test {
 
 }
 
-#endif // TEST_ROLE_HH
+#endif // vim:filetype=cpp

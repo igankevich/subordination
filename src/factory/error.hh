@@ -42,4 +42,4 @@ namespace factory {
 #define FACTORY_THROW(error, ...) \
 	throw ::factory::error(__VA_ARGS__).set_location(__FILE__,__LINE__,__func__)
 
-#endif // FACTORY_ERROR_HH
+#endif // vim:filetype=cpp

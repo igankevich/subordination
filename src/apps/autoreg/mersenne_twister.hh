@@ -140,4 +140,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_MERSENNE_TWISTER_HH
+#endif // vim:filetype=cpp

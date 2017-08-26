@@ -72,4 +72,4 @@ private:
 
 };
 
-#endif // APPS_AUTOREG_AUTOREG_APP_HH
+#endif // vim:filetype=cpp

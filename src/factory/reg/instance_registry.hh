@@ -1,5 +1,5 @@
-#ifndef FACTORY_INSTANCE_REGISTRY_HH
-#define FACTORY_INSTANCE_REGISTRY_HH
+#ifndef FACTORY_REG_INSTANCE_REGISTRY_HH
+#define FACTORY_REG_INSTANCE_REGISTRY_HH
 
 #include <unordered_map>
 #include <mutex>
@@ -69,4 +69,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_INSTANCE_REGISTRY_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

@@ -81,4 +81,4 @@ namespace autoreg {
 
 }
 
-#endif // APPS_AUTOREG_ARRAY_HH
+#endif // vim:filetype=cpp

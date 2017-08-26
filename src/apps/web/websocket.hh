@@ -456,4 +456,4 @@ namespace factory {
 
 }
 
-#endif // APPS_WEB_WEBSOCKET_HH
+#endif // vim:filetype=cpp

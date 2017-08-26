@@ -67,4 +67,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_KERNEL_KERNEL_HEADER_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

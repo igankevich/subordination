@@ -448,4 +448,4 @@ istream& operator>>(istream& in, Autoreg_model<T>& m)
 
 }
 
-#endif // APPS_AUTOREG_AUTOREG_DRIVER_HH
+#endif // vim:filetype=cpp

@@ -1,5 +1,5 @@
-#ifndef FACTORY_APPLICATION_HH
-#define FACTORY_APPLICATION_HH
+#ifndef FACTORY_PPL_APPLICATION_HH
+#define FACTORY_PPL_APPLICATION_HH
 
 #include <unistdx/ipc/execute>
 #include <iosfwd>
@@ -39,4 +39,4 @@ namespace factory {
 
 }
 
-#endif // FACTORY_APPLICATION_HH vim:filetype=cpp
+#endif // vim:filetype=cpp

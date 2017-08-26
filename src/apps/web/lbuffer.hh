@@ -147,4 +147,4 @@ namespace factory {
 
 }
 
-#endif // APPS_WEB_LBUFFER_HH
+#endif // vim:filetype=cpp
