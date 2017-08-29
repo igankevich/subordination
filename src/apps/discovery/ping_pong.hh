@@ -76,10 +76,10 @@ struct Ping_pong: public Kernel {
 		#endif
 		_realsum += ping->get_x();
 		if (
-			not _some_kernels_came_from_a_remote_server
+			not _some_kernels_came_from_a_remote_pipeline
 			and not ping->from()
 		) {
-			_some_kernels_came_from_a_remote_server = true;
+			_some_kernels_came_from_a_remote_pipeline = true;
 		}
 		if (++_numreceived == _numkernels) {
 			#ifndef NDEBUG
@@ -90,11 +90,11 @@ struct Ping_pong: public Kernel {
 					"num_kernels", _numkernels,
 					"expected_sum", _expectedsum,
 					"real_sum", _realsum,
-					"representative", _some_kernels_came_from_a_remote_server
+					"representative", _some_kernels_came_from_a_remote_pipeline
 				)
 			);
 			#endif
-			bool success = _some_kernels_came_from_a_remote_server and _realsum == _expectedsum;
+			bool success = _some_kernels_came_from_a_remote_pipeline and _realsum == _expectedsum;
 			commit<Local>(this, success ? Result::success : Result::error);
 		}
 	}
@@ -106,7 +106,7 @@ private:
 	int _numkernels = 10;
 	int _numreceived = 0;
 	int _currentkernel = 0;
-	bool _some_kernels_came_from_a_remote_server = false;
+	bool _some_kernels_came_from_a_remote_pipeline = false;
 
 };
 

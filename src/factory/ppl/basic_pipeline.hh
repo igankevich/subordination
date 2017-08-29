@@ -15,9 +15,10 @@
 #include <unistdx/it/queue_pusher>
 #include <unistdx/util/system>
 
-#include <factory/reg/type.hh>
 #include <factory/base/thread_name.hh>
-#include "thread_context.hh"
+#include <factory/ppl/pipeline_base.hh>
+#include <factory/ppl/thread_context.hh>
+#include <factory/reg/type.hh>
 
 namespace factory {
 
@@ -26,48 +27,6 @@ namespace factory {
 
 	int
 	wait_and_return();
-
-	enum struct server_state {
-		initial,
-		starting,
-		started,
-		stopping,
-		stopped
-	};
-
-	struct Server_base {
-
-		Server_base() = default;
-		virtual ~Server_base() = default;
-		Server_base(Server_base&&) = default;
-		Server_base(const Server_base&) = delete;
-		Server_base& operator=(Server_base&) = delete;
-
-		inline void
-		setstate(server_state rhs) noexcept {
-			this->_state = rhs;
-		}
-
-		inline bool
-		is_stopped() const noexcept {
-			return this->_state == server_state::stopped;
-		}
-
-		inline bool
-		is_stopping() const noexcept {
-			return this->_state == server_state::stopping;
-		}
-
-		inline bool
-		is_started() const noexcept {
-			return this->_state == server_state::started;
-		}
-
-	protected:
-
-		volatile server_state _state = server_state::initial;
-
-	};
 
 	template<
 		class T,
@@ -78,7 +37,7 @@ namespace factory {
 		class Lock=sys::simple_lock<Mutex>,
 		class Semaphore=sys::thread_semaphore
 	>
-	class Basic_server: public Server_base {
+	class basic_pipeline: public pipeline_base {
 
 	public:
 		typedef T kernel_type;
@@ -100,10 +59,10 @@ namespace factory {
 		unsigned _number = 0;
 
 	public:
-		Basic_server() = default;
+		basic_pipeline() = default;
 
 		inline explicit
-		Basic_server(unsigned concurrency) noexcept:
+		basic_pipeline(unsigned concurrency) noexcept:
 		_kernels(),
 		_threads(std::max(1u, concurrency)),
 		_mutex(),
@@ -111,7 +70,7 @@ namespace factory {
 		{}
 
 		inline
-		Basic_server(Basic_server&& rhs) noexcept:
+		basic_pipeline(basic_pipeline&& rhs) noexcept:
 		_kernels(std::move(rhs._kernels)),
 		_threads(std::move(rhs._threads)),
 		_mutex(),
@@ -121,15 +80,15 @@ namespace factory {
 		{}
 
 		inline
-		~Basic_server() {
+		~basic_pipeline() {
 			// ensure that kernels inserted without starting
-			// a server are deleted
+			// a pipeline are deleted
 			kernel_sack sack;
 			this->collect_kernels(std::back_inserter(sack));
 		}
 
-		Basic_server(const Basic_server&) = delete;
-		Basic_server& operator=(const Basic_server&) = delete;
+		basic_pipeline(const basic_pipeline&) = delete;
+		basic_pipeline& operator=(const basic_pipeline&) = delete;
 
 		void
 		send(kernel_type* kernel) {
@@ -165,7 +124,7 @@ namespace factory {
 
 		void
 		start() {
-			this->setstate(server_state::started);
+			this->setstate(pipeline_state::started);
 			unsigned thread_no = this->_number;
 			for (std::thread& thr : this->_threads) {
 				thr = std::thread([this,thread_no] () {
@@ -180,7 +139,7 @@ namespace factory {
 		void
 		stop() {
 			lock_type lock(this->_mutex);
-			this->setstate(server_state::stopped);
+			this->setstate(pipeline_state::stopped);
 			this->_semaphore.notify_all();
 		}
 

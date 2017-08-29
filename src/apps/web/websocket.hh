@@ -302,7 +302,7 @@ namespace factory {
 			}
 		}
 
-		bool is_server() const { return role == Role::SERVER; }
+		bool is_pipeline() const { return role == Role::SERVER; }
 		bool is_client() const { return role == Role::CLIENT; }
 
 		void handshake() {
@@ -316,10 +316,10 @@ namespace factory {
 					}
 					break;
 				case State::PARSING_SUCCESS:
-					if (is_server()) reply_success(); else state = State::HANDSHAKE_SUCCESS;
+					if (is_pipeline()) reply_success(); else state = State::HANDSHAKE_SUCCESS;
 					break;
 				case State::PARSING_ERROR:
-					is_server() ? reply_error() : this->close();
+					is_pipeline() ? reply_error() : this->close();
 					break;
 				case State::STARTING_HANDSHAKE:
 					start_handshake();

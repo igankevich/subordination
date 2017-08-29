@@ -21,7 +21,7 @@ struct Delayed_shutdown: public Kernel {
 		if (not _normal) {
 			try {
 				#ifndef NDEBUG
-				sys::endpoint addr = factory::factory.nic().server_addr();
+				sys::endpoint addr = factory::factory.nic().bind_address();
 				sys::log_message("tst", "killing _", addr);
 				#endif
 			} catch (...) {

@@ -2,7 +2,7 @@
 #define FACTORY_PPL_TIMER_SERVER_HH
 
 #include <factory/kernel/algorithm.hh>
-#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/basic_pipeline.hh>
 #include <factory/ppl/compare_time.hh>
 #include <unistdx/ipc/semaphore>
 
@@ -12,32 +12,32 @@ namespace factory {
 	using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
 
 	template<class T>
-	using Timer_server_base = Basic_server<T, Time_priority_pool<T>,
+	using Timer_pipeline_base = basic_pipeline<T, Time_priority_pool<T>,
 		sys::priority_queue_traits<Time_priority_pool<T>>>;
 
 	template<class T>
-	struct Timer_server: public Timer_server_base<T> {
+	struct timer_pipeline: public Timer_pipeline_base<T> {
 
-		typedef Timer_server_base<T> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::mutex_type;
-		using typename base_server::lock_type;
-		using typename base_server::sem_type;
-		using typename base_server::traits_type;
+		typedef Timer_pipeline_base<T> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::traits_type;
 
 		inline
-		Timer_server(Timer_server&& rhs) noexcept:
-		base_server(std::move(rhs))
+		timer_pipeline(timer_pipeline&& rhs) noexcept:
+		base_pipeline(std::move(rhs))
 		{}
 
 		inline
-		Timer_server() noexcept:
-		base_server(1u)
+		timer_pipeline() noexcept:
+		base_pipeline(1u)
 		{}
 
-		Timer_server(const Timer_server&) = delete;
-		Timer_server& operator=(const Timer_server&) = delete;
-		~Timer_server() = default;
+		timer_pipeline(const timer_pipeline&) = delete;
+		timer_pipeline& operator=(const timer_pipeline&) = delete;
+		~timer_pipeline() = default;
 
 	protected:
 		void

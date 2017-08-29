@@ -283,7 +283,7 @@ struct ACF_generator: public Kernel {
 //				}
 //			}
 //		}
-//		commit(local_server());
+//		commit(local_pipeline());
 
 		int bs = 2;
 		int n = acf_size[0];
@@ -332,7 +332,7 @@ private:
 //				p.acf[id(t, x, y)] = p.gamm*exp(-p.alpha*k1)*cos(p.beta*t*p.delta[0])*cos(p.beta*x*p.delta[1]);//*cos(beta*y*delta[2]);
 //			}
 //		}
-//		commit(local_server());
+//		commit(local_pipeline());
 //	}
 //private:
 //	ACF<T>& p;
@@ -658,10 +658,10 @@ struct Generator1: public Kernel {
 					Note* note = new Note;
 					note->return_to(left_neighbour);
 					send<Local>(note);
-//					downstream(local_server(), new Note(), left_neighbour);
+//					downstream(local_pipeline(), new Note(), left_neighbour);
 				}
 				send<Local>(this, this);
-//				downstream(local_server(), this, this);
+//				downstream(local_pipeline(), this, this);
 			} else {
 				trim_zeta(zeta2, zsize2, zsize, zeta);
 				_writefile = true;

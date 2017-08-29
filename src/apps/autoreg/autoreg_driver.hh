@@ -305,7 +305,7 @@ void Autoreg_model<T>::react(Kernel* child) {
 			timerun_log << float(_time1 - _time0)/1000/1000/1000 << std::endl;
 		}
 		commit<Local>(this);
-//		upstream(local_server(), new Velocity_potential<T>(water_surface, zsize, zdelta));
+//		upstream(local_pipeline(), new Velocity_potential<T>(water_surface, zsize, zdelta));
 //		if (!linear) {
 //			transform_water_surface<T>(interp_coefs, zsize, water_surface, cdf, nit_x0, nit_x1);
 //		}

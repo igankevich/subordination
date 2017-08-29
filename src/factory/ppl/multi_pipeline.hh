@@ -1,42 +1,42 @@
 #ifndef FACTORY_PPL_MULTI_PIPELINE_HH
 #define FACTORY_PPL_MULTI_PIPELINE_HH
 
-#include <factory/ppl/basic_server.hh>
-#include <factory/ppl/cpu_server.hh>
+#include <factory/ppl/basic_pipeline.hh>
+#include <factory/ppl/parallel_pipeline.hh>
 #include <vector>
 
 namespace factory {
 
 	template <class T>
-	class Multi_pipeline: public Server_base {
+	class Multi_pipeline: public pipeline_base {
 
 	public:
 		typedef T kernel_type;
-		typedef CPU_server<T> base_server;
+		typedef parallel_pipeline<T> base_pipeline;
 
 	private:
-		std::vector<base_server> _servers;
+		std::vector<base_pipeline> _pipelines;
 
 	public:
 		explicit
-		Multi_pipeline(unsigned nservers);
+		Multi_pipeline(unsigned npipelines);
 		Multi_pipeline(const Multi_pipeline&) = delete;
 		Multi_pipeline(Multi_pipeline&&) = default;
 		virtual ~Multi_pipeline() = default;
 
-		inline base_server&
+		inline base_pipeline&
 		operator[](size_t i) noexcept {
-			return this->_servers[i];
+			return this->_pipelines[i];
 		}
 
-		inline const base_server&
+		inline const base_pipeline&
 		operator[](size_t i) const noexcept {
-			return this->_servers[i];
+			return this->_pipelines[i];
 		}
 
 		inline size_t
 		size() const noexcept {
-			return this->_servers.size();
+			return this->_pipelines.size();
 		}
 
 		void

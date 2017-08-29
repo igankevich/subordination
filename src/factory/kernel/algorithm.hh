@@ -2,7 +2,7 @@
 #define FACTORY_KERNEL_ALGORITHM_HH
 
 #include <factory/kernel/kernel.hh>
-#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/basic_pipeline.hh>
 
 namespace factory {
 

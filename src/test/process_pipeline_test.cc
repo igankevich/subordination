@@ -69,10 +69,10 @@ struct Sender: public Kernel {
 		_input(_vector_size),
 		_sleep(s) {}
 
-	void act(Server& this_server) {
+	void act(Pipeline& this_pipeline) {
 		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-			upstream(this_server.remote_server(), new Test_socket(_input));
+			upstream(this_pipeline.remote_pipeline(), new Test_socket(_input));
 		}
 	}
 
@@ -94,7 +94,7 @@ struct Sender: public Kernel {
 		}
 
 		if (++_num_returned == NUM_KERNELS) {
-			commit(this_server.local_server());
+			commit(this_pipeline.local_pipeline());
 		}
 	}
 

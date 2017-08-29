@@ -14,21 +14,20 @@
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>
 
-#include <factory/ppl/proxy_server.hh>
+#include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/kernel/kernel_stream.hh>
 
 namespace factory {
 
 	template<class T, class Socket, class Router, class Kernels=std::deque<T*>,
 		class Traits=sys::deque_traits<Kernels>>
-	struct Remote_Rserver: public Server_base {
+	struct remote_client: public pipeline_base {
 
-		typedef Server_base base_server;
+		typedef pipeline_base base_pipeline;
 		typedef T kernel_type;
 		typedef char Ch;
 		typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
 		typedef Kernel_stream<kernel_type> stream_type;
-		typedef Server_base server_type;
 		typedef Socket socket_type;
 		typedef Router router_type;
 		typedef Kernels pool_type;
@@ -41,9 +40,9 @@ namespace factory {
 			"bad stream_type"
 		);
 
-		Remote_Rserver() = default;
+		remote_client() = default;
 
-		Remote_Rserver(socket_type&& sock, sys::endpoint vaddr, router_type& router):
+		remote_client(socket_type&& sock, sys::endpoint vaddr, router_type& router):
 		_vaddr(vaddr),
 		_packetbuf(),
 		_stream(&_packetbuf),
@@ -61,11 +60,11 @@ namespace factory {
 			_packetbuf.setfd(std::move(sock));
 		}
 
-		Remote_Rserver(const Remote_Rserver&) = delete;
-		Remote_Rserver& operator=(const Remote_Rserver&) = delete;
+		remote_client(const remote_client&) = delete;
+		remote_client& operator=(const remote_client&) = delete;
 
-		Remote_Rserver(Remote_Rserver&& rhs):
-		base_server(std::move(rhs)),
+		remote_client(remote_client&& rhs):
+		base_pipeline(std::move(rhs)),
 		_vaddr(rhs._vaddr),
 		_packetbuf(std::move(rhs._packetbuf)),
 		_stream(std::move(rhs._stream)),
@@ -77,7 +76,7 @@ namespace factory {
 		}
 
 		virtual
-		~Remote_Rserver() {
+		~remote_client() {
 			this->recover_kernels();
 			this->delete_kernels();
 		}
@@ -164,7 +163,7 @@ namespace factory {
 		void setvaddr(const sys::endpoint& rhs) { _vaddr = rhs; }
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Remote_Rserver& rhs) {
+		operator<<(std::ostream& out, const remote_client& rhs) {
 			return out << sys::make_object(
 				"vaddr", rhs.vaddr(),
 				"socket", rhs.socket(),
@@ -180,7 +179,7 @@ namespace factory {
 			std::for_each(
 				queue_popper(rhs),
 				queue_popper(rhs),
-				std::bind(&Remote_Rserver::recover_kernel, this, _1)
+				std::bind(&remote_client::recover_kernel, this, _1)
 			);
 		}
 
@@ -286,32 +285,32 @@ namespace factory {
 	};
 
 	template<class T, class Socket, class Router>
-	struct NIC_server: public Proxy_server<T,Remote_Rserver<T,Socket,Router>> {
+	struct socket_pipeline: public basic_socket_pipeline<T,remote_client<T,Socket,Router>> {
 
 		typedef Socket socket_type;
 		typedef Router router_type;
 
-		typedef Proxy_server<T,Remote_Rserver<T,Socket,Router>> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::mutex_type;
-		using typename base_server::lock_type;
-		using typename base_server::sem_type;
-		using typename base_server::kernel_pool;
-		using typename base_server::server_type;
-		using typename base_server::server_ptr;
+		typedef basic_socket_pipeline<T,remote_client<T,Socket,Router>> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::kernel_pool;
+		using typename base_pipeline::event_handler_type;
+		using typename base_pipeline::event_handler_ptr;
 
-		using base_server::poller;
-		using base_server::send;
+		using base_pipeline::poller;
+		using base_pipeline::send;
 
-		typedef std::map<sys::endpoint,server_ptr> upstream_type;
+		typedef std::map<sys::endpoint,event_handler_ptr> upstream_type;
 		typedef typename upstream_type::iterator iterator_type;
 		typedef sys::ifaddr<sys::ipv4_addr> network_type;
 		typedef network_type::rep_type rep_type;
 		typedef Mobile_kernel::id_type id_type;
 
 		static_assert(
-			std::is_move_constructible<server_type>::value,
-			"bad server_type"
+			std::is_move_constructible<event_handler_type>::value,
+			"bad event_handler_type"
 		);
 
 		static_assert(
@@ -319,8 +318,8 @@ namespace factory {
 			"bad id_type"
 		);
 
-		NIC_server(NIC_server&& rhs) noexcept:
-		base_server(std::move(rhs)),
+		socket_pipeline(socket_pipeline&& rhs) noexcept:
+		base_pipeline(std::move(rhs)),
 		_network(std::move(rhs._network)),
 		_socket(std::move(rhs)),
 		_upstream(),
@@ -329,20 +328,20 @@ namespace factory {
 		_router(rhs._router)
 		{}
 
-		NIC_server() = default;
-		~NIC_server() = default;
-		NIC_server(const NIC_server&) = delete;
-		NIC_server& operator=(const NIC_server&) = delete;
+		socket_pipeline() = default;
+		~socket_pipeline() = default;
+		socket_pipeline(const socket_pipeline&) = delete;
+		socket_pipeline& operator=(const socket_pipeline&) = delete;
 
 		void
-		remove_server(server_ptr ptr) override {
+		remove_pipeline(event_handler_ptr ptr) override {
 			// TODO: occasional ``Bad file descriptor''
 			#ifndef NDEBUG
 			sys::log_message("nic", "remove _", *ptr);
 			#endif
 			auto result = _upstream.find(ptr->vaddr());
 			if (result != _upstream.end()) {
-				remove_valid_server(result);
+				remove_valid_pipeline(result);
 			}
 		}
 
@@ -354,15 +353,15 @@ namespace factory {
 			auto res = _upstream.find(vaddr);
 			if (res == _upstream.end()) {
 				#ifndef NDEBUG
-				server_ptr ptr =
+				event_handler_ptr ptr =
 				#endif
-				add_connected_server(std::move(sock), vaddr, sys::poll_event::In);
+				add_connected_pipeline(std::move(sock), vaddr, sys::poll_event::In);
 				#ifndef NDEBUG
 				sys::log_message("nic", "accept _", *ptr);
 				#endif
 			} else {
 				/*
-				server_ptr s = res->second;
+				event_handler_ptr s = res->second;
 				const sys::port_type local_port = s->socket().bind_addr().port();
 				if (!(addr.port() < local_port)) {
 					#ifndef NDEBUG
@@ -370,7 +369,7 @@ namespace factory {
 					#endif
 					poller().disable(s->socket().fd());
 					s->socket(std::move(sock));
-					remove_valid_server(res);
+					remove_valid_pipeline(res);
 					_upstream.emplace(vaddr, std::move(s));
 					poller().emplace(sys::poll_event{s->socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout}, s);
 				}
@@ -380,7 +379,7 @@ namespace factory {
 
 		void peer(sys::endpoint addr) {
 			lock_type lock(this->_mutex);
-			this->connect_to_server(addr, sys::poll_event::In);
+			this->connect_to_pipeline(addr, sys::poll_event::In);
 		}
 
 		void
@@ -402,8 +401,8 @@ namespace factory {
 		}
 
 		inline sys::endpoint
-		server_addr() const {
-			return _socket.bind_addr();
+		bind_address() const {
+			return this->_socket.bind_addr();
 		}
 
 	private:
@@ -439,11 +438,11 @@ namespace factory {
 		}
 
 		void
-		remove_valid_server(iterator_type result) noexcept {
+		remove_valid_pipeline(iterator_type result) noexcept {
 			if (result == _iterator) {
 				advance_upstream_iterator();
 			}
-			result->second->setstate(server_state::stopped);
+			result->second->setstate(pipeline_state::stopped);
 			_upstream.erase(result);
 		}
 
@@ -456,7 +455,7 @@ namespace factory {
 		}
 
 		std::pair<iterator_type,bool>
-		emplace_server(const sys::endpoint& vaddr, server_ptr&& s) {
+		emplace_pipeline(const sys::endpoint& vaddr, event_handler_ptr&& s) {
 			auto result = _upstream.emplace(vaddr, std::move(s));
 			if (_upstream.size() == 1) {
 				_iterator = _upstream.begin();
@@ -466,7 +465,7 @@ namespace factory {
 
 		inline sys::endpoint
 		virtual_addr(sys::endpoint addr) const {
-			return sys::endpoint(addr, server_addr().port());
+			return sys::endpoint(addr, bind_address().port());
 		}
 
 		void
@@ -481,7 +480,7 @@ namespace factory {
 
 		void
 		process_kernel(kernel_type* k) {
-			if (this->server_addr() && k->to() == this->server_addr()) {
+			if (this->bind_address() && k->to() == this->bind_address()) {
 				_router.send_local(k);
 			}
 
@@ -528,34 +527,34 @@ namespace factory {
 			}
 		}
 
-		server_ptr
+		event_handler_ptr
 		find_or_create_peer(const sys::endpoint& addr, sys::poll_event::legacy_event ev) {
-			server_ptr ret;
+			event_handler_ptr ret;
 			auto result = _upstream.find(addr);
 			if (result == _upstream.end()) {
-				ret = this->connect_to_server(addr, ev);
+				ret = this->connect_to_pipeline(addr, ev);
 			} else {
 				ret = result->second;
 			}
 			return ret;
 		}
 
-		server_ptr
-		connect_to_server(sys::endpoint addr, sys::poll_event::legacy_event events) {
+		event_handler_ptr
+		connect_to_pipeline(sys::endpoint addr, sys::poll_event::legacy_event events) {
 			// bind to server address with ephemeral port
-			sys::endpoint srv_addr(this->server_addr(), 0);
-			return this->add_connected_server(socket_type(srv_addr, addr), addr, events);
+			sys::endpoint srv_addr(this->bind_address(), 0);
+			return this->add_connected_pipeline(socket_type(srv_addr, addr), addr, events);
 		}
 
-		server_ptr
-		add_connected_server(socket_type&& sock, sys::endpoint vaddr,
+		event_handler_ptr
+		add_connected_pipeline(socket_type&& sock, sys::endpoint vaddr,
 			sys::poll_event::legacy_event events,
 			sys::poll_event::legacy_event revents=0)
 		{
 			sys::fd_type fd = sock.fd();
-			server_ptr s(new server_type(std::move(sock), vaddr, _router));
+			event_handler_ptr s(new event_handler_type(std::move(sock), vaddr, _router));
 			// s.setparent(this);
-			auto result = emplace_server(vaddr, std::move(s));
+			auto result = emplace_pipeline(vaddr, std::move(s));
 			poller().emplace(sys::poll_event{fd, events, revents}, result.first->second);
 			#ifndef NDEBUG
 			sys::log_message("nic", "add _", result.first->second);

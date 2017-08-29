@@ -1,7 +1,6 @@
 #include <factory/api.hh>
-#include <factory/ppl/cpu_server.hh>
-#include <factory/ppl/server_guard.hh>
-#include <factory/ppl/timer_server.hh>
+#include <factory/ppl/parallel_pipeline.hh>
+#include <factory/ppl/timer_pipeline.hh>
 #include <factory/base/error_handler.hh>
 
 #include <gtest/gtest.h>

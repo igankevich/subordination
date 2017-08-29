@@ -6,15 +6,15 @@
 #endif
 
 #include <factory/config.hh>
-#include <factory/ppl/cpu_server.hh>
-#include <factory/ppl/basic_server.hh>
-#include <factory/ppl/io_server.hh>
+#include <factory/ppl/parallel_pipeline.hh>
+#include <factory/ppl/basic_pipeline.hh>
+#include <factory/ppl/io_pipeline.hh>
 #include <factory/ppl/multi_pipeline.hh>
 #if defined(FACTORY_DAEMON)
-#include <factory/ppl/nic_server.hh>
+#include <factory/ppl/socket_pipeline.hh>
 #endif
-#include <factory/ppl/process_server.hh>
-#include <factory/ppl/timer_server.hh>
+#include <factory/ppl/process_pipeline.hh>
+#include <factory/ppl/timer_pipeline.hh>
 #include <vector>
 
 namespace factory {
@@ -34,35 +34,35 @@ namespace factory {
 	};
 
 	template <class T>
-	class Factory: public Server_base {
+	class Factory: public pipeline_base {
 
 	public:
 		typedef T kernel_type;
-		typedef CPU_server<T> cpu_server;
-		typedef Timer_server<T> timer_server;
-		typedef IO_server<T> io_server;
-		typedef Multi_pipeline<T> downstream_server;
+		typedef parallel_pipeline<T> cpu_pipeline_type;
+		typedef timer_pipeline<T> timer_pipeline_type;
+		typedef io_pipeline<T> io_pipeline_type;
+		typedef Multi_pipeline<T> downstream_pipeline_type;
 		#if defined(FACTORY_APPLICATION)
-		typedef Process_child_server<T, Basic_router<T>> parent_server;
+		typedef child_process_pipeline<T, Basic_router<T>> parent_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef NIC_server<T, sys::socket, Basic_router<T>> parent_server;
+		typedef socket_pipeline<T, sys::socket, Basic_router<T>> parent_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef Process_iserver<T, Basic_router<T>> child_server;
+		typedef process_pipeline<T, Basic_router<T>> child_pipeline_type;
 		#endif
 
 	private:
-		cpu_server _upstream;
-		downstream_server _downstream;
-		timer_server _timer;
-		io_server _io;
+		cpu_pipeline_type _upstream;
+		downstream_pipeline_type _downstream;
+		timer_pipeline_type _timer;
+		io_pipeline_type _io;
 		#if defined(FACTORY_PRIORITY_SCHEDULING)
-		cpu_server _prio;
+		cpu_pipeline_type _prio;
 		#endif
-		parent_server _parent;
+		parent_pipeline_type _parent;
 		#if defined(FACTORY_DAEMON)
-		child_server _child;
+		child_pipeline_type _child;
 		#endif
 
 	public:
@@ -111,45 +111,45 @@ namespace factory {
 			this->_child.send(kernel);
 		}
 
-		inline child_server&
+		inline child_pipeline_type&
 		child() noexcept {
 			return this->_child;
 		}
 
-		inline const child_server&
+		inline const child_pipeline_type&
 		child() const noexcept {
 			return this->_child;
 		}
 		#endif
 
-		inline parent_server&
+		inline parent_pipeline_type&
 		parent() noexcept {
 			return this->_parent;
 		}
 
-		inline const parent_server&
+		inline const parent_pipeline_type&
 		parent() const noexcept {
 			return this->_parent;
 		}
 
 		#if defined(FACTORY_DAEMON)
-		inline parent_server&
+		inline parent_pipeline_type&
 		nic() noexcept {
 			return this->_parent;
 		}
 
-		inline const parent_server&
+		inline const parent_pipeline_type&
 		nic() const noexcept {
 			return this->_parent;
 		}
 		#endif
 
-		inline timer_server&
+		inline timer_pipeline_type&
 		timer() noexcept {
 			return this->_timer;
 		}
 
-		inline const timer_server&
+		inline const timer_pipeline_type&
 		timer() const noexcept {
 			return this->_timer;
 		}

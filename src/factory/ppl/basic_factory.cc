@@ -1,6 +1,39 @@
 #include "basic_factory.hh"
 #include <factory/config.hh>
-#include <factory/ppl/server_guard.hh>
+
+namespace {
+
+	inline void
+	start_all() {}
+
+	template <class Pipeline, class ... Args>
+	void
+	start_all(Pipeline& ppl, Args& ... args) {
+		ppl.start();
+		start_all(args...);
+	}
+
+	inline void
+	stop_all() {}
+
+	template <class Pipeline, class ... Args>
+	void
+	stop_all(Pipeline& ppl, Args& ... args) {
+		ppl.stop();
+		stop_all(args...);
+	}
+
+	inline void
+	wait_all() {}
+
+	template <class Pipeline, class ... Args>
+	void
+	wait_all(Pipeline& ppl, Args& ... args) {
+		ppl.wait();
+		wait_all(args...);
+	}
+
+}
 
 template <class T>
 factory::Factory<T>::Factory():
@@ -27,7 +60,7 @@ _downstream(_upstream.concurrency()) {
 template <class T>
 void
 factory::Factory<T>::start() {
-	this->setstate(server_state::starting);
+	this->setstate(pipeline_state::starting);
 	start_all(
 		this->_upstream,
 		this->_downstream,
@@ -41,13 +74,13 @@ factory::Factory<T>::start() {
 		, this->_child
 		#endif
 	);
-	this->setstate(server_state::started);
+	this->setstate(pipeline_state::started);
 }
 
 template <class T>
 void
 factory::Factory<T>::stop() {
-	this->setstate(server_state::stopping);
+	this->setstate(pipeline_state::stopping);
 	stop_all(
 		this->_upstream,
 		this->_downstream,
@@ -61,7 +94,7 @@ factory::Factory<T>::stop() {
 		, this->_child
 		#endif
 	);
-	this->setstate(server_state::stopped);
+	this->setstate(pipeline_state::stopped);
 }
 
 template <class T>

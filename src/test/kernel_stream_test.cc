@@ -1,7 +1,7 @@
 #include <unistdx/io/fildesbuf>
 
 #include <factory/kernel/kernel_stream.hh>
-#include <factory/ppl/basic_server.hh>
+#include <factory/ppl/basic_pipeline.hh>
 #include <factory/registry.hh>
 
 #include "datum.hh"

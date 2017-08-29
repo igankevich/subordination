@@ -12,11 +12,11 @@ using test::Role;
 
 const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 #if defined(FACTORY_TEST_OFFLINE)
-sys::endpoint server_endpoint({127,0,0,1}, 10001);
-sys::endpoint client_endpoint({127,0,0,1}, 20001);
+sys::endpoint principal_endpoint({127,0,0,1}, 10001);
+sys::endpoint subordinate_endpoint({127,0,0,1}, 20001);
 #else
-sys::endpoint server_endpoint({127,0,0,1}, 10002);
-sys::endpoint client_endpoint({127,0,0,1}, 20002);
+sys::endpoint principal_endpoint({127,0,0,1}, 10002);
+sys::endpoint subordinate_endpoint({127,0,0,1}, 20002);
 #endif
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
@@ -153,15 +153,15 @@ TEST(NICServerTest, All) {
 	using factory::factory;
 	factory::register_type<Test_socket>();
 	if (role == Role::Slave) {
-		factory.nic().bind(server_endpoint, netmask);
+		factory.nic().bind(principal_endpoint, netmask);
 	}
 	if (role == Role::Master) {
-		factory.nic().bind(client_endpoint, netmask);
+		factory.nic().bind(subordinate_endpoint, netmask);
 		// wait for the child to start
 		using namespace std::this_thread;
 		using namespace std::chrono;
 		sleep_for(milliseconds(1000));
-		factory.nic().peer(server_endpoint);
+		factory.nic().peer(principal_endpoint);
 	}
 
 	Factory_guard g;

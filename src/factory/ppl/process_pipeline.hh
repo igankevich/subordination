@@ -15,8 +15,8 @@
 #include <unistdx/it/queue_popper>
 #include <unistdx/net/pstream>
 
-#include <factory/ppl/basic_server.hh>
-#include <factory/ppl/proxy_server.hh>
+#include <factory/ppl/basic_pipeline.hh>
+#include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/application.hh>
 #include <factory/kernel/kernel_stream.hh>
 #include <factory/kernel/kernel.hh>
@@ -25,9 +25,9 @@ namespace factory {
 
 	template<class T, class Router, class Kernels=std::deque<T*>,
 		class Traits=sys::deque_traits<Kernels>>
-	struct Buffered_server: public Server_base {
+	struct Buffered_pipeline: public pipeline_base {
 
-		typedef Server_base base_server;
+		typedef pipeline_base base_pipeline;
 		typedef T kernel_type;
 		typedef Router router_type;
 		typedef Kernels pool_type;
@@ -35,21 +35,21 @@ namespace factory {
 		typedef sys::queue_pop_iterator<pool_type,traits_type> queue_popper;
 
 		explicit
-		Buffered_server(router_type& router):
+		Buffered_pipeline(router_type& router):
 		_router(router)
 		{}
 
-		Buffered_server(Buffered_server&& rhs):
-		base_server(std::move(rhs)),
+		Buffered_pipeline(Buffered_pipeline&& rhs):
+		base_pipeline(std::move(rhs)),
 		_buffer(std::move(rhs._buffer)),
 		_router(rhs._router)
 		{}
 
-		Buffered_server(const Buffered_server&) = delete;
-		Buffered_server& operator=(const Buffered_server&) = delete;
+		Buffered_pipeline(const Buffered_pipeline&) = delete;
+		Buffered_pipeline& operator=(const Buffered_pipeline&) = delete;
 
 		virtual
-		~Buffered_server() {
+		~Buffered_pipeline() {
 			this->recover_kernels();
 			this->delete_remaining_kernels();
 		}
@@ -97,7 +97,7 @@ namespace factory {
 			std::for_each(
 				queue_popper(_buffer),
 				queue_popper(),
-				std::bind(&Buffered_server::recover_kernel, this, _1)
+				std::bind(&Buffered_pipeline::recover_kernel, this, _1)
 			);
 		}
 
@@ -130,19 +130,19 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct Process_rserver: public Buffered_server<T,Router> {
+	struct process_handler: public Buffered_pipeline<T,Router> {
 
-		typedef Buffered_server<T,Router> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::router_type;
+		typedef Buffered_pipeline<T,Router> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::router_type;
 		typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
 		typedef sys::pstream stream_type;
 		typedef typename kernel_type::app_type app_type;
 
-		using base_server::_router;
+		using base_pipeline::_router;
 
-		Process_rserver(sys::pid_type&& child, sys::two_way_pipe&& pipe, router_type& router):
-		base_server(router),
+		process_handler(sys::pid_type&& child, sys::two_way_pipe&& pipe, router_type& router):
+		base_pipeline(router),
 		_childpid(child),
 		_outbuf(std::move(pipe.parent_out())),
 		_ostream(&_outbuf),
@@ -153,8 +153,8 @@ namespace factory {
 			_outbuf.fd().validate();
 		}
 
-		Process_rserver(Process_rserver&& rhs):
-		base_server(std::move(rhs)),
+		process_handler(process_handler&& rhs):
+		base_pipeline(std::move(rhs)),
 		_childpid(rhs._childpid),
 		_outbuf(std::move(rhs._outbuf)),
 		_ostream(&_outbuf),
@@ -166,8 +166,8 @@ namespace factory {
 		}
 
 		explicit
-		Process_rserver(sys::pipe&& pipe, router_type& router):
-		base_server(router),
+		process_handler(sys::pipe&& pipe, router_type& router):
+		base_pipeline(router),
 		_childpid(sys::this_process::id()),
 		_outbuf(std::move(pipe.out())),
 		_ostream(&_outbuf),
@@ -206,7 +206,7 @@ namespace factory {
 			#ifndef NDEBUG
 			sys::log_message("app", "send to _ kernel _", _childpid, *kernel);
 			#endif
-			base_server::send(kernel);
+			base_pipeline::send(kernel);
 		}
 
 		void
@@ -240,7 +240,7 @@ namespace factory {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Process_rserver& rhs) {
+		operator<<(std::ostream& out, const process_handler& rhs) {
 			return out << sys::make_object("childpid", rhs._childpid);
 		}
 
@@ -313,36 +313,36 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct Process_iserver: public Proxy_server<T,Process_rserver<T,Router>> {
+	struct process_pipeline: public basic_socket_pipeline<T,process_handler<T,Router>> {
 
 		typedef Router router_type;
 
-		typedef Proxy_server<T,Process_rserver<T,Router>> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::mutex_type;
-		using typename base_server::lock_type;
-		using typename base_server::sem_type;
-		using typename base_server::kernel_pool;
-		using typename base_server::server_type;
-		using typename base_server::server_ptr;
-		using typename base_server::queue_popper;
+		typedef basic_socket_pipeline<T,process_handler<T,Router>> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::kernel_pool;
+		using typename base_pipeline::event_handler_type;
+		using typename base_pipeline::event_handler_ptr;
+		using typename base_pipeline::queue_popper;
 
-		using base_server::poller;
+		using base_pipeline::poller;
 
 		typedef sys::pid_type key_type;
-		typedef std::map<key_type,server_ptr> map_type;
+		typedef std::map<key_type,event_handler_ptr> map_type;
 
-		Process_iserver() = default;
+		process_pipeline() = default;
 
-		Process_iserver(const Process_iserver&) = delete;
-		Process_iserver& operator=(const Process_iserver&) = delete;
+		process_pipeline(const process_pipeline&) = delete;
+		process_pipeline& operator=(const process_pipeline&) = delete;
 
-		Process_iserver(Process_iserver&& rhs) = default;
+		process_pipeline(process_pipeline&& rhs) = default;
 
-		~Process_iserver() = default;
+		~process_pipeline() = default;
 
 		void
-		remove_server(server_ptr ptr) override {
+		remove_pipeline(event_handler_ptr ptr) override {
 			_apps.erase(ptr->childpid());
 		}
 
@@ -374,7 +374,7 @@ namespace factory {
 			data_pipe.validate();
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
-			server_ptr child(new server_type(p.id(), std::move(data_pipe), _router));
+			event_handler_ptr child(new event_handler_type(p.id(), std::move(data_pipe), _router));
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
 			auto result = _apps.emplace(process_id, child);
@@ -388,10 +388,10 @@ namespace factory {
 		void
 		do_run() override {
 			std::thread waiting_thread{
-				&Process_iserver::wait_for_all_processes_to_finish,
+				&process_pipeline::wait_for_all_processes_to_finish,
 				this
 			};
-			base_server::do_run();
+			base_pipeline::do_run();
 			waiting_thread.join();
 //				this->wait_for_all_processes_to_finish();
 		}
@@ -436,7 +436,7 @@ namespace factory {
 			while (apps_are_running()) {
 				sys::unlock_guard<lock_type> g(lock);
 				using namespace std::placeholders;
-				_procs.wait(std::bind(&Process_iserver::on_process_exit, this, _1, _2));
+				_procs.wait(std::bind(&process_pipeline::on_process_exit, this, _1, _2));
 			}
 		}
 
@@ -458,35 +458,34 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct Process_child_server: public Proxy_server<T,Process_rserver<T,Router>> {
+	struct child_process_pipeline: public basic_socket_pipeline<T,process_handler<T,Router>> {
 
-		typedef Process_rserver<T,Router> rserver_type;
-		typedef Proxy_server<T,rserver_type> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::mutex_type;
-		using typename base_server::lock_type;
-		using typename base_server::sem_type;
-		using typename base_server::kernel_pool;
-		using typename base_server::server_type;
-		using typename base_server::server_ptr;
-		using typename base_server::queue_popper;
-		typedef typename rserver_type::router_type router_type;
+		typedef basic_socket_pipeline<T,process_handler<T,Router>> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::kernel_pool;
+		using typename base_pipeline::event_handler_type;
+		using typename base_pipeline::event_handler_ptr;
+		using typename base_pipeline::queue_popper;
+		typedef typename event_handler_type::router_type router_type;
 
-		using base_server::poller;
+		using base_pipeline::poller;
 
 		typedef sys::pid_type key_type;
-		typedef std::map<key_type, rserver_type> map_type;
+		typedef std::map<key_type, event_handler_type> map_type;
 
-		Process_child_server():
-		_parent(new server_type(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router))
+		child_process_pipeline():
+		_parent(new event_handler_type(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router))
 		{}
 
-		Process_child_server(Process_child_server&& rhs) = default;
+		child_process_pipeline(child_process_pipeline&& rhs) = default;
 
-		virtual ~Process_child_server() = default;
+		virtual ~child_process_pipeline() = default;
 
 		void
-		remove_server(server_ptr ptr) override {
+		remove_pipeline(event_handler_ptr ptr) override {
 			if (!this->is_stopped()) {
 				this->stop();
 				// this->factory()->stop();
@@ -510,14 +509,14 @@ namespace factory {
 
 		void
 		do_run() override {
-			init_server();
-			base_server::do_run();
+			init_pipeline();
+			base_pipeline::do_run();
 		}
 
 	private:
 
 		void
-		init_server() {
+		init_pipeline() {
 			// _parent.setparent(this);
 			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, _parent);
 			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), _parent);
@@ -529,7 +528,7 @@ namespace factory {
 		}
 
 		router_type _router;
-		server_ptr _parent;
+		event_handler_ptr _parent;
 	};
 
 }

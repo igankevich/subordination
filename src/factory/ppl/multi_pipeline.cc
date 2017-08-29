@@ -2,11 +2,11 @@
 #include "config.hh"
 
 template <class T>
-factory::Multi_pipeline<T>::Multi_pipeline(unsigned nservers):
-_servers(nservers) {
+factory::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
+_pipelines(npipelines) {
 	unsigned num = 0;
-	for (base_server& srv : this->_servers) {
-		srv.set_number(num);
+	for (base_pipeline& ppl : this->_pipelines) {
+		ppl.set_number(num);
 		++num;
 	}
 }
@@ -14,8 +14,8 @@ _servers(nservers) {
 template <class T>
 void
 factory::Multi_pipeline<T>::set_name(const char* rhs) {
-	for (base_server& srv : this->_servers) {
-		srv.set_name(rhs);
+	for (base_pipeline& ppl : this->_pipelines) {
+		ppl.set_name(rhs);
 	}
 }
 
@@ -23,28 +23,28 @@ factory::Multi_pipeline<T>::set_name(const char* rhs) {
 template <class T>
 void
 factory::Multi_pipeline<T>::start() {
-	this->setstate(server_state::starting);
-	for (base_server& srv : this->_servers) {
-		srv.start();
+	this->setstate(pipeline_state::starting);
+	for (base_pipeline& ppl : this->_pipelines) {
+		ppl.start();
 	}
-	this->setstate(server_state::started);
+	this->setstate(pipeline_state::started);
 }
 
 template <class T>
 void
 factory::Multi_pipeline<T>::stop() {
-	this->setstate(server_state::stopping);
-	for (base_server& srv : this->_servers) {
-		srv.stop();
+	this->setstate(pipeline_state::stopping);
+	for (base_pipeline& ppl : this->_pipelines) {
+		ppl.stop();
 	}
-	this->setstate(server_state::stopped);
+	this->setstate(pipeline_state::stopped);
 }
 
 template <class T>
 void
 factory::Multi_pipeline<T>::wait() {
-	for (base_server& srv : this->_servers) {
-		srv.wait();
+	for (base_pipeline& ppl : this->_pipelines) {
+		ppl.wait();
 	}
 }
 

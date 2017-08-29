@@ -13,39 +13,39 @@
 
 namespace factory {
 
-	template<class T, class Rserver,
+	template<class T, class Handler,
 	class Kernels=std::queue<T*>,
 	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
-	using Proxy_server_base = Basic_server<T, Kernels, Traits, Threads,
+	using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
 		//std::mutex, std::unique_lock<std::mutex>,
 		sys::spin_mutex, sys::simple_lock<sys::spin_mutex>,
-		sys::event_poller<std::shared_ptr<Rserver>>>;
+		sys::event_poller<std::shared_ptr<Handler>>>;
 
-	template<class T, class Rserver>
-	struct Proxy_server: public Proxy_server_base<T,Rserver> {
+	template<class T, class Handler>
+	struct basic_socket_pipeline: public Proxy_pipeline_base<T,Handler> {
 
-		typedef Rserver server_type;
+		typedef Handler event_handler_type;
 
-		typedef Proxy_server_base<T,Rserver> base_server;
-		using typename base_server::kernel_type;
-		using typename base_server::mutex_type;
-		using typename base_server::lock_type;
-		using typename base_server::sem_type;
-		using typename base_server::kernel_pool;
-		typedef typename sem_type::handler_type server_ptr;
+		typedef Proxy_pipeline_base<T,Handler> base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::kernel_pool;
+		typedef typename sem_type::handler_type event_handler_ptr;
 
-		Proxy_server(Proxy_server&& rhs) noexcept:
-		base_server(std::move(rhs))
+		basic_socket_pipeline(basic_socket_pipeline&& rhs) noexcept:
+		base_pipeline(std::move(rhs))
 		{}
 
-		Proxy_server():
-		base_server(1u)
+		basic_socket_pipeline():
+		base_pipeline(1u)
 		{}
 
-		~Proxy_server() = default;
-		Proxy_server(const Proxy_server&) = delete;
-		Proxy_server& operator=(const Proxy_server&) = delete;
+		~basic_socket_pipeline() = default;
+		basic_socket_pipeline(const basic_socket_pipeline&) = delete;
+		basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
 
 	protected:
 
@@ -70,14 +70,14 @@ namespace factory {
 				process_kernels_if_any();
 				accept_connections_if_any();
 				handle_events();
-				remove_servers_if_any();
+				remove_pipelines_if_any();
 			}
 			// prevent double free or corruption
 			poller().clear();
 		}
 
 		virtual void
-		remove_server(server_ptr ptr) = 0;
+		remove_pipeline(event_handler_ptr ptr) = 0;
 
 		virtual void
 		process_kernels() = 0;
@@ -97,11 +97,11 @@ namespace factory {
 	private:
 
 		void
-		remove_servers_if_any() {
+		remove_pipelines_if_any() {
 			poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, server_ptr h) {
+				[this] (sys::poll_event& ev, event_handler_ptr h) {
 					if (!ev) {
-						this->remove_server(h);
+						this->remove_pipeline(h);
 					}
 				}
 			);
@@ -132,7 +132,7 @@ namespace factory {
 		void
 		handle_events() {
 			poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, server_ptr h) {
+				[this] (sys::poll_event& ev, event_handler_ptr h) {
 					h->handle(ev);
 				}
 			);

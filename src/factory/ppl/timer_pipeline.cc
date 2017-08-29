@@ -1,9 +1,9 @@
-#include "timer_server.hh"
+#include "timer_pipeline.hh"
 #include "config.hh"
 
 template <class T>
 void
-factory::Timer_server<T>::do_run() {
+factory::timer_pipeline<T>::do_run() {
 	while (!this->is_stopped()) {
 		lock_type lock(this->_mutex);
 		this->wait_until_kernel_arrives(lock);
@@ -18,4 +18,4 @@ factory::Timer_server<T>::do_run() {
 	}
 }
 
-template class factory::Timer_server<FACTORY_KERNEL_TYPE>;
+template class factory::timer_pipeline<FACTORY_KERNEL_TYPE>;

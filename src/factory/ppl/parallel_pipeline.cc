@@ -1,11 +1,11 @@
-#include "cpu_server.hh"
+#include "parallel_pipeline.hh"
 #include "config.hh"
 
 #include <factory/kernel/algorithm.hh>
 
 template <class T>
 void
-factory::CPU_server<T>::do_run() {
+factory::parallel_pipeline<T>::do_run() {
 	lock_type lock(this->_mutex);
 	this->_semaphore.wait(lock, [this,&lock] () {
 		while (!this->_kernels.empty()) {
@@ -18,4 +18,4 @@ factory::CPU_server<T>::do_run() {
 	});
 }
 
-template class factory::CPU_server<FACTORY_KERNEL_TYPE>;
+template class factory::parallel_pipeline<FACTORY_KERNEL_TYPE>;

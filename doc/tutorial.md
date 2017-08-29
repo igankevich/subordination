@@ -7,7 +7,7 @@ subordinates to decompose application into smaller parts. Some kernels can be
 transferred to another cluster node to make application distributed. An
 application exits when there are no kernels left to process.
 
-Kernels are processed by \link factory::Basic_server <em>pipelines</em>\endlink
+Kernels are processed by \link factory::basic_pipeline <em>pipelines</em>\endlink
 --- kernel queues with processing threads attached. Each device has its own
 pipeline (there is a pipeline for CPU, I/O device and NIC) which allows them to work
 in parallel: process one part of data with CPU pipeline and simultaneously write
@@ -26,10 +26,10 @@ routine which constructs subordinates and \link factory::Kernel::react(Kernel*)
 
 The first step is to decide which pipelines your programme needs. Most probably
 these are standard
-- \link factory::CPU_server CPU pipeline\endlink,
-- \link factory::IO_server I/O pipeline\endlink,
-- \link factory::NIC_server NIC pipeline\endlink and
-- \link factory::Timer_server Timer pipeline\endlink (for periodic and
+- \link factory::parallel_pipeline CPU pipeline\endlink,
+- \link factory::io_pipeline I/O pipeline\endlink,
+- \link factory::socket_pipeline NIC pipeline\endlink and
+- \link factory::timer_pipeline Timer pipeline\endlink (for periodic and
   schedule-based execution of kernels).
 
 Standard pipelines for all devices except NIC are initialised in
