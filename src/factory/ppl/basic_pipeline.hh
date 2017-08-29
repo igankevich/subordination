@@ -1,12 +1,13 @@
 #ifndef FACTORY_PPL_BASIC_SERVER_HH
 #define FACTORY_PPL_BASIC_SERVER_HH
 
-#include <thread>
-#include <queue>
 #include <cassert>
 #include <future>
 #include <iostream>
+#include <queue>
+#include <thread>
 
+#include <unistdx/base/log_message>
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
 #include <unistdx/ipc/thread_semaphore>
@@ -46,7 +47,7 @@ namespace factory {
 		typedef Mutex mutex_type;
 		typedef Lock lock_type;
 		typedef Semaphore sem_type;
-		typedef std::vector<std::unique_ptr<kernel_type>> kernel_sack;
+		typedef std::vector<std::unique_ptr<kernel_type> > kernel_sack;
 		typedef Traits traits_type;
 		typedef sys::queue_pop_iterator<kernel_pool,traits_type> queue_popper;
 
@@ -88,10 +89,15 @@ namespace factory {
 		}
 
 		basic_pipeline(const basic_pipeline&) = delete;
-		basic_pipeline& operator=(const basic_pipeline&) = delete;
+
+		basic_pipeline&
+		operator=(const basic_pipeline&) = delete;
 
 		void
 		send(kernel_type* kernel) {
+			#ifndef NDEBUG
+			sys::log_message(this->_name, "send _", *kernel);
+			#endif
 			lock_type lock(this->_mutex);
 			traits_type::push(this->_kernels, kernel);
 			this->_semaphore.notify_one();
@@ -113,7 +119,8 @@ namespace factory {
 			#ifndef NDEBUG
 			assert(
 				not std::any_of(
-					kernels, kernels+n,
+					kernels,
+					kernels+n,
 					std::mem_fn(&kernel_type::moves_downstream)
 				)
 			);
@@ -127,11 +134,13 @@ namespace factory {
 			this->setstate(pipeline_state::started);
 			unsigned thread_no = this->_number;
 			for (std::thread& thr : this->_threads) {
-				thr = std::thread([this,thread_no] () {
-					this_thread::name = this->_name;
-					this_thread::number = thread_no;
-					this->run(&this_thread::context);
-				});
+				thr = std::thread(
+					[this,thread_no] () {
+					    this_thread::name = this->_name;
+					    this_thread::number = thread_no;
+					    this->run(&this_thread::context);
+					}
+				      );
 				++thread_no;
 			}
 		}
@@ -145,6 +154,13 @@ namespace factory {
 
 		void
 		wait() {
+			#ifndef NDEBUG
+			sys::log_message(
+				this->_name,
+				"wait(): pid=_",
+				sys::this_process::id()
+			);
+			#endif
 			for (std::thread& thr : this->_threads) {
 				if (thr.joinable()) {
 					thr.join();

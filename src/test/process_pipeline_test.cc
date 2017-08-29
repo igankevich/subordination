@@ -11,7 +11,7 @@ using factory::Application;
 #include "datum.hh"
 
 
-const uint32_t NUM_SIZES = 1;
+const uint32_t NUM_SIZES = 10;
 const uint32_t NUM_KERNELS = 1;
 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
@@ -111,18 +111,18 @@ private:
 struct Main: public Kernel {
 
 	void act() override {
-		Test_socket* kernel = new Test_socket;
-		kernel->setapp(sys::this_process::id());
-		upstream<Remote>(this, kernel);
-//		for (uint32_t i=1; i<=NUM_SIZES; ++i)
-//			upstream<Local>(new Sender(i, _sleep));
+		for (uint32_t i=1; i<=NUM_SIZES; ++i) {
+			sys::log_message("chld", "sent _/_", i, NUM_SIZES);
+			Test_socket* kernel = new Test_socket;
+			kernel->setapp(sys::this_process::id());
+			upstream<Remote>(this, kernel);
+		}
 	}
 
 	void react(Kernel*) override {
+		sys::log_message("chld", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
-			#ifndef NDEBUG
 			sys::log_message("chld", "finished");
-			#endif
 			commit<Local>(this, factory::Result::success);
 		}
 	}

@@ -20,13 +20,23 @@ if get_option('springy')
 	libfactory_src += springy_src
 endif
 
-libfactory_shared = shared_library(
+libfactoryd_shared = shared_library(
 	'factory',
 	sources: libfactory_src,
 	dependencies: [threads,unistdx],
 	version: meson.project_version(),
 	install: true,
-	include_directories: srcdir
+	include_directories: srcdir,
+	cpp_args: ['-DFACTORY_DAEMON']
+)
+
+libfactoryd_static = static_library(
+	'factoryd',
+	sources: libfactory_src,
+	dependencies: unistdx,
+	install: true,
+	include_directories: srcdir,
+	cpp_args: ['-DFACTORY_DAEMON']
 )
 
 libfactory_static = static_library(
@@ -34,6 +44,12 @@ libfactory_static = static_library(
 	sources: libfactory_src,
 	dependencies: unistdx,
 	install: true,
+	include_directories: srcdir,
+	cpp_args: ['-DFACTORY_APPLICATION']
+)
+
+factoryd = declare_dependency(
+	link_with: libfactoryd_static,
 	include_directories: srcdir
 )
 

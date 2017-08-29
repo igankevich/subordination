@@ -1,8 +1,9 @@
 #include "error_handler.hh"
 
-#include <factory/error.hh>
-#include <iostream>
 #include <exception>
+#include <factory/error.hh>
+#include <factory/kernel/kernel_error.hh>
+#include <iostream>
 #include <unistd.h>
 #include <unistdx/base/log_message>
 #include <unistdx/ipc/signal>
@@ -27,6 +28,15 @@ factory::print_error() noexcept {
 	if (std::exception_ptr ptr = std::current_exception()) {
 		try {
 			std::rethrow_exception(ptr);
+		} catch (const Kernel_error& err) {
+			sys::log_message(
+				std::cerr,
+				"error_handler",
+				"error=_, thread=_-_",
+				err,
+				this_thread::name,
+				this_thread::number
+			);
 		} catch (const Error& err) {
 			sys::log_message(
 				std::cerr,

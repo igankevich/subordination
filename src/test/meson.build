@@ -4,7 +4,7 @@ test(
 		'kernel-stream-test',
 		sources: 'kernel_stream_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx, gtest, factory]
+		dependencies: [unistdx, gtest, factoryd]
 	)
 )
 
@@ -18,14 +18,14 @@ test_runner = executable(
 executable(
 	'nic-pipeline-test',
 	sources: 'nic_pipeline_test.cc',
-	dependencies: [threads, unistdx, gtest, factory],
+	dependencies: [threads, unistdx, gtest, factoryd],
 	include_directories: srcdir,
 )
 
 executable(
 	'nic-pipeline-offline-test',
 	sources: 'nic_pipeline_test.cc',
-	dependencies: [threads, unistdx, gtest, factory],
+	dependencies: [threads, unistdx, gtest, factoryd],
 	include_directories: srcdir,
 	cpp_args: [ '-DFACTORY_TEST_OFFLINE' ],
 )
@@ -57,7 +57,7 @@ test(
 	executable(
 		'timer-pipeline-test',
 		sources: 'timer_pipeline_test.cc',
-		dependencies: [threads, unistdx, gtest, factory],
+		dependencies: [threads, unistdx, gtest, factoryd],
 		include_directories: srcdir,
 	)
 )
@@ -76,7 +76,7 @@ app_exe = executable(
 daemon_exe = executable(
 	'process-pipeline-test',
 	sources: 'process_pipeline_test.cc',
-	dependencies: [threads, unistdx, factory],
+	dependencies: [threads, unistdx, factoryd],
 	include_directories: srcdir,
 	cpp_args: [
 		'-DFACTORY_DAEMON',

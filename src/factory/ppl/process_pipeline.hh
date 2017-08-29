@@ -6,6 +6,7 @@
 #include <atomic>
 
 #include <unistdx/base/delete_each>
+#include <unistdx/base/log_message>
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/pipe>
@@ -141,7 +142,11 @@ namespace factory {
 
 		using base_pipeline::_router;
 
-		process_handler(sys::pid_type&& child, sys::two_way_pipe&& pipe, router_type& router):
+		process_handler(
+			sys::pid_type&& child,
+			sys::two_way_pipe&& pipe,
+			router_type& router
+		):
 		base_pipeline(router),
 		_childpid(child),
 		_outbuf(std::move(pipe.parent_out())),
@@ -149,8 +154,8 @@ namespace factory {
 		_inbuf(std::move(pipe.parent_in())),
 		_istream(&_inbuf)
 		{
-			_inbuf.fd().validate();
-			_outbuf.fd().validate();
+			this->_inbuf.fd().validate();
+			this->_outbuf.fd().validate();
 		}
 
 		process_handler(process_handler&& rhs):
@@ -161,8 +166,8 @@ namespace factory {
 		_inbuf(std::move(rhs._inbuf)),
 		_istream(&_inbuf)
 		{
-			_inbuf.fd().validate();
-			_outbuf.fd().validate();
+			this->_inbuf.fd().validate();
+			this->_outbuf.fd().validate();
 		}
 
 		explicit
@@ -177,13 +182,13 @@ namespace factory {
 
 		const sys::pid_type&
 		childpid() const {
-			return _childpid;
+			return this->_childpid;
 		}
 
 		void
 		close() {
-			_outbuf.fd().close();
-			_inbuf.fd().close();
+			this->_outbuf.fd().close();
+			this->_inbuf.fd().close();
 		}
 
 		void
@@ -194,26 +199,26 @@ namespace factory {
 				kernel->id(this->factory()->factory_generate_id());
 			}
 			*/
-			_ostream.begin_packet();
-			_ostream << kernel->app() << kernel->from();
+			this->_ostream.begin_packet();
+			this->_ostream << kernel->app() << kernel->from();
 			Types::const_iterator type = types.find(typeid(*kernel));
 			if (type == types.end()) {
 				throw Kernel_error("no type is defined for the kernel", kernel->id());
 			}
-			_ostream << type->id();
-			kernel->write(_ostream);
-			_ostream.end_packet();
+			this->_ostream << type->id();
+			kernel->write(this->_ostream);
+			this->_ostream.end_packet();
 			#ifndef NDEBUG
-			sys::log_message("app", "send to _ kernel _", _childpid, *kernel);
+			sys::log_message("app", "send to _ kernel _", this->_childpid, *kernel);
 			#endif
 			base_pipeline::send(kernel);
 		}
 
 		void
 		handle(sys::poll_event& event) {
-			if (event.fd() == _outbuf.fd()) {
-//				_ostream.clear();
-				_ostream.sync();
+			if (event.fd() == this->_outbuf.fd()) {
+//				this->_ostream.clear();
+				this->_ostream.sync();
 			} else {
 				assert(
 					event.fd() == _inbuf.fd()
@@ -221,9 +226,9 @@ namespace factory {
 					or !event.bad_fd()
 				);
 				assert(!event.out() || event.hup());
-//				_istream.clear();
-				_istream.sync();
-				while (_istream.read_packet()) {
+//				this->_istream.clear();
+				this->_istream.sync();
+				while (this->_istream.read_packet()) {
 					read_and_receive_kernel();
 				}
 			}
@@ -231,9 +236,9 @@ namespace factory {
 
 		void
 		forward(const Kernel_header& hdr, sys::pstream& istr) {
-			_ostream.begin_packet();
-			_ostream.append_payload(istr);
-			_ostream.end_packet();
+			this->_ostream.begin_packet();
+			this->_ostream.append_payload(istr);
+			this->_ostream.end_packet();
 			#ifndef NDEBUG
 			sys::log_message("app", "forward _", hdr);
 			#endif
@@ -248,14 +253,18 @@ namespace factory {
 
 		void read_and_receive_kernel() {
 			app_type app; sys::endpoint from;
-			_istream >> app >> from;
-			if (app == Application::ROOT || _childpid == sys::this_process::id()) {
+			this->_istream >> app >> from;
+			#ifndef NDEBUG
+			sys::log_message("app", "recv app=_,from=_", app, from);
+			#endif
+			if (app == Application::ROOT ||
+					this->_childpid == sys::this_process::id()) {
 				kernel_type* k = this->read_kernel();
 				this->receive_kernel(k, app);
 			} else {
 				Kernel_header hdr;
 				hdr.setapp(app);
-				_router.forward(hdr, _istream);
+				this->_router.forward(hdr, this->_istream);
 			}
 		}
 
@@ -313,7 +322,8 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct process_pipeline: public basic_socket_pipeline<T,process_handler<T,Router>> {
+	struct process_pipeline:
+		public basic_socket_pipeline<T,process_handler<T,Router>> {
 
 		typedef Router router_type;
 
@@ -343,7 +353,7 @@ namespace factory {
 
 		void
 		remove_pipeline(event_handler_ptr ptr) override {
-			_apps.erase(ptr->childpid());
+			this->_apps.erase(ptr->childpid());
 		}
 
 		void
@@ -352,15 +362,12 @@ namespace factory {
 			sys::for_each_unlock(lock,
 				queue_popper(this->_kernels),
 				queue_popper(),
-				[this] (kernel_type* rhs) { process_kernel(rhs); }
+				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
 			);
 		}
 
 		void
 		add(const Application& app) {
-			#ifndef NDEBUG
-			sys::log_message("app", "exec _", app);
-			#endif
 			lock_type lock(this->_mutex);
 			sys::two_way_pipe data_pipe;
 			const sys::process& p = _procs.emplace([&app,this,&data_pipe] () {
@@ -370,6 +377,9 @@ namespace factory {
 				return app.execute();
 			});
 			sys::pid_type process_id = p.id();
+			#ifndef NDEBUG
+			sys::log_message("app", "exec _,pid=_", app, process_id);
+			#endif
 			data_pipe.close_in_parent();
 			data_pipe.validate();
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
@@ -377,7 +387,7 @@ namespace factory {
 			event_handler_ptr child(new event_handler_type(p.id(), std::move(data_pipe), _router));
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
-			auto result = _apps.emplace(process_id, child);
+			auto result = this->_apps.emplace(process_id, child);
 			poller().emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
 				result.first->second
@@ -387,19 +397,27 @@ namespace factory {
 
 		void
 		do_run() override {
-			std::thread waiting_thread{
-				&process_pipeline::wait_for_all_processes_to_finish,
-				this
-			};
+			//std::thread waiting_thread{
+			//	&process_pipeline::wait_for_all_processes_to_finish,
+			//	this
+			//};
 			base_pipeline::do_run();
-			waiting_thread.join();
-//				this->wait_for_all_processes_to_finish();
+			#ifndef NDEBUG
+			sys::log_message(
+				this->_name,
+				"waiting for all processes to finish: pid=_",
+				sys::this_process::id()
+			);
+			#endif
+			//if (waiting_thread.joinable()) {
+			//	waiting_thread.join();
+			//}
 		}
 
 		void
 		forward(const Kernel_header& hdr, sys::pstream& istr) {
-			auto result = _apps.find(hdr.app());
-			if (result == _apps.end()) {
+			auto result = this->_apps.find(hdr.app());
+			if (result == this->_apps.end()) {
 				FACTORY_THROW(Error, "bad application id");
 			}
 			result->second->forward(hdr, istr);
@@ -411,42 +429,50 @@ namespace factory {
 		process_kernel(kernel_type* k) {
 			typedef typename map_type::value_type value_type;
 			if (k->moves_everywhere()) {
-				std::for_each(_apps.begin(), _apps.end(),
+				std::for_each(this->_apps.begin(), this->_apps.end(),
 					[k] (value_type& rhs) {
 						rhs.second->send(k);
 					}
 				);
 			} else {
-				auto result = _apps.find(k->app());
-				if (result == _apps.end()) {
+				auto result = this->_apps.find(k->app());
+				if (result == this->_apps.end()) {
 					FACTORY_THROW(Error, "bad application id");
 				}
 				result->second->send(k);
 			}
 		}
 
-		bool
-		apps_are_running() const {
-			return !(this->is_stopped() and _apps.empty());
-		}
-
 		void
 		wait_for_all_processes_to_finish() {
+			using std::this_thread::sleep_for;
+			using std::chrono::milliseconds;
 			lock_type lock(this->_mutex);
-			while (apps_are_running()) {
+			while (!this->is_stopped()) {
 				sys::unlock_guard<lock_type> g(lock);
 				using namespace std::placeholders;
-				_procs.wait(std::bind(&process_pipeline::on_process_exit, this, _1, _2));
+				if (this->_procs.empty()) {
+					sleep_for(milliseconds(777));
+				} else {
+					this->_procs.wait(
+						std::bind(&process_pipeline::on_process_exit, this, _1, _2)
+					);
+				}
 			}
 		}
 
 		void
 		on_process_exit(const sys::process& p, sys::proc_info status) {
+			sys::log_message(this->_name, "process exited: status=_", status);
 			lock_type lock(this->_mutex);
-			auto result = _apps.find(p.id());
+			auto result = this->_apps.find(p.id());
 			if (result != this->_apps.end()) {
 				#ifndef NDEBUG
-				sys::log_message("app", "exit, status=_, app=_", status, result->first);
+				sys::log_message(
+					this->_name,
+					"app finished: app=_",
+					result->first
+				);
 				#endif
 				result->second->close();
 			}
@@ -458,7 +484,8 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct child_process_pipeline: public basic_socket_pipeline<T,process_handler<T,Router>> {
+	struct child_process_pipeline:
+		public basic_socket_pipeline<T,process_handler<T,Router>> {
 
 		typedef basic_socket_pipeline<T,process_handler<T,Router>> base_pipeline;
 		using typename base_pipeline::kernel_type;
@@ -477,7 +504,10 @@ namespace factory {
 		typedef std::map<key_type, event_handler_type> map_type;
 
 		child_process_pipeline():
-		_parent(new event_handler_type(sys::pipe{Shared_fildes::In, Shared_fildes::Out}, _router))
+		_parent(new event_handler_type(
+			sys::pipe{Shared_fildes::In, Shared_fildes::Out},
+			this->_router
+		))
 		{}
 
 		child_process_pipeline(child_process_pipeline&& rhs) = default;
@@ -498,7 +528,7 @@ namespace factory {
 			sys::for_each_unlock(lock,
 				queue_popper(this->_kernels),
 				queue_popper(),
-				[this] (kernel_type* rhs) { process_kernel(rhs); }
+				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
 			);
 		}
 
@@ -509,7 +539,7 @@ namespace factory {
 
 		void
 		do_run() override {
-			init_pipeline();
+			this->init_pipeline();
 			base_pipeline::do_run();
 		}
 
@@ -518,13 +548,19 @@ namespace factory {
 		void
 		init_pipeline() {
 			// _parent.setparent(this);
-			poller().emplace(sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0}, _parent);
-			poller().emplace(sys::poll_event(Shared_fildes::Out, 0, 0), _parent);
+			this->poller().emplace(
+				sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0},
+				this->_parent
+			);
+			this->poller().emplace(
+				sys::poll_event{Shared_fildes::Out, 0, 0},
+				this->_parent
+			);
 		}
 
 		void
 		process_kernel(kernel_type* k) {
-			_parent->send(k);
+			this->_parent->send(k);
 		}
 
 		router_type _router;
