@@ -31,12 +31,12 @@ struct Test_socket: public Kernel {
 	}
 
 	void act() override {
-		sys::log_message("chld", "Test_socket::act(): It works!");
+		sys::log_message("tst", "Test_socket::act(): It works!");
 		commit<Remote>(this);
 	}
 
 	void write(sys::pstream& out) override {
-		sys::log_message("chld", "Test_socket::write()");
+		sys::log_message("tst", "Test_socket::write()");
 		Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
@@ -44,7 +44,7 @@ struct Test_socket: public Kernel {
 	}
 
 	void read(sys::pstream& in) override {
-		sys::log_message("chld", "Test_socket::read()");
+		sys::log_message("tst", "Test_socket::read()");
 		Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
@@ -112,7 +112,7 @@ struct Main: public Kernel {
 
 	void act() override {
 		for (uint32_t i=1; i<=NUM_SIZES; ++i) {
-			sys::log_message("chld", "sent _/_", i, NUM_SIZES);
+			sys::log_message("tst", "sent _/_", i, NUM_SIZES);
 			Test_socket* kernel = new Test_socket;
 			kernel->setapp(sys::this_process::id());
 			upstream<Remote>(this, kernel);
@@ -120,9 +120,9 @@ struct Main: public Kernel {
 	}
 
 	void react(Kernel*) override {
-		sys::log_message("chld", "returned _/_", _num_returned+1, NUM_SIZES);
+		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
-			sys::log_message("chld", "finished");
+			sys::log_message("tst", "finished");
 			commit<Local>(this, factory::Result::success);
 		}
 	}

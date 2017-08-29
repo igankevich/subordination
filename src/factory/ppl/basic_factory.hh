@@ -20,7 +20,7 @@
 namespace factory {
 
 	template <class T>
-	struct Basic_router {
+	struct basic_router {
 
 		inline void
 		send_local(T* rhs);
@@ -28,8 +28,13 @@ namespace factory {
 		inline void
 		send_remote(T*);
 
+		#if defined(FACTORY_DAEMON)
 		inline void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {}
+		forward(const Kernel_header& hdr, sys::pstream& istr);
+		#else
+		inline void
+		forward(const Kernel_header&, sys::pstream&) {}
+		#endif
 
 	};
 
@@ -43,13 +48,13 @@ namespace factory {
 		typedef io_pipeline<T> io_pipeline_type;
 		typedef Multi_pipeline<T> downstream_pipeline_type;
 		#if defined(FACTORY_APPLICATION)
-		typedef child_process_pipeline<T, Basic_router<T>> parent_pipeline_type;
+		typedef child_process_pipeline<T, basic_router<T>> parent_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef socket_pipeline<T, sys::socket, Basic_router<T>> parent_pipeline_type;
+		typedef socket_pipeline<T, sys::socket, basic_router<T>> parent_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef process_pipeline<T, Basic_router<T>> child_pipeline_type;
+		typedef process_pipeline<T, basic_router<T>> child_pipeline_type;
 		#endif
 
 	private:
@@ -120,6 +125,11 @@ namespace factory {
 		child() const noexcept {
 			return this->_child;
 		}
+
+		inline void
+		forward(const Kernel_header& hdr, sys::pstream& istr) {
+			this->_child.forward(hdr, istr);
+		}
 		#endif
 
 		inline parent_pipeline_type&
@@ -169,15 +179,23 @@ namespace factory {
 
 	template <class T>
 	void
-	Basic_router<T>::send_local(T* rhs) {
+	basic_router<T>::send_local(T* rhs) {
 		factory.send(rhs);
 	}
 
 	template <class T>
 	void
-	Basic_router<T>::send_remote(T* rhs) {
+	basic_router<T>::send_remote(T* rhs) {
 		factory.send_remote(rhs);
 	}
+
+	#if defined(FACTORY_DAEMON)
+	template <class T>
+	void
+	basic_router<T>::forward(const Kernel_header& hdr, sys::pstream& istr) {
+		factory.forward(hdr, istr);
+	}
+	#endif
 
 }
 

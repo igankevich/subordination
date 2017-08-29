@@ -209,7 +209,12 @@ namespace factory {
 			kernel->write(this->_ostream);
 			this->_ostream.end_packet();
 			#ifndef NDEBUG
-			sys::log_message("app", "send to _ kernel _", this->_childpid, *kernel);
+			sys::log_message(
+				this->_name,
+				"send to _ kernel _",
+				this->_childpid,
+				*kernel
+			);
 			#endif
 			base_pipeline::send(kernel);
 		}
@@ -240,8 +245,13 @@ namespace factory {
 			this->_ostream.append_payload(istr);
 			this->_ostream.end_packet();
 			#ifndef NDEBUG
-			sys::log_message("app", "forward _", hdr);
+			sys::log_message(this->_name, "forward _", hdr);
 			#endif
+		}
+
+		inline void
+		set_name(const char* rhs) noexcept {
+			this->_name = rhs;
 		}
 
 		friend std::ostream&
@@ -254,14 +264,17 @@ namespace factory {
 		void read_and_receive_kernel() {
 			app_type app; sys::endpoint from;
 			this->_istream >> app >> from;
-			#ifndef NDEBUG
-			sys::log_message("app", "recv app=_,from=_", app, from);
-			#endif
 			if (app == Application::ROOT ||
 					this->_childpid == sys::this_process::id()) {
+				#ifndef NDEBUG
+				sys::log_message(this->_name, "recv app=_,from=_", app, from);
+				#endif
 				kernel_type* k = this->read_kernel();
 				this->receive_kernel(k, app);
 			} else {
+				#ifndef NDEBUG
+				sys::log_message(this->_name, "forward app=_,from=_", app, from);
+				#endif
 				Kernel_header hdr;
 				hdr.setapp(app);
 				this->_router.forward(hdr, this->_istream);
@@ -290,7 +303,7 @@ namespace factory {
 				k->principal(result->second);
 			}
 			#ifndef NDEBUG
-			sys::log_message("app", "recv _", *k);
+			sys::log_message(this->_name, "recv _", *k);
 			#endif
 			if (!ok) {
 				return_kernel(k);
@@ -301,7 +314,7 @@ namespace factory {
 
 		void return_kernel(kernel_type* k) {
 			#ifndef NDEBUG
-			sys::log_message("app", "no principal found for _", *k);
+			sys::log_message(this->_name, "no principal found for _", *k);
 			#endif
 			k->principal(k->parent());
 			this->send(k);
@@ -313,6 +326,7 @@ namespace factory {
 		kernelbuf_type _inbuf;
 		stream_type _istream;
 		int _refcnt = 0;
+		const char* _name = "unknown";
 
 	};
 
@@ -378,13 +392,19 @@ namespace factory {
 			});
 			sys::pid_type process_id = p.id();
 			#ifndef NDEBUG
-			sys::log_message("app", "exec _,pid=_", app, process_id);
+			sys::log_message(this->_name, "exec _,pid=_", app, process_id);
 			#endif
 			data_pipe.close_in_parent();
 			data_pipe.validate();
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
-			event_handler_ptr child(new event_handler_type(p.id(), std::move(data_pipe), _router));
+			event_handler_ptr child =
+				std::make_shared<event_handler_type>(
+					p.id(),
+					std::move(data_pipe),
+					this->_router
+				);
+			child->set_name(this->_name);
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
 			auto result = this->_apps.emplace(process_id, child);
@@ -397,10 +417,10 @@ namespace factory {
 
 		void
 		do_run() override {
-			//std::thread waiting_thread{
-			//	&process_pipeline::wait_for_all_processes_to_finish,
-			//	this
-			//};
+			std::thread waiting_thread{
+				&process_pipeline::wait_for_all_processes_to_finish,
+				this
+			};
 			base_pipeline::do_run();
 			#ifndef NDEBUG
 			sys::log_message(
@@ -409,9 +429,9 @@ namespace factory {
 				sys::this_process::id()
 			);
 			#endif
-			//if (waiting_thread.joinable()) {
-			//	waiting_thread.join();
-			//}
+			if (waiting_thread.joinable()) {
+				waiting_thread.join();
+			}
 		}
 
 		void
@@ -451,7 +471,7 @@ namespace factory {
 			while (!this->is_stopped()) {
 				sys::unlock_guard<lock_type> g(lock);
 				using namespace std::placeholders;
-				if (this->_procs.empty()) {
+				if (this->_procs.size() == 0) {
 					sleep_for(milliseconds(777));
 				} else {
 					this->_procs.wait(
@@ -504,7 +524,7 @@ namespace factory {
 		typedef std::map<key_type, event_handler_type> map_type;
 
 		child_process_pipeline():
-		_parent(new event_handler_type(
+		_parent(std::make_shared<event_handler_type>(
 			sys::pipe{Shared_fildes::In, Shared_fildes::Out},
 			this->_router
 		))
@@ -556,10 +576,14 @@ namespace factory {
 				sys::poll_event{Shared_fildes::Out, 0, 0},
 				this->_parent
 			);
+			this->_parent->set_name(this->_name);
 		}
 
 		void
 		process_kernel(kernel_type* k) {
+			#ifndef NDEBUG
+			sys::log_message(this->_name, "send _", *k);
+			#endif
 			this->_parent->send(k);
 		}
 

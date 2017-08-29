@@ -85,4 +85,4 @@ daemon_exe = executable(
 	]
 )
 
-#test('process-pipeline', daemon_exe)
+test('process-pipeline', daemon_exe)
