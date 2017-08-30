@@ -1,2 +1,0 @@
-#!/bin/sh
-exec watch -n 1 'ps -eo pid,%cpu,%mem,wchan,args | grep -E "(test|coredump)" | grep -v grep'

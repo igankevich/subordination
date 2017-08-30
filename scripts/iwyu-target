@@ -1,4 +1,0 @@
-#!/bin/sh
-
-cd $MESON_SOURCE_ROOT/src
-find . -name '*.cc' -exec iwyu -I. -Itest -std=c++14 \{\} \;

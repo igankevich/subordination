@@ -1,12 +1,12 @@
 #ifndef TEST_TEST_HH
 #define TEST_TEST_HH
 
-#include <string>
-#include <random>
-#include <functional>
 #include <algorithm>
-#include <iterator>
 #include <chrono>
+#include <functional>
+#include <iterator>
+#include <random>
+#include <string>
 
 #include <unistdx/base/n_random_bytes>
 
@@ -34,7 +34,7 @@ namespace test {
 	template<class It, class Engine>
 	void
 	randomise(It first, It last, Engine& rng) {
-		typedef typename std::decay<decltype(*first)>::type value_type;
+		typedef typename std::decay<decltype(* first)>::type value_type;
 		while (first != last) {
 			*first = sys::n_random_bytes<value_type>(rng);
 			++first;
@@ -50,6 +50,7 @@ namespace std {
 		std::copy(rhs.begin(), rhs.end(), it);
 		return out;
 	}
+
 }
 
 #endif // vim:filetype=cpp

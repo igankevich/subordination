@@ -30,10 +30,11 @@ gtest = dependency('gtest', main: true)
 
 srcdir = include_directories('src')
 
-meson.add_postconf_script('scripts/copy-input-files')
-run_target('gcov', command: 'scripts/gcov-target')
-run_target('iwyu', command: 'scripts/iwyu-target')
-run_target('springy', command: 'scripts/springy-target')
+meson.add_postconf_script(join_paths('scripts', 'copy-input-files'))
+run_target(
+	'springy',
+	command: join_paths('scripts', 'springy-target')
+)
 
 subdir('src')
 
@@ -67,5 +68,3 @@ if cppcheck.found()
 		]
 	)
 endif
-
-

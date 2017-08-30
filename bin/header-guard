@@ -1,8 +1,0 @@
-#!/bin/sh
-
-dir=$1
-if test -z "$dir"; then
-	dir="."
-fi
-
-find "$dir" -type f -name '*.hh' -exec vim -c HeaderguardAdd -c ':update' -c ':quit' \{\} \;

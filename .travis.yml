@@ -8,4 +8,4 @@ script: "./deploy/cibuild"
 after_success: "./deploy/cideploy"
 branches:
   only:
-  - write-doc
+  - master
