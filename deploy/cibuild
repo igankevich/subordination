@@ -10,9 +10,14 @@ wget -O /tmp/ninja.zip https://github.com/ninja-build/ninja/releases/download/v1
 unzip -d py3/bin /tmp/ninja.zip
 
 # build documentation
-mkdir build
-meson . build
-ninja -C build doc
+#meson . build
+#ninja -C build doc
+export MESON_SOURCE_ROOT=$(pwd)
+export MESON_BUILD_ROOT=$MESON_SOURCE_ROOT/build
+mkdir -p $MESON_BUILD_ROOT
+cd $MESON_BUILD_ROOT
+doxygen $MESON_SOURCE_ROOT/Doxyfile
+cd -
 
 deactivate
 rm -rf py3
