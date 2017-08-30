@@ -1,13 +1,14 @@
-#ifndef FACTORY_REG_INSTANCE_REGISTRY_HH
-#define FACTORY_REG_INSTANCE_REGISTRY_HH
+#ifndef FACTORY_KERNEL_KERNEL_INSTANCE_REGISTRY_HH
+#define FACTORY_KERNEL_KERNEL_INSTANCE_REGISTRY_HH
 
 #include <unordered_map>
 #include <mutex>
+#include <factory/config.hh>
 
 namespace factory {
 
 	template<class T>
-	class Instance_registry {
+	class kernel_instance_registry {
 
 	public:
 		typedef T kernel_type;
@@ -59,13 +60,17 @@ namespace factory {
 
 		template <class X>
 		friend std::ostream&
-		operator<<(std::ostream& out, const Instance_registry<X>& rhs);
+		operator<<(std::ostream& out, const kernel_instance_registry<X>& rhs);
 
 	};
 
 	template <class T>
 	std::ostream&
-	operator<<(std::ostream& out, const Instance_registry<T>& rhs);
+	operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs);
+
+	typedef kernel_instance_registry<FACTORY_KERNEL_TYPE> instance_registry_type;
+	typedef std::lock_guard<instance_registry_type> instances_guard;
+	extern instance_registry_type instances;
 
 }
 

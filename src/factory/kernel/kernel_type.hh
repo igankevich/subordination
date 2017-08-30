@@ -1,5 +1,5 @@
-#ifndef FACTORY_REG_TYPE_HH
-#define FACTORY_REG_TYPE_HH
+#ifndef FACTORY_KERNEL_KERNEL_TYPE_HH
+#define FACTORY_KERNEL_KERNEL_TYPE_HH
 
 #include <typeinfo>
 #include <typeindex>
@@ -10,7 +10,7 @@
 
 namespace factory {
 
-	class Type {
+	class kernel_type {
 
 	public:
 		/// A portable type id
@@ -24,14 +24,14 @@ namespace factory {
 
 	public:
 		inline
-		Type(id_type id, const read_type& f, std::type_index idx) noexcept:
+		kernel_type(id_type id, const read_type& f, std::type_index idx) noexcept:
 		_id(id),
 		_read(f),
 		_index(idx)
 		{}
 
 		inline
-		Type(const read_type& f, std::type_index idx) noexcept:
+		kernel_type(const read_type& f, std::type_index idx) noexcept:
 		_id(0),
 		_read(f),
 		_index(idx)
@@ -73,41 +73,41 @@ namespace factory {
 		}
 
 		inline bool
-		operator==(const Type& rhs) const noexcept {
+		operator==(const kernel_type& rhs) const noexcept {
 			return this->_id == rhs._id;
 		}
 
 		inline bool
-		operator!=(const Type& rhs) const noexcept {
+		operator!=(const kernel_type& rhs) const noexcept {
 			return !this->operator==(rhs);
 		}
 
 		inline bool
-		operator<(const Type& rhs) const noexcept {
+		operator<(const kernel_type& rhs) const noexcept {
 			return this->_id < rhs._id;
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Type& rhs);
+		operator<<(std::ostream& out, const kernel_type& rhs);
 
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Type& rhs);
+	operator<<(std::ostream& out, const kernel_type& rhs);
 
 }
 
 namespace std {
 
 	template<>
-	struct hash<factory::Type>: public std::hash<factory::Type::id_type> {
+	struct hash<factory::kernel_type>: public std::hash<factory::kernel_type::id_type> {
 
 		typedef size_t result_type;
-		typedef factory::Type argument_type;
+		typedef factory::kernel_type argument_type;
 
 		size_t
-		operator()(const factory::Type& rhs) const noexcept {
-			return std::hash<factory::Type::id_type>::operator()(rhs.id());
+		operator()(const factory::kernel_type& rhs) const noexcept {
+			return std::hash<factory::kernel_type::id_type>::operator()(rhs.id());
 		}
 
 	};

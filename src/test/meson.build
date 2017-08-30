@@ -1,8 +1,8 @@
 test(
-	'factory::Kernel_stream',
+	'factory::kstream',
 	executable(
-		'kernel-stream-test',
-		sources: 'kernel_stream_test.cc',
+		'kstream-test',
+		sources: 'kstream_test.cc',
 		include_directories: srcdir,
 		dependencies: [unistdx, gtest, factoryd]
 	)

@@ -429,7 +429,7 @@ struct Station_kernel: public Kernel {
 		std::for_each(_spectra.begin(), _spectra.end(),
 			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
-//				k->setf(Kernel::Flag::priority_service);
+//				k->setf(kernel_flag::priority_service);
 				upstream<Local>(this, k);
 			}
 		);
@@ -590,8 +590,8 @@ struct Launcher: public Kernel {
 	static Time
 	current_time_nano() {
 		using namespace std::chrono;
-		typedef std::chrono::system_clock Clock;
-		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+		typedef std::chrono::system_clock clock_type;
+		return duration_cast<nanoseconds>(clock_type::now().time_since_epoch()).count();
 	}
 
 	void act() override {
@@ -701,7 +701,7 @@ struct Spec_app: public Kernel {
 		upstream<Local>(this, new Launcher);
 		#else
 		Launcher* launcher = new Launcher;
-		launcher->setf(Kernel::Flag::carries_parent);
+		launcher->setf(kernel_flag::carries_parent);
 		upstream<Remote>(this, launcher);
 		#endif
 	}

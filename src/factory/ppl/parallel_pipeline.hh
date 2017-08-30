@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_CPU_SERVER_HH
-#define FACTORY_PPL_CPU_SERVER_HH
+#ifndef FACTORY_PPL_PARALLEL_PIPELINE_HH
+#define FACTORY_PPL_PARALLEL_PIPELINE_HH
 
 #include "basic_pipeline.hh"
 

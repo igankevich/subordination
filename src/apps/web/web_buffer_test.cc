@@ -1,5 +1,5 @@
 #include "lbuffer.hh"
-#include <factory/error.hh>
+#include <factory/base/error.hh>
 #include "websocket.hh"
 
 #include <unistdx/base/adapt_engine>

@@ -111,7 +111,7 @@ kernel --- the first kernel of an application that does not have a parent.
 In case of the main kernel failure the only option is to keep a copy of it on
 some other cluster node and restore from it when the former node fails. Factory
 implements this for any kernel with the \link
-factory::Basic_kernel::Flag::carries_parent\endlink flag set, but the approach
+factory::kernel_base::Flag::carries_parent\endlink flag set, but the approach
 works only for those principal kernels that have only one subordinate at a time
 (extending algorithm to cover more cases is one of the goals of ongoing
 research).

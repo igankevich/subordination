@@ -11,7 +11,7 @@ namespace factory {
 
 		typedef std::string path_type;
 
-		static const Kernel_header::app_type ROOT = 0;
+		static const kernel_header::app_type ROOT = 0;
 
 		Application() = default;
 

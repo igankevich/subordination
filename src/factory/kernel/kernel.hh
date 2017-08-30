@@ -8,11 +8,10 @@
 
 namespace factory {
 
-	struct Kernel: public Mobile_kernel {
+	struct Kernel: public mobile_kernel {
 
-		typedef Mobile_kernel base_kernel;
-		using Basic_kernel::Flag;
-		using Mobile_kernel::id_type;
+		typedef mobile_kernel base_kernel;
+		using mobile_kernel::id_type;
 
 		inline const Kernel*
 		principal() const {
@@ -68,21 +67,21 @@ namespace factory {
 
 		inline bool
 		moves_upstream() const noexcept {
-			return this->result() == Result::undefined &&
+			return this->result() == exit_code::undefined &&
 				!this->_principal &&
 				this->_parent;
 		}
 
 		inline bool
 		moves_downstream() const noexcept {
-			return this->result() != Result::undefined &&
+			return this->result() != exit_code::undefined &&
 				this->_principal &&
 				this->_parent;
 		}
 
 		inline bool
 		moves_somewhere() const noexcept {
-			return this->result() == Result::undefined &&
+			return this->result() == exit_code::undefined &&
 				this->_principal &&
 				this->_parent;
 		}
@@ -123,17 +122,17 @@ namespace factory {
 		inline Kernel*
 		carry_parent(Kernel* rhs) noexcept {
 			rhs->parent(this);
-			rhs->setf(Flag::carries_parent);
+			rhs->setf(kernel_flag::carries_parent);
 			return rhs;
 		}
 
 		inline void
-		return_to_parent(Result ret = Result::success) noexcept {
+		return_to_parent(exit_code ret = exit_code::success) noexcept {
 			return_to(_parent, ret);
 		}
 
 		inline void
-		return_to(Kernel* rhs, Result ret = Result::success) noexcept {
+		return_to(Kernel* rhs, exit_code ret = exit_code::success) noexcept {
 			this->principal(rhs);
 			this->result(ret);
 		}
@@ -146,8 +145,8 @@ namespace factory {
 		template<class It>
 		void
 		mark_as_deleted(It result) noexcept {
-			if (!this->isset(Flag::DELETED)) {
-				this->setf(Flag::DELETED);
+			if (!this->isset(kernel_flag::DELETED)) {
+				this->setf(kernel_flag::DELETED);
 				if (this->_parent) {
 					this->_parent->mark_as_deleted(result);
 				}
@@ -176,7 +175,7 @@ namespace factory {
 	template<class Base>
 	struct Priority_kernel: public Base {
 		Priority_kernel() {
-			this->setf(Basic_kernel::Flag::priority_service);
+			this->setf(kernel_flag::priority_service);
 		}
 	};
 

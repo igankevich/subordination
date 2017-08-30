@@ -56,7 +56,7 @@ namespace factory {
 
 		template<Target target>
 		void
-		commit(Kernel* rhs, Result ret) {
+		commit(Kernel* rhs, exit_code ret) {
 			if (!rhs->parent()) {
 				#ifdef SPRINGY
 				::springy::graph.remove_node(rhs->unique_id());
@@ -78,8 +78,8 @@ namespace factory {
 		template<Target target>
 		void
 		commit(Kernel* rhs) {
-			Result ret = rhs->result();
-			commit<target>(rhs, ret == Result::undefined ? Result::success : ret);
+			exit_code ret = rhs->result();
+			commit<target>(rhs, ret == exit_code::undefined ? exit_code::success : ret);
 		}
 
 		template<Target target>

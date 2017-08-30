@@ -1,6 +1,5 @@
 #include <factory/api.hh>
 #include <factory/base/error_handler.hh>
-#include <factory/registry.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
@@ -123,7 +122,7 @@ struct Main: public Kernel {
 		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
 			sys::log_message("tst", "finished");
-			commit<Local>(this, factory::Result::success);
+			commit<Local>(this, factory::exit_code::success);
 		}
 	}
 

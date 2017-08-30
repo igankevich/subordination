@@ -1,7 +1,7 @@
 #include "parallel_pipeline.hh"
 #include "config.hh"
 
-#include <factory/kernel/algorithm.hh>
+#include <factory/kernel/act.hh>
 #include <unistdx/util/backtrace>
 
 template <class T>

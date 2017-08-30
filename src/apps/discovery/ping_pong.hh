@@ -95,7 +95,7 @@ struct Ping_pong: public Kernel {
 			);
 			#endif
 			bool success = _some_kernels_came_from_a_remote_pipeline and _realsum == _expectedsum;
-			commit<Local>(this, success ? Result::success : Result::error);
+			commit<Local>(this, success ? exit_code::success : exit_code::error);
 		}
 	}
 

@@ -11,8 +11,9 @@
 namespace factory {
 
 	template<class Base>
-	struct basic_kernelbuf: public Base {
+	class basic_kernelbuf: public Base {
 
+	public:
 		typedef Base base_type;
 		using base_type::gptr;
 		using base_type::eback;

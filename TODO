@@ -10,7 +10,7 @@ DONE [289:619c7dbe9fcc] Add handshake states to WebSocket class.
 DONE [297:67e9297e83d0] Add IPv6 support through 'struct sockaddr_storage'.
 DONE [297:67e9297e83d0] Replace inet_ntop, inet_pton with C++ analogs, possibly with IPv6 support.
 DONE [319:0659552874b2] Add runtime check for endiannes.
-DONE [320:8bbef1f9628a] Introduce ``flags'' field in Basic_kernel. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
+DONE [320:8bbef1f9628a] Introduce ``flags'' field in kernel_base. Possible uses: DELETED flag to recursively delete all kernels in queues and in the flight upon Factory::stop().
 DONE [321:e1d2e1e0b62b] 'CXXFLAGS' is a user variable, you should not override it: use 'AM_CXXFLAGS' instead.
 DONE [328:143d5982c6a1] Make servers and all other pointer entities move-constructible to reduce possibility of bad memory address access errors.
 DONE [] Remove factory_stop() and other global functions. Now multiple factory instances, and custom factory instances are possible.
@@ -41,7 +41,7 @@ Handle cases when a machine has multiple IP addresses.
 Add IPv6 support: rewrite discover_neighbours() to support large networks scanning.
 Manually align structures.
 Add macros to generate code for parallel and distributed framework versions.
-Test web socket and socket with random input to cover parsing and other errors. Kernel_stream handles read errors, but we need to update remote_client to skip malformed packets.
+Test web socket and socket with random input to cover parsing and other errors. kstream handles read errors, but we need to update remote_client to skip malformed packets.
 Reduce amount of debug information in logs.
 Add support for provenance.
 Add common header to source files.

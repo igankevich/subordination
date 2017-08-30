@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_BASIC_SERVER_HH
-#define FACTORY_PPL_BASIC_SERVER_HH
+#ifndef FACTORY_PPL_BASIC_PIPELINE_HH
+#define FACTORY_PPL_BASIC_PIPELINE_HH
 
 #include <cassert>
 #include <future>
@@ -19,7 +19,7 @@
 #include <factory/base/thread_name.hh>
 #include <factory/ppl/pipeline_base.hh>
 #include <factory/ppl/thread_context.hh>
-#include <factory/reg/type.hh>
+#include <factory/kernel/kernel_type.hh>
 
 namespace factory {
 

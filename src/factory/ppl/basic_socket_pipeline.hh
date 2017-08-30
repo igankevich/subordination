@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_PROXY_SERVER_HH
-#define FACTORY_PPL_PROXY_SERVER_HH
+#ifndef FACTORY_PPL_BASIC_SOCKET_PIPELINE_HH
+#define FACTORY_PPL_BASIC_SOCKET_PIPELINE_HH
 
 #include <memory>
 
@@ -9,7 +9,7 @@
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
-#include <factory/kernel/kernel_stream.hh>
+#include <factory/kernel/kstream.hh>
 
 namespace factory {
 

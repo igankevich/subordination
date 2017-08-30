@@ -220,9 +220,9 @@ struct Topology {
 
 	}
 
-	template<class Result>
+	template<class exit_code>
 	static void
-	transform_location_code(const std::string& code, Result result) {
+	transform_location_code(const std::string& code, exit_code result) {
 		std::transform(
 			code.begin(),
 			code.end(),

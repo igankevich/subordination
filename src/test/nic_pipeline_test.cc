@@ -139,7 +139,7 @@ struct Main: public factory::Kernel {
 	void
 	react(factory::Kernel*) override {
 		if (++_num_returned == POWERS.size()) {
-			commit<Local>(this, factory::Result::success);
+			commit<Local>(this, factory::exit_code::success);
 		}
 	}
 

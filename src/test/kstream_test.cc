@@ -1,8 +1,7 @@
 #include <unistdx/io/fildesbuf>
 
-#include <factory/kernel/kernel_stream.hh>
+#include <factory/kernel/kstream.hh>
 #include <factory/ppl/basic_pipeline.hh>
-#include <factory/registry.hh>
 
 #include "datum.hh"
 #include "big_kernel.hh"
@@ -76,7 +75,7 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 struct Kernel_that_carries_its_parent: public factory::Kernel {
 
 	Kernel_that_carries_its_parent() {
-		this->setf(factory::Kernel::Flag::carries_parent);
+		this->setf(factory::kernel_flag::carries_parent);
 		this->parent(&_carry);
 		assert(this->parent());
 	}
@@ -182,7 +181,7 @@ TYPED_TEST(KernelStreamTest, IO) {
 	typedef sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>
 		fildesbuf_type;
 	typedef factory::basic_kernelbuf<fildesbuf_type> buffer_type;
-	typedef factory::Kernel_stream<kernel_type> stream_type;
+	typedef factory::kstream<kernel_type> stream_type;
 	for (size_t count=1; count<=100; ++count) {
 		std::vector<Carrier> expected(count);
 		std::vector<kernel_type*> result(count);

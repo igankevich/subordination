@@ -6,7 +6,7 @@
 
 namespace factory {
 
-	class Kernel_header {
+	class kernel_header {
 
 	public:
 		typedef uint16_t app_type;
@@ -17,10 +17,10 @@ namespace factory {
 		app_type _app = 0;
 
 	public:
-		Kernel_header() = default;
-		Kernel_header(const Kernel_header&) = default;
-		Kernel_header& operator=(const Kernel_header&) = default;
-		~Kernel_header() = default;
+		kernel_header() = default;
+		kernel_header(const kernel_header&) = default;
+		kernel_header& operator=(const kernel_header&) = default;
+		~kernel_header() = default;
 
 		inline const sys::endpoint&
 		from() const noexcept {
@@ -58,12 +58,12 @@ namespace factory {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Kernel_header& rhs);
+		operator<<(std::ostream& out, const kernel_header& rhs);
 
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Kernel_header& rhs);
+	operator<<(std::ostream& out, const kernel_header& rhs);
 
 }
 

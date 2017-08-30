@@ -12,8 +12,6 @@ subdir('kernel')
 subdir('ppl')
 
 libfactory_src += files([
-	'error.cc',
-	'registry.cc',
 ])
 
 if get_option('springy')

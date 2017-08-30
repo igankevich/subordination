@@ -14,7 +14,7 @@ struct Sleepy_kernel: public factory::Kernel {
 
 	void act() override {
 		using namespace std::chrono;
-		const auto now = factory::Kernel::Clock::now();
+		const auto now = factory::Kernel::clock_type::now();
 		const auto at = this->at();
 		const auto delta = duration_cast<nanoseconds>(now-at).count();
 		std::clog << '#' << _pos << " wakes up "

@@ -29,8 +29,8 @@ public:
 
 	static Time current_time_nano() {
 		using namespace std::chrono;
-		typedef std::chrono::system_clock Clock;
-		return duration_cast<nanoseconds>(Clock::now().time_since_epoch()).count();
+		typedef std::chrono::system_clock clock_type;
+		return duration_cast<nanoseconds>(clock_type::now().time_since_epoch()).count();
 	}
 
 	explicit
@@ -293,7 +293,7 @@ void Autoreg_model<T>::react(Kernel* child) {
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
 		upstream<Local>(this, kernel);
 		#else
-		kernel->setf(Kernel::Flag::carries_parent);
+		kernel->setf(factory::kernel_flag::carries_parent);
 		upstream<Remote>(this, kernel);
 		#endif
 	}

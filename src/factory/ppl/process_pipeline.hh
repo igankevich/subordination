@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_PROCESS_SERVER_HH
-#define FACTORY_PPL_PROCESS_SERVER_HH
+#ifndef FACTORY_PPL_PROCESS_PIPELINE_HH
+#define FACTORY_PPL_PROCESS_PIPELINE_HH
 
 #include <map>
 #include <cassert>
@@ -19,8 +19,9 @@
 #include <factory/ppl/basic_pipeline.hh>
 #include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/application.hh>
-#include <factory/kernel/kernel_stream.hh>
+#include <factory/kernel/kstream.hh>
 #include <factory/kernel/kernel.hh>
+#include <factory/kernel/kernel_instance_registry.hh>
 
 namespace factory {
 
@@ -110,7 +111,7 @@ namespace factory {
 				// TODO 2016-05-06 fix this
 				// assert(this->root() != nullptr);
 				k->from(k->to());
-				k->result(Result::endpoint_not_connected);
+				k->result(exit_code::endpoint_not_connected);
 				k->principal(k->parent());
 				_router.send_local(k);
 			}
@@ -201,9 +202,9 @@ namespace factory {
 			*/
 			this->_ostream.begin_packet();
 			this->_ostream << kernel->app() << kernel->from();
-			Types::const_iterator type = types.find(typeid(*kernel));
+			kernel_type_registry::const_iterator type = types.find(typeid(*kernel));
 			if (type == types.end()) {
-				throw Kernel_error("no type is defined for the kernel", kernel->id());
+				throw kernel_error("no type is defined for the kernel", kernel->id());
 			}
 			this->_ostream << type->id();
 			kernel->write(this->_ostream);
@@ -240,7 +241,7 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
+		forward(const kernel_header& hdr, sys::pstream& istr) {
 			this->_ostream.begin_packet();
 			this->_ostream.append_payload(istr);
 			this->_ostream.end_packet();
@@ -275,7 +276,7 @@ namespace factory {
 				#ifndef NDEBUG
 				sys::log_message(this->_name, "forward app=_,from=_", app, from);
 				#endif
-				Kernel_header hdr;
+				kernel_header hdr;
 				hdr.setapp(app);
 				this->_router.forward(hdr, this->_istream);
 			}
@@ -297,7 +298,7 @@ namespace factory {
 				instances_guard g(instances);
 				auto result = instances.find(k->principal_id());
 				if (result == instances.end()) {
-					k->result(Result::no_principal_found);
+					k->result(exit_code::no_principal_found);
 					ok = false;
 				}
 				k->principal(result->second);
@@ -435,7 +436,7 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
+		forward(const kernel_header& hdr, sys::pstream& istr) {
 			auto result = this->_apps.find(hdr.app());
 			if (result == this->_apps.end()) {
 				FACTORY_THROW(Error, "bad application id");
@@ -553,7 +554,7 @@ namespace factory {
 		}
 
 		void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
+		forward(const kernel_header& hdr, sys::pstream& istr) {
 			assert(false);
 		}
 

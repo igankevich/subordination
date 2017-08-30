@@ -1,7 +1,7 @@
 #include "error_handler.hh"
 
 #include <exception>
-#include <factory/error.hh>
+#include <factory/base/error.hh>
 #include <factory/kernel/kernel_error.hh>
 #include <iostream>
 #include <unistd.h>
@@ -28,7 +28,7 @@ factory::print_error() noexcept {
 	if (std::exception_ptr ptr = std::current_exception()) {
 		try {
 			std::rethrow_exception(ptr);
-		} catch (const Kernel_error& err) {
+		} catch (const kernel_error& err) {
 			sys::log_message(
 				std::cerr,
 				"error_handler",

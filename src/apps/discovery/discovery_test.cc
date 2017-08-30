@@ -66,7 +66,7 @@ struct Main: public Kernel {
 		factory::types.register_type<Year_kernel>();
 		factory::types.register_type<Station_kernel>();
 		factory::types.register_type<Spec_app>();
-		if (this->result() != Result::success) {
+		if (this->result() != exit_code::success) {
 			commit<Local>(this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
@@ -142,7 +142,7 @@ private:
 			}
 		} catch (sys::bad_argument& err) {
 			std::cerr << err.what() << ": " << err.argument() << std::endl;
-			this->result(Result::error);
+			this->result(exit_code::error);
 		}
 	}
 

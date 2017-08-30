@@ -1,18 +1,18 @@
-#ifndef FACTORY_KERNEL_KERNEL_STREAM_HH
-#define FACTORY_KERNEL_KERNEL_STREAM_HH
+#ifndef FACTORY_KERNEL_KSTREAM_HH
+#define FACTORY_KERNEL_KSTREAM_HH
 
 #include <unistdx/base/log_message>
 #include <unistdx/net/pstream>
 
-#include <factory/error.hh>
-#include <factory/registry.hh>
-#include "kernel_error.hh"
-#include "kernelbuf.hh"
+#include <factory/base/error.hh>
+#include <factory/kernel/kernel_type_registry.hh>
+#include <factory/kernel/kernel_error.hh>
+#include <factory/kernel/kernelbuf.hh>
 
 namespace factory {
 
 	template<class T>
-	struct Kernel_stream: public sys::pstream {
+	struct kstream: public sys::pstream {
 
 		typedef T kernel_type;
 		typedef typename kernel_type::app_type app_type;
@@ -27,19 +27,19 @@ namespace factory {
 		using sys::pstream::operator<<;
 		using sys::pstream::operator>>;
 
-		Kernel_stream() = default;
+		kstream() = default;
 		inline explicit
-		Kernel_stream(sys::packetbuf* buf): sys::pstream(buf) {}
-		Kernel_stream(Kernel_stream&&) = default;
+		kstream(sys::packetbuf* buf): sys::pstream(buf) {}
+		kstream(kstream&&) = default;
 
-		inline Kernel_stream&
+		inline kstream&
 		operator<<(kernel_type* kernel) {
 			return operator<<(*kernel);
 		}
 
-		Kernel_stream&
+		kstream&
 		operator<<(kernel_type& kernel) {
-			Types::const_iterator type = types.find(typeid(kernel));
+			kernel_type_registry::const_iterator type = types.find(typeid(kernel));
 			if (type == types.end()) {
 				throw std::invalid_argument("kernel type is null");
 			}
@@ -52,7 +52,7 @@ namespace factory {
 				if (!parent) {
 					throw std::invalid_argument("parent is null");
 				}
-				Types::const_iterator parent_type = types.find(typeid(*parent));
+				kernel_type_registry::const_iterator parent_type = types.find(typeid(*parent));
 				if (parent_type == types.end()) {
 					throw std::invalid_argument("parent type is null");
 				}
@@ -63,7 +63,7 @@ namespace factory {
 			return *this;
 		}
 
-		Kernel_stream&
+		kstream&
 		operator>>(kernel_type*& kernel) {
 			if (!read_packet()) {
 				this->setstate(state::partial_packet);
@@ -81,7 +81,7 @@ namespace factory {
 							parent->setapp(app);
 							kernel->parent(parent);
 						}
-					} catch (const Kernel_error& err) {
+					} catch (const kernel_error& err) {
 						this->setstate(state::bad_kernel);
 						throw;
 					}

@@ -3,7 +3,7 @@
 #include <ostream>
 
 std::ostream&
-factory::operator<<(std::ostream& out, const Kernel_error& rhs) {
+factory::operator<<(std::ostream& out, const kernel_error& rhs) {
 	return out << rhs.what() << ": id=" << rhs.id();
 }
 

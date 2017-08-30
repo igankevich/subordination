@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_IO_SERVER_HH
-#define FACTORY_PPL_IO_SERVER_HH
+#ifndef FACTORY_PPL_IO_PIPELINE_HH
+#define FACTORY_PPL_IO_PIPELINE_HH
 
 #include "parallel_pipeline.hh"
 

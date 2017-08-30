@@ -1,4 +1,4 @@
-#include "type_registry.hh"
+#include "kernel_type_registry.hh"
 
 #include <ostream>
 #include <algorithm>
@@ -8,7 +8,7 @@
 namespace {
 
 	struct Entry {
-		Entry(const factory::Type& rhs): _type(rhs) {}
+		Entry(const factory::kernel_type& rhs): _type(rhs) {}
 
 		inline friend std::ostream&
 		operator<<(std::ostream& out, const Entry& rhs) {
@@ -16,42 +16,42 @@ namespace {
 		}
 
 	private:
-		const factory::Type& _type;
+		const factory::kernel_type& _type;
 	};
 
 }
 
-factory::Types::const_iterator
-factory::Types::find(id_type id) const noexcept {
+factory::kernel_type_registry::const_iterator
+factory::kernel_type_registry::find(id_type id) const noexcept {
 	return std::find_if(
 		this->begin(), this->end(),
-		[&id] (const Type& rhs) {
+		[&id] (const kernel_type& rhs) {
 			return rhs.id() == id;
 		}
 	);
 }
 
-factory::Types::const_iterator
-factory::Types::find(std::type_index idx) const noexcept {
+factory::kernel_type_registry::const_iterator
+factory::kernel_type_registry::find(std::type_index idx) const noexcept {
 	return std::find_if(
 		this->begin(), this->end(),
-		[&idx] (const Type& rhs) {
+		[&idx] (const kernel_type& rhs) {
 			return rhs.index() == idx;
 		}
 	);
 }
 
 void
-factory::Types::register_type(Type type) {
+factory::kernel_type_registry::register_type(kernel_type type) {
 	const_iterator result;
 	result = this->find(type.index());
 	if (result != this->end()) {
-		FACTORY_THROW(Type_error, type, *result);
+		FACTORY_THROW(kenel_type_error, type, *result);
 	}
 	if (type) {
 		result = this->find(type.id());
 		if (result != this->end()) {
-			FACTORY_THROW(Type_error, type, *result);
+			FACTORY_THROW(kenel_type_error, type, *result);
 		}
 	} else {
 		type.setid(this->generate_id());
@@ -60,19 +60,21 @@ factory::Types::register_type(Type type) {
 }
 
 std::ostream&
-factory::operator<<(std::ostream& out, const Types& rhs) {
+factory::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
 	std::ostream_iterator<Entry> it(out, "\n");
 	std::copy(rhs._types.begin(), rhs._types.end(), it);
 	return out;
 }
 
 void*
-factory::Types::read_object(sys::pstream& packet) {
+factory::kernel_type_registry::read_object(sys::pstream& packet) {
 	id_type id;
 	packet >> id;
 	const_iterator result = this->find(id);
 	if (result == this->end()) {
-		throw Kernel_error("unknown kernel type", id);
+		throw kernel_error("unknown kernel type", id);
 	}
 	return result->read(packet);
 }
+
+factory::kernel_type_registry factory::types;

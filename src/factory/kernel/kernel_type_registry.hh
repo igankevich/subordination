@@ -1,19 +1,19 @@
-#ifndef FACTORY_REG_TYPE_REGISTRY_HH
-#define FACTORY_REG_TYPE_REGISTRY_HH
+#ifndef FACTORY_KERNEL_KERNEL_TYPE_REGISTRY_HH
+#define FACTORY_KERNEL_KERNEL_TYPE_REGISTRY_HH
 
 #include <vector>
 #include <iosfwd>
 
-#include "type.hh"
-#include "type_error.hh"
+#include <factory/kernel/kernel_type.hh>
+#include <factory/kernel/kernel_type_error.hh>
 
 namespace factory {
 
-	class Types {
+	class kernel_type_registry {
 
 	public:
-		typedef Type::id_type id_type;
-		typedef std::vector<Type> container_type;
+		typedef kernel_type::id_type id_type;
+		typedef std::vector<kernel_type> container_type;
 		typedef container_type::iterator iterator;
 		typedef container_type::const_iterator const_iterator;
 
@@ -39,7 +39,7 @@ namespace factory {
 		}
 
 		void
-		register_type(Type type);
+		register_type(kernel_type type);
 
 		template<class X>
 		void
@@ -56,7 +56,7 @@ namespace factory {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Types& rhs);
+		operator<<(std::ostream& out, const kernel_type_registry& rhs);
 
 		void*
 		read_object(sys::pstream& packet);
@@ -71,7 +71,20 @@ namespace factory {
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Types& rhs);
+	operator<<(std::ostream& out, const kernel_type_registry& rhs);
+
+	extern kernel_type_registry types;
+
+	template<class X>
+	inline void
+	register_type() {
+		types.register_type<X>();
+	}
+
+	inline void
+	register_type(const kernel_type& rhs) {
+		types.register_type(rhs);
+	}
 
 }
 

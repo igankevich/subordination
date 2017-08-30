@@ -30,10 +30,10 @@ namespace factory {
 
 		#if defined(FACTORY_DAEMON)
 		inline void
-		forward(const Kernel_header& hdr, sys::pstream& istr);
+		forward(const kernel_header& hdr, sys::pstream& istr);
 		#else
 		inline void
-		forward(const Kernel_header&, sys::pstream&) {}
+		forward(const kernel_header&, sys::pstream&) {}
 		#endif
 
 	};
@@ -82,7 +82,7 @@ namespace factory {
 				this->_timer.send(kernel);
 			} else
 			#if defined(FACTORY_PRIORITY_SCHEDULING)
-			if (kernel->isset(kernel_type::Flag::priority_service)) {
+			if (kernel->isset(kernel_flag::priority_service)) {
 				this->_prio.send(kernel);
 			} else
 			#endif
@@ -127,7 +127,7 @@ namespace factory {
 		}
 
 		inline void
-		forward(const Kernel_header& hdr, sys::pstream& istr) {
+		forward(const kernel_header& hdr, sys::pstream& istr) {
 			this->_child.forward(hdr, istr);
 		}
 		#endif
@@ -192,7 +192,7 @@ namespace factory {
 	#if defined(FACTORY_DAEMON)
 	template <class T>
 	void
-	basic_router<T>::forward(const Kernel_header& hdr, sys::pstream& istr) {
+	basic_router<T>::forward(const kernel_header& hdr, sys::pstream& istr) {
 		factory.forward(hdr, istr);
 	}
 	#endif

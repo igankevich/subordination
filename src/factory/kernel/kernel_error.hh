@@ -7,7 +7,7 @@
 
 namespace factory {
 
-	struct Kernel_error: public std::runtime_error {
+	class kernel_error: public std::runtime_error {
 
 	public:
 		typedef std::uintmax_t id_type;
@@ -18,7 +18,7 @@ namespace factory {
 
 	public:
 		inline
-		Kernel_error(const char* msg, id_type id) noexcept:
+		kernel_error(const char* msg, id_type id) noexcept:
 		std::runtime_error(msg),
 		_id(id)
 		{}
@@ -29,12 +29,12 @@ namespace factory {
 		}
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Kernel_error& rhs);
+		operator<<(std::ostream& out, const kernel_error& rhs);
 
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Kernel_error& rhs);
+	operator<<(std::ostream& out, const kernel_error& rhs);
 
 }
 

@@ -26,7 +26,7 @@ struct Negotiator: public Priority_kernel<Kernel> {
 		using namespace factory::api;
 		const sys::endpoint& this_addr = hierarchy.bindaddr();
 		this->principal(this->parent());
-		this->result(Result::success);
+		this->result(exit_code::success);
 		if (_newprinc == this_addr) {
 			// principal becomes subordinate
 			if (this->from() == hierarchy.principal()) {
@@ -34,17 +34,17 @@ struct Negotiator: public Priority_kernel<Kernel> {
 					hierarchy.unset_principal();
 				} else {
 					// root tries to swap with its subordinate
-					this->result(Result::error);
+					this->result(exit_code::error);
 				}
 			}
-			if (this->result() != Result::error) {
+			if (this->result() != exit_code::error) {
 				hierarchy.add_subordinate(this->from());
 			}
 		} else
 		if (_oldprinc == this_addr) {
 			// something fancy is going on
 			if (this->from() == hierarchy.principal()) {
-				this->result(Result::error);
+				this->result(exit_code::error);
 			} else {
 				hierarchy.remove_subordinate(this->from());
 			}
@@ -93,7 +93,7 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 			sys::log_message("dscvr", "tried _, result ", k->from(), k->result());
 			#endif
 			this->result(k->result());
-			if (k->result() == Result::success and _oldprinc) {
+			if (k->result() == exit_code::success and _oldprinc) {
 				finished = false;
 				send_negotiator(_oldprinc);
 			}

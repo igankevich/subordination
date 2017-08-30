@@ -1,7 +1,7 @@
-#ifndef FACTORY_PPL_TIMER_SERVER_HH
-#define FACTORY_PPL_TIMER_SERVER_HH
+#ifndef FACTORY_PPL_TIMER_PIPELINE_HH
+#define FACTORY_PPL_TIMER_PIPELINE_HH
 
-#include <factory/kernel/algorithm.hh>
+#include <factory/kernel/act.hh>
 #include <factory/ppl/basic_pipeline.hh>
 #include <factory/ppl/compare_time.hh>
 #include <unistdx/ipc/semaphore>

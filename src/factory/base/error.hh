@@ -1,5 +1,5 @@
-#ifndef FACTORY_ERROR_HH
-#define FACTORY_ERROR_HH
+#ifndef FACTORY_BASE_ERROR_HH
+#define FACTORY_BASE_ERROR_HH
 
 #include <iosfwd>
 #include <stdexcept>

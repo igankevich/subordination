@@ -38,7 +38,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	void
 	react(Kernel* k) override {
 		if (_negotiator == k) {
-			if (k->result() == Result::success) {
+			if (k->result() == exit_code::success) {
 				_hierarchy.set_principal(_negotiator->new_principal());
 				#ifndef NDEBUG
 				sys::log_message("dscvr", "hierarchy=", _hierarchy);
@@ -53,7 +53,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 			#ifndef NDEBUG
 			sys::log_message("dscvr", "secret agent returned from _, result _", k->from(), k->result());
 			#endif
-			if (k->result() == Result::endpoint_not_connected) {
+			if (k->result() == exit_code::endpoint_not_connected) {
 				_hierarchy.unset_principal();
 				#ifndef NDEBUG
 				sys::log_message("dscvr", "hierarchy=", _hierarchy);

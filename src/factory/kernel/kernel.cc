@@ -1,13 +1,13 @@
 #include "kernel.hh"
 
-#include <factory/error.hh>
+#include <factory/base/error.hh>
 #include <unistdx/base/make_object>
 
 namespace {
 
 	inline factory::Kernel::id_type
 	get_id(const factory::Kernel* rhs) {
-		return !rhs ? factory::Mobile_kernel::no_id() : rhs->id();
+		return !rhs ? factory::mobile_kernel::no_id() : rhs->id();
 	}
 
 }
@@ -18,7 +18,7 @@ factory::Kernel::read(sys::pstream& in) {
 	bool b = false;
 	in >> b;
 	if (b) {
-		this->setf(Flag::carries_parent);
+		this->setf(kernel_flag::carries_parent);
 	}
 	assert(not this->_parent);
 	in >> this->_parent_id;

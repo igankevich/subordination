@@ -1,4 +1,4 @@
-#include "instance_registry.hh"
+#include "kernel_instance_registry.hh"
 
 #include <algorithm>
 #include <iterator>
@@ -43,11 +43,13 @@ namespace {
 
 template <class T>
 std::ostream&
-factory::operator<<(std::ostream& out, const Instance_registry<T>& rhs) {
+factory::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
 	std::unique_lock<std::mutex> lock(rhs._mutex);
 	std::ostream_iterator<Entry<T>> it(out, "\n");
 	std::copy(rhs._instances.cbegin(), rhs._instances.cend(), it);
 	return out;
 }
 
-template class factory::Instance_registry<FACTORY_KERNEL_TYPE>;
+factory::instance_registry_type factory::instances;
+
+template class factory::kernel_instance_registry<FACTORY_KERNEL_TYPE>;

@@ -8,7 +8,7 @@
 #include <unistdx/base/n_random_bytes>
 #include <unistdx/net/endpoint>
 
-#include <factory/error.hh>
+#include <factory/base/error.hh>
 
 // This code is adapted from Omnifarious answer to Stackoverflow question.
 // See: http://stackoverflow.com/questions/5288076/doing-base64-encoding-and-decoding-in-openssl-c

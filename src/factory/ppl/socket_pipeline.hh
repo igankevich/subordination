@@ -1,5 +1,5 @@
-#ifndef FACTORY_PPL_NIC_SERVER_HH
-#define FACTORY_PPL_NIC_SERVER_HH
+#ifndef FACTORY_PPL_SOCKET_PIPELINE_HH
+#define FACTORY_PPL_SOCKET_PIPELINE_HH
 
 #include <map>
 #include <type_traits>
@@ -14,8 +14,9 @@
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>
 
+#include <factory/kernel/kernel_instance_registry.hh>
+#include <factory/kernel/kstream.hh>
 #include <factory/ppl/basic_socket_pipeline.hh>
-#include <factory/kernel/kernel_stream.hh>
 
 namespace factory {
 
@@ -27,11 +28,11 @@ namespace factory {
 		typedef T kernel_type;
 		typedef char Ch;
 		typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> Kernelbuf;
-		typedef Kernel_stream<kernel_type> stream_type;
+		typedef kstream<kernel_type> stream_type;
 		typedef Socket socket_type;
 		typedef Router router_type;
 		typedef Kernels pool_type;
-		typedef application_type app_type;
+		typedef sys::pid_type app_type;
 		typedef Traits traits_type;
 		typedef sys::queue_pop_iterator<Kernels,Traits> queue_popper;
 
@@ -51,7 +52,7 @@ namespace factory {
 		{
 			_stream.setforward(
 				[this] (app_type app) {
-					Kernel_header hdr;
+					kernel_header hdr;
 					hdr.from(_vaddr);
 					hdr.setapp(app);
 					_router.forward(hdr, _stream);
@@ -214,7 +215,7 @@ namespace factory {
 				instances_guard g(instances);
 				auto result = instances.find(k->principal_id());
 				if (result == instances.end()) {
-					k->result(Result::no_principal_found);
+					k->result(exit_code::no_principal_found);
 					ok = false;
 				}
 				k->principal(result->second);
@@ -248,7 +249,7 @@ namespace factory {
 				sys::log_message("nic", "destination is unreachable for _", *k);
 				#endif
 				k->from(k->to());
-				k->result(Result::endpoint_not_connected);
+				k->result(exit_code::endpoint_not_connected);
 				k->principal(k->parent());
 				_router.send_local(k);
 			} else if (k->moves_downstream() and k->carries_parent()) {
@@ -306,7 +307,7 @@ namespace factory {
 		typedef typename upstream_type::iterator iterator_type;
 		typedef sys::ifaddr<sys::ipv4_addr> network_type;
 		typedef network_type::rep_type rep_type;
-		typedef Mobile_kernel::id_type id_type;
+		typedef mobile_kernel::id_type id_type;
 
 		static_assert(
 			std::is_move_constructible<event_handler_type>::value,

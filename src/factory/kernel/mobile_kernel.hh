@@ -1,12 +1,12 @@
 #ifndef FACTORY_KERNEL_MOBILE_KERNEL_HH
 #define FACTORY_KERNEL_MOBILE_KERNEL_HH
 
-#include "basic_kernel.hh"
-#include "kernel_header.hh"
+#include <factory/kernel/kernel_base.hh>
+#include <factory/kernel/kernel_header.hh>
 
 namespace factory {
 
-	class Mobile_kernel: public Basic_kernel, public Kernel_header {
+	class mobile_kernel: public kernel_base, public kernel_header {
 
 	public:
 		typedef uint64_t id_type;
@@ -42,7 +42,7 @@ namespace factory {
 		}
 
 		inline bool
-		operator==(const Mobile_kernel& rhs) const noexcept {
+		operator==(const mobile_kernel& rhs) const noexcept {
 			return this == &rhs || (
 				this->id() == rhs.id()
 				&& this->has_id()
@@ -51,7 +51,7 @@ namespace factory {
 		}
 
 		inline bool
-		operator!=(const Mobile_kernel& rhs) const noexcept {
+		operator!=(const mobile_kernel& rhs) const noexcept {
 			return !this->operator==(rhs);
 		}
 
