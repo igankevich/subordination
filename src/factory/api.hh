@@ -82,7 +82,7 @@ namespace factory {
 			commit<target>(rhs, ret == exit_code::undefined ? exit_code::success : ret);
 		}
 
-		template<Target target>
+		template<Target target=Target::Local>
 		void
 		send(Kernel* lhs, Kernel* rhs) {
 			lhs->principal(rhs);

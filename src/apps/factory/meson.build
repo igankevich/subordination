@@ -1,6 +1,11 @@
+factoryd_src = files([
+	'network_master.cc',
+	'factory.cc',
+])
+
 executable(
 	'factory',
-	sources: 'factory.cc',
+	sources: factoryd_src,
 	include_directories: [srcdir, testdir],
-	dependencies: [unistdx]
+	dependencies: [unistdx,threads,factory]
 )
