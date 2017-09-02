@@ -12,7 +12,8 @@ namespace factory {
 		undefined = 1,
 		error = 2,
 		endpoint_not_connected = 3,
-		no_principal_found = 4
+		no_principal_found = 4,
+		no_upstream_servers_available = 5
 	};
 
 	const char*

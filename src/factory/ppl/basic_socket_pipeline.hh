@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include <unistdx/base/log_message>
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
 #include <unistdx/io/fildesbuf>
@@ -77,7 +78,10 @@ namespace factory {
 		}
 
 		virtual void
-		remove_pipeline(event_handler_ptr ptr) = 0;
+		remove_server(sys::fd_type fd) {}
+
+		virtual void
+		remove_client(event_handler_ptr ptr) = 0;
 
 		virtual void
 		process_kernels() = 0;
@@ -98,10 +102,17 @@ namespace factory {
 
 		void
 		remove_pipelines_if_any() {
-			poller().for_each_ordinary_fd(
+			this->poller().for_each_special_fd(
+				[this] (sys::poll_event& ev) {
+					if (!ev) {
+						this->remove_server(ev.fd());
+					}
+				}
+			);
+			this->poller().for_each_ordinary_fd(
 				[this] (sys::poll_event& ev, event_handler_ptr h) {
 					if (!ev) {
-						this->remove_pipeline(h);
+						this->remove_client(h);
 					}
 				}
 			);
@@ -124,7 +135,15 @@ namespace factory {
 		accept_connections_if_any() {
 			poller().for_each_special_fd([this] (sys::poll_event& ev) {
 				if (ev.in()) {
-					this->accept_connection(ev);
+					try {
+						this->accept_connection(ev);
+					} catch (const std::exception& err) {
+						sys::log_message(
+							this->_name,
+							"failed to accept connection: _",
+							err.what()
+						);
+					}
 				}
 			});
 		}

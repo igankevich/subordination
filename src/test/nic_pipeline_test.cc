@@ -153,15 +153,15 @@ TEST(NICServerTest, All) {
 	using factory::factory;
 	factory::register_type<Test_socket>();
 	if (role == Role::Slave) {
-		factory.nic().bind(principal_endpoint, netmask);
+		factory.nic().add_server(principal_endpoint, netmask);
 	}
 	if (role == Role::Master) {
-		factory.nic().bind(subordinate_endpoint, netmask);
+		factory.nic().add_server(subordinate_endpoint, netmask);
 		// wait for the child to start
 		using namespace std::this_thread;
 		using namespace std::chrono;
 		sleep_for(milliseconds(1000));
-		factory.nic().peer(principal_endpoint);
+		factory.nic().add_client(principal_endpoint);
 	}
 
 	Factory_guard g;

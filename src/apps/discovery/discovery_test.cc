@@ -71,7 +71,7 @@ struct Main: public Kernel {
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 			const sys::endpoint bind_addr(_network.address(), _port);
-			factory::factory.nic().bind(bind_addr, netmask);
+			factory::factory.nic().add_server(bind_addr, netmask);
 			const auto start_delay = 5;
 			discoverer_type* master = new discoverer_type(_network, _port);
 			master->id(sys::to_host_format(_network.address().rep()));

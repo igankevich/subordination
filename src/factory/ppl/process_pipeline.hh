@@ -367,7 +367,7 @@ namespace factory {
 		~process_pipeline() = default;
 
 		void
-		remove_pipeline(event_handler_ptr ptr) override {
+		remove_client(event_handler_ptr ptr) override {
 			this->_apps.erase(ptr->childpid());
 		}
 
@@ -536,7 +536,7 @@ namespace factory {
 		virtual ~child_process_pipeline() = default;
 
 		void
-		remove_pipeline(event_handler_ptr ptr) override {
+		remove_client(event_handler_ptr ptr) override {
 			if (!this->is_stopped()) {
 				this->stop();
 				// this->factory()->stop();

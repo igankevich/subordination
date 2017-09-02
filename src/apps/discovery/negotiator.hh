@@ -73,6 +73,7 @@ template<class Address>
 struct Master_negotiator: public Priority_kernel<Kernel> {
 
 	typedef Address addr_type;
+	typedef sys::ipaddr_traits<addr_type> traits_type;
 	typedef Negotiator<addr_type> negotiator_type;
 
 	Master_negotiator(sys::endpoint oldp, sys::endpoint newp):
@@ -117,11 +118,11 @@ struct Master_negotiator: public Priority_kernel<Kernel> {
 private:
 
 	void
-	send_negotiator(sys::endpoint addr) {
+	send_negotiator(const sys::endpoint& addr) {
 		using namespace factory::api;
 		++_numsent;
 		negotiator_type* n = new negotiator_type(_oldprinc, _newprinc);
-		n->set_principal_id(addr.address());
+		n->set_principal_id(traits_type::address(addr).rep());
 		n->to(addr);
 		upstream<Remote>(this, n);
 	}

@@ -8,6 +8,16 @@ test(
 	)
 )
 
+test(
+	'factory::local_server',
+	executable(
+		'local-server-test',
+		sources: 'local_server_test.cc',
+		include_directories: srcdir,
+		dependencies: [unistdx, gtest, factoryd]
+	)
+)
+
 test_runner = executable(
 	'test-runner',
 	sources: 'test_runner.cc',

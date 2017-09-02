@@ -7,6 +7,7 @@ template<class Address>
 struct Delayed_shutdown: public Kernel {
 
 	typedef Address addr_type;
+	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef discovery::Hierarchy<addr_type> hierarchy_type;
 
 	explicit
@@ -21,8 +22,13 @@ struct Delayed_shutdown: public Kernel {
 		if (not _normal) {
 			try {
 				#ifndef NDEBUG
-				sys::endpoint addr = factory::factory.nic().bind_address();
-				sys::log_message("tst", "killing _", addr);
+				std::stringstream msg;
+				std::copy(
+					factory::factory.nic().ifaddrs_begin(),
+					factory::factory.nic().ifaddrs_end(),
+					sys::intersperse_iterator<ifaddr_type,char>(msg, ',')
+				);
+				sys::log_message("tst", "killing _", msg.str());
 				#endif
 			} catch (...) {
 				#ifndef NDEBUG

@@ -175,7 +175,9 @@ namespace factory {
 
 	};
 
-	extern Factory<FACTORY_KERNEL_TYPE> factory;
+	typedef Factory<FACTORY_KERNEL_TYPE> factory_type;
+
+	extern factory_type factory;
 
 	template <class T>
 	void

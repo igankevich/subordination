@@ -12,6 +12,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	typedef Hierarchy hierarchy_type;
 	typedef Distance distance_type;
 	typedef sys::ifaddr<addr_type> network_type;
+	typedef sys::ipaddr_traits<addr_type> traits_type;
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
 	typedef typename rankedlist_type::iterator rankedlist_iterator;
 	typedef Negotiator<addr_type> negotiator_type;
@@ -139,7 +140,9 @@ private:
 		_secretagent->to(_hierarchy.principal());
 //		_secretagent->id(factory()->factory_generate_id());
 		_secretagent->parent(this);
-		_secretagent->set_principal_id(_secretagent->to().address());
+		_secretagent->set_principal_id(
+			traits_type::address(_secretagent->to()).rep()
+		);
 		send<Remote>(_secretagent);
 	}
 
