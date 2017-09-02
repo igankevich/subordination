@@ -38,7 +38,7 @@ run_target(
 
 subdir('src')
 
-# Doxygen {{{
+# doxygen {{{
 doxygen = find_program('doxygen', required: false)
 if doxygen.found()
 	run_target(
@@ -50,6 +50,7 @@ if doxygen.found()
 	)
 endif
 # }}}
+# cppcheck {{{
 cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()
 	run_target(
@@ -68,3 +69,4 @@ if cppcheck.found()
 		]
 	)
 endif
+# }}}

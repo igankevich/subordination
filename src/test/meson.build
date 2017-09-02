@@ -25,28 +25,20 @@ test_runner = executable(
 	dependencies: unistdx
 )
 
-executable(
-	'nic-pipeline-test',
-	sources: 'nic_pipeline_test.cc',
+socket_pipeline_test = executable(
+	'socket-pipeline-test',
+	sources: 'socket_pipeline_test.cc',
 	dependencies: [threads, unistdx, gtest, factoryd],
 	include_directories: srcdir,
-)
-
-executable(
-	'nic-pipeline-offline-test',
-	sources: 'nic_pipeline_test.cc',
-	dependencies: [threads, unistdx, gtest, factoryd],
-	include_directories: srcdir,
-	cpp_args: [ '-DFACTORY_TEST_OFFLINE' ],
 )
 
 test(
-	'factory::socket_pipeline (normal)',
+	'factory::socket_pipeline (no failure)',
 	test_runner,
 	args: [
 		'--strategy=master-slave',
-		'--exec', './nic-pipeline-test', 'role=master',
-		'--exec', './nic-pipeline-test', 'role=slave'
+		'--exec', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
+		'--exec', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
 	],
 	workdir: meson.current_build_dir()
 )
@@ -56,8 +48,8 @@ test(
 	test_runner,
 	args: [
 		'--strategy=master-slave',
-		'--exec', './nic-pipeline-offline-test', 'role=master',
-		'--exec', './nic-pipeline-offline-test', 'role=slave'
+		'--exec', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
+		'--exec', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
 	],
 	workdir: meson.current_build_dir()
 )

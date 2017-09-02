@@ -554,11 +554,6 @@ namespace factory {
 		}
 
 		void
-		forward(const kernel_header& hdr, sys::pstream& istr) {
-			assert(false);
-		}
-
-		void
 		do_run() override {
 			this->init_pipeline();
 			base_pipeline::do_run();

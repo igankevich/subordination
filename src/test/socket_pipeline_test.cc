@@ -10,27 +10,35 @@
 
 using test::Role;
 
-const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
-#if defined(FACTORY_TEST_OFFLINE)
-sys::endpoint principal_endpoint({127,0,0,1}, 10001);
-sys::endpoint subordinate_endpoint({127,0,0,1}, 20001);
-#else
-sys::endpoint principal_endpoint({127,0,0,1}, 10002);
-sys::endpoint subordinate_endpoint({127,0,0,1}, 20002);
-#endif
+enum struct Failure: sys::port_type {
+	No = 0,
+	Slave = 1
+};
+
+std::istream&
+operator>>(std::istream& in, Failure& rhs) {
+	std::string s;
+	in >> s;
+	if (s == "slave") {
+		rhs = Failure::Slave;
+	} else if (s == "no") {
+		rhs = Failure::No;
+	} else {
+		throw std::invalid_argument("bad test case");
+	}
+	return in;
+}
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
 const std::vector<size_t> POWERS = {1,2,3,4};
 //const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 7;
-#if defined(FACTORY_TEST_OFFLINE)
-const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
-#endif
 
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
 Role role = Role::Master;
+Failure failure = Failure::No;
 
 using namespace factory::api;
 
@@ -52,20 +60,21 @@ struct Test_socket: public factory::Kernel {
 
 	void act() override {
 		//std::clog << "Test_socket::act()" << std::endl;
-		#if defined(FACTORY_TEST_OFFLINE)
-		if (role == Role::Slave) {
-			// Delete kernel for Valgrind memory checker.
-			delete this;
-			if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
-				std::clog << "go offline" << std::endl;
-				factory::graceful_shutdown(0);
+		if (failure == Failure::Slave) {
+			if (role == Role::Slave) {
+				// Delete kernel for Valgrind memory checker.
+				delete this;
+				const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
+				if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
+					std::clog << "go offline" << std::endl;
+					factory::graceful_shutdown(0);
+				}
+			} else {
+				commit<Local>(this);
 			}
 		} else {
-			commit<Local>(this);
+			commit<Remote>(this);
 		}
-		#else
-		commit<Remote>(this);
-		#endif
 	}
 
 	void
@@ -152,6 +161,11 @@ private:
 TEST(NICServerTest, All) {
 	using factory::factory;
 	factory::register_type<Test_socket>();
+	sys::port_type port = 10000 + 2*sys::port_type(failure);
+	sys::endpoint principal_endpoint({127,0,0,1}, port);
+	sys::endpoint subordinate_endpoint({127,0,0,1}, port+1);
+	sys::ipv4_addr netmask =
+		sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 	if (role == Role::Slave) {
 		factory.nic().add_server(principal_endpoint, netmask);
 	}
@@ -171,10 +185,7 @@ TEST(NICServerTest, All) {
 
 	int retval = factory::wait_and_return();
 
-	#if defined(FACTORY_TEST_OFFLINE)
-	if (role == Role::Master)
-	#endif
-	{
+	if (!(failure == Failure::Slave && role == Role::Slave)) {
 		EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
 			" or were deleted multiple times";
 	}
@@ -193,6 +204,7 @@ main(int argc, char* argv[]) {
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),
 		sys::make_key_value("role", role),
+		sys::make_key_value("failure", failure),
 		nullptr
 	};
 	sys::parse_arguments(argc, argv, options);
