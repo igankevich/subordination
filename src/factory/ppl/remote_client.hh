@@ -16,8 +16,9 @@ namespace factory {
 
 	template<class T, class Socket, class Router, class Kernels=std::deque<T*>,
 		class Traits=sys::deque_traits<Kernels>>
-	struct remote_client: public pipeline_base {
+	class remote_client: public pipeline_base {
 
+	public:
 		typedef pipeline_base base_pipeline;
 		typedef T kernel_type;
 		typedef char Ch;
@@ -35,6 +36,15 @@ namespace factory {
 			"bad stream_type"
 		);
 
+	private:
+		sys::endpoint _vaddr;
+		Kernelbuf _packetbuf;
+		stream_type _stream;
+		pool_type _sentupstream;
+		pool_type _sentdownstream;
+		router_type& _router;
+
+	public:
 		remote_client() = default;
 
 		remote_client(socket_type&& sock, sys::endpoint vaddr, router_type& router):
@@ -122,6 +132,9 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
+			if (this->is_starting()) {
+				this->setstate(pipeline_state::started);
+			}
 			this->_stream.clear();
 			this->_stream.sync();
 			try {
@@ -138,20 +151,20 @@ namespace factory {
 			}
 		}
 
-		const socket_type&
-		socket() const {
-			return _packetbuf.fd();
+		inline const socket_type&
+		socket() const noexcept {
+			return this->_packetbuf.fd();
 		}
 
-		socket_type&
-		socket() {
-			return _packetbuf.fd();
+		inline socket_type&
+		socket() noexcept {
+			return this->_packetbuf.fd();
 		}
 
 		void
 		socket(sys::socket&& rhs) {
-			_packetbuf.pubsync();
-			_packetbuf.setfd(socket_type(std::move(rhs)));
+			this->_packetbuf.pubsync();
+			this->_packetbuf.setfd(socket_type(std::move(rhs)));
 		}
 
 		const sys::endpoint& vaddr() const { return _vaddr; }
@@ -162,7 +175,8 @@ namespace factory {
 			return out << sys::make_object(
 				"vaddr", rhs.vaddr(),
 				"socket", rhs.socket(),
-				"kernels", rhs._sentupstream.size()
+				"kernels", rhs._sentupstream.size(),
+				"state", int(rhs.state())
 			);
 		}
 
@@ -271,12 +285,6 @@ namespace factory {
 			}
 		}
 
-		sys::endpoint _vaddr;
-		Kernelbuf _packetbuf;
-		stream_type _stream;
-		pool_type _sentupstream;
-		pool_type _sentdownstream;
-		router_type& _router;
 	};
 
 }
