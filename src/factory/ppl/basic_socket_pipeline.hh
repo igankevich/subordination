@@ -195,7 +195,7 @@ namespace factory {
 		void
 		handle_events() {
 			poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, event_handler_ptr h) {
+				[this] (sys::poll_event& ev, event_handler_ptr& h) {
 					h->handle(ev);
 				}
 			);
