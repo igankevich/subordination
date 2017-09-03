@@ -2,7 +2,7 @@
 #define FACTORY_PPL_BASIC_FACTORY_HH
 
 #if !defined(FACTORY_DAEMON) && !defined(FACTORY_APPLICATION)
-#define FACTORY_DAEMON
+#define FACTORY_APPLICATION
 #endif
 
 #include <factory/config.hh>

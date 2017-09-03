@@ -4,7 +4,8 @@ test(
 		'kstream-test',
 		sources: 'kstream_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx, gtest, factoryd]
+		dependencies: [unistdx, gtest, factoryd],
+		cpp_args: ['-DFACTORY_DAEMON']
 	)
 )
 
@@ -14,7 +15,8 @@ test(
 		'local-server-test',
 		sources: 'local_server_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx, gtest, factoryd]
+		dependencies: [unistdx, gtest, factoryd],
+		cpp_args: ['-DFACTORY_DAEMON']
 	)
 )
 
@@ -30,6 +32,7 @@ socket_pipeline_test = executable(
 	sources: 'socket_pipeline_test.cc',
 	dependencies: [threads, unistdx, gtest, factoryd],
 	include_directories: srcdir,
+	cpp_args: ['-DFACTORY_DAEMON']
 )
 
 test(
@@ -61,6 +64,7 @@ test(
 		sources: 'timer_pipeline_test.cc',
 		dependencies: [threads, unistdx, gtest, factoryd],
 		include_directories: srcdir,
+		cpp_args: ['-DFACTORY_DAEMON']
 	)
 )
 

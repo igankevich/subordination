@@ -124,8 +124,8 @@ namespace factory {
 		handle(sys::poll_event& event) {
 			this->_stream.clear();
 			this->_stream.sync();
-			kernel_type* kernel = nullptr;
 			try {
+				kernel_type* kernel = nullptr;
 				while (this->_stream >> kernel) {
 					receive_kernel(kernel);
 				}

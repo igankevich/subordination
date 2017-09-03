@@ -68,9 +68,15 @@ namespace factory {
 		_socket(std::move(rhs._socket))
 		{}
 
+		local_server() = delete;
 		local_server(const local_server&) = delete;
 		local_server& operator=(const local_server&) = delete;
-		local_server& operator=(local_server&&) = delete;
+		local_server& operator=(local_server&&) = default;
+
+		inline const ifaddr_type
+		ifaddr() const noexcept {
+			return this->_ifaddr;
+		}
 
 		inline const sys::endpoint&
 		endpoint() const noexcept {

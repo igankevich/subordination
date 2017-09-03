@@ -7,5 +7,6 @@ executable(
 	'factory',
 	sources: factoryd_src,
 	include_directories: [srcdir, testdir],
-	dependencies: [unistdx,threads,factory]
+	dependencies: [unistdx,threads,factoryd],
+	cpp_args: ['-DFACTORY_DAEMON'],
 )

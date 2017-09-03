@@ -23,10 +23,13 @@ struct Delayed_shutdown: public Kernel {
 			try {
 				#ifndef NDEBUG
 				std::stringstream msg;
-				std::copy(
-					factory::factory.nic().ifaddrs_begin(),
-					factory::factory.nic().ifaddrs_end(),
-					sys::intersperse_iterator<ifaddr_type,char>(msg, ',')
+				std::transform(
+					factory::factory.nic().servers_begin(),
+					factory::factory.nic().servers_end(),
+					sys::intersperse_iterator<ifaddr_type,char>(msg, ','),
+					[] (const auto& rhs) {
+						return rhs.ifaddr();
+					}
 				);
 				sys::log_message("tst", "killing _", msg.str());
 				#endif

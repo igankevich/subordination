@@ -103,6 +103,13 @@ factoryd::network_master::update_ifaddrs() {
 		ifaddrs_to_rm,
 		this->_ifaddrs
 	);
+	// update servers in socket pipeline
+	for (const ifaddr_type& ifaddr : ifaddrs_to_rm) {
+		factory::factory.nic().remove_server(ifaddr);
+	}
+	for (const ifaddr_type& ifaddr : ifaddrs_to_add) {
+		factory::factory.nic().add_server(ifaddr);
+	}
 	this->send_timer();
 }
 

@@ -6,8 +6,12 @@ libz = dependency('zlib')
 		'discovery-test',
 		sources: 'discovery_test.cc',
 		include_directories: [srcdir, testdir],
-		dependencies: [threads, libz, unistdx, factory],
-		cpp_args: ['-DFACTORY_SINGLE_THREAD', '-DFACTORY_PRIORITY_SCHEDULING'],
+		dependencies: [threads, libz, unistdx, factoryd],
+		cpp_args: [
+			'-DFACTORY_SINGLE_THREAD',
+			'-DFACTORY_PRIORITY_SCHEDULING',
+			'-DFACTORY_DAEMON',
+		],
 	)
 #	,
 #	args: [
@@ -20,11 +24,12 @@ executable(
 	'slave-failure-test',
 	sources: 'discovery_test.cc',
 	include_directories: [srcdir, testdir],
-	dependencies: [threads, libz, unistdx, factory],
+	dependencies: [threads, libz, unistdx, factoryd],
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
 		'-DFACTORY_TEST_SLAVE_FAILURE',
-		'-DFACTORY_TEST_USE_SSH'
+		'-DFACTORY_TEST_USE_SSH',
+		'-DFACTORY_DAEMON',
 	],
 )
 
@@ -32,10 +37,11 @@ executable(
 	'master-failure-test',
 	sources: 'discovery_test.cc',
 	include_directories: [srcdir, testdir],
-	dependencies: [threads, libz, unistdx, factory],
+	dependencies: [threads, libz, unistdx, factoryd],
 	cpp_args: [
 		'-DFACTORY_PRIORITY_SCHEDULING',
-		'-DFACTORY_TEST_USE_SSH'
+		'-DFACTORY_TEST_USE_SSH',
+		'-DFACTORY_DAEMON',
 	],
 )
 
