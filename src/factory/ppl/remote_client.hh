@@ -16,8 +16,9 @@ namespace factory {
 
 	template<class T, class Socket, class Router, class Kernels=std::deque<T*>,
 		class Traits=sys::deque_traits<Kernels>>
-	struct remote_client: public pipeline_base {
+	class remote_client: public pipeline_base {
 
+	public:
 		typedef pipeline_base base_pipeline;
 		typedef T kernel_type;
 		typedef char Ch;
@@ -35,6 +36,15 @@ namespace factory {
 			"bad stream_type"
 		);
 
+	private:
+		sys::endpoint _vaddr;
+		Kernelbuf _packetbuf;
+		stream_type _stream;
+		pool_type _sentupstream;
+		pool_type _sentdownstream;
+		router_type& _router;
+
+	public:
 		remote_client() = default;
 
 		remote_client(socket_type&& sock, sys::endpoint vaddr, router_type& router):
@@ -104,15 +114,7 @@ namespace factory {
 				delete_kernel = true;
 			}
 			sys::log_message("nic", "send to _ kernel _ ", this->vaddr(), *kernel);
-			try {
-				this->_stream << kernel;
-			} catch (const Error& err) {
-				sys::log_message("nic", "write error _", err);
-			} catch (const std::exception& err) {
-				sys::log_message("nic", "write error _", err.what());
-			} catch (...) {
-				sys::log_message("nic", "write error _", "<unknown>");
-			}
+			this->write_kernel(kernel);
 			/// The kernel is deleted if it goes downstream
 			/// and does not carry its parent.
 			if (delete_kernel) {
@@ -122,36 +124,30 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
+			if (this->is_starting() && this->socket().error()) {
+				this->setstate(pipeline_state::started);
+			}
 			this->_stream.clear();
 			this->_stream.sync();
-			try {
-				kernel_type* kernel = nullptr;
-				while (this->_stream >> kernel) {
-					receive_kernel(kernel);
-				}
-			} catch (const Error& err) {
-				sys::log_message("nic", "read error _", err);
-			} catch (const std::exception& err) {
-				sys::log_message("nic", "read error _", err.what());
-			} catch (...) {
-				sys::log_message("nic", "read error _", "<unknown>");
+			if (event.revents()) {
+				this->read_kernels();
 			}
 		}
 
-		const socket_type&
-		socket() const {
-			return _packetbuf.fd();
+		inline const socket_type&
+		socket() const noexcept {
+			return this->_packetbuf.fd();
 		}
 
-		socket_type&
-		socket() {
-			return _packetbuf.fd();
+		inline socket_type&
+		socket() noexcept {
+			return this->_packetbuf.fd();
 		}
 
 		void
 		socket(sys::socket&& rhs) {
-			_packetbuf.pubsync();
-			_packetbuf.setfd(socket_type(std::move(rhs)));
+			this->_packetbuf.pubsync();
+			this->_packetbuf.setfd(socket_type(std::move(rhs)));
 		}
 
 		const sys::endpoint& vaddr() const { return _vaddr; }
@@ -162,7 +158,8 @@ namespace factory {
 			return out << sys::make_object(
 				"vaddr", rhs.vaddr(),
 				"socket", rhs.socket(),
-				"kernels", rhs._sentupstream.size()
+				"kernels", rhs._sentupstream.size(),
+				"state", int(rhs.state())
 			);
 		}
 
@@ -197,6 +194,35 @@ namespace factory {
 		static bool
 		kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
 			return rhs->moves_downstream() and rhs->carries_parent();
+		}
+
+		void
+		write_kernel(kernel_type* kernel) noexcept {
+			try {
+				this->_stream << kernel;
+			} catch (const Error& err) {
+				sys::log_message("nic", "write error _", err);
+			} catch (const std::exception& err) {
+				sys::log_message("nic", "write error _", err.what());
+			} catch (...) {
+				sys::log_message("nic", "write error _", "<unknown>");
+			}
+		}
+
+		void
+		read_kernels() noexcept {
+			try {
+				kernel_type* kernel = nullptr;
+				while (this->_stream >> kernel) {
+					this->receive_kernel(kernel);
+				}
+			} catch (const Error& err) {
+				sys::log_message("nic", "read error _", err);
+			} catch (const std::exception& err) {
+				sys::log_message("nic", "read error _", err.what());
+			} catch (...) {
+				sys::log_message("nic", "read error _", "<unknown>");
+			}
 		}
 
 		void
@@ -271,12 +297,6 @@ namespace factory {
 			}
 		}
 
-		sys::endpoint _vaddr;
-		Kernelbuf _packetbuf;
-		stream_type _stream;
-		pool_type _sentupstream;
-		pool_type _sentdownstream;
-		router_type& _router;
 	};
 
 }

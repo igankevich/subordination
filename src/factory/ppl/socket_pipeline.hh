@@ -39,6 +39,7 @@ namespace factory {
 		using typename base_pipeline::kernel_pool;
 		using typename base_pipeline::event_handler_type;
 		using typename base_pipeline::event_handler_ptr;
+		using typename base_pipeline::duration;
 
 		using base_pipeline::poller;
 		using base_pipeline::send;
@@ -68,6 +69,7 @@ namespace factory {
 		bool _endreached = false;
 		router_type _router;
 		sys::port_type _port = 33333;
+		std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
 
 	public:
 
@@ -78,9 +80,14 @@ namespace factory {
 		_iterator(_clients.end()),
 		_router(rhs._router),
 		_port(rhs._port)
-		{}
+		{
+		}
 
-		socket_pipeline() = default;
+		socket_pipeline() {
+			using namespace std::chrono;
+			this->set_start_timeout(seconds(7));
+		}
+
 		~socket_pipeline() = default;
 		socket_pipeline(const socket_pipeline&) = delete;
 		socket_pipeline& operator=(const socket_pipeline&) = delete;
@@ -158,7 +165,9 @@ namespace factory {
 			ifaddr_type ifaddr(traits_type::address(rhs), netmask);
 			if (this->find_server(ifaddr) == this->_servers.end()) {
 				this->_servers.emplace_back(ifaddr, traits_type::port(rhs));
-				sys::fd_type fd = this->_servers.back().socket().get_fd();
+				server_type& srv = this->_servers.back();
+				srv.socket().set_user_timeout(this->_socket_timeout);
+				sys::fd_type fd = srv.socket().get_fd();
 				this->poller().insert_special(
 					sys::poll_event{fd, sys::poll_event::In}
 				);
@@ -386,13 +395,26 @@ namespace factory {
 			sys::poll_event::legacy_event revents=0)
 		{
 			sys::fd_type fd = sock.fd();
-			event_handler_ptr s(new event_handler_type(std::move(sock), vaddr, _router));
+			sock.set_user_timeout(this->_socket_timeout);
+			event_handler_ptr s =
+				std::make_shared<event_handler_type>(
+					std::move(sock),
+					vaddr,
+					_router
+				);
+			s->setstate(pipeline_state::starting);
 			// s.setparent(this);
 			auto result = emplace_pipeline(vaddr, std::move(s));
-			poller().emplace(sys::poll_event{fd, events, revents}, result.first->second);
+			this->poller().emplace(
+				sys::poll_event{fd, events, revents},
+				result.first->second
+			);
 			#ifndef NDEBUG
-			sys::log_message(this->_name, "add _", result.first->second);
+			sys::log_message(this->_name, "add _", *result.first->second);
 			#endif
+			if (!this->is_stopped()) {
+				this->_semaphore.notify_one();
+			}
 			return result.first->second;
 		}
 

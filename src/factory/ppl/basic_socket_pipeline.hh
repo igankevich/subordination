@@ -2,6 +2,7 @@
 #define FACTORY_PPL_BASIC_SOCKET_PIPELINE_HH
 
 #include <memory>
+#include <algorithm>
 
 #include <unistdx/base/log_message>
 #include <unistdx/base/simple_lock>
@@ -27,6 +28,9 @@ namespace factory {
 	struct basic_socket_pipeline: public Proxy_pipeline_base<T,Handler> {
 
 		typedef Handler event_handler_type;
+		typedef typename event_handler_type::clock_type clock_type;
+		typedef typename event_handler_type::time_point time_point;
+		typedef typename event_handler_type::duration duration;
 
 		typedef Proxy_pipeline_base<T,Handler> base_pipeline;
 		using typename base_pipeline::kernel_type;
@@ -35,9 +39,11 @@ namespace factory {
 		using typename base_pipeline::sem_type;
 		using typename base_pipeline::kernel_pool;
 		typedef typename sem_type::handler_type event_handler_ptr;
+		typedef typename sem_type::const_iterator handler_const_iterator;
 
 		basic_socket_pipeline(basic_socket_pipeline&& rhs) noexcept:
-		base_pipeline(std::move(rhs))
+		base_pipeline(std::move(rhs)),
+		_start_timeout(rhs._start_timeout)
 		{}
 
 		basic_socket_pipeline():
@@ -50,13 +56,13 @@ namespace factory {
 
 	protected:
 
-		sem_type&
-		poller() {
+		inline sem_type&
+		poller() noexcept {
 			return this->_semaphore;
 		}
 
-		const sem_type&
-		poller() const {
+		inline const sem_type&
+		poller() const noexcept {
 			return this->_semaphore;
 		}
 
@@ -66,12 +72,25 @@ namespace factory {
 			poller().notify_one();
 			lock_type lock(this->_mutex);
 			while (!this->is_stopped()) {
-				poller().wait(lock);
+				bool timeout = false;
+				if (this->_start_timeout > duration::zero()) {
+					handler_const_iterator result =
+						this->handler_with_min_start_time_point();
+					if (result != this->poller().end()) {
+						timeout = true;
+						const time_point tp = (*result)->start_time_point()
+							+ this->_start_timeout;
+						this->poller().wait_until(lock, tp);
+					}
+				}
+				if (!timeout) {
+					this->poller().wait(lock);
+				}
 				sys::unlock_guard<lock_type> g(lock);
 				process_kernels_if_any();
 				accept_connections_if_any();
 				handle_events();
-				remove_pipelines_if_any();
+				remove_pipelines_if_any(timeout);
 			}
 			// prevent double free or corruption
 			poller().clear();
@@ -98,10 +117,32 @@ namespace factory {
 			*/
 		}
 
+		inline void
+		set_start_timeout(const duration& rhs) noexcept {
+			this->_start_timeout = rhs;
+		}
+
 	private:
 
+		handler_const_iterator
+		handler_with_min_start_time_point() const noexcept {
+			handler_const_iterator first =
+				std::find_if(
+					this->poller().begin(), this->poller().end(),
+					[this] (const event_handler_ptr& rhs) {
+						return rhs->is_starting();
+					}
+				);
+			return std::min_element(
+				first, this->poller().end(),
+				[] (const event_handler_ptr& a, const event_handler_ptr& b) {
+					return a->start_time_point() < b->start_time_point();
+				}
+			);
+		}
+
 		void
-		remove_pipelines_if_any() {
+		remove_pipelines_if_any(bool timeout) {
 			this->poller().for_each_special_fd(
 				[this] (sys::poll_event& ev) {
 					if (!ev) {
@@ -109,9 +150,12 @@ namespace factory {
 					}
 				}
 			);
+			const time_point now = timeout
+				? clock_type::now()
+				: time_point(duration::zero());
 			this->poller().for_each_ordinary_fd(
-				[this] (sys::poll_event& ev, event_handler_ptr h) {
-					if (!ev) {
+				[this,timeout,&now] (sys::poll_event& ev, event_handler_ptr& h) {
+					if (!ev || (timeout && this->is_timed_out(*h, now))) {
 						this->remove_client(h);
 					}
 				}
@@ -164,6 +208,12 @@ namespace factory {
 			++_stop_iterations;
 		}
 
+		bool
+		is_timed_out(const event_handler_type& rhs, const time_point& now) {
+			return rhs.is_starting() &&
+				rhs.start_time_point() + this->_start_timeout <= now;
+		}
+
 		//void
 		//flush_kernels() {
 		//	typedef typename upstream_type::value_type pair_type;
@@ -177,6 +227,7 @@ namespace factory {
 	protected:
 
 		int _stop_iterations = 0;
+		duration _start_timeout = duration::zero();
 		static const int MAX_STOP_ITERATIONS = 13;
 	};
 
