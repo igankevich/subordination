@@ -3,15 +3,16 @@
 
 #include <unistdx/ipc/execute>
 #include <iosfwd>
-#include <factory/kernel/kernel_header.hh>
 
 namespace factory {
+
+	typedef uint64_t application_type;
 
 	struct Application {
 
 		typedef std::string path_type;
 
-		static const kernel_header::app_type ROOT = 0;
+		static const application_type ROOT = 0;
 
 		Application() = default;
 
@@ -36,6 +37,14 @@ namespace factory {
 
 	std::ostream&
 	operator<<(std::ostream& out, const Application& rhs);
+
+	namespace this_application {
+
+		/// Cluster-wide application ID.
+		application_type
+		get_id() noexcept;
+
+	}
 
 }
 

@@ -113,7 +113,7 @@ struct Main: public Kernel {
 		for (uint32_t i=1; i<=NUM_SIZES; ++i) {
 			sys::log_message("tst", "sent _/_", i, NUM_SIZES);
 			Test_socket* kernel = new Test_socket;
-			kernel->setapp(sys::this_process::id());
+//			kernel->setapp(sys::this_process::id());
 			upstream<Remote>(this, kernel);
 		}
 	}

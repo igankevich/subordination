@@ -7,7 +7,6 @@ configure_file(
 libfactory_src = files()
 
 subdir('base')
-subdir('reg')
 subdir('kernel')
 subdir('ppl')
 

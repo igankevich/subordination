@@ -2,7 +2,6 @@
 #define FACTORY_PPL_SOCKET_PIPELINE_HH
 
 #include <tuple>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -56,11 +55,6 @@ namespace factory {
 		typedef ifaddr_type::rep_type rep_type;
 		typedef mobile_kernel::id_type id_type;
 		typedef sys::field_iterator<server_const_iterator,0> ifaddr_iterator;
-
-		static_assert(
-			std::is_move_constructible<event_handler_type>::value,
-			"bad event_handler_type"
-		);
 
 	private:
 		server_container_type _servers;
@@ -186,6 +180,13 @@ namespace factory {
 			}
 		}
 
+		void
+		forward(const kernel_header& hdr, sys::pstream& istr) {
+			lock_type lock(this->_mutex);
+			this->log("fwd _", hdr);
+			// TODO
+		}
+
 		inline void
 		set_port(sys::port_type rhs) noexcept {
 			this->_port = rhs;
@@ -206,7 +207,14 @@ namespace factory {
 		void
 		remove_client(client_iterator result) {
 			#ifndef NDEBUG
-			sys::log_message(this->_name, "remove client _", result->first);
+			const char* reason =
+				result->second->is_starting() ? "timed out" : "";
+			sys::log_message(
+				this->_name,
+				"remove client _ (_)",
+				result->first,
+				reason
+			);
 			#endif
 			if (result == this->_iterator) {
 				this->advance_upstream_iterator();

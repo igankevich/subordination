@@ -2,19 +2,17 @@
 #define FACTORY_KERNEL_KERNEL_HEADER_HH
 
 #include <unistdx/net/endpoint>
+#include <factory/ppl/application.hh>
 #include <iosfwd>
 
 namespace factory {
 
 	class kernel_header {
 
-	public:
-		typedef uint16_t app_type;
-
 	private:
 		sys::endpoint _src{};
 		sys::endpoint _dst{};
-		app_type _app = 0;
+		application_type _app = this_application::get_id();
 
 	public:
 		kernel_header() = default;
@@ -42,13 +40,13 @@ namespace factory {
 			this->_dst = rhs;
 		}
 
-		inline app_type
+		inline application_type
 		app() const noexcept {
 			return this->_app;
 		}
 
 		inline void
-		setapp(app_type rhs) noexcept {
+		setapp(application_type rhs) noexcept {
 			this->_app = rhs;
 		}
 

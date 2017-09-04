@@ -56,8 +56,6 @@ namespace factory {
 		thread_pool _threads;
 		mutex_type _mutex;
 		sem_type _semaphore;
-		const char* _name = "ppl";
-		unsigned _number = 0;
 
 	public:
 		basic_pipeline() = default;
@@ -75,9 +73,7 @@ namespace factory {
 		_kernels(std::move(rhs._kernels)),
 		_threads(std::move(rhs._threads)),
 		_mutex(),
-		_semaphore(),
-		_name(rhs._name),
-		_number(rhs._number)
+		_semaphore()
 		{}
 
 		inline
@@ -101,16 +97,6 @@ namespace factory {
 			lock_type lock(this->_mutex);
 			traits_type::push(this->_kernels, kernel);
 			this->_semaphore.notify_one();
-		}
-
-		inline void
-		set_name(const char* rhs) noexcept {
-			this->_name = rhs;
-		}
-
-		inline void
-		set_number(unsigned rhs) noexcept {
-			this->_number = rhs;
 		}
 
 		void

@@ -30,7 +30,8 @@ operator>>(std::istream& in, Failure& rhs) {
 }
 
 //const std::vector<size_t> POWERS = {1,2,3,4,16,17};
-const std::vector<size_t> POWERS = {1,2,3,4};
+//const std::vector<size_t> POWERS = {1,2,3,4};
+const std::vector<size_t> POWERS = {1};
 //const std::vector<size_t> POWERS = {16,17};
 const uint32_t NUM_KERNELS = 7;
 
@@ -122,6 +123,7 @@ struct Sender: public factory::Kernel {
 		std::vector<Datum> output = test_kernel->data();
 		EXPECT_EQ(this->_input.size(), output.size());
 		EXPECT_EQ(this->_input, output);
+		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_KERNELS);
 		if (++_num_returned == NUM_KERNELS) {
 			commit<Local>(this);
 		}
@@ -167,9 +169,11 @@ TEST(NICServerTest, All) {
 	sys::ipv4_addr netmask =
 		sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
 	if (role == Role::Slave) {
+		factory.nic().set_port(port+1);
 		factory.nic().add_server(principal_endpoint, netmask);
 	}
 	if (role == Role::Master) {
+		factory.nic().set_port(port);
 		factory.nic().add_server(subordinate_endpoint, netmask);
 		// wait for the child to start
 		using namespace std::this_thread;

@@ -185,23 +185,25 @@ TYPED_TEST(KernelStreamTest, IO) {
 	for (size_t count=1; count<=100; ++count) {
 		std::vector<Carrier> expected(count);
 		std::vector<kernel_type*> result(count);
-		buffer_type buffer{sink_type{}};
+		buffer_type buffer;
+		buffer.setfd(sink_type{});
 		stream_type stream(&buffer);
 		EXPECT_TRUE(static_cast<bool>(stream));
-		// stream.settypes(&factory::types);
 		for (Carrier& k : expected) {
+			stream.begin_packet();
 			stream << k;
+			stream.end_packet();
 		}
-		stream.flush();
 		for (size_t i=0; i<count; ++i) {
 			stream.sync();
+			stream.read_packet();
 			stream >> result[i];
-			EXPECT_TRUE(static_cast<bool>(stream))
-				<< "i=" << i << ", rdstate=" << stream.rdstate();
+			stream.skip_packet();
 		}
 		for (size_t i=0; i<result.size(); ++i) {
 			Carrier* tmp = dynamic_cast<Carrier*>(result[i]);
-			EXPECT_EQ(expected[i], *tmp) << "i=" << i;
+			ASSERT_EQ(expected[i], *tmp) << "i=" << i
+				<< ",type=" << typeid(Carrier).name();
 			if (tmp->parent()) {
 				delete tmp->parent();
 			}

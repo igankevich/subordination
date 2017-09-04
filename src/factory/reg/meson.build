@@ -1,3 +1,0 @@
-libfactory_src += files([
-])
-

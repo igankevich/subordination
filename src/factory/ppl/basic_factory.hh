@@ -31,9 +31,21 @@ namespace factory {
 		#if defined(FACTORY_DAEMON)
 		inline void
 		forward(const kernel_header& hdr, sys::pstream& istr);
+
+		inline void
+		forward_child(const kernel_header& hdr, sys::pstream& istr);
+
+		inline void
+		forward_parent(const kernel_header& hdr, sys::pstream& istr);
 		#else
 		inline void
 		forward(const kernel_header&, sys::pstream&) {}
+
+		inline void
+		forward_child(const kernel_header&, sys::pstream&) {}
+
+		inline void
+		forward_parent(const kernel_header&, sys::pstream&) {}
 		#endif
 
 	};
@@ -127,7 +139,7 @@ namespace factory {
 		}
 
 		inline void
-		forward(const kernel_header& hdr, sys::pstream& istr) {
+		forward_child(const kernel_header& hdr, sys::pstream& istr) {
 			this->_child.forward(hdr, istr);
 		}
 		#endif
@@ -151,6 +163,11 @@ namespace factory {
 		inline const parent_pipeline_type&
 		nic() const noexcept {
 			return this->_parent;
+		}
+
+		inline void
+		forward_parent(const kernel_header& hdr, sys::pstream& istr) {
+			this->_parent.forward(hdr, istr);
 		}
 		#endif
 
@@ -195,7 +212,19 @@ namespace factory {
 	template <class T>
 	void
 	basic_router<T>::forward(const kernel_header& hdr, sys::pstream& istr) {
-		factory.forward(hdr, istr);
+		factory.forward_child(hdr, istr);
+	}
+
+	template <class T>
+	void
+	basic_router<T>::forward_child(const kernel_header& hdr, sys::pstream& istr) {
+		factory.forward_child(hdr, istr);
+	}
+
+	template <class T>
+	void
+	basic_router<T>::forward_parent(const kernel_header& hdr, sys::pstream& istr) {
+		factory.forward_parent(hdr, istr);
 	}
 	#endif
 

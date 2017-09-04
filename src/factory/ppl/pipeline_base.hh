@@ -2,6 +2,7 @@
 #define FACTORY_PPL_PIPELINE_BASE_HH
 
 #include <chrono>
+#include <unistdx/base/log_message>
 
 namespace factory {
 
@@ -23,6 +24,8 @@ namespace factory {
 	protected:
 		volatile pipeline_state _state = pipeline_state::initial;
 		time_point _start;
+		const char* _name = "ppl";
+		unsigned _number = 0;
 
 	public:
 		pipeline_base() = default;
@@ -67,6 +70,27 @@ namespace factory {
 		inline time_point
 		start_time_point() const noexcept {
 			return this->_start;
+		}
+
+		inline const char*
+		name() const noexcept {
+			return this->_name;
+		}
+
+		inline void
+		set_name(const char* rhs) noexcept {
+			this->_name = rhs;
+		}
+
+		inline void
+		set_number(unsigned rhs) noexcept {
+			this->_number = rhs;
+		}
+
+		template <class ... Args>
+		inline void
+		log(const Args& ... args) {
+			sys::log_message(this->_name, args...);
 		}
 
 	};
