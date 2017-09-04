@@ -6,8 +6,6 @@
 #include <atomic>
 #include <memory>
 
-#include <unistdx/base/delete_each>
-#include <unistdx/base/log_message>
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/pipe>
@@ -126,6 +124,11 @@ namespace factory {
 			if (event.fd() == this->_outbuf->fd()) {
 //				this->_ostream.clear();
 				this->_ostream.sync();
+				if (this->_outbuf->dirty()) {
+					event.setev(sys::poll_event::Out);
+				} else {
+					event.unsetev(sys::poll_event::Out);
+				}
 			} else {
 				assert(
 					event.fd() == this->_inbuf->fd()
@@ -174,8 +177,8 @@ namespace factory {
 
 		using base_pipeline::poller;
 
-		typedef sys::pid_type key_type;
-		typedef std::map<key_type,event_handler_ptr> map_type;
+		typedef std::map<application_type,event_handler_ptr> map_type;
+		typedef typename map_type::iterator app_iterator;
 
 		process_pipeline() = default;
 
@@ -211,9 +214,8 @@ namespace factory {
 				data_pipe.validate();
 				return app.execute();
 			});
-			sys::pid_type process_id = p.id();
 			#ifndef NDEBUG
-			sys::log_message(this->_name, "exec _,pid=_", app, process_id);
+			this->log("exec _,pid=_", app, p.id());
 			#endif
 			data_pipe.close_in_parent();
 			data_pipe.validate();
@@ -227,7 +229,7 @@ namespace factory {
 			child->set_name(this->_name);
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
-			auto result = this->_apps.emplace(process_id, child);
+			auto result = this->_apps.emplace(app.id(), child);
 			poller().emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
 				result.first->second
@@ -243,8 +245,7 @@ namespace factory {
 			};
 			base_pipeline::do_run();
 			#ifndef NDEBUG
-			sys::log_message(
-				this->_name,
+			this->log(
 				"waiting for all processes to finish: pid=_",
 				sys::this_process::id()
 			);
@@ -256,7 +257,8 @@ namespace factory {
 
 		void
 		forward(const kernel_header& hdr, sys::pstream& istr) {
-			auto result = this->_apps.find(hdr.app());
+			this->log("fwd _", hdr);
+			app_iterator result = this->find_by_app_id(hdr.app());
 			if (result == this->_apps.end()) {
 				FACTORY_THROW(Error, "bad application id");
 			}
@@ -275,7 +277,7 @@ namespace factory {
 					}
 				);
 			} else {
-				auto result = this->_apps.find(k->app());
+				app_iterator result = this->find_by_app_id(k->app());
 				if (result == this->_apps.end()) {
 					FACTORY_THROW(Error, "bad application id");
 				}
@@ -303,19 +305,32 @@ namespace factory {
 
 		void
 		on_process_exit(const sys::process& p, sys::proc_info status) {
-			sys::log_message(this->_name, "process exited: status=_", status);
+			this->log("process exited: _", status);
 			lock_type lock(this->_mutex);
-			auto result = this->_apps.find(p.id());
+			app_iterator result = this->find_by_process_id(p.id());
 			if (result != this->_apps.end()) {
 				#ifndef NDEBUG
-				sys::log_message(
-					this->_name,
-					"app finished: app=_",
-					result->first
-				);
+				this->log("app finished: app=_", result->first);
 				#endif
 				result->second->close();
 			}
+		}
+
+		app_iterator
+		find_by_app_id(application_type id) {
+			return this->_apps.find(id);
+		}
+
+		app_iterator
+		find_by_process_id(sys::pid_type pid) {
+			typedef typename map_type::value_type value_type;
+			return std::find_if(
+				this->_apps.begin(),
+				this->_apps.end(),
+				[pid] (const value_type& rhs) {
+					return rhs.second->childpid() == pid;
+				}
+			);
 		}
 
 		map_type _apps;
@@ -338,9 +353,6 @@ namespace factory {
 		typedef Router router_type;
 
 		using base_pipeline::poller;
-
-		typedef sys::pid_type key_type;
-		typedef std::map<key_type, event_handler_type> map_type;
 
 		child_process_pipeline():
 		_parent(std::make_shared<event_handler_type>(

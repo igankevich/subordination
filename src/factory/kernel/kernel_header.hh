@@ -52,7 +52,12 @@ namespace factory {
 
 		inline bool
 		is_foreign() const noexcept {
-			return static_cast<bool>(this->_src);
+			return !this->is_native();
+		}
+
+		inline bool
+		is_native() const noexcept {
+			return this->_app == this_application::get_id();
 		}
 
 		friend std::ostream&

@@ -78,13 +78,18 @@ namespace factory {
 		}
 
 		void
+		forward(const kernel_header& hdr, sys::pstream& istr) {
+			this->_proto.forward(hdr, istr, this->_stream);
+		}
+
+		void
 		handle(sys::poll_event& event) {
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
 			}
 			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
-			if (this-_packetbuf->dirty()) {
+			if (this->_packetbuf->dirty()) {
 				event.setev(sys::poll_event::Out);
 			} else {
 				event.unsetev(sys::poll_event::Out);

@@ -8,30 +8,30 @@ namespace factory {
 
 	typedef uint64_t application_type;
 
-	struct Application {
+	class Application {
 
+	public:
 		typedef std::string path_type;
+		typedef application_type id_type;
 
-		static const application_type ROOT = 0;
+	private:
+		path_type _execpath;
+		id_type _id;
 
-		Application() = default;
+	public:
+		explicit
+		Application(const path_type& exec);
 
-		inline explicit
-		Application(const path_type& exec):
-		_execpath(exec)
-		{}
-
-		inline int
-		execute() const {
-			return sys::this_process::execute(this->_execpath);
+		inline id_type
+		id() const noexcept {
+			return this->_id;
 		}
+
+		int
+		execute() const;
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Application& rhs);
-
-	private:
-
-		path_type _execpath;
 
 	};
 

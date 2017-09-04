@@ -4,6 +4,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <cassert>
 
 #include <unistdx/base/log_message>
 #include <unistdx/it/field_iterator>
@@ -72,8 +73,7 @@ namespace factory {
 		_clients(),
 		_iterator(_clients.end()),
 		_port(rhs._port)
-		{
-		}
+		{}
 
 		socket_pipeline() {
 			using namespace std::chrono;
@@ -182,7 +182,21 @@ namespace factory {
 		forward(const kernel_header& hdr, sys::pstream& istr) {
 			lock_type lock(this->_mutex);
 			this->log("fwd _", hdr);
-			// TODO
+			assert(hdr.is_foreign());
+			if (hdr.to()) {
+				event_handler_ptr ptr =
+					this->find_or_create_peer(hdr.to(), sys::poll_event::Inout);
+				ptr->forward(hdr, istr);
+			} else {
+				if (_clients.empty() || _endreached) {
+					_endreached = false;
+					this->_mutex.unlock();
+					router_type::forward_child(hdr, istr);
+				} else {
+					client_iterator result = this->find_next_client();
+					result->second->forward(hdr, istr);
+				}
+			}
 		}
 
 		inline void
@@ -288,6 +302,21 @@ namespace factory {
 			}
 		}
 
+		/// round robin over upstream hosts
+		client_iterator
+		find_next_client() {
+			// skip stopped hosts
+			client_iterator old_iterator = _iterator;
+			if (_iterator->second->is_stopped()) {
+				do {
+					advance_upstream_iterator();
+				} while (_iterator->second->is_stopped() and old_iterator != _iterator);
+			}
+			client_iterator result = this->_iterator;
+			advance_upstream_iterator();
+			return result;
+		}
+
 		void
 		advance_upstream_iterator() noexcept {
 			_endreached = (++_iterator == _clients.end());
@@ -323,6 +352,7 @@ namespace factory {
 		void
 		process_kernel(kernel_type* k) {
 			// short circuit local server
+			// TODO logic?
 			if (k->to()) {
 				server_iterator result = this->find_server(k->to());
 				if (result != this->_servers.end()) {
@@ -336,24 +366,16 @@ namespace factory {
 				// delete broadcast kernel
 				delete k;
 			} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
-				if (_clients.empty() or _endreached) {
+				if (_clients.empty() || _endreached) {
 					// include localhost in round-robin
 					// in a somewhat half-assed fashion
 					_endreached = false;
 					// short-circuit kernels when no upstream servers are available
 					router_type::send_local(k);
 				} else {
-					// skip stopped hosts
-					client_iterator old_iterator = _iterator;
-					if (_iterator->second->is_stopped()) {
-						do {
-							advance_upstream_iterator();
-						} while (_iterator->second->is_stopped() and old_iterator != _iterator);
-					}
-					// round robin over upstream hosts
-					ensure_identity(k, this->_iterator->second->vaddr());
-					_iterator->second->send(k);
-					advance_upstream_iterator();
+					client_iterator result = this->find_next_client();
+					ensure_identity(k, result->second->vaddr());
+					result->second->send(k);
 				}
 			} else if (k->moves_downstream() and not k->from()) {
 				// kernel @k was sent to local node

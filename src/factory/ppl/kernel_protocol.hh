@@ -10,6 +10,7 @@
 #include <factory/ppl/kernel_proto_flag.hh>
 #include <unistdx/base/delete_each>
 #include <unistdx/it/queue_popper>
+#include <unistdx/ipc/process>
 
 namespace factory {
 
@@ -27,8 +28,13 @@ namespace factory {
 		typedef Forward forward_type;
 		typedef Kernels pool_type;
 		typedef Traits traits_type;
+
+	private:
 		typedef kstream<T> stream_type;
 		typedef sys::queue_pop_iterator<Kernels,Traits> queue_popper;
+		typedef typename T::id_type id_type;
+		typedef sys::ipacket_guard<stream_type> ipacket_guard;
+		typedef sys::opacket_guard<stream_type> opacket_guard;
 
 	private:
 		kernel_proto_flag _flags = kernel_proto_flag(0);
@@ -39,6 +45,7 @@ namespace factory {
 		pool_type _upstream;
 		pool_type _downstream;
 		forward_type _forward;
+		id_type _counter = 0;
 
 	public:
 
@@ -58,6 +65,9 @@ namespace factory {
 		send(kernel_type* kernel, stream_type& stream) {
 			bool delete_kernel = false;
 			if (kernel_goes_in_upstream_buffer(kernel)) {
+				this->ensure_has_id(kernel);
+				this->ensure_has_id(kernel->parent());
+				sys::log_message("proto", "save parent for _", *kernel);
 				traits_type::push(this->_upstream, kernel);
 			} else
 			if (kernel_goes_in_downstream_buffer(kernel)) {
@@ -98,32 +108,40 @@ namespace factory {
 		receive_kernels(stream_type& stream) noexcept {
 			while (stream.read_packet()) {
 				try {
-					try {
-						if (kernel_type* k = this->read_kernel(stream)) {
-							bool ok = this->receive_kernel(k);
-							if (!ok) {
-								#ifndef NDEBUG
-								sys::log_message(
-									"proto",
-									"no principal found for _",
-									*k
-								);
-								#endif
-								k->principal(k->parent());
-								this->send(k, stream);
-							} else {
-								router_type::send_local(k);
-							}
+					// eats remaining bytes on exception
+					ipacket_guard g(stream);
+					if (kernel_type* k = this->read_kernel(stream)) {
+						bool ok = this->receive_kernel(k);
+						if (!ok) {
+							#ifndef NDEBUG
+							sys::log_message(
+								"proto",
+								"no principal found for _",
+								*k
+							);
+							#endif
+							k->principal(k->parent());
+							this->send(k, stream);
+						} else {
+							router_type::send_local(k);
 						}
-					} catch (...) {
-						// eat remaining bytes
-						stream.skip_packet();
-						throw;
 					}
 				} catch (const Error& err) {
-					sys::log_message("proto", "read error _ app=_", err, _thisapp);
+					sys::log_message(
+						"proto",
+						"read error _ app=_,pid=_",
+						err,
+						_thisapp,
+						sys::this_process::id()
+					);
 				} catch (const std::exception& err) {
-					sys::log_message("proto", "read error _ app=_", err.what(), _thisapp);
+					sys::log_message(
+						"proto",
+						"read error _ app=_,pid=_",
+						err.what(),
+						_thisapp,
+						sys::this_process::id()
+					);
 				} catch (...) {
 					sys::log_message("proto", "read error _", "<unknown>");
 				}
@@ -144,13 +162,9 @@ namespace factory {
 		void
 		write_kernel(kernel_type* kernel, stream_type& stream) noexcept {
 			try {
+				opacket_guard g(stream);
 				stream.begin_packet();
-				try {
-					this->do_write_kernel(*kernel, stream);
-				} catch (...) {
-					stream.rdbuf()->cancel_packet();
-					throw;
-				}
+				this->do_write_kernel(*kernel, stream);
 				stream.end_packet();
 			} catch (const Error& err) {
 				sys::log_message("proto", "write error _", err);
@@ -194,13 +208,15 @@ namespace factory {
 				#ifndef NDEBUG
 				sys::log_message(
 					"proto",
-					"fwd _ _ app=_",
+					"fwd _ app=_,pid=_",
 					hdr,
-					typeid(_forward).name(),
-					_thisapp
+					_thisapp,
+					sys::this_process::id()
 				);
 				#endif
 				this->_forward(hdr, stream);
+				// skip packet even if no forwarding was done
+				stream.skip_packet();
 			} else {
 				const bool b = this->has_src_and_dest();
 				sys::endpoint from, to;
@@ -244,12 +260,18 @@ namespace factory {
 
 		void
 		plug_parent(kernel_type* k) {
+			if (!k->has_id()) {
+				throw std::invalid_argument("downstream kernel without an id");
+			}
 			auto pos = std::find_if(
 				this->_upstream.begin(),
 				this->_upstream.end(),
-				[k] (kernel_type* rhs) { return *rhs == *k; }
+				[k] (kernel_type* rhs) { return rhs->id() == k->id(); }
 			);
-			if (pos != this->_upstream.end()) {
+			if (pos == this->_upstream.end()) {
+				sys::log_message("proto", "parent not found for _", *k);
+				throw std::invalid_argument("parent not found");
+			} else {
 				kernel_type* orig = *pos;
 				k->parent(orig->parent());
 				k->principal(k->parent());
@@ -297,6 +319,18 @@ namespace factory {
 			}
 		}
 		// }}}
+
+		void
+		ensure_has_id(kernel_type* kernel) {
+			if (!kernel->has_id()) {
+				kernel->id(this->generate_id());
+			}
+		}
+
+		id_type
+		generate_id() noexcept {
+			return ++this->_counter;
+		}
 
 	public:
 
