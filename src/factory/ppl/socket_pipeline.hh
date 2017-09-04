@@ -61,7 +61,6 @@ namespace factory {
 		client_map_type _clients;
 		client_iterator _iterator;
 		bool _endreached = false;
-		router_type _router;
 		sys::port_type _port = 33333;
 		std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
 
@@ -72,7 +71,6 @@ namespace factory {
 		_servers(std::move(rhs._servers)),
 		_clients(),
 		_iterator(_clients.end()),
-		_router(rhs._router),
 		_port(rhs._port)
 		{
 		}
@@ -328,7 +326,7 @@ namespace factory {
 			if (k->to()) {
 				server_iterator result = this->find_server(k->to());
 				if (result != this->_servers.end()) {
-					this->_router.send_local(k);
+					router_type::send_local(k);
 				}
 			}
 			if (k->moves_everywhere()) {
@@ -343,7 +341,7 @@ namespace factory {
 					// in a somewhat half-assed fashion
 					_endreached = false;
 					// short-circuit kernels when no upstream servers are available
-					_router.send_local(k);
+					router_type::send_local(k);
 				} else {
 					// skip stopped hosts
 					client_iterator old_iterator = _iterator;
@@ -361,7 +359,7 @@ namespace factory {
 				// kernel @k was sent to local node
 				// because no upstream servers had
 				// been available
-				_router.send_local(k);
+				router_type::send_local(k);
 			} else {
 				// create endpoint if necessary, and send kernel
 				if (not k->to()) {
@@ -407,8 +405,7 @@ namespace factory {
 			event_handler_ptr s =
 				std::make_shared<event_handler_type>(
 					std::move(sock),
-					vaddr,
-					_router
+					vaddr
 				);
 			s->setstate(pipeline_state::starting);
 			// s.setparent(this);

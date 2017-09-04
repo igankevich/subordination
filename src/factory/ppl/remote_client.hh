@@ -42,17 +42,15 @@ namespace factory {
 		kernelbuf_ptr _packetbuf;
 		stream_type _stream;
 		protocol_type _proto;
-		router_type& _router;
 
 	public:
 		remote_client() = default;
 
-		remote_client(socket_type&& sock, sys::endpoint vaddr, router_type& router):
+		remote_client(socket_type&& sock, sys::endpoint vaddr):
 		_vaddr(vaddr),
 		_packetbuf(new kernelbuf_type),
 		_stream(_packetbuf.get()),
-		_proto(),
-		_router(router)
+		_proto()
 		{
 			this->_proto.set_endpoint(this->_vaddr);
 			this->_packetbuf->setfd(std::move(sock));

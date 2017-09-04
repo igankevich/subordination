@@ -22,29 +22,29 @@ namespace factory {
 	template <class T>
 	struct basic_router {
 
-		inline void
+		static inline void
 		send_local(T* rhs);
 
-		inline void
+		static inline void
 		send_remote(T*);
 
 		#if defined(FACTORY_DAEMON)
-		inline void
+		static inline void
 		forward(const kernel_header& hdr, sys::pstream& istr);
 
-		inline void
+		static inline void
 		forward_child(const kernel_header& hdr, sys::pstream& istr);
 
-		inline void
+		static inline void
 		forward_parent(const kernel_header& hdr, sys::pstream& istr);
 		#else
-		inline void
+		static inline void
 		forward(const kernel_header&, sys::pstream&) {}
 
-		inline void
+		static inline void
 		forward_child(const kernel_header&, sys::pstream&) {}
 
-		inline void
+		static inline void
 		forward_parent(const kernel_header&, sys::pstream&) {}
 		#endif
 

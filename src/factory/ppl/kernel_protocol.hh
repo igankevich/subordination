@@ -38,7 +38,6 @@ namespace factory {
 		application_type _thisapp = this_application::get_id();
 		pool_type _upstream;
 		pool_type _downstream;
-		router_type _router;
 		forward_type _forward;
 
 	public:
@@ -113,7 +112,7 @@ namespace factory {
 								k->principal(k->parent());
 								this->send(k, stream);
 							} else {
-								this->_router.send_local(k);
+								router_type::send_local(k);
 							}
 						}
 					} catch (...) {
@@ -279,7 +278,7 @@ namespace factory {
 				#ifndef NDEBUG
 				sys::log_message("proto", "recover _", *k);
 				#endif
-				this->_router.send_remote(k);
+				router_type::send_remote(k);
 			} else if (k->moves_somewhere()) {
 				#ifndef NDEBUG
 				sys::log_message("proto", "destination is unreachable for _", *k);
@@ -287,12 +286,12 @@ namespace factory {
 				k->from(k->to());
 				k->result(exit_code::endpoint_not_connected);
 				k->principal(k->parent());
-				this->_router.send_local(k);
+				router_type::send_local(k);
 			} else if (k->moves_downstream() && k->carries_parent()) {
 				#ifndef NDEBUG
 				sys::log_message("proto", "restore parent _", *k);
 				#endif
-				this->_router.send_local(k);
+				router_type::send_local(k);
 			} else {
 				sys::log_message("proto", "bad kernel in sent buffer: _", *k);
 			}

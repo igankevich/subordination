@@ -47,15 +47,12 @@ namespace factory {
 		kernelbuf_ptr _inbuf;
 		stream_type _istream;
 		protocol_type _proto;
-		router_type _router;
-		int _refcnt = 0;
 
 	public:
 
 		process_handler(
 			sys::pid_type&& child,
-			sys::two_way_pipe&& pipe,
-			router_type& router
+			sys::two_way_pipe&& pipe
 		):
 		_childpid(child),
 		_outbuf(new kernelbuf_type),
@@ -86,7 +83,7 @@ namespace factory {
 		}
 
 		explicit
-		process_handler(sys::pipe&& pipe, router_type& router):
+		process_handler(sys::pipe&& pipe):
 		_childpid(sys::this_process::id()),
 		_outbuf(new kernelbuf_type),
 		_ostream(_outbuf.get()),
@@ -225,8 +222,7 @@ namespace factory {
 			event_handler_ptr child =
 				std::make_shared<event_handler_type>(
 					p.id(),
-					std::move(data_pipe),
-					this->_router
+					std::move(data_pipe)
 				);
 			child->set_name(this->_name);
 			// child.setparent(this);
@@ -324,7 +320,6 @@ namespace factory {
 
 		map_type _apps;
 		sys::process_group _procs;
-		router_type _router;
 	};
 
 	template<class T, class Router>
@@ -340,7 +335,7 @@ namespace factory {
 		using typename base_pipeline::event_handler_type;
 		using typename base_pipeline::event_handler_ptr;
 		using typename base_pipeline::queue_popper;
-		typedef typename event_handler_type::router_type router_type;
+		typedef Router router_type;
 
 		using base_pipeline::poller;
 
@@ -349,8 +344,7 @@ namespace factory {
 
 		child_process_pipeline():
 		_parent(std::make_shared<event_handler_type>(
-			sys::pipe{Shared_fildes::In, Shared_fildes::Out},
-			this->_router
+			sys::pipe{Shared_fildes::In, Shared_fildes::Out}
 		))
 		{}
 
@@ -406,7 +400,6 @@ namespace factory {
 			this->_parent->send(k);
 		}
 
-		router_type _router;
 		event_handler_ptr _parent;
 	};
 
