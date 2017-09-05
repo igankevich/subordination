@@ -15,7 +15,7 @@
 #endif
 #include <factory/ppl/process_pipeline.hh>
 #include <factory/ppl/timer_pipeline.hh>
-#include <vector>
+#include <factory/ppl/application.hh>
 
 namespace factory {
 
@@ -46,6 +46,11 @@ namespace factory {
 
 		static inline void
 		forward_parent(const kernel_header&, sys::pstream&) {}
+		#endif
+
+		#if defined(FACTORY_DAEMON)
+		static inline void
+		execute(const Application& app);
 		#endif
 
 	};
@@ -225,6 +230,12 @@ namespace factory {
 	void
 	basic_router<T>::forward_parent(const kernel_header& hdr, sys::pstream& istr) {
 		factory.forward_parent(hdr, istr);
+	}
+
+	template <class T>
+	void
+	basic_router<T>::execute(const Application& app) {
+		factory.child().add(app);
 	}
 	#endif
 

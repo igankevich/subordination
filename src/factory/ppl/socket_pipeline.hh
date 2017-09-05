@@ -67,14 +67,6 @@ namespace factory {
 
 	public:
 
-		socket_pipeline(socket_pipeline&& rhs):
-		base_pipeline(std::move(rhs)),
-		_servers(std::move(rhs._servers)),
-		_clients(),
-		_iterator(_clients.end()),
-		_port(rhs._port)
-		{}
-
 		socket_pipeline() {
 			using namespace std::chrono;
 			this->set_start_timeout(seconds(7));
@@ -82,6 +74,7 @@ namespace factory {
 
 		~socket_pipeline() = default;
 		socket_pipeline(const socket_pipeline&) = delete;
+		socket_pipeline(socket_pipeline&&) = delete;
 		socket_pipeline& operator=(const socket_pipeline&) = delete;
 		socket_pipeline& operator=(socket_pipeline&&) = delete;
 

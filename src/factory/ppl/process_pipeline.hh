@@ -5,15 +5,19 @@
 #include <cassert>
 #include <atomic>
 #include <memory>
+#include <vector>
 
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/fildesbuf>
+#include <unistdx/io/fdstream>
 #include <unistdx/io/pipe>
 #include <unistdx/io/two_way_pipe>
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
 #include <unistdx/it/queue_popper>
+#include <unistdx/net/endpoint>
 #include <unistdx/net/pstream>
+#include <unistdx/net/socket>
 
 #include <factory/kernel/kernel.hh>
 #include <factory/kernel/kernel_instance_registry.hh>
@@ -160,9 +164,10 @@ namespace factory {
 	};
 
 	template<class T, class Router>
-	struct process_pipeline:
+	class process_pipeline:
 		public basic_socket_pipeline<T,process_handler<T,Router>> {
 
+	public:
 		typedef Router router_type;
 
 		typedef basic_socket_pipeline<T,process_handler<T,Router>> base_pipeline;
@@ -177,8 +182,15 @@ namespace factory {
 
 		using base_pipeline::poller;
 
+	private:
 		typedef std::map<application_type,event_handler_ptr> map_type;
 		typedef typename map_type::iterator app_iterator;
+
+	private:
+		map_type _apps;
+		sys::process_group _procs;
+
+	public:
 
 		process_pipeline() = default;
 
@@ -333,8 +345,6 @@ namespace factory {
 			);
 		}
 
-		map_type _apps;
-		sys::process_group _procs;
 	};
 
 	template<class T, class Router>
@@ -413,6 +423,177 @@ namespace factory {
 		}
 
 		event_handler_ptr _parent;
+	};
+
+	template<class T, class Router>
+	class external_process_handler: public pipeline_base {
+
+	public:
+		typedef T kernel_type;
+		typedef Router router_type;
+		typedef sys::basic_fdstream<char, std::char_traits<char>, sys::socket>
+			stream_type;
+
+	private:
+		sys::endpoint _endpoint;
+		stream_type _stream;
+
+	public:
+
+		const sys::endpoint&
+		endpoint() const noexcept {
+			return this->_endpoint;
+		}
+
+		void
+		handle(sys::poll_event& event) {
+			if (this->is_starting()) {
+				this->setstate(pipeline_state::started);
+			}
+		}
+
+	};
+
+	template<class T, class Router>
+	class unix_domain_socket_pipeline:
+		public basic_socket_pipeline<T,external_process_handler<T,Router>> {
+
+	public:
+		typedef basic_socket_pipeline<T,external_process_handler<T,Router>>
+			base_pipeline;
+		using typename base_pipeline::kernel_type;
+		using typename base_pipeline::mutex_type;
+		using typename base_pipeline::lock_type;
+		using typename base_pipeline::sem_type;
+		using typename base_pipeline::kernel_pool;
+		using typename base_pipeline::event_handler_type;
+		using typename base_pipeline::event_handler_ptr;
+		using typename base_pipeline::queue_popper;
+		typedef Router router_type;
+
+		using base_pipeline::poller;
+
+	private:
+		typedef std::pair<sys::endpoint, sys::socket> server_type;
+		typedef std::vector<server_type> server_container;
+		typedef server_container::iterator server_iterator;
+		typedef event_handler_ptr client_type;
+		typedef typename sem_type::const_iterator client_iterator;
+
+	private:
+		server_container _servers;
+
+	public:
+		unix_domain_socket_pipeline() = default;
+		~unix_domain_socket_pipeline() = default;
+		unix_domain_socket_pipeline(const unix_domain_socket_pipeline& rhs) = delete;
+		unix_domain_socket_pipeline(unix_domain_socket_pipeline&& rhs) = delete;
+
+		void
+		add_server(const sys::endpoint& rhs) {
+			lock_type lock(this->_mutex);
+			if (this->find_server(rhs) == this->_servers.end()) {
+				this->_servers.emplace_back(rhs, sys::socket(rhs));
+				server_type& srv = this->_servers.back();
+				sys::fd_type fd = srv.second.get_fd();
+				this->poller().insert_special(
+					sys::poll_event{fd, sys::poll_event::In}
+				);
+				if (!this->is_stopped()) {
+					this->_semaphore.notify_one();
+				}
+			}
+		}
+
+	protected:
+
+		void
+		remove_server(sys::fd_type fd) override {
+			server_iterator result = this->find_server(fd);
+			if (result != this->_servers.end()) {
+				#ifndef NDEBUG
+				this->log("remove server _", result->first);
+				#endif
+				this->_servers.erase(result);
+			}
+		}
+
+		void
+		remove_client(event_handler_ptr) override {}
+
+		void
+		accept_connection(sys::poll_event& ev) override {
+			sys::endpoint addr;
+			sys::socket sock;
+			server_iterator result = this->find_server(ev.fd());
+			if (result == this->_servers.end()) {
+				throw std::invalid_argument("no matching server found");
+			}
+			result->second.accept(sock, addr);
+			client_iterator res = this->find_client(addr);
+			if (res != this->poller().end()) {
+				throw std::invalid_argument("client already exists");
+			}
+		}
+
+		void
+		process_kernels() override {
+			lock_type lock(this->_mutex);
+			sys::for_each_unlock(lock,
+				queue_popper(this->_kernels),
+				queue_popper(),
+				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
+			);
+		}
+
+		void
+		do_run() override {
+			this->init_pipeline();
+			base_pipeline::do_run();
+		}
+
+	private:
+
+		void
+		process_kernel(kernel_type* k) {
+			#ifndef NDEBUG
+			this->log("send _", *k);
+			#endif
+		}
+
+		server_iterator
+		find_server(const sys::endpoint& e) {
+			return std::find_if(
+				this->_servers.begin(),
+				this->_servers.end(),
+				[&e] (const server_type& rhs) {
+					return rhs.first == e;
+				}
+			);
+		}
+
+		server_iterator
+		find_server(sys::fd_type fd) {
+			return std::find_if(
+				this->_servers.begin(),
+				this->_servers.end(),
+				[fd] (const server_type& rhs) {
+					return rhs.second.get_fd() == fd;
+				}
+			);
+		}
+
+		client_iterator
+		find_client(const sys::endpoint& e) {
+			return std::find_if(
+				this->poller().begin(),
+				this->poller().end(),
+				[&e] (const client_type& rhs) {
+					return rhs->endpoint() == e;
+				}
+			);
+		}
+
 	};
 
 }
