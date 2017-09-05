@@ -1,5 +1,5 @@
 test(
-	'factory::kstream',
+	'kstream-test',
 	executable(
 		'kstream-test',
 		sources: 'kstream_test.cc',
@@ -10,7 +10,7 @@ test(
 )
 
 test(
-	'factory::local_server',
+	'local-server-test',
 	executable(
 		'local-server-test',
 		sources: 'local_server_test.cc',
@@ -36,7 +36,7 @@ socket_pipeline_test = executable(
 )
 
 test(
-	'factory::socket_pipeline (no failure)',
+	'socket-pipeline-no-failure',
 	test_runner,
 	args: [
 		'--strategy=master-slave',
@@ -47,7 +47,7 @@ test(
 )
 
 test(
-	'factory::socket_pipeline (slave failure)',
+	'socket-pipeline-slave-failure',
 	test_runner,
 	args: [
 		'--strategy=master-slave',
@@ -58,7 +58,7 @@ test(
 )
 
 test(
-	'factory::timer_pipeline',
+	'timer-pipeline-test',
 	executable(
 		'timer-pipeline-test',
 		sources: 'timer_pipeline_test.cc',
