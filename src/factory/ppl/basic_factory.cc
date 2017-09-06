@@ -45,15 +45,14 @@ _downstream(_upstream.concurrency()) {
 	this->_io.set_name("io");
 	#if defined(FACTORY_PRIORITY_SCHEDULING)
 	this->_prio.set_name("prio");
-	#endif
-	#if defined(FACTORY_APPLICATION)
-	this->_parent.set_name("chld");
-	#endif
-	#if defined(FACTORY_DAEMON)
+	#elif defined(FACTORY_DAEMON)
 	this->_parent.set_name("nic");
+	#elif defined(FACTORY_SUBMIT)
+	this->_parent.set_name("unix");
 	#endif
 	#if defined(FACTORY_DAEMON)
 	this->_child.set_name("proc");
+	this->_external.set_name("unix");
 	#endif
 }
 
@@ -72,6 +71,7 @@ factory::Factory<T>::start() {
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child
+		, this->_external
 		#endif
 	);
 	this->setstate(pipeline_state::started);
@@ -92,6 +92,7 @@ factory::Factory<T>::stop() {
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child
+		, this->_external
 		#endif
 	);
 	this->setstate(pipeline_state::stopped);
@@ -111,6 +112,7 @@ factory::Factory<T>::wait() {
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child
+		, this->_external
 		#endif
 	);
 }

@@ -1,12 +1,15 @@
 #include "application.hh"
 
+#include <algorithm>
 #include <ostream>
 #include <random>
 #include <sstream>
 #include <stdlib.h>
 #include <unistdx/base/check>
+#include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
 #include <unistdx/base/n_random_bytes>
+#include <unistdx/it/intersperse_iterator>
 
 #define FACTORY_ENV_APPLICATION_ID "FACTORY_APPLICATION_ID"
 
@@ -36,9 +39,29 @@ namespace {
 
 }
 
+namespace std {
+
+	std::ostream&
+	operator<<(std::ostream& out, const std::vector<std::string>& rhs) {
+		std::copy(
+			rhs.begin(),
+			rhs.end(),
+			sys::intersperse_iterator<std::string,char>(out, ',')
+		);
+		return out;
+	}
+
+}
+
 std::ostream&
 factory::operator<<(std::ostream& out, const Application& rhs) {
-	return out << sys::make_object("exec", rhs._execpath);
+	return out << sys::make_object(
+		"id", rhs._id,
+		"uid", rhs._uid,
+		"gid", rhs._gid,
+		"args", rhs._args,
+		"env", rhs._env
+	);
 }
 
 factory::application_type
@@ -46,17 +69,45 @@ factory::this_application::get_id() noexcept {
 	return this_app;
 }
 
-factory::Application::Application(const path_type& exec):
-_execpath(exec),
-_id(generate_application_id())
-{}
+factory::Application::Application(
+	const container_type& args,
+	const container_type& env
+):
+_args(args),
+_env(env)
+{
+	if (this->_args.empty()) {
+		throw std::invalid_argument("empty arguments");
+	}
+}
 
 int
 factory::Application::execute() const {
+	sys::argstream args, env;
+	for (const std::string& a : this->_args) {
+		args.append(a);
+	}
+	for (const std::string& a : this->_env) {
+		env.append(a);
+	}
+	// set application ID
 	std::stringstream str;
 	str << FACTORY_ENV_APPLICATION_ID << '=' << this->_id;
 	std::string s(str.str());
-	UNISTDX_CHECK(::putenv(&s[0]));
-	return sys::this_process::execute(this->_execpath);
+	env.append(str.str());
+	// set path
+	auto result = std::find_if(
+		this->_env.begin(),
+		this->_env.end(),
+		[] (const std::string& rhs) {
+			return rhs.find("PATH=") == 0;
+		}
+	);
+	if (result == this->_env.end()) {
+		UNISTDX_CHECK(::unsetenv("PATH"));
+	} else {
+		UNISTDX_CHECK(::putenv(const_cast<char*>(result->data())));
+	}
+	return sys::this_process::exec_command(args.argv(), env.argv());
 }
 

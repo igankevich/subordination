@@ -9,7 +9,6 @@
 
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/fdstream>
 #include <unistdx/io/pipe>
 #include <unistdx/io/two_way_pipe>
 #include <unistdx/ipc/process>
@@ -27,6 +26,7 @@
 #include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/kernel_protocol.hh>
 #include <factory/ppl/application.hh>
+#include <factory/ppl/application_kernel.hh>
 
 namespace factory {
 
@@ -209,7 +209,7 @@ namespace factory {
 		void
 		process_kernels() override {
 			lock_type lock(this->_mutex);
-			sys::for_each_unlock(lock,
+			std::for_each(
 				queue_popper(this->_kernels),
 				queue_popper(),
 				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
@@ -224,13 +224,31 @@ namespace factory {
 				data_pipe.close_in_child();
 				data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 				data_pipe.validate();
-				return app.execute();
+				try {
+					return app.execute();
+				} catch (const std::exception& err) {
+					this->log(
+						"failed to execute _: _",
+						app.filename(),
+						err.what()
+					);
+				} catch (...) {
+					this->log(
+						"failed to execute _: _",
+						app.filename(),
+						"unknown error"
+					);
+				}
+				std::exit(1);
 			});
 			#ifndef NDEBUG
 			this->log("exec _,pid=_", app, p.id());
 			#endif
 			data_pipe.close_in_parent();
 			data_pipe.validate();
+			if (!p) {
+				throw std::runtime_error("child process terminated");
+			}
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
 			event_handler_ptr child =
@@ -385,7 +403,7 @@ namespace factory {
 		void
 		process_kernels() override {
 			lock_type lock(this->_mutex);
-			sys::for_each_unlock(lock,
+			std::for_each(
 				queue_popper(this->_kernels),
 				queue_popper(),
 				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
@@ -431,26 +449,108 @@ namespace factory {
 	public:
 		typedef T kernel_type;
 		typedef Router router_type;
-		typedef sys::basic_fdstream<char, std::char_traits<char>, sys::socket>
-			stream_type;
+
+	private:
+		typedef basic_kernelbuf<
+			sys::basic_fildesbuf<char, std::char_traits<char>, sys::socket>>
+			kernelbuf_type;
+		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
+		typedef kstream<T> stream_type;
+		typedef sys::ipacket_guard<stream_type> ipacket_guard;
+		typedef sys::opacket_guard<stream_type> opacket_guard;
 
 	private:
 		sys::endpoint _endpoint;
+		kernelbuf_ptr _buffer;
 		stream_type _stream;
 
 	public:
+
+		inline
+		external_process_handler(const sys::endpoint& e, sys::socket&& sock):
+		_endpoint(e),
+		_buffer(new kernelbuf_type),
+		_stream(_buffer.get())
+		{
+			this->_buffer->setfd(std::move(sock));
+		}
 
 		const sys::endpoint&
 		endpoint() const noexcept {
 			return this->_endpoint;
 		}
 
+		inline sys::socket&
+		socket() noexcept {
+			return this->_buffer->fd();
+		}
+
 		void
 		handle(sys::poll_event& event) {
+			std::clog << "event=" << event << std::endl;
+			std::clog << "socket()=" << socket() << std::endl;
 			if (this->is_starting()) {
 				this->setstate(pipeline_state::started);
 			}
+			this->_stream.sync();
+			this->receive_kernels(this->_stream);
+			this->_stream.sync();
 		}
+
+	private:
+
+		void
+		receive_kernels(stream_type& stream) noexcept {
+			while (stream.read_packet()) {
+				Application_kernel* k = nullptr;
+				try {
+					// eats remaining bytes on exception
+					application_type a;
+					ipacket_guard g(stream);
+					kernel_type* kernel = nullptr;
+					stream >> a;
+					stream >> kernel;
+					k = dynamic_cast<Application_kernel*>(kernel);
+					this->log("recv _", *k);
+					Application app(k->arguments(), k->environment());
+					sys::user_credentials creds = this->socket().credentials();
+					app.set_credentials(creds.uid, creds.gid);
+					try {
+						router_type::execute(app);
+						k->return_to_parent(exit_code::success);
+					} catch (const std::exception& err) {
+						k->return_to_parent(exit_code::error);
+						k->set_error(err.what());
+					} catch (...) {
+						k->return_to_parent(exit_code::error);
+						k->set_error("unknown error");
+					}
+				} catch (const Error& err) {
+					this->log("read error _", err);
+				} catch (const std::exception& err) {
+					this->log("read error _ ", err.what());
+				} catch (...) {
+					this->log("read error _", "<unknown>");
+				}
+				if (k) {
+					try {
+						opacket_guard g(stream);
+						stream.begin_packet();
+						stream << this_application::get_id();
+						stream << k;
+						stream.end_packet();
+					} catch (const Error& err) {
+						sys::log_message("proto", "write error _", err);
+					} catch (const std::exception& err) {
+						sys::log_message("proto", "write error _", err.what());
+					} catch (...) {
+						sys::log_message("proto", "write error _", "<unknown>");
+					}
+					delete k;
+				}
+			}
+		}
+
 
 	};
 
@@ -493,7 +593,11 @@ namespace factory {
 		add_server(const sys::endpoint& rhs) {
 			lock_type lock(this->_mutex);
 			if (this->find_server(rhs) == this->_servers.end()) {
-				this->_servers.emplace_back(rhs, sys::socket(rhs));
+				sys::socket sock;
+				sock.bind(rhs);
+				sock.setopt(sys::socket::pass_credentials);
+				sock.listen();
+				this->_servers.emplace_back(rhs, std::move(sock));
 				server_type& srv = this->_servers.back();
 				sys::fd_type fd = srv.second.get_fd();
 				this->poller().insert_special(
@@ -503,6 +607,16 @@ namespace factory {
 					this->_semaphore.notify_one();
 				}
 			}
+		}
+
+		void
+		add_client(const sys::endpoint& addr) {
+			lock_type lock(this->_mutex);
+			sys::socket s(sys::family_type::unix);
+			s.setopt(sys::socket::pass_credentials);
+			s.connect(addr);
+			this->add_client(addr, std::move(s));
+			this->poller().notify_one();
 		}
 
 	protected:
@@ -519,7 +633,11 @@ namespace factory {
 		}
 
 		void
-		remove_client(event_handler_ptr) override {}
+		remove_client(event_handler_ptr ptr) override {
+			#ifndef NDEBUG
+			this->log("remove _ _", ptr->endpoint(), ptr->socket());
+			#endif
+		}
 
 		void
 		accept_connection(sys::poll_event& ev) override {
@@ -534,22 +652,17 @@ namespace factory {
 			if (res != this->poller().end()) {
 				throw std::invalid_argument("client already exists");
 			}
+			this->add_client(addr, std::move(sock));
 		}
 
 		void
 		process_kernels() override {
 			lock_type lock(this->_mutex);
-			sys::for_each_unlock(lock,
+			std::for_each(
 				queue_popper(this->_kernels),
 				queue_popper(),
 				[this] (kernel_type* rhs) { this->process_kernel(rhs); }
 			);
-		}
-
-		void
-		do_run() override {
-			this->init_pipeline();
-			base_pipeline::do_run();
 		}
 
 	private:
@@ -592,6 +705,24 @@ namespace factory {
 					return rhs->endpoint() == e;
 				}
 			);
+		}
+
+		void
+		add_client(const sys::endpoint& addr, sys::socket&& sock) {
+			sys::fd_type fd = sock.fd();
+			event_handler_ptr s =
+				std::make_shared<event_handler_type>(
+					addr,
+					std::move(sock)
+				);
+			s->setstate(pipeline_state::starting);
+			this->poller().emplace(
+				sys::poll_event{fd, sys::poll_event::In, sys::poll_event::In},
+				s
+			);
+			#ifndef NDEBUG
+			this->log("add _", addr);
+			#endif
 		}
 
 	};

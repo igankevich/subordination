@@ -153,9 +153,11 @@ namespace factory {
 			const time_point now = timeout
 				? clock_type::now()
 				: time_point(duration::zero());
+			int i=0;
 			this->poller().for_each_ordinary_fd(
-				[this,timeout,&now] (sys::poll_event& ev, event_handler_ptr& h) {
+				[this,timeout,&now,&i] (sys::poll_event& ev, event_handler_ptr& h) {
 					if (!ev || (timeout && this->is_timed_out(*h, now))) {
+						this->log("remove client _ _", ++i ,ev);
 						this->remove_client(h);
 					}
 				}

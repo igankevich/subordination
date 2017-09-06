@@ -61,9 +61,10 @@ namespace factory {
 		server_container_type _servers;
 		client_map_type _clients;
 		client_iterator _iterator;
-		bool _endreached = false;
 		sys::port_type _port = 33333;
 		std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
+		id_type _counter = 0;
+		bool _uselocalhost = true;
 
 	public:
 
@@ -181,13 +182,14 @@ namespace factory {
 					this->find_or_create_peer(hdr.to(), sys::poll_event::Inout);
 				ptr->forward(hdr, istr);
 			} else {
-				if (_clients.empty() || _endreached) {
-					_endreached = false;
+				this->find_next_client();
+				if (this->end_reached()) {
+					this->reset_iterator();
 					this->_mutex.unlock();
 					router_type::forward_child(hdr, istr);
 				} else {
-					client_iterator result = this->find_next_client();
-					result->second->forward(hdr, istr);
+					this->_iterator->second->forward(hdr, istr);
+					++this->_iterator;
 				}
 			}
 		}
@@ -207,6 +209,11 @@ namespace factory {
 			return this->_servers.end();
 		}
 
+		inline void
+		use_localhost(bool b) noexcept {
+			this->_uselocalhost = b;
+		}
+
 	private:
 
 		void
@@ -222,7 +229,7 @@ namespace factory {
 			);
 			#endif
 			if (result == this->_iterator) {
-				this->advance_upstream_iterator();
+				++this->_iterator;
 			}
 			result->second->setstate(pipeline_state::stopped);
 			this->_clients.erase(result);
@@ -280,62 +287,91 @@ namespace factory {
 		}
 
 		void
+		set_kernel_id(kernel_type* kernel, id_type& counter) {
+			if (!kernel->has_id()) {
+				kernel->set_id(++counter);
+			}
+		}
+
+		void
 		ensure_identity(kernel_type* kernel, const sys::endpoint& dest) {
-			if (this->_servers.empty()) {
-				kernel->return_to_parent(
-					exit_code::no_upstream_servers_available
-				);
+			if (dest.family() == sys::family_type::unix) {
+				this->set_kernel_id(kernel, this->_counter);
+				this->set_kernel_id(kernel->parent(), this->_counter);
 			} else {
-				server_iterator result = this->find_server(dest);
-				if (result == this->_servers.end()) {
-					result = this->_servers.begin();
+				if (this->_servers.empty()) {
+					kernel->return_to_parent(
+						exit_code::no_upstream_servers_available
+					);
+				} else {
+					server_iterator result = this->find_server(dest);
+					if (result == this->_servers.end()) {
+						result = this->_servers.begin();
+					}
+					this->set_kernel_id(kernel, *result);
+					this->set_kernel_id(kernel->parent(), *result);
 				}
-				this->set_kernel_id(kernel, *result);
-				this->set_kernel_id(kernel->parent(), *result);
 			}
 		}
 
 		/// round robin over upstream hosts
-		client_iterator
+		void
 		find_next_client() {
-			// skip stopped hosts
-			client_iterator old_iterator = _iterator;
-			if (_iterator->second->is_stopped()) {
-				do {
-					advance_upstream_iterator();
-				} while (_iterator->second->is_stopped() and old_iterator != _iterator);
+			if (this->_clients.empty()) {
+				return;
 			}
-			client_iterator result = this->_iterator;
-			advance_upstream_iterator();
-			return result;
+			// skip stopped hosts
+			client_iterator old_iterator = this->_iterator;
+			do {
+				if (this->_iterator == this->_clients.end()) {
+					this->_iterator = this->_clients.begin();
+				} else {
+					++this->_iterator;
+				}
+				if (this->_iterator != this->_clients.end() &&
+					this->_iterator->second->is_running()) {
+					break;
+				}
+			} while (old_iterator != this->_iterator);
 		}
 
-		void
-		advance_upstream_iterator() noexcept {
-			_endreached = (++_iterator == _clients.end());
-			if (_endreached) {
-				_iterator = _clients.begin();
-			}
+		inline bool
+		end_reached() const noexcept {
+			return this->_iterator == this->_clients.end();
+		}
+
+		inline void
+		reset_iterator() noexcept {
+			this->_iterator = this->_clients.begin();
 		}
 
 		std::pair<client_iterator,bool>
 		emplace_pipeline(const sys::endpoint& vaddr, event_handler_ptr&& s) {
-			auto result = _clients.emplace(vaddr, std::move(s));
-			if (_clients.size() == 1) {
-				_iterator = _clients.begin();
+			const bool save = !this->end_reached();
+			sys::endpoint e;
+			if (save) {
+				e = this->_iterator->first;
+			}
+			auto result = this->_clients.emplace(vaddr, std::move(s));
+			if (save) {
+				this->_iterator = this->_clients.find(e);
+			} else {
+				this->_iterator = result.first;
 			}
 			return result;
 		}
 
 		inline sys::endpoint
-		virtual_addr(sys::endpoint addr) const {
-			return sys::endpoint(addr, this->_port);
+		virtual_addr(const sys::endpoint& addr) const {
+			return addr.family() == sys::family_type::unix
+				? addr
+				: sys::endpoint(addr, this->_port);
 		}
 
 		void
 		process_kernels() override {
 			lock_type lock(this->_mutex);
-			sys::for_each_unlock(lock,
+			std::for_each(
 				sys::queue_popper(this->_kernels),
 				sys::queue_popper_end(this->_kernels),
 				[this] (kernel_type* rhs) { process_kernel(rhs); }
@@ -359,16 +395,33 @@ namespace factory {
 				// delete broadcast kernel
 				delete k;
 			} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
-				if (_clients.empty() || _endreached) {
-					// include localhost in round-robin
-					// in a somewhat half-assed fashion
-					_endreached = false;
-					// short-circuit kernels when no upstream servers are available
-					router_type::send_local(k);
+				bool success = false;
+				this->find_next_client();
+				if (this->_uselocalhost) {
+					if (this->end_reached()) {
+						this->reset_iterator();
+						// include localhost in round-robin
+						// (short-circuit kernels when no upstream servers
+						// are available)
+						router_type::send_local(k);
+					} else {
+						success = true;
+					}
 				} else {
-					client_iterator result = this->find_next_client();
-					ensure_identity(k, result->second->vaddr());
-					result->second->send(k);
+					if (this->_clients.empty()) {
+						k->return_to_parent(exit_code::no_upstream_servers_available);
+						router_type::send_local(k);
+					} else if (this->end_reached()) {
+						this->reset_iterator();
+						success = true;
+					} else {
+						success = true;
+					}
+				}
+				if (success) {
+					ensure_identity(k, this->_iterator->second->vaddr());
+					this->_iterator->second->send(k);
+					++this->_iterator;
 				}
 			} else if (k->moves_downstream() and not k->from()) {
 				// kernel @k was sent to local node
@@ -400,14 +453,28 @@ namespace factory {
 		}
 
 		event_handler_ptr
-		add_client(sys::endpoint addr, sys::poll_event::legacy_event events) {
-			server_iterator result = this->find_server(addr);
-			if (result == this->_servers.end()) {
-				throw std::invalid_argument("no matching server found");
+		add_client(
+			const sys::endpoint& addr,
+			sys::poll_event::legacy_event events
+		) {
+			if (addr.family() == sys::family_type::unix) {
+				socket_type s(sys::family_type::unix);
+				s.setopt(socket_type::pass_credentials);
+				s.connect(addr);
+				return this->add_connected_pipeline(std::move(s), addr, events);
+			} else {
+				server_iterator result = this->find_server(addr);
+				if (result == this->_servers.end()) {
+					throw std::invalid_argument("no matching server found");
+				}
+				// bind to server address with ephemeral port
+				sys::endpoint srv_addr(result->endpoint(), 0);
+				return this->add_connected_pipeline(
+					socket_type(srv_addr, addr),
+					addr,
+					events
+				);
 			}
-			// bind to server address with ephemeral port
-			sys::endpoint srv_addr(result->endpoint(), 0);
-			return this->add_connected_pipeline(socket_type(srv_addr, addr), addr, events);
 		}
 
 		event_handler_ptr
@@ -416,7 +483,9 @@ namespace factory {
 			sys::poll_event::legacy_event revents=0)
 		{
 			sys::fd_type fd = sock.fd();
-			sock.set_user_timeout(this->_socket_timeout);
+			if (vaddr.family() != sys::family_type::unix) {
+				sock.set_user_timeout(this->_socket_timeout);
+			}
 			event_handler_ptr s =
 				std::make_shared<event_handler_type>(
 					std::move(sock),

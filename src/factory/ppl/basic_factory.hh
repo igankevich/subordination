@@ -1,7 +1,9 @@
 #ifndef FACTORY_PPL_BASIC_FACTORY_HH
 #define FACTORY_PPL_BASIC_FACTORY_HH
 
-#if !defined(FACTORY_DAEMON) && !defined(FACTORY_APPLICATION)
+#if !defined(FACTORY_DAEMON) && \
+	!defined(FACTORY_APPLICATION) && \
+	!defined(FACTORY_SUBMIT)
 #define FACTORY_APPLICATION
 #endif
 
@@ -10,7 +12,7 @@
 #include <factory/ppl/basic_pipeline.hh>
 #include <factory/ppl/io_pipeline.hh>
 #include <factory/ppl/multi_pipeline.hh>
-#if defined(FACTORY_DAEMON)
+#if defined(FACTORY_DAEMON) || defined(FACTORY_SUBMIT)
 #include <factory/ppl/socket_pipeline.hh>
 #endif
 #include <factory/ppl/process_pipeline.hh>
@@ -65,13 +67,19 @@ namespace factory {
 		typedef io_pipeline<T> io_pipeline_type;
 		typedef Multi_pipeline<T> downstream_pipeline_type;
 		#if defined(FACTORY_APPLICATION)
-		typedef child_process_pipeline<T, basic_router<T>> parent_pipeline_type;
+		typedef child_process_pipeline<T, basic_router<T>>
+			parent_pipeline_type;
+		#elif defined(FACTORY_DAEMON) || defined(FACTORY_SUBMIT)
+		typedef socket_pipeline<T, sys::socket, basic_router<T>>
+			parent_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef socket_pipeline<T, sys::socket, basic_router<T>> parent_pipeline_type;
+		typedef unix_domain_socket_pipeline<T, basic_router<T>>
+			external_pipeline_type;
 		#endif
 		#if defined(FACTORY_DAEMON)
-		typedef process_pipeline<T, basic_router<T>> child_pipeline_type;
+		typedef process_pipeline<T, basic_router<T>>
+			child_pipeline_type;
 		#endif
 
 	private:
@@ -85,6 +93,7 @@ namespace factory {
 		parent_pipeline_type _parent;
 		#if defined(FACTORY_DAEMON)
 		child_pipeline_type _child;
+		external_pipeline_type _external;
 		#endif
 
 	public:
@@ -146,6 +155,16 @@ namespace factory {
 		inline void
 		forward_child(const kernel_header& hdr, sys::pstream& istr) {
 			this->_child.forward(hdr, istr);
+		}
+
+		inline external_pipeline_type&
+		external() noexcept {
+			return this->_external;
+		}
+
+		inline const external_pipeline_type&
+		external() const noexcept {
+			return this->_external;
 		}
 		#endif
 

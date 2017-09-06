@@ -271,7 +271,7 @@ int main(int argc, char* argv[]) {
 					timeout = kill_after;
 					normal = false;
 				}
-				return sys::this_process::execute(
+				return sys::this_process::exec(
 					#if defined(FACTORY_TEST_USE_SSH)
 					"/usr/bin/ssh", "-n", "-o", "StrictHostKeyChecking no", endpoint.addr4(),
 					"cd", workdir, ';', "exec",

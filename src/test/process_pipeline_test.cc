@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
 	factory::types.register_type<Test_socket>();
 	Factory_guard g;
 	#if defined(FACTORY_TEST_SERVER)
-	Application app(XSTRINGIFY(FACTORY_APP_PATH));
+	Application app({XSTRINGIFY(FACTORY_APP_PATH)}, {});
 	factory::factory.child().add(app);
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	factory::graceful_shutdown(0);

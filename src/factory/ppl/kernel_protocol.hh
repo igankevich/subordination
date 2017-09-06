@@ -270,6 +270,7 @@ namespace factory {
 			);
 			if (pos == this->_upstream.end()) {
 				sys::log_message("proto", "parent not found for _", *k);
+				delete k;
 				throw std::invalid_argument("parent not found");
 			} else {
 				kernel_type* orig = *pos;

@@ -1,8 +1,11 @@
 #ifndef FACTORY_PPL_APPLICATION_HH
 #define FACTORY_PPL_APPLICATION_HH
 
-#include <unistdx/ipc/execute>
 #include <iosfwd>
+#include <unistdx/ipc/execute>
+#include <unistdx/ipc/identity>
+#include <unistdx/net/pstream>
+#include <vector>
 
 namespace factory {
 
@@ -13,18 +16,32 @@ namespace factory {
 	public:
 		typedef std::string path_type;
 		typedef application_type id_type;
+		typedef std::vector<std::string> container_type;
 
 	private:
-		path_type _execpath;
 		id_type _id;
+		sys::uid_type _uid;
+		sys::gid_type _gid;
+		container_type _args, _env;
 
 	public:
 		explicit
-		Application(const path_type& exec);
+		Application(const container_type& args, const container_type& env);
+
+		inline void
+		set_credentials(sys::uid_type uid, sys::gid_type gid) noexcept {
+			this->_uid = uid;
+			this->_gid = gid;
+		}
 
 		inline id_type
 		id() const noexcept {
 			return this->_id;
+		}
+
+		const std::string&
+		filename() const noexcept {
+			return this->_args.front();
 		}
 
 		int

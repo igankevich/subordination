@@ -58,7 +58,7 @@ namespace {
 void
 factoryd::network_master::send_timer() {
 	using namespace std::chrono;
-	this->_timer->after(seconds(1));
+	this->_timer->after(seconds(10));
 	factory::api::send<>(this->_timer, this);
 }
 
