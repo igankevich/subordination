@@ -232,14 +232,11 @@ namespace factory {
 						app.filename(),
 						err.what()
 					);
-				} catch (...) {
-					this->log(
-						"failed to execute _: _",
-						app.filename(),
-						"unknown error"
-					);
+					// make address sanitizer happy
+					#if defined(__SANITIZE_ADDRESS__)
+					return sys::this_process::execute_command("false");
+					#endif
 				}
-				std::exit(1);
 			});
 			#ifndef NDEBUG
 			this->log("exec _,pid=_", app, p.id());
