@@ -5,6 +5,7 @@
 #include <random>
 #include <sstream>
 #include <stdlib.h>
+#include <grp.h>
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
@@ -95,7 +96,7 @@ factory::Application::execute() const {
 	str << FACTORY_ENV_APPLICATION_ID << '=' << this->_id;
 	std::string s(str.str());
 	env.append(str.str());
-	// set path
+	// update path to find executable files from user's PATH
 	auto result = std::find_if(
 		this->_env.begin(),
 		this->_env.end(),
@@ -108,6 +109,14 @@ factory::Application::execute() const {
 	} else {
 		UNISTDX_CHECK(::putenv(const_cast<char*>(result->data())));
 	}
+	// disallow running as superuser/supergroup
+	if (this->_uid == sys::superuser() || this->_gid == sys::supergroup()) {
+		throw std::runtime_error("executing as superuser/supergroup is disallowed");
+	}
+	// reset supplementary groups
+	UNISTDX_CHECK(::setgroups(1, &this->_gid));
+	// switch user and group IDs
+	sys::this_process::set_identity(this->_uid, this->_gid);
 	return sys::this_process::exec_command(args.argv(), env.argv());
 }
 
