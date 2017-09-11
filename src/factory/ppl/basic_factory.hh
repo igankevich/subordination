@@ -16,6 +16,12 @@
 #include <factory/ppl/socket_pipeline.hh>
 #endif
 #include <factory/ppl/process_pipeline.hh>
+#if defined(FACTORY_APPLICATION)
+#include <factory/ppl/child_process_pipeline.hh>
+#endif
+#if defined(FACTORY_DAEMON)
+#include <factory/ppl/unix_domain_socket_pipeline.hh>
+#endif
 #include <factory/ppl/timer_pipeline.hh>
 #include <factory/ppl/application.hh>
 

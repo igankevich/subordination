@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <cmath>
+#include <map>
 
 #include <unistdx/base/log_message>
 #include <unistdx/fs/path>
