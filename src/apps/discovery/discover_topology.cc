@@ -59,8 +59,8 @@ template<class Addr>
 struct Topology {
 
 	typedef Addr addr_type;
-	typedef sys::ifaddr<addr_type> network_type;
-	typedef typename network_type::rep_type uint_type;
+	typedef sys::ifaddr<addr_type> ifaddr_type;
+	typedef typename ifaddr_type::rep_type uint_type;
 	typedef float float_type;
 	typedef uint32_t city_type;
 	typedef uint32_t country_type;
@@ -174,7 +174,7 @@ struct Topology {
 		std::clog << "Reading sub-networks from " << filename << std::endl;
 		using namespace discovery;
 		typedef csv_tuple<',',
-			network_type,
+			ifaddr_type,
 			city_type,
 			country_type,
 			ignore_field,
@@ -193,7 +193,7 @@ struct Topology {
 			std::istream_iterator<mytuple>(in),
 			std::istream_iterator<mytuple>(),
 			[&locs,&nhosts,this] (const mytuple& rhs) {
-				const network_type net = std::get<0>(rhs);
+				const ifaddr_type net = std::get<0>(rhs);
 				const city_type city = std::get<1>(rhs);
 				//const float_type lat = std::get<7>(rhs);
 				//const float_type lon = std::get<8>(rhs);

@@ -1,5 +1,6 @@
 factoryd_src = files([
 	'network_master.cc',
+	'resident_kernel.cc',
 	'factory.cc',
 ])
 

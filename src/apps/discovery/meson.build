@@ -17,7 +17,7 @@ libz = dependency('zlib')
 #	args: [
 #		'--role', 'master',
 #		'--num-peers', '2',
-#		'--network', '127.0.0.1/8'
+#		'--ifaddr', '127.0.0.1/8'
 #	]
 #)
 executable(

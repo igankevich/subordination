@@ -43,7 +43,7 @@ struct Main: public Kernel {
 	_options{
 		sys::ignore_first_argument(),
 		sys::make_key_value("role", _role),
-		sys::make_key_value("network", _network),
+		sys::make_key_value("ifaddr", _ifaddr),
 		sys::make_key_value("port", _port),
 		sys::make_key_value("timeout", _timeout),
 		sys::make_key_value("normal", _normal),
@@ -70,11 +70,11 @@ struct Main: public Kernel {
 			commit<Local>(this);
 		} else {
 			const sys::ipv4_addr netmask = sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
-			const sys::endpoint bind_addr(_network.address(), _port);
+			const sys::endpoint bind_addr(_ifaddr.address(), _port);
 			factory::factory.nic().add_server(bind_addr, netmask);
 			const auto start_delay = 5;
-			discoverer_type* master = new discoverer_type(_network, _port);
-			master->id(sys::to_host_format(_network.address().rep()));
+			discoverer_type* master = new discoverer_type(_ifaddr, _port);
+			master->id(sys::to_host_format(_ifaddr.address().rep()));
 			{
 				factory::instances_guard g(factory::instances);
 				factory::instances.register_instance(master);
@@ -82,11 +82,11 @@ struct Main: public Kernel {
 			master->after(std::chrono::seconds(start_delay));
 			send<Local>(master);
 
-//			if (_network.address() == traits_type::localhost()) {
+//			if (_ifaddr.address() == traits_type::localhost()) {
 //				schedule_pingpong_after(std::chrono::seconds(0));
 //			}
 
-			if (_network.address() == _masteraddr) {
+			if (_ifaddr.address() == _masteraddr) {
 //				schedule_autoreg_app();
 				schedule_spec_app();
 			}
@@ -134,8 +134,8 @@ private:
 	parse_cmdline_args() {
 		try {
 			sys::parse_arguments(this->_argc, this->_argv, this->_options.data());
-			if (!_network) {
-				throw sys::bad_argument("network");
+			if (!_ifaddr) {
+				throw sys::bad_argument("ifaddr");
 			}
 			if (_role != role_slave) {
 				throw sys::bad_argument("role");
@@ -147,7 +147,7 @@ private:
 	}
 
 	std::string _role;
-	sys::ifaddr<sys::ipv4_addr> _network;
+	sys::ifaddr<sys::ipv4_addr> _ifaddr;
 	sys::port_type _port;
 	uint32_t _numpings = 10;
 	uint32_t _timeout = 60;
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
 	sys::ipv4_addr kill_addr{127,0,0,2};
 
 	int retval = 0;
-	sys::ifaddr<sys::ipv4_addr> network;
+	sys::ifaddr<sys::ipv4_addr> ifaddr;
 	size_t nhosts = 0;
 	std::string role = role_master;
 	try {
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
 				return arg.find("normal=") == 0;
 			},
 			sys::make_key_value("hosts", hosts2),
-			sys::make_key_value("network", network),
+			sys::make_key_value("ifaddr", ifaddr),
 			sys::make_key_value("num-hosts", nhosts),
 			sys::make_key_value("role", role),
 			sys::make_key_value("port", discovery_port),
@@ -215,8 +215,8 @@ int main(int argc, char* argv[]) {
 		if (role != role_master and role != role_slave) {
 			throw sys::bad_argument("role");
 		}
-		if (!network) {
-			throw sys::bad_argument("network");
+		if (!ifaddr) {
+			throw sys::bad_argument("ifaddr");
 		}
 	} catch (const sys::bad_argument& err) {
 		std::cerr << err.what() << ": " << err.argument() << std::endl;
@@ -232,16 +232,16 @@ int main(int argc, char* argv[]) {
 			"Num peers = _\n"
 			"Role = _\n"
 			"Start,mid = _,_",
-			network, nhosts, role,
-			*network.begin(), *network.middle()
+			ifaddr, nhosts, role,
+			*ifaddr.begin(), *ifaddr.middle()
 		);
 		#endif
 
 		std::vector<sys::endpoint> hosts;
-		if (network) {
+		if (ifaddr) {
 			std::transform(
-				network.begin(),
-				network.begin() + nhosts,
+				ifaddr.begin(),
+				ifaddr.begin() + nhosts,
 				std::back_inserter(hosts),
 				[discovery_port] (const sys::ipv4_addr& addr) {
 					return sys::endpoint(addr, discovery_port);
@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
 
 		sys::process_group procs;
 		for (sys::endpoint endpoint : hosts) {
-			procs.emplace([endpoint, &argv, nhosts, &network, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
+			procs.emplace([endpoint, &argv, nhosts, &ifaddr, discovery_port, master_addr, kill_addr, kill_after, kill_timeout] () {
 				char workdir[PATH_MAX];
 				::getcwd(workdir, PATH_MAX);
 				uint32_t timeout = kill_timeout;
@@ -277,7 +277,7 @@ int main(int argc, char* argv[]) {
 					"cd", workdir, ';', "exec",
 					#endif
 					argv[0],
-					"--network", sys::ifaddr<sys::ipv4_addr>(endpoint.addr4(), network.netmask()),
+					"--ifaddr", sys::ifaddr<sys::ipv4_addr>(endpoint.addr4(), ifaddr.netmask()),
 					"--port", discovery_port,
 					"--role", "slave",
 					"--timeout", timeout,

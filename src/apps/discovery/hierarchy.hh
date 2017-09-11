@@ -14,12 +14,12 @@ namespace discovery {
 	struct Hierarchy {
 
 		typedef Addr addr_type;
-		typedef sys::ifaddr<addr_type> network_type;
+		typedef sys::ifaddr<addr_type> ifaddr_type;
 		typedef std::set<sys::endpoint>::size_type size_type;
 
 		explicit
-		Hierarchy(const network_type& net, const sys::port_type port):
-		_network(net),
+		Hierarchy(const ifaddr_type& net, const sys::port_type port):
+		_ifaddr(net),
 		_bindaddr(net.address(), port),
 		_principal(),
 		_subordinates()
@@ -28,9 +28,9 @@ namespace discovery {
 		Hierarchy(const Hierarchy&) = default;
 		Hierarchy(Hierarchy&&) = default;
 
-		const network_type&
-		network() const noexcept {
-			return _network;
+		const ifaddr_type&
+		ifaddr() const noexcept {
+			return _ifaddr;
 		}
 
 		const sys::endpoint&
@@ -80,7 +80,7 @@ namespace discovery {
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Hierarchy& rhs) {
-			out << "network=" << rhs._network << ',';
+			out << "ifaddr=" << rhs._ifaddr << ',';
 			out << "principal=" << rhs._principal << ',';
 			out << "subordinates=";
 			std::copy(
@@ -93,7 +93,7 @@ namespace discovery {
 
 	protected:
 
-		network_type _network;
+		ifaddr_type _ifaddr;
 		sys::endpoint _bindaddr;
 		sys::endpoint _principal;
 		std::set<sys::endpoint> _subordinates;

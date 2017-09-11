@@ -11,21 +11,21 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 	typedef Address addr_type;
 	typedef Hierarchy hierarchy_type;
 	typedef Distance distance_type;
-	typedef sys::ifaddr<addr_type> network_type;
+	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef sys::ipaddr_traits<addr_type> traits_type;
 	typedef std::multimap<distance_type,addr_type> rankedlist_type;
 	typedef typename rankedlist_type::iterator rankedlist_iterator;
 	typedef Negotiator<addr_type> negotiator_type;
 
-	Master_discoverer(const network_type& network, const sys::port_type port):
-	_hierarchy(network, port),
+	Master_discoverer(const ifaddr_type& ifaddr, const sys::port_type port):
+	_hierarchy(ifaddr, port),
 	_port(port),
 	_rankedhosts(),
 	_currenthost(),
 	_negotiator(nullptr)
 //	_cache(_hierarchy.this_addr(), _hierarchy),
 	{
-		generate_ranked_hosts(network);
+		generate_ranked_hosts(ifaddr);
 	}
 
 	Master_discoverer(const Master_discoverer&) = delete;
@@ -79,7 +79,7 @@ struct Master_discoverer: public Priority_kernel<Kernel> {
 private:
 
 	void
-	generate_ranked_hosts(const network_type& rhs) {
+	generate_ranked_hosts(const ifaddr_type& rhs) {
 		const auto fanout = 64;
 		_rankedhosts.clear();
 		std::transform(
@@ -116,7 +116,7 @@ private:
 
 	void
 	skip_this_host() {
-		if (_currenthost != _rankedhosts.end() and _currenthost->second == _hierarchy.network().address()) {
+		if (_currenthost != _rankedhosts.end() and _currenthost->second == _hierarchy.ifaddr().address()) {
 			++_currenthost;
 		}
 	}
