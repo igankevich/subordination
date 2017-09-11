@@ -4,5 +4,6 @@
 #include "@kernel_header@"
 
 #define FACTORY_KERNEL_TYPE @kernel_type@
+#define FACTORY_LOG_DIRECTORY "@logdir@"
 
 #endif // FACTORY_CONFIG_HH_IN vim:filetype=cpp

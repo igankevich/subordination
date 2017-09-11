@@ -7,8 +7,8 @@
 #include <unistdx/it/queue_popper>
 #include <unistdx/io/pipe>
 
-#include <factory/ppl/shared_fildes.hh>
 #include <factory/ppl/process_handler.hh>
+#include <factory/ppl/application.hh>
 
 namespace factory {
 
@@ -32,7 +32,10 @@ namespace factory {
 
 		child_process_pipeline():
 		_parent(std::make_shared<event_handler_type>(
-			sys::pipe{Shared_fildes::In, Shared_fildes::Out}
+			sys::pipe{
+				this_application::get_input_fd(),
+				this_application::get_output_fd()
+			}
 		))
 		{}
 
@@ -68,15 +71,13 @@ namespace factory {
 
 		void
 		init_pipeline() {
-			// _parent.setparent(this);
+			sys::fd_type in = this_application::get_input_fd();
+			sys::fd_type out = this_application::get_output_fd();
 			this->poller().emplace(
-				sys::poll_event{Shared_fildes::In, sys::poll_event::In, 0},
+				sys::poll_event{in, sys::poll_event::In, 0},
 				this->_parent
 			);
-			this->poller().emplace(
-				sys::poll_event{Shared_fildes::Out, 0, 0},
-				this->_parent
-			);
+			this->poller().emplace(sys::poll_event{out, 0, 0}, this->_parent);
 			this->_parent->set_name(this->name());
 		}
 

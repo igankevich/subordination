@@ -23,6 +23,10 @@ endif
 config = configuration_data()
 config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))
+config.set(
+	'logdir',
+	join_paths(get_option('localstatedir'), 'log', 'factory')
+)
 
 threads = dependency('threads')
 unistdx = dependency('unistdx')

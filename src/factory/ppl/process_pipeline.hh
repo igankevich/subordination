@@ -14,7 +14,6 @@
 #include <factory/ppl/application.hh>
 #include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/process_handler.hh>
-#include <factory/ppl/shared_fildes.hh>
 
 namespace factory {
 
@@ -77,10 +76,9 @@ namespace factory {
 			sys::two_way_pipe data_pipe;
 			const sys::process& p = _procs.emplace([&app,this,&data_pipe] () {
 				data_pipe.close_in_child();
-				data_pipe.remap_in_child(Shared_fildes::In, Shared_fildes::Out);
 				data_pipe.validate();
 				try {
-					return app.execute();
+					return app.execute(data_pipe);
 				} catch (const std::exception& err) {
 					this->log(
 						"failed to execute _: _",
@@ -93,16 +91,13 @@ namespace factory {
 					#endif
 				}
 			});
-			#ifndef NDEBUG
-			this->log("exec _,pid=_", app, p.id());
-			#endif
 			data_pipe.close_in_parent();
 			data_pipe.validate();
-			if (!p) {
-				throw std::runtime_error("child process terminated");
-			}
 			sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 			sys::fd_type parent_out = data_pipe.parent_out().get_fd();
+			#ifndef NDEBUG
+			this->log("exec _,pid=_,in=_,out_", app, p.id(), parent_in, parent_out);
+			#endif
 			event_handler_ptr child =
 				std::make_shared<event_handler_type>(
 					p.id(),
@@ -112,11 +107,12 @@ namespace factory {
 			// child.setparent(this);
 			// assert(child.root() != nullptr);
 			auto result = this->_apps.emplace(app.id(), child);
-			poller().emplace(
+			this->poller().enqueue_emplace(
 				sys::poll_event{parent_in, sys::poll_event::In, 0},
 				result.first->second
 			);
-			poller().emplace(sys::poll_event{parent_out, 0, 0}, result.first->second);
+			this->poller().enqueue_emplace(sys::poll_event{parent_out, 0, 0}, result.first->second);
+			this->poller().notify_one();
 		}
 
 		void

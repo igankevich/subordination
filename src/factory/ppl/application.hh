@@ -2,6 +2,7 @@
 #define FACTORY_PPL_APPLICATION_HH
 
 #include <iosfwd>
+#include <unistdx/io/two_way_pipe>
 #include <unistdx/ipc/execute>
 #include <unistdx/ipc/identity>
 #include <unistdx/net/pstream>
@@ -45,7 +46,7 @@ namespace factory {
 		}
 
 		int
-		execute() const;
+		execute(const sys::two_way_pipe& pipe) const;
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const Application& rhs);
@@ -60,6 +61,12 @@ namespace factory {
 		/// Cluster-wide application ID.
 		application_type
 		get_id() noexcept;
+
+		sys::fd_type
+		get_input_fd() noexcept;
+
+		sys::fd_type
+		get_output_fd() noexcept;
 
 	}
 

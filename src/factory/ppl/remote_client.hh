@@ -84,8 +84,6 @@ namespace factory {
 
 		void
 		handle(sys::poll_event& event) {
-			std::clog << "event=" << event << std::endl;
-			std::clog << "socket()=" << socket() << std::endl;
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
 			}

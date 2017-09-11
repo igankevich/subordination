@@ -142,6 +142,9 @@ int main(int argc, char* argv[]) {
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	factory::graceful_shutdown(0);
 	#else
+	sys::fd_type in = factory::this_application::get_input_fd();
+	sys::fd_type out = factory::this_application::get_output_fd();
+	sys::log_message("tst", "in = _, out = _", in, out);
 	send<Local>(new Main);
 	#endif
 	return factory::wait_and_return();
