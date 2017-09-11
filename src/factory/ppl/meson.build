@@ -7,5 +7,6 @@ libfactory_src += files([
 	'parallel_pipeline.cc',
 	'thread_context.cc',
 	'timer_pipeline.cc',
+	'socket_pipeline.cc',
 ])
 

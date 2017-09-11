@@ -24,44 +24,9 @@
 #endif
 #include <factory/ppl/timer_pipeline.hh>
 #include <factory/ppl/application.hh>
+#include <factory/ppl/basic_router.hh>
 
 namespace factory {
-
-	template <class T>
-	struct basic_router {
-
-		static inline void
-		send_local(T* rhs);
-
-		static inline void
-		send_remote(T*);
-
-		#if defined(FACTORY_DAEMON)
-		static inline void
-		forward(const kernel_header& hdr, sys::pstream& istr);
-
-		static inline void
-		forward_child(const kernel_header& hdr, sys::pstream& istr);
-
-		static inline void
-		forward_parent(const kernel_header& hdr, sys::pstream& istr);
-		#else
-		static inline void
-		forward(const kernel_header&, sys::pstream&) {}
-
-		static inline void
-		forward_child(const kernel_header&, sys::pstream&) {}
-
-		static inline void
-		forward_parent(const kernel_header&, sys::pstream&) {}
-		#endif
-
-		#if defined(FACTORY_DAEMON)
-		static inline void
-		execute(const Application& app);
-		#endif
-
-	};
 
 	template <class T>
 	class Factory: public pipeline_base {
@@ -262,6 +227,22 @@ namespace factory {
 	basic_router<T>::execute(const Application& app) {
 		factory.child().add(app);
 	}
+	#else
+	template <class T>
+	void
+	basic_router<T>::forward(const kernel_header& hdr, sys::pstream& istr) {}
+
+	template <class T>
+	void
+	basic_router<T>::forward_child(const kernel_header& hdr, sys::pstream& istr) {}
+
+	template <class T>
+	void
+	basic_router<T>::forward_parent(const kernel_header& hdr, sys::pstream& istr) {}
+
+	template <class T>
+	void
+	basic_router<T>::execute(const Application& app) {}
 	#endif
 
 }

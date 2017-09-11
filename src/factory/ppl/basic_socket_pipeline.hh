@@ -1,8 +1,11 @@
 #ifndef FACTORY_PPL_BASIC_SOCKET_PIPELINE_HH
 #define FACTORY_PPL_BASIC_SOCKET_PIPELINE_HH
 
-#include <memory>
 #include <algorithm>
+#include <memory>
+#include <queue>
+#include <thread>
+#include <vector>
 
 #include <unistdx/base/log_message>
 #include <unistdx/base/simple_lock>
@@ -12,6 +15,7 @@
 #include <unistdx/net/pstream>
 
 #include <factory/kernel/kstream.hh>
+#include <factory/ppl/basic_pipeline.hh>
 
 namespace factory {
 

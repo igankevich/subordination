@@ -118,5 +118,6 @@ factory::Factory<T>::wait() {
 }
 
 template class factory::Factory<FACTORY_KERNEL_TYPE>;
+template class factory::basic_router<FACTORY_KERNEL_TYPE>;
 
 factory::Factory<FACTORY_KERNEL_TYPE> factory::factory;
