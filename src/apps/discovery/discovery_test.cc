@@ -77,7 +77,7 @@ struct Main: public Kernel {
 			master->id(sys::to_host_format(_ifaddr.address().rep()));
 			{
 				factory::instances_guard g(factory::instances);
-				factory::instances.register_instance(master);
+				factory::instances.add(master);
 			}
 			master->after(std::chrono::seconds(start_delay));
 			send<Local>(master);

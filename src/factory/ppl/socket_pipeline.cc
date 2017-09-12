@@ -134,6 +134,9 @@ factory::socket_pipeline<T,S,R>::add_server(
 	if (this->find_server(ifaddr) == this->_servers.end()) {
 		this->_servers.emplace_back(ifaddr, traits_type::port(rhs));
 		server_type& srv = this->_servers.back();
+		#ifndef NDEBUG
+		this->log("add server _", rhs);
+		#endif
 		srv.socket().set_user_timeout(this->_socket_timeout);
 		sys::fd_type fd = srv.socket().get_fd();
 		this->poller().insert_special(
@@ -291,13 +294,17 @@ template <class T, class S, class R>
 void
 factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 	// short circuit local server
-	// TODO logic?
+	/*
 	if (k->to()) {
 		server_iterator result = this->find_server(k->to());
 		if (result != this->_servers.end()) {
+			k->from(k->to());
+			k->return_to_parent(exit_code::no_upstream_servers_available);
 			router_type::send_local(k);
+			return;
 		}
 	}
+	*/
 	if (k->moves_everywhere()) {
 		for (auto& pair : _clients) {
 			pair.second->send(k);
@@ -423,6 +430,16 @@ factory::socket_pipeline<T,S,R>::add_connected_pipeline(
 		this->_semaphore.notify_one();
 	}
 	return result.first->second;
+}
+
+template <class T, class S, class R>
+void
+factory::socket_pipeline<T,S,R>::stop_client(const sys::endpoint& addr) {
+	lock_type lock(this->_mutex);
+	client_iterator result = this->_clients.find(addr);
+	if (result != this->_clients.end()) {
+		result->second->setstate(pipeline_state::stopped);
+	}
 }
 
 template class factory::socket_pipeline<

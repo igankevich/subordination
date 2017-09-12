@@ -82,6 +82,9 @@ namespace factory {
 		}
 
 		void
+		stop_client(const sys::endpoint& addr);
+
+		void
 		add_server(const ifaddr_type& rhs) {
 			this->add_server(
 				sys::endpoint(rhs.address(), this->_port),
@@ -101,6 +104,11 @@ namespace factory {
 		inline void
 		set_port(sys::port_type rhs) noexcept {
 			this->_port = rhs;
+		}
+
+		inline sys::port_type
+		port() const noexcept {
+			return this->_port;
 		}
 
 		inline server_const_iterator

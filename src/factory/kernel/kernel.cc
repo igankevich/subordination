@@ -30,10 +30,19 @@ void
 factory::Kernel::write(sys::pstream& out) {
 	base_kernel::write(out);
 	out << carries_parent();
-	if (this->moves_downstream() || this->moves_somewhere()) {
+	if (this->moves_downstream()) {
 		out << this->_parent_id << this->_principal_id;
 	} else {
-		out << get_id(this->_parent) << get_id(this->_principal);
+		if (this->isset(kernel_flag::parent_is_id)) {
+			out << this->_parent_id;
+		} else {
+			out << get_id(this->_parent);
+		}
+		if (this->isset(kernel_flag::principal_is_id)) {
+			out << this->_principal_id;
+		} else {
+			out << get_id(this->_principal);
+		}
 	}
 }
 

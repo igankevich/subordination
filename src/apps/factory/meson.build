@@ -5,6 +5,8 @@ factoryd_src = files([
 	'position_in_tree.cc',
 	'tree_hierarchy_iterator.cc',
 	'master_discoverer.cc',
+	'prober.cc',
+	'probe.cc',
 	'resident_kernel.cc',
 ])
 

@@ -15,7 +15,7 @@ namespace factory {
 		typedef std::chrono::system_clock clock_type;
 		typedef clock_type::time_point time_point;
 		typedef clock_type::duration duration;
-		typedef std::bitset<3> flags_type;
+		typedef std::bitset<5> flags_type;
 
 	protected:
 		exit_code _result = exit_code::undefined;

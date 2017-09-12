@@ -8,12 +8,19 @@
 
 int main() {
 	using namespace factory::api;
+	using factory::network_master;
 	{ sys::endian_guard g1; }
 	factory::install_error_handler();
 	factory::types.register_type<factory::Application_kernel>();
+	factory::types.register_type<factory::probe>();
 	Factory_guard g;
 	factory::factory.external()
 		.add_server(sys::endpoint(FACTORY_UNIX_DOMAIN_SOCKET));
-	send<Local>(new factoryd::network_master);
+	network_master* m = new network_master;
+	{
+		factory::instances_guard g(factory::instances);
+		factory::instances.add(m);
+	}
+	send<Local>(m);
 	return factory::wait_and_return();
 }

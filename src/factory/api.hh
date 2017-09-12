@@ -38,7 +38,7 @@ namespace factory {
 			factory.send_remote(kernel);
 		}
 
-		template<Target target>
+		template<Target target=Target::Local>
 		void
 		upstream(Kernel* lhs, Kernel* rhs) {
 			rhs->parent(lhs);

@@ -19,6 +19,7 @@ namespace factory {
 
 	private:
 		container_type _instances;
+		mutable id_type _counter = 0;
 		mutable std::mutex _mutex;
 
 	public:
@@ -49,7 +50,10 @@ namespace factory {
 		}
 
 		inline void
-		register_instance(kernel_type* k) {
+		add(kernel_type* k) {
+			if (!k->has_id()) {
+				k->id(++this->_counter);
+			}
 			this->_instances[k->id()] = k;
 		}
 

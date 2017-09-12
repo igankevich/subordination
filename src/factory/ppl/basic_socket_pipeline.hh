@@ -160,7 +160,9 @@ namespace factory {
 			int i=0;
 			this->poller().for_each_ordinary_fd(
 				[this,timeout,&now,&i] (sys::poll_event& ev, event_handler_ptr& h) {
-					if (!ev || (timeout && this->is_timed_out(*h, now))) {
+					if (!ev ||
+						h->is_stopped() ||
+						(timeout && this->is_timed_out(*h, now))) {
 						this->log("remove client _ _", ++i ,ev);
 						this->remove_client(h);
 					}

@@ -15,7 +15,8 @@ namespace factory {
 
 		inline const Kernel*
 		principal() const {
-			return this->_principal;
+			return this->isset(kernel_flag::principal_is_id)
+				? nullptr : this->_principal;
 		}
 
 		inline Kernel*
@@ -31,11 +32,13 @@ namespace factory {
 		inline void
 		set_principal_id(id_type id) {
 			this->_principal_id = id;
+			this->setf(kernel_flag::principal_is_id);
 		}
 
 		inline void
 		principal(Kernel* rhs) {
 			this->_principal = rhs;
+			this->unsetf(kernel_flag::principal_is_id);
 		}
 
 		inline const Kernel*
@@ -56,6 +59,7 @@ namespace factory {
 		inline void
 		parent(Kernel* p) {
 			this->_parent = p;
+			this->unsetf(kernel_flag::parent_is_id);
 		}
 
 		inline size_t
