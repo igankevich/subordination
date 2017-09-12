@@ -1,8 +1,10 @@
 factoryd_src = files([
-	'network_master.cc',
-	'resident_kernel.cc',
-	'hierarchy.cc',
 	'factory.cc',
+	'hierarchy.cc',
+	'network_master.cc',
+	'position_in_tree.cc',
+	'tree_hierarchy_iterator.cc',
+	'resident_kernel.cc',
 ])
 
 executable(
@@ -23,4 +25,18 @@ executable(
 	include_directories: [srcdir],
 	dependencies: [unistdx,threads,factorys],
 	cpp_args: ['-DFACTORY_SUBMIT'],
+)
+
+test(
+	'tree-hierarchy-iterator-test',
+	executable(
+		'tree-hierarchy-iterator-test',
+		sources: [
+			'position_in_tree.cc',
+			'tree_hierarchy_iterator.cc',
+			'tree_hierarchy_iterator_test.cc'
+		],
+		dependencies: [gtest,unistdx,threads,factoryd],
+		cpp_args: ['-DFACTORY_DEBUG_TREE_HIERARCHY_ITERATOR']
+	)
 )
