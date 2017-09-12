@@ -101,23 +101,23 @@ factory::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
 	this->update_address();
 	// update state
 	if (this->_currentpos.is_root()) {
-		state_type new_state;
-		if (this->_basepos.offset() == 0) {
-			new_state = state_type::end;
-		} else {
-			new_state = state_type::traversing_base_layer;
-		}
-		this->setstate(new_state);
+		this->setstate(state_type::traversing_base_layer);
 	}
 }
 
 template <class Addr>
 void
 factory::tree_hierarchy_iterator<Addr>::advance_upper() {
-	if (this->_currentpos.is_last() && this->_currentpos.layer() > 0) {
+	if (this->_currentpos.is_last()) {
 		this->_currentpos.decrement_layer();
+		#if !defined(NDEBUG) && defined(FACTORY_DEBUG_TREE_HIERARCHY_ITERATOR)
+		sys::log_message("thi", "decrement _", _currentpos);
+		#endif
 	} else {
 		++this->_currentpos;
+		#if !defined(NDEBUG) && defined(FACTORY_DEBUG_TREE_HIERARCHY_ITERATOR)
+		sys::log_message("thi", "increment");
+		#endif
 	}
 }
 

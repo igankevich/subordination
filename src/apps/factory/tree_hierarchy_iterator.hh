@@ -25,7 +25,7 @@ namespace factory {
 		typedef std::forward_iterator_tag iterator_category;
 
 		enum struct state_type {
-			initial,
+			initial = 0,
 			traversing_parent_node,
 			traversing_upper_layers,
 			traversing_base_layer,

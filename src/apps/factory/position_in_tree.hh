@@ -114,8 +114,10 @@ namespace factory {
 
 		inline void
 		decrement_layer() noexcept {
-			--this->_layer;
-			this->_offset = 0;
+			if (this->_layer > 0) {
+				--this->_layer;
+				this->_offset = 0;
+			}
 		}
 
 		pos_type
