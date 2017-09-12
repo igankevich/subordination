@@ -4,6 +4,7 @@ factoryd_src = files([
 	'network_master.cc',
 	'position_in_tree.cc',
 	'tree_hierarchy_iterator.cc',
+	'master_discoverer.cc',
 	'resident_kernel.cc',
 ])
 

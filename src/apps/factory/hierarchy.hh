@@ -89,6 +89,11 @@ namespace factory {
 			return this->_subordinates.size();
 		}
 
+		sys::port_type
+		port() const noexcept {
+			return sys::ipaddr_traits<addr_type>::port(this->_endpoint);
+		}
+
 		template <class X>
 		friend std::ostream&
 		operator<<(std::ostream& out, const hierarchy<X>& rhs);
