@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <regex>
 #include <string>
 
@@ -20,36 +22,58 @@ get_process_output_filename(int n) {
 	return sys::path(std::getenv("_LOGDIR"), filename.str());
 }
 
-bool
-line_matches(const std::string& filename, const std::regex& expr) {
+void
+expect_event_sequence(
+	const std::string& filename,
+	const std::vector<std::string>& regex_strings
+) {
 	std::ifstream in(filename);
 	EXPECT_TRUE(in.is_open()) << "filename=" << filename;
+	std::vector<std::regex> expressions;
+	for (const std::string& l : regex_strings) {
+		expressions.emplace_back(l);
+	}
+	auto first = expressions.begin();
+	auto last = expressions.end();
 	std::string line;
-	bool found = false;
-	while (std::getline(in, line) && !found) {
-		if (std::regex_match(line, expr)) {
-			found = true;
+	while (std::getline(in, line) && first != last) {
+		if (std::regex_match(line, *first)) {
+			++first;
 		}
 	}
-	return found;
+	if (first != last) {
+		std::stringstream msg;
+		msg << "unmatched expressions: ";
+		size_t offset = first - expressions.begin();
+		std::copy(
+			regex_strings.begin() + offset,
+			regex_strings.end(),
+			std::ostream_iterator<std::string>(msg, "\n")
+		);
+		FAIL() << msg.str();
+	} else {
+		SUCCEED();
+	}
 }
 
-bool
-line_matches(int n, const std::regex& expr) {
-	return line_matches(get_process_output_filename(n), expr);
+void
+expect_event_sequence(int n, const std::vector<std::string>& regex_strings) {
+	expect_event_sequence(get_process_output_filename(n), regex_strings);
 }
-
-#define EXPECT_LINE_MATCH(n, expr) \
-	EXPECT_TRUE(line_matches(n, std::regex(expr)))
 
 TEST(Discovery, Daemon) {
-	EXPECT_LINE_MATCH(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
-	EXPECT_LINE_MATCH(1, R"(^.*add subordinate 10\.0\.0\.2.*$)");
+	expect_event_sequence(1, {
+		R"(^.*add ifaddr 10\.0\.0\.1.*$)",
+		R"(^.*add subordinate 10\.0\.0\.2.*$)"
+	});
 }
 
 TEST(Discovery, Slave) {
-	EXPECT_LINE_MATCH(2, R"(^.*add ifaddr 10\.0\.0\.2.*$)");
-	EXPECT_LINE_MATCH(2, R"(^.*set principal to 10\.0\.0\.1.*$)");
+	expect_event_sequence(2, {
+		R"(^.*add ifaddr 10\.0\.0\.2.*$)",
+		R"(^.*set principal to 10\.0\.0\.1.*$)",
+		R"(^.*unset principal 10\.0\.0\.1.*$)"
+	});
 }
 
 int main(int argc, char* argv[]) {

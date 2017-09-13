@@ -5,7 +5,9 @@
 #include <stdexcept>
 
 #include <factory/config.hh>
+#include <factory/kernel/kernel_instance_registry.hh>
 #include <factory/ppl/basic_router.hh>
+#include <factory/ppl/socket_pipeline_event.hh>
 
 namespace {
 
@@ -22,6 +24,19 @@ namespace {
 	set_kernel_id_2(Kernel* kernel, Id& counter) {
 		if (!kernel->has_id()) {
 			kernel->set_id(++counter);
+		}
+	}
+
+	template <class Router, class ... Args>
+	void
+	fire_event_kernels(const Args& ... args) {
+		using namespace factory;
+		instances_guard g(instances);
+		for (const auto& pair : instances) {
+			socket_pipeline_kernel* ev = new socket_pipeline_kernel(args...);
+			ev->parent(ev);
+			ev->principal(pair.second);
+			Router::send_local(ev);
 		}
 	}
 
@@ -49,10 +64,16 @@ factory::socket_pipeline<T,S,R>::remove_server(const ifaddr_type& ifaddr) {
 template <class T, class S, class R>
 void
 factory::socket_pipeline<T,S,R>::remove_server(server_iterator result) {
+	// copy ifaddr
+	ifaddr_type ifaddr = result->ifaddr();
 	#ifndef NDEBUG
-	this->log("remove server _", result->ifaddr());
+	this->log("remove server _", ifaddr);
 	#endif
 	this->_servers.erase(result);
+	fire_event_kernels<router_type>(
+		socket_pipeline_event::remove_server,
+		ifaddr
+	);
 }
 
 template <class T, class S, class R>
@@ -67,16 +88,22 @@ factory::socket_pipeline<T,S,R>::remove_client(event_handler_ptr ptr) {
 template <class T, class S, class R>
 void
 factory::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
+	// copy endpoint
+	sys::endpoint endpoint = result->first;
 	#ifndef NDEBUG
 	const char* reason =
 		result->second->is_starting() ? "timed out" : "connection closed";
-	this->log("remove client _ (_)", result->first, reason);
+	this->log("remove client _ (_)", endpoint, reason);
 	#endif
 	if (result == this->_iterator) {
 		++this->_iterator;
 	}
 	result->second->setstate(pipeline_state::stopped);
 	this->_clients.erase(result);
+	fire_event_kernels<router_type>(
+		socket_pipeline_event::remove_client,
+		endpoint
+	);
 }
 
 

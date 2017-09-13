@@ -16,6 +16,7 @@ namespace factory {
 		typedef std::unordered_map<id_type, kernel_type*> container_type;
 		typedef typename container_type::iterator iterator;
 		typedef typename container_type::const_iterator const_iterator;
+		typedef typename container_type::value_type value_type;
 
 	private:
 		container_type _instances;

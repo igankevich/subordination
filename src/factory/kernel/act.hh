@@ -8,14 +8,19 @@ namespace factory {
 
 	inline void
 	act(Kernel* kernel) {
+		bool del = false;
 		if (kernel->result() == exit_code::undefined) {
 			if (kernel->principal()) {
 				kernel->principal()->react(kernel);
+				if (!kernel->isset(kernel_flag::do_not_delete)) {
+					del = true;
+				} else {
+					kernel->unsetf(kernel_flag::do_not_delete);
+				}
 			} else {
 				kernel->act();
 			}
 		} else {
-			bool del = false;
 			if (!kernel->principal()) {
 				del = !kernel->parent();
 			} else {
@@ -26,12 +31,12 @@ namespace factory {
 					kernel->principal()->error(kernel);
 				}
 			}
-			if (del) {
-				#ifdef SPRINGY
-				::springy::graph.remove_node(kernel->unique_id());
-				#endif
-				delete kernel;
-			}
+		}
+		if (del) {
+			#ifdef SPRINGY
+			::springy::graph.remove_node(kernel->unique_id());
+			#endif
+			delete kernel;
 		}
 	}
 

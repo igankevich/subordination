@@ -21,6 +21,7 @@ namespace factory {
 		priority_service = 2,
 		parent_is_id = 3,
 		principal_is_id = 4,
+		do_not_delete = 5
 	};
 
 }

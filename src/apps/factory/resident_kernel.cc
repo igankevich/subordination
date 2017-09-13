@@ -11,10 +11,8 @@ void
 factory::resident_kernel::react(factory::api::Kernel* kernel) {
 	using namespace factory::api;
 	if (typeid(*kernel) == typeid(start_message)) {
-		delete kernel;
 		this->on_start();
 	} else if (typeid(*kernel) == typeid(stop_message)) {
-		delete kernel;
 		this->on_stop();
 		if (this->parent()) {
 			commit<Local>(this, exit_code::success);

@@ -46,13 +46,13 @@ namespace {
 void
 factory::network_master::send_timer() {
 	using namespace std::chrono;
+	this->_timer = new network_timer;
 	this->_timer->after(seconds(1));
 	factory::api::send<>(this->_timer, this);
 }
 
 void
 factory::network_master::act() {
-	this->_timer = new network_timer;
 	this->send_timer();
 }
 
@@ -96,8 +96,11 @@ void
 factory::network_master::react(factory::api::Kernel* child) {
 	if (child == this->_timer) {
 		this->update_ifaddrs();
+		this->_timer = nullptr;
 	} else if (typeid(*child) == typeid(probe)) {
 		this->forward_probe(dynamic_cast<probe*>(child));
+	} else if (typeid(*child) == typeid(socket_pipeline_kernel)) {
+		this->on_event(dynamic_cast<socket_pipeline_kernel*>(child));
 	}
 }
 
@@ -127,18 +130,38 @@ factory::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 
 void
 factory::network_master::forward_probe(probe* p) {
+	map_iterator result = this->find_discoverer(p->ifaddr().address());
+	if (result == this->_ifaddrs.end()) {
+		sys::log_message("net", "bad probe _", p->ifaddr());
+	} else {
+		p->setf(kernel_flag::do_not_delete);
+		factory::api::send(p, result->second);
+	}
+}
+
+factory::network_master::map_iterator
+factory::network_master::find_discoverer(const addr_type& a) {
 	typedef typename map_type::value_type value_type;
-	const addr_type& a = p->ifaddr().address();
-	auto result = std::find_if(
+	return std::find_if(
 		this->_ifaddrs.begin(),
 		this->_ifaddrs.end(),
 		[&a] (const value_type& pair) {
 			return pair.first.contains(a);
 		}
 	);
-	if (result == this->_ifaddrs.end()) {
-		sys::log_message("net", "bad probe _", p->ifaddr());
-	} else {
-		factory::api::send(p, result->second);
+}
+
+void
+factory::network_master::on_event(socket_pipeline_kernel* ev) {
+	if (ev->event() == socket_pipeline_event::remove_client) {
+		const addr_type& a = traits_type::address(ev->endpoint());
+		map_iterator result = this->find_discoverer(a);
+		if (result == this->_ifaddrs.end()) {
+			sys::log_message("net", "bad event endpoint _", a);
+		} else {
+			ev->setf(kernel_flag::do_not_delete);
+			factory::api::send(ev, result->second);
+		}
 	}
 }
+

@@ -29,16 +29,22 @@ factory::master_discoverer::on_start() {
 void
 factory::master_discoverer::on_kernel(factory::api::Kernel* k) {
 	if (typeid(*k) == typeid(discovery_timer)) {
-		this->probe_next_node();
+		// start probing only if it has not been started already
+		if (this->state() == state_type::waiting) {
+			this->probe_next_node();
+		}
 	} else if (typeid(*k) == typeid(probe)) {
 		this->update_subordinates(dynamic_cast<probe*>(k));
 	} else if (typeid(*k) == typeid(prober)) {
 		this->update_principal(dynamic_cast<prober*>(k));
+	} else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
+		this->on_event(dynamic_cast<socket_pipeline_kernel*>(k));
 	}
 }
 
 void
 factory::master_discoverer::probe_next_node() {
+	this->setstate(state_type::probing);
 	if (this->_iterator == this->_end) {
 		sys::log_message(
 			"discoverer",
@@ -62,6 +68,7 @@ factory::master_discoverer::probe_next_node() {
 
 void
 factory::master_discoverer::send_timer() {
+	this->setstate(state_type::waiting);
 	using namespace std::chrono;
 	if (!this->_timer) {
 		this->_timer = new discovery_timer;
@@ -86,6 +93,7 @@ factory::master_discoverer::update_subordinates(probe* p) {
 	} else if (result == probe_result::remove_subordinate) {
 		this->_hierarchy.remove_subordinate(src);
 	}
+	p->setf(kernel_flag::do_not_delete);
 	factory::api::commit<factory::api::Remote>(p);
 }
 
@@ -136,6 +144,20 @@ factory::master_discoverer::update_principal(prober* p) {
 		this->_hierarchy.set_principal(newp);
 		// try to find better principal after a period of time
 		this->send_timer();
+	}
+}
+
+void
+factory::master_discoverer::on_event(socket_pipeline_kernel* ev) {
+	if (ev->endpoint() == this->_hierarchy.principal()) {
+		sys::log_message(
+			"discoverer",
+			"_: unset principal _",
+			this->ifaddr(),
+			ev->endpoint()
+		);
+		this->_hierarchy.unset_principal();
+		this->probe_next_node();
 	}
 }
 

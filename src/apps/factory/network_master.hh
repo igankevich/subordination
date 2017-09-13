@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include "master_discoverer.hh"
+#include <factory/ppl/socket_pipeline_event.hh>
 
 namespace factory {
 
@@ -20,6 +21,7 @@ namespace factory {
 		typedef typename sys::ipaddr_traits<addr_type> traits_type;
 		typedef std::unordered_set<ifaddr_type> set_type;
 		typedef std::unordered_map<ifaddr_type,master_discoverer*> map_type;
+		typedef typename map_type::iterator map_iterator;
 
 	private:
 		map_type _ifaddrs;
@@ -53,6 +55,12 @@ namespace factory {
 		/// forward the probe to an appropriate discoverer
 		void
 		forward_probe(probe* p);
+
+		map_iterator
+		find_discoverer(const addr_type& a);
+
+		void
+		on_event(socket_pipeline_kernel* k);
 
 	};
 

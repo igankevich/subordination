@@ -2,6 +2,7 @@
 #define FACTORY_KERNEL_KERNEL_BASE_HH
 
 #include <bitset>
+#include <cassert>
 #include <chrono>
 
 #include <factory/kernel/exit_code.hh>
@@ -15,7 +16,7 @@ namespace factory {
 		typedef std::chrono::system_clock clock_type;
 		typedef clock_type::time_point time_point;
 		typedef clock_type::duration duration;
-		typedef std::bitset<5> flags_type;
+		typedef std::bitset<6> flags_type;
 
 	protected:
 		exit_code _result = exit_code::undefined;
@@ -24,7 +25,10 @@ namespace factory {
 
 	public:
 		virtual
-		~kernel_base() = default;
+		~kernel_base() {
+			assert(!this->isset(kernel_flag::DELETED));
+			this->setf(kernel_flag::DELETED);
+		}
 
 		inline exit_code
 		result() const noexcept {

@@ -8,6 +8,7 @@
 #include <unistdx/net/ipv4_addr>
 
 #include <factory/api.hh>
+#include <factory/ppl/socket_pipeline_event.hh>
 
 #include "hierarchy.hh"
 #include "probe.hh"
@@ -42,6 +43,12 @@ namespace factory {
 		typedef std::chrono::system_clock clock_type;
 		typedef clock_type::duration duration;
 
+		enum class state_type {
+			initial,
+			waiting,
+			probing
+		};
+
 	private:
 		/// Time period between subsequent network scans.
 		duration _interval = std::chrono::minutes(1);
@@ -49,6 +56,7 @@ namespace factory {
 		hierarchy_type _hierarchy;
 		iterator _iterator, _end;
 		discovery_timer* _timer = nullptr;
+		state_type _state = state_type::initial;
 
 	public:
 		inline
@@ -89,6 +97,19 @@ namespace factory {
 
 		void
 		update_principal(prober* p);
+
+		inline void
+		setstate(state_type rhs) noexcept {
+			this->_state = rhs;
+		}
+
+		inline state_type
+		state() const noexcept {
+			return this->_state;
+		}
+
+		void
+		on_event(socket_pipeline_kernel* k);
 
 	};
 

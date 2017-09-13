@@ -205,7 +205,6 @@ namespace factory {
 			sys::poll_event::legacy_event revents=0
 		);
 
-
 	};
 
 }
