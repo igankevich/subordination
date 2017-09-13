@@ -10,7 +10,7 @@ factoryd_src = files([
 	'resident_kernel.cc',
 ])
 
-executable(
+factoryd_exe = executable(
 	'factory',
 	sources: factoryd_src,
 	include_directories: [srcdir],
@@ -42,4 +42,28 @@ test(
 		dependencies: [gtest,unistdx,threads,factoryd],
 		cpp_args: ['-DFACTORY_DEBUG_TREE_HIERARCHY_ITERATOR']
 	)
+)
+
+test_env = environment()
+test_env.set(
+	'_CLUSTER',
+	join_paths(meson.source_root(), 'src', 'test', 'cluster')
+)
+test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs'))
+test_env.set('_FACTORY', factoryd_exe.full_path())
+
+# run discovery test over virtual network
+# using Linux namespaces
+test(
+	'discovery-test',
+	executable(
+		'discovery-test',
+		sources: 'discovery_test.cc',
+		include_directories: [srcdir],
+		dependencies: [unistdx,threads,factoryd,gtest],
+		cpp_args: ['-DFACTORY_DAEMON'],
+	),
+	args: [factoryd_exe.full_path()],
+	env: test_env,
+	workdir: meson.build_root()
 )

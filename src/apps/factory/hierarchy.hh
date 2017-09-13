@@ -4,9 +4,6 @@
 #include <iosfwd>
 #include <unordered_set>
 
-#ifndef NDEBUG
-#include <unistdx/base/log_message>
-#endif
 #include <unistdx/net/endpoint>
 #include <unistdx/net/ifaddr>
 
@@ -61,26 +58,17 @@ namespace factory {
 
 		void
 		set_principal(const sys::endpoint& new_princ) {
-			#ifndef NDEBUG
-			sys::log_message("dscvr", "set principal to _", new_princ);
-			#endif
 			this->_principal = new_princ;
 			this->_subordinates.erase(new_princ);
 		}
 
 		void
 		add_subordinate(const sys::endpoint& addr) {
-			#ifndef NDEBUG
-			sys::log_message("dscvr", "add subordinate _", addr);
-			#endif
 			this->_subordinates.insert(addr);
 		}
 
 		void
 		remove_subordinate(const sys::endpoint& addr) {
-			#ifndef NDEBUG
-			sys::log_message("dscvr", "remove subordinate _", addr);
-			#endif
 			this->_subordinates.erase(addr);
 		}
 

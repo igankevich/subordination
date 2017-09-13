@@ -8,40 +8,6 @@
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/ifaddrs>
 
-namespace std {
-
-	template <class T>
-	std::ostream&
-	operator<<(
-		std::ostream& out,
-		const std::unordered_set<T>& rhs
-	) {
-		copy(
-			rhs.begin(),
-			rhs.end(),
-			sys::intersperse_iterator<T,char>(out, ',')
-		);
-		return out;
-	}
-
-	template <class K, class V>
-	std::ostream&
-	operator<<(
-		std::ostream& out,
-		const std::unordered_map<K,V>& rhs
-	) {
-		typedef typename std::unordered_map<K,V>::const_iterator iterator;
-		typedef sys::field_iterator<iterator,0> iter;
-		copy(
-			iter(rhs.begin()),
-			iter(rhs.end()),
-			sys::intersperse_iterator<K,char>(out, ',')
-		);
-		return out;
-	}
-
-}
-
 namespace {
 
 	template <class T, class X>
@@ -123,13 +89,6 @@ factory::network_master::update_ifaddrs() {
 	for (const ifaddr_type& ifaddr : ifaddrs_to_add) {
 		this->add_ifaddr(ifaddr);
 	}
-	sys::log_message(
-		"net",
-		"add=_ rm=_ actual=_",
-		ifaddrs_to_add,
-		ifaddrs_to_rm,
-		this->_ifaddrs
-	);
 	this->send_timer();
 }
 
@@ -144,6 +103,7 @@ factory::network_master::react(factory::api::Kernel* child) {
 
 void
 factory::network_master::add_ifaddr(const ifaddr_type& ifa) {
+	sys::log_message("net", "add ifaddr _", ifa);
 	factory::factory.nic().add_server(ifa);
 	if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
 		const sys::port_type port = ::factory::factory.nic().port();
@@ -155,6 +115,7 @@ factory::network_master::add_ifaddr(const ifaddr_type& ifa) {
 
 void
 factory::network_master::remove_ifaddr(const ifaddr_type& ifa) {
+	sys::log_message("net", "remove ifaddr _", ifa);
 	factory::factory.nic().remove_server(ifa);
 	auto result = this->_ifaddrs.find(ifa);
 	if (result != this->_ifaddrs.end()) {
@@ -166,7 +127,15 @@ factory::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 
 void
 factory::network_master::forward_probe(probe* p) {
-	auto result = this->_ifaddrs.find(p->ifaddr());
+	typedef typename map_type::value_type value_type;
+	const addr_type& a = p->ifaddr().address();
+	auto result = std::find_if(
+		this->_ifaddrs.begin(),
+		this->_ifaddrs.end(),
+		[&a] (const value_type& pair) {
+			return pair.first.contains(a);
+		}
+	);
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad probe _", p->ifaddr());
 	} else {

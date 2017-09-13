@@ -1,0 +1,137 @@
+#!/bin/sh
+
+#set -x
+
+while [ -n "$1" ]; do
+	case "$1" in
+		--name|-c)
+			shift
+			cluster=$1
+			shift
+			;;
+		--submit|-s)
+			shift
+			submit=$1
+			shift
+			;;
+		--nodes|-n)
+			shift
+			nodes=$1
+			shift
+			;;
+		--outdir|-o)
+			shift
+			outdir=$1
+			shift
+			;;
+		--)
+			shift
+			app=$*
+			while [ -n "$1" ]; do shift; done
+			;;
+		*)
+			echo "Unknown option: $1" >&2
+			exit 2
+			;;
+	esac
+done
+
+node0=$(echo $nodes | sed -rne 's/(.*)-(.*)/\1/p')
+node1=$(echo $nodes | sed -rne 's/(.*)-(.*)/\2/p')
+
+echo "Nodes = $node0-$node1"
+#exit 0
+
+usage() {
+	echo "USAGE: $(basename $0) -c CLUSTER -n NODE_1-NODE_N -- APP"
+}
+
+del_cluster() {
+	for n in $(ip netns list | grep $cluster | cut -d' ' -f1); do
+		ip netns delete $n
+	done
+	ip link list | sed -rne 's/.*(v'$cluster'[0-9]+).*/\1/p' |
+	while read line; do
+		ip link del $line 2>/dev/null;
+	done
+	if [ "$bridge" != "$cluster" ]; then
+		if ip link list | grep "$cluster:" >/dev/null; then
+			ip link set dev $cluster down
+			brctl delbr $cluster
+		fi
+	fi
+}
+
+if [ -z "$nodes" ] || [ -z "$cluster" ]; then
+	usage
+	exit 1
+fi
+
+if test -z "$outdir"; then
+	outdir=/tmp
+fi
+mkdir -p $outdir
+
+export PATH=$PATH:/sbin
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /run
+chmod 777 /run
+
+del_cluster
+for n in $(seq $node0 $node1); do
+	name=$cluster$n
+	x0=$(expr $n / 255)
+	x1=$(expr $n % 255)
+	ip netns add $name
+	ip netns exec $name ip link set dev lo up
+	ip link add v$cluster$n type veth peer name veth0
+	ip link set veth0 netns $name
+	ip netns exec $name ifconfig veth0 10.0.$x0.$x1/16 up
+	ifconfig v$cluster$n 10.1.$x0.$x1/16 up
+done
+
+# create temporary bridge
+brctl addbr $cluster
+for n in $(seq $node0 $node1); do
+	brctl addif $cluster v$cluster$n
+done
+ip link set dev $cluster up
+
+# unset non-existent tmpdir
+if ! test -z ${TMPDIR+x} && ! test -d "$TMPDIR"
+then
+	unset TMPDIR
+fi
+script=$(mktemp)
+cat >$script << EOF
+hostname m\$1
+mkdir -p /var/tmp/m\$1
+mount --bind /var/tmp/m\$1 /tmp
+exec $app >$outdir/$cluster\$1.out 2>&1
+EOF
+chmod +x $script
+for n in $(seq $node0 $node1); do
+	sleep 0.33
+	nohup ip netns exec $cluster$n timeout 5s unshare -u $script $n >/dev/null 2>&1 &
+done
+
+submit_script=$(mktemp)
+cat >$submit_script << EOF
+hostname m\$1
+$submit 
+EOF
+chmod +x $submit_script
+# run submission command (if any) with a delay
+if test -n "$submit"; then
+	sleep 1
+	nohup ip netns exec $cluster$node0 unshare -u $submit_script $node0 >$outdir/$cluster-submit.out 2>&1 &
+fi
+wait
+
+#cat $outdir/$cluster*.out
+#rm $outdir/$cluster*.out
+rm $script $submit_script
+
+del_cluster
+
+exit 0

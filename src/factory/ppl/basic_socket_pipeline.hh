@@ -163,7 +163,6 @@ namespace factory {
 					if (!ev ||
 						h->is_stopped() ||
 						(timeout && this->is_timed_out(*h, now))) {
-						this->log("remove client _ _", ++i ,ev);
 						this->remove_client(h);
 					}
 				}

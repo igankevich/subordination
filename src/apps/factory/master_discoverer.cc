@@ -74,7 +74,13 @@ void
 factory::master_discoverer::update_subordinates(probe* p) {
 	const sys::endpoint src = p->from();
 	probe_result result = this->process_probe(p);
-	sys::log_message("discoverer", "_: _ _", result, src);
+	sys::log_message(
+		"discoverer",
+		"_: _ subordinate _",
+		this->ifaddr(),
+		result,
+		src
+	);
 	if (result == probe_result::add_subordinate) {
 		this->_hierarchy.add_subordinate(src);
 	} else if (result == probe_result::remove_subordinate) {
@@ -121,6 +127,12 @@ factory::master_discoverer::update_principal(prober* p) {
 		if (oldp) {
 			::factory::factory.nic().stop_client(oldp);
 		}
+		sys::log_message(
+			"discoverer",
+			"_: set principal to _",
+			this->ifaddr(),
+			newp
+		);
 		this->_hierarchy.set_principal(newp);
 		// try to find better principal after a period of time
 		this->send_timer();

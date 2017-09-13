@@ -50,7 +50,7 @@ template <class T, class S, class R>
 void
 factory::socket_pipeline<T,S,R>::remove_server(server_iterator result) {
 	#ifndef NDEBUG
-	sys::log_message(this->_name, "remove server _", result->ifaddr());
+	this->log("remove server _", result->ifaddr());
 	#endif
 	this->_servers.erase(result);
 }
@@ -69,13 +69,8 @@ void
 factory::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
 	#ifndef NDEBUG
 	const char* reason =
-		result->second->is_starting() ? "timed out" : "";
-	sys::log_message(
-		this->_name,
-		"remove client _ (_)",
-		result->first,
-		reason
-	);
+		result->second->is_starting() ? "timed out" : "connection closed";
+	this->log("remove client _ (_)", result->first, reason);
 	#endif
 	if (result == this->_iterator) {
 		++this->_iterator;
@@ -103,7 +98,7 @@ factory::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 		#endif
 		add_connected_pipeline(std::move(sock), vaddr, sys::poll_event::In);
 		#ifndef NDEBUG
-		sys::log_message(this->_name, "accept _", *ptr);
+		this->log("accept _", *ptr);
 		#endif
 	} else {
 		/*
@@ -111,7 +106,7 @@ factory::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 		const sys::port_type local_port = s->socket().bind_addr().port();
 		if (!(addr.port() < local_port)) {
 			#ifndef NDEBUG
-			sys::log_message(this->_name,  "replace _", s);
+			this->log( "replace _", s);
 			#endif
 			poller().disable(s->socket().fd());
 			s->socket(std::move(sock));
@@ -424,7 +419,7 @@ factory::socket_pipeline<T,S,R>::add_connected_pipeline(
 		result.first->second
 	);
 	#ifndef NDEBUG
-	sys::log_message(this->_name, "add _", *result.first->second);
+	this->log("add client _", *result.first->second);
 	#endif
 	if (!this->is_stopped()) {
 		this->_semaphore.notify_one();
