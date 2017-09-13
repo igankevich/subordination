@@ -1,4 +1,3 @@
-#subdir('discovery')
 subdir('autoreg')
 subdir('spec')
 subdir('factory')
