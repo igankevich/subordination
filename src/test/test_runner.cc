@@ -6,9 +6,10 @@
 #include <numeric>
 
 #include <unistdx/base/cmdline>
+#include <unistdx/base/ios_guard>
 #include <unistdx/ipc/argstream>
-#include <unistdx/ipc/process>
 #include <unistdx/ipc/execute>
+#include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
 #include <unistdx/it/intersperse_iterator>
 
@@ -46,30 +47,37 @@ operator>>(std::istream& in, Strategy& rhs) {
 
 struct Executor {
 
+	Executor() = default;
+
 	Executor(int argc, char* argv[]) {
+		this->init(argc, argv);
+	}
+
+	void
+	init(int argc, char* argv[]) {
 		sys::input_operator_type options[] = {
 			sys::ignore_first_argument(),
-			sys::make_key_value("--strategy", strat),
+			sys::make_key_value("--strategy", _strategy),
 			[this] (int pos, const std::string& arg) {
 				if (arg == "--exec") {
-					this->arguments.emplace_back();
+					this->_arguments.emplace_back();
 				} else {
-					this->arguments.back().append(arg);
+					this->_arguments.back().append(arg);
 				}
 				return true;
 			},
 			nullptr
 		};
 		sys::parse_arguments(argc, argv, options);
-		assert(!arguments.empty());
+		assert(!_arguments.empty());
 	}
 
 	void
 	execute() {
 		std::for_each(
-			arguments.begin(), arguments.end(),
+			_arguments.begin(), _arguments.end(),
 			[this] (const sys::argstream& rhs) {
-				procs.emplace([&rhs] () {
+				_procs.emplace([&rhs] () {
 					return sys::this_process::execute(rhs.argv());
 				});
 			}
@@ -79,19 +87,19 @@ struct Executor {
 	int
 	wait() {
 		int retval = 0;
-		if (strat == Strategy::Peer_to_peer) {
-			retval = accumulate_return_value(procs.begin(), procs.end());
-		} else if (strat == Strategy::Master_slave) {
+		if (_strategy == Strategy::Peer_to_peer) {
+			retval = accumulate_return_value(_procs.begin(), _procs.end());
+		} else if (_strategy == Strategy::Master_slave) {
 			// wait for master process
-			if (procs.front()) {
-				sys::proc_status stat = procs.front().wait();
+			if (_procs.front()) {
+				sys::proc_status stat = _procs.front().wait();
 				std::clog << "master process terminated: " << stat << std::endl;
 				retval = stat.exit_code() | sys::signal_type(stat.term_signal());
 			}
 			// terminate child processes
-			if (procs.size() > 1) {
+			if (_procs.size() > 1) {
 				std::for_each(
-					procs.begin()+1, procs.end(),
+					_procs.begin()+1, _procs.end(),
 					[&retval] (sys::process& rhs) {
 						if (rhs) {
 							rhs.terminate();
@@ -105,12 +113,24 @@ struct Executor {
 		return retval;
 	}
 
+	void
+	send(sys::signal s) {
+		this->_procs.send(s);
+	}
+
 	friend std::ostream&
 	operator<<(std::ostream& out, const Executor& rhs) {
-		out << "Strategy = " << rhs.strat << '\n';
+		out << "Strategy: " << rhs._strategy << '\n';
+		int i = 0;
 		std::for_each(
-			rhs.arguments.begin(), rhs.arguments.end(),
-			[&out] (const sys::argstream& rhs) {
+			rhs._arguments.begin(), rhs._arguments.end(),
+			[&out,&i] (const sys::argstream& rhs) {
+				{
+					sys::ios_guard g(out);
+					out << "Command #"
+						<< std::setw(5) << std::setfill('0') << std::right
+						<< ++i << ": ";
+				}
 				std::copy(
 					rhs.argv(), rhs.argv() + rhs.argc(),
 					sys::intersperse_iterator<char*,char>(out, ' ')
@@ -136,15 +156,37 @@ private:
 		);
 	}
 
-	Strategy strat = Strategy::Peer_to_peer;
-	std::vector<sys::argstream> arguments;
-	sys::process_group procs;
+	Strategy _strategy = Strategy::Peer_to_peer;
+	std::vector<sys::argstream> _arguments;
+	sys::process_group _procs;
 
 };
 
+Executor exe;
+
+void
+on_terminate(int sig) {
+	exe.send(sys::signal::terminate);
+	::alarm(3);
+}
+
+void
+on_alarm(int) {
+	exe.send(sys::signal::kill);
+}
+
+void
+init_signal_handlers() {
+	using namespace sys::this_process;
+	ignore_signal(sys::signal::broken_pipe);
+	bind_signal(sys::signal::keyboard_interrupt, on_terminate);
+	bind_signal(sys::signal::terminate, on_terminate);
+	bind_signal(sys::signal::alarm, on_alarm);
+}
+
 int main(int argc, char* argv[]) {
-	sys::this_process::ignore_signal(sys::signal::broken_pipe);
-	Executor exe(argc, argv);
+	init_signal_handlers();
+	exe.init(argc, argv);
 	std::clog << exe << std::flush;
 	exe.execute();
 	return exe.wait();
