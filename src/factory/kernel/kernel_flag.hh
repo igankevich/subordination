@@ -14,11 +14,6 @@ namespace factory {
 		   only one subordinate at a time</em>.
 		 */
 		carries_parent = 1,
-		/**
-		   \deprecated This flag should not be used for purposes other than
-		   debugging.
-		 */
-		priority_service = 2,
 		parent_is_id = 3,
 		principal_is_id = 4,
 		do_not_delete = 5

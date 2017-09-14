@@ -43,9 +43,7 @@ _downstream(_upstream.concurrency()) {
 	this->_downstream.set_name("dwnstrm");
 	this->_timer.set_name("tmr");
 	this->_io.set_name("io");
-	#if defined(FACTORY_PRIORITY_SCHEDULING)
-	this->_prio.set_name("prio");
-	#elif defined(FACTORY_DAEMON)
+	#if defined(FACTORY_DAEMON)
 	this->_parent.set_name("nic");
 	#elif defined(FACTORY_SUBMIT)
 	this->_parent.set_name("unix");
@@ -65,9 +63,6 @@ factory::Factory<T>::start() {
 		this->_downstream,
 		this->_timer,
 		this->_io
-		#if defined(FACTORY_PRIORITY_SCHEDULING)
-		, this->_prio
-		#endif
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child
@@ -86,9 +81,6 @@ factory::Factory<T>::stop() {
 		this->_downstream,
 		this->_timer,
 		this->_io
-		#if defined(FACTORY_PRIORITY_SCHEDULING)
-		, this->_prio
-		#endif
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child
@@ -106,9 +98,6 @@ factory::Factory<T>::wait() {
 		this->_downstream,
 		this->_timer,
 		this->_io
-		#if defined(FACTORY_PRIORITY_SCHEDULING)
-		, this->_prio
-		#endif
 		, this->_parent
 		#if defined(FACTORY_DAEMON)
 		, this->_child

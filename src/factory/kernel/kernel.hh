@@ -175,14 +175,6 @@ namespace factory {
 	std::ostream&
 	operator<<(std::ostream& out, const Kernel& rhs);
 
-
-	template<class Base>
-	struct Priority_kernel: public Base {
-		Priority_kernel() {
-			this->setf(kernel_flag::priority_service);
-		}
-	};
-
 }
 
 #ifdef SPRINGY

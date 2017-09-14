@@ -58,9 +58,6 @@ namespace factory {
 		downstream_pipeline_type _downstream;
 		timer_pipeline_type _timer;
 		io_pipeline_type _io;
-		#if defined(FACTORY_PRIORITY_SCHEDULING)
-		cpu_pipeline_type _prio;
-		#endif
 		parent_pipeline_type _parent;
 		#if defined(FACTORY_DAEMON)
 		child_pipeline_type _child;
@@ -78,11 +75,6 @@ namespace factory {
 			if (kernel->scheduled()) {
 				this->_timer.send(kernel);
 			} else
-			#if defined(FACTORY_PRIORITY_SCHEDULING)
-			if (kernel->isset(kernel_flag::priority_service)) {
-				this->_prio.send(kernel);
-			} else
-			#endif
 			if (kernel->moves_downstream()) {
 				const size_t i = kernel->hash();
 				const size_t n = this->_downstream.size();
