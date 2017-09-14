@@ -1,4 +1,4 @@
 subdir('autoreg')
 subdir('spec')
 subdir('factory')
-subdir('web')
+#subdir('web')

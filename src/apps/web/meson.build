@@ -1,15 +1,15 @@
 test(
-	'WebSocket encoding/decoding',
+	'websocket-test',
 	executable(
-		'encoding-test',
-		sources: 'encoding_test.cc',
+		'websocket-test',
+		sources: 'websocket_test.cc',
 		include_directories: [srcdir, testdir],
 		dependencies: [unistdx, gtest]
 	)
 )
 
 test(
-	'base64 encoding/decoding',
+	'base64-test',
 	executable(
 		'base64-test',
 		sources: 'base64_test.cc',
@@ -19,20 +19,10 @@ test(
 )
 
 test(
-	'sha1 encoding/decoding',
+	'sha1-test',
 	executable(
 		'sha1-test',
 		sources: 'sha1_test.cc',
-		include_directories: [srcdir, testdir],
-		dependencies: [unistdx, gtest]
-	)
-)
-
-test(
-	'WebSocket buffer',
-	executable(
-		'web-buffer-test',
-		sources: 'web_buffer_test.cc',
 		include_directories: [srcdir, testdir],
 		dependencies: [unistdx, gtest]
 	)

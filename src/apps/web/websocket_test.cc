@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "encoding.hh"
+#include "websocket.hh"
 #include "test.hh"
 
 using namespace factory;

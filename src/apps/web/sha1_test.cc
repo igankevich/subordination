@@ -4,7 +4,7 @@
 #include <tuple>
 #include <vector>
 
-#include "encoding.hh"
+#include "websocket.hh"
 
 using factory::sha1_encode;
 using factory::SHA1;

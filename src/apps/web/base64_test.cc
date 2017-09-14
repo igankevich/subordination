@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "encoding.hh"
+#include "websocket.hh"
 #include "test.hh"
 
 using factory::base64_decode;
