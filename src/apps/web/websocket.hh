@@ -9,30 +9,6 @@
 
 namespace factory {
 
-	size_t
-	base64_encoded_size(size_t len) {
-		if (len > std::numeric_limits<size_t>::max()/4u*3u-2u) {
-			throw std::length_error("base64 length is too large");
-		}
-		return ((len + 2u) / 3u) * 4u;
-	}
-
-	inline constexpr size_t
-	base64_max_decoded_size(size_t len) noexcept {
-		return (len / 4u) * 3u;
-	}
-
-	template<class It, class Res>
-	void
-	base64_encode(It first, It last, Res result) {
-	}
-
-	template<class It, class Res>
-	size_t
-	base64_decode(It first, It last, Res result) {
-		return 0;
-	}
-
 	enum struct Opcode: int8_t {
 		cont_frame   = 0x0,
 		text_frame   = 0x1,
