@@ -1,7 +1,7 @@
 #include "network_master.hh"
 
-#include <iterator>
 #include <algorithm>
+#include <iterator>
 
 #include <unistdx/base/log_message>
 #include <unistdx/it/field_iterator>
@@ -77,11 +77,11 @@ factory::network_master::update_ifaddrs() {
 	set_type ifaddrs_to_add = set_difference_copy(
 		new_ifaddrs,
 		this->_ifaddrs
-	);
+	                          );
 	set_type ifaddrs_to_rm = set_difference_copy(
 		this->_ifaddrs,
 		new_ifaddrs
-	);
+	                         );
 	// update servers in socket pipeline
 	for (const ifaddr_type& ifaddr : ifaddrs_to_rm) {
 		this->remove_ifaddr(ifaddr);
@@ -146,14 +146,15 @@ factory::network_master::find_discoverer(const addr_type& a) {
 		this->_ifaddrs.begin(),
 		this->_ifaddrs.end(),
 		[&a] (const value_type& pair) {
-			return pair.first.contains(a);
+		    return pair.first.contains(a);
 		}
 	);
 }
 
 void
 factory::network_master::on_event(socket_pipeline_kernel* ev) {
-	if (ev->event() == socket_pipeline_event::remove_client) {
+	if (ev->event() == socket_pipeline_event::remove_client ||
+	    ev->event() == socket_pipeline_event::add_client) {
 		const addr_type& a = traits_type::address(ev->endpoint());
 		map_iterator result = this->find_discoverer(a);
 		if (result == this->_ifaddrs.end()) {
@@ -164,4 +165,3 @@ factory::network_master::on_event(socket_pipeline_kernel* ev) {
 		}
 	}
 }
-

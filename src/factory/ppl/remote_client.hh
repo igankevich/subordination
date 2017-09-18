@@ -2,6 +2,7 @@
 #define FACTORY_PPL_REMOTE_CLIENT_HH
 
 #include <memory>
+#include <cstddef>
 
 #include <unistdx/base/delete_each>
 #include <unistdx/io/fildesbuf>
@@ -31,6 +32,7 @@ namespace factory {
 		typedef Socket socket_type;
 		typedef Router router_type;
 		typedef sys::pid_type app_type;
+		typedef uint32_t weight_type;
 
 		static_assert(
 			std::is_move_constructible<stream_type>::value,
@@ -42,6 +44,8 @@ namespace factory {
 		kernelbuf_ptr _packetbuf;
 		stream_type _stream;
 		protocol_type _proto;
+		/// The number of nodes "behind" this one in the hierarchy.
+		weight_type _weight = 1;
 
 	public:
 		remote_client() = default;
@@ -113,6 +117,16 @@ namespace factory {
 		socket(sys::socket&& rhs) {
 			this->_packetbuf->pubsync();
 			this->_packetbuf->setfd(socket_type(std::move(rhs)));
+		}
+
+		inline weight_type
+		weight() const noexcept {
+			return this->_weight;
+		}
+
+		inline void
+		weight(weight_type rhs) noexcept {
+			this->_weight = rhs;
 		}
 
 		const sys::endpoint& vaddr() const { return _vaddr; }

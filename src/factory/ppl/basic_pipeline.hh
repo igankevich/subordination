@@ -54,8 +54,8 @@ namespace factory {
 	protected:
 		kernel_pool _kernels;
 		thread_pool _threads;
-		mutex_type _mutex;
-		sem_type _semaphore;
+		mutable mutex_type _mutex;
+		mutable sem_type _semaphore;
 
 	public:
 		basic_pipeline() = default;

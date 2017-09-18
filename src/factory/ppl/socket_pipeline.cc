@@ -96,7 +96,7 @@ factory::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
 	this->log("remove client _ (_)", endpoint, reason);
 	#endif
 	if (result == this->_iterator) {
-		++this->_iterator;
+		this->advance_client_iterator();
 	}
 	result->second->setstate(pipeline_state::stopped);
 	this->_clients.erase(result);
@@ -167,6 +167,10 @@ factory::socket_pipeline<T,S,R>::add_server(
 		if (!this->is_stopped()) {
 			this->_semaphore.notify_one();
 		}
+		fire_event_kernels<router_type>(
+			socket_pipeline_event::add_server,
+			ifaddr
+		);
 	}
 }
 
@@ -186,12 +190,10 @@ factory::socket_pipeline<T,S,R>::forward(
 	} else {
 		this->find_next_client();
 		if (this->end_reached()) {
-			this->reset_iterator();
 			this->_mutex.unlock();
 			router_type::forward_child(hdr, istr);
 		} else {
 			this->_iterator->second->forward(hdr, istr);
-			++this->_iterator;
 		}
 	}
 }
@@ -266,14 +268,18 @@ factory::socket_pipeline<T,S,R>::find_next_client() {
 	if (this->_clients.empty()) {
 		return;
 	}
-	// skip stopped hosts
 	client_iterator old_iterator = this->_iterator;
 	do {
 		if (this->_iterator == this->_clients.end()) {
 			this->_iterator = this->_clients.begin();
 		} else {
-			++this->_iterator;
+			if (this->_weightcnt < this->current_client().weight()) {
+				++this->_weightcnt;
+			} else {
+				this->advance_client_iterator();
+			}
 		}
+		// skip stopped hosts
 		if (this->_iterator != this->_clients.end() &&
 			this->_iterator->second->is_running()) {
 			break;
@@ -296,7 +302,7 @@ factory::socket_pipeline<T,S,R>::emplace_pipeline(
 	if (save) {
 		this->_iterator = this->_clients.find(e);
 	} else {
-		this->_iterator = result.first;
+		this->reset_iterator();
 	}
 	return result;
 }
@@ -338,7 +344,6 @@ factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 		this->find_next_client();
 		if (this->_uselocalhost) {
 			if (this->end_reached()) {
-				this->reset_iterator();
 				// include localhost in round-robin
 				// (short-circuit kernels when no upstream servers
 				// are available)
@@ -350,9 +355,6 @@ factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 			if (this->_clients.empty()) {
 				k->return_to_parent(exit_code::no_upstream_servers_available);
 				router_type::send_local(k);
-			} else if (this->end_reached()) {
-				this->reset_iterator();
-				success = true;
 			} else {
 				success = true;
 			}
@@ -360,7 +362,6 @@ factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 		if (success) {
 			ensure_identity(k, this->_iterator->second->vaddr());
 			this->_iterator->second->send(k);
-			++this->_iterator;
 		}
 	} else if (k->moves_downstream() and not k->from()) {
 		// kernel @k was sent to local node
@@ -451,6 +452,10 @@ factory::socket_pipeline<T,S,R>::add_connected_pipeline(
 	if (!this->is_stopped()) {
 		this->_semaphore.notify_one();
 	}
+	fire_event_kernels<router_type>(
+		socket_pipeline_event::add_client,
+		vaddr
+	);
 	return result.first->second;
 }
 
@@ -462,6 +467,33 @@ factory::socket_pipeline<T,S,R>::stop_client(const sys::endpoint& addr) {
 	if (result != this->_clients.end()) {
 		result->second->setstate(pipeline_state::stopped);
 	}
+}
+
+template <class T, class S, class R>
+void
+factory::socket_pipeline<T,S,R>::set_client_weight(
+	const sys::endpoint& addr,
+	weight_type new_weight
+) {
+	lock_type lock(this->_mutex);
+	client_iterator result = this->_clients.find(addr);
+	if (result != this->_clients.end()) {
+		result->second->weight(new_weight);
+	}
+}
+
+template <class T, class S, class R>
+size_t
+factory::socket_pipeline<T,S,R>::count_running_clients() const noexcept {
+	typedef typename client_container_type::value_type value_type;
+	lock_type lock(this->_mutex);
+	return std::count_if(
+		this->_clients.begin(),
+		this->_clients.end(),
+		[] (const value_type& pair) {
+			return pair.second->is_running();
+		}
+	);
 }
 
 template class factory::socket_pipeline<

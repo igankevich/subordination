@@ -5,9 +5,11 @@
 
 #include <unistdx/base/log_message>
 
+#include "hierarchy_kernel.hh"
+
 namespace {
 
-	std::array<const char*,4> all_results{
+	std::array<const char*,4> all_results {
 		"add", "remove", "reject", "retain"
 	};
 
@@ -17,7 +19,7 @@ std::ostream&
 factory::operator<<(std::ostream& out, probe_result rhs) {
 	const size_t i = static_cast<size_t>(rhs);
 	const char* s = i >= 0 && i <= all_results.size()
-		? all_results[i] : "<unknown>";
+	                ? all_results[i] : "<unknown>";
 	return out << s;
 }
 
@@ -60,7 +62,7 @@ factory::master_discoverer::probe_next_node() {
 			this->ifaddr(),
 			this->_hierarchy.principal(),
 			new_principal
-		);
+		            );
 		factory::api::upstream(this, p);
 		++this->_iterator;
 	}
@@ -88,10 +90,16 @@ factory::master_discoverer::update_subordinates(probe* p) {
 		result,
 		src
 	);
+	bool changed = true;
 	if (result == probe_result::add_subordinate) {
 		this->_hierarchy.add_subordinate(src);
 	} else if (result == probe_result::remove_subordinate) {
 		this->_hierarchy.remove_subordinate(src);
+	} else {
+		changed = false;
+	}
+	if (changed) {
+		this->propagate_hierarchy_state();
 	}
 	p->setf(kernel_flag::do_not_delete);
 	factory::api::commit<factory::api::Remote>(p);
@@ -149,15 +157,66 @@ factory::master_discoverer::update_principal(prober* p) {
 
 void
 factory::master_discoverer::on_event(socket_pipeline_kernel* ev) {
-	if (ev->endpoint() == this->_hierarchy.principal()) {
+	switch (ev->event()) {
+	case socket_pipeline_event::add_client:
+		this->on_client_add(ev->endpoint());
+		break;
+	case socket_pipeline_event::remove_client:
+		this->on_client_remove(ev->endpoint());
+		break;
+	case socket_pipeline_event::add_server:
+	case socket_pipeline_event::remove_server:
+	default:
+		// ignore server events
+		break;
+	}
+}
+
+void
+factory::master_discoverer::on_client_add(const sys::endpoint& endp) {
+}
+
+void
+factory::master_discoverer::on_client_remove(const sys::endpoint& endp) {
+	if (endp == this->_hierarchy.principal()) {
 		sys::log_message(
 			"discoverer",
 			"_: unset principal _",
 			this->ifaddr(),
-			ev->endpoint()
+			endp
 		);
 		this->_hierarchy.unset_principal();
 		this->probe_next_node();
+	} else {
+		sys::log_message(
+			"discoverer",
+			"_: remove subordinate _",
+			this->ifaddr(),
+			endp
+		);
+		this->_hierarchy.remove_subordinate(endp);
 	}
+}
+
+void
+factory::master_discoverer::propagate_hierarchy_state() {
+	for (const sys::endpoint& sub : this->_hierarchy) {
+		this->send_hierarchy(sub);
+	}
+	if (this->_hierarchy.has_principal()) {
+		this->send_hierarchy(this->_hierarchy.principal());
+	}
+}
+
+void
+factory::master_discoverer::send_hierarchy(const sys::endpoint& dest) {
+	// add 1 for the current node
+	const size_t w = this->_hierarchy.num_subordinates() + 1;
+	hierarchy_kernel* h = new hierarchy_kernel;
+	h->weight(w);
+	h->parent(this);
+	h->set_principal_id(1);
+	h->to(dest);
+	factory::api::send<factory::api::Remote>(h);
 }
 

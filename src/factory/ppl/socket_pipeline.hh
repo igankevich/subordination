@@ -52,11 +52,19 @@ namespace factory {
 		typedef ifaddr_type::rep_type rep_type;
 		typedef mobile_kernel::id_type id_type;
 		typedef sys::field_iterator<server_const_iterator,0> ifaddr_iterator;
+		typedef event_handler_type client_type;
+		typedef event_handler_ptr client_ptr;
+		typedef typename client_type::weight_type weight_type;
 
 	private:
 		server_container_type _servers;
 		client_container_type _clients;
-		client_iterator _iterator;
+		/// Iterator to client container which is used to distribute the
+		/// kernels between several clients taking into account their weight.
+		client_iterator _iterator = this->_clients.end();
+		/// Client weight counter. Goes from nought to the number of nodes
+		/// "behind" the client.
+		weight_type _weightcnt = 0;
 		sys::port_type _port = 33333;
 		std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
 		id_type _counter = 0;
@@ -85,6 +93,9 @@ namespace factory {
 		stop_client(const sys::endpoint& addr);
 
 		void
+		set_client_weight(const sys::endpoint& addr, weight_type new_weight);
+
+		void
 		add_server(const ifaddr_type& rhs) {
 			this->add_server(
 				sys::endpoint(rhs.address(), this->_port),
@@ -110,6 +121,9 @@ namespace factory {
 		port() const noexcept {
 			return this->_port;
 		}
+
+		size_t
+		count_running_clients() const noexcept;
 
 		inline server_const_iterator
 		servers_begin() const noexcept {
@@ -166,7 +180,19 @@ namespace factory {
 
 		inline void
 		reset_iterator() noexcept {
-			this->_iterator = this->_clients.begin();
+			this->_iterator = this->_clients.end();
+			this->_weightcnt = 0;
+		}
+
+		inline const client_type&
+		current_client() const noexcept {
+			return *this->_iterator->second;
+		}
+
+		inline void
+		advance_client_iterator() noexcept {
+			++this->_iterator;
+			this->_weightcnt = 0;
 		}
 
 		std::pair<client_iterator,bool>

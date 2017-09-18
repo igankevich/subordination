@@ -111,6 +111,18 @@ namespace factory {
 		void
 		on_event(socket_pipeline_kernel* k);
 
+		void
+		on_client_add(const sys::endpoint& endp);
+
+		void
+		on_client_remove(const sys::endpoint& endp);
+
+		void
+		propagate_hierarchy_state();
+
+		void
+		send_hierarchy(const sys::endpoint& dest);
+
 	};
 
 

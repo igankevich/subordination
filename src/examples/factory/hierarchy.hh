@@ -16,6 +16,7 @@ namespace factory {
 		typedef Addr addr_type;
 		typedef sys::ifaddr<addr_type> ifaddr_type;
 		typedef std::unordered_set<sys::endpoint> container_type;
+		typedef typename container_type::const_iterator const_iterator;
 		typedef typename container_type::size_type size_type;
 
 	protected:
@@ -67,9 +68,9 @@ namespace factory {
 			this->_subordinates.insert(addr);
 		}
 
-		void
+		bool
 		remove_subordinate(const sys::endpoint& addr) {
-			this->_subordinates.erase(addr);
+			return this->_subordinates.erase(addr) > 0;
 		}
 
 		size_type
@@ -77,9 +78,29 @@ namespace factory {
 			return this->_subordinates.size();
 		}
 
+		bool
+		has_principal() const noexcept {
+			return static_cast<bool>(this->_principal);
+		}
+
+		size_type
+		num_neighbours() const noexcept {
+			return this->num_subordinates() + (this->has_principal() ? 1 : 0);
+		}
+
 		sys::port_type
 		port() const noexcept {
 			return sys::ipaddr_traits<addr_type>::port(this->_endpoint);
+		}
+
+		const_iterator
+		begin() const noexcept {
+			return this->_subordinates.begin();
+		}
+
+		const_iterator
+		end() const noexcept {
+			return this->_subordinates.end();
 		}
 
 		template <class X>
