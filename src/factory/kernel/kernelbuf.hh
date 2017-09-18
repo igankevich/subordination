@@ -29,7 +29,6 @@ namespace factory {
 	public:
 		basic_kernelbuf() {
 			this->set_oheader(header_size());
-			this->set_iheader(header_size());
 		}
 
 		virtual ~basic_kernelbuf() = default;
@@ -41,25 +40,30 @@ namespace factory {
 
 	private:
 
-		std::streamsize
-		xgetheader() override {
-			bytes_type size(this->gptr(), this->gptr() + this->header_size());
-			size.to_host_format();
-			return size.value();
+		bool
+		xgetheader(std::streamsize& hs, std::streamsize& payload_size) override {
+			bool success = false;
+			if (this->egptr() - this->gptr() >= this->header_size()) {
+				bytes_type size(this->gptr(), this->header_size());
+				size.to_host_format();
+				hs = this->header_size();
+				payload_size = size.value() - this->header_size();
+				success = true;
+			}
+			return success;
 		}
 
 		void
 		put_header() override {
-			bytes_type hdr(0);
-			hdr.to_network_format();
-			this->xsputn(hdr.begin(), hdr.size());
+			this->pbump(this->header_size());
 		}
 
-		void
+		std::streamsize
 		overwrite_header(std::streamsize s) override {
 			bytes_type hdr(s);
 			hdr.to_network_format();
 			traits_type::copy(this->opacket_begin(), hdr.begin(), hdr.size());
+			return this->header_size();
 		}
 
 		static constexpr std::streamsize
