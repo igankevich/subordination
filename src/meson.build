@@ -1,5 +1,3 @@
-subdir('springy')
 subdir('factory')
-testdir = include_directories('test')
 subdir('test')
-subdir('apps')
+subdir('examples')

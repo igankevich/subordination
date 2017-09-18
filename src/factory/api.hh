@@ -3,9 +3,6 @@
 
 #include <factory/ppl/basic_factory.hh>
 #include <factory/config.hh>
-#ifdef SPRINGY
-#include <springy/springy.hh>
-#endif
 
 namespace factory {
 
@@ -42,15 +39,6 @@ namespace factory {
 		void
 		upstream(Kernel* lhs, Kernel* rhs) {
 			rhs->parent(lhs);
-			#ifdef SPRINGY
-			if (lhs) {
-				rhs->_mass = 0.9 * lhs->_mass;
-			}
-			::springy::graph.add_node(rhs->unique_id());
-			if (lhs) {
-				::springy::graph.add_edge(lhs->unique_id(), rhs->unique_id());
-			}
-			#endif
 			send<target>(rhs);
 		}
 
@@ -58,19 +46,10 @@ namespace factory {
 		void
 		commit(Kernel* rhs, exit_code ret) {
 			if (!rhs->parent()) {
-				#ifdef SPRINGY
-				::springy::graph.remove_node(rhs->unique_id());
-				#endif
 				delete rhs;
 				factory::graceful_shutdown(static_cast<int>(ret));
 			} else {
 				rhs->return_to_parent(ret);
-				#ifdef SPRINGY
-				::springy::graph.add_edge(
-					rhs->unique_id(),
-					rhs->parent()->unique_id()
-				);
-				#endif
 				send<target>(rhs);
 			}
 		}
@@ -110,15 +89,6 @@ namespace factory {
 	void
 	upstream(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
 		rhs->parent(lhs);
-		#ifdef SPRINGY
-		if (lhs) {
-			rhs->_mass = 0.9 * lhs->_mass;
-		}
-		::springy::graph.add_node(*rhs);
-		if (lhs) {
-			::springy::graph.add_edge(*lhs, *rhs);
-		}
-		#endif
 		ppl.send(rhs);
 	}
 

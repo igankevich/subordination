@@ -10,10 +10,6 @@ if get_option('buildtype') == 'release'
 	add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 
-if get_option('springy')
-	add_global_arguments('-DSPRINGY', language: 'cpp')
-endif
-
 cpp = meson.get_compiler('cpp')
 if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 	add_global_link_arguments('-rdynamic', language: 'cpp')
@@ -35,10 +31,6 @@ gtest = dependency('gtest', main: true)
 srcdir = include_directories('src')
 
 meson.add_postconf_script(join_paths('scripts', 'copy-input-files'))
-run_target(
-	'springy',
-	command: join_paths('scripts', 'springy-target')
-)
 
 subdir('src')
 

@@ -1,5 +1,3 @@
-option('springy', type: 'boolean', value: false)
-
 option(
 	'kernel_type',
 	type: 'string',

@@ -10,10 +10,6 @@ subdir('base')
 subdir('kernel')
 subdir('ppl')
 
-if get_option('springy')
-	libfactory_src += springy_src
-endif
-
 libfactoryd_shared = shared_library(
 	'factoryd',
 	sources: libfactory_src,

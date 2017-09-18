@@ -33,9 +33,6 @@ namespace factory {
 			}
 		}
 		if (del) {
-			#ifdef SPRINGY
-			::springy::graph.remove_node(kernel->unique_id());
-			#endif
 			delete kernel;
 		}
 	}
