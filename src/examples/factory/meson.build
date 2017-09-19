@@ -2,13 +2,14 @@ factoryd_src = files([
 	'factory.cc',
 	'hierarchy.cc',
 	'hierarchy_kernel.cc',
+	'hierarchy_node.cc',
+	'master_discoverer.cc',
 	'network_master.cc',
 	'position_in_tree.cc',
-	'tree_hierarchy_iterator.cc',
-	'master_discoverer.cc',
-	'prober.cc',
 	'probe.cc',
+	'prober.cc',
 	'resident_kernel.cc',
+	'tree_hierarchy_iterator.cc',
 ])
 
 factoryd_exe = executable(
@@ -45,26 +46,34 @@ test(
 	)
 )
 
-test_env = environment()
-test_env.set(
-	'_CLUSTER',
-	join_paths(meson.source_root(), 'src', 'test', 'cluster')
-)
-test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs'))
-test_env.set('_FACTORY', factoryd_exe.full_path())
-
-# run discovery test over virtual network
-# using Linux namespaces
-test(
+discovery_test = executable(
 	'discovery-test',
-	executable(
-		'discovery-test',
-		sources: 'discovery_test.cc',
-		include_directories: [srcdir],
-		dependencies: [unistdx,threads,factoryd,gtest],
-		cpp_args: ['-DFACTORY_DAEMON'],
-	),
-	args: [factoryd_exe.full_path()],
-	env: test_env,
-	workdir: meson.build_root()
+	sources: 'discovery_test.cc',
+	include_directories: [srcdir],
+	dependencies: [unistdx,threads,factoryd,gtest],
+	cpp_args: ['-DFACTORY_DAEMON'],
 )
+
+foreach nodes : ['2', '4', '8']
+	foreach fanout : ['1000', '2']
+		suffix = '-' + nodes + '-' + fanout
+		test_env = environment()
+		test_env.set(
+			'_CLUSTER',
+			join_paths(meson.source_root(), 'src', 'test', 'cluster')
+		)
+		test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
+		test_env.set('_NODES', nodes)
+		test_env.set('_FANOUT', fanout)
+		test_env.set('_NAME', 'c' + suffix + '-')
+		# run discovery test over virtual network
+		# using Linux namespaces
+		test(
+			'discovery-test' + suffix,
+			discovery_test,
+			args: [factoryd_exe.full_path(), 'fanout=' + fanout],
+			env: test_env,
+			workdir: meson.build_root()
+		)
+	endforeach
+endforeach

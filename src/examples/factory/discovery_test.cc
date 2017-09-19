@@ -13,12 +13,23 @@
 
 #include <gtest/gtest.h>
 
-const std::string cluster_name = "cat";
+const std::string
+cluster_name() {
+	return std::getenv("_NAME");
+}
+
+int _num_nodes = 0;
+int _fanout = 1000;
+
+int
+num_nodes() {
+	return _num_nodes;
+}
 
 sys::path
 get_process_output_filename(int n) {
 	std::stringstream filename;
-	filename << cluster_name << n << ".out";
+	filename << cluster_name() << n << ".out";
 	return sys::path(std::getenv("_LOGDIR"), filename.str());
 }
 
@@ -61,22 +72,125 @@ expect_event_sequence(int n, const std::vector<std::string>& regex_strings) {
 	expect_event_sequence(get_process_output_filename(n), regex_strings);
 }
 
-TEST(Discovery, Daemon) {
-	expect_event_sequence(1, {
-		R"(^.*add ifaddr 10\.0\.0\.1.*$)",
-		R"(^.*add subordinate 10\.0\.0\.2.*$)"
-	});
+void
+expect_event(int n, const std::string& regex_string) {
+	expect_event_sequence(get_process_output_filename(n), {regex_string});
 }
 
-TEST(Discovery, Slave) {
-	expect_event_sequence(2, {
-		R"(^.*add ifaddr 10\.0\.0\.2.*$)",
-		R"(^.*set principal to 10\.0\.0\.1.*$)",
-		R"(^.*unset principal 10\.0\.0\.1.*$)"
-	});
+TEST(Discovery, Daemon) {
+	const int n = num_nodes();
+	if (_fanout >= n || n == 2) {
+		if (n == 2) {
+			expect_event_sequence(1, {
+				R"(^.*add ifaddr 10\.0\.0\.1.*$)",
+				R"(^.*add subordinate 10\.0\.0\.2.*$)",
+			});
+			expect_event(1, R"(^.*set 10\.0\.0\.2.*weight to 1$)");
+		} else {
+			expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+			for (int i=2; i<=n; ++i) {
+				std::stringstream re;
+				re <<  R"(^.*add subordinate 10\.0\.0\.)" << i << ".*$";
+				expect_event(1, re.str());
+			}
+			for (int i=2; i<=n; ++i) {
+				std::stringstream re;
+				re << R"(^.*set 10\.0\.0\.)" << i << ".*weight to 1$";
+				expect_event(1, re.str());
+			}
+		}
+	}
+}
+
+TEST(Discovery, Slaves) {
+	const int n = num_nodes();
+	if (_fanout >= n || n == 2) {
+		if (n == 2) {
+			expect_event_sequence(2, {
+				R"(^.*add ifaddr 10\.0\.0\.2.*$)",
+				R"(^.*set principal to 10\.0\.0\.1.*$)",
+				R"(^.*unset principal 10\.0\.0\.1.*$)"
+			});
+			expect_event(2, R"(^.*set 10\.0\.0\.1.*weight to 1$)");
+		} else {
+			for (int i=2; i<=n; ++i) {
+				std::stringstream re;
+				re << R"(^.*add ifaddr 10\.0\.0\.)" << i << ".*$";
+				expect_event(i, re.str());
+				expect_event(i,	R"(^.*set principal to 10\.0\.0\.1.*$)");
+				std::stringstream re2;
+				re2 << R"(^.*set 10\.0\.0\.1.*weight to )" << n-1 << "$";
+				expect_event(i, re2.str());
+			}
+		}
+	}
+}
+
+TEST(Discovery, Fanout2Hierarchy) {
+	if (_fanout != 2) {
+		return;
+	}
+	const int n = num_nodes();
+	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+	if (n == 4) {
+		expect_event(1, R"(^.*add subordinate 10\.0\.0\.2.*$)");
+		expect_event(1, R"(^.*add subordinate 10\.0\.0\.3.*$)");
+		expect_event(2, R"(^.*add subordinate 10\.0\.0\.4.*$)");
+	} else if (n == 8) {
+		expect_event(1, R"(^.*add subordinate 10\.0\.0\.2.*$)");
+		expect_event(1, R"(^.*add subordinate 10\.0\.0\.3.*$)");
+		expect_event(2, R"(^.*add subordinate 10\.0\.0\.4.*$)");
+		expect_event(2, R"(^.*add subordinate 10\.0\.0\.5.*$)");
+		expect_event(3, R"(^.*add subordinate 10\.0\.0\.6.*$)");
+		expect_event(3, R"(^.*add subordinate 10\.0\.0\.7.*$)");
+		expect_event(4, R"(^.*add subordinate 10\.0\.0\.8.*$)");
+	} else {
+		FAIL() << "bad number of nodes: " << n;
+	}
+}
+
+TEST(Discovery, Fanout2Weights) {
+	if (_fanout != 2) {
+		return;
+	}
+	const int n = num_nodes();
+	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+	if (n == 4) {
+		// upstream
+		expect_event(1, R"(^.*set 10\.0\.0\.2.*weight to 2$)");
+		expect_event(1, R"(^.*set 10\.0\.0\.3.*weight to 1$)");
+		expect_event(2, R"(^.*set 10\.0\.0\.4.*weight to 1$)");
+		// downstream
+		expect_event(2, R"(^.*set 10\.0\.0\.1.*weight to 2$)");
+		expect_event(3, R"(^.*set 10\.0\.0\.1.*weight to 3$)");
+		expect_event(4, R"(^.*set 10\.0\.0\.2.*weight to 3$)");
+	} else if (n == 8) {
+		// upstream
+		expect_event(1, R"(^.*set 10\.0\.0\.2.*weight to 4$)");
+		expect_event(1, R"(^.*set 10\.0\.0\.3.*weight to 3$)");
+		expect_event(2, R"(^.*set 10\.0\.0\.4.*weight to 2$)");
+		expect_event(2, R"(^.*set 10\.0\.0\.5.*weight to 1$)");
+		expect_event(3, R"(^.*set 10\.0\.0\.6.*weight to 1$)");
+		expect_event(3, R"(^.*set 10\.0\.0\.7.*weight to 1$)");
+		expect_event(4, R"(^.*set 10\.0\.0\.8.*weight to 1$)");
+		// downstream
+		expect_event(2, R"(^.*set 10\.0\.0\.1.*weight to 4$)");
+		expect_event(3, R"(^.*set 10\.0\.0\.1.*weight to 5$)");
+		expect_event(4, R"(^.*set 10\.0\.0\.2.*weight to 6$)");
+		expect_event(5, R"(^.*set 10\.0\.0\.2.*weight to 7$)");
+		expect_event(6, R"(^.*set 10\.0\.0\.3.*weight to 7$)");
+		expect_event(7, R"(^.*set 10\.0\.0\.3.*weight to 7$)");
+		expect_event(8, R"(^.*set 10\.0\.0\.4.*weight to 7$)");
+	} else {
+		FAIL() << "bad number of nodes: " << n;
+	}
 }
 
 int main(int argc, char* argv[]) {
+	_num_nodes = std::atoi(std::getenv("_NODES"));
+	_fanout = std::atoi(std::getenv("_FANOUT"));
+	std::string s = "1-";
+	s += std::getenv("_NODES");
 	sys::argstream args;
 	args.append("unshare");
 	args.append("--map-root-user");
@@ -84,9 +198,9 @@ int main(int argc, char* argv[]) {
 	args.append("--mount");
 	args.append(std::getenv("_CLUSTER"));
 	args.append("--name");
-	args.append(cluster_name);
+	args.append(cluster_name());
 	args.append("--nodes");
-	args.append("1-2");
+	args.append(s);
 	args.append("--outdir");
 	args.append(std::getenv("_LOGDIR"));
 	args.append("--");

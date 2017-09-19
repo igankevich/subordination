@@ -12,8 +12,8 @@
 
 #include <factory/kernel/kernel_instance_registry.hh>
 #include <factory/kernel/kstream.hh>
-#include <factory/ppl/pipeline_base.hh>
 #include <factory/ppl/kernel_protocol.hh>
+#include <factory/ppl/pipeline_base.hh>
 
 namespace factory {
 

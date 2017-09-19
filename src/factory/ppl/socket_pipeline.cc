@@ -482,20 +482,6 @@ factory::socket_pipeline<T,S,R>::set_client_weight(
 	}
 }
 
-template <class T, class S, class R>
-size_t
-factory::socket_pipeline<T,S,R>::count_running_clients() const noexcept {
-	typedef typename client_container_type::value_type value_type;
-	lock_type lock(this->_mutex);
-	return std::count_if(
-		this->_clients.begin(),
-		this->_clients.end(),
-		[] (const value_type& pair) {
-			return pair.second->is_running();
-		}
-	);
-}
-
 template class factory::socket_pipeline<
 	FACTORY_KERNEL_TYPE,
 	sys::socket,

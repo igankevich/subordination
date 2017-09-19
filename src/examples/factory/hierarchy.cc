@@ -14,9 +14,44 @@ factory::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
 	std::copy(
 		rhs._subordinates.begin(),
 		rhs._subordinates.end(),
-		sys::intersperse_iterator<sys::endpoint,char>(out, ',')
+		sys::intersperse_iterator<hierarchy_node,char>(out, ',')
 	);
 	return out;
+}
+
+template <class Addr>
+bool
+factory::hierarchy<Addr>::set_subordinate_weight(
+	const sys::endpoint& endp,
+	weight_type w
+) {
+	bool changed = false;
+	auto result = this->_subordinates.find(node_type(endp));
+	if (result != this->_subordinates.end()) {
+		weight_type old = result->weight();
+		changed = old != w;
+		if (changed) {
+			result->weight(w);
+		}
+	}
+	return changed;
+}
+
+template <class Addr>
+typename factory::hierarchy<Addr>::weight_type
+factory::hierarchy<Addr>::total_weight() const noexcept {
+	// add 1 for the current node
+	return this->principal_weight() + this->total_subordinate_weight() + 1;
+}
+
+template <class Addr>
+typename factory::hierarchy<Addr>::weight_type
+factory::hierarchy<Addr>::total_subordinate_weight() const noexcept {
+	weight_type sum = 0;
+	for (const node_type& n : this->_subordinates) {
+		sum += n.weight();
+	}
+	return sum;
 }
 
 template class factory::hierarchy<sys::ipv4_addr>;

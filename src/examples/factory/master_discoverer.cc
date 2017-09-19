@@ -1,11 +1,10 @@
 #include "master_discoverer.hh"
 
 #include <array>
+#include <cassert>
 #include <ostream>
 
 #include <unistdx/base/log_message>
-
-#include "hierarchy_kernel.hh"
 
 namespace {
 
@@ -41,6 +40,8 @@ factory::master_discoverer::on_kernel(factory::api::Kernel* k) {
 		this->update_principal(dynamic_cast<prober*>(k));
 	} else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
 		this->on_event(dynamic_cast<socket_pipeline_kernel*>(k));
+	} else if (typeid(*k) == typeid(hierarchy_kernel)) {
+		this->update_weights(dynamic_cast<hierarchy_kernel*>(k));
 	}
 }
 
@@ -60,7 +61,7 @@ factory::master_discoverer::probe_next_node() {
 		sys::log_message("discoverer", "_: probe _", this->ifaddr(), addr);
 		prober* p = new prober(
 			this->ifaddr(),
-			this->_hierarchy.principal(),
+			this->_hierarchy.principal().endpoint(),
 			new_principal
 		            );
 		factory::api::upstream(this, p);
@@ -99,7 +100,7 @@ factory::master_discoverer::update_subordinates(probe* p) {
 		changed = false;
 	}
 	if (changed) {
-		this->propagate_hierarchy_state();
+		this->broadcast_hierarchy();
 	}
 	p->setf(kernel_flag::do_not_delete);
 	factory::api::commit<factory::api::Remote>(p);
@@ -150,6 +151,7 @@ factory::master_discoverer::update_principal(prober* p) {
 			newp
 		);
 		this->_hierarchy.set_principal(newp);
+		this->broadcast_hierarchy();
 		// try to find better principal after a period of time
 		this->send_timer();
 	}
@@ -199,24 +201,62 @@ factory::master_discoverer::on_client_remove(const sys::endpoint& endp) {
 }
 
 void
-factory::master_discoverer::propagate_hierarchy_state() {
-	for (const sys::endpoint& sub : this->_hierarchy) {
-		this->send_hierarchy(sub);
+factory::master_discoverer::broadcast_hierarchy(
+	sys::endpoint ignored_endpoint
+) {
+	const weight_type total = this->_hierarchy.total_weight();
+	for (const hierarchy_node& sub : this->_hierarchy) {
+		if (sub.endpoint() != ignored_endpoint) {
+			assert(total >= sub.weight());
+			this->send_weight(sub.endpoint(), total - sub.weight());
+		}
 	}
 	if (this->_hierarchy.has_principal()) {
-		this->send_hierarchy(this->_hierarchy.principal());
+		const hierarchy_node& princ = this->_hierarchy.principal();
+		if (princ.endpoint() != ignored_endpoint) {
+			assert(total >= princ.weight());
+			this->send_weight(princ.endpoint(), total - princ.weight());
+		}
 	}
 }
 
 void
-factory::master_discoverer::send_hierarchy(const sys::endpoint& dest) {
-	// add 1 for the current node
-	const size_t w = this->_hierarchy.num_subordinates() + 1;
-	hierarchy_kernel* h = new hierarchy_kernel;
-	h->weight(w);
+factory::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
+	hierarchy_kernel* h = new hierarchy_kernel(this->ifaddr(), w);
 	h->parent(this);
 	h->set_principal_id(1);
 	h->to(dest);
 	factory::api::send<factory::api::Remote>(h);
+}
+
+void
+factory::master_discoverer::update_weights(hierarchy_kernel* k) {
+	if (k->moves_downstream() && k->result() != exit_code::success) {
+		sys::log_message(
+			"discoverer",
+			"_: failed to send hierarchy to _",
+			this->ifaddr(),
+			k->from()
+		);
+	} else {
+		const sys::endpoint& src = k->from();
+		bool changed = false;
+		if (this->_hierarchy.has_principal(src)) {
+			changed = this->_hierarchy.set_principal_weight(k->weight());
+		} else if (this->_hierarchy.has_subordinate(src)) {
+			changed = this->_hierarchy.set_subordinate_weight(src, k->weight());
+		}
+		sys::log_message(
+			"discoverer",
+			"_: set _ weight to _",
+			this->ifaddr(),
+			k->from(),
+			k->weight()
+		);
+		if (changed) {
+			::factory::factory.nic().set_client_weight(src, k->weight());
+			this->broadcast_hierarchy(src);
+		}
+	}
 }
 

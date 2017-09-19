@@ -11,10 +11,12 @@
 #include <factory/ppl/socket_pipeline_event.hh>
 
 #include "hierarchy.hh"
+#include "hierarchy_kernel.hh"
 #include "probe.hh"
 #include "prober.hh"
 #include "resident_kernel.hh"
 #include "tree_hierarchy_iterator.hh"
+
 
 namespace factory {
 
@@ -42,6 +44,7 @@ namespace factory {
 		typedef hierarchy<addr_type> hierarchy_type;
 		typedef std::chrono::system_clock clock_type;
 		typedef clock_type::duration duration;
+		typedef typename hierarchy_type::weight_type weight_type;
 
 		enum class state_type {
 			initial,
@@ -60,9 +63,14 @@ namespace factory {
 
 	public:
 		inline
-		master_discoverer(const ifaddr_type& ifaddr, const sys::port_type port):
+		master_discoverer(
+			const ifaddr_type& ifaddr,
+			const sys::port_type port,
+			uint_type fanout
+		):
+		_fanout(fanout),
 		_hierarchy(ifaddr, port),
-		_iterator(ifaddr, this->_fanout)
+		_iterator(ifaddr, fanout)
 		{}
 
 		void
@@ -118,10 +126,13 @@ namespace factory {
 		on_client_remove(const sys::endpoint& endp);
 
 		void
-		propagate_hierarchy_state();
+		broadcast_hierarchy(sys::endpoint ignored_endpoint = sys::endpoint());
 
 		void
-		send_hierarchy(const sys::endpoint& dest);
+		send_weight(const sys::endpoint& dest, weight_type w);
+
+		void
+		update_weights(hierarchy_kernel* k);
 
 	};
 

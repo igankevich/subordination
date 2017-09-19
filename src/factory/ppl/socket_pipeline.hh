@@ -122,9 +122,6 @@ namespace factory {
 			return this->_port;
 		}
 
-		size_t
-		count_running_clients() const noexcept;
-
 		inline server_const_iterator
 		servers_begin() const noexcept {
 			return this->_servers.begin();

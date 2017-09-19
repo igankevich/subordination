@@ -7,6 +7,8 @@
 #include <unistdx/net/endpoint>
 #include <unistdx/net/ifaddr>
 
+#include "hierarchy_node.hh"
+
 namespace factory {
 
 	template<class Addr>
@@ -15,14 +17,16 @@ namespace factory {
 	public:
 		typedef Addr addr_type;
 		typedef sys::ifaddr<addr_type> ifaddr_type;
-		typedef std::unordered_set<sys::endpoint> container_type;
+		typedef std::unordered_set<hierarchy_node> container_type;
 		typedef typename container_type::const_iterator const_iterator;
 		typedef typename container_type::size_type size_type;
+		typedef hierarchy_node node_type;
+		typedef node_type::weight_type weight_type;
 
 	protected:
 		ifaddr_type _ifaddr;
 		sys::endpoint _endpoint;
-		sys::endpoint _principal;
+		hierarchy_node _principal;
 		container_type _subordinates;
 
 	public:
@@ -35,6 +39,7 @@ namespace factory {
 		{}
 
 		hierarchy(const hierarchy&) = default;
+
 		hierarchy(hierarchy&&) = default;
 
 		const ifaddr_type&
@@ -47,7 +52,7 @@ namespace factory {
 			return this->_endpoint;
 		}
 
-		const sys::endpoint&
+		const node_type&
 		principal() const noexcept {
 			return this->_principal;
 		}
@@ -59,18 +64,18 @@ namespace factory {
 
 		void
 		set_principal(const sys::endpoint& new_princ) {
-			this->_principal = new_princ;
-			this->_subordinates.erase(new_princ);
+			this->_principal.endpoint(new_princ);
+			this->_subordinates.erase(this->_principal);
 		}
 
 		void
 		add_subordinate(const sys::endpoint& addr) {
-			this->_subordinates.insert(addr);
+			this->_subordinates.emplace(addr);
 		}
 
 		bool
 		remove_subordinate(const sys::endpoint& addr) {
-			return this->_subordinates.erase(addr) > 0;
+			return this->_subordinates.erase(node_type(addr)) > 0;
 		}
 
 		size_type
@@ -80,7 +85,18 @@ namespace factory {
 
 		bool
 		has_principal() const noexcept {
-			return static_cast<bool>(this->_principal);
+			return static_cast<bool>(this->_principal.endpoint());
+		}
+
+		bool
+		has_principal(const sys::endpoint& rhs) const noexcept {
+			return this->_principal.endpoint() == rhs;
+		}
+
+		bool
+		has_subordinate(const sys::endpoint& rhs) const noexcept {
+			return this->_subordinates.find(node_type(rhs)) !=
+			       this->_subordinates.end();
 		}
 
 		size_type
@@ -103,6 +119,32 @@ namespace factory {
 			return this->_subordinates.end();
 		}
 
+		inline bool
+		set_principal_weight(weight_type w) noexcept {
+			weight_type old = this->_principal.weight();
+			bool changed = old != w;
+			if (changed) {
+				this->_principal.weight(w);
+			}
+			return changed;
+		}
+
+		/// @return total weight of all subordinate and principal nodes
+		weight_type
+		total_weight() const noexcept;
+
+		/// @return total weight of all subordinate nodes
+		weight_type
+		total_subordinate_weight() const noexcept;
+
+		inline weight_type
+		principal_weight() const noexcept {
+			return this->has_principal() ? this->_principal.weight() : 0;
+		}
+
+		bool
+		set_subordinate_weight(const sys::endpoint& endp, weight_type w);
+
 		template <class X>
 		friend std::ostream&
 		operator<<(std::ostream& out, const hierarchy<X>& rhs);
@@ -114,5 +156,6 @@ namespace factory {
 	operator<<(std::ostream& out, const hierarchy<X>& rhs);
 
 }
+
 
 #endif // vim:filetype=cpp

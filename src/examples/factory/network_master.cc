@@ -99,6 +99,8 @@ factory::network_master::react(factory::api::Kernel* child) {
 		this->_timer = nullptr;
 	} else if (typeid(*child) == typeid(probe)) {
 		this->forward_probe(dynamic_cast<probe*>(child));
+	} else if (typeid(*child) == typeid(hierarchy_kernel)) {
+		this->forward_hierarchy_kernel(dynamic_cast<hierarchy_kernel*>(child));
 	} else if (typeid(*child) == typeid(socket_pipeline_kernel)) {
 		this->on_event(dynamic_cast<socket_pipeline_kernel*>(child));
 	}
@@ -110,7 +112,7 @@ factory::network_master::add_ifaddr(const ifaddr_type& ifa) {
 	factory::factory.nic().add_server(ifa);
 	if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
 		const sys::port_type port = ::factory::factory.nic().port();
-		master_discoverer* d = new master_discoverer(ifa, port);
+		master_discoverer* d = new master_discoverer(ifa, port, this->_fanout);
 		this->_ifaddrs.emplace(ifa, d);
 		factory::api::upstream(this, d);
 	}
@@ -133,6 +135,17 @@ factory::network_master::forward_probe(probe* p) {
 	map_iterator result = this->find_discoverer(p->ifaddr().address());
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad probe _", p->ifaddr());
+	} else {
+		p->setf(kernel_flag::do_not_delete);
+		factory::api::send(p, result->second);
+	}
+}
+
+void
+factory::network_master::forward_hierarchy_kernel(hierarchy_kernel* p) {
+	map_iterator result = this->find_discoverer(p->ifaddr().address());
+	if (result == this->_ifaddrs.end()) {
+		sys::log_message("net", "bad hierarchy kernel _", p->ifaddr());
 	} else {
 		p->setf(kernel_flag::do_not_delete);
 		factory::api::send(p, result->second);
