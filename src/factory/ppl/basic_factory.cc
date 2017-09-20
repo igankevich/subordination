@@ -37,7 +37,7 @@ namespace {
 
 template <class T>
 factory::Factory<T>::Factory():
-_upstream(),
+_upstream(std::thread::hardware_concurrency()),
 _downstream(_upstream.concurrency()) {
 	this->_upstream.set_name("upstrm");
 	this->_downstream.set_name("dwnstrm");

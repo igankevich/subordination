@@ -58,11 +58,11 @@ factory::external_process_handler<K,R>
 				stream << k;
 				stream.end_packet();
 			} catch (const Error& err) {
-				sys::log_message("proto", "write error _", err);
+				this->log("write error _", err);
 			} catch (const std::exception& err) {
-				sys::log_message("proto", "write error _", err.what());
+				this->log("write error _", err.what());
 			} catch (...) {
-				sys::log_message("proto", "write error _", "<unknown>");
+				this->log("write error _", "<unknown>");
 			}
 			delete k;
 		}

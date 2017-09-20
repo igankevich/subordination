@@ -16,13 +16,11 @@ if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 endif
 
 # configuration
+log_dir = join_paths(get_option('localstatedir'), 'log', 'factory')
 config = configuration_data()
 config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))
-config.set(
-	'logdir',
-	join_paths(get_option('localstatedir'), 'log', 'factory')
-)
+config.set('logdir', log_dir)
 
 threads = dependency('threads')
 unistdx = dependency('unistdx')

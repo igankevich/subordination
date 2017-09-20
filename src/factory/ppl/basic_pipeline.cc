@@ -1,7 +1,8 @@
 #include "basic_pipeline.hh"
 
+#include <future>
+
 #include <unistdx/base/log_message>
-#include <iostream>
 
 namespace {
 

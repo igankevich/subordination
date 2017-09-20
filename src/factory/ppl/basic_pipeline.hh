@@ -2,12 +2,10 @@
 #define FACTORY_PPL_BASIC_PIPELINE_HH
 
 #include <cassert>
-#include <future>
-#include <iostream>
 #include <queue>
 #include <thread>
+#include <vector>
 
-#include <unistdx/base/log_message>
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
 #include <unistdx/ipc/thread_semaphore>
@@ -92,7 +90,7 @@ namespace factory {
 		void
 		send(kernel_type* kernel) {
 			#ifndef NDEBUG
-			sys::log_message(this->_name, "send _", *kernel);
+			this->log("send _", *kernel);
 			#endif
 			lock_type lock(this->_mutex);
 			traits_type::push(this->_kernels, kernel);
@@ -141,11 +139,7 @@ namespace factory {
 		void
 		wait() {
 			#ifndef NDEBUG
-			sys::log_message(
-				this->_name,
-				"wait(): pid=_",
-				sys::this_process::id()
-			);
+			this->log("wait(): pid=_", sys::this_process::id());
 			#endif
 			for (std::thread& thr : this->_threads) {
 				if (thr.joinable()) {

@@ -2,9 +2,9 @@
 #define FACTORY_PPL_PROCESS_HANDLER_HH
 
 #include <cassert>
-#include <ostream>
 
-#include <unistdx/base/make_object>
+#include <unistdx/io/fildesbuf>
+#include <unistdx/io/poller>
 #include <unistdx/ipc/process>
 
 #include <factory/kernel/kstream.hh>
@@ -13,16 +13,18 @@
 
 namespace factory {
 
-	template<class T, class Router>
+	template<class K, class R>
 	class process_handler: public pipeline_base {
 
 	public:
-		typedef T kernel_type;
-		typedef Router router_type;
+		typedef K kernel_type;
+		typedef R router_type;
+
+	private:
 		typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
 		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
-		typedef kstream<T> stream_type;
-		typedef kernel_protocol<T,Router,bits::forward_to_parent<Router>>
+		typedef kstream<K> stream_type;
+		typedef kernel_protocol<K,R,bits::forward_to_parent<R>>
 			protocol_type;
 
 	private:
@@ -104,39 +106,11 @@ namespace factory {
 		}
 
 		void
-		handle(sys::poll_event& event) {
-			if (this->is_starting()) {
-				this->setstate(pipeline_state::started);
-			}
-			if (event.fd() == this->_outbuf->fd()) {
-//				this->_ostream.clear();
-				this->_ostream.sync();
-				if (this->_outbuf->dirty()) {
-					event.setev(sys::poll_event::Out);
-				} else {
-					event.unsetev(sys::poll_event::Out);
-				}
-			} else {
-				assert(
-					event.fd() == this->_inbuf->fd()
-					|| !this->_inbuf->fd()
-					|| !event.bad_fd()
-				);
-				assert(!event.out() || event.hup());
-//				this->_istream.clear();
-				this->_istream.sync();
-				this->_proto.receive_kernels(this->_istream);
-			}
-		}
+		handle(sys::poll_event& event);
 
 		void
 		forward(const kernel_header& hdr, sys::pstream& istr) {
 			this->_proto.forward(hdr, istr, this->_ostream);
-		}
-
-		friend std::ostream&
-		operator<<(std::ostream& out, const process_handler& rhs) {
-			return out << sys::make_object("childpid", rhs._childpid);
 		}
 
 	};

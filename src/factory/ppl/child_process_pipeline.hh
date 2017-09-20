@@ -4,20 +4,21 @@
 #include <algorithm>
 #include <memory>
 
-#include <unistdx/it/queue_popper>
 #include <unistdx/io/pipe>
+#include <unistdx/it/queue_popper>
 
-#include <factory/ppl/process_handler.hh>
 #include <factory/ppl/application.hh>
+#include <factory/ppl/process_handler.hh>
 
 namespace factory {
 
-	template<class T, class Router>
+	template<class K, class R>
 	class child_process_pipeline:
-		public basic_socket_pipeline<T,process_handler<T,Router>> {
+		public basic_socket_pipeline<K,process_handler<K,R>> {
 
 	public:
-		typedef basic_socket_pipeline<T,process_handler<T,Router>> base_pipeline;
+		typedef basic_socket_pipeline<K,process_handler<K, R>>
+		    base_pipeline;
 		using typename base_pipeline::kernel_type;
 		using typename base_pipeline::mutex_type;
 		using typename base_pipeline::lock_type;
@@ -26,22 +27,25 @@ namespace factory {
 		using typename base_pipeline::event_handler_type;
 		using typename base_pipeline::event_handler_ptr;
 		using typename base_pipeline::queue_popper;
-		typedef Router router_type;
-
-		using base_pipeline::poller;
+		using typename base_pipeline::traits_type;
+		typedef R router_type;
 
 		child_process_pipeline():
 		_parent(std::make_shared<event_handler_type>(
-			sys::pipe{
-				this_application::get_input_fd(),
-				this_application::get_output_fd()
-			}
-		))
-		{}
+					sys::pipe {
+					    this_application::get_input_fd(),
+					    this_application::get_output_fd()
+					}
+
+		        ))
+		{
+			this->set_name("chld");
+		}
 
 		child_process_pipeline(child_process_pipeline&& rhs) = default;
 
-		virtual ~child_process_pipeline() = default;
+		virtual
+		~child_process_pipeline() = default;
 
 		void
 		remove_client(event_handler_ptr ptr) override {
@@ -67,18 +71,39 @@ namespace factory {
 			base_pipeline::do_run();
 		}
 
+		void
+		send(kernel_type* kernel) {
+			#ifndef NDEBUG
+			this->log("send _", *kernel);
+			#endif
+			lock_type lock(this->_mutex);
+			if (!this->_parent) {
+				router_type::send_local(kernel);
+			} else {
+				traits_type::push(this->_kernels, kernel);
+				this->_semaphore.notify_one();
+			}
+		}
+
 	private:
 
 		void
 		init_pipeline() {
 			sys::fd_type in = this_application::get_input_fd();
 			sys::fd_type out = this_application::get_output_fd();
-			this->poller().emplace(
-				sys::poll_event{in, sys::poll_event::In, 0},
-				this->_parent
-			);
-			this->poller().emplace(sys::poll_event{out, 0, 0}, this->_parent);
-			this->_parent->set_name(this->name());
+			if (in != -1 && out != -1) {
+				this->poller().emplace(
+					sys::poll_event {in, sys::poll_event::In, 0},
+					this->_parent
+				);
+				this->poller().emplace(
+					sys::poll_event {out, 0, 0},
+					this->_parent
+				);
+				this->_parent->set_name(this->name());
+			} else {
+				this->_parent = nullptr;
+			}
 		}
 
 		void
@@ -86,7 +111,11 @@ namespace factory {
 			#ifndef NDEBUG
 			this->log("send _", *k);
 			#endif
-			this->_parent->send(k);
+			if (this->_parent) {
+				this->_parent->send(k);
+			} else {
+				router_type::send_local(k);
+			}
 		}
 
 		event_handler_ptr _parent;
