@@ -4,8 +4,6 @@
 #include <random>
 #include <chrono>
 
-#include "discrete_function.hh"
-#include "mersenne_twister.hh"
 #include "grid.hh"
 #include "mapreduce.hh"
 
@@ -215,8 +213,6 @@ void approx_acf(const T alpha,
 template<class T>
 struct ACF_generator: public Kernel {
 
-	typedef autoreg::Discrete_function<T, 2> Spectrum;
-	typedef autoreg::Discrete_function<T, 3> ACF;
 	typedef int I;
 
 	ACF_generator(const T alpha_,
@@ -230,61 +226,6 @@ struct ACF_generator: public Kernel {
 	{}
 
 	void act() override {
-//		Spectrum spec{
-//			{64, 64},
-//			{T(-0.3), T(0)},
-//			{T( 0.3), T(1.5)}
-//		};
-//		spec([this, &spec] (T& val, int idx[2]) {
-//			const T _omega_max = 1.02;
-//			const T _theta_max = 1.5;
-//			const I _n = 4;
-//			const I _m = 2;
-//			auto pt = spec.domain_point(idx);
-//			T u = pt[0];
-//			T v = pt[1];
-//			T disp = std::pow(u*u + v*v, T(0.25));
-//			T omega = std::sqrt(G) * disp;
-//			T theta = std::atan2(v, u);
-//			T jacobian = disp == T(0) ? T(1) : T(0.5) * std::sqrt(G) / std::pow(disp, 3);
-////			jacobian = T(2) * std::pow(omega, 3) / G / G;
-//			jacobian = 1;
-//			jacobian *= 0.4;
-//			val = autoreg::frequency_spec(omega, _omega_max, _n)
-//				* autoreg::directional_spec(theta, _theta_max, _m)
-//				* jacobian;
-//		});
-//		{
-//			std::ofstream out("spec.blob");
-//			spec.write(out);
-//		}
-//
-//		auto delta = spec.domain_delta();
-//		T du = delta[0];
-//		T dv = delta[1];
-//
-//		const Index<3> id(acf_size);
-//		int t1 = acf_size[0];
-//		int x1 = acf_size[1];
-//		int y1 = acf_size[2];
-//		for (int t=0; t<t1; t++) {
-//		    for (int x=0; x<x1; x++) {
-//		        for (int y=0; y<y1; y++) {
-//					std::complex<T> sum = 0;
-//					spec([this, &spec, &sum, &t, &x, &y, &du, &dv] (T val2, int idx2[2]) {
-//						auto pt = spec.domain_point(idx2);
-//						T u = pt[0];
-//						T v = pt[1];
-//						T w = std::sqrt(G*(u*u + v*v));
-//		//				sum += val2 * std::cos(x*u + y*v - w*t);
-//						sum += val2 * std::exp(std::complex<T>(T(0), -w*t + x*u + y*v));
-//					});
-//					acf[id(t, x, y)] = (T(1)/PI) * std::norm(sum)*du*dv;// * std::exp(-alpha*(t + x + y))*std::cos(beta*t);
-//				}
-//			}
-//		}
-//		commit(local_pipeline());
-
 		int bs = 2;
 		int n = acf_size[0];
 		auto identity = [](int){};
@@ -466,7 +407,7 @@ generate_white_noise(
 		throw std::runtime_error("variance is less than zero");
 	}
 
-	autoreg::parallel_mt generator(p.part());
+	std::mt19937 generator;
 	#if !defined(DISABLE_RANDOM_SEED)
 	generator.seed(std::chrono::steady_clock::now().time_since_epoch().count());
 	#endif
@@ -627,7 +568,12 @@ struct Generator1: public Kernel {
 			commit<Remote>(this);
 		} else {
 			#ifndef NDEBUG
-			sys::log_message("autoreg", "generating part _", part2);
+			sys::log_message(
+				"autoreg",
+				"generating part _, tid=_",
+				part2,
+				std::this_thread::get_id()
+			);
 			#endif
 			const size3 part_size(part.part_size(), zsize[1], zsize[2]);
 			const size3 part_size2(part2.part_size(), zsize2[1], zsize2[2]);

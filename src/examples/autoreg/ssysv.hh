@@ -1,8 +1,8 @@
 #ifndef APPS_AUTOREG_SSYSV_HH
 #define APPS_AUTOREG_SSYSV_HH
 
-#include <cmath>
 #include "vector_n.hh"
+#include <cmath>
 
 namespace autoreg {
 
@@ -45,13 +45,13 @@ namespace autoreg {
 		}
 		//print(0, b, n, "b");
 		/*for (int i=0; i<n; i++) {
-			T sum = 0.0;
-			for (int j=0; j<n; j++) {
-				sum += b[j]*A[idx(j,i)];
-			}
-			sum -= y[i];
-			cout << setw(5) << sum << endl;
-		}*/
+		    T sum = 0.0;
+		    for (int j=0; j<n; j++) {
+		        sum += b[j]*A[idx(j,i)];
+		    }
+		    sum -= y[i];
+		    cout << setw(5) << sum << endl;
+		   }*/
 	}
 
 }

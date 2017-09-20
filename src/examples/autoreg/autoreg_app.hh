@@ -19,11 +19,8 @@
 #include "mapreduce.hh"
 #include "ssysv.hh"
 #include "domain.hh"
-#include "spectrum.hh"
 #include "autoreg.hh"
-#include "nonlinear_omp.hh"
-#include "fourier.hh"
-#include "pressure.hh"
+#include "valarray_ext.hh"
 #include "autoreg_driver.hh"
 using namespace autoreg;
 
@@ -52,7 +49,7 @@ struct Autoreg_app: public Kernel {
 				sys::log_message("autoreg", "using default parameters");
 				#endif
 			}
-		} catch (std::exception& e) {
+		} catch (const std::exception& e) {
 			std::cerr << e.what();
 			exit(1);
 		}

@@ -1,6 +1,3 @@
-linear=1
-skewness=0.25
-kurtosis=0.4
 size_factor=1.4
 zsize=200 32 32
 zdelta=1 1 1
