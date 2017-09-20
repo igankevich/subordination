@@ -24,13 +24,13 @@ namespace autoreg {
 
 		explicit
 		Autoreg_model(bool b = true):
-		zsize(280, 32, 32),
+		zsize(200, 32, 32),
 		zdelta(1, 1, 1),
 		acf_size(10, 10, 10),
 		acf_delta(zdelta),
 		fsize(acf_size),
 		interval(0),
-		zsize2(zsize),
+		zsize2(zsize*1.4),
 		acf_model(acf_size),
 		acf_pure(acf_size),
 		ar_coefs(fsize),

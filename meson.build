@@ -28,8 +28,6 @@ gtest = dependency('gtest', main: true)
 
 srcdir = include_directories('src')
 
-meson.add_postconf_script(join_paths('scripts', 'copy-input-files'))
-
 subdir('src')
 
 # doxygen {{{

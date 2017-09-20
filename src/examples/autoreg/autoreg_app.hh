@@ -1,27 +1,27 @@
 #ifndef APPS_AUTOREG_AUTOREG_APP_HH
 #define APPS_AUTOREG_AUTOREG_APP_HH
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <valarray>
-#include <limits>
+#include <algorithm>
 #include <cmath>
 #include <complex>
-#include <ostream>
+#include <fstream>
 #include <functional>
-#include <algorithm>
+#include <iostream>
+#include <limits>
 #include <numeric>
+#include <ostream>
+#include <sstream>
 #include <stdexcept>
+#include <valarray>
 
 
 #define DISABLE_RANDOM_SEED
+#include "autoreg.hh"
+#include "autoreg_driver.hh"
+#include "domain.hh"
 #include "mapreduce.hh"
 #include "ssysv.hh"
-#include "domain.hh"
-#include "autoreg.hh"
 #include "valarray_ext.hh"
-#include "autoreg_driver.hh"
 using namespace autoreg;
 
 
@@ -38,7 +38,8 @@ struct Autoreg_app: public asc::Kernel {
 	Autoreg_app()
 	{}
 
-	void act() {
+	void
+	act() {
 		Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
 		try {
 			std::ifstream cfg(model_filename.c_str());
@@ -56,7 +57,8 @@ struct Autoreg_app: public asc::Kernel {
 		asc::upstream(this, model);
 	}
 
-	void react(asc::Kernel*) {
+	void
+	react(asc::Kernel*) {
 		#ifndef NDEBUG
 		sys::log_message("autoreg", "finished all");
 		#endif

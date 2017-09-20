@@ -4,8 +4,11 @@
 #include <random>
 #include <chrono>
 
+#include "domain.hh"
 #include "grid.hh"
 #include "mapreduce.hh"
+#include "ssysv.hh"
+#include "vector_n.hh"
 
 namespace std {
 
