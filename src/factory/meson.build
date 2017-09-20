@@ -5,15 +5,29 @@ configure_file(
 )
 
 libfactory_src = files()
+factory_core_src = files()
 
 subdir('base')
 subdir('kernel')
 subdir('ppl')
 
+factory_core_shared = shared_library(
+	'factory-core',
+	sources: factory_core_src,
+	dependencies: [threads,unistdx],
+	version: meson.project_version(),
+	include_directories: srcdir,
+)
+
+factory_core = declare_dependency(
+	link_with: factory_core_shared,
+	include_directories: srcdir
+)
+
 libfactoryd_shared = shared_library(
 	'factoryd',
 	sources: libfactory_src,
-	dependencies: [threads,unistdx],
+	dependencies: [threads,unistdx,factory_core],
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
@@ -23,7 +37,7 @@ libfactoryd_shared = shared_library(
 libfactorys_shared = shared_library(
 	'factorys',
 	sources: libfactory_src,
-	dependencies: [threads,unistdx],
+	dependencies: [threads,unistdx,factory_core],
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
@@ -33,7 +47,7 @@ libfactorys_shared = shared_library(
 libfactory_shared = shared_library(
 	'factory',
 	sources: libfactory_src,
-	dependencies: [threads,unistdx],
+	dependencies: [threads,unistdx,factory_core],
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
@@ -41,16 +55,16 @@ libfactory_shared = shared_library(
 )
 
 factoryd = declare_dependency(
-	link_with: libfactoryd_shared,
+	link_with: [libfactoryd_shared,factory_core_shared],
 	include_directories: srcdir
 )
 
 factorys = declare_dependency(
-	link_with: libfactorys_shared,
+	link_with: [libfactorys_shared,factory_core_shared],
 	include_directories: srcdir
 )
 
 factory = declare_dependency(
-	link_with: libfactory_shared,
+	link_with: [libfactory_shared,factory_core_shared],
 	include_directories: srcdir
 )

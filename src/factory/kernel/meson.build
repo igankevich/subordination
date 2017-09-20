@@ -1,4 +1,4 @@
-libfactory_src += files([
+factory_core_src += files([
 	'exit_code.cc',
 	'kernel.cc',
 	'kernel_error.cc',

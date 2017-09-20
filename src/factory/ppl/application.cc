@@ -30,16 +30,12 @@ namespace {
 
 	inline factory::application_type
 	get_appliction_id() noexcept {
-		#if defined(FACTORY_DAEMON)
-		return 0;
-		#else
 		factory::application_type id = 0;
 		if (const char* s = ::getenv(FACTORY_ENV_APPLICATION_ID)) {
 			std::stringstream str(s);
 			str >> id;
 		}
 		return id;
-		#endif
 	}
 
 	inline sys::fd_type

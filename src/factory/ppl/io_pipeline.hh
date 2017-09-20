@@ -20,7 +20,7 @@ namespace factory {
 		/// use only one thread to read/write data
 		inline
 		io_pipeline() noexcept:
-		io_pipeline(sys::io_concurrency() * 2u)
+		io_pipeline(sys::io_concurrency()*2u)
 		{}
 
 		inline explicit
@@ -29,7 +29,10 @@ namespace factory {
 		{}
 
 		io_pipeline(const io_pipeline&) = delete;
-		io_pipeline& operator=(const io_pipeline&) = delete;
+
+		io_pipeline&
+		operator=(const io_pipeline&) = delete;
+
 		~io_pipeline() = default;
 
 	};

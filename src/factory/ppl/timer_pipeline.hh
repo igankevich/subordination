@@ -8,17 +8,27 @@
 
 namespace factory {
 
-	template<class T>
-	using Time_priority_pool = std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
+	namespace bits {
+
+		template<class T>
+		using Priority_queue =
+				  std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
+
+		template<class T>
+		using Priority_queue_traits =
+				  sys::priority_queue_traits<Priority_queue<T>>;
+
+		template<class T>
+		using Timer_pipeline_base =
+				  basic_pipeline<T, Priority_queue<T>,
+				                 Priority_queue_traits<T>>;
+
+	}
 
 	template<class T>
-	using Timer_pipeline_base = basic_pipeline<T, Time_priority_pool<T>,
-		sys::priority_queue_traits<Time_priority_pool<T>>>;
+	struct timer_pipeline: public bits::Timer_pipeline_base<T> {
 
-	template<class T>
-	struct timer_pipeline: public Timer_pipeline_base<T> {
-
-		typedef Timer_pipeline_base<T> base_pipeline;
+		typedef bits::Timer_pipeline_base<T> base_pipeline;
 		using typename base_pipeline::kernel_type;
 		using typename base_pipeline::mutex_type;
 		using typename base_pipeline::lock_type;
@@ -36,7 +46,10 @@ namespace factory {
 		{}
 
 		timer_pipeline(const timer_pipeline&) = delete;
-		timer_pipeline& operator=(const timer_pipeline&) = delete;
+
+		timer_pipeline&
+		operator=(const timer_pipeline&) = delete;
+
 		~timer_pipeline() = default;
 
 	protected:
@@ -46,15 +59,21 @@ namespace factory {
 	private:
 		inline void
 		wait_until_kernel_arrives(lock_type& lock) {
-			this->_semaphore.wait(lock, [this] () {
-				return this->is_stopped() || !this->_kernels.empty();
-			});
+			this->_semaphore.wait(
+				lock,
+				[this] () {
+				    return this->is_stopped() || !this->_kernels.empty();
+				}
+			);
 		}
 
 		inline bool
 		wait_until_kernel_is_ready(lock_type& lock, kernel_type* kernel) {
-			return this->_semaphore.wait_until(lock, kernel->at(),
-				[this] { return this->is_stopped(); });
+			return this->_semaphore.wait_until(
+				lock,
+				kernel->at(),
+				[this] { return this->is_stopped(); }
+			);
 		}
 
 	};

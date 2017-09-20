@@ -127,10 +127,10 @@ TEST(Discovery, Slaves) {
 }
 
 TEST(Discovery, Fanout2Hierarchy) {
-	if (_fanout != 2) {
+	const int n = num_nodes();
+	if (_fanout != 2 || n == 2) {
 		return;
 	}
-	const int n = num_nodes();
 	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
 	if (n == 4) {
 		expect_event(1, R"(^.*add subordinate 10\.0\.0\.2.*$)");
@@ -150,10 +150,10 @@ TEST(Discovery, Fanout2Hierarchy) {
 }
 
 TEST(Discovery, Fanout2Weights) {
-	if (_fanout != 2) {
+	const int n = num_nodes();
+	if (_fanout != 2 || n == 2) {
 		return;
 	}
-	const int n = num_nodes();
 	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
 	if (n == 4) {
 		// upstream
