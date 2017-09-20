@@ -9,7 +9,6 @@
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
-#include <unistdx/base/n_random_bytes>
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/fs/path>
 #include <unistdx/io/fildes>
@@ -24,8 +23,11 @@ namespace {
 
 	inline asc::application_type
 	generate_application_id() noexcept {
-		std::random_device rng;
-		return sys::n_random_bytes<asc::application_type>(rng);
+		std::independent_bits_engine<
+			std::random_device,
+			8*sizeof(asc::application_type),
+			asc::application_type> rng;
+		return rng();
 	}
 
 	inline asc::application_type

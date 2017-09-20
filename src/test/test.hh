@@ -8,8 +8,6 @@
 #include <random>
 #include <string>
 
-#include <unistdx/base/n_random_bytes>
-
 #include <gtest/gtest.h>
 
 namespace test {
@@ -29,16 +27,6 @@ namespace test {
 		std::basic_string<T> ret(size, '_');
 		std::generate(ret.begin(), ret.end(), gen);
 		return ret;
-	}
-
-	template<class It, class Engine>
-	void
-	randomise(It first, It last, Engine& rng) {
-		typedef typename std::decay<decltype(* first)>::type value_type;
-		while (first != last) {
-			*first = sys::n_random_bytes<value_type>(rng);
-			++first;
-		}
 	}
 
 }
