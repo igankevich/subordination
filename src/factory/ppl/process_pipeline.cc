@@ -9,14 +9,14 @@
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::remove_client(event_handler_ptr ptr) {
 	this->_apps.erase(ptr->childpid());
 }
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::process_kernels() {
 	lock_type lock(this->_mutex);
 	std::for_each(
@@ -28,7 +28,7 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::do_run() {
 	std::thread waiting_thread {
 		&process_pipeline::wait_for_all_processes_to_finish,
@@ -48,8 +48,8 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
-::add(const Application& app) {
+asc::process_pipeline<K,R>
+::add(const application& app) {
 	lock_type lock(this->_mutex);
 	sys::two_way_pipe data_pipe;
 	const sys::process& p = _procs.emplace(
@@ -103,7 +103,7 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::forward(const kernel_header& hdr, sys::pstream& istr) {
 	this->log("fwd _", hdr);
 	app_iterator result = this->find_by_app_id(hdr.app());
@@ -115,7 +115,7 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::process_kernel(kernel_type* k) {
 	typedef typename map_type::value_type value_type;
 	if (k->moves_everywhere()) {
@@ -137,7 +137,7 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::wait_for_all_processes_to_finish() {
 	using std::this_thread::sleep_for;
 	using std::chrono::milliseconds;
@@ -157,7 +157,7 @@ factory::process_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::process_pipeline<K,R>
+asc::process_pipeline<K,R>
 ::on_process_exit(const sys::process& p, sys::proc_info status) {
 	this->log("process exited: _", status);
 	lock_type lock(this->_mutex);
@@ -171,8 +171,8 @@ factory::process_pipeline<K,R>
 }
 
 template <class K, class R>
-typename factory::process_pipeline<K,R>::app_iterator
-factory::process_pipeline<K,R>
+typename asc::process_pipeline<K,R>::app_iterator
+asc::process_pipeline<K,R>
 ::find_by_process_id(sys::pid_type pid) {
 	typedef typename map_type::value_type value_type;
 	return std::find_if(
@@ -184,6 +184,6 @@ factory::process_pipeline<K,R>
 	);
 }
 
-template class factory::process_pipeline<
+template class asc::process_pipeline<
 		FACTORY_KERNEL_TYPE,
-		factory::basic_router<FACTORY_KERNEL_TYPE>>;
+		asc::basic_router<FACTORY_KERNEL_TYPE>>;

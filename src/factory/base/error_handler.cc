@@ -12,7 +12,7 @@
 #include <factory/base/thread_name.hh>
 
 void
-factory::print_backtrace(int sig) noexcept {
+asc::print_backtrace(int sig) noexcept {
 	sys::log_message(
 		std::cerr,
 		"error_handler",
@@ -24,7 +24,7 @@ factory::print_backtrace(int sig) noexcept {
 }
 
 void
-factory::print_error() noexcept {
+asc::print_error() noexcept {
 	if (std::exception_ptr ptr = std::current_exception()) {
 		try {
 			std::rethrow_exception(ptr);
@@ -89,7 +89,7 @@ factory::print_error() noexcept {
 }
 
 void
-factory::install_error_handler() {
+asc::install_error_handler() {
 	using namespace sys::this_process;
 	std::set_terminate(print_error);
 	std::set_unexpected(print_error);

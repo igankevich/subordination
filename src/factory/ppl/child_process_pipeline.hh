@@ -10,7 +10,7 @@
 #include <factory/ppl/application.hh>
 #include <factory/ppl/process_handler.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class K, class R>
 	class child_process_pipeline:
@@ -72,15 +72,15 @@ namespace factory {
 		}
 
 		void
-		send(kernel_type* kernel) {
+		send(kernel_type* k) {
 			#ifndef NDEBUG
-			this->log("send _", *kernel);
+			this->log("send _", *k);
 			#endif
 			lock_type lock(this->_mutex);
 			if (!this->_parent) {
-				router_type::send_local(kernel);
+				router_type::send_local(k);
 			} else {
-				traits_type::push(this->_kernels, kernel);
+				traits_type::push(this->_kernels, k);
 				this->_semaphore.notify_one();
 			}
 		}

@@ -8,7 +8,7 @@
 #include <factory/kernel/exit_code.hh>
 #include <factory/kernel/kernel_flag.hh>
 
-namespace factory {
+namespace asc {
 
 	class kernel_base {
 
@@ -31,12 +31,12 @@ namespace factory {
 		}
 
 		inline exit_code
-		result() const noexcept {
+		return_code() const noexcept {
 			return _result;
 		}
 
 		inline void
-		result(exit_code rhs) noexcept {
+		return_code(exit_code rhs) noexcept {
 			this->_result = rhs;
 		}
 

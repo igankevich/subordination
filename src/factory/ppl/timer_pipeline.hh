@@ -6,7 +6,7 @@
 #include <factory/ppl/compare_time.hh>
 #include <unistdx/ipc/semaphore>
 
-namespace factory {
+namespace asc {
 
 	namespace bits {
 
@@ -68,10 +68,10 @@ namespace factory {
 		}
 
 		inline bool
-		wait_until_kernel_is_ready(lock_type& lock, kernel_type* kernel) {
+		wait_until_kernel_is_ready(lock_type& lock, kernel_type* k) {
 			return this->_semaphore.wait_until(
 				lock,
-				kernel->at(),
+				k->at(),
 				[this] { return this->is_stopped(); }
 			);
 		}

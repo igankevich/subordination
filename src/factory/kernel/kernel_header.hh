@@ -5,7 +5,7 @@
 #include <factory/ppl/application.hh>
 #include <iosfwd>
 
-namespace factory {
+namespace asc {
 
 	class kernel_header {
 

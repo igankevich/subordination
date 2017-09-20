@@ -7,9 +7,9 @@
 
 #include <factory/api.hh>
 
-namespace factory {
+namespace asc {
 
-	class probe: public factory::api::Kernel {
+	class probe: public asc::Kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;

@@ -15,7 +15,7 @@
 #include <factory/ppl/kernel_protocol.hh>
 #include <factory/ppl/pipeline_base.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class T, class Socket, class Router>
 	class remote_client: public pipeline_base {
@@ -76,9 +76,9 @@ namespace factory {
 		}
 
 		void
-		send(kernel_type* kernel) {
+		send(kernel_type* k) {
 			this->_stream.rdbuf(this->_packetbuf.get());
-			this->_proto.send(kernel, this->_stream);
+			this->_proto.send(k, this->_stream);
 		}
 
 		void

@@ -4,7 +4,7 @@
 #include <factory/ppl/application.hh>
 #include <factory/kernel/kernel_header.hh>
 
-namespace factory {
+namespace asc {
 
 	template <class T>
 	struct basic_router {
@@ -25,7 +25,7 @@ namespace factory {
 		forward_parent(const kernel_header& hdr, sys::pstream& istr);
 
 		static void
-		execute(const Application& app);
+		execute(const application& app);
 
 	};
 

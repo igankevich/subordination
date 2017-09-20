@@ -19,7 +19,7 @@
 #include <factory/ppl/thread_context.hh>
 #include <factory/kernel/kernel_type.hh>
 
-namespace factory {
+namespace asc {
 
 	void
 	graceful_shutdown(int ret);
@@ -88,12 +88,12 @@ namespace factory {
 		operator=(const basic_pipeline&) = delete;
 
 		void
-		send(kernel_type* kernel) {
+		send(kernel_type* k) {
 			#ifndef NDEBUG
-			this->log("send _", *kernel);
+			this->log("send _", *k);
 			#endif
 			lock_type lock(this->_mutex);
-			traits_type::push(this->_kernels, kernel);
+			traits_type::push(this->_kernels, k);
 			this->_semaphore.notify_one();
 		}
 

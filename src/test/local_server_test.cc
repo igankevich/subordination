@@ -21,7 +21,7 @@ TYPED_TEST(LocalServerTest, DetermineIdRange) {
 	ifaddr_type ifaddr(traits_type::localhost(), traits_type::loopback_mask());
 	id_type id0 = 0;
 	id_type id1 = 0;
-	factory::determine_id_range(ifaddr, id0, id1);
+	asc::determine_id_range(ifaddr, id0, id1);
 }
 
 template <class Addr, class Id>
@@ -30,7 +30,7 @@ test_id_count(const Id& expected, const sys::ifaddr<Addr>& ifaddr) {
 	typedef Id id_type;
 	id_type id0 = 0;
 	id_type id1 = 0;
-	factory::determine_id_range(ifaddr, id0, id1);
+	asc::determine_id_range(ifaddr, id0, id1);
 	EXPECT_EQ(expected, id1-id0) << "id0=" << id0 << ",id1=" << id1;
 }
 
@@ -58,7 +58,7 @@ TEST(LocalServer, IntersectIpV4) {
 	id_type id3 = 0;
 	for (id_type i=0; i<cnt; ++i) {
 		ifaddr_type new_ifaddr{{127,0,0,1+i}, 24};
-		factory::determine_id_range(new_ifaddr, id2, id3);
+		asc::determine_id_range(new_ifaddr, id2, id3);
 		EXPECT_LE(id0, id1);
 		EXPECT_EQ(id1, id2);
 		EXPECT_LE(id2, id3);

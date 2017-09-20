@@ -1,7 +1,7 @@
 #ifndef FACTORY_BASE_THREAD_NAME_HH
 #define FACTORY_BASE_THREAD_NAME_HH
 
-namespace factory {
+namespace asc {
 
 	namespace this_thread {
 

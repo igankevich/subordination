@@ -6,9 +6,9 @@
 
 #include <factory/api.hh>
 
-namespace factory {
+namespace asc {
 
-	class hierarchy_kernel: public factory::api::Kernel {
+	class hierarchy_kernel: public asc::Kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;

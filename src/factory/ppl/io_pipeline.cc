@@ -2,4 +2,4 @@
 
 #include <factory/config.hh>
 
-template class factory::io_pipeline<FACTORY_KERNEL_TYPE>;
+template class asc::io_pipeline<FACTORY_KERNEL_TYPE>;

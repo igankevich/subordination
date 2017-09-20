@@ -5,7 +5,7 @@
 #include <mutex>
 #include <factory/config.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class T>
 	class kernel_instance_registry {

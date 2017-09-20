@@ -4,7 +4,7 @@
 #include <chrono>
 #include <unistdx/base/log_message>
 
-namespace factory {
+namespace asc {
 
 	enum struct pipeline_state {
 		initial,

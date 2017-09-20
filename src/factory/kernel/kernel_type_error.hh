@@ -4,7 +4,7 @@
 #include <factory/base/error.hh>
 #include <factory/kernel/kernel_type.hh>
 
-namespace factory {
+namespace asc {
 
 	class kenel_type_error: public Error {
 

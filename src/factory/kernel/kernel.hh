@@ -6,7 +6,7 @@
 
 #include "mobile_kernel.hh"
 
-namespace factory {
+namespace asc {
 
 	struct Kernel: public mobile_kernel {
 
@@ -71,21 +71,21 @@ namespace factory {
 
 		inline bool
 		moves_upstream() const noexcept {
-			return this->result() == exit_code::undefined &&
+			return this->return_code() == exit_code::undefined &&
 				!this->_principal &&
 				this->_parent;
 		}
 
 		inline bool
 		moves_downstream() const noexcept {
-			return this->result() != exit_code::undefined &&
+			return this->return_code() != exit_code::undefined &&
 				this->_principal &&
 				this->_parent;
 		}
 
 		inline bool
 		moves_somewhere() const noexcept {
-			return this->result() == exit_code::undefined &&
+			return this->return_code() == exit_code::undefined &&
 				this->_principal &&
 				this->_parent;
 		}
@@ -138,7 +138,7 @@ namespace factory {
 		inline void
 		return_to(Kernel* rhs, exit_code ret = exit_code::success) noexcept {
 			this->principal(rhs);
-			this->result(ret);
+			this->return_code(ret);
 		}
 
 		inline void

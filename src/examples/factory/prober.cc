@@ -1,29 +1,29 @@
 #include "prober.hh"
 
 void
-factory::prober::act() {
+asc::prober::act() {
 	this->send_probe(this->_newprinc);
 }
 
 void
-factory::prober::react(factory::api::Kernel* k) {
+asc::prober::react(asc::Kernel* k) {
 	probe* p = dynamic_cast<probe*>(k);
 	if (p->from() == this->_newprinc) {
-		this->result(p->result());
-		if (this->result() == exit_code::success && this->_oldprinc) {
+		this->return_code(p->return_code());
+		if (this->return_code() == exit_code::success && this->_oldprinc) {
 			this->send_probe(this->_oldprinc);
 		}
 	}
 	if (--this->_nprobes == 0) {
-		factory::api::commit<factory::api::Local>(this);
+		asc::commit<asc::Local>(this);
 	}
 }
 
 void
-factory::prober::send_probe(const sys::endpoint& dest) {
+asc::prober::send_probe(const sys::endpoint& dest) {
 	++this->_nprobes;
 	probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
 	p->to(dest);
 	p->set_principal_id(1);
-	factory::api::upstream<factory::api::Remote>(this, p);
+	asc::upstream<asc::Remote>(this, p);
 }

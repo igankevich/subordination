@@ -5,7 +5,7 @@
 #include <iterator>
 #include <unistdx/net/ifaddr>
 
-namespace factory {
+namespace asc {
 
 	template <class Addr>
 	class tree_hierarchy_iterator:

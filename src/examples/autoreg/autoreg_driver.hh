@@ -4,7 +4,7 @@
 namespace autoreg {
 
 	template<class T>
-	class Autoreg_model: public Kernel {
+	class Autoreg_model: public asc::Kernel {
 	public:
 
 		typedef Uniform_grid grid_type;
@@ -53,7 +53,7 @@ namespace autoreg {
 			write_log("Interval:", interval);
 			write_log("Size factor:", size_factor());
 
-			upstream<Local>(
+			asc::upstream(
 				this,
 				new ACF_generator<T>(
 					alpha,
@@ -108,7 +108,7 @@ namespace autoreg {
 		}
 
 		void
-		react(Kernel* child) override;
+		react(asc::Kernel* child) override;
 
 		inline const Domain<T, 3>
 		domain() const noexcept {
@@ -191,7 +191,7 @@ namespace autoreg {
 		void
 		do_it() {
 			acf_pure = acf_model;
-			upstream<Local>(
+			asc::upstream(
 				this,
 				new Autoreg_coefs<T>(
 					acf_model,
@@ -240,7 +240,7 @@ namespace autoreg {
 		if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 			{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-			upstream<Local>(this, new Variance_WN<T>(ar_coefs, acf_model));
+			asc::upstream(this, new Variance_WN<T>(ar_coefs, acf_model));
 		}
 		if (typeid(*child) == typeid(Variance_WN<T>)) {
 			T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
@@ -252,7 +252,7 @@ namespace autoreg {
 //		std::size_t modulo = homogeneous ? 1 : 2;
 			grid_type grid_2(zsize2[0], max_num_parts);
 			grid_type grid(zsize[0], max_num_parts);
-			generator_type* kernel = new generator_type(
+			generator_type* k = new generator_type(
 				ar_coefs,
 				fsize,
 				var_wn,
@@ -264,10 +264,10 @@ namespace autoreg {
 				grid_2
 			                         );
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-			upstream<Local>(this, kernel);
+			asc::upstream(this, k);
 		#else
-			kernel->setf(factory::kernel_flag::carries_parent);
-			upstream<Remote>(this, kernel);
+			k->setf(asc::kernel_flag::carries_parent);
+			asc::upstream<asc::Remote>(this, k);
 		#endif
 		}
 		if (typeid(*child) == typeid(generator_type)) {
@@ -278,7 +278,7 @@ namespace autoreg {
 				timerun_log << float(_time1 - _time0)/1000/1000/1000 <<
 				    std::endl;
 			}
-			commit<Local>(this);
+			asc::commit(this);
 		}
 
 	}

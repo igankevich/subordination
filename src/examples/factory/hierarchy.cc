@@ -7,7 +7,7 @@
 
 template <class Addr>
 std::ostream&
-factory::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
+asc::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
 	out << "ifaddr=" << rhs._ifaddr << ',';
 	out << "principal=" << rhs._principal << ',';
 	out << "subordinates=";
@@ -21,7 +21,7 @@ factory::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
 
 template <class Addr>
 bool
-factory::hierarchy<Addr>::set_subordinate_weight(
+asc::hierarchy<Addr>::set_subordinate_weight(
 	const sys::endpoint& endp,
 	weight_type w
 ) {
@@ -38,15 +38,15 @@ factory::hierarchy<Addr>::set_subordinate_weight(
 }
 
 template <class Addr>
-typename factory::hierarchy<Addr>::weight_type
-factory::hierarchy<Addr>::total_weight() const noexcept {
+typename asc::hierarchy<Addr>::weight_type
+asc::hierarchy<Addr>::total_weight() const noexcept {
 	// add 1 for the current node
 	return this->principal_weight() + this->total_subordinate_weight() + 1;
 }
 
 template <class Addr>
-typename factory::hierarchy<Addr>::weight_type
-factory::hierarchy<Addr>::total_subordinate_weight() const noexcept {
+typename asc::hierarchy<Addr>::weight_type
+asc::hierarchy<Addr>::total_subordinate_weight() const noexcept {
 	weight_type sum = 0;
 	for (const node_type& n : this->_subordinates) {
 		sum += n.weight();
@@ -54,7 +54,7 @@ factory::hierarchy<Addr>::total_subordinate_weight() const noexcept {
 	return sum;
 }
 
-template class factory::hierarchy<sys::ipv4_addr>;
+template class asc::hierarchy<sys::ipv4_addr>;
 
 template std::ostream&
-factory::operator<<(std::ostream& out, const hierarchy<sys::ipv4_addr>& rhs);
+asc::operator<<(std::ostream& out, const hierarchy<sys::ipv4_addr>& rhs);

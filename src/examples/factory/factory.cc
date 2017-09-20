@@ -16,22 +16,20 @@ main(int argc, char* argv[]) {
 		nullptr
 	};
 	sys::parse_arguments(argc, argv, options);
-	using namespace factory::api;
-	using factory::network_master;
-	factory::install_error_handler();
-	factory::types.register_type<factory::Application_kernel>();
-	factory::types.register_type<factory::probe>();
-	factory::types.register_type<factory::hierarchy_kernel>();
-	Factory_guard g;
-	factory::factory.external().add_server(
+	asc::install_error_handler();
+	asc::types.register_type<asc::Application_kernel>();
+	asc::types.register_type<asc::probe>();
+	asc::types.register_type<asc::hierarchy_kernel>();
+	asc::factory_guard g;
+	asc::factory.external().add_server(
 		sys::endpoint(FACTORY_UNIX_DOMAIN_SOCKET)
 	);
-	network_master* m = new network_master;
+	asc::network_master* m = new asc::network_master;
 	m->fanout(fanout);
 	{
-		factory::instances_guard g(factory::instances);
-		factory::instances.add(m);
+		asc::instances_guard g(asc::instances);
+		asc::instances.add(m);
 	}
-	send<Local>(m);
-	return factory::wait_and_return();
+	asc::send<asc::Local>(m);
+	return asc::wait_and_return();
 }

@@ -5,16 +5,16 @@
 
 #include <gtest/gtest.h>
 
-using namespace factory::api;
+using namespace asc;
 
-struct Sleepy_kernel: public factory::Kernel {
+struct Sleepy_kernel: public asc::Kernel {
 
 	void pos(size_t p) { _pos = p; }
 	size_t pos() const { return _pos; }
 
 	void act() override {
 		using namespace std::chrono;
-		const auto now = factory::Kernel::clock_type::now();
+		const auto now = asc::Kernel::clock_type::now();
 		const auto at = this->at();
 		const auto delta = duration_cast<nanoseconds>(now-at).count();
 		std::clog << '#' << _pos << " wakes up "
@@ -28,7 +28,7 @@ private:
 
 };
 
-struct Main: public factory::Kernel {
+struct Main: public asc::Kernel {
 
 	Main(size_t nkernels, std::chrono::milliseconds period):
 	_nkernels(nkernels),
@@ -37,7 +37,7 @@ struct Main: public factory::Kernel {
 
 	void
 	act() override {
-		std::vector<factory::Kernel*> kernels(_nkernels);
+		std::vector<asc::Kernel*> kernels(_nkernels);
 		// send kernels in inverse chronological order
 		for (size_t i=0; i<this->_nkernels; ++i) {
 			kernels[i] = new_sleepy_kernel(
@@ -45,11 +45,11 @@ struct Main: public factory::Kernel {
 				this->_nkernels - i
 			);
 		}
-		factory::factory.send_timer(kernels.data(), kernels.size());
+		asc::factory.send_timer(kernels.data(), kernels.size());
 	}
 
 	void
-	react(factory::Kernel* child) override {
+	react(asc::Kernel* child) override {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
 		EXPECT_EQ(k->pos(), last_pos+1) << "Invalid order of scheduled kernels";
 		++last_pos;
@@ -61,13 +61,13 @@ struct Main: public factory::Kernel {
 
 private:
 
-	factory::Kernel*
+	asc::Kernel*
 	new_sleepy_kernel(int delay, int pos) {
-		Sleepy_kernel* kernel = new Sleepy_kernel;
-		kernel->after(delay * _period);
-		kernel->parent(this);
-		kernel->pos(pos);
-		return kernel;
+		Sleepy_kernel* k = new Sleepy_kernel;
+		k->after(delay * _period);
+		k->parent(this);
+		k->pos(pos);
+		return k;
 	}
 
 	size_t last_pos = 0;
@@ -77,8 +77,8 @@ private:
 };
 
 TEST(TimerServerTest, All) {
-	factory::install_error_handler();
-	Factory_guard g;
+	asc::install_error_handler();
+	factory_guard g;
 	send<Local>(new Main(10, std::chrono::milliseconds(500)));
-	EXPECT_EQ(0, factory::wait_and_return());
+	EXPECT_EQ(0, asc::wait_and_return());
 }

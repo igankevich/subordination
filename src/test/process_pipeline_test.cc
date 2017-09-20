@@ -4,8 +4,8 @@
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
-using namespace factory::api;
-using factory::Application;
+using namespace asc;
+using asc::application;
 
 #include "datum.hh"
 
@@ -18,10 +18,11 @@ std::atomic<int> kernel_count(0);
 
 struct Test_socket: public Kernel {
 
-	Test_socket(): _data() {
-	}
+	Test_socket():
+	_data() {}
 
-	explicit Test_socket(const std::vector<Datum>& x): _data(x) {
+	explicit Test_socket(const std::vector<Datum>& x):
+	_data(x) {
 		++kernel_count;
 	}
 
@@ -29,12 +30,14 @@ struct Test_socket: public Kernel {
 		--kernel_count;
 	}
 
-	void act() override {
+	void
+	act() override {
 		sys::log_message("tst", "Test_socket::act(): It works!");
 		commit<Remote>(this);
 	}
 
-	void write(sys::pstream& out) override {
+	void
+	write(sys::pstream& out) override {
 		sys::log_message("tst", "Test_socket::write()");
 		Kernel::write(out);
 		out << uint32_t(_data.size());
@@ -42,7 +45,8 @@ struct Test_socket: public Kernel {
 			out << _data[i];
 	}
 
-	void read(sys::pstream& in) override {
+	void
+	read(sys::pstream& in) override {
 		sys::log_message("tst", "Test_socket::read()");
 		Kernel::read(in);
 		uint32_t sz;
@@ -52,7 +56,8 @@ struct Test_socket: public Kernel {
 			in >> _data[i];
 	}
 
-	std::vector<Datum> data() const {
+	std::vector<Datum>
+	data() const {
 		return _data;
 	}
 
@@ -60,69 +65,24 @@ private:
 	std::vector<Datum> _data;
 };
 
-/*
-struct Sender: public Kernel {
-
-	Sender(uint32_t n, uint32_t s):
-		_vector_size(n),
-		_input(_vector_size),
-		_sleep(s) {}
-
-	void act(Pipeline& this_pipeline) {
-		for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
-			upstream(this_pipeline.remote_pipeline(), new Test_socket(_input));
-		}
-	}
-
-	void react(Kernel* child) {
-
-		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
-		std::vector<Datum> output = test_kernel->data();
-
-		if (_input.size() != output.size())
-			throw std::runtime_error("test_socket. Input and output size does not match.");
-
-		for (size_t i=0; i<_input.size(); ++i) {
-			if (_input[i] != output[i]) {
-				std::stringstream msg;
-				msg << "test_socket. Input and output does not match: ";
-				msg << _input[i] << " != " << output[i];
-				throw std::runtime_error(msg.str());
-			}
-		}
-
-		if (++_num_returned == NUM_KERNELS) {
-			commit(this_pipeline.local_pipeline());
-		}
-	}
-
-private:
-
-	uint32_t _num_returned = 0;
-	uint32_t _vector_size;
-
-	std::vector<Datum> _input;
-	uint32_t _sleep = 0;
-};
-*/
-
 struct Main: public Kernel {
 
-	void act() override {
+	void
+	act() override {
 		for (uint32_t i=1; i<=NUM_SIZES; ++i) {
 			sys::log_message("tst", "sent _/_", i, NUM_SIZES);
-			Test_socket* kernel = new Test_socket;
-//			kernel->setapp(sys::this_process::id());
-			upstream<Remote>(this, kernel);
+			Test_socket* k = new Test_socket;
+//			k->setapp(sys::this_process::id());
+			upstream<Remote>(this, k);
 		}
 	}
 
-	void react(Kernel*) override {
+	void
+	react(Kernel*) override {
 		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
 			sys::log_message("tst", "finished");
-			commit<Local>(this, factory::exit_code::success);
+			commit<Local>(this, asc::exit_code::success);
 		}
 	}
 
@@ -131,21 +91,22 @@ private:
 };
 
 
-int main(int argc, char* argv[]) {
-	using namespace factory::api;
-	factory::install_error_handler();
-	factory::types.register_type<Test_socket>();
-	Factory_guard g;
+int
+main(int argc, char* argv[]) {
+	using namespace asc;
+	install_error_handler();
+	types.register_type<Test_socket>();
+	factory_guard g;
 	#if defined(FACTORY_TEST_SERVER)
-	Application app({XSTRINGIFY(FACTORY_APP_PATH)}, {});
-	factory::factory.child().add(app);
+	application app({XSTRINGIFY(FACTORY_APP_PATH)}, {});
+	factory.child().add(app);
 	std::this_thread::sleep_for(std::chrono::seconds(5));
-	factory::graceful_shutdown(0);
+	graceful_shutdown(0);
 	#else
-	sys::fd_type in = factory::this_application::get_input_fd();
-	sys::fd_type out = factory::this_application::get_output_fd();
+	sys::fd_type in = this_application::get_input_fd();
+	sys::fd_type out = this_application::get_output_fd();
 	sys::log_message("tst", "in = _, out = _", in, out);
-	send<Local>(new Main);
+	send(new Main);
 	#endif
-	return factory::wait_and_return();
+	return wait_and_return();
 }

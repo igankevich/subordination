@@ -8,11 +8,11 @@
 #include <unistdx/net/pstream>
 #include <vector>
 
-namespace factory {
+namespace asc {
 
 	typedef uint64_t application_type;
 
-	class Application {
+	class application {
 
 	public:
 		typedef std::string path_type;
@@ -27,7 +27,7 @@ namespace factory {
 
 	public:
 		explicit
-		Application(const container_type& args, const container_type& env);
+		application(const container_type& args, const container_type& env);
 
 		inline void
 		set_credentials(sys::uid_type uid, sys::gid_type gid) noexcept {
@@ -49,12 +49,12 @@ namespace factory {
 		execute(const sys::two_way_pipe& pipe) const;
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Application& rhs);
+		operator<<(std::ostream& out, const application& rhs);
 
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Application& rhs);
+	operator<<(std::ostream& out, const application& rhs);
 
 	namespace this_application {
 

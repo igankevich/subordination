@@ -4,7 +4,7 @@
 #include <unistdx/net/ipv4_addr>
 
 template <class Addr>
-factory::position_in_tree<Addr>::position_in_tree(
+asc::position_in_tree<Addr>::position_in_tree(
 	pos_type linear_pos,
 	pos_type fanout
 ) noexcept {
@@ -21,8 +21,8 @@ factory::position_in_tree<Addr>::position_in_tree(
 }
 
 template <class Addr>
-typename factory::position_in_tree<Addr>::pos_type
-factory::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
+typename asc::position_in_tree<Addr>::pos_type
+asc::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
 	pos_type pos = 0;
 	pos_type l = 0;
 	pos_type n = 1; // no. of nodes in the layer l
@@ -36,8 +36,8 @@ factory::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
 }
 
 template <class Addr>
-typename factory::position_in_tree<Addr>::pos_type
-factory::position_in_tree<Addr>::num_nodes() const noexcept {
+typename asc::position_in_tree<Addr>::pos_type
+asc::position_in_tree<Addr>::num_nodes() const noexcept {
 	pos_type n = 1; // no. of nodes in the layer l
 	const pos_type nl = this->_layer;
 	const pos_type fn = this->_fanout;
@@ -48,8 +48,8 @@ factory::position_in_tree<Addr>::num_nodes() const noexcept {
 }
 
 template <class Addr>
-factory::position_in_tree<Addr>&
-factory::position_in_tree<Addr>::operator++() noexcept {
+asc::position_in_tree<Addr>&
+asc::position_in_tree<Addr>::operator++() noexcept {
 	if (this->_offset == this->num_nodes() - 1) {
 		++this->_layer;
 		this->_offset = 0;
@@ -60,8 +60,8 @@ factory::position_in_tree<Addr>::operator++() noexcept {
 }
 
 template <class Addr>
-factory::position_in_tree<Addr>&
-factory::position_in_tree<Addr>::operator--() noexcept {
+asc::position_in_tree<Addr>&
+asc::position_in_tree<Addr>::operator--() noexcept {
 	if (this->_layer == 0 && this->_offset == 0) {
 		return *this;
 	}
@@ -76,17 +76,17 @@ factory::position_in_tree<Addr>::operator--() noexcept {
 
 template <class Addr>
 std::ostream&
-factory::operator<<(std::ostream& out, const position_in_tree<Addr>& rhs) {
+asc::operator<<(std::ostream& out, const position_in_tree<Addr>& rhs) {
 	return out << '('
 		<< rhs._layer << ','
 		<< rhs._offset << ','
 		<< rhs._fanout << ')';
 }
 
-template class factory::position_in_tree<sys::ipv4_addr>;
+template class asc::position_in_tree<sys::ipv4_addr>;
 
 template std::ostream&
-factory::operator<<(
+asc::operator<<(
 	std::ostream& out,
 	const position_in_tree<sys::ipv4_addr>& rhs
 );

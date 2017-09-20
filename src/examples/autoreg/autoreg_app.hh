@@ -27,7 +27,7 @@ using namespace autoreg;
 
 typedef float Real;
 
-struct Autoreg_app: public Kernel {
+struct Autoreg_app: public asc::Kernel {
 
 	Autoreg_app():
 	model_filename("autoreg.model")
@@ -53,14 +53,14 @@ struct Autoreg_app: public Kernel {
 			std::cerr << e.what();
 			exit(1);
 		}
-		upstream<Local>(this, model);
+		asc::upstream(this, model);
 	}
 
-	void react(Kernel*) {
+	void react(asc::Kernel*) {
 		#ifndef NDEBUG
 		sys::log_message("autoreg", "finished all");
 		#endif
-		commit<Local>(this);
+		asc::commit(this);
 	}
 
 private:

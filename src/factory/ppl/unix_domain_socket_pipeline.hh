@@ -13,7 +13,7 @@
 #include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/external_process_handler.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class K, class R>
 	class unix_domain_socket_pipeline:

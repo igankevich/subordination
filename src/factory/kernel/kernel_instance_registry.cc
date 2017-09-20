@@ -43,13 +43,13 @@ namespace {
 
 template <class T>
 std::ostream&
-factory::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
+asc::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
 	std::unique_lock<std::mutex> lock(rhs._mutex);
 	std::ostream_iterator<Entry<T>> it(out, "\n");
 	std::copy(rhs._instances.cbegin(), rhs._instances.cend(), it);
 	return out;
 }
 
-factory::instance_registry_type factory::instances;
+asc::instance_registry_type asc::instances;
 
-template class factory::kernel_instance_registry<FACTORY_KERNEL_TYPE>;
+template class asc::kernel_instance_registry<FACTORY_KERNEL_TYPE>;

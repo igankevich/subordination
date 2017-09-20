@@ -44,20 +44,20 @@ namespace {
 }
 
 void
-factory::network_master::send_timer() {
+asc::network_master::send_timer() {
 	using namespace std::chrono;
 	this->_timer = new network_timer;
 	this->_timer->after(seconds(1));
-	factory::api::send<>(this->_timer, this);
+	asc::send<>(this->_timer, this);
 }
 
 void
-factory::network_master::act() {
+asc::network_master::act() {
 	this->send_timer();
 }
 
-factory::network_master::set_type
-factory::network_master::enumerate_ifaddrs() {
+asc::network_master::set_type
+asc::network_master::enumerate_ifaddrs() {
 	set_type new_ifaddrs;
 	sys::ifaddrs addrs;
 	for (const sys::ifaddrs::value_type& ifa : addrs) {
@@ -72,7 +72,7 @@ factory::network_master::enumerate_ifaddrs() {
 }
 
 void
-factory::network_master::update_ifaddrs() {
+asc::network_master::update_ifaddrs() {
 	set_type new_ifaddrs = this->enumerate_ifaddrs();
 	set_type ifaddrs_to_add = set_difference_copy(
 		new_ifaddrs,
@@ -93,7 +93,7 @@ factory::network_master::update_ifaddrs() {
 }
 
 void
-factory::network_master::react(factory::api::Kernel* child) {
+asc::network_master::react(asc::Kernel* child) {
 	if (child == this->_timer) {
 		this->update_ifaddrs();
 		this->_timer = nullptr;
@@ -107,21 +107,21 @@ factory::network_master::react(factory::api::Kernel* child) {
 }
 
 void
-factory::network_master::add_ifaddr(const ifaddr_type& ifa) {
+asc::network_master::add_ifaddr(const ifaddr_type& ifa) {
 	sys::log_message("net", "add ifaddr _", ifa);
-	factory::factory.nic().add_server(ifa);
+	asc::factory.nic().add_server(ifa);
 	if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
-		const sys::port_type port = ::factory::factory.nic().port();
+		const sys::port_type port = ::asc::factory.nic().port();
 		master_discoverer* d = new master_discoverer(ifa, port, this->_fanout);
 		this->_ifaddrs.emplace(ifa, d);
-		factory::api::upstream(this, d);
+		asc::upstream(this, d);
 	}
 }
 
 void
-factory::network_master::remove_ifaddr(const ifaddr_type& ifa) {
+asc::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 	sys::log_message("net", "remove ifaddr _", ifa);
-	factory::factory.nic().remove_server(ifa);
+	asc::factory.nic().remove_server(ifa);
 	auto result = this->_ifaddrs.find(ifa);
 	if (result != this->_ifaddrs.end()) {
 		// the kernel is deleted automatically
@@ -131,29 +131,29 @@ factory::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-factory::network_master::forward_probe(probe* p) {
+asc::network_master::forward_probe(probe* p) {
 	map_iterator result = this->find_discoverer(p->ifaddr().address());
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad probe _", p->ifaddr());
 	} else {
 		p->setf(kernel_flag::do_not_delete);
-		factory::api::send(p, result->second);
+		asc::send(p, result->second);
 	}
 }
 
 void
-factory::network_master::forward_hierarchy_kernel(hierarchy_kernel* p) {
+asc::network_master::forward_hierarchy_kernel(hierarchy_kernel* p) {
 	map_iterator result = this->find_discoverer(p->ifaddr().address());
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad hierarchy kernel _", p->ifaddr());
 	} else {
 		p->setf(kernel_flag::do_not_delete);
-		factory::api::send(p, result->second);
+		asc::send(p, result->second);
 	}
 }
 
-factory::network_master::map_iterator
-factory::network_master::find_discoverer(const addr_type& a) {
+asc::network_master::map_iterator
+asc::network_master::find_discoverer(const addr_type& a) {
 	typedef typename map_type::value_type value_type;
 	return std::find_if(
 		this->_ifaddrs.begin(),
@@ -165,7 +165,7 @@ factory::network_master::find_discoverer(const addr_type& a) {
 }
 
 void
-factory::network_master::on_event(socket_pipeline_kernel* ev) {
+asc::network_master::on_event(socket_pipeline_kernel* ev) {
 	if (ev->event() == socket_pipeline_event::remove_client ||
 	    ev->event() == socket_pipeline_event::add_client) {
 		const addr_type& a = traits_type::address(ev->endpoint());
@@ -174,7 +174,7 @@ factory::network_master::on_event(socket_pipeline_kernel* ev) {
 			sys::log_message("net", "bad event endpoint _", a);
 		} else {
 			ev->setf(kernel_flag::do_not_delete);
-			factory::api::send(ev, result->second);
+			asc::send(ev, result->second);
 		}
 	}
 }

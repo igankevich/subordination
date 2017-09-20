@@ -7,7 +7,7 @@
 #include <iosfwd>
 #include <tuple>
 
-namespace factory {
+namespace asc {
 
 	template <class Addr>
 	class position_in_tree {
@@ -141,12 +141,12 @@ namespace factory {
 namespace std {
 
 	template<class Addr>
-	struct hash<factory::position_in_tree<Addr>>:
-		public std::hash<typename factory::position_in_tree<Addr>::pos_type> {
+	struct hash<asc::position_in_tree<Addr>>:
+		public std::hash<typename asc::position_in_tree<Addr>::pos_type> {
 
 		typedef size_t result_type;
-		typedef factory::position_in_tree<Addr> argument_type;
-		typedef typename factory::position_in_tree<Addr>::pos_type pos_type;
+		typedef asc::position_in_tree<Addr> argument_type;
+		typedef typename asc::position_in_tree<Addr>::pos_type pos_type;
 
 		inline result_type
 		operator()(const argument_type& rhs) const noexcept {

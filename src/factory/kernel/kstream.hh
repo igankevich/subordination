@@ -14,7 +14,7 @@
 #include <factory/kernel/kernelbuf.hh>
 #include <factory/ppl/kernel_proto_flag.hh>
 
-namespace factory {
+namespace asc {
 
 	namespace bits {
 
@@ -77,16 +77,16 @@ namespace factory {
 		kstream(kstream&&) = default;
 
 		inline kstream&
-		operator<<(kernel_type* kernel) {
-			return operator<<(*kernel);
+		operator<<(kernel_type* k) {
+			return operator<<(*k);
 		}
 
 		kstream&
-		operator<<(kernel_type& kernel) {
-			this->write_kernel(kernel);
-			if (kernel.carries_parent()) {
+		operator<<(kernel_type& k) {
+			this->write_kernel(k);
+			if (k.carries_parent()) {
 				// embed parent into the packet
-				kernel_type* parent = kernel.parent();
+				kernel_type* parent = k.parent();
 				if (!parent) {
 					throw std::invalid_argument("parent is null");
 				}
@@ -96,11 +96,11 @@ namespace factory {
 		}
 
 		kstream&
-		operator>>(kernel_type*& kernel) {
-			kernel = this->read_kernel();
-			if (kernel->carries_parent()) {
+		operator>>(kernel_type*& k) {
+			k = this->read_kernel();
+			if (k->carries_parent()) {
 				kernel_type* parent = this->read_kernel();
-				kernel->parent(parent);
+				k->parent(parent);
 			}
 			return *this;
 		}
@@ -108,13 +108,13 @@ namespace factory {
 	private:
 
 		inline void
-		write_kernel(kernel_type& kernel) {
-			auto type = types.find(typeid(kernel));
+		write_kernel(kernel_type& k) {
+			auto type = types.find(typeid(k));
 			if (type == types.end()) {
 				throw std::invalid_argument("kernel type is null");
 			}
 			*this << type->id();
-			kernel.write(*this);
+			k.write(*this);
 		}
 
 		inline kernel_type*

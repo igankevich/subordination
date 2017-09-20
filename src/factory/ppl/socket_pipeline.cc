@@ -13,24 +13,24 @@ namespace {
 
 	template <class Kernel, class Server>
 	void
-	set_kernel_id(Kernel* kernel, Server& srv) {
-		if (!kernel->has_id()) {
-			kernel->set_id(srv.generate_id());
+	set_kernel_id(Kernel* k, Server& srv) {
+		if (!k->has_id()) {
+			k->set_id(srv.generate_id());
 		}
 	}
 
 	template <class Kernel, class Id>
 	void
-	set_kernel_id_2(Kernel* kernel, Id& counter) {
-		if (!kernel->has_id()) {
-			kernel->set_id(++counter);
+	set_kernel_id_2(Kernel* k, Id& counter) {
+		if (!k->has_id()) {
+			k->set_id(++counter);
 		}
 	}
 
 	template <class Router, class ... Args>
 	void
 	fire_event_kernels(const Args& ... args) {
-		using namespace factory;
+		using namespace asc;
 		instances_guard g(instances);
 		for (const auto& pair : instances) {
 			socket_pipeline_kernel* ev = new socket_pipeline_kernel(args...);
@@ -44,7 +44,7 @@ namespace {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::remove_server(sys::fd_type fd) {
+asc::socket_pipeline<T,S,R>::remove_server(sys::fd_type fd) {
 	server_iterator result = this->find_server(fd);
 	if (result != this->_servers.end()) {
 		this->remove_server(result);
@@ -53,7 +53,7 @@ factory::socket_pipeline<T,S,R>::remove_server(sys::fd_type fd) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::remove_server(const ifaddr_type& ifaddr) {
+asc::socket_pipeline<T,S,R>::remove_server(const ifaddr_type& ifaddr) {
 	lock_type lock(this->_mutex);
 	server_iterator result = this->find_server(ifaddr);
 	if (result != this->_servers.end()) {
@@ -63,7 +63,7 @@ factory::socket_pipeline<T,S,R>::remove_server(const ifaddr_type& ifaddr) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::remove_server(server_iterator result) {
+asc::socket_pipeline<T,S,R>::remove_server(server_iterator result) {
 	// copy ifaddr
 	ifaddr_type ifaddr = result->ifaddr();
 	#ifndef NDEBUG
@@ -78,7 +78,7 @@ factory::socket_pipeline<T,S,R>::remove_server(server_iterator result) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::remove_client(event_handler_ptr ptr) {
+asc::socket_pipeline<T,S,R>::remove_client(event_handler_ptr ptr) {
 	client_iterator result = _clients.find(ptr->vaddr());
 	if (result != this->_clients.end()) {
 		this->remove_client(result);
@@ -87,7 +87,7 @@ factory::socket_pipeline<T,S,R>::remove_client(event_handler_ptr ptr) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
+asc::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
 	// copy endpoint
 	sys::endpoint endpoint = result->first;
 	#ifndef NDEBUG
@@ -109,7 +109,7 @@ factory::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
+asc::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 	sys::endpoint addr;
 	socket_type sock;
 	server_iterator result = this->find_server(ev.fd());
@@ -147,7 +147,7 @@ factory::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::add_server(
+asc::socket_pipeline<T,S,R>::add_server(
 	const sys::endpoint& rhs,
 	addr_type netmask
 ) {
@@ -176,7 +176,7 @@ factory::socket_pipeline<T,S,R>::add_server(
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::forward(
+asc::socket_pipeline<T,S,R>::forward(
 	const kernel_header& hdr,
 	sys::pstream& istr
 ) {
@@ -199,8 +199,8 @@ factory::socket_pipeline<T,S,R>::forward(
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::server_iterator
-factory::socket_pipeline<T,S,R>::find_server(const ifaddr_type& ifaddr) {
+typename asc::socket_pipeline<T,S,R>::server_iterator
+asc::socket_pipeline<T,S,R>::find_server(const ifaddr_type& ifaddr) {
 	typedef typename server_container_type::value_type value_type;
 	return std::find_if(
 		this->_servers.begin(),
@@ -212,8 +212,8 @@ factory::socket_pipeline<T,S,R>::find_server(const ifaddr_type& ifaddr) {
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::server_iterator
-factory::socket_pipeline<T,S,R>::find_server(sys::fd_type fd) {
+typename asc::socket_pipeline<T,S,R>::server_iterator
+asc::socket_pipeline<T,S,R>::find_server(sys::fd_type fd) {
 	typedef typename server_container_type::value_type value_type;
 	return std::find_if(
 		this->_servers.begin(),
@@ -225,8 +225,8 @@ factory::socket_pipeline<T,S,R>::find_server(sys::fd_type fd) {
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::server_iterator
-factory::socket_pipeline<T,S,R>::find_server(const sys::endpoint& dest) {
+typename asc::socket_pipeline<T,S,R>::server_iterator
+asc::socket_pipeline<T,S,R>::find_server(const sys::endpoint& dest) {
 	typedef typename server_container_type::value_type value_type;
 	return std::find_if(
 		this->_servers.begin(),
@@ -239,16 +239,16 @@ factory::socket_pipeline<T,S,R>::find_server(const sys::endpoint& dest) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::ensure_identity(
-	kernel_type* kernel,
+asc::socket_pipeline<T,S,R>::ensure_identity(
+	kernel_type* k,
 	const sys::endpoint& dest
 ) {
 	if (dest.family() == sys::family_type::unix) {
-		set_kernel_id_2(kernel, this->_counter);
-		set_kernel_id_2(kernel->parent(), this->_counter);
+		set_kernel_id_2(k, this->_counter);
+		set_kernel_id_2(k->parent(), this->_counter);
 	} else {
 		if (this->_servers.empty()) {
-			kernel->return_to_parent(
+			k->return_to_parent(
 				exit_code::no_upstream_servers_available
 			);
 		} else {
@@ -256,15 +256,15 @@ factory::socket_pipeline<T,S,R>::ensure_identity(
 			if (result == this->_servers.end()) {
 				result = this->_servers.begin();
 			}
-			set_kernel_id(kernel, *result);
-			set_kernel_id(kernel->parent(), *result);
+			set_kernel_id(k, *result);
+			set_kernel_id(k->parent(), *result);
 		}
 	}
 }
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::find_next_client() {
+asc::socket_pipeline<T,S,R>::find_next_client() {
 	if (this->_clients.empty()) {
 		return;
 	}
@@ -288,8 +288,8 @@ factory::socket_pipeline<T,S,R>::find_next_client() {
 }
 
 template <class T, class S, class R>
-std::pair<typename factory::socket_pipeline<T,S,R>::client_iterator,bool>
-factory::socket_pipeline<T,S,R>::emplace_pipeline(
+std::pair<typename asc::socket_pipeline<T,S,R>::client_iterator,bool>
+asc::socket_pipeline<T,S,R>::emplace_pipeline(
 	const sys::endpoint& vaddr,
 	event_handler_ptr&& s
 ) {
@@ -309,7 +309,7 @@ factory::socket_pipeline<T,S,R>::emplace_pipeline(
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::process_kernels() {
+asc::socket_pipeline<T,S,R>::process_kernels() {
 	lock_type lock(this->_mutex);
 	std::for_each(
 		sys::queue_popper(this->_kernels),
@@ -320,7 +320,7 @@ factory::socket_pipeline<T,S,R>::process_kernels() {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
+asc::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 	// short circuit local server
 	/*
 	if (k->to()) {
@@ -381,8 +381,8 @@ factory::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::event_handler_ptr
-factory::socket_pipeline<T,S,R>::find_or_create_peer(
+typename asc::socket_pipeline<T,S,R>::event_handler_ptr
+asc::socket_pipeline<T,S,R>::find_or_create_peer(
 	const sys::endpoint& addr,
 	sys::poll_event::legacy_event ev
 ) {
@@ -397,8 +397,8 @@ factory::socket_pipeline<T,S,R>::find_or_create_peer(
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::event_handler_ptr
-factory::socket_pipeline<T,S,R>::add_client(
+typename asc::socket_pipeline<T,S,R>::event_handler_ptr
+asc::socket_pipeline<T,S,R>::add_client(
 	const sys::endpoint& addr,
 	sys::poll_event::legacy_event events
 ) {
@@ -423,8 +423,8 @@ factory::socket_pipeline<T,S,R>::add_client(
 }
 
 template <class T, class S, class R>
-typename factory::socket_pipeline<T,S,R>::event_handler_ptr
-factory::socket_pipeline<T,S,R>::add_connected_pipeline(
+typename asc::socket_pipeline<T,S,R>::event_handler_ptr
+asc::socket_pipeline<T,S,R>::add_connected_pipeline(
 	socket_type&& sock,
 	sys::endpoint vaddr,
 	sys::poll_event::legacy_event events,
@@ -461,7 +461,7 @@ factory::socket_pipeline<T,S,R>::add_connected_pipeline(
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::stop_client(const sys::endpoint& addr) {
+asc::socket_pipeline<T,S,R>::stop_client(const sys::endpoint& addr) {
 	lock_type lock(this->_mutex);
 	client_iterator result = this->_clients.find(addr);
 	if (result != this->_clients.end()) {
@@ -471,7 +471,7 @@ factory::socket_pipeline<T,S,R>::stop_client(const sys::endpoint& addr) {
 
 template <class T, class S, class R>
 void
-factory::socket_pipeline<T,S,R>::set_client_weight(
+asc::socket_pipeline<T,S,R>::set_client_weight(
 	const sys::endpoint& addr,
 	weight_type new_weight
 ) {
@@ -482,7 +482,7 @@ factory::socket_pipeline<T,S,R>::set_client_weight(
 	}
 }
 
-template class factory::socket_pipeline<
+template class asc::socket_pipeline<
 	FACTORY_KERNEL_TYPE,
 	sys::socket,
-	factory::basic_router<FACTORY_KERNEL_TYPE>>;
+	asc::basic_router<FACTORY_KERNEL_TYPE>>;

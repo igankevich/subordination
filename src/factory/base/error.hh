@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <stdexcept>
 
-namespace factory {
+namespace asc {
 
 	class Error: public std::runtime_error {
 
@@ -40,6 +40,6 @@ namespace factory {
 }
 
 #define FACTORY_THROW(error, ...) \
-	throw ::factory::error(__VA_ARGS__).set_location(__FILE__,__LINE__,__func__)
+	throw ::asc::error(__VA_ARGS__).set_location(__FILE__,__LINE__,__func__)
 
 #endif // vim:filetype=cpp

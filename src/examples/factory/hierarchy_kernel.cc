@@ -1,14 +1,14 @@
 #include "hierarchy_kernel.hh"
 
 void
-factory::hierarchy_kernel::write(sys::pstream& out) {
-	factory::api::Kernel::write(out);
+asc::hierarchy_kernel::write(sys::pstream& out) {
+	asc::Kernel::write(out);
 	out << this->_ifaddr << this->_weight;
 }
 
 void
-factory::hierarchy_kernel::read(sys::pstream& in) {
-	factory::api::Kernel::read(in);
+asc::hierarchy_kernel::read(sys::pstream& in) {
+	asc::Kernel::read(in);
 	in >> this->_ifaddr >> this->_weight;
 }
 

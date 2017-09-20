@@ -11,7 +11,7 @@ namespace {
 }
 
 void
-factory::graceful_shutdown(int ret) {
+asc::graceful_shutdown(int ret) {
 	try {
 		return_value.set_value(ret);
 	} catch (const std::future_error& err) {
@@ -20,6 +20,6 @@ factory::graceful_shutdown(int ret) {
 }
 
 int
-factory::wait_and_return() {
+asc::wait_and_return() {
 	return return_value.get_future().get();
 }

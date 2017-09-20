@@ -5,7 +5,7 @@
 #include <factory/ppl/parallel_pipeline.hh>
 #include <vector>
 
-namespace factory {
+namespace asc {
 
 	template <class T>
 	class Multi_pipeline: public pipeline_base {

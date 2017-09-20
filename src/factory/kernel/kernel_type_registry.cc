@@ -8,7 +8,7 @@
 namespace {
 
 	struct Entry {
-		Entry(const factory::kernel_type& rhs): _type(rhs) {}
+		Entry(const asc::kernel_type& rhs): _type(rhs) {}
 
 		inline friend std::ostream&
 		operator<<(std::ostream& out, const Entry& rhs) {
@@ -16,13 +16,13 @@ namespace {
 		}
 
 	private:
-		const factory::kernel_type& _type;
+		const asc::kernel_type& _type;
 	};
 
 }
 
-factory::kernel_type_registry::const_iterator
-factory::kernel_type_registry::find(id_type id) const noexcept {
+asc::kernel_type_registry::const_iterator
+asc::kernel_type_registry::find(id_type id) const noexcept {
 	return std::find_if(
 		this->begin(), this->end(),
 		[&id] (const kernel_type& rhs) {
@@ -31,8 +31,8 @@ factory::kernel_type_registry::find(id_type id) const noexcept {
 	);
 }
 
-factory::kernel_type_registry::const_iterator
-factory::kernel_type_registry::find(std::type_index idx) const noexcept {
+asc::kernel_type_registry::const_iterator
+asc::kernel_type_registry::find(std::type_index idx) const noexcept {
 	return std::find_if(
 		this->begin(), this->end(),
 		[&idx] (const kernel_type& rhs) {
@@ -42,7 +42,7 @@ factory::kernel_type_registry::find(std::type_index idx) const noexcept {
 }
 
 void
-factory::kernel_type_registry::register_type(kernel_type type) {
+asc::kernel_type_registry::register_type(kernel_type type) {
 	const_iterator result;
 	result = this->find(type.index());
 	if (result != this->end()) {
@@ -60,14 +60,14 @@ factory::kernel_type_registry::register_type(kernel_type type) {
 }
 
 std::ostream&
-factory::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
+asc::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
 	std::ostream_iterator<Entry> it(out, "\n");
 	std::copy(rhs._types.begin(), rhs._types.end(), it);
 	return out;
 }
 
 void*
-factory::kernel_type_registry::read_object(sys::pstream& packet) {
+asc::kernel_type_registry::read_object(sys::pstream& packet) {
 	id_type id;
 	packet >> id;
 	const_iterator result = this->find(id);
@@ -77,4 +77,4 @@ factory::kernel_type_registry::read_object(sys::pstream& packet) {
 	return result->read(packet);
 }
 
-factory::kernel_type_registry factory::types;
+asc::kernel_type_registry asc::types;

@@ -5,7 +5,7 @@
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::remove_server(sys::fd_type fd) {
 	server_iterator result = this->find_server(fd);
 	if (result != this->_servers.end()) {
@@ -18,7 +18,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::remove_client(event_handler_ptr ptr) {
 	#ifndef NDEBUG
 	this->log("remove _ _", ptr->endpoint(), ptr->socket());
@@ -27,7 +27,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::accept_connection(sys::poll_event& ev) {
 	sys::endpoint addr;
 	sys::socket sock;
@@ -45,7 +45,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::process_kernels() {
 	lock_type lock(this->_mutex);
 	std::for_each(
@@ -57,7 +57,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::process_kernel(kernel_type* k) {
 	#ifndef NDEBUG
 	this->log("send _", *k);
@@ -65,8 +65,8 @@ factory::unix_domain_socket_pipeline<K,R>
 }
 
 template <class K, class R>
-typename factory::unix_domain_socket_pipeline<K,R>::server_iterator
-factory::unix_domain_socket_pipeline<K,R>
+typename asc::unix_domain_socket_pipeline<K,R>::server_iterator
+asc::unix_domain_socket_pipeline<K,R>
 ::find_server(const sys::endpoint& e) {
 	return std::find_if(
 		this->_servers.begin(),
@@ -78,8 +78,8 @@ factory::unix_domain_socket_pipeline<K,R>
 }
 
 template <class K, class R>
-typename factory::unix_domain_socket_pipeline<K,R>::server_iterator
-factory::unix_domain_socket_pipeline<K,R>
+typename asc::unix_domain_socket_pipeline<K,R>::server_iterator
+asc::unix_domain_socket_pipeline<K,R>
 ::find_server(sys::fd_type fd) {
 	return std::find_if(
 		this->_servers.begin(),
@@ -91,8 +91,8 @@ factory::unix_domain_socket_pipeline<K,R>
 }
 
 template <class K, class R>
-typename factory::unix_domain_socket_pipeline<K,R>::client_iterator
-factory::unix_domain_socket_pipeline<K,R>
+typename asc::unix_domain_socket_pipeline<K,R>::client_iterator
+asc::unix_domain_socket_pipeline<K,R>
 ::find_client(const sys::endpoint& e) {
 	return std::find_if(
 		this->poller().begin(),
@@ -105,7 +105,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::add_client(const sys::endpoint& addr, sys::socket&& sock) {
 	sys::fd_type fd = sock.fd();
 	event_handler_ptr s =
@@ -125,7 +125,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::add_server(const sys::endpoint& rhs) {
 	lock_type lock(this->_mutex);
 	if (this->find_server(rhs) == this->_servers.end()) {
@@ -147,7 +147,7 @@ factory::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-factory::unix_domain_socket_pipeline<K,R>
+asc::unix_domain_socket_pipeline<K,R>
 ::add_client(const sys::endpoint& addr) {
 	lock_type lock(this->_mutex);
 	sys::socket s(sys::family_type::unix);
@@ -157,5 +157,5 @@ factory::unix_domain_socket_pipeline<K,R>
 	this->poller().notify_one();
 }
 
-template class factory::unix_domain_socket_pipeline<
-		FACTORY_KERNEL_TYPE, factory::basic_router<FACTORY_KERNEL_TYPE>>;
+template class asc::unix_domain_socket_pipeline<
+		FACTORY_KERNEL_TYPE, asc::basic_router<FACTORY_KERNEL_TYPE>>;

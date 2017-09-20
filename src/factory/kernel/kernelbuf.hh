@@ -6,7 +6,7 @@
 #include <unistdx/base/packetbuf>
 #include <unistdx/net/byte_order>
 
-namespace factory {
+namespace asc {
 
 	template<class Base>
 	class basic_kernelbuf: public Base {

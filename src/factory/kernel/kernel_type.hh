@@ -8,7 +8,7 @@
 
 #include <unistdx/net/pstream>
 
-namespace factory {
+namespace asc {
 
 	class kernel_type {
 
@@ -100,14 +100,14 @@ namespace factory {
 namespace std {
 
 	template<>
-	struct hash<factory::kernel_type>: public std::hash<factory::kernel_type::id_type> {
+	struct hash<asc::kernel_type>: public std::hash<asc::kernel_type::id_type> {
 
 		typedef size_t result_type;
-		typedef factory::kernel_type argument_type;
+		typedef asc::kernel_type argument_type;
 
 		size_t
-		operator()(const factory::kernel_type& rhs) const noexcept {
-			return std::hash<factory::kernel_type::id_type>::operator()(rhs.id());
+		operator()(const asc::kernel_type& rhs) const noexcept {
+			return std::hash<asc::kernel_type::id_type>::operator()(rhs.id());
 		}
 
 	};

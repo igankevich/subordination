@@ -15,7 +15,7 @@ namespace {
 }
 
 std::ostream&
-factory::operator<<(std::ostream& out, probe_result rhs) {
+asc::operator<<(std::ostream& out, probe_result rhs) {
 	const size_t i = static_cast<size_t>(rhs);
 	const char* s = i >= 0 && i <= all_results.size()
 	                ? all_results[i] : "<unknown>";
@@ -23,12 +23,12 @@ factory::operator<<(std::ostream& out, probe_result rhs) {
 }
 
 void
-factory::master_discoverer::on_start() {
+asc::master_discoverer::on_start() {
 	this->probe_next_node();
 }
 
 void
-factory::master_discoverer::on_kernel(factory::api::Kernel* k) {
+asc::master_discoverer::on_kernel(asc::Kernel* k) {
 	if (typeid(*k) == typeid(discovery_timer)) {
 		// start probing only if it has not been started already
 		if (this->state() == state_type::waiting) {
@@ -46,7 +46,7 @@ factory::master_discoverer::on_kernel(factory::api::Kernel* k) {
 }
 
 void
-factory::master_discoverer::probe_next_node() {
+asc::master_discoverer::probe_next_node() {
 	this->setstate(state_type::probing);
 	if (this->_iterator == this->_end) {
 		sys::log_message(
@@ -64,24 +64,24 @@ factory::master_discoverer::probe_next_node() {
 			this->_hierarchy.principal().endpoint(),
 			new_principal
 		            );
-		factory::api::upstream(this, p);
+		asc::upstream(this, p);
 		++this->_iterator;
 	}
 }
 
 void
-factory::master_discoverer::send_timer() {
+asc::master_discoverer::send_timer() {
 	this->setstate(state_type::waiting);
 	using namespace std::chrono;
 	if (!this->_timer) {
 		this->_timer = new discovery_timer;
 	}
 	this->_timer->after(this->_interval);
-	factory::api::send<>(this->_timer, this);
+	asc::send<>(this->_timer, this);
 }
 
 void
-factory::master_discoverer::update_subordinates(probe* p) {
+asc::master_discoverer::update_subordinates(probe* p) {
 	const sys::endpoint src = p->from();
 	probe_result result = this->process_probe(p);
 	sys::log_message(
@@ -103,16 +103,16 @@ factory::master_discoverer::update_subordinates(probe* p) {
 		this->broadcast_hierarchy();
 	}
 	p->setf(kernel_flag::do_not_delete);
-	factory::api::commit<factory::api::Remote>(p);
+	asc::commit<asc::Remote>(p);
 }
 
-factory::probe_result
-factory::master_discoverer::process_probe(probe* p) {
+asc::probe_result
+asc::master_discoverer::process_probe(probe* p) {
 	probe_result result = probe_result::retain;
 	if (p->from() == this->_hierarchy.principal()) {
 		// principal tries to become subordinate
 		// which is prohibited
-		p->result(exit_code::error);
+		p->return_code(exit_code::error);
 		result = probe_result::reject_subordinate;
 	} else {
 		if (p->old_principal() != p->new_principal()) {
@@ -122,27 +122,27 @@ factory::master_discoverer::process_probe(probe* p) {
 				result = probe_result::remove_subordinate;
 			}
 		}
-		p->result(exit_code::success);
+		p->return_code(exit_code::success);
 	}
 	return result;
 }
 
 void
-factory::master_discoverer::update_principal(prober* p) {
-	if (p->result() != exit_code::success) {
+asc::master_discoverer::update_principal(prober* p) {
+	if (p->return_code() != exit_code::success) {
 		sys::log_message(
 			"discoverer",
 			"_: prober returned from _: _",
 			this->ifaddr(),
 			p->new_principal(),
-			p->result()
+			p->return_code()
 		);
 		this->probe_next_node();
 	} else {
 		const sys::endpoint& oldp = p->old_principal();
 		const sys::endpoint& newp = p->new_principal();
 		if (oldp) {
-			::factory::factory.nic().stop_client(oldp);
+			::asc::factory.nic().stop_client(oldp);
 		}
 		sys::log_message(
 			"discoverer",
@@ -158,7 +158,7 @@ factory::master_discoverer::update_principal(prober* p) {
 }
 
 void
-factory::master_discoverer::on_event(socket_pipeline_kernel* ev) {
+asc::master_discoverer::on_event(socket_pipeline_kernel* ev) {
 	switch (ev->event()) {
 	case socket_pipeline_event::add_client:
 		this->on_client_add(ev->endpoint());
@@ -175,11 +175,11 @@ factory::master_discoverer::on_event(socket_pipeline_kernel* ev) {
 }
 
 void
-factory::master_discoverer::on_client_add(const sys::endpoint& endp) {
+asc::master_discoverer::on_client_add(const sys::endpoint& endp) {
 }
 
 void
-factory::master_discoverer::on_client_remove(const sys::endpoint& endp) {
+asc::master_discoverer::on_client_remove(const sys::endpoint& endp) {
 	if (endp == this->_hierarchy.principal()) {
 		sys::log_message(
 			"discoverer",
@@ -201,7 +201,7 @@ factory::master_discoverer::on_client_remove(const sys::endpoint& endp) {
 }
 
 void
-factory::master_discoverer::broadcast_hierarchy(
+asc::master_discoverer::broadcast_hierarchy(
 	sys::endpoint ignored_endpoint
 ) {
 	const weight_type total = this->_hierarchy.total_weight();
@@ -221,17 +221,17 @@ factory::master_discoverer::broadcast_hierarchy(
 }
 
 void
-factory::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
+asc::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
 	hierarchy_kernel* h = new hierarchy_kernel(this->ifaddr(), w);
 	h->parent(this);
 	h->set_principal_id(1);
 	h->to(dest);
-	factory::api::send<factory::api::Remote>(h);
+	asc::send<asc::Remote>(h);
 }
 
 void
-factory::master_discoverer::update_weights(hierarchy_kernel* k) {
-	if (k->moves_downstream() && k->result() != exit_code::success) {
+asc::master_discoverer::update_weights(hierarchy_kernel* k) {
+	if (k->moves_downstream() && k->return_code() != exit_code::success) {
 		sys::log_message(
 			"discoverer",
 			"_: failed to send hierarchy to _",
@@ -254,7 +254,7 @@ factory::master_discoverer::update_weights(hierarchy_kernel* k) {
 			k->weight()
 		);
 		if (changed) {
-			::factory::factory.nic().set_client_weight(src, k->weight());
+			::asc::factory.nic().set_client_weight(src, k->weight());
 			this->broadcast_hierarchy(src);
 		}
 	}

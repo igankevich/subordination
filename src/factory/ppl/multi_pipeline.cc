@@ -2,7 +2,7 @@
 #include "config.hh"
 
 template <class T>
-factory::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
+asc::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
 _pipelines(npipelines) {
 	unsigned num = 0;
 	for (base_pipeline& ppl : this->_pipelines) {
@@ -13,7 +13,7 @@ _pipelines(npipelines) {
 
 template <class T>
 void
-factory::Multi_pipeline<T>::set_name(const char* rhs) {
+asc::Multi_pipeline<T>::set_name(const char* rhs) {
 	for (base_pipeline& ppl : this->_pipelines) {
 		ppl.set_name(rhs);
 	}
@@ -22,7 +22,7 @@ factory::Multi_pipeline<T>::set_name(const char* rhs) {
 
 template <class T>
 void
-factory::Multi_pipeline<T>::start() {
+asc::Multi_pipeline<T>::start() {
 	this->setstate(pipeline_state::starting);
 	for (base_pipeline& ppl : this->_pipelines) {
 		ppl.start();
@@ -32,7 +32,7 @@ factory::Multi_pipeline<T>::start() {
 
 template <class T>
 void
-factory::Multi_pipeline<T>::stop() {
+asc::Multi_pipeline<T>::stop() {
 	this->setstate(pipeline_state::stopping);
 	for (base_pipeline& ppl : this->_pipelines) {
 		ppl.stop();
@@ -42,11 +42,11 @@ factory::Multi_pipeline<T>::stop() {
 
 template <class T>
 void
-factory::Multi_pipeline<T>::wait() {
+asc::Multi_pipeline<T>::wait() {
 	for (base_pipeline& ppl : this->_pipelines) {
 		ppl.wait();
 	}
 }
 
-template class factory::Multi_pipeline<FACTORY_KERNEL_TYPE>;
+template class asc::Multi_pipeline<FACTORY_KERNEL_TYPE>;
 

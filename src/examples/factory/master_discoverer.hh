@@ -18,11 +18,11 @@
 #include "tree_hierarchy_iterator.hh"
 
 
-namespace factory {
+namespace asc {
 
 	/// Timer which is used to periodically scan nodes
 	/// to find the best principal node.
-	class discovery_timer: public factory::api::Kernel {};
+	class discovery_timer: public asc::Kernel {};
 
 	enum class probe_result {
 		add_subordinate = 0,
@@ -77,7 +77,7 @@ namespace factory {
 		on_start() override;
 
 		void
-		on_kernel(factory::api::Kernel* k) override;
+		on_kernel(asc::Kernel* k) override;
 
 	private:
 

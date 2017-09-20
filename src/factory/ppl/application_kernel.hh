@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace factory {
+namespace asc {
 
 	class Application_kernel: public FACTORY_KERNEL_TYPE {
 

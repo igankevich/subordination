@@ -12,7 +12,7 @@
 #include <unistdx/it/queue_popper>
 #include <unistdx/ipc/process>
 
-namespace factory {
+namespace asc {
 
 	template <
 		class T,
@@ -62,31 +62,31 @@ namespace factory {
 		}
 
 		void
-		send(kernel_type* kernel, stream_type& stream) {
+		send(kernel_type* k, stream_type& stream) {
 			bool delete_kernel = false;
-			if (kernel_goes_in_upstream_buffer(kernel)) {
-				this->ensure_has_id(kernel);
-				this->ensure_has_id(kernel->parent());
-				sys::log_message("proto", "save parent for _", *kernel);
-				traits_type::push(this->_upstream, kernel);
+			if (kernel_goes_in_upstream_buffer(k)) {
+				this->ensure_has_id(k);
+				this->ensure_has_id(k->parent());
+				sys::log_message("proto", "save parent for _", *k);
+				traits_type::push(this->_upstream, k);
 			} else
-			if (kernel_goes_in_downstream_buffer(kernel)) {
-				traits_type::push(this->_downstream, kernel);
+			if (kernel_goes_in_downstream_buffer(k)) {
+				traits_type::push(this->_downstream, k);
 			} else
-			if (!kernel->moves_everywhere()) {
+			if (!k->moves_everywhere()) {
 				delete_kernel = true;
 			}
 			sys::log_message(
 				"proto",
 				"send to _ kernel _",
 				this->_endpoint,
-				*kernel
+				*k
 			);
-			this->write_kernel(kernel, stream);
+			this->write_kernel(k, stream);
 			/// The kernel is deleted if it goes downstream
 			/// and does not carry its parent.
 			if (delete_kernel) {
-				delete kernel;
+				delete k;
 			}
 		}
 
@@ -160,11 +160,11 @@ namespace factory {
 
 		// send {{{
 		void
-		write_kernel(kernel_type* kernel, stream_type& stream) noexcept {
+		write_kernel(kernel_type* k, stream_type& stream) noexcept {
 			try {
 				opacket_guard g(stream);
 				stream.begin_packet();
-				this->do_write_kernel(*kernel, stream);
+				this->do_write_kernel(*k, stream);
 				stream.end_packet();
 			} catch (const Error& err) {
 				sys::log_message("proto", "write error _", err);
@@ -176,12 +176,12 @@ namespace factory {
 		}
 
 		void
-		do_write_kernel(kernel_type& kernel, stream_type& stream) {
-			stream << kernel.app();
+		do_write_kernel(kernel_type& k, stream_type& stream) {
+			stream << k.app();
 			if (this->has_src_and_dest()) {
-				stream << kernel.from() << kernel.to();
+				stream << k.from() << k.to();
 			}
-			stream << kernel;
+			stream << k;
 		}
 
 		static bool
@@ -198,7 +198,7 @@ namespace factory {
 		// receive {{{
 		kernel_type*
 		read_kernel(stream_type& stream) {
-			kernel_type* kernel = nullptr;
+			kernel_type* k = nullptr;
 			application_type app;
 			stream >> app;
 			if (app != this->_thisapp) {
@@ -223,19 +223,19 @@ namespace factory {
 				if (b) {
 					stream >> from >> to;
 				}
-				stream >> kernel;
-				kernel->setapp(app);
+				stream >> k;
+				k->setapp(app);
 				if (b) {
-					kernel->from(from);
-					kernel->to(to);
+					k->from(from);
+					k->to(to);
 				} else {
-					kernel->from(this->_endpoint);
+					k->from(this->_endpoint);
 				}
-				if (kernel->carries_parent()) {
-					kernel->parent()->setapp(app);
+				if (k->carries_parent()) {
+					k->parent()->setapp(app);
 				}
 			}
-			return kernel;
+			return k;
 		}
 
 		bool
@@ -247,7 +247,7 @@ namespace factory {
 				instances_guard g(instances);
 				auto result = instances.find(k->principal_id());
 				if (result == instances.end()) {
-					k->result(exit_code::no_principal_found);
+					k->return_code(exit_code::no_principal_found);
 					ok = false;
 				}
 				k->principal(result->second);
@@ -307,7 +307,7 @@ namespace factory {
 				sys::log_message("proto", "destination is unreachable for _", *k);
 				#endif
 				k->from(k->to());
-				k->result(exit_code::endpoint_not_connected);
+				k->return_code(exit_code::endpoint_not_connected);
 				k->principal(k->parent());
 				router_type::send_local(k);
 			} else if (k->moves_downstream() && k->carries_parent()) {
@@ -322,9 +322,9 @@ namespace factory {
 		// }}}
 
 		void
-		ensure_has_id(kernel_type* kernel) {
-			if (!kernel->has_id()) {
-				kernel->id(this->generate_id());
+		ensure_has_id(kernel_type* k) {
+			if (!k->has_id()) {
+				k->id(this->generate_id());
 			}
 		}
 

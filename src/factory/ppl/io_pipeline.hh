@@ -3,7 +3,7 @@
 
 #include "parallel_pipeline.hh"
 
-namespace factory {
+namespace asc {
 
 	template<class T>
 	struct io_pipeline: public parallel_pipeline<T> {

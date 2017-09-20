@@ -11,7 +11,7 @@
 #include <factory/ppl/kernel_protocol.hh>
 #include <factory/ppl/pipeline_base.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class K, class R>
 	class process_handler: public pipeline_base {
@@ -101,8 +101,8 @@ namespace factory {
 		}
 
 		void
-		send(kernel_type* kernel) {
-			this->_proto.send(kernel, this->_ostream);
+		send(kernel_type* k) {
+			this->_proto.send(k, this->_ostream);
 		}
 
 		void

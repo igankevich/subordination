@@ -5,7 +5,7 @@
 #include <unistdx/base/simple_lock>
 #include <unistdx/ipc/thread_semaphore>
 
-namespace factory {
+namespace asc {
 
 	struct Thread_context {
 

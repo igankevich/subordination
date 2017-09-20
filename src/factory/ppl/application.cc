@@ -22,15 +22,15 @@
 
 namespace {
 
-	inline factory::application_type
+	inline asc::application_type
 	generate_application_id() noexcept {
 		std::random_device rng;
-		return sys::n_random_bytes<factory::application_type>(rng);
+		return sys::n_random_bytes<asc::application_type>(rng);
 	}
 
-	inline factory::application_type
+	inline asc::application_type
 	get_appliction_id() noexcept {
-		factory::application_type id = 0;
+		asc::application_type id = 0;
 		if (const char* s = ::getenv(FACTORY_ENV_APPLICATION_ID)) {
 			std::stringstream str(s);
 			str >> id;
@@ -48,7 +48,7 @@ namespace {
 		return fd;
 	}
 
-	factory::application_type this_app = get_appliction_id();
+	asc::application_type this_app = get_appliction_id();
 	sys::fd_type this_pipe_in = get_pipe_fd(FACTORY_ENV_PIPE_IN);
 	sys::fd_type this_pipe_out = get_pipe_fd(FACTORY_ENV_PIPE_OUT);
 
@@ -61,7 +61,7 @@ namespace {
 	}
 
 	inline std::string
-	generate_filename(factory::application_type app, const char* suffix) {
+	generate_filename(asc::application_type app, const char* suffix) {
 		std::stringstream filename;
 		filename
 			<< FACTORY_LOG_DIRECTORY
@@ -72,7 +72,7 @@ namespace {
 	}
 
 	inline sys::fildes
-	open_file(factory::application_type app, const char* suffix) {
+	open_file(asc::application_type app, const char* suffix) {
 		return sys::fildes(
 			generate_filename(app, suffix).data(),
 			sys::open_flag::create | sys::open_flag::write_only,
@@ -97,7 +97,7 @@ namespace std {
 }
 
 std::ostream&
-factory::operator<<(std::ostream& out, const Application& rhs) {
+asc::operator<<(std::ostream& out, const application& rhs) {
 	return out << sys::make_object(
 		"id", rhs._id,
 		"uid", rhs._uid,
@@ -107,23 +107,23 @@ factory::operator<<(std::ostream& out, const Application& rhs) {
 	);
 }
 
-factory::application_type
-factory::this_application::get_id() noexcept {
+asc::application_type
+asc::this_application::get_id() noexcept {
 	return this_app;
 }
 
 
 sys::fd_type
-factory::this_application::get_input_fd() noexcept {
+asc::this_application::get_input_fd() noexcept {
 	return this_pipe_in;
 }
 
 sys::fd_type
-factory::this_application::get_output_fd() noexcept {
+asc::this_application::get_output_fd() noexcept {
 	return this_pipe_out;
 }
 
-factory::Application::Application(
+asc::application::application(
 	const container_type& args,
 	const container_type& env
 ):
@@ -139,7 +139,7 @@ _env(env)
 }
 
 int
-factory::Application::execute(const sys::two_way_pipe& pipe) const {
+asc::application::execute(const sys::two_way_pipe& pipe) const {
 	sys::argstream args, env;
 	for (const std::string& a : this->_args) {
 		args.append(a);

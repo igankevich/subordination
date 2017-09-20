@@ -5,7 +5,7 @@
 
 #include <unistdx/net/endpoint>
 
-namespace factory {
+namespace asc {
 
 	class hierarchy_node {
 
@@ -90,10 +90,10 @@ namespace factory {
 namespace std {
 
 	template<>
-	struct hash<factory::hierarchy_node>: public hash<sys::endpoint> {
+	struct hash<asc::hierarchy_node>: public hash<sys::endpoint> {
 
 		typedef size_t result_type;
-		typedef factory::hierarchy_node argument_type;
+		typedef asc::hierarchy_node argument_type;
 
 		inline size_t
 		operator()(const argument_type& rhs) const noexcept {

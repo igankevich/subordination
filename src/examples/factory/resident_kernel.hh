@@ -3,25 +3,23 @@
 
 #include <factory/api.hh>
 
-namespace factory {
+namespace asc {
 
-	class resident_kernel: public factory::api::Kernel {
+	class resident_kernel: public asc::Kernel {
 
 	private:
-		struct start_message: public factory::api::Kernel {};
-		struct stop_message: public factory::api::Kernel {};
+		struct start_message: public asc::Kernel {};
+		struct stop_message: public asc::Kernel {};
 
 	public:
 
 		inline void
 		start() {
-			using namespace factory::api;
 			send<Local>(new start_message, this);
 		}
 
 		inline void
 		stop() {
-			using namespace factory::api;
 			send<Local>(new stop_message, this);
 		}
 
@@ -29,7 +27,7 @@ namespace factory {
 		act() override;
 
 		void
-		react(factory::api::Kernel* kernel) override;
+		react(asc::Kernel* k) override;
 
 	protected:
 
@@ -40,7 +38,7 @@ namespace factory {
 		on_stop();
 
 		virtual void
-		on_kernel(factory::api::Kernel* kernel);
+		on_kernel(asc::Kernel* kernel);
 
 	};
 

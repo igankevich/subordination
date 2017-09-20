@@ -5,7 +5,7 @@
 
 template <class K, class R>
 void
-factory::process_handler<K,R>
+asc::process_handler<K,R>
 ::handle(sys::poll_event& event) {
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
@@ -29,5 +29,5 @@ factory::process_handler<K,R>
 	}
 }
 
-template class factory::process_handler<
-		FACTORY_KERNEL_TYPE, factory::basic_router<FACTORY_KERNEL_TYPE>>;
+template class asc::process_handler<
+		FACTORY_KERNEL_TYPE, asc::basic_router<FACTORY_KERNEL_TYPE>>;

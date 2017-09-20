@@ -1,3 +1,3 @@
 #include "thread_context.hh"
 
-factory::Thread_context factory::this_thread::context;
+asc::Thread_context asc::this_thread::context;

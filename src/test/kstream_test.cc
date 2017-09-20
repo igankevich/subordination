@@ -9,17 +9,17 @@
 
 #include <gtest/gtest.h>
 
-struct Good_kernel: public factory::Kernel {
+struct Good_kernel: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		factory::Kernel::write(out);
+		asc::Kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::pstream& in) override {
-		factory::Kernel::read(in);
+		asc::Kernel::read(in);
 		in >> _data;
 	}
 
@@ -72,10 +72,10 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 };
 
-struct Kernel_that_carries_its_parent: public factory::Kernel {
+struct Kernel_that_carries_its_parent: public asc::Kernel {
 
 	Kernel_that_carries_its_parent() {
-		this->setf(factory::kernel_flag::carries_parent);
+		this->setf(asc::kernel_flag::carries_parent);
 		this->parent(&_carry);
 		assert(this->parent());
 	}
@@ -84,13 +84,13 @@ struct Kernel_that_carries_its_parent: public factory::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		factory::Kernel::write(out);
+		asc::Kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::pstream& in) override {
-		factory::Kernel::read(in);
+		asc::Kernel::read(in);
 		in >> _data;
 	}
 
@@ -129,7 +129,7 @@ private:
 
 };
 
-struct Dummy_kernel: public factory::Kernel {};
+struct Dummy_kernel: public asc::Kernel {};
 
 typedef Big_kernel<100> Big_kernel_type;
 
@@ -138,20 +138,20 @@ bool registered = false;
 void
 register_all() {
 	if (!registered) {
-		factory::register_type<Good_kernel>();
-		factory::register_type<Kernel_that_writes_more_than_reads>();
-		factory::register_type<Kernel_that_reads_more_than_writes>();
-		factory::register_type<Dummy_kernel>();
-		factory::register_type<Big_kernel_type>();
-		factory::register_type({
+		asc::register_type<Good_kernel>();
+		asc::register_type<Kernel_that_writes_more_than_reads>();
+		asc::register_type<Kernel_that_reads_more_than_writes>();
+		asc::register_type<Dummy_kernel>();
+		asc::register_type<Big_kernel_type>();
+		asc::register_type({
 			[] (sys::pstream& in) {
-				Kernel_that_carries_its_parent* kernel = new Kernel_that_carries_its_parent(0);
-				kernel->read(in);
-				return kernel;
+				Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
+				k->read(in);
+				return k;
 			},
 			typeid(Kernel_that_carries_its_parent)
 		});
-		std::clog << "Registered types:\n" << factory::types << std::flush;
+		std::clog << "Registered types:\n" << asc::types << std::flush;
 		registered = true;
 	}
 }
@@ -176,12 +176,12 @@ TYPED_TEST_CASE(
 
 TYPED_TEST(KernelStreamTest, IO) {
 	typedef TypeParam Carrier;
-	typedef factory::Kernel kernel_type;
+	typedef asc::Kernel kernel_type;
 	typedef std::stringbuf sink_type;
 	typedef sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>
 		fildesbuf_type;
-	typedef factory::basic_kernelbuf<fildesbuf_type> buffer_type;
-	typedef factory::kstream<kernel_type> stream_type;
+	typedef asc::basic_kernelbuf<fildesbuf_type> buffer_type;
+	typedef asc::kstream<kernel_type> stream_type;
 	for (size_t count=1; count<=100; ++count) {
 		std::vector<Carrier> expected(count);
 		std::vector<kernel_type*> result(count);

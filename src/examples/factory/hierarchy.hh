@@ -9,7 +9,7 @@
 
 #include "hierarchy_node.hh"
 
-namespace factory {
+namespace asc {
 
 	template<class Addr>
 	class hierarchy {

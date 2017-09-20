@@ -9,11 +9,11 @@
 #include "master_discoverer.hh"
 #include <factory/ppl/socket_pipeline_event.hh>
 
-namespace factory {
+namespace asc {
 
-	class network_timer: public factory::api::Kernel {};
+	class network_timer: public asc::Kernel {};
 
-	class network_master: public factory::api::Kernel {
+	class network_master: public asc::Kernel {
 
 	private:
 		typedef sys::ipv4_addr addr_type;
@@ -35,7 +35,7 @@ namespace factory {
 		act() override;
 
 		void
-		react(factory::api::Kernel* child) override;
+		react(asc::Kernel* child) override;
 
 		inline void
 		fanout(uint_type rhs) noexcept {

@@ -5,15 +5,15 @@
 
 namespace {
 
-	inline factory::Kernel::id_type
-	get_id(const factory::Kernel* rhs) {
-		return !rhs ? factory::mobile_kernel::no_id() : rhs->id();
+	inline asc::Kernel::id_type
+	get_id(const asc::Kernel* rhs) {
+		return !rhs ? asc::mobile_kernel::no_id() : rhs->id();
 	}
 
 }
 
 void
-factory::Kernel::read(sys::pstream& in) {
+asc::Kernel::read(sys::pstream& in) {
 	base_kernel::read(in);
 	bool b = false;
 	in >> b;
@@ -27,7 +27,7 @@ factory::Kernel::read(sys::pstream& in) {
 }
 
 void
-factory::Kernel::write(sys::pstream& out) {
+asc::Kernel::write(sys::pstream& out) {
 	base_kernel::write(out);
 	out << carries_parent();
 	if (this->moves_downstream()) {
@@ -47,20 +47,20 @@ factory::Kernel::write(sys::pstream& out) {
 }
 
 void
-factory::Kernel::act() {}
+asc::Kernel::act() {}
 
 void
-factory::Kernel::react(Kernel*) {
+asc::Kernel::react(Kernel*) {
 	FACTORY_THROW(Error, "empty react");
 }
 
 void
-factory::Kernel::error(Kernel* rhs) {
+asc::Kernel::error(Kernel* rhs) {
 	this->react(rhs);
 }
 
 std::ostream&
-factory::operator<<(std::ostream& out, const Kernel& rhs) {
+asc::operator<<(std::ostream& out, const Kernel& rhs) {
 	const char state[] = {
 		(rhs.moves_upstream()   ? 'u' : '-'),
 		(rhs.moves_downstream() ? 'd' : '-'),
@@ -74,7 +74,7 @@ factory::operator<<(std::ostream& out, const Kernel& rhs) {
 		"id", rhs.id(),
 		"src", rhs.from(),
 		"dst", rhs.to(),
-		"ret", rhs.result(),
+		"ret", rhs.return_code(),
 		"app", rhs.app(),
 		"parent", rhs._parent,
 		"principal", rhs._principal

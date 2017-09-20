@@ -3,30 +3,29 @@
 #include <typeinfo>
 
 void
-factory::resident_kernel::act() {
+asc::resident_kernel::act() {
 	this->start();
 }
 
 void
-factory::resident_kernel::react(factory::api::Kernel* kernel) {
-	using namespace factory::api;
-	if (typeid(*kernel) == typeid(start_message)) {
+asc::resident_kernel::react(asc::Kernel* k) {
+	if (typeid(*k) == typeid(start_message)) {
 		this->on_start();
-	} else if (typeid(*kernel) == typeid(stop_message)) {
+	} else if (typeid(*k) == typeid(stop_message)) {
 		this->on_stop();
 		if (this->parent()) {
 			commit<Local>(this, exit_code::success);
 		}
 	} else {
-		this->on_kernel(kernel);
+		this->on_kernel(k);
 	}
 }
 
 void
-factory::resident_kernel::on_start() {}
+asc::resident_kernel::on_start() {}
 
 void
-factory::resident_kernel::on_stop() {}
+asc::resident_kernel::on_stop() {}
 
 void
-factory::resident_kernel::on_kernel(factory::api::Kernel* kernel) {}
+asc::resident_kernel::on_kernel(asc::Kernel* k) {}

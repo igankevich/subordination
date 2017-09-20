@@ -1,7 +1,7 @@
 #ifndef FACTORY_BASE_ERROR_HANDLER_HH
 #define FACTORY_BASE_ERROR_HANDLER_HH
 
-namespace factory {
+namespace asc {
 
 	[[noreturn]] void
 	print_backtrace(int sig) noexcept;

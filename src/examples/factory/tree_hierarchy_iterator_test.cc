@@ -19,7 +19,7 @@ TEST(TreeHierarchyIterator, Fanout2) {
 	// fanout = 2
 	const int fanout = 2;
 	typedef sys::ipv4_addr addr_type;
-	typedef factory::tree_hierarchy_iterator<addr_type> iterator;
+	typedef asc::tree_hierarchy_iterator<addr_type> iterator;
 	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
@@ -77,7 +77,7 @@ TEST(TreeHierarchyIterator, Fanout3) {
 	// fanout = 3
 	const int fanout = 3;
 	typedef sys::ipv4_addr addr_type;
-	typedef factory::tree_hierarchy_iterator<addr_type> iterator;
+	typedef asc::tree_hierarchy_iterator<addr_type> iterator;
 	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
@@ -212,7 +212,7 @@ TEST(TreeHierarchyIterator, NonZeroOffset) {
 	const int fanout = 3;
 	const int offset = 1;
 	typedef sys::ipv4_addr addr_type;
-	typedef factory::tree_hierarchy_iterator<addr_type> iterator;
+	typedef asc::tree_hierarchy_iterator<addr_type> iterator;
 	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
@@ -243,7 +243,7 @@ TEST(TreeHierarchyIterator, LargeFanOut) {
     // offset = 1
 	const int fanout = 20000;
 	typedef sys::ipv4_addr addr_type;
-	typedef factory::tree_hierarchy_iterator<addr_type> iterator;
+	typedef asc::tree_hierarchy_iterator<addr_type> iterator;
 	typedef sys::ifaddr<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	EXPECT_EQ(

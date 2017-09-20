@@ -9,9 +9,9 @@
 
 #include "probe.hh"
 
-namespace factory {
+namespace asc {
 
-	class prober: public factory::api::Kernel {
+	class prober: public asc::Kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;
@@ -40,7 +40,7 @@ namespace factory {
 		act() override;
 
 		void
-		react(factory::api::Kernel* k) override;
+		react(asc::Kernel* k) override;
 
 		inline const sys::endpoint&
 		new_principal() const noexcept {

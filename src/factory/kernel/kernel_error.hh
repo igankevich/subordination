@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <iosfwd>
 
-namespace factory {
+namespace asc {
 
 	class kernel_error: public std::runtime_error {
 

@@ -17,7 +17,7 @@
 #include <factory/kernel/kstream.hh>
 #include <factory/ppl/basic_pipeline.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class T, class Handler,
 	class Kernels=std::queue<T*>,

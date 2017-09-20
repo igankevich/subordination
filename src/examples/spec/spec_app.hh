@@ -247,7 +247,7 @@ namespace sys {
 
 }
 
-struct Spectrum_kernel: public Kernel {
+struct Spectrum_kernel: public asc::Kernel {
 
 	enum {
 		DENSITY = 'w',
@@ -264,10 +264,9 @@ struct Spectrum_kernel: public Kernel {
 	{}
 
 	void act() override {
-		using namespace factory::api;
 		// TODO Filter 999 values.
 		_variance = compute_variance();
-		commit<Local>(this);
+		asc::commit(this);
 	}
 
 	float spectrum(int32_t i, float angle) {
@@ -303,7 +302,7 @@ private:
 
 const float Spectrum_kernel::PI = std::acos(-1.0f);
 
-struct Station_kernel: public Kernel {
+struct Station_kernel: public asc::Kernel {
 
 	typedef std::unordered_map<Variable, Observation> Map;
 
@@ -335,9 +334,8 @@ struct Station_kernel: public Kernel {
 		out << std::flush;
 	}
 
-	void react(Kernel* kernel) override {
-		using namespace factory::api;
-		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(kernel);
+	void react(Kernel* child) override {
+		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(child);
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
 			#ifndef NDEBUG
@@ -349,15 +347,14 @@ struct Station_kernel: public Kernel {
 			#endif
 			_observations.clear();
 			_spectra.clear();
-			commit<Remote>(this);
+			asc::commit<asc::Remote>(this);
 		}
 	}
 
 	void act() override {
-		using namespace factory::api;
 		// skip records when some variables are missing
 		if (_observations.size() != NUM_VARIABLES) {
-			commit<Remote>(this);
+			asc::commit<asc::Remote>(this);
 			return;
 		}
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -431,7 +428,7 @@ struct Station_kernel: public Kernel {
 			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(kernel_flag::priority_service);
-				upstream<Local>(this, k);
+				asc::upstream(this, k);
 			}
 		);
 	}
@@ -474,7 +471,7 @@ private:
 	static const int NUM_VARIABLES = 5;
 };
 
-struct Year_kernel: public Kernel {
+struct Year_kernel: public asc::Kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -499,9 +496,8 @@ struct Year_kernel: public Kernel {
 		return _count == _observations.size();
 	}
 
-	void react(Kernel* kernel) override {
-		using namespace factory::api;
-		Station_kernel* k = dynamic_cast<Station_kernel*>(kernel);
+	void react(asc::Kernel* child) override {
+		Station_kernel* k = dynamic_cast<Station_kernel*>(child);
 		if (!_output_file.is_open()) {
 			_output_file.open(output_filename());
 		}
@@ -516,15 +512,14 @@ struct Year_kernel: public Kernel {
 		#endif
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
-			commit<Remote>(this);
+			asc::commit(this);
 		}
 	}
 
 	void act() override {
-		using namespace factory::api;
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				upstream<Remote>(
+				asc::upstream<asc::Remote>(
 					this,
 					new Station_kernel(pair.second, pair.first, _year)
 				);
@@ -579,7 +574,7 @@ private:
 	std::ofstream _output_file;
 };
 
-struct Launcher: public Kernel {
+struct Launcher: public asc::Kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -596,7 +591,6 @@ struct Launcher: public Kernel {
 	}
 
 	void act() override {
-		using namespace factory::api;
 		#ifndef NDEBUG
 		sys::log_message("spec", "launcher start");
 		#endif
@@ -622,10 +616,9 @@ struct Launcher: public Kernel {
 		);
 	}
 
-	void react(Kernel* kernel) override {
-		using namespace factory::api;
-		// Year_kernel* k = dynamic_cast<Year_kernel*>(kernel);
-		Station_kernel* k1 = dynamic_cast<Station_kernel*>(kernel);
+	void react(Kernel* child) override {
+		// Year_kernel* k = dynamic_cast<Year_kernel*>(k);
+		Station_kernel* k1 = dynamic_cast<Station_kernel*>(child);
 		Year_kernel* k = _yearkernels[k1->year()];
 		k->react(k1);
 		if (k->finished()) {
@@ -649,9 +642,9 @@ struct Launcher: public Kernel {
 					log << _count_spectra << std::endl;
 				}
 				#if defined(FACTORY_TEST_SLAVE_FAILURE)
-				commit<Local>(this);
+				asc::commit<asc::Local>(this);
 				#else
-				commit<Remote>(this);
+				asc::commit<asc::Remote>(this);
 				#endif
 			}
 		}
@@ -671,10 +664,9 @@ struct Launcher: public Kernel {
 
 	void
 	submit_station_kernels(Map _observations, Year _year) {
-		using namespace factory::api;
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-				upstream<Remote>(
+				asc::upstream<asc::Remote>(
 					this,
 					new Station_kernel(pair.second, pair.first, _year)
 				);
@@ -690,27 +682,25 @@ private:
 	std::unordered_map<Year, Year_kernel*> _yearkernels;
 };
 
-struct Spec_app: public Kernel {
+struct Spec_app: public asc::Kernel {
 
 	void
 	act() override {
-		using namespace factory::api;
 		#ifndef NDEBUG
 		sys::log_message("spec", "program start");
 		#endif
 		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		upstream<Local>(this, new Launcher);
+		asc::upstream<asc::Local>(this, new Launcher);
 		#else
 		Launcher* launcher = new Launcher;
-		launcher->setf(kernel_flag::carries_parent);
-		upstream<Remote>(this, launcher);
+		launcher->setf(asc::kernel_flag::carries_parent);
+		asc::upstream<asc::Remote>(this, launcher);
 		#endif
 	}
 
 	void
 	react(Kernel*) override {
-		using namespace factory::api;
-		commit<Local>(this);
+		asc::commit<asc::Local>(this);
 	}
 
 };

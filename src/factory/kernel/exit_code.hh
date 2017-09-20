@@ -3,7 +3,7 @@
 
 #include <unistdx/net/pstream>
 
-namespace factory {
+namespace asc {
 
 	typedef uint16_t exit_code_type;
 

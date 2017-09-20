@@ -14,7 +14,7 @@
 #include <factory/ppl/application_kernel.hh>
 #include <factory/ppl/pipeline_base.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class T, class Router>
 	class external_process_handler: public pipeline_base {

@@ -4,7 +4,7 @@
 #include <factory/kernel/kernel_base.hh>
 #include <factory/kernel/kernel_header.hh>
 
-namespace factory {
+namespace asc {
 
 	class mobile_kernel: public kernel_base, public kernel_header {
 

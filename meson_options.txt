@@ -1,7 +1,7 @@
 option(
 	'kernel_type',
 	type: 'string',
-	value: '::factory::Kernel',
+	value: '::asc::Kernel',
 	decription: 'base type for all kernels'
 )
 

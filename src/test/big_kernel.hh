@@ -6,7 +6,7 @@
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel: public factory::Kernel {
+struct Big_kernel: public asc::Kernel {
 
 	Big_kernel():
 	_data(Size)
@@ -15,13 +15,12 @@ struct Big_kernel: public factory::Kernel {
 	virtual ~Big_kernel() = default;
 
 	void act() override {
-		using namespace factory::api;
-		commit<Remote>(this);
+		asc::commit<asc::Remote>(this);
 	}
 
 	void
 	write(sys::pstream& out) override {
-		factory::Kernel::write(out);
+		asc::Kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -29,7 +28,7 @@ struct Big_kernel: public factory::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		factory::Kernel::read(in);
+		asc::Kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);

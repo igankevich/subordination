@@ -5,7 +5,7 @@
 
 template <class K, class R>
 void
-factory::external_process_handler<K,R>
+asc::external_process_handler<K,R>
 ::handle(sys::poll_event& event) {
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
@@ -17,7 +17,7 @@ factory::external_process_handler<K,R>
 
 template <class K, class R>
 void
-factory::external_process_handler<K,R>
+asc::external_process_handler<K,R>
 ::receive_kernels(stream_type& stream) noexcept {
 	while (stream.read_packet()) {
 		Application_kernel* k = nullptr;
@@ -25,12 +25,12 @@ factory::external_process_handler<K,R>
 			// eats remaining bytes on exception
 			application_type a;
 			ipacket_guard g(stream);
-			kernel_type* kernel = nullptr;
+			kernel_type* tmp = nullptr;
 			stream >> a;
-			stream >> kernel;
-			k = dynamic_cast<Application_kernel*>(kernel);
+			stream >> tmp;
+			k = dynamic_cast<Application_kernel*>(tmp);
 			this->log("recv _", *k);
-			Application app(k->arguments(), k->environment());
+			application app(k->arguments(), k->environment());
 			sys::user_credentials creds = this->socket().credentials();
 			app.set_credentials(creds.uid, creds.gid);
 			try {
@@ -70,5 +70,5 @@ factory::external_process_handler<K,R>
 }
 
 
-template class factory::external_process_handler<
-		FACTORY_KERNEL_TYPE,factory::basic_router<FACTORY_KERNEL_TYPE>>;
+template class asc::external_process_handler<
+		FACTORY_KERNEL_TYPE,asc::basic_router<FACTORY_KERNEL_TYPE>>;

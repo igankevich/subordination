@@ -6,7 +6,7 @@
 #include <unistdx/net/endpoint>
 #include <unistdx/net/ifaddr>
 
-namespace factory {
+namespace asc {
 
 	template <class Addr>
 	inline void

@@ -26,7 +26,7 @@
 #include <factory/ppl/application.hh>
 #include <factory/ppl/basic_router.hh>
 
-namespace factory {
+namespace asc {
 
 	template <class T>
 	class Factory: public pipeline_base {
@@ -71,38 +71,38 @@ namespace factory {
 		Factory(Factory&&) = delete;
 
 		inline void
-		send(kernel_type* kernel) {
-			if (kernel->scheduled()) {
-				this->_timer.send(kernel);
+		send(kernel_type* k) {
+			if (k->scheduled()) {
+				this->_timer.send(k);
 			} else
-			if (kernel->moves_downstream()) {
-				const size_t i = kernel->hash();
+			if (k->moves_downstream()) {
+				const size_t i = k->hash();
 				const size_t n = this->_downstream.size();
-				this->_downstream[i%n].send(kernel);
+				this->_downstream[i%n].send(k);
 			} else {
-				this->_upstream.send(kernel);
+				this->_upstream.send(k);
 			}
 		}
 
 		inline void
-		send_remote(kernel_type* kernel) {
-			this->_parent.send(kernel);
+		send_remote(kernel_type* k) {
+			this->_parent.send(k);
 		}
 
 		inline void
-		send_timer(kernel_type* kernel) {
-			this->_timer.send(kernel);
+		send_timer(kernel_type* k) {
+			this->_timer.send(k);
 		}
 
 		inline void
-		send_timer(kernel_type** kernel, size_t n) {
-			this->_timer.send(kernel, n);
+		send_timer(kernel_type** k, size_t n) {
+			this->_timer.send(k, n);
 		}
 
 		#if defined(FACTORY_DAEMON)
 		inline void
-		send_child(kernel_type* kernel) {
-			this->_child.send(kernel);
+		send_child(kernel_type* k) {
+			this->_child.send(k);
 		}
 
 		inline child_pipeline_type&
@@ -216,7 +216,7 @@ namespace factory {
 
 	template <class T>
 	void
-	basic_router<T>::execute(const Application& app) {
+	basic_router<T>::execute(const application& app) {
 		factory.child().add(app);
 	}
 	#else
@@ -234,7 +234,7 @@ namespace factory {
 
 	template <class T>
 	void
-	basic_router<T>::execute(const Application& app) {}
+	basic_router<T>::execute(const application& app) {}
 	#endif
 
 }

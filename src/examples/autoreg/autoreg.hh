@@ -7,8 +7,6 @@
 #include "grid.hh"
 #include "mapreduce.hh"
 
-using namespace factory::api;
-
 namespace std {
 
 	template<class T>
@@ -86,7 +84,7 @@ namespace {
 using namespace autoreg;
 
 template<class T>
-struct Variance_WN: public Kernel {
+struct Variance_WN: public asc::Kernel {
 
 	Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
 		ar_coefs(ar_coefs_), acf(acf_), _sum(0) {}
@@ -94,14 +92,14 @@ struct Variance_WN: public Kernel {
 	void act() override {
 		int bs = 64;
 		int n = ar_coefs.size();
-		upstream<Local>(this, mapreduce([](int) {}, [this](int i){
+		asc::upstream(this, asc::mapreduce([](int) {}, [this](int i){
 			_sum += ar_coefs[i]*acf[i];
 		}, 0, n, bs));
 	}
 
-	void react(Kernel*) override {
+	void react(asc::Kernel*) override {
 		_sum = acf[0] - _sum;
-		commit<Local>(this);
+		asc::commit(this);
 	}
 
 	T
@@ -120,7 +118,7 @@ private:
 template<class T> T var_acf(std::valarray<T>& acf) { return acf[0]; }
 
 template<class T>
-struct Yule_walker: public Kernel {
+struct Yule_walker: public asc::Kernel {
 
 	Yule_walker(const std::valarray<T>& acf_,
 				 const size3& acf_size_,
@@ -133,7 +131,7 @@ struct Yule_walker: public Kernel {
 		int block_size = 16*4;
 		int m = b.size();
 		auto identity = [](int){};
-		upstream<Local>(this, mapreduce([this](int i) {
+		asc::upstream(this, asc::mapreduce([this](int i) {
 			const int n = acf.size()-1;
 			const Index<3> id(acf_size);
 			const Index<2> ida(size2(n, n));
@@ -151,15 +149,15 @@ struct Yule_walker: public Kernel {
 				a[i1] = acf[i2];
 			}
 		}, identity, 0, n, block_size));
-		upstream<Local>(this, mapreduce([this](int i) {
+		asc::upstream(this, asc::mapreduce([this](int i) {
 			const Index<3> id(acf_size);
 			b[i] = acf[id( id.t(i+1), id.x(i+1), id.y(i+1) )];
 		}, identity, 0, m, block_size));
 	}
 
-	void react(Kernel*) override {
+	void react(asc::Kernel*) override {
 		if (++count == 2) {
-			commit<Local>(this);
+			asc::commit(this);
 		}
 	}
 
@@ -211,7 +209,7 @@ void approx_acf(const T alpha,
 //struct ACF_sub;
 
 template<class T>
-struct ACF_generator: public Kernel {
+struct ACF_generator: public asc::Kernel {
 
 	typedef int I;
 
@@ -229,7 +227,7 @@ struct ACF_generator: public Kernel {
 		int bs = 2;
 		int n = acf_size[0];
 		auto identity = [](int){};
-		upstream<Local>(this, mapreduce([this](int t) {
+		asc::upstream(this, asc::mapreduce([this](int t) {
 			const Index<3> id(acf_size);
 			int x1 = acf_size[1];
 			int y1 = acf_size[2];
@@ -244,8 +242,8 @@ struct ACF_generator: public Kernel {
 		}, identity, 0, n, bs));
 	}
 
-	void react(Kernel*) override {
-		commit<Local>(this);
+	void react(asc::Kernel*) override {
+		asc::commit<asc::Local>(this);
 	}
 
 private:
@@ -282,7 +280,7 @@ private:
 
 
 template<class T>
-struct Solve_Yule_Walker: public Kernel {
+struct Solve_Yule_Walker: public asc::Kernel {
 
 	Solve_Yule_Walker(std::valarray<T>& ar_coefs2, std::valarray<T>& aa, std::valarray<T>& bb, const size3& acf_size):
 		ar_coefs(ar_coefs2), a(aa), b(bb), _acf_size(acf_size)
@@ -345,7 +343,7 @@ struct Solve_Yule_Walker: public Kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
 		}
-		commit<Local>(this);
+		asc::commit<asc::Local>(this);
 	}
 
 private:
@@ -356,7 +354,7 @@ private:
 };
 
 template<class T>
-struct Autoreg_coefs: public Kernel {
+struct Autoreg_coefs: public asc::Kernel {
 	Autoreg_coefs(const std::valarray<T>& acf_model_,
 				   const size3& acf_size_,
 				   std::valarray<T>& ar_coefs_):
@@ -366,15 +364,15 @@ struct Autoreg_coefs: public Kernel {
 	{}
 
 	void act() override {
-		upstream<Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
+		asc::upstream<asc::Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
 	void react(Kernel*) override {
 		state++;
 		if (state == 1) {
-			upstream<Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+			asc::upstream<asc::Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
 		} else {
-			commit<Local>(this);
+			asc::commit<asc::Local>(this);
 		}
 	}
 
@@ -536,7 +534,7 @@ void trim_zeta(
 namespace autoreg {
 
 template<class T, class Grid>
-struct Generator1: public Kernel {
+struct Generator1: public asc::Kernel {
 
 	Generator1() = default;
 
@@ -565,7 +563,7 @@ struct Generator1: public Kernel {
 	void act() override {
 		if (_writefile) {
 			write_part_to_file(zeta);
-			commit<Remote>(this);
+			asc::commit<asc::Remote>(this);
 		} else {
 			#ifndef NDEBUG
 			sys::log_message(
@@ -603,20 +601,20 @@ struct Generator1: public Kernel {
 //					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
 					Note* note = new Note;
 					note->return_to(left_neighbour);
-					send<Local>(note);
+					asc::send(note);
 //					downstream(local_pipeline(), new Note(), left_neighbour);
 				}
-				send<Local>(this, this);
+				asc::send(this, this);
 //				downstream(local_pipeline(), this, this);
 			} else {
 				trim_zeta(zeta2, zsize2, zsize, zeta);
 				_writefile = true;
-				send<Local>(this);
+				asc::send(this);
 			}
 		}
 	}
 
-	void react(Kernel*) override {
+	void react(asc::Kernel*) override {
 		count++;
 		// received two kernels or last part
 //		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
@@ -640,7 +638,7 @@ struct Generator1: public Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		Kernel::write(out);
+		asc::Kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
 		out << var_eps;
@@ -652,7 +650,7 @@ struct Generator1: public Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		Kernel::read(in);
+		asc::Kernel::read(in);
 		in >> part >> part2;
 		in >> phi >> fsize;
 		in >> var_eps;
@@ -664,7 +662,7 @@ struct Generator1: public Kernel {
 
 private:
 
-	struct Note: public Kernel {};
+	struct Note: public asc::Kernel {};
 
 	Surface_part part, part2;
 	std::valarray<T> phi;
@@ -682,7 +680,7 @@ private:
 };
 
 template<class T, class Grid>
-struct Wave_surface_generator: public Kernel {
+struct Wave_surface_generator: public asc::Kernel {
 
 	Wave_surface_generator() = default;
 
@@ -725,11 +723,11 @@ struct Wave_surface_generator: public Kernel {
 			generators[i]->set_neighbour(generators[i-1]);
 		}
 		for (std::size_t i=0; i<num_parts; ++i) {
-			upstream<Remote>(this, generators[i]);
+			asc::upstream<asc::Remote>(this, generators[i]);
 		}
 	}
 
-	void react(Kernel* child) override {
+	void react(asc::Kernel* child) override {
 		#ifndef NDEBUG
 		sys::log_message(
 			"autoreg",
@@ -738,13 +736,13 @@ struct Wave_surface_generator: public Kernel {
 		);
 		#endif
 		if (++count == grid.num_parts()) {
-			commit<Remote>(this);
+			asc::commit<asc::Remote>(this);
 		}
 	}
 
 	void
 	write(sys::pstream& out) override {
-		Kernel::write(out);
+		asc::Kernel::write(out);
 		out << phi;
 		out << fsize;
 		out << var_eps;
@@ -758,7 +756,7 @@ struct Wave_surface_generator: public Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		Kernel::read(in);
+		asc::Kernel::read(in);
 		in >> phi;
 		in >> fsize;
 		in >> var_eps;

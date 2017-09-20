@@ -36,7 +36,7 @@ namespace {
 }
 
 template <class T>
-factory::Factory<T>::Factory():
+asc::Factory<T>::Factory():
 _upstream(std::thread::hardware_concurrency()),
 _downstream(_upstream.concurrency()) {
 	this->_upstream.set_name("upstrm");
@@ -56,7 +56,7 @@ _downstream(_upstream.concurrency()) {
 
 template <class T>
 void
-factory::Factory<T>::start() {
+asc::Factory<T>::start() {
 	this->setstate(pipeline_state::starting);
 	start_all(
 		this->_upstream,
@@ -74,7 +74,7 @@ factory::Factory<T>::start() {
 
 template <class T>
 void
-factory::Factory<T>::stop() {
+asc::Factory<T>::stop() {
 	this->setstate(pipeline_state::stopping);
 	stop_all(
 		this->_upstream,
@@ -92,7 +92,7 @@ factory::Factory<T>::stop() {
 
 template <class T>
 void
-factory::Factory<T>::wait() {
+asc::Factory<T>::wait() {
 	wait_all(
 		this->_upstream,
 		this->_downstream,
@@ -106,7 +106,7 @@ factory::Factory<T>::wait() {
 	);
 }
 
-template class factory::Factory<FACTORY_KERNEL_TYPE>;
-template class factory::basic_router<FACTORY_KERNEL_TYPE>;
+template class asc::Factory<FACTORY_KERNEL_TYPE>;
+template class asc::basic_router<FACTORY_KERNEL_TYPE>;
 
-factory::Factory<FACTORY_KERNEL_TYPE> factory::factory;
+asc::Factory<FACTORY_KERNEL_TYPE> asc::factory;

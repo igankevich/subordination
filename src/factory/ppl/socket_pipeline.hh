@@ -16,7 +16,7 @@
 #include <factory/ppl/local_server.hh>
 #include <factory/ppl/remote_client.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class T, class Socket, class Router>
 	class socket_pipeline:
@@ -164,7 +164,7 @@ namespace factory {
 		find_server(const sys::endpoint& dest);
 
 		void
-		ensure_identity(kernel_type* kernel, const sys::endpoint& dest);
+		ensure_identity(kernel_type* k, const sys::endpoint& dest);
 
 		/// round robin over upstream hosts
 		void

@@ -13,7 +13,7 @@
 #include <factory/ppl/basic_socket_pipeline.hh>
 #include <factory/ppl/process_handler.hh>
 
-namespace factory {
+namespace asc {
 
 	template<class K, class R>
 	class process_pipeline:
@@ -56,7 +56,7 @@ namespace factory {
 		process_kernels() override;
 
 		void
-		add(const Application& app);
+		add(const application& app);
 
 		void
 		do_run() override;

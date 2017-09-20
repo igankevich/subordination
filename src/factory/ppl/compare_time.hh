@@ -1,7 +1,7 @@
 #ifndef FACTORY_PPL_COMPARE_TIME_HH
 #define FACTORY_PPL_COMPARE_TIME_HH
 
-namespace factory {
+namespace asc {
 
 	template<class T>
 	struct Compare_time {

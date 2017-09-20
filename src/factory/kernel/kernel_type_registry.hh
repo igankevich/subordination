@@ -7,7 +7,7 @@
 #include <factory/kernel/kernel_type.hh>
 #include <factory/kernel/kernel_type_error.hh>
 
-namespace factory {
+namespace asc {
 
 	class kernel_type_registry {
 
@@ -47,9 +47,9 @@ namespace factory {
 			this->register_type({
 				this->generate_id(),
 				[] (sys::pstream& in) -> void* {
-					X* kernel = new X;
-					kernel->read(in);
-					return kernel;
+					X* k = new X;
+					k->read(in);
+					return k;
 				},
 				typeid(X)
 			});

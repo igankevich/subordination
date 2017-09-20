@@ -1,7 +1,7 @@
 #ifndef FACTORY_PPL_KERNEL_PROTO_FLAGS_HH
 #define FACTORY_PPL_KERNEL_PROTO_FLAGS_HH
 
-namespace factory {
+namespace asc {
 
 	class kernel_proto_flag {
 

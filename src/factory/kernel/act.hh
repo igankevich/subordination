@@ -4,36 +4,36 @@
 #include <factory/kernel/kernel.hh>
 #include <factory/ppl/basic_pipeline.hh>
 
-namespace factory {
+namespace asc {
 
 	inline void
-	act(Kernel* kernel) {
+	act(Kernel* k) {
 		bool del = false;
-		if (kernel->result() == exit_code::undefined) {
-			if (kernel->principal()) {
-				kernel->principal()->react(kernel);
-				if (!kernel->isset(kernel_flag::do_not_delete)) {
+		if (k->return_code() == exit_code::undefined) {
+			if (k->principal()) {
+				k->principal()->react(k);
+				if (!k->isset(kernel_flag::do_not_delete)) {
 					del = true;
 				} else {
-					kernel->unsetf(kernel_flag::do_not_delete);
+					k->unsetf(kernel_flag::do_not_delete);
 				}
 			} else {
-				kernel->act();
+				k->act();
 			}
 		} else {
-			if (!kernel->principal()) {
-				del = !kernel->parent();
+			if (!k->principal()) {
+				del = !k->parent();
 			} else {
-				del = *kernel->principal() == *kernel->parent();
-				if (kernel->result() == exit_code::success) {
-					kernel->principal()->react(kernel);
+				del = *k->principal() == *k->parent();
+				if (k->return_code() == exit_code::success) {
+					k->principal()->react(k);
 				} else {
-					kernel->principal()->error(kernel);
+					k->principal()->error(k);
 				}
 			}
 		}
 		if (del) {
-			delete kernel;
+			delete k;
 		}
 	}
 
