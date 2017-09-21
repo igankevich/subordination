@@ -1,4 +1,4 @@
-\mainpage Invitation to Factory
+\mainpage Introduction to Bscheduler
 
 Factory is a framework for developing distributed applications which features
 - \ref api "concise API" consisting of a few base classes and a handful of
@@ -25,5 +25,5 @@ TODO
 \section contributing Contributing
 
 Feel free to contribute or post a bug at project page listed below.
-- Source code repository: <https://github.com/igankevich/factory>
-- Issue tracker: <https://github.com/igankevich/factory/issues>
+- Source code repository: <https://github.com/igankevich/bscheduler>
+- Issue tracker: <https://github.com/igankevich/bscheduler/issues>
