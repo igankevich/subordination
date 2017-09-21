@@ -1,10 +1,10 @@
-#ifndef APPS_AUTOREG_AUTOREG_DRIVER_HH
-#define APPS_AUTOREG_AUTOREG_DRIVER_HH
+#ifndef EXAMPLES_AUTOREG_AUTOREG_DRIVER_HH
+#define EXAMPLES_AUTOREG_AUTOREG_DRIVER_HH
 
 namespace autoreg {
 
 	template<class T>
-	class Autoreg_model: public asc::kernel {
+	class Autoreg_model: public bsc::kernel {
 	public:
 
 		typedef Uniform_grid grid_type;
@@ -53,7 +53,7 @@ namespace autoreg {
 			write_log("Interval:", interval);
 			write_log("Size factor:", size_factor());
 
-			asc::upstream(
+			bsc::upstream(
 				this,
 				new ACF_generator<T>(
 					alpha,
@@ -108,7 +108,7 @@ namespace autoreg {
 		}
 
 		void
-		react(asc::kernel* child) override;
+		react(bsc::kernel* child) override;
 
 		inline const Domain<T, 3>
 		domain() const noexcept {
@@ -191,7 +191,7 @@ namespace autoreg {
 		void
 		do_it() {
 			acf_pure = acf_model;
-			asc::upstream(
+			bsc::upstream(
 				this,
 				new Autoreg_coefs<T>(
 					acf_model,
@@ -240,7 +240,7 @@ namespace autoreg {
 		if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
 			{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-			asc::upstream(this, new Variance_WN<T>(ar_coefs, acf_model));
+			bsc::upstream(this, new Variance_WN<T>(ar_coefs, acf_model));
 		}
 		if (typeid(*child) == typeid(Variance_WN<T>)) {
 			T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
@@ -263,11 +263,11 @@ namespace autoreg {
 				grid,
 				grid_2
 			                         );
-		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-			asc::upstream(this, k);
+		#if defined(BSCHEDULER_TEST_SLAVE_FAILURE)
+			bsc::upstream(this, k);
 		#else
-			k->setf(asc::kernel_flag::carries_parent);
-			asc::upstream<asc::Remote>(this, k);
+			k->setf(bsc::kernel_flag::carries_parent);
+			bsc::upstream<bsc::Remote>(this, k);
 		#endif
 		}
 		if (typeid(*child) == typeid(generator_type)) {
@@ -278,7 +278,7 @@ namespace autoreg {
 				timerun_log << float(_time1 - _time0)/1000/1000/1000 <<
 				    std::endl;
 			}
-			asc::commit(this);
+			bsc::commit(this);
 		}
 
 	}

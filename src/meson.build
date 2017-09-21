@@ -1,3 +1,3 @@
-subdir('factory')
+subdir('bscheduler')
 subdir('test')
 subdir('examples')

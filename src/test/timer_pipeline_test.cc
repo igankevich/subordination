@@ -1,20 +1,20 @@
-#include <factory/api.hh>
-#include <factory/ppl/parallel_pipeline.hh>
-#include <factory/ppl/timer_pipeline.hh>
-#include <factory/base/error_handler.hh>
+#include <bscheduler/api.hh>
+#include <bscheduler/ppl/parallel_pipeline.hh>
+#include <bscheduler/ppl/timer_pipeline.hh>
+#include <bscheduler/base/error_handler.hh>
 
 #include <gtest/gtest.h>
 
-using namespace asc;
+using namespace bsc;
 
-struct Sleepy_kernel: public asc::kernel {
+struct Sleepy_kernel: public bsc::kernel {
 
 	void pos(size_t p) { _pos = p; }
 	size_t pos() const { return _pos; }
 
 	void act() override {
 		using namespace std::chrono;
-		const auto now = asc::kernel::clock_type::now();
+		const auto now = bsc::kernel::clock_type::now();
 		const auto at = this->at();
 		const auto delta = duration_cast<nanoseconds>(now-at).count();
 		std::clog << '#' << _pos << " wakes up "
@@ -28,7 +28,7 @@ private:
 
 };
 
-struct Main: public asc::kernel {
+struct Main: public bsc::kernel {
 
 	Main(size_t nkernels, std::chrono::milliseconds period):
 	_nkernels(nkernels),
@@ -37,7 +37,7 @@ struct Main: public asc::kernel {
 
 	void
 	act() override {
-		std::vector<asc::kernel*> kernels(_nkernels);
+		std::vector<bsc::kernel*> kernels(_nkernels);
 		// send kernels in inverse chronological order
 		for (size_t i=0; i<this->_nkernels; ++i) {
 			kernels[i] = new_sleepy_kernel(
@@ -45,11 +45,11 @@ struct Main: public asc::kernel {
 				this->_nkernels - i
 			);
 		}
-		asc::factory.send_timer(kernels.data(), kernels.size());
+		bsc::factory.send_timer(kernels.data(), kernels.size());
 	}
 
 	void
-	react(asc::kernel* child) override {
+	react(bsc::kernel* child) override {
 		Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
 		EXPECT_EQ(k->pos(), last_pos+1) << "Invalid order of scheduled kernels";
 		++last_pos;
@@ -61,7 +61,7 @@ struct Main: public asc::kernel {
 
 private:
 
-	asc::kernel*
+	bsc::kernel*
 	new_sleepy_kernel(int delay, int pos) {
 		Sleepy_kernel* k = new Sleepy_kernel;
 		k->after(delay * _period);
@@ -77,8 +77,8 @@ private:
 };
 
 TEST(TimerServerTest, All) {
-	asc::install_error_handler();
+	bsc::install_error_handler();
 	factory_guard g;
 	send<Local>(new Main(10, std::chrono::milliseconds(500)));
-	EXPECT_EQ(0, asc::wait_and_return());
+	EXPECT_EQ(0, bsc::wait_and_return());
 }

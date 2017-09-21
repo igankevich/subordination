@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_AUTOREG_APP_HH
-#define APPS_AUTOREG_AUTOREG_APP_HH
+#ifndef EXAMPLES_AUTOREG_AUTOREG_APP_HH
+#define EXAMPLES_AUTOREG_AUTOREG_APP_HH
 
 #include <algorithm>
 #include <cmath>
@@ -27,7 +27,7 @@ using namespace autoreg;
 
 typedef float Real;
 
-struct Autoreg_app: public asc::kernel {
+struct Autoreg_app: public bsc::kernel {
 
 	Autoreg_app():
 	model_filename("autoreg.model")
@@ -54,15 +54,15 @@ struct Autoreg_app: public asc::kernel {
 			std::cerr << e.what();
 			exit(1);
 		}
-		asc::upstream(this, model);
+		bsc::upstream(this, model);
 	}
 
 	void
-	react(asc::kernel*) {
+	react(bsc::kernel*) {
 		#ifndef NDEBUG
 		sys::log_message("autoreg", "finished all");
 		#endif
-		asc::commit(this);
+		bsc::commit(this);
 	}
 
 private:

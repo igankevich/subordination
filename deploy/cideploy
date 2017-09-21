@@ -9,7 +9,7 @@ chmod 600 $keyfile
 ssh-add $keyfile
 
 # push to gh-pages branch
-repo_url=git@github.com:igankevich/factory 
+repo_url=git@github.com:igankevich/bscheduler 
 git clone --branch=gh-pages $repo_url gh-pages
 cd gh-pages
 git rm -rf .

@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_VECTOR_N_HH
-#define APPS_AUTOREG_VECTOR_N_HH
+#ifndef EXAMPLES_AUTOREG_VECTOR_N_HH
+#define EXAMPLES_AUTOREG_VECTOR_N_HH
 
 namespace autoreg {
 

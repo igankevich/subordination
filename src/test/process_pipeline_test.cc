@@ -1,11 +1,11 @@
-#include <factory/api.hh>
-#include <factory/base/error_handler.hh>
+#include <bscheduler/api.hh>
+#include <bscheduler/base/error_handler.hh>
 
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
-using namespace asc;
-using asc::application;
+using namespace bsc;
+using bsc::application;
 
 #include "datum.hh"
 
@@ -82,7 +82,7 @@ struct Main: public kernel {
 		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
 			sys::log_message("tst", "finished");
-			commit<Local>(this, asc::exit_code::success);
+			commit<Local>(this, bsc::exit_code::success);
 		}
 	}
 
@@ -93,12 +93,12 @@ private:
 
 int
 main(int argc, char* argv[]) {
-	using namespace asc;
+	using namespace bsc;
 	install_error_handler();
 	types.register_type<Test_socket>();
 	factory_guard g;
-	#if defined(FACTORY_TEST_SERVER)
-	application app({XSTRINGIFY(FACTORY_APP_PATH)}, {});
+	#if defined(BSCHEDULER_TEST_SERVER)
+	application app({XSTRINGIFY(BSCHEDULER_APP_PATH)}, {});
 	factory.child().add(app);
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	graceful_shutdown(0);

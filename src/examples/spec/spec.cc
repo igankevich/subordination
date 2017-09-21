@@ -1,11 +1,11 @@
-#include <factory/api.hh>
-#include <factory/base/error_handler.hh>
+#include <bscheduler/api.hh>
+#include <bscheduler/base/error_handler.hh>
 
 #include "spec_app.hh"
 
 int
 main(int argc, char** argv) {
-	using namespace asc;
+	using namespace bsc;
 	install_error_handler();
 	factory_guard g;
 	send(new Spec_app);

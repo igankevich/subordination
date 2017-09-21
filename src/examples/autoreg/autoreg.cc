@@ -1,10 +1,10 @@
-#include <factory/api.hh>
-#include <factory/base/error_handler.hh>
+#include <bscheduler/api.hh>
+#include <bscheduler/base/error_handler.hh>
 #include "autoreg_app.hh"
 
 int
 main(int argc, char** argv) {
-	using namespace asc;
+	using namespace bsc;
 	install_error_handler();
 	types.register_type<autoreg::Autoreg_model<Real>>();
 	types.register_type<autoreg::Generator1<Real,autoreg::Uniform_grid>>();

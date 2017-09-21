@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_GRID_HH
-#define APPS_AUTOREG_GRID_HH
+#ifndef EXAMPLES_AUTOREG_GRID_HH
+#define EXAMPLES_AUTOREG_GRID_HH
 
 namespace autoreg {
 

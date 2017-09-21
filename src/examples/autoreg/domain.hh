@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_DOMAIN_HH
-#define APPS_AUTOREG_DOMAIN_HH
+#ifndef EXAMPLES_AUTOREG_DOMAIN_HH
+#define EXAMPLES_AUTOREG_DOMAIN_HH
 
 #include "vector_n.hh"
 #include <istream>

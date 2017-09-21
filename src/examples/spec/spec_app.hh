@@ -1,5 +1,5 @@
-#ifndef APPS_SPEC_SPEC_APP_HH
-#define APPS_SPEC_SPEC_APP_HH
+#ifndef EXAMPLES_SPEC_SPEC_APP_HH
+#define EXAMPLES_SPEC_SPEC_APP_HH
 
 #include <zlib.h>
 
@@ -9,7 +9,7 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/fs/path>
-#include <factory/api.hh>
+#include <bscheduler/api.hh>
 
 typedef int32_t Year;
 typedef int32_t Month;
@@ -247,7 +247,7 @@ namespace sys {
 
 }
 
-struct Spectrum_kernel: public asc::kernel {
+struct Spectrum_kernel: public bsc::kernel {
 
 	enum {
 		DENSITY = 'w',
@@ -266,7 +266,7 @@ struct Spectrum_kernel: public asc::kernel {
 	void act() override {
 		// TODO Filter 999 values.
 		_variance = compute_variance();
-		asc::commit(this);
+		bsc::commit(this);
 	}
 
 	float spectrum(int32_t i, float angle) {
@@ -302,7 +302,7 @@ private:
 
 const float Spectrum_kernel::PI = std::acos(-1.0f);
 
-struct Station_kernel: public asc::kernel {
+struct Station_kernel: public bsc::kernel {
 
 	typedef std::unordered_map<Variable, Observation> Map;
 
@@ -320,7 +320,7 @@ struct Station_kernel: public asc::kernel {
 				"error while reading file \"_\"",
 				filename
 			);
-			FACTORY_THROW(Error, "error while reading file");
+			BSCHEDULER_THROW(error, "error while reading file");
 		}
 		return ret;
 	}
@@ -347,14 +347,14 @@ struct Station_kernel: public asc::kernel {
 			#endif
 			_observations.clear();
 			_spectra.clear();
-			asc::commit<asc::Remote>(this);
+			bsc::commit<bsc::Remote>(this);
 		}
 	}
 
 	void act() override {
 		// skip records when some variables are missing
 		if (_observations.size() != NUM_VARIABLES) {
-			asc::commit<asc::Remote>(this);
+			bsc::commit<bsc::Remote>(this);
 			return;
 		}
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -368,7 +368,7 @@ struct Station_kernel: public asc::kernel {
 						"unable to open file \"_\" for reading",
 						ob.filename()
 					);
-					FACTORY_THROW(Error, "error opening a file for reading");
+					BSCHEDULER_THROW(error, "error opening a file for reading");
 				}
 				char buf[64];
 				int count = 0;
@@ -428,7 +428,7 @@ struct Station_kernel: public asc::kernel {
 			[this] (decltype(_spectra)::value_type& pair) {
 				Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(kernel_flag::priority_service);
-				asc::upstream(this, k);
+				bsc::upstream(this, k);
 			}
 		);
 	}
@@ -471,7 +471,7 @@ private:
 	static const int NUM_VARIABLES = 5;
 };
 
-struct Year_kernel: public asc::kernel {
+struct Year_kernel: public bsc::kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -496,7 +496,7 @@ struct Year_kernel: public asc::kernel {
 		return _count == _observations.size();
 	}
 
-	void react(asc::kernel* child) override {
+	void react(bsc::kernel* child) override {
 		Station_kernel* k = dynamic_cast<Station_kernel*>(child);
 		if (!_output_file.is_open()) {
 			_output_file.open(output_filename());
@@ -512,14 +512,14 @@ struct Year_kernel: public asc::kernel {
 		#endif
 		_num_spectra += k->num_processed_spectra();
 		if (++_count == _observations.size()) {
-			asc::commit(this);
+			bsc::commit(this);
 		}
 	}
 
 	void act() override {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this] (const decltype(_observations)::value_type& pair) {
-				asc::upstream<asc::Remote>(
+				bsc::upstream<bsc::Remote>(
 					this,
 					new Station_kernel(pair.second, pair.first, _year)
 				);
@@ -574,7 +574,7 @@ private:
 	std::ofstream _output_file;
 };
 
-struct Launcher: public asc::kernel {
+struct Launcher: public bsc::kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -641,10 +641,10 @@ struct Launcher: public asc::kernel {
 					std::ofstream log("nspectra.log");
 					log << _count_spectra << std::endl;
 				}
-				#if defined(FACTORY_TEST_SLAVE_FAILURE)
-				asc::commit<asc::Local>(this);
+				#if defined(BSCHEDULER_TEST_SLAVE_FAILURE)
+				bsc::commit<bsc::Local>(this);
 				#else
-				asc::commit<asc::Remote>(this);
+				bsc::commit<bsc::Remote>(this);
 				#endif
 			}
 		}
@@ -666,7 +666,7 @@ struct Launcher: public asc::kernel {
 	submit_station_kernels(Map _observations, Year _year) {
 		std::for_each(_observations.cbegin(), _observations.cend(),
 			[this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-				asc::upstream<asc::Remote>(
+				bsc::upstream<bsc::Remote>(
 					this,
 					new Station_kernel(pair.second, pair.first, _year)
 				);
@@ -682,25 +682,25 @@ private:
 	std::unordered_map<Year, Year_kernel*> _yearkernels;
 };
 
-struct Spec_app: public asc::kernel {
+struct Spec_app: public bsc::kernel {
 
 	void
 	act() override {
 		#ifndef NDEBUG
 		sys::log_message("spec", "program start");
 		#endif
-		#if defined(FACTORY_TEST_SLAVE_FAILURE)
-		asc::upstream<asc::Local>(this, new Launcher);
+		#if defined(BSCHEDULER_TEST_SLAVE_FAILURE)
+		bsc::upstream<bsc::Local>(this, new Launcher);
 		#else
 		Launcher* launcher = new Launcher;
-		launcher->setf(asc::kernel_flag::carries_parent);
-		asc::upstream<asc::Remote>(this, launcher);
+		launcher->setf(bsc::kernel_flag::carries_parent);
+		bsc::upstream<bsc::Remote>(this, launcher);
 		#endif
 	}
 
 	void
 	react(kernel*) override {
-		asc::commit<asc::Local>(this);
+		bsc::commit<bsc::Local>(this);
 	}
 
 };

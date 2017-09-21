@@ -1,6 +1,0 @@
-#ifndef APPS_FACTORY_FACTORY_SOCKET_HH
-#define APPS_FACTORY_FACTORY_SOCKET_HH
-
-#define FACTORY_UNIX_DOMAIN_SOCKET "\0FACTORY"
-
-#endif // vim:filetype=cpp

@@ -4,6 +4,6 @@ benchmark(
 		'autoreg',
 		sources: 'autoreg.cc',
 		include_directories: [srcdir],
-		dependencies: [threads, unistdx, factory],
+		dependencies: [threads, unistdx, bscheduler_app],
 	)
 )

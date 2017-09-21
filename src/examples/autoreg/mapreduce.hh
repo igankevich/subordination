@@ -1,9 +1,9 @@
-#ifndef APPS_AUTOREG_MAPREDUCE_HH
-#define APPS_AUTOREG_MAPREDUCE_HH
+#ifndef EXAMPLES_AUTOREG_MAPREDUCE_HH
+#define EXAMPLES_AUTOREG_MAPREDUCE_HH
 
-#include <factory/api.hh>
+#include <bscheduler/api.hh>
 
-namespace asc {
+namespace bsc {
 
 	class Notification: public kernel {};
 

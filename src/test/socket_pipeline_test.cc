@@ -1,5 +1,5 @@
-#include <factory/base/error_handler.hh>
-#include <factory/api.hh>
+#include <bscheduler/base/error_handler.hh>
+#include <bscheduler/api.hh>
 
 #include <unistdx/base/cmdline>
 
@@ -41,9 +41,9 @@ std::atomic<uint32_t> shutdown_counter(0);
 Role role = Role::Master;
 Failure failure = Failure::No;
 
-using namespace asc;
+using namespace bsc;
 
-struct Test_socket: public asc::kernel {
+struct Test_socket: public bsc::kernel {
 
 	Test_socket():
 	_data()
@@ -68,7 +68,7 @@ struct Test_socket: public asc::kernel {
 				const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
 				if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
 					std::clog << "go offline" << std::endl;
-					asc::graceful_shutdown(0);
+					bsc::graceful_shutdown(0);
 				}
 			} else {
 				commit<Local>(this);
@@ -80,7 +80,7 @@ struct Test_socket: public asc::kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::kernel::write(out);
+		bsc::kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -88,7 +88,7 @@ struct Test_socket: public asc::kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::kernel::read(in);
+		bsc::kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -104,7 +104,7 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public asc::kernel {
+struct Sender: public bsc::kernel {
 
 	explicit
 	Sender(uint32_t n):
@@ -118,7 +118,7 @@ struct Sender: public asc::kernel {
 		}
 	}
 
-	void react(asc::kernel* child) override {
+	void react(bsc::kernel* child) override {
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 		EXPECT_EQ(this->_input.size(), output.size());
@@ -137,7 +137,7 @@ private:
 	std::vector<Datum> _input;
 };
 
-struct Main: public asc::kernel {
+struct Main: public bsc::kernel {
 
 	void
 	act() override {
@@ -148,9 +148,9 @@ struct Main: public asc::kernel {
 	}
 
 	void
-	react(asc::kernel*) override {
+	react(bsc::kernel*) override {
 		if (++_num_returned == POWERS.size()) {
-			commit<Local>(this, asc::exit_code::success);
+			commit<Local>(this, bsc::exit_code::success);
 		}
 	}
 
@@ -161,8 +161,8 @@ private:
 };
 
 TEST(NICServerTest, All) {
-	using asc::factory;
-	asc::register_type<Test_socket>();
+	using bsc::factory;
+	bsc::register_type<Test_socket>();
 	sys::port_type port = 10000 + 2*sys::port_type(failure);
 	sys::endpoint principal_endpoint({127,0,0,1}, port);
 	sys::endpoint subordinate_endpoint({127,0,0,1}, port+1);
@@ -187,7 +187,7 @@ TEST(NICServerTest, All) {
 		send<Local>(new Main);
 	}
 
-	int retval = asc::wait_and_return();
+	int retval = bsc::wait_and_return();
 
 	if (!(failure == Failure::Slave && role == Role::Slave)) {
 		EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
@@ -198,7 +198,7 @@ TEST(NICServerTest, All) {
 
 int
 main(int argc, char* argv[]) {
-	asc::install_error_handler();
+	bsc::install_error_handler();
 	// init gtest without arguments to pass custom arguments
 	// from custom test runner
 	int no_argc = 0;

@@ -1,13 +1,13 @@
 option(
 	'kernel_type',
 	type: 'string',
-	value: '::asc::kernel',
+	value: '::bsc::kernel',
 	decription: 'base type for all kernels'
 )
 
 option(
 	'kernel_header',
 	type: 'string',
-	value: 'factory/kernel/kernel.hh',
+	value: 'bscheduler/kernel/kernel.hh',
 	decription: 'header file containing definition of kernel_type'
 )

@@ -1,12 +1,12 @@
 #ifndef TEST_BIG_KERNEL_HH
 #define TEST_BIG_KERNEL_HH
 
-#include <factory/api.hh>
+#include <bscheduler/api.hh>
 
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel: public asc::kernel {
+struct Big_kernel: public bsc::kernel {
 
 	Big_kernel():
 	_data(Size)
@@ -15,12 +15,12 @@ struct Big_kernel: public asc::kernel {
 	virtual ~Big_kernel() = default;
 
 	void act() override {
-		asc::commit<asc::Remote>(this);
+		bsc::commit<bsc::Remote>(this);
 	}
 
 	void
 	write(sys::pstream& out) override {
-		asc::kernel::write(out);
+		bsc::kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -28,7 +28,7 @@ struct Big_kernel: public asc::kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::kernel::read(in);
+		bsc::kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);

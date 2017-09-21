@@ -1,4 +1,4 @@
-# Factory: A framework for developing distributed applications
+# Bscheduler: A framework for developing distributed applications
 
 # Build
 

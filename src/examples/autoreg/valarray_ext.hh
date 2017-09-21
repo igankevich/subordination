@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_VALARRAY_EXT_HH
-#define APPS_AUTOREG_VALARRAY_EXT_HH
+#ifndef EXAMPLES_AUTOREG_VALARRAY_EXT_HH
+#define EXAMPLES_AUTOREG_VALARRAY_EXT_HH
 
 #include <iterator>
 #include <list>

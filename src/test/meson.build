@@ -4,8 +4,8 @@ test(
 		'kstream-test',
 		sources: 'kstream_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx, gtest, factoryd],
-		cpp_args: ['-DFACTORY_DAEMON']
+		dependencies: [unistdx, gtest, bscheduler_daemon],
+		cpp_args: ['-DBSCHEDULER_DAEMON']
 	)
 )
 
@@ -15,8 +15,8 @@ test(
 		'local-server-test',
 		sources: 'local_server_test.cc',
 		include_directories: srcdir,
-		dependencies: [unistdx, gtest, factoryd],
-		cpp_args: ['-DFACTORY_DAEMON']
+		dependencies: [unistdx, gtest, bscheduler_daemon],
+		cpp_args: ['-DBSCHEDULER_DAEMON']
 	)
 )
 
@@ -30,9 +30,9 @@ test_runner = executable(
 socket_pipeline_test = executable(
 	'socket-pipeline-test',
 	sources: 'socket_pipeline_test.cc',
-	dependencies: [threads, unistdx, gtest, factoryd],
+	dependencies: [threads, unistdx, gtest, bscheduler_daemon],
 	include_directories: srcdir,
-	cpp_args: ['-DFACTORY_DAEMON']
+	cpp_args: ['-DBSCHEDULER_DAEMON']
 )
 
 test(
@@ -62,32 +62,32 @@ test(
 	executable(
 		'timer-pipeline-test',
 		sources: 'timer_pipeline_test.cc',
-		dependencies: [threads, unistdx, gtest, factoryd],
+		dependencies: [threads, unistdx, gtest, bscheduler_daemon],
 		include_directories: srcdir,
-		cpp_args: ['-DFACTORY_DAEMON']
+		cpp_args: ['-DBSCHEDULER_DAEMON']
 	)
 )
 
 app_exe = executable(
 	'process-pipeline-test-app',
 	sources: 'process_pipeline_test.cc',
-	dependencies: [threads, unistdx, factory],
+	dependencies: [threads, unistdx, bscheduler_app],
 	include_directories: srcdir,
 	cpp_args: [
-		'-DFACTORY_APPLICATION',
-		'-DFACTORY_TEST_APP',
+		'-DBSCHEDULER_APPLICATION',
+		'-DBSCHEDULER_TEST_APP',
 	]
 )
 
 daemon_exe = executable(
 	'process-pipeline-test',
 	sources: 'process_pipeline_test.cc',
-	dependencies: [threads, unistdx, factoryd],
+	dependencies: [threads, unistdx, bscheduler_daemon],
 	include_directories: srcdir,
 	cpp_args: [
-		'-DFACTORY_DAEMON',
-		'-DFACTORY_TEST_SERVER',
-		'-DFACTORY_APP_PATH=./src/test/process-pipeline-test-app',
+		'-DBSCHEDULER_DAEMON',
+		'-DBSCHEDULER_TEST_SERVER',
+		'-DBSCHEDULER_APP_PATH=./src/test/process-pipeline-test-app',
 	]
 )
 

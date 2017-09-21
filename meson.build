@@ -1,5 +1,5 @@
 project(
-	'factory',
+	'bscheduler',
 	'cpp',
 	version: '0.2',
 	meson_version: '>=0.31',
@@ -16,7 +16,7 @@ if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 endif
 
 # configuration
-log_dir = join_paths(get_option('localstatedir'), 'log', 'factory')
+log_dir = join_paths(get_option('localstatedir'), 'log', 'bscheduler')
 config = configuration_data()
 config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))

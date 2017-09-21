@@ -1,0 +1,9 @@
+#ifndef BSCHEDULER_CONFIG_HH_IN
+#define BSCHEDULER_CONFIG_HH_IN
+
+#include "@kernel_header@"
+
+#define BSCHEDULER_KERNEL_TYPE @kernel_type@
+#define BSCHEDULER_LOG_DIRECTORY "@logdir@"
+
+#endif // BSCHEDULER_CONFIG_HH_IN vim:filetype=cpp

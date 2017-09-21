@@ -1,5 +1,5 @@
-#ifndef APPS_AUTOREG_SSYSV_HH
-#define APPS_AUTOREG_SSYSV_HH
+#ifndef EXAMPLES_AUTOREG_SSYSV_HH
+#define EXAMPLES_AUTOREG_SSYSV_HH
 
 #include "vector_n.hh"
 #include <cmath>
