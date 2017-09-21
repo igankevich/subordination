@@ -8,7 +8,7 @@
 
 namespace asc {
 
-	class hierarchy_kernel: public asc::Kernel {
+	class hierarchy_kernel: public asc::kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;

@@ -11,7 +11,7 @@
 
 namespace asc {
 
-	class prober: public asc::Kernel {
+	class prober: public asc::kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;
@@ -40,7 +40,7 @@ namespace asc {
 		act() override;
 
 		void
-		react(asc::Kernel* k) override;
+		react(asc::kernel* k) override;
 
 		inline const sys::endpoint&
 		new_principal() const noexcept {

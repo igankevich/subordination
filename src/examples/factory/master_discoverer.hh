@@ -22,7 +22,7 @@ namespace asc {
 
 	/// Timer which is used to periodically scan nodes
 	/// to find the best principal node.
-	class discovery_timer: public asc::Kernel {};
+	class discovery_timer: public asc::kernel {};
 
 	enum class probe_result {
 		add_subordinate = 0,
@@ -77,7 +77,7 @@ namespace asc {
 		on_start() override;
 
 		void
-		on_kernel(asc::Kernel* k) override;
+		on_kernel(asc::kernel* k) override;
 
 	private:
 

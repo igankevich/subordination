@@ -28,7 +28,7 @@ asc::master_discoverer::on_start() {
 }
 
 void
-asc::master_discoverer::on_kernel(asc::Kernel* k) {
+asc::master_discoverer::on_kernel(asc::kernel* k) {
 	if (typeid(*k) == typeid(discovery_timer)) {
 		// start probing only if it has not been started already
 		if (this->state() == state_type::waiting) {

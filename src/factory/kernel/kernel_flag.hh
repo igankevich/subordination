@@ -5,7 +5,7 @@ namespace asc {
 
 	/// Various kernel flags.
 	enum struct kernel_flag {
-		DELETED = 0,
+		deleted = 0,
 		/**
 		   Setting the flag tells \link asc::kstream\endlink that
 		   the kernel carries a backup copy of its parent to the subordinate

@@ -43,7 +43,7 @@ Failure failure = Failure::No;
 
 using namespace asc;
 
-struct Test_socket: public asc::Kernel {
+struct Test_socket: public asc::kernel {
 
 	Test_socket():
 	_data()
@@ -80,7 +80,7 @@ struct Test_socket: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -88,7 +88,7 @@ struct Test_socket: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -104,7 +104,7 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Sender: public asc::Kernel {
+struct Sender: public asc::kernel {
 
 	explicit
 	Sender(uint32_t n):
@@ -118,7 +118,7 @@ struct Sender: public asc::Kernel {
 		}
 	}
 
-	void react(asc::Kernel* child) override {
+	void react(asc::kernel* child) override {
 		Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
 		std::vector<Datum> output = test_kernel->data();
 		EXPECT_EQ(this->_input.size(), output.size());
@@ -137,7 +137,7 @@ private:
 	std::vector<Datum> _input;
 };
 
-struct Main: public asc::Kernel {
+struct Main: public asc::kernel {
 
 	void
 	act() override {
@@ -148,7 +148,7 @@ struct Main: public asc::Kernel {
 	}
 
 	void
-	react(asc::Kernel*) override {
+	react(asc::kernel*) override {
 		if (++_num_returned == POWERS.size()) {
 			commit<Local>(this, asc::exit_code::success);
 		}

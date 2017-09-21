@@ -8,18 +8,18 @@
 
 namespace asc {
 
-	struct Kernel: public mobile_kernel {
+	struct kernel: public mobile_kernel {
 
 		typedef mobile_kernel base_kernel;
 		using mobile_kernel::id_type;
 
-		inline const Kernel*
+		inline const kernel*
 		principal() const {
 			return this->isset(kernel_flag::principal_is_id)
 				? nullptr : this->_principal;
 		}
 
-		inline Kernel*
+		inline kernel*
 		principal() {
 			return this->_principal;
 		}
@@ -36,17 +36,17 @@ namespace asc {
 		}
 
 		inline void
-		principal(Kernel* rhs) {
+		principal(kernel* rhs) {
 			this->_principal = rhs;
 			this->unsetf(kernel_flag::principal_is_id);
 		}
 
-		inline const Kernel*
+		inline const kernel*
 		parent() const {
 			return this->_parent;
 		}
 
-		inline Kernel*
+		inline kernel*
 		parent() {
 			return this->_parent;
 		}
@@ -57,7 +57,7 @@ namespace asc {
 		}
 
 		inline void
-		parent(Kernel* p) {
+		parent(kernel* p) {
 			this->_parent = p;
 			this->unsetf(kernel_flag::parent_is_id);
 		}
@@ -105,26 +105,26 @@ namespace asc {
 		act();
 
 		virtual void
-		react(Kernel* child);
+		react(kernel* child);
 
 		virtual void
-		error(Kernel* rhs);
+		error(kernel* rhs);
 
 		friend std::ostream&
-		operator<<(std::ostream& out, const Kernel& rhs);
+		operator<<(std::ostream& out, const kernel& rhs);
 
 	public:
 
 		/// New API
 
-		inline Kernel*
-		call(Kernel* rhs) noexcept {
+		inline kernel*
+		call(kernel* rhs) noexcept {
 			rhs->parent(this);
 			return rhs;
 		}
 
-		inline Kernel*
-		carry_parent(Kernel* rhs) noexcept {
+		inline kernel*
+		carry_parent(kernel* rhs) noexcept {
 			rhs->parent(this);
 			rhs->setf(kernel_flag::carries_parent);
 			return rhs;
@@ -136,7 +136,7 @@ namespace asc {
 		}
 
 		inline void
-		return_to(Kernel* rhs, exit_code ret = exit_code::success) noexcept {
+		return_to(kernel* rhs, exit_code ret = exit_code::success) noexcept {
 			this->principal(rhs);
 			this->return_code(ret);
 		}
@@ -149,12 +149,12 @@ namespace asc {
 		template<class It>
 		void
 		mark_as_deleted(It result) noexcept {
-			if (!this->isset(kernel_flag::DELETED)) {
-				this->setf(kernel_flag::DELETED);
+			if (!this->isset(kernel_flag::deleted)) {
+				this->setf(kernel_flag::deleted);
 				if (this->_parent) {
 					this->_parent->mark_as_deleted(result);
 				}
-				*result = std::unique_ptr<Kernel>(this);
+				*result = std::unique_ptr<kernel>(this);
 				++result;
 			}
 		}
@@ -162,18 +162,18 @@ namespace asc {
 	private:
 
 		union {
-			Kernel* _parent = nullptr;
+			kernel* _parent = nullptr;
 			id_type _parent_id;
 		};
 		union {
-			Kernel* _principal = nullptr;
+			kernel* _principal = nullptr;
 			id_type _principal_id;
 		};
 
 	};
 
 	std::ostream&
-	operator<<(std::ostream& out, const Kernel& rhs);
+	operator<<(std::ostream& out, const kernel& rhs);
 
 }
 

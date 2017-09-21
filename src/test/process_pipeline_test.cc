@@ -16,7 +16,7 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 
 std::atomic<int> kernel_count(0);
 
-struct Test_socket: public Kernel {
+struct Test_socket: public kernel {
 
 	Test_socket():
 	_data() {}
@@ -39,7 +39,7 @@ struct Test_socket: public Kernel {
 	void
 	write(sys::pstream& out) override {
 		sys::log_message("tst", "Test_socket::write()");
-		Kernel::write(out);
+		kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -48,7 +48,7 @@ struct Test_socket: public Kernel {
 	void
 	read(sys::pstream& in) override {
 		sys::log_message("tst", "Test_socket::read()");
-		Kernel::read(in);
+		kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);
@@ -65,7 +65,7 @@ private:
 	std::vector<Datum> _data;
 };
 
-struct Main: public Kernel {
+struct Main: public kernel {
 
 	void
 	act() override {
@@ -78,7 +78,7 @@ struct Main: public Kernel {
 	}
 
 	void
-	react(Kernel*) override {
+	react(kernel*) override {
 		sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
 		if (++_num_returned == NUM_SIZES) {
 			sys::log_message("tst", "finished");

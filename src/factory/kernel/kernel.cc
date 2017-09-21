@@ -5,15 +5,15 @@
 
 namespace {
 
-	inline asc::Kernel::id_type
-	get_id(const asc::Kernel* rhs) {
+	inline asc::kernel::id_type
+	get_id(const asc::kernel* rhs) {
 		return !rhs ? asc::mobile_kernel::no_id() : rhs->id();
 	}
 
 }
 
 void
-asc::Kernel::read(sys::pstream& in) {
+asc::kernel::read(sys::pstream& in) {
 	base_kernel::read(in);
 	bool b = false;
 	in >> b;
@@ -27,7 +27,7 @@ asc::Kernel::read(sys::pstream& in) {
 }
 
 void
-asc::Kernel::write(sys::pstream& out) {
+asc::kernel::write(sys::pstream& out) {
 	base_kernel::write(out);
 	out << carries_parent();
 	if (this->moves_downstream()) {
@@ -47,20 +47,20 @@ asc::Kernel::write(sys::pstream& out) {
 }
 
 void
-asc::Kernel::act() {}
+asc::kernel::act() {}
 
 void
-asc::Kernel::react(Kernel*) {
+asc::kernel::react(kernel*) {
 	FACTORY_THROW(Error, "empty react");
 }
 
 void
-asc::Kernel::error(Kernel* rhs) {
+asc::kernel::error(kernel* rhs) {
 	this->react(rhs);
 }
 
 std::ostream&
-asc::operator<<(std::ostream& out, const Kernel& rhs) {
+asc::operator<<(std::ostream& out, const kernel& rhs) {
 	const char state[] = {
 		(rhs.moves_upstream()   ? 'u' : '-'),
 		(rhs.moves_downstream() ? 'd' : '-'),

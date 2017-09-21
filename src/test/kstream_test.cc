@@ -9,17 +9,17 @@
 
 #include <gtest/gtest.h>
 
-struct Good_kernel: public asc::Kernel {
+struct Good_kernel: public asc::kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		in >> _data;
 	}
 
@@ -72,7 +72,7 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 };
 
-struct Kernel_that_carries_its_parent: public asc::Kernel {
+struct Kernel_that_carries_its_parent: public asc::kernel {
 
 	Kernel_that_carries_its_parent() {
 		this->setf(asc::kernel_flag::carries_parent);
@@ -84,13 +84,13 @@ struct Kernel_that_carries_its_parent: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << _data;
 	}
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		in >> _data;
 	}
 
@@ -129,7 +129,7 @@ private:
 
 };
 
-struct Dummy_kernel: public asc::Kernel {};
+struct Dummy_kernel: public asc::kernel {};
 
 typedef Big_kernel<100> Big_kernel_type;
 
@@ -176,7 +176,7 @@ TYPED_TEST_CASE(
 
 TYPED_TEST(KernelStreamTest, IO) {
 	typedef TypeParam Carrier;
-	typedef asc::Kernel kernel_type;
+	typedef asc::kernel kernel_type;
 	typedef std::stringbuf sink_type;
 	typedef sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>
 		fildesbuf_type;

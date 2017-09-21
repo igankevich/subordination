@@ -26,7 +26,7 @@ namespace {
 
 void
 asc::Application_kernel::write(sys::pstream& out) {
-	Kernel::write(out);
+	kernel::write(out);
 	write_vector(out, this->_args);
 	write_vector(out, this->_env);
 	out << this->_error;
@@ -34,7 +34,7 @@ asc::Application_kernel::write(sys::pstream& out) {
 
 void
 asc::Application_kernel::read(sys::pstream& in) {
-	Kernel::read(in);
+	kernel::read(in);
 	read_vector(in, this->_args);
 	read_vector(in, this->_env);
 	in >> this->_error;

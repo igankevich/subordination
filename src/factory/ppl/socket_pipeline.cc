@@ -11,17 +11,17 @@
 
 namespace {
 
-	template <class Kernel, class Server>
+	template <class kernel, class Server>
 	void
-	set_kernel_id(Kernel* k, Server& srv) {
+	set_kernel_id(kernel* k, Server& srv) {
 		if (!k->has_id()) {
 			k->set_id(srv.generate_id());
 		}
 	}
 
-	template <class Kernel, class Id>
+	template <class kernel, class Id>
 	void
-	set_kernel_id_2(Kernel* k, Id& counter) {
+	set_kernel_id_2(kernel* k, Id& counter) {
 		if (!k->has_id()) {
 			k->set_id(++counter);
 		}

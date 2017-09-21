@@ -9,7 +9,7 @@
 
 namespace asc {
 
-	class probe: public asc::Kernel {
+	class probe: public asc::kernel {
 
 	public:
 		typedef sys::ipv4_addr addr_type;

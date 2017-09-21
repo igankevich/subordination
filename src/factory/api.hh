@@ -6,7 +6,7 @@
 
 namespace asc {
 
-	typedef FACTORY_KERNEL_TYPE Kernel;
+	typedef FACTORY_KERNEL_TYPE kernel;
 
 	enum Target {
 		Local,
@@ -16,32 +16,32 @@ namespace asc {
 
 	template <Target t=Target::Local>
 	inline void
-	send(Kernel* k) {
+	send(kernel* k) {
 		factory.send(k);
 	}
 
 	template <>
 	inline void
-	send<Local>(Kernel* k) {
+	send<Local>(kernel* k) {
 		factory.send(k);
 	}
 
 	template <>
 	inline void
-	send<Remote>(Kernel* k) {
+	send<Remote>(kernel* k) {
 		factory.send_remote(k);
 	}
 
 	template<Target target=Target::Local>
 	void
-	upstream(Kernel* lhs, Kernel* rhs) {
+	upstream(kernel* lhs, kernel* rhs) {
 		rhs->parent(lhs);
 		send<target>(rhs);
 	}
 
 	template<Target target=Target::Local>
 	void
-	commit(Kernel* rhs, exit_code ret) {
+	commit(kernel* rhs, exit_code ret) {
 		if (!rhs->parent()) {
 			delete rhs;
 			asc::graceful_shutdown(static_cast<int>(ret));
@@ -53,7 +53,7 @@ namespace asc {
 
 	template<Target target=Target::Local>
 	void
-	commit(Kernel* rhs) {
+	commit(kernel* rhs) {
 		exit_code ret = rhs->return_code();
 		commit<target>(
 			rhs,
@@ -64,7 +64,7 @@ namespace asc {
 
 	template<Target target=Target::Local>
 	void
-	send(Kernel* lhs, Kernel* rhs) {
+	send(kernel* lhs, kernel* rhs) {
 		lhs->principal(rhs);
 		send<target>(lhs);
 	}
@@ -86,7 +86,7 @@ namespace asc {
 
 	template<class Pipeline>
 	void
-	upstream(Pipeline& ppl, Kernel* lhs, Kernel* rhs) {
+	upstream(Pipeline& ppl, kernel* lhs, kernel* rhs) {
 		rhs->parent(lhs);
 		ppl.send(rhs);
 	}

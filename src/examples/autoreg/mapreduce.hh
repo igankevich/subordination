@@ -5,15 +5,15 @@
 
 namespace asc {
 
-	class Notification: public Kernel {};
+	class Notification: public kernel {};
 
 	template<class F, class G, class I>
-	struct Map: public Kernel {
+	struct Map: public kernel {
 
 		Map(F f_, G g_, I a_, I b_, I bs_=1):
 		f(f_), g(g_), a(a_), b(b_), bs(bs_), n(0), m(calc_m()) {}
 
-		struct Worker: public Kernel {
+		struct Worker: public kernel {
 			Worker(F& f_, I a_, I b_):
 			f(f_), a(a_), b(b_) {}
 			void
@@ -34,7 +34,7 @@ namespace asc {
 		}
 
 		void
-		react(Kernel* k) {
+		react(kernel* k) {
 			Worker* w = dynamic_cast<Worker*>(k);
 			I x1 = w->a, x2 = w->b;
 			for (I i=x1; i<x2; ++i) g(i);

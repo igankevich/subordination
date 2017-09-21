@@ -1,6 +1,6 @@
 \page tutorial Tutorial
 
-Every Factory application is composed of computational \link asc::Kernel <em>
+Every Factory application is composed of computational \link asc::kernel <em>
 kernels</em>\endlink --- self-contained objects which store data and have routines
 to process it. In each routine a kernel may create any number of \em
 subordinates to decompose application into smaller parts. Some kernels can be
@@ -18,8 +18,8 @@ main kernel to one of the them. After that programme execution resembles that
 of sequential programme with each nested call to a procedure replaced with
 construction of a subordinate kernel and sending it to appropriate pipeline.
 The difference is that pipelines process kernels \em asynchronously, so
-procedure code is decomposed into \link asc::Kernel::act() `act()`\endlink
-routine which constructs subordinates and \link asc::Kernel::react(Kernel*)
+procedure code is decomposed into \link asc::kernel::act() `act()`\endlink
+routine which constructs subordinates and \link asc::kernel::react(kernel*)
 `react()`\endlink routine which processes results they return.
 
 \section api Developing distributed applications
@@ -39,24 +39,23 @@ usual way of doing this.
 
 \code{.cpp}
 #include <factory/api.hh>
-using namespace asc;
 \endcode
 
-The second step is to subclass \link asc::Kernel `Kernel`\endlink
+The second step is to subclass \link asc::kernel `kernel`\endlink
 and implement `act()` and `react()` member functions for each sequential stage of
 your programme and for parallel parts of each stage.
 
 \code{.cpp}
-struct My_app: public Kernel {
+struct My_app: public kernel {
 
 	void
 	act() {
 		std::cout << "Hello world" << std::endl;
-		commit<Local>(this);
+		asc::commit(this);
 	}
 
 	void
-	react(Kernel*) {
+	react(kernel*) {
 		// not needed for such a simple programme
 	}
 
@@ -76,11 +75,12 @@ one via \link asc::send `send`\endlink function.
 
 \code{.cpp}
 int main() {
-	asc::install_error_handler();  // print backtrace on exception or signal
-	factory_guard g;                   // automatically start and stop the factory
-	send<Local>(new My_app);           // start the programme by sending the first
-	                                   // kernel to the pipeline
-	return asc::wait_and_return(); // wait for the programme completion
+	using namespace asc;
+	install_error_handler();  // print backtrace on exception or signal
+	factory_guard g;          // automatically start and stop the factory
+	send(new My_app);         // start the programme by sending the first
+	                          // kernel to the pipeline
+	return wait_and_return(); // wait for the programme completion
 }
 \endcode
 

@@ -6,7 +6,7 @@
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel: public asc::Kernel {
+struct Big_kernel: public asc::kernel {
 
 	Big_kernel():
 	_data(Size)
@@ -20,7 +20,7 @@ struct Big_kernel: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)
 			out << _data[i];
@@ -28,7 +28,7 @@ struct Big_kernel: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		uint32_t sz;
 		in >> sz;
 		_data.resize(sz);

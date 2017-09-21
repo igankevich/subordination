@@ -6,7 +6,7 @@ asc::prober::act() {
 }
 
 void
-asc::prober::react(asc::Kernel* k) {
+asc::prober::react(asc::kernel* k) {
 	probe* p = dynamic_cast<probe*>(k);
 	if (p->from() == this->_newprinc) {
 		this->return_code(p->return_code());

@@ -7,7 +7,7 @@
 namespace asc {
 
 	inline void
-	act(Kernel* k) {
+	act(kernel* k) {
 		bool del = false;
 		if (k->return_code() == exit_code::undefined) {
 			if (k->principal()) {

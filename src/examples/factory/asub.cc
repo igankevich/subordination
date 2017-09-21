@@ -23,7 +23,7 @@ new_application_kernel(int argc, char* argv[]) {
 	return new Application_kernel(args, env);
 }
 
-class Main: public Kernel {
+class Main: public kernel {
 
 private:
 	int _argc;
@@ -44,7 +44,7 @@ public:
 	}
 
 	void
-	react(Kernel* child) {
+	react(kernel* child) {
 		Application_kernel* app = dynamic_cast<Application_kernel*>(child);
 		if (app->return_code() != asc::exit_code::success) {
 			std::cerr << app->error() << std::endl;

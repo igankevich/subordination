@@ -247,7 +247,7 @@ namespace sys {
 
 }
 
-struct Spectrum_kernel: public asc::Kernel {
+struct Spectrum_kernel: public asc::kernel {
 
 	enum {
 		DENSITY = 'w',
@@ -302,7 +302,7 @@ private:
 
 const float Spectrum_kernel::PI = std::acos(-1.0f);
 
-struct Station_kernel: public asc::Kernel {
+struct Station_kernel: public asc::kernel {
 
 	typedef std::unordered_map<Variable, Observation> Map;
 
@@ -334,7 +334,7 @@ struct Station_kernel: public asc::Kernel {
 		out << std::flush;
 	}
 
-	void react(Kernel* child) override {
+	void react(kernel* child) override {
 		Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(child);
 		_out_matrix[k->date()] = k->variance();
 		if (--_count == 0) {
@@ -439,7 +439,7 @@ struct Station_kernel: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		Kernel::read(in);
+		kernel::read(in);
 		in >> _observations;
 		in >> _station;
 		in >> _year;
@@ -450,7 +450,7 @@ struct Station_kernel: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		Kernel::write(out);
+		kernel::write(out);
 		out << _observations;
 		out << _station;
 		out << _year;
@@ -471,7 +471,7 @@ private:
 	static const int NUM_VARIABLES = 5;
 };
 
-struct Year_kernel: public asc::Kernel {
+struct Year_kernel: public asc::kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -496,7 +496,7 @@ struct Year_kernel: public asc::Kernel {
 		return _count == _observations.size();
 	}
 
-	void react(asc::Kernel* child) override {
+	void react(asc::kernel* child) override {
 		Station_kernel* k = dynamic_cast<Station_kernel*>(child);
 		if (!_output_file.is_open()) {
 			_output_file.open(output_filename());
@@ -529,7 +529,7 @@ struct Year_kernel: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		Kernel::read(in);
+		kernel::read(in);
 		in >> _year;
 		int32_t num_stations;
 		in >> num_stations;
@@ -547,7 +547,7 @@ struct Year_kernel: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		Kernel::write(out);
+		kernel::write(out);
 		out << _year;
 		out << int32_t(_observations.size());
 		std::for_each(_observations.cbegin(), _observations.cend(),
@@ -574,7 +574,7 @@ private:
 	std::ofstream _output_file;
 };
 
-struct Launcher: public asc::Kernel {
+struct Launcher: public asc::kernel {
 
 	typedef std::unordered_map<Station,
 		std::unordered_map<Variable, Observation>> Map;
@@ -616,7 +616,7 @@ struct Launcher: public asc::Kernel {
 		);
 	}
 
-	void react(Kernel* child) override {
+	void react(kernel* child) override {
 		// Year_kernel* k = dynamic_cast<Year_kernel*>(k);
 		Station_kernel* k1 = dynamic_cast<Station_kernel*>(child);
 		Year_kernel* k = _yearkernels[k1->year()];
@@ -652,13 +652,13 @@ struct Launcher: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		Kernel::read(in);
+		kernel::read(in);
 		in >> _count >> _count_spectra;
 	}
 
 	void
 	write(sys::pstream& out) override {
-		Kernel::write(out);
+		kernel::write(out);
 		out << _count << _count_spectra;
 	}
 
@@ -682,7 +682,7 @@ private:
 	std::unordered_map<Year, Year_kernel*> _yearkernels;
 };
 
-struct Spec_app: public asc::Kernel {
+struct Spec_app: public asc::kernel {
 
 	void
 	act() override {
@@ -699,7 +699,7 @@ struct Spec_app: public asc::Kernel {
 	}
 
 	void
-	react(Kernel*) override {
+	react(kernel*) override {
 		asc::commit<asc::Local>(this);
 	}
 

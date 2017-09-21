@@ -26,8 +26,8 @@ namespace asc {
 	public:
 		virtual
 		~kernel_base() {
-			assert(!this->isset(kernel_flag::DELETED));
-			this->setf(kernel_flag::DELETED);
+			assert(!this->isset(kernel_flag::deleted));
+			this->setf(kernel_flag::deleted);
 		}
 
 		inline exit_code

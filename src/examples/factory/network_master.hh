@@ -11,9 +11,9 @@
 
 namespace asc {
 
-	class network_timer: public asc::Kernel {};
+	class network_timer: public asc::kernel {};
 
-	class network_master: public asc::Kernel {
+	class network_master: public asc::kernel {
 
 	private:
 		typedef sys::ipv4_addr addr_type;
@@ -35,7 +35,7 @@ namespace asc {
 		act() override;
 
 		void
-		react(asc::Kernel* child) override;
+		react(asc::kernel* child) override;
 
 		inline void
 		fanout(uint_type rhs) noexcept {

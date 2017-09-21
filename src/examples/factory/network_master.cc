@@ -93,7 +93,7 @@ asc::network_master::update_ifaddrs() {
 }
 
 void
-asc::network_master::react(asc::Kernel* child) {
+asc::network_master::react(asc::kernel* child) {
 	if (child == this->_timer) {
 		this->update_ifaddrs();
 		this->_timer = nullptr;

@@ -87,7 +87,7 @@ namespace {
 using namespace autoreg;
 
 template<class T>
-struct Variance_WN: public asc::Kernel {
+struct Variance_WN: public asc::kernel {
 
 	Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
 		ar_coefs(ar_coefs_), acf(acf_), _sum(0) {}
@@ -100,7 +100,7 @@ struct Variance_WN: public asc::Kernel {
 		}, 0, n, bs));
 	}
 
-	void react(asc::Kernel*) override {
+	void react(asc::kernel*) override {
 		_sum = acf[0] - _sum;
 		asc::commit(this);
 	}
@@ -121,7 +121,7 @@ private:
 template<class T> T var_acf(std::valarray<T>& acf) { return acf[0]; }
 
 template<class T>
-struct Yule_walker: public asc::Kernel {
+struct Yule_walker: public asc::kernel {
 
 	Yule_walker(const std::valarray<T>& acf_,
 				 const size3& acf_size_,
@@ -158,7 +158,7 @@ struct Yule_walker: public asc::Kernel {
 		}, identity, 0, m, block_size));
 	}
 
-	void react(asc::Kernel*) override {
+	void react(asc::kernel*) override {
 		if (++count == 2) {
 			asc::commit(this);
 		}
@@ -212,7 +212,7 @@ void approx_acf(const T alpha,
 //struct ACF_sub;
 
 template<class T>
-struct ACF_generator: public asc::Kernel {
+struct ACF_generator: public asc::kernel {
 
 	typedef int I;
 
@@ -245,7 +245,7 @@ struct ACF_generator: public asc::Kernel {
 		}, identity, 0, n, bs));
 	}
 
-	void react(asc::Kernel*) override {
+	void react(asc::kernel*) override {
 		asc::commit<asc::Local>(this);
 	}
 
@@ -262,7 +262,7 @@ private:
 };
 
 //template<class T>
-//struct ACF_sub: public Kernel {
+//struct ACF_sub: public kernel {
 //	ACF_sub(ACF<T>& pr, std::size_t tt):
 //		p(pr), t(tt) {}
 //
@@ -283,7 +283,7 @@ private:
 
 
 template<class T>
-struct Solve_Yule_Walker: public asc::Kernel {
+struct Solve_Yule_Walker: public asc::kernel {
 
 	Solve_Yule_Walker(std::valarray<T>& ar_coefs2, std::valarray<T>& aa, std::valarray<T>& bb, const size3& acf_size):
 		ar_coefs(ar_coefs2), a(aa), b(bb), _acf_size(acf_size)
@@ -357,7 +357,7 @@ private:
 };
 
 template<class T>
-struct Autoreg_coefs: public asc::Kernel {
+struct Autoreg_coefs: public asc::kernel {
 	Autoreg_coefs(const std::valarray<T>& acf_model_,
 				   const size3& acf_size_,
 				   std::valarray<T>& ar_coefs_):
@@ -370,7 +370,7 @@ struct Autoreg_coefs: public asc::Kernel {
 		asc::upstream<asc::Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
 	}
 
-	void react(Kernel*) override {
+	void react(kernel*) override {
 		state++;
 		if (state == 1) {
 			asc::upstream<asc::Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
@@ -537,7 +537,7 @@ void trim_zeta(
 namespace autoreg {
 
 template<class T, class Grid>
-struct Generator1: public asc::Kernel {
+struct Generator1: public asc::kernel {
 
 	Generator1() = default;
 
@@ -617,7 +617,7 @@ struct Generator1: public asc::Kernel {
 		}
 	}
 
-	void react(asc::Kernel*) override {
+	void react(asc::kernel*) override {
 		count++;
 		// received two kernels or last part
 //		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
@@ -641,7 +641,7 @@ struct Generator1: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
 		out << var_eps;
@@ -653,7 +653,7 @@ struct Generator1: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		in >> part >> part2;
 		in >> phi >> fsize;
 		in >> var_eps;
@@ -665,7 +665,7 @@ struct Generator1: public asc::Kernel {
 
 private:
 
-	struct Note: public asc::Kernel {};
+	struct Note: public asc::kernel {};
 
 	Surface_part part, part2;
 	std::valarray<T> phi;
@@ -683,7 +683,7 @@ private:
 };
 
 template<class T, class Grid>
-struct Wave_surface_generator: public asc::Kernel {
+struct Wave_surface_generator: public asc::kernel {
 
 	Wave_surface_generator() = default;
 
@@ -730,7 +730,7 @@ struct Wave_surface_generator: public asc::Kernel {
 		}
 	}
 
-	void react(asc::Kernel* child) override {
+	void react(asc::kernel* child) override {
 		#ifndef NDEBUG
 		sys::log_message(
 			"autoreg",
@@ -745,7 +745,7 @@ struct Wave_surface_generator: public asc::Kernel {
 
 	void
 	write(sys::pstream& out) override {
-		asc::Kernel::write(out);
+		asc::kernel::write(out);
 		out << phi;
 		out << fsize;
 		out << var_eps;
@@ -759,7 +759,7 @@ struct Wave_surface_generator: public asc::Kernel {
 
 	void
 	read(sys::pstream& in) override {
-		asc::Kernel::read(in);
+		asc::kernel::read(in);
 		in >> phi;
 		in >> fsize;
 		in >> var_eps;

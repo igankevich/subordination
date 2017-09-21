@@ -8,7 +8,7 @@ asc::resident_kernel::act() {
 }
 
 void
-asc::resident_kernel::react(asc::Kernel* k) {
+asc::resident_kernel::react(asc::kernel* k) {
 	if (typeid(*k) == typeid(start_message)) {
 		this->on_start();
 	} else if (typeid(*k) == typeid(stop_message)) {
@@ -28,4 +28,4 @@ void
 asc::resident_kernel::on_stop() {}
 
 void
-asc::resident_kernel::on_kernel(asc::Kernel* k) {}
+asc::resident_kernel::on_kernel(asc::kernel* k) {}

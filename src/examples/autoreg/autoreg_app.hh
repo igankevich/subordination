@@ -27,7 +27,7 @@ using namespace autoreg;
 
 typedef float Real;
 
-struct Autoreg_app: public asc::Kernel {
+struct Autoreg_app: public asc::kernel {
 
 	Autoreg_app():
 	model_filename("autoreg.model")
@@ -58,7 +58,7 @@ struct Autoreg_app: public asc::Kernel {
 	}
 
 	void
-	react(asc::Kernel*) {
+	react(asc::kernel*) {
 		#ifndef NDEBUG
 		sys::log_message("autoreg", "finished all");
 		#endif

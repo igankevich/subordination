@@ -4,7 +4,7 @@
 namespace autoreg {
 
 	template<class T>
-	class Autoreg_model: public asc::Kernel {
+	class Autoreg_model: public asc::kernel {
 	public:
 
 		typedef Uniform_grid grid_type;
@@ -69,7 +69,7 @@ namespace autoreg {
 
 		void
 		write(sys::pstream& out) override {
-			Kernel::write(out);
+			kernel::write(out);
 			out << zsize;
 			out << zdelta;
 			out << acf_size;
@@ -89,7 +89,7 @@ namespace autoreg {
 
 		void
 		read(sys::pstream& in) override {
-			Kernel::read(in);
+			kernel::read(in);
 			in >> zsize;
 			in >> zdelta;
 			in >> acf_size;
@@ -108,7 +108,7 @@ namespace autoreg {
 		}
 
 		void
-		react(asc::Kernel* child) override;
+		react(asc::kernel* child) override;
 
 		inline const Domain<T, 3>
 		domain() const noexcept {
@@ -230,7 +230,7 @@ namespace autoreg {
 	template<class T>
 	void
 	Autoreg_model<T>
-	::react(Kernel* child) {
+	::react(kernel* child) {
 	#ifndef NDEBUG
 		sys::log_message("autoreg", "finished _", typeid(*child).name());
 	#endif

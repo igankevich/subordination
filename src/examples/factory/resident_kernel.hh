@@ -5,11 +5,11 @@
 
 namespace asc {
 
-	class resident_kernel: public asc::Kernel {
+	class resident_kernel: public asc::kernel {
 
 	private:
-		struct start_message: public asc::Kernel {};
-		struct stop_message: public asc::Kernel {};
+		struct start_message: public asc::kernel {};
+		struct stop_message: public asc::kernel {};
 
 	public:
 
@@ -27,7 +27,7 @@ namespace asc {
 		act() override;
 
 		void
-		react(asc::Kernel* k) override;
+		react(asc::kernel* k) override;
 
 	protected:
 
@@ -38,7 +38,7 @@ namespace asc {
 		on_stop();
 
 		virtual void
-		on_kernel(asc::Kernel* kernel);
+		on_kernel(asc::kernel* k);
 
 	};
 
