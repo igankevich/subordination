@@ -70,6 +70,21 @@ TEST(TreeHierarchyIterator, Fanout2) {
 		}),
 		generate_addresses<addr_type>(iterator(ifaddr_type{{127,0,0,7}, 8}, fanout))
 	);
+	sys::log_message("tst", "10");
+	EXPECT_EQ(
+		container_type({
+			{127,0,0,5},
+			{127,0,0,4},
+			{127,0,0,6},
+			{127,0,0,7},
+			{127,0,0,2},
+			{127,0,0,3},
+			{127,0,0,1},
+			{127,0,0,8},
+			{127,0,0,9}
+		}),
+		generate_addresses<addr_type>(iterator(ifaddr_type{{127,0,0,10}, 8}, fanout))
+	);
 }
 
 TEST(TreeHierarchyIterator, Fanout3) {
