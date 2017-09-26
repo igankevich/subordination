@@ -137,14 +137,18 @@ namespace bsc {
 
 		template <class ... Args>
 		inline void
-		log(const Args& ... args) {
+		log(const char* fmt, const Args& ... args) {
 			#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 			using namespace std::chrono;
 			const auto now = system_clock::now().time_since_epoch();
 			const auto t = duration_cast<milliseconds>(now);
-			sys::log_message("discoverer", "time since epoch _ms", t.count());
+			std::string new_fmt;
+			new_fmt += "[time since epoch _ms] ";
+			new_fmt += fmt;
+			sys::log_message("discoverer", new_fmt.data(), t.count(), args...);
+			#else
+			sys::log_message("discoverer", fmt, args ...);
 			#endif
-			sys::log_message("discoverer", args ...);
 		}
 
 	};
