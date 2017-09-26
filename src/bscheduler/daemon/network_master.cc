@@ -94,6 +94,8 @@ bsc::network_master
 		while (first != ifaddrs_to_add.end()) {
 			if (!this->is_allowed(*first)) {
 				first = ifaddrs_to_add.erase(first);
+			} else {
+				++first;
 			}
 		}
 	}
