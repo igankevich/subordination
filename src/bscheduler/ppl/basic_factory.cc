@@ -1,4 +1,7 @@
 #include "basic_factory.hh"
+
+#include <unistdx/util/system>
+
 #include <bscheduler/config.hh>
 
 namespace {
@@ -37,18 +40,26 @@ namespace {
 
 template <class T>
 bsc::Factory<T>::Factory():
-_upstream(std::thread::hardware_concurrency()),
+#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+_upstream(1),
+_downstream(1) {
+#else
+_upstream(sys::thread_concurrency()),
 _downstream(_upstream.concurrency()) {
+#endif
 	this->_upstream.set_name("upstrm");
 	this->_downstream.set_name("dwnstrm");
 	this->_timer.set_name("tmr");
+	#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 	this->_io.set_name("io");
+	#endif
 	#if defined(BSCHEDULER_DAEMON)
 	this->_parent.set_name("nic");
 	#elif defined(BSCHEDULER_SUBMIT)
 	this->_parent.set_name("unix");
 	#endif
-	#if defined(BSCHEDULER_DAEMON)
+	#if defined(BSCHEDULER_DAEMON) && \
+	!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 	this->_child.set_name("proc");
 	this->_external.set_name("unix");
 	#endif
@@ -60,11 +71,14 @@ bsc::Factory<T>::start() {
 	this->setstate(pipeline_state::starting);
 	start_all(
 		this->_upstream,
-		this->_downstream,
-		this->_timer,
-		this->_io
+		this->_downstream
+		, this->_timer
+		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+		, this->_io
+		#endif
 		, this->_parent
-		#if defined(BSCHEDULER_DAEMON)
+		#if defined(BSCHEDULER_DAEMON) && \
+		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 		, this->_child
 		, this->_external
 		#endif
@@ -78,11 +92,14 @@ bsc::Factory<T>::stop() {
 	this->setstate(pipeline_state::stopping);
 	stop_all(
 		this->_upstream,
-		this->_downstream,
-		this->_timer,
-		this->_io
+		this->_downstream
+		, this->_timer
+		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+		, this->_io
+		#endif
 		, this->_parent
-		#if defined(BSCHEDULER_DAEMON)
+		#if defined(BSCHEDULER_DAEMON) && \
+		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 		, this->_child
 		, this->_external
 		#endif
@@ -95,11 +112,14 @@ void
 bsc::Factory<T>::wait() {
 	wait_all(
 		this->_upstream,
-		this->_downstream,
-		this->_timer,
-		this->_io
+		this->_downstream
+		, this->_timer
+		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+		, this->_io
+		#endif
 		, this->_parent
-		#if defined(BSCHEDULER_DAEMON)
+		#if defined(BSCHEDULER_DAEMON) && \
+		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 		, this->_child
 		, this->_external
 		#endif

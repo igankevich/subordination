@@ -48,7 +48,7 @@ bsc::network_master
 ::send_timer() {
 	using namespace std::chrono;
 	this->_timer = new network_timer;
-	this->_timer->after(seconds(1));
+	this->_timer->after(this->_interval);
 	bsc::send<>(this->_timer, this);
 }
 

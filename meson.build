@@ -10,6 +10,11 @@ if get_option('buildtype') == 'release'
 	add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 
+profiling_args = []
+if get_option('profile_node_discovery')
+	profiling_args += ['-DBSCHEDULER_PROFILE_NODE_DISCOVERY']
+endif
+
 cpp = meson.get_compiler('cpp')
 if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 	add_global_link_arguments('-rdynamic', language: 'cpp')

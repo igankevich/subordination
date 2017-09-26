@@ -4,8 +4,6 @@
 #include <cassert>
 #include <ostream>
 
-#include <unistdx/base/log_message>
-
 namespace {
 
 	std::array<const char*,4> all_results {
@@ -49,16 +47,12 @@ void
 bsc::master_discoverer::probe_next_node() {
 	this->setstate(state_type::probing);
 	if (this->_iterator == this->_end) {
-		sys::log_message(
-			"discoverer",
-			"_: all addresses have been probed",
-			this->ifaddr()
-		);
+		this->log("_: all addresses have been probed", this->ifaddr());
 		this->send_timer();
 	} else {
 		addr_type addr = *this->_iterator;
 		sys::endpoint new_principal(addr, this->port());
-		sys::log_message("discoverer", "_: probe _", this->ifaddr(), addr);
+		this->log("_: probe _", this->ifaddr(), addr);
 		prober* p = new prober(
 			this->ifaddr(),
 			this->_hierarchy.principal().endpoint(),
@@ -84,13 +78,7 @@ void
 bsc::master_discoverer::update_subordinates(probe* p) {
 	const sys::endpoint src = p->from();
 	probe_result result = this->process_probe(p);
-	sys::log_message(
-		"discoverer",
-		"_: _ subordinate _",
-		this->ifaddr(),
-		result,
-		src
-	);
+	this->log("_: _ subordinate _", this->ifaddr(), result, src);
 	bool changed = true;
 	if (result == probe_result::add_subordinate) {
 		this->_hierarchy.add_subordinate(src);
@@ -130,8 +118,7 @@ bsc::master_discoverer::process_probe(probe* p) {
 void
 bsc::master_discoverer::update_principal(prober* p) {
 	if (p->return_code() != exit_code::success) {
-		sys::log_message(
-			"discoverer",
+		this->log(
 			"_: prober returned from _: _",
 			this->ifaddr(),
 			p->new_principal(),
@@ -144,12 +131,7 @@ bsc::master_discoverer::update_principal(prober* p) {
 		if (oldp) {
 			::bsc::factory.nic().stop_client(oldp);
 		}
-		sys::log_message(
-			"discoverer",
-			"_: set principal to _",
-			this->ifaddr(),
-			newp
-		);
+		this->log("_: set principal to _", this->ifaddr(), newp);
 		this->_hierarchy.set_principal(newp);
 		this->broadcast_hierarchy();
 		// try to find better principal after a period of time
@@ -181,21 +163,11 @@ bsc::master_discoverer::on_client_add(const sys::endpoint& endp) {
 void
 bsc::master_discoverer::on_client_remove(const sys::endpoint& endp) {
 	if (endp == this->_hierarchy.principal()) {
-		sys::log_message(
-			"discoverer",
-			"_: unset principal _",
-			this->ifaddr(),
-			endp
-		);
+		this->log("_: unset principal _", this->ifaddr(), endp);
 		this->_hierarchy.unset_principal();
 		this->probe_next_node();
 	} else {
-		sys::log_message(
-			"discoverer",
-			"_: remove subordinate _",
-			this->ifaddr(),
-			endp
-		);
+		this->log("_: remove subordinate _", this->ifaddr(), endp);
 		this->_hierarchy.remove_subordinate(endp);
 	}
 }
@@ -232,8 +204,7 @@ bsc::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
 void
 bsc::master_discoverer::update_weights(hierarchy_kernel* k) {
 	if (k->moves_downstream() && k->return_code() != exit_code::success) {
-		sys::log_message(
-			"discoverer",
+		this->log(
 			"_: failed to send hierarchy to _",
 			this->ifaddr(),
 			k->from()
@@ -246,8 +217,7 @@ bsc::master_discoverer::update_weights(hierarchy_kernel* k) {
 		} else if (this->_hierarchy.has_subordinate(src)) {
 			changed = this->_hierarchy.set_subordinate_weight(src, k->weight());
 		}
-		sys::log_message(
-			"discoverer",
+		this->log(
 			"_: set _ weight to _",
 			this->ifaddr(),
 			k->from(),

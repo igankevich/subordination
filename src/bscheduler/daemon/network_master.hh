@@ -1,12 +1,14 @@
 #ifndef BSCHEDULER_DAEMON_NETWORK_MASTER_HH
 #define BSCHEDULER_DAEMON_NETWORK_MASTER_HH
 
-#include <bscheduler/api.hh>
-#include <unistdx/net/ifaddrs>
+#include <chrono>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "master_discoverer.hh"
+#include <unistdx/net/ifaddrs>
+
+#include <bscheduler/api.hh>
+#include <bscheduler/daemon/master_discoverer.hh>
 #include <bscheduler/ppl/socket_pipeline_event.hh>
 
 namespace bsc {
@@ -29,6 +31,8 @@ namespace bsc {
 		set_type _allowedifaddrs;
 		uint_type _fanout = 10000;
 		network_timer* _timer = nullptr;
+		/// Interface address list update interval.
+		std::chrono::milliseconds _interval = std::chrono::seconds(1);
 
 	public:
 
@@ -48,6 +52,11 @@ namespace bsc {
 			if (rhs) {
 				this->_allowedifaddrs.emplace(rhs);
 			}
+		}
+
+		inline void
+		interval(std::chrono::milliseconds rhs) noexcept {
+			this->_interval = rhs;
 		}
 
 	private:

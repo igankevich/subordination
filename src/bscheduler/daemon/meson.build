@@ -17,7 +17,7 @@ factoryd_exe = executable(
 	sources: factoryd_src,
 	include_directories: [srcdir],
 	dependencies: [unistdx,threads,bscheduler_daemon],
-	cpp_args: ['-DBSCHEDULER_DAEMON'],
+	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args,
 )
 
 asub_src = files([

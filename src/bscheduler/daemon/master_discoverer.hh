@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iosfwd>
 
+#include <unistdx/base/log_message>
 #include <unistdx/net/ifaddr>
 #include <unistdx/net/ipv4_addr>
 
@@ -133,6 +134,18 @@ namespace bsc {
 
 		void
 		update_weights(hierarchy_kernel* k);
+
+		template <class ... Args>
+		inline void
+		log(const Args& ... args) {
+			#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+			using namespace std::chrono;
+			const auto now = system_clock::now().time_since_epoch();
+			const auto t = duration_cast<milliseconds>(now);
+			sys::log_message("discoverer", "time since epoch _ms", t.count());
+			#endif
+			sys::log_message("discoverer", args ...);
+		}
 
 	};
 

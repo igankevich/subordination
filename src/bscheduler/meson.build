@@ -31,7 +31,7 @@ bscheduler_daemon_lib = shared_library(
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
-	cpp_args: ['-DBSCHEDULER_DAEMON']
+	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args
 )
 
 bscheduler_submit_lib = shared_library(

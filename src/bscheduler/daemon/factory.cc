@@ -26,9 +26,11 @@ main(int argc, char* argv[]) {
 	types.register_type<probe>();
 	types.register_type<hierarchy_kernel>();
 	factory_guard g;
+	#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 	factory.external().add_server(
 		sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET)
 	);
+	#endif
 	network_master* m = new network_master;
 	m->allow(servers);
 	m->fanout(fanout);

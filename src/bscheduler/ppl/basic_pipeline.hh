@@ -164,6 +164,9 @@ namespace bsc {
 				Thread_context_guard lock(*context);
 				context->register_thread();
 			}
+			#ifndef NDEBUG
+			this->log("start");
+			#endif
 			this->do_run();
 			if (context) {
 				this->collect_kernels(*context);

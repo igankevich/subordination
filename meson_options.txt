@@ -2,12 +2,19 @@ option(
 	'kernel_type',
 	type: 'string',
 	value: '::bsc::kernel',
-	decription: 'base type for all kernels'
+	description: 'base type for all kernels'
 )
 
 option(
 	'kernel_header',
 	type: 'string',
 	value: 'bscheduler/kernel/kernel.hh',
-	decription: 'header file containing definition of kernel_type'
+	description: 'header file containing definition of kernel_type'
+)
+
+option(
+	'profile_node_discovery',
+	type: 'boolean',
+	value: true,
+	description: 'profile node discovery'
 )
