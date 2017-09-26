@@ -90,9 +90,10 @@ bsc::network_master
 		);
 	// filter allowed interface addresses
 	if (!this->_allowedifaddrs.empty()) {
-		for (const ifaddr_type& value : ifaddrs_to_add) {
-			if (!this->is_allowed(value)) {
-				ifaddrs_to_add.erase(value);
+		auto first = ifaddrs_to_add.begin();
+		while (first != ifaddrs_to_add.end()) {
+			if (!this->is_allowed(*first)) {
+				first = ifaddrs_to_add.erase(first);
 			}
 		}
 	}
