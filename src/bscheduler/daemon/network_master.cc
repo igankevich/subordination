@@ -44,7 +44,8 @@ namespace {
 }
 
 void
-bsc::network_master::send_timer() {
+bsc::network_master
+::send_timer() {
 	using namespace std::chrono;
 	this->_timer = new network_timer;
 	this->_timer->after(seconds(1));
@@ -52,12 +53,14 @@ bsc::network_master::send_timer() {
 }
 
 void
-bsc::network_master::act() {
+bsc::network_master
+::act() {
 	this->send_timer();
 }
 
 bsc::network_master::set_type
-bsc::network_master::enumerate_ifaddrs() {
+bsc::network_master
+::enumerate_ifaddrs() {
 	set_type new_ifaddrs;
 	sys::ifaddrs addrs;
 	for (const sys::ifaddrs::value_type& ifa : addrs) {
@@ -72,16 +75,27 @@ bsc::network_master::enumerate_ifaddrs() {
 }
 
 void
-bsc::network_master::update_ifaddrs() {
+bsc::network_master
+::update_ifaddrs() {
 	set_type new_ifaddrs = this->enumerate_ifaddrs();
-	set_type ifaddrs_to_add = set_difference_copy(
-		new_ifaddrs,
-		this->_ifaddrs
-	                          );
-	set_type ifaddrs_to_rm = set_difference_copy(
-		this->_ifaddrs,
-		new_ifaddrs
-	                         );
+	set_type ifaddrs_to_add =
+		set_difference_copy(
+			new_ifaddrs,
+			this->_ifaddrs
+		);
+	set_type ifaddrs_to_rm =
+		set_difference_copy(
+			this->_ifaddrs,
+			new_ifaddrs
+		);
+	// filter allowed interface addresses
+	if (!this->_allowedifaddrs.empty()) {
+		for (const ifaddr_type& value : ifaddrs_to_add) {
+			if (!this->is_allowed(value)) {
+				ifaddrs_to_add.erase(value);
+			}
+		}
+	}
 	// update servers in socket pipeline
 	for (const ifaddr_type& ifaddr : ifaddrs_to_rm) {
 		this->remove_ifaddr(ifaddr);
@@ -93,7 +107,8 @@ bsc::network_master::update_ifaddrs() {
 }
 
 void
-bsc::network_master::react(bsc::kernel* child) {
+bsc::network_master
+::react(bsc::kernel* child) {
 	if (child == this->_timer) {
 		this->update_ifaddrs();
 		this->_timer = nullptr;
@@ -107,7 +122,8 @@ bsc::network_master::react(bsc::kernel* child) {
 }
 
 void
-bsc::network_master::add_ifaddr(const ifaddr_type& ifa) {
+bsc::network_master
+::add_ifaddr(const ifaddr_type& ifa) {
 	sys::log_message("net", "add ifaddr _", ifa);
 	bsc::factory.nic().add_server(ifa);
 	if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
@@ -119,7 +135,8 @@ bsc::network_master::add_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-bsc::network_master::remove_ifaddr(const ifaddr_type& ifa) {
+bsc::network_master
+::remove_ifaddr(const ifaddr_type& ifa) {
 	sys::log_message("net", "remove ifaddr _", ifa);
 	bsc::factory.nic().remove_server(ifa);
 	auto result = this->_ifaddrs.find(ifa);
@@ -131,7 +148,8 @@ bsc::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-bsc::network_master::forward_probe(probe* p) {
+bsc::network_master
+::forward_probe(probe* p) {
 	map_iterator result = this->find_discoverer(p->ifaddr().address());
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad probe _", p->ifaddr());
@@ -142,7 +160,8 @@ bsc::network_master::forward_probe(probe* p) {
 }
 
 void
-bsc::network_master::forward_hierarchy_kernel(hierarchy_kernel* p) {
+bsc::network_master
+::forward_hierarchy_kernel(hierarchy_kernel* p) {
 	map_iterator result = this->find_discoverer(p->ifaddr().address());
 	if (result == this->_ifaddrs.end()) {
 		sys::log_message("net", "bad hierarchy kernel _", p->ifaddr());
@@ -153,7 +172,8 @@ bsc::network_master::forward_hierarchy_kernel(hierarchy_kernel* p) {
 }
 
 bsc::network_master::map_iterator
-bsc::network_master::find_discoverer(const addr_type& a) {
+bsc::network_master
+::find_discoverer(const addr_type& a) {
 	typedef typename map_type::value_type value_type;
 	return std::find_if(
 		this->_ifaddrs.begin(),
@@ -165,7 +185,8 @@ bsc::network_master::find_discoverer(const addr_type& a) {
 }
 
 void
-bsc::network_master::on_event(socket_pipeline_kernel* ev) {
+bsc::network_master
+::on_event(socket_pipeline_kernel* ev) {
 	if (ev->event() == socket_pipeline_event::remove_client ||
 	    ev->event() == socket_pipeline_event::add_client) {
 		const addr_type& a = traits_type::address(ev->endpoint());

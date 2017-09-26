@@ -1,4 +1,6 @@
 #include <unistdx/base/cmdline>
+#include <unistdx/net/ifaddr>
+#include <unistdx/net/ipv4_addr>
 
 #include <bscheduler/api.hh>
 #include <bscheduler/base/error_handler.hh>
@@ -9,27 +11,31 @@
 
 int
 main(int argc, char* argv[]) {
+	using namespace bsc;
 	sys::ipv4_addr::rep_type fanout = 10000;
+	sys::ifaddr<sys::ipv4_addr> servers;
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),
 		sys::make_key_value("fanout", fanout),
+		sys::make_key_value("servers", servers),
 		nullptr
 	};
 	sys::parse_arguments(argc, argv, options);
-	bsc::install_error_handler();
-	bsc::types.register_type<bsc::Application_kernel>();
-	bsc::types.register_type<bsc::probe>();
-	bsc::types.register_type<bsc::hierarchy_kernel>();
-	bsc::factory_guard g;
-	bsc::factory.external().add_server(
+	install_error_handler();
+	types.register_type<Application_kernel>();
+	types.register_type<probe>();
+	types.register_type<hierarchy_kernel>();
+	factory_guard g;
+	factory.external().add_server(
 		sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET)
 	);
-	bsc::network_master* m = new bsc::network_master;
+	network_master* m = new network_master;
+	m->allow(servers);
 	m->fanout(fanout);
 	{
-		bsc::instances_guard g(bsc::instances);
-		bsc::instances.add(m);
+		instances_guard g(instances);
+		instances.add(m);
 	}
-	bsc::send<bsc::Local>(m);
-	return bsc::wait_and_return();
+	send<Local>(m);
+	return wait_and_return();
 }

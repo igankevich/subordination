@@ -3,8 +3,8 @@
 
 #include <bscheduler/api.hh>
 #include <unistdx/net/ifaddrs>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "master_discoverer.hh"
 #include <bscheduler/ppl/socket_pipeline_event.hh>
@@ -26,6 +26,7 @@ namespace bsc {
 
 	private:
 		map_type _ifaddrs;
+		set_type _allowedifaddrs;
 		uint_type _fanout = 10000;
 		network_timer* _timer = nullptr;
 
@@ -40,6 +41,13 @@ namespace bsc {
 		inline void
 		fanout(uint_type rhs) noexcept {
 			this->_fanout = rhs;
+		}
+
+		inline void
+		allow(const ifaddr_type& rhs) {
+			if (rhs) {
+				this->_allowedifaddrs.emplace(rhs);
+			}
 		}
 
 	private:
@@ -71,6 +79,12 @@ namespace bsc {
 
 		void
 		on_event(socket_pipeline_kernel* k);
+
+		inline bool
+		is_allowed(const ifaddr_type& rhs) const {
+			return this->_allowedifaddrs.find(rhs) !=
+			       this->_allowedifaddrs.end();
+		}
 
 	};
 
