@@ -1,24 +1,13 @@
 #include <unistdx/base/cmdline>
 #include <unistdx/net/ifaddr>
 #include <unistdx/net/ipv4_addr>
-#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-#include <unistdx/ipc/signal>
-#endif
 
 #include <bscheduler/api.hh>
 #include <bscheduler/base/error_handler.hh>
 #include <bscheduler/ppl/application_kernel.hh>
 
-#include "factory_socket.hh"
+#include "bscheduler_socket.hh"
 #include "network_master.hh"
-
-#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-void
-print_end_marker(int) {
-	sys::log_message("discovery", "terminate");
-	std::quick_exit(0);
-}
-#endif
 
 int
 main(int argc, char* argv[]) {
@@ -33,9 +22,6 @@ main(int argc, char* argv[]) {
 	};
 	sys::parse_arguments(argc, argv, options);
 	install_error_handler();
-	#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-	sys::this_process::bind_signal(sys::signal::terminate, print_end_marker);
-	#endif
 	types.register_type<Application_kernel>();
 	types.register_type<probe>();
 	types.register_type<hierarchy_kernel>();

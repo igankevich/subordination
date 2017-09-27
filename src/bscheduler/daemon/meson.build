@@ -1,5 +1,5 @@
-factoryd_src = files([
-	'factory.cc',
+bscheduler_src = files([
+	'bscheduler.cc',
 	'hierarchy.cc',
 	'hierarchy_kernel.cc',
 	'hierarchy_node.cc',
@@ -12,24 +12,26 @@ factoryd_src = files([
 	'tree_hierarchy_iterator.cc',
 ])
 
-factoryd_exe = executable(
-	'factory',
-	sources: factoryd_src,
+bscheduler_exe = executable(
+	'bscheduler',
+	sources: bscheduler_src,
 	include_directories: [srcdir],
 	dependencies: [unistdx,threads,bscheduler_daemon],
 	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args,
+	install: true
 )
 
-asub_src = files([
-	'asub.cc',
+bsub_src = files([
+	'bsub.cc',
 ])
 
 executable(
-	'asub',
-	sources: asub_src,
+	'bsub',
+	sources: bsub_src,
 	include_directories: [srcdir],
 	dependencies: [unistdx,threads,bscheduler_submit],
 	cpp_args: ['-DBSCHEDULER_SUBMIT'],
+	install: true
 )
 
 test(
@@ -71,7 +73,7 @@ foreach nodes : ['2', '4', '8']
 		test(
 			'discovery-test' + suffix,
 			discovery_test,
-			args: [factoryd_exe.full_path(), 'fanout=' + fanout],
+			args: [bscheduler_exe.full_path(), 'fanout=' + fanout],
 			env: test_env,
 			workdir: meson.build_root()
 		)

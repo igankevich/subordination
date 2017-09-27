@@ -31,7 +31,7 @@ bscheduler_daemon_lib = shared_library(
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
-	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args
+	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args,
 )
 
 bscheduler_submit_lib = shared_library(
@@ -41,7 +41,7 @@ bscheduler_submit_lib = shared_library(
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
-	cpp_args: ['-DBSCHEDULER_SUBMIT']
+	cpp_args: ['-DBSCHEDULER_SUBMIT'],
 )
 
 bscheduler_app_lib = shared_library(
@@ -51,7 +51,7 @@ bscheduler_app_lib = shared_library(
 	version: meson.project_version(),
 	install: true,
 	include_directories: srcdir,
-	cpp_args: ['-DBSCHEDULER_APPLICATION']
+	cpp_args: ['-DBSCHEDULER_APPLICATION'],
 )
 
 bscheduler_daemon = declare_dependency(

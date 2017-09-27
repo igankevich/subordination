@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "factory_socket.hh"
+#include "bscheduler_socket.hh"
 
 using bsc::Application_kernel;
 using namespace bsc;
