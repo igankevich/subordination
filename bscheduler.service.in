@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 EnvironmentFile=-/etc/default/@project_name@
-ExecStart=@prefix@/@bscheduler_exe@ $BSCHEDULER_ARGS
+ExecStart=@prefix@/@sbindir@/@bscheduler_exe@ $BSCHEDULER_ARGS
 Restart=always
 RestartSec=7
 

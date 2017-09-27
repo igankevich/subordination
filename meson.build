@@ -70,6 +70,7 @@ endif
 # systemd service {{{
 systemd_config = configuration_data()
 systemd_config.set('prefix', get_option('prefix'))
+systemd_config.set('sbindir', get_option('sbindir'))
 systemd_config.set('bscheduler_exe', bscheduler_exe.full_path().split('/')[-1])
 systemd_config.set('bscheduler_args', 'fanout=10000')
 systemd_config.set('project_name', meson.project_name())
