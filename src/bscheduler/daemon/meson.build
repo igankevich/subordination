@@ -18,7 +18,8 @@ bscheduler_exe = executable(
 	include_directories: [srcdir],
 	dependencies: [unistdx,threads,bscheduler_daemon],
 	cpp_args: ['-DBSCHEDULER_DAEMON'] + profiling_args,
-	install: true
+	install: true,
+	install_dir: get_option('sbindir')
 )
 
 bsub_src = files([
