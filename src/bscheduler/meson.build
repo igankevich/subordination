@@ -22,6 +22,7 @@ bscheduler_core_lib = shared_library(
 	dependencies: [threads,unistdx],
 	version: meson.project_version(),
 	include_directories: srcdir,
+	install: true,
 )
 
 bscheduler_core = declare_dependency(
