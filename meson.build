@@ -2,7 +2,7 @@ project(
 	'bscheduler',
 	'cpp',
 	version: '0.2',
-	meson_version: '>=0.31',
+	meson_version: '>=0.42.0',
 	default_options: ['cpp_std=c++14']
 )
 
