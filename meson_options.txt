@@ -18,3 +18,10 @@ option(
 	value: false,
 	description: 'profile node discovery'
 )
+
+option(
+	'unitdir',
+	type: 'string',
+	value: 'lib/systemd/system',
+	description: 'systemd unit directory'
+)

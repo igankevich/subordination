@@ -67,3 +67,56 @@ if cppcheck.found()
 	)
 endif
 # }}}
+# systemd service {{{
+systemd_config = configuration_data()
+systemd_config.set('prefix', get_option('prefix'))
+systemd_config.set('bscheduler_exe', bscheduler_exe.full_path().split('/')[-1])
+systemd_config.set('bscheduler_args', 'fanout=10000')
+systemd_config.set('project_name', meson.project_name())
+configure_file(
+	input: 'bscheduler.service.in',
+	output: meson.project_name() + '.service',
+	configuration: systemd_config,
+	install_dir: get_option('unitdir')
+)
+configure_file(
+	input: 'bscheduler.in',
+	output: meson.project_name(),
+	configuration: systemd_config,
+	install_dir: join_paths(get_option('sysconfdir'), 'default')
+)
+# }}}
+# pkgconfig {{{
+pkgconfig = import('pkgconfig')
+pkgconfig.generate(
+	libraries: bscheduler_core_lib,
+	version: meson.project_version(),
+	name: 'bscheduler-core',
+	filebase: 'bscheduler-core',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: [bscheduler_app_lib, bscheduler_core_lib],
+	extra_cflags: '-DBSCHEDULER_APPLICATION',
+	version: meson.project_version(),
+	name: 'bscheduler-app',
+	filebase: 'bscheduler-app',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: [bscheduler_daemon_lib, bscheduler_core_lib],
+	extra_cflags: '-DBSCHEDULER_DAEMON',
+	version: meson.project_version(),
+	name: 'bscheduler-daemon',
+	filebase: 'bscheduler-daemon',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: [bscheduler_submit_lib, bscheduler_core_lib],
+	extra_cflags: '-DBSCHEDULER_SUBMIT',
+	version: meson.project_version(),
+	name: 'bscheduler-submit',
+	filebase: 'bscheduler-submit',
+	description: 'Distributed programming C++ framework',
+)
+# }}}
