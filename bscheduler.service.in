@@ -5,11 +5,11 @@ After=network.target
 [Service]
 User=@project_name@
 Group=@project_name@
-EnvironmentFile=-/etc/default/@project_name@
+EnvironmentFile=-/etc/sysconfig/@project_name@
 ExecStart=@prefix@/@sbindir@/@bscheduler_exe@ $BSCHEDULER_ARGS
 Restart=always
 RestartSec=7
-CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+AmbientCapabilities=CAP_SETUID CAP_SETGID
 
 [Install]
 WantedBy=multi-user.target
