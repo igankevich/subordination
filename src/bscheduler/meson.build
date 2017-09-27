@@ -76,3 +76,33 @@ bscheduler_app = declare_dependency(
 )
 
 subdir('daemon')
+
+pkgconfig = import('pkgconfig')
+pkgconfig.generate(
+	libraries: bscheduler_core_lib,
+	version: meson.project_version(),
+	name: 'bscheduler-core',
+	filebase: 'bscheduler-core',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: bscheduler_app_lib,
+	version: meson.project_version(),
+	name: 'bscheduler-app',
+	filebase: 'bscheduler-app',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: bscheduler_daemon_lib,
+	version: meson.project_version(),
+	name: 'bscheduler-daemon',
+	filebase: 'bscheduler-daemon',
+	description: 'Distributed programming C++ framework',
+)
+pkgconfig.generate(
+	libraries: bscheduler_submit_lib,
+	version: meson.project_version(),
+	name: 'bscheduler-submit',
+	filebase: 'bscheduler-submit',
+	description: 'Distributed programming C++ framework',
+)
