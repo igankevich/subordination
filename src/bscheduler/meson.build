@@ -87,7 +87,7 @@ pkgconfig.generate(
 )
 pkgconfig.generate(
 	libraries: [bscheduler_app_lib, bscheduler_core_lib],
-	extra_cflags: ['-DBSCHEDULER_APPLICATION'],
+	extra_cflags: '-DBSCHEDULER_APPLICATION',
 	version: meson.project_version(),
 	name: 'bscheduler-app',
 	filebase: 'bscheduler-app',
@@ -95,7 +95,7 @@ pkgconfig.generate(
 )
 pkgconfig.generate(
 	libraries: [bscheduler_daemon_lib, bscheduler_core_lib],
-	extra_cflags: ['-DBSCHEDULER_DAEMON'],
+	extra_cflags: '-DBSCHEDULER_DAEMON',
 	version: meson.project_version(),
 	name: 'bscheduler-daemon',
 	filebase: 'bscheduler-daemon',
@@ -103,7 +103,7 @@ pkgconfig.generate(
 )
 pkgconfig.generate(
 	libraries: [bscheduler_submit_lib, bscheduler_core_lib],
-	extra_cflags: ['-DBSCHEDULER_SUBMIT'],
+	extra_cflags: '-DBSCHEDULER_SUBMIT',
 	version: meson.project_version(),
 	name: 'bscheduler-submit',
 	filebase: 'bscheduler-submit',
