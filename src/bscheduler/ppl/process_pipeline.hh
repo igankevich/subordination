@@ -38,11 +38,7 @@ namespace bsc {
 
 	public:
 
-		inline
-		process_pipeline():
-		_apps(),
-		_procs()
-		{}
+		process_pipeline() = default;
 
 		process_pipeline(const process_pipeline&) = delete;
 

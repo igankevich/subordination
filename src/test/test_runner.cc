@@ -185,6 +185,7 @@ init_signal_handlers() {
 }
 
 int main(int argc, char* argv[]) {
+	unsetenv("MALLOC_PERTURB_");
 	init_signal_handlers();
 	exe.init(argc, argv);
 	std::clog << exe << std::flush;
