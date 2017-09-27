@@ -15,6 +15,6 @@ option(
 option(
 	'profile_node_discovery',
 	type: 'boolean',
-	value: true,
+	value: false,
 	description: 'profile node discovery'
 )
