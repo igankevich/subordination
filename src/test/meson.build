@@ -87,7 +87,7 @@ daemon_exe = executable(
 	cpp_args: [
 		'-DBSCHEDULER_DAEMON',
 		'-DBSCHEDULER_TEST_SERVER',
-		'-DBSCHEDULER_APP_PATH=./src/test/process-pipeline-test-app',
+		'-DBSCHEDULER_APP_PATH=' + app_exe.full_path()
 	]
 )
 
