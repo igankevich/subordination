@@ -11,6 +11,11 @@ subdir('base')
 subdir('kernel')
 subdir('ppl')
 
+install_headers(
+	'api.hh',
+	subdir: meson.project_name()
+)
+
 bscheduler_core_lib = shared_library(
 	'bscheduler-core',
 	sources: bscheduler_core_src,
