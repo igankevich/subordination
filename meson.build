@@ -83,7 +83,7 @@ configure_file(
 	input: 'bscheduler.in',
 	output: meson.project_name(),
 	configuration: systemd_config,
-	install_dir: join_paths(get_option('sysconfdir'), 'default')
+	install_dir: join_paths(get_option('sysconfdir'), 'sysconfig')
 )
 # }}}
 # pkgconfig {{{
