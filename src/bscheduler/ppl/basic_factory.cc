@@ -13,7 +13,7 @@ namespace {
 	void
 	start_all(Pipeline& ppl, Args& ... args) {
 		ppl.start();
-		start_all(args...);
+		start_all(args ...);
 	}
 
 	inline void
@@ -23,7 +23,7 @@ namespace {
 	void
 	stop_all(Pipeline& ppl, Args& ... args) {
 		ppl.stop();
-		stop_all(args...);
+		stop_all(args ...);
 	}
 
 	inline void
@@ -33,14 +33,15 @@ namespace {
 	void
 	wait_all(Pipeline& ppl, Args& ... args) {
 		ppl.wait();
-		wait_all(args...);
+		wait_all(args ...);
 	}
 
 }
 
 template <class T>
-bsc::Factory<T>::Factory():
-#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+bsc::Factory<T>
+::Factory():
+#if defined(BSCHEDULER_SUBMIT) || defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 _upstream(1),
 _downstream(1) {
 #else
@@ -67,20 +68,26 @@ _downstream(_upstream.concurrency()) {
 
 template <class T>
 void
-bsc::Factory<T>::start() {
+bsc::Factory<T>
+::start() {
 	this->setstate(pipeline_state::starting);
 	start_all(
 		this->_upstream,
 		this->_downstream
-		, this->_timer
+		,
+		this->_timer
 		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_io
+		,
+		this->_io
 		#endif
-		, this->_parent
+		,
+		this->_parent
 		#if defined(BSCHEDULER_DAEMON) && \
 		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_child
-		, this->_external
+		,
+		this->_child
+		,
+		this->_external
 		#endif
 	);
 	this->setstate(pipeline_state::started);
@@ -88,20 +95,26 @@ bsc::Factory<T>::start() {
 
 template <class T>
 void
-bsc::Factory<T>::stop() {
+bsc::Factory<T>
+::stop() {
 	this->setstate(pipeline_state::stopping);
 	stop_all(
 		this->_upstream,
 		this->_downstream
-		, this->_timer
+		,
+		this->_timer
 		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_io
+		,
+		this->_io
 		#endif
-		, this->_parent
+		,
+		this->_parent
 		#if defined(BSCHEDULER_DAEMON) && \
 		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_child
-		, this->_external
+		,
+		this->_child
+		,
+		this->_external
 		#endif
 	);
 	this->setstate(pipeline_state::stopped);
@@ -109,19 +122,25 @@ bsc::Factory<T>::stop() {
 
 template <class T>
 void
-bsc::Factory<T>::wait() {
+bsc::Factory<T>
+::wait() {
 	wait_all(
 		this->_upstream,
 		this->_downstream
-		, this->_timer
+		,
+		this->_timer
 		#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_io
+		,
+		this->_io
 		#endif
-		, this->_parent
+		,
+		this->_parent
 		#if defined(BSCHEDULER_DAEMON) && \
 		!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
-		, this->_child
-		, this->_external
+		,
+		this->_child
+		,
+		this->_external
 		#endif
 	);
 }

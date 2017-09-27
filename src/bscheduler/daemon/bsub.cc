@@ -20,7 +20,9 @@ new_application_kernel(int argc, char* argv[]) {
 	for (char** first=environ; *first; ++first) {
 		env.emplace_back(*first);
 	}
-	return new Application_kernel(args, env);
+	Application_kernel* k = new Application_kernel(args, env);
+	k->to(sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET));
+	return k;
 }
 
 class Main: public kernel {
