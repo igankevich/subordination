@@ -1,7 +1,12 @@
 configure_file(
 	input: 'config.hh.in',
 	output: 'config.hh',
-	configuration: config
+	configuration: config,
+	install_dir: join_paths(
+		get_option('prefix'),
+		get_option('includedir'),
+		meson.project_name()
+	)
 )
 
 bscheduler_src = files()
