@@ -11,7 +11,7 @@
 
 int
 main(int argc, char* argv[]) {
-	#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+	#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 	{
 		using namespace std::chrono;
 		const auto now = system_clock::now().time_since_epoch();
