@@ -11,6 +11,14 @@
 
 int
 main(int argc, char* argv[]) {
+	#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+	{
+		using namespace std::chrono;
+		const auto now = system_clock::now().time_since_epoch();
+		const auto t = duration_cast<milliseconds>(now);
+		sys::log_message("discovery", "time since epoch _ms", t.count());
+	}
+	#endif
 	using namespace bsc;
 	sys::ipv4_addr::rep_type fanout = 10000;
 	sys::ifaddr<sys::ipv4_addr> servers;
