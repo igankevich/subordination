@@ -88,16 +88,17 @@ configure_file(
 )
 # }}}
 # pkgconfig {{{
+unistdx_lib = '-lunistdx'
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
-	libraries: bscheduler_core_lib,
+	libraries: [bscheduler_core_lib, unistdx_lib],
 	version: meson.project_version(),
 	name: 'bscheduler-core',
 	filebase: 'bscheduler-core',
 	description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_app_lib, bscheduler_core_lib],
+	libraries: [bscheduler_app_lib, bscheduler_core_lib, unistdx_lib],
 	extra_cflags: '-DBSCHEDULER_APPLICATION',
 	version: meson.project_version(),
 	name: 'bscheduler-app',
@@ -105,7 +106,7 @@ pkgconfig.generate(
 	description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_daemon_lib, bscheduler_core_lib],
+	libraries: [bscheduler_daemon_lib, bscheduler_core_lib, unistdx_lib],
 	extra_cflags: '-DBSCHEDULER_DAEMON',
 	version: meson.project_version(),
 	name: 'bscheduler-daemon',
@@ -113,7 +114,7 @@ pkgconfig.generate(
 	description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_submit_lib, bscheduler_core_lib],
+	libraries: [bscheduler_submit_lib, bscheduler_core_lib, unistdx_lib],
 	extra_cflags: '-DBSCHEDULER_SUBMIT',
 	version: meson.project_version(),
 	name: 'bscheduler-submit',
