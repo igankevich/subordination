@@ -35,6 +35,8 @@ namespace bsc {
 	private:
 		map_type _apps;
 		sys::process_group _procs;
+		/// Allow process execution as superuser/supergroup.
+		bool _allowroot = false;
 
 	public:
 
@@ -63,6 +65,11 @@ namespace bsc {
 
 		void
 		forward(const kernel_header& hdr, sys::pstream& istr);
+
+		inline void
+		allow_root(bool rhs) noexcept {
+			this->_allowroot = rhs;
+		}
 
 	private:
 

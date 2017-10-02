@@ -26,7 +26,7 @@ bsub_src = files([
 	'bsub.cc',
 ])
 
-executable(
+bsub_exe = executable(
 	'bsub',
 	sources: bsub_src,
 	include_directories: [srcdir],
@@ -69,12 +69,17 @@ foreach nodes : ['2', '4', '8']
 		test_env.set('_NODES', nodes)
 		test_env.set('_FANOUT', fanout)
 		test_env.set('_NAME', 'c' + suffix + '-')
+		test_env.set('_SUBMIT', bsub_exe.full_path() + ' /usr/bin/pwd')
 		# run discovery test over virtual network
 		# using Linux namespaces
 		test(
 			'discovery-test' + suffix,
 			discovery_test,
-			args: [bscheduler_exe.full_path(), 'fanout=' + fanout],
+			args: [
+				bscheduler_exe.full_path(),
+				'fanout=' + fanout,
+				'allow_root=1'
+			],
 			env: test_env,
 			workdir: meson.build_root()
 		)

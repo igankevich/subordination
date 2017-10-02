@@ -32,6 +32,7 @@ bsc::external_process_handler<K,R>
 			this->log("recv _", *k);
 			application app(k->arguments(), k->environment());
 			sys::user_credentials creds = this->socket().credentials();
+			app.workdir(k->workdir());
 			app.set_credentials(creds.uid, creds.gid);
 			try {
 				k->application(app.id());

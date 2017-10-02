@@ -25,18 +25,19 @@ namespace {
 }
 
 void
-bsc::Application_kernel::write(sys::pstream& out) {
+bsc::Application_kernel
+::write(sys::pstream& out) {
 	kernel::write(out);
 	write_vector(out, this->_args);
 	write_vector(out, this->_env);
-	out << this->_error << this->_application;
+	out << this->_workdir << this->_error << this->_application;
 }
 
 void
-bsc::Application_kernel::read(sys::pstream& in) {
+bsc::Application_kernel
+::read(sys::pstream& in) {
 	kernel::read(in);
 	read_vector(in, this->_args);
 	read_vector(in, this->_env);
-	in >> this->_error >> this->_application;
+	in >> this->_workdir >> this->_error >> this->_application;
 }
-

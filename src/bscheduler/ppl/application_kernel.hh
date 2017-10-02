@@ -2,9 +2,12 @@
 #define BSCHEDULER_PPL_APPLICATION_KERNEL_HH
 
 #include <cstdint>
-#include <bscheduler/config.hh>
 #include <string>
 #include <vector>
+
+#include <unistdx/fs/canonical_path>
+
+#include <bscheduler/config.hh>
 
 namespace bsc {
 
@@ -18,6 +21,7 @@ namespace bsc {
 		container_type _args, _env;
 		std::string _error;
 		application_type _application = 0;
+		sys::canonical_path _workdir;
 
 	public:
 
@@ -27,7 +31,8 @@ namespace bsc {
 			const container_type& env
 		):
 		_args(args),
-		_env(env)
+		_env(env),
+		_workdir(".")
 		{}
 
 		Application_kernel() = default;
@@ -66,6 +71,16 @@ namespace bsc {
 		inline void
 		application(application_type rhs) noexcept {
 			this->_application = rhs;
+		}
+
+		const sys::canonical_path&
+		workdir() const noexcept {
+			return this->_workdir;
+		}
+
+		inline void
+		workdir(const sys::canonical_path& rhs) {
+			this->_workdir = rhs;
 		}
 
 		void

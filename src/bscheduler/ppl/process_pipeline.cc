@@ -51,6 +51,7 @@ void
 bsc::process_pipeline<K,R>
 ::add(const application& app) {
 	lock_type lock(this->_mutex);
+	app.allow_root(this->_allowroot);
 	sys::two_way_pipe data_pipe;
 	const sys::process& p = _procs.emplace(
 		[&app,this,&data_pipe] () {

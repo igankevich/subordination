@@ -22,10 +22,12 @@ main(int argc, char* argv[]) {
 	using namespace bsc;
 	sys::ipv4_addr::rep_type fanout = 10000;
 	sys::ifaddr<sys::ipv4_addr> servers;
+	bool allow_root = false;
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),
 		sys::make_key_value("fanout", fanout),
 		sys::make_key_value("servers", servers),
+		sys::make_key_value("allow_root", allow_root),
 		nullptr
 	};
 	sys::parse_arguments(argc, argv, options);
@@ -38,6 +40,7 @@ main(int argc, char* argv[]) {
 	factory.external().add_server(
 		sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET)
 	);
+	factory.child().allow_root(allow_root);
 	#endif
 	network_master* m = new network_master;
 	m->allow(servers);

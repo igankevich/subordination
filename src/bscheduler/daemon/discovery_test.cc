@@ -207,6 +207,8 @@ int main(int argc, char* argv[]) {
 	args.append(s);
 	args.append("--outdir");
 	args.append(std::getenv("_LOGDIR"));
+	args.append("--submit");
+	args.append(std::getenv("_SUBMIT"));
 	args.append("--");
 	for (int i=1; i<argc; ++i) {
 		args.append(argv[i]);

@@ -2,11 +2,13 @@
 #define BSCHEDULER_PPL_APPLICATION_HH
 
 #include <iosfwd>
+#include <vector>
+
+#include <unistdx/fs/canonical_path>
 #include <unistdx/io/two_way_pipe>
 #include <unistdx/ipc/execute>
 #include <unistdx/ipc/identity>
 #include <unistdx/net/pstream>
-#include <vector>
 
 namespace bsc {
 
@@ -24,15 +26,27 @@ namespace bsc {
 		sys::uid_type _uid;
 		sys::gid_type _gid;
 		container_type _args, _env;
+		sys::canonical_path _workdir;
+		mutable bool _allowroot = false;
 
 	public:
 		explicit
 		application(const container_type& args, const container_type& env);
 
 		inline void
+		workdir(const sys::canonical_path& rhs) {
+			this->_workdir = rhs;
+		}
+
+		inline void
 		set_credentials(sys::uid_type uid, sys::gid_type gid) noexcept {
 			this->_uid = uid;
 			this->_gid = gid;
+		}
+
+		inline void
+		allow_root(bool rhs) const noexcept {
+			this->_allowroot = rhs;
 		}
 
 		inline id_type

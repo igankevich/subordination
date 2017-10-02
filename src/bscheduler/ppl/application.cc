@@ -1,17 +1,17 @@
 #include "application.hh"
 
 #include <algorithm>
+#include <grp.h>
 #include <ostream>
 #include <random>
 #include <sstream>
 #include <stdlib.h>
-#include <grp.h>
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
-#include <unistdx/it/intersperse_iterator>
 #include <unistdx/fs/path>
 #include <unistdx/io/fildes>
+#include <unistdx/it/intersperse_iterator>
 
 #include <bscheduler/config.hh>
 
@@ -25,7 +25,7 @@ namespace {
 	generate_application_id() noexcept {
 		std::independent_bits_engine<
 			std::random_device,
-			8*sizeof(bsc::application_type),
+			8* sizeof(bsc::application_type),
 			bsc::application_type> rng;
 		return rng();
 	}
@@ -66,10 +66,10 @@ namespace {
 	generate_filename(bsc::application_type app, const char* suffix) {
 		std::stringstream filename;
 		filename
-			<< BSCHEDULER_LOG_DIRECTORY
-			<< sys::file_separator
-			<< app
-			<< suffix;
+		    << BSCHEDULER_LOG_DIRECTORY
+		    << sys::file_separator
+		    << app
+		    << suffix;
 		return filename.str();
 	}
 
@@ -101,31 +101,41 @@ namespace std {
 std::ostream&
 bsc::operator<<(std::ostream& out, const application& rhs) {
 	return out << sys::make_object(
-		"id", rhs._id,
-		"uid", rhs._uid,
-		"gid", rhs._gid,
-		"args", rhs._args,
-		"env", rhs._env
-	);
+		"id",
+		rhs._id,
+		"uid",
+		rhs._uid,
+		"gid",
+		rhs._gid,
+		"args",
+		rhs._args,
+		"env",
+		rhs._env,
+		"wd",
+		rhs._workdir
+	    );
 }
 
 bsc::application_type
-bsc::this_application::get_id() noexcept {
+bsc::this_application
+::get_id() noexcept {
 	return this_app;
 }
 
-
 sys::fd_type
-bsc::this_application::get_input_fd() noexcept {
+bsc::this_application
+::get_input_fd() noexcept {
 	return this_pipe_in;
 }
 
 sys::fd_type
-bsc::this_application::get_output_fd() noexcept {
+bsc::this_application
+::get_output_fd() noexcept {
 	return this_pipe_out;
 }
 
-bsc::application::application(
+bsc::application
+::application(
 	const container_type& args,
 	const container_type& env
 ):
@@ -133,15 +143,15 @@ _id(generate_application_id()),
 _uid(sys::this_process::user()),
 _gid(sys::this_process::group()),
 _args(args),
-_env(env)
-{
+_env(env) {
 	if (this->_args.empty()) {
 		throw std::invalid_argument("empty arguments");
 	}
 }
 
 int
-bsc::application::execute(const sys::two_way_pipe& pipe) const {
+bsc::application
+::execute(const sys::two_way_pipe& pipe) const {
 	sys::argstream args, env;
 	for (const std::string& a : this->_args) {
 		args.append(a);
@@ -153,23 +163,33 @@ bsc::application::execute(const sys::two_way_pipe& pipe) const {
 	env.append(generate_env(BSCHEDULER_ENV_APPLICATION_ID, this->_id));
 	// pass in/out file descriptors
 	env.append(generate_env(BSCHEDULER_ENV_PIPE_IN, pipe.child_in().get_fd()));
-	env.append(generate_env(BSCHEDULER_ENV_PIPE_OUT, pipe.child_out().get_fd()));
-	// update path to find executable files from user's PATH
-	auto result = std::find_if(
-		this->_env.begin(),
-		this->_env.end(),
-		[] (const std::string& rhs) {
-			return rhs.find("PATH=") == 0;
-		}
+	env.append(
+		generate_env(
+			BSCHEDULER_ENV_PIPE_OUT,
+			pipe.child_out().get_fd()
+		)
 	);
+	// update path to find executable files from user's PATH
+	auto result =
+		std::find_if(
+			this->_env.begin(),
+			this->_env.end(),
+			[] (const std::string& rhs) {
+			    return rhs.find("PATH=") == 0;
+			}
+		);
 	if (result == this->_env.end()) {
 		UNISTDX_CHECK(::unsetenv("PATH"));
 	} else {
 		UNISTDX_CHECK(::putenv(const_cast<char*>(result->data())));
 	}
 	// disallow running as superuser/supergroup
-	if (this->_uid == sys::superuser() || this->_gid == sys::supergroup()) {
-		throw std::runtime_error("executing as superuser/supergroup is disallowed");
+	if (!this->_allowroot) {
+		if (this->_uid == sys::superuser() || this->_gid == sys::supergroup()) {
+			throw std::runtime_error(
+					  "executing as superuser/supergroup is disallowed"
+			);
+		}
 	}
 	// redirect stdout/stderr
 	sys::fildes outfd, errfd;
@@ -187,6 +207,9 @@ bsc::application::execute(const sys::two_way_pipe& pipe) const {
 	}
 	// switch user and group IDs
 	sys::this_process::set_identity(this->_uid, this->_gid);
+	// change working directory
+	if (!this->_workdir.empty()) {
+		sys::this_process::workdir(this->_workdir);
+	}
 	return sys::this_process::exec_command(args.argv(), env.argv());
 }
-
