@@ -75,7 +75,7 @@ namespace bsc {
 			// start processing as early as possible
 			poller().notify_one();
 			lock_type lock(this->_mutex);
-			while (!this->is_stopped()) {
+			while (!this->has_stopped()) {
 				bool timeout = false;
 				if (this->_start_timeout > duration::zero()) {
 					handler_const_iterator result =
@@ -161,7 +161,7 @@ namespace bsc {
 			this->poller().for_each_ordinary_fd(
 				[this,timeout,&now,&i] (sys::poll_event& ev, event_handler_ptr& h) {
 					if (!ev ||
-						h->is_stopped() ||
+						h->has_stopped() ||
 						(timeout && this->is_timed_out(*h, now))) {
 						this->remove_client(h);
 					}
@@ -171,7 +171,7 @@ namespace bsc {
 
 		void
 		process_kernels_if_any() {
-			if (this->is_stopped()) {
+			if (this->has_stopped()) {
 				this->try_to_stop_gracefully();
 			} else {
 				poller().for_each_pipe_fd([this] (sys::poll_event& ev) {

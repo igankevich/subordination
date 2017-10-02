@@ -35,6 +35,14 @@ bsub_exe = executable(
 	install: true
 )
 
+test_application = executable(
+	'test-application',
+	sources: 'test_application.cc',
+	include_directories: [srcdir],
+	dependencies: [unistdx,threads,bscheduler_app],
+	cpp_args: ['-DBSCHEDULER_APPLICATION'],
+)
+
 test(
 	'tree-hierarchy-iterator-test',
 	executable(
@@ -69,7 +77,10 @@ foreach nodes : ['2', '4', '8']
 		test_env.set('_NODES', nodes)
 		test_env.set('_FANOUT', fanout)
 		test_env.set('_NAME', 'c' + suffix + '-')
-		test_env.set('_SUBMIT', bsub_exe.full_path() + ' /usr/bin/pwd')
+		test_env.set(
+			'_SUBMIT',
+			bsub_exe.full_path() + ' ' + test_application.full_path()
+		)
 		# run discovery test over virtual network
 		# using Linux namespaces
 		test(

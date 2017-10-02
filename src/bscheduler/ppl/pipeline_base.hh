@@ -59,13 +59,13 @@ namespace bsc {
 		}
 
 		inline bool
-		is_started() const noexcept {
+		has_started() const noexcept {
 			return this->_state == pipeline_state::started;
 		}
 
 		inline bool
 		is_running() const noexcept {
-			return this->_state == pipeline_state::starting &&
+			return this->_state == pipeline_state::starting ||
 			       this->_state == pipeline_state::started;
 		}
 
@@ -75,7 +75,7 @@ namespace bsc {
 		}
 
 		inline bool
-		is_stopped() const noexcept {
+		has_stopped() const noexcept {
 			return this->_state == pipeline_state::stopped;
 		}
 

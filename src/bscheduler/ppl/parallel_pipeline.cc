@@ -20,7 +20,7 @@ bsc::parallel_pipeline<T>::do_run() {
 				throw;
 			}
 		}
-		return this->is_stopped();
+		return this->has_stopped();
 	});
 }
 

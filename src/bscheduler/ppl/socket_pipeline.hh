@@ -186,6 +186,11 @@ namespace bsc {
 			return *this->_iterator->second;
 		}
 
+		inline client_type&
+		current_client() noexcept {
+			return *this->_iterator->second;
+		}
+
 		inline void
 		advance_client_iterator() noexcept {
 			++this->_iterator;

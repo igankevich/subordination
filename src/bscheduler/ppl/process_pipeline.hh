@@ -57,8 +57,11 @@ namespace bsc {
 		void
 		process_kernels() override;
 
-		void
-		add(const application& app);
+		inline void
+		add(const application& app) {
+			lock_type lock(this->_mutex);
+			this->do_add(app);
+		}
 
 		void
 		do_run() override;
@@ -72,6 +75,9 @@ namespace bsc {
 		}
 
 	private:
+
+		app_iterator
+		do_add(const application& app);
 
 		void
 		process_kernel(kernel_type* k);

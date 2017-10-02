@@ -8,6 +8,7 @@
 #include <unistdx/ipc/process>
 
 #include <bscheduler/kernel/kstream.hh>
+#include <bscheduler/ppl/application.hh>
 #include <bscheduler/ppl/kernel_protocol.hh>
 #include <bscheduler/ppl/pipeline_base.hh>
 
@@ -34,20 +35,24 @@ namespace bsc {
 		kernelbuf_ptr _inbuf;
 		stream_type _istream;
 		protocol_type _proto;
+		application _application;
 
 	public:
 
 		process_handler(
 			sys::pid_type&& child,
-			sys::two_way_pipe&& pipe
+			sys::two_way_pipe&& pipe,
+			const application& app
 		):
 		_childpid(child),
 		_outbuf(new kernelbuf_type),
 		_ostream(_outbuf.get()),
 		_inbuf(new kernelbuf_type),
 		_istream(_inbuf.get()),
-		_proto()
+		_proto(),
+		_application(app)
 		{
+			this->_proto.set_other_application(&this->_application);
 			this->_outbuf->setfd(std::move(pipe.parent_out()));
 			this->_outbuf->fd().validate();
 			this->_inbuf->setfd(std::move(pipe.parent_in()));
@@ -61,7 +66,8 @@ namespace bsc {
 		_ostream(std::move(rhs._ostream)),
 		_inbuf(std::move(rhs._inbuf)),
 		_istream(std::move(rhs._istream)),
-		_proto(std::move(rhs._proto))
+		_proto(std::move(rhs._proto)),
+		_application(std::move(rhs._application))
 		{
 			this->_inbuf->fd().validate();
 			this->_outbuf->fd().validate();
@@ -76,7 +82,8 @@ namespace bsc {
 		_ostream(_outbuf.get()),
 		_inbuf(new kernelbuf_type),
 		_istream(_inbuf.get()),
-		_proto()
+		_proto(),
+		_application()
 		{
 			this->_outbuf->setfd(std::move(pipe.out()));
 			this->_inbuf->setfd(std::move(pipe.in()));
@@ -92,6 +99,11 @@ namespace bsc {
 		const sys::pid_type&
 		childpid() const {
 			return this->_childpid;
+		}
+
+		const application&
+		app() const noexcept {
+			return this->_application;
 		}
 
 		void

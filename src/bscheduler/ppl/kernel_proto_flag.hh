@@ -14,6 +14,7 @@ namespace bsc {
 	public:
 		enum flag_enum: flag_type {
 			prepend_source_and_destination = 1,
+			prepend_application = 2,
 		};
 
 		kernel_proto_flag() = default;

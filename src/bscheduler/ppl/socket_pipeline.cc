@@ -164,7 +164,7 @@ bsc::socket_pipeline<T,S,R>::add_server(
 		this->poller().insert_special(
 			sys::poll_event{fd, sys::poll_event::In}
 		);
-		if (!this->is_stopped()) {
+		if (!this->has_stopped()) {
 			this->_semaphore.notify_one();
 		}
 		fire_event_kernels<router_type>(
@@ -181,20 +181,24 @@ bsc::socket_pipeline<T,S,R>::forward(
 	sys::pstream& istr
 ) {
 	lock_type lock(this->_mutex);
-	this->log("fwd _", hdr);
 	assert(hdr.is_foreign());
 	if (hdr.to()) {
 		event_handler_ptr ptr =
 			this->find_or_create_peer(hdr.to(), sys::poll_event::Inout);
+		this->log("fwd _ to _", hdr, hdr.to());
 		ptr->forward(hdr, istr);
+		this->_semaphore.notify_one();
 	} else {
-		this->find_next_client();
 		if (this->end_reached()) {
 			this->_mutex.unlock();
+			this->log("fwd _ to _", hdr, "localhost");
 			router_type::forward_child(hdr, istr);
 		} else {
-			this->_iterator->second->forward(hdr, istr);
+			this->log("fwd _ to _", hdr, this->current_client().vaddr());
+			this->current_client().forward(hdr, istr);
+			this->_semaphore.notify_one();
 		}
+		this->find_next_client();
 	}
 }
 
@@ -270,18 +274,24 @@ bsc::socket_pipeline<T,S,R>::find_next_client() {
 	}
 	client_iterator old_iterator = this->_iterator;
 	do {
-		if (this->_iterator == this->_clients.end()) {
+		// wrap iterator
+		if (this->end_reached()) {
 			this->_iterator = this->_clients.begin();
-		} else {
+		}
+		// increment
+		if (!this->end_reached()) {
 			if (this->_weightcnt < this->current_client().weight()) {
 				++this->_weightcnt;
 			} else {
 				this->advance_client_iterator();
 			}
 		}
+		// include localhost into round-robin
+		if (this->_uselocalhost && this->end_reached()) {
+			break;
+		}
 		// skip stopped hosts
-		if (this->_iterator != this->_clients.end() &&
-			this->_iterator->second->is_running()) {
+		if (!this->end_reached() && this->current_client().has_started()) {
 			break;
 		}
 	} while (old_iterator != this->_iterator);
@@ -341,7 +351,6 @@ bsc::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 		delete k;
 	} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
 		bool success = false;
-		this->find_next_client();
 		if (this->_uselocalhost) {
 			if (this->end_reached()) {
 				// include localhost in round-robin
@@ -363,6 +372,7 @@ bsc::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 			ensure_identity(k, this->_iterator->second->vaddr());
 			this->_iterator->second->send(k);
 		}
+		this->find_next_client();
 	} else if (k->moves_downstream() and not k->from()) {
 		// kernel @k was sent to local node
 		// because no upstream servers had
@@ -449,7 +459,7 @@ bsc::socket_pipeline<T,S,R>::add_connected_pipeline(
 	#ifndef NDEBUG
 	this->log("add client _", *result.first->second);
 	#endif
-	if (!this->is_stopped()) {
+	if (!this->has_stopped()) {
 		this->_semaphore.notify_one();
 	}
 	fire_event_kernels<router_type>(

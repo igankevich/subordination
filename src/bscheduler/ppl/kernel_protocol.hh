@@ -3,14 +3,17 @@
 
 #include <algorithm>
 #include <deque>
+#include <memory>
+
+#include <unistdx/base/delete_each>
+#include <unistdx/ipc/process>
+#include <unistdx/it/queue_popper>
+
 #include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/kernel/kernel_instance_registry.hh>
 #include <bscheduler/kernel/kstream.hh>
 #include <bscheduler/ppl/application.hh>
 #include <bscheduler/ppl/kernel_proto_flag.hh>
-#include <unistdx/base/delete_each>
-#include <unistdx/it/queue_popper>
-#include <unistdx/ipc/process>
 
 namespace bsc {
 
@@ -35,6 +38,7 @@ namespace bsc {
 		typedef typename T::id_type id_type;
 		typedef sys::ipacket_guard<stream_type> ipacket_guard;
 		typedef sys::opacket_guard<stream_type> opacket_guard;
+		typedef std::unique_ptr<application> application_ptr;
 
 	private:
 		kernel_proto_flag _flags = kernel_proto_flag(0);
@@ -42,6 +46,8 @@ namespace bsc {
 		sys::endpoint _endpoint;
 		/// Cluster-wide application ID.
 		application_type _thisapp = this_application::get_id();
+		/// Application of the kernels coming in.
+		const application* _otheraptr = 0;
 		pool_type _upstream;
 		pool_type _downstream;
 		forward_type _forward;
@@ -97,6 +103,13 @@ namespace bsc {
 			stream_type& ostr
 		) {
 			ostr.begin_packet();
+			if (this->prepends_application()) {
+				const application* a = hdr.aptr();
+				if (!a) {
+					throw std::invalid_argument("no application in header");
+				}
+				ostr << *hdr.aptr();
+			}
 			ostr.append_payload(istr);
 			ostr.end_packet();
 			#ifndef NDEBUG
@@ -198,21 +211,28 @@ namespace bsc {
 		// receive {{{
 		kernel_type*
 		read_kernel(stream_type& stream) {
+			application_ptr aptr = nullptr;
+			if (this->prepends_application()) {
+				aptr = std::make_unique<application>();
+				stream >> *aptr;
+			}
+			kernel_header hdr;
 			kernel_type* k = nullptr;
 			application_type app;
 			stream >> app;
+			if (this->has_other_application()) {
+				app = this->other_application_id();
+				hdr.aptr(this->_otheraptr);
+			}
+			if (this->prepends_application()) {
+				app = aptr->id();
+				hdr.aptr(aptr.get());
+			}
 			if (app != this->_thisapp) {
-				kernel_header hdr;
 				hdr.from(this->_endpoint);
 				hdr.setapp(app);
 				#ifndef NDEBUG
-				sys::log_message(
-					"proto",
-					"fwd _ app=_,pid=_",
-					hdr,
-					_thisapp,
-					sys::this_process::id()
-				);
+				sys::log_message("proto", "fwd _", hdr);
 				#endif
 				this->_forward(hdr, stream);
 				// skip packet even if no forwarding was done
@@ -354,6 +374,26 @@ namespace bsc {
 		has_src_and_dest() const noexcept {
 			return this->_flags &
 				kernel_proto_flag::prepend_source_and_destination;
+		}
+
+		inline bool
+		prepends_application() const noexcept {
+			return this->_flags & kernel_proto_flag::prepend_application;
+		}
+
+		inline bool
+		has_other_application() const noexcept {
+			return this->_otheraptr;
+		}
+
+		inline void
+		set_other_application(const application* rhs) noexcept {
+			this->_otheraptr = rhs;
+		}
+
+		inline application_type
+		other_application_id() const noexcept {
+			return this->_otheraptr->id();
 		}
 
 		inline void

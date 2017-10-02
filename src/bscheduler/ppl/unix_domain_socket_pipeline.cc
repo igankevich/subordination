@@ -139,7 +139,7 @@ bsc::unix_domain_socket_pipeline<K,R>
 		this->poller().insert_special(
 			sys::poll_event {fd, sys::poll_event::In}
 		);
-		if (!this->is_stopped()) {
+		if (!this->has_stopped()) {
 			this->_semaphore.notify_one();
 		}
 	}

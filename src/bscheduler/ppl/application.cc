@@ -1,11 +1,14 @@
 #include "application.hh"
 
 #include <algorithm>
-#include <grp.h>
 #include <ostream>
 #include <random>
 #include <sstream>
+#include <utility>
+
+#include <grp.h>
 #include <stdlib.h>
+
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
@@ -18,6 +21,7 @@
 #define BSCHEDULER_ENV_APPLICATION_ID "BSCHEDULER_APPLICATION_ID"
 #define BSCHEDULER_ENV_PIPE_IN "BSCHEDULER_PIPE_IN"
 #define BSCHEDULER_ENV_PIPE_OUT "BSCHEDULER_PIPE_OUT"
+#define BSCHEDULER_ENV_MASTER "BSCHEDULER_MASTER"
 
 namespace {
 
@@ -50,9 +54,15 @@ namespace {
 		return fd;
 	}
 
+	inline bool
+	get_master() {
+		return std::getenv(BSCHEDULER_ENV_MASTER);
+	}
+
 	bsc::application_type this_app = get_appliction_id();
 	sys::fd_type this_pipe_in = get_pipe_fd(BSCHEDULER_ENV_PIPE_IN);
 	sys::fd_type this_pipe_out = get_pipe_fd(BSCHEDULER_ENV_PIPE_OUT);
+	bool this_is_master = get_master();
 
 	template <class T>
 	inline std::string
@@ -80,6 +90,26 @@ namespace {
 			sys::open_flag::create | sys::open_flag::write_only,
 			0644
 		);
+	}
+
+	void
+	write_vector(sys::pstream& out, const std::vector<std::string>& rhs) {
+		const uint32_t n = rhs.size();
+		out << n;
+		for (uint32_t i=0; i<n; ++i) {
+			out << rhs[i];
+		}
+	}
+
+	void
+	read_vector(sys::pstream& in, std::vector<std::string>& rhs) {
+		rhs.clear();
+		uint32_t n = 0;
+		in >> n;
+		rhs.resize(n);
+		for (uint32_t i=0; i<n; ++i) {
+			in >> rhs[i];
+		}
 	}
 
 }
@@ -112,7 +142,11 @@ bsc::operator<<(std::ostream& out, const application& rhs) {
 		"env",
 		rhs._env,
 		"wd",
-		rhs._workdir
+		rhs._workdir,
+		"master",
+		rhs.is_master(),
+		"slave",
+		rhs.is_slave()
 	    );
 }
 
@@ -132,6 +166,18 @@ sys::fd_type
 bsc::this_application
 ::get_output_fd() noexcept {
 	return this_pipe_out;
+}
+
+bool
+bsc::this_application
+::is_master() noexcept {
+	return this_is_master;
+}
+
+bool
+bsc::this_application
+::is_slave() noexcept {
+	return !this_is_master;
 }
 
 bsc::application
@@ -169,6 +215,10 @@ bsc::application
 			pipe.child_out().get_fd()
 		)
 	);
+	// pass role
+	if (this->is_master()) {
+		env.append(generate_env(BSCHEDULER_ENV_MASTER, 1));
+	}
 	// update path to find executable files from user's PATH
 	auto result =
 		std::find_if(
@@ -212,4 +262,34 @@ bsc::application
 		sys::this_process::workdir(this->_workdir);
 	}
 	return sys::this_process::exec_command(args.argv(), env.argv());
+}
+
+void
+bsc
+::swap(application& lhs, application& rhs) {
+	std::swap(lhs._id, rhs._id);
+	std::swap(lhs._uid, rhs._uid);
+	std::swap(lhs._gid, rhs._gid);
+	std::swap(lhs._args, rhs._args);
+	std::swap(lhs._env, rhs._env);
+	std::swap(lhs._workdir, rhs._workdir);
+	std::swap(lhs._allowroot, rhs._allowroot);
+}
+
+void
+bsc::application
+::write(sys::pstream& out) const {
+	out << this->_id << this->_uid << this->_gid;
+	write_vector(out, this->_args);
+	write_vector(out, this->_env);
+	out << this->_workdir;
+}
+
+void
+bsc::application
+::read(sys::pstream& in) {
+	in >> this->_id >> this->_uid >> this->_gid;
+	read_vector(in, this->_args);
+	read_vector(in, this->_env);
+	in >> this->_workdir;
 }

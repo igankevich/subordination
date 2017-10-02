@@ -62,7 +62,7 @@ namespace bsc {
 			this->_semaphore.wait(
 				lock,
 				[this] () {
-				    return this->is_stopped() || !this->_kernels.empty();
+				    return this->has_stopped() || !this->_kernels.empty();
 				}
 			);
 		}
@@ -72,7 +72,7 @@ namespace bsc {
 			return this->_semaphore.wait_until(
 				lock,
 				k->at(),
-				[this] { return this->is_stopped(); }
+				[this] { return this->has_stopped(); }
 			);
 		}
 

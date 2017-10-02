@@ -49,7 +49,7 @@ namespace bsc {
 
 		void
 		remove_client(event_handler_ptr ptr) override {
-			if (!this->is_stopped()) {
+			if (!this->has_stopped()) {
 				this->stop();
 				// this->factory()->stop();
 			}

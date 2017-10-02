@@ -113,7 +113,7 @@ exec $app >$outdir/$cluster\$1.out 2>&1
 EOF
 chmod +x $script
 for n in $(seq $node0 $node1); do
-	sleep 0.33
+	sleep 0.1
 	nohup ip netns exec $cluster$n timeout 5s unshare -u $script $n >/dev/null 2>&1 &
 done
 
@@ -125,7 +125,7 @@ EOF
 chmod +x $submit_script
 # run submission command (if any) with a delay
 if test -n "$submit"; then
-	sleep 1
+	sleep 2
 	nohup ip netns exec $cluster$node0 unshare -u $submit_script $node0 >$outdir/$cluster-submit.out 2>&1 &
 fi
 wait

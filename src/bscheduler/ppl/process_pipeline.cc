@@ -47,10 +47,9 @@ bsc::process_pipeline<K,R>
 }
 
 template <class K, class R>
-void
+typename bsc::process_pipeline<K,R>::app_iterator
 bsc::process_pipeline<K,R>
-::add(const application& app) {
-	lock_type lock(this->_mutex);
+::do_add(const application& app) {
 	app.allow_root(this->_allowroot);
 	sys::two_way_pipe data_pipe;
 	const sys::process& p = _procs.emplace(
@@ -78,18 +77,13 @@ bsc::process_pipeline<K,R>
 	data_pipe.validate();
 	sys::fd_type parent_in = data_pipe.parent_in().get_fd();
 	sys::fd_type parent_out = data_pipe.parent_out().get_fd();
-//	#ifndef NDEBUG
-//	this->log("exec _,pid=_,in=_,out_", app, p.id(), parent_in, parent_out);
-//	#endif
-	std::clog << "123=" << 123 << std::endl;
 	event_handler_ptr child =
 		std::make_shared<event_handler_type>(
 			p.id(),
-			std::move(data_pipe)
+			std::move(data_pipe),
+			app
 		);
 	child->set_name(this->_name);
-	// child.setparent(this);
-	// assert(child.root() != nullptr);
 	auto result = this->_apps.emplace(app.id(), child);
 	this->poller().enqueue_emplace(
 		sys::poll_event {parent_in, sys::poll_event::In, 0},
@@ -100,17 +94,25 @@ bsc::process_pipeline<K,R>
 		result.first->second
 	);
 	this->poller().notify_one();
+	return result.first;
 }
 
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
 ::forward(const kernel_header& hdr, sys::pstream& istr) {
-	this->log("fwd _", hdr);
+	lock_type lock(this->_mutex);
 	app_iterator result = this->find_by_app_id(hdr.app());
 	if (result == this->_apps.end()) {
-		BSCHEDULER_THROW(error, "bad application id");
+		if (const application* a = hdr.aptr()) {
+			a->make_slave();
+			this->log("fwd: add app _ ", *a);
+			result = this->do_add(*a);
+		} else {
+			BSCHEDULER_THROW(error, "bad application id");
+		}
 	}
+	this->log("fwd _ to _", hdr, hdr.app());
 	result->second->forward(hdr, istr);
 }
 
@@ -143,7 +145,7 @@ bsc::process_pipeline<K,R>
 	using std::this_thread::sleep_for;
 	using std::chrono::milliseconds;
 	lock_type lock(this->_mutex);
-	while (!this->is_stopped()) {
+	while (!this->has_stopped()) {
 		sys::unlock_guard<lock_type> g(lock);
 		using namespace std::placeholders;
 		if (this->_procs.size() == 0) {

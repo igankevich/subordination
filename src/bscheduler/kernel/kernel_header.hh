@@ -12,7 +12,8 @@ namespace bsc {
 	private:
 		sys::endpoint _src{};
 		sys::endpoint _dst{};
-		application_type _app = this_application::get_id();
+		application_type _aid = this_application::get_id();
+		const application* _aptr = nullptr;
 
 	public:
 		kernel_header() = default;
@@ -42,12 +43,12 @@ namespace bsc {
 
 		inline application_type
 		app() const noexcept {
-			return this->_app;
+			return this->_aid;
 		}
 
 		inline void
 		setapp(application_type rhs) noexcept {
-			this->_app = rhs;
+			this->_aid = rhs;
 		}
 
 		inline bool
@@ -57,7 +58,17 @@ namespace bsc {
 
 		inline bool
 		is_native() const noexcept {
-			return this->_app == this_application::get_id();
+			return this->_aid == this_application::get_id();
+		}
+
+		inline const application*
+		aptr() const noexcept {
+			return this->_aptr;
+		}
+
+		inline void
+		aptr(const application* rhs) noexcept {
+			this->_aptr = rhs;
 		}
 
 		friend std::ostream&

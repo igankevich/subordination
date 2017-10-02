@@ -34,6 +34,7 @@ bsc::external_process_handler<K,R>
 			sys::user_credentials creds = this->socket().credentials();
 			app.workdir(k->workdir());
 			app.set_credentials(creds.uid, creds.gid);
+			app.make_master();
 			try {
 				k->application(app.id());
 				router_type::execute(app);

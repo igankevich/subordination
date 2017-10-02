@@ -56,6 +56,7 @@ namespace bsc {
 		_stream(_packetbuf.get()),
 		_proto()
 		{
+			this->_proto.setf(kernel_proto_flag::prepend_application);
 			this->_proto.set_endpoint(this->_vaddr);
 			this->_packetbuf->setfd(std::move(sock));
 		}
@@ -137,7 +138,8 @@ namespace bsc {
 			return out << sys::make_object(
 				"vaddr", rhs.vaddr(),
 				"socket", rhs.socket(),
-				"state", int(rhs.state())
+				"state", int(rhs.state()),
+				"weight", rhs.weight()
 			);
 		}
 
