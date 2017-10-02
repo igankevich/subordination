@@ -5,6 +5,10 @@
 #include <cassert>
 #include <chrono>
 
+#ifndef NDEBUG
+#include <unistdx/util/backtrace>
+#endif
+
 #include <bscheduler/kernel/exit_code.hh>
 #include <bscheduler/kernel/kernel_flag.hh>
 
@@ -26,7 +30,12 @@ namespace bsc {
 	public:
 		virtual
 		~kernel_base() {
+			#ifndef NDEBUG
+			if (this->isset(kernel_flag::deleted)) {
+				sys::backtrace(2);
+			}
 			assert(!this->isset(kernel_flag::deleted));
+			#endif
 			this->setf(kernel_flag::deleted);
 		}
 

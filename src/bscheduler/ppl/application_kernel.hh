@@ -17,6 +17,7 @@ namespace bsc {
 	private:
 		container_type _args, _env;
 		std::string _error;
+		application_type _application = 0;
 
 	public:
 
@@ -55,6 +56,16 @@ namespace bsc {
 		const std::string
 		error() const noexcept {
 			return this->_error;
+		}
+
+		application_type
+		application() const noexcept {
+			return this->_application;
+		}
+
+		inline void
+		application(application_type rhs) noexcept {
+			this->_application = rhs;
 		}
 
 		void

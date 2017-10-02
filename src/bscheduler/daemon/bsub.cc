@@ -49,9 +49,15 @@ public:
 	react(kernel* child) {
 		Application_kernel* app = dynamic_cast<Application_kernel*>(child);
 		if (app->return_code() != bsc::exit_code::success) {
-			std::cerr << app->error() << std::endl;
+			sys::log_message(
+				"bsub",
+				"failed to submit _: _",
+				app->application(),
+				app->error()
+			);
+		} else {
+			sys::log_message("bsub", "submitted _", app->application());
 		}
-		std::clog << "finish" << std::endl;
 		commit<Local>(this, app->return_code());
 	}
 
@@ -66,8 +72,17 @@ int main(int argc, char* argv[]) {
 	bsc::types.register_type<Application_kernel>();
 	factory_guard g;
 	bsc::factory.parent().use_localhost(false);
-	bsc::factory.parent()
-		.add_client(sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET));
-	send<Local>(new Main(argc, argv));
+	try {
+		bsc::factory.parent()
+			.add_client(sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET));
+		bsc::send(new Main(argc, argv));
+	} catch (const std::exception& err) {
+		sys::log_message(
+			"bsub",
+			"failed to connect to daemon process: _",
+			err.what()
+		);
+		bsc::graceful_shutdown(1);
+	}
 	return bsc::wait_and_return();
 }

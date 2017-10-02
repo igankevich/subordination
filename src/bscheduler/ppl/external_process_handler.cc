@@ -34,6 +34,7 @@ bsc::external_process_handler<K,R>
 			sys::user_credentials creds = this->socket().credentials();
 			app.set_credentials(creds.uid, creds.gid);
 			try {
+				k->application(app.id());
 				router_type::execute(app);
 				k->return_to_parent(exit_code::success);
 			} catch (const std::exception& err) {

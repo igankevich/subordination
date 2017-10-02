@@ -252,21 +252,22 @@ namespace autoreg {
 //		std::size_t modulo = homogeneous ? 1 : 2;
 			grid_type grid_2(zsize2[0], max_num_parts);
 			grid_type grid(zsize[0], max_num_parts);
-			generator_type* k = new generator_type(
-				ar_coefs,
-				fsize,
-				var_wn,
-				zsize2,
-				interval,
-				zsize,
-				zdelta,
-				grid,
-				grid_2
-			                         );
+			generator_type* k =
+				new generator_type(
+					ar_coefs,
+					fsize,
+					var_wn,
+					zsize2,
+					interval,
+					zsize,
+					zdelta,
+					grid,
+					grid_2
+				);
 		#if defined(BSCHEDULER_TEST_SLAVE_FAILURE)
 			bsc::upstream(this, k);
 		#else
-			k->setf(bsc::kernel_flag::carries_parent);
+			//k->setf(bsc::kernel_flag::carries_parent);
 			bsc::upstream<bsc::Remote>(this, k);
 		#endif
 		}
