@@ -61,13 +61,14 @@ namespace bsc {
 		add(const application& app) {
 			lock_type lock(this->_mutex);
 			this->do_add(app);
+			this->poller().notify_one();
 		}
 
 		void
 		do_run() override;
 
 		void
-		forward(const kernel_header& hdr, sys::pstream& istr);
+		forward(kernel_header& hdr, sys::pstream& istr);
 
 		inline void
 		allow_root(bool rhs) noexcept {

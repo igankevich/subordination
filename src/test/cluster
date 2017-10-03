@@ -114,7 +114,7 @@ EOF
 chmod +x $script
 for n in $(seq $node0 $node1); do
 	sleep 0.1
-	nohup ip netns exec $cluster$n timeout 5s unshare -u $script $n >/dev/null 2>&1 &
+	nohup ip netns exec $cluster$n timeout 10s unshare -u $script $n >/dev/null 2>&1 &
 done
 
 submit_script=$(mktemp)

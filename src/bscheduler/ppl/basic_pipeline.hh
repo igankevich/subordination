@@ -139,7 +139,7 @@ namespace bsc {
 		void
 		wait() {
 			#ifndef NDEBUG
-			this->log("wait(): pid=_", sys::this_process::id());
+			this->log("wait()");
 			#endif
 			for (std::thread& thr : this->_threads) {
 				if (thr.joinable()) {

@@ -39,6 +39,7 @@ namespace bsc {
 
 	public:
 
+		/// Called from parent process.
 		process_handler(
 			sys::pid_type&& child,
 			sys::two_way_pipe&& pipe,
@@ -57,7 +58,7 @@ namespace bsc {
 			this->_outbuf->fd().validate();
 			this->_inbuf->setfd(std::move(pipe.parent_in()));
 			this->_inbuf->fd().validate();
-//			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
 		}
 
 		process_handler(process_handler&& rhs):
@@ -75,6 +76,7 @@ namespace bsc {
 			this->_ostream.rdbuf(this->_outbuf.get());
 		}
 
+		/// Called from child process.
 		explicit
 		process_handler(sys::pipe&& pipe):
 		_childpid(sys::this_process::id()),
@@ -87,7 +89,7 @@ namespace bsc {
 		{
 			this->_outbuf->setfd(std::move(pipe.out()));
 			this->_inbuf->setfd(std::move(pipe.in()));
-//			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
 		}
 
 		virtual
@@ -121,7 +123,10 @@ namespace bsc {
 		handle(sys::poll_event& event);
 
 		void
-		forward(const kernel_header& hdr, sys::pstream& istr) {
+		forward(kernel_header& hdr, sys::pstream& istr) {
+			// remove application before forwarding
+			// to child process
+			hdr.aptr(nullptr);
 			this->_proto.forward(hdr, istr, this->_ostream);
 		}
 

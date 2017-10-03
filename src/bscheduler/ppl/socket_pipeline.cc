@@ -177,7 +177,7 @@ bsc::socket_pipeline<T,S,R>::add_server(
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>::forward(
-	const kernel_header& hdr,
+	kernel_header& hdr,
 	sys::pstream& istr
 ) {
 	lock_type lock(this->_mutex);

@@ -21,7 +21,7 @@
 #define BSCHEDULER_ENV_APPLICATION_ID "BSCHEDULER_APPLICATION_ID"
 #define BSCHEDULER_ENV_PIPE_IN "BSCHEDULER_PIPE_IN"
 #define BSCHEDULER_ENV_PIPE_OUT "BSCHEDULER_PIPE_OUT"
-#define BSCHEDULER_ENV_MASTER "BSCHEDULER_MASTER"
+#define BSCHEDULER_ENV_SLAVE "BSCHEDULER_MASTER"
 
 namespace {
 
@@ -56,7 +56,7 @@ namespace {
 
 	inline bool
 	get_master() {
-		return std::getenv(BSCHEDULER_ENV_MASTER);
+		return !std::getenv(BSCHEDULER_ENV_SLAVE);
 	}
 
 	bsc::application_type this_app = get_appliction_id();
@@ -216,8 +216,8 @@ bsc::application
 		)
 	);
 	// pass role
-	if (this->is_master()) {
-		env.append(generate_env(BSCHEDULER_ENV_MASTER, 1));
+	if (this->is_slave()) {
+		env.append(generate_env(BSCHEDULER_ENV_SLAVE, 1));
 	}
 	// update path to find executable files from user's PATH
 	auto result =

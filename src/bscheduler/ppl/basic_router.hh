@@ -16,13 +16,13 @@ namespace bsc {
 		send_remote(T*);
 
 		static void
-		forward(const kernel_header& hdr, sys::pstream& istr);
+		forward(kernel_header& hdr, sys::pstream& istr);
 
 		static void
-		forward_child(const kernel_header& hdr, sys::pstream& istr);
+		forward_child(kernel_header& hdr, sys::pstream& istr);
 
 		static void
-		forward_parent(const kernel_header& hdr, sys::pstream& istr);
+		forward_parent(kernel_header& hdr, sys::pstream& istr);
 
 		static void
 		execute(const application& app);

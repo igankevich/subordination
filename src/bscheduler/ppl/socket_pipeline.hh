@@ -110,7 +110,7 @@ namespace bsc {
 		remove_server(const ifaddr_type& ifaddr);
 
 		void
-		forward(const kernel_header& hdr, sys::pstream& istr);
+		forward(kernel_header& hdr, sys::pstream& istr);
 
 		inline void
 		set_port(sys::port_type rhs) noexcept {

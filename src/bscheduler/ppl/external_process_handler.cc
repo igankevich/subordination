@@ -23,10 +23,11 @@ bsc::external_process_handler<K,R>
 		Application_kernel* k = nullptr;
 		try {
 			// eats remaining bytes on exception
-			application_type a;
+			kernel_header::application_ptr ptr = nullptr;
+			kernel_header hdr;
 			ipacket_guard g(stream);
 			kernel_type* tmp = nullptr;
-			stream >> a;
+			stream >> hdr;
 			stream >> tmp;
 			k = dynamic_cast<Application_kernel*>(tmp);
 			this->log("recv _", *k);
@@ -57,7 +58,9 @@ bsc::external_process_handler<K,R>
 			try {
 				opacket_guard g(stream);
 				stream.begin_packet();
-				stream << this_application::get_id();
+				kernel_header hdr;
+				hdr.setapp(this_application::get_id());
+				stream << hdr;
 				stream << k;
 				stream.end_packet();
 			} catch (const error& err) {

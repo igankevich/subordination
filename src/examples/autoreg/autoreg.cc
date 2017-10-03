@@ -10,6 +10,8 @@ main(int argc, char** argv) {
 	types.register_type<autoreg::Generator1<Real,autoreg::Uniform_grid>>();
 	types.register_type<autoreg::Wave_surface_generator<Real,autoreg::Uniform_grid>>();
 	factory_guard g;
-	send(new Autoreg_app);
+	if (this_application::is_master()) {
+		send(new Autoreg_app);
+	}
 	return wait_and_return();
 }

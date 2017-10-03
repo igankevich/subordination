@@ -73,8 +73,6 @@ int main(int argc, char* argv[]) {
 	factory_guard g;
 	bsc::factory.parent().use_localhost(false);
 	try {
-		bsc::factory.parent()
-			.add_client(sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET));
 		bsc::send(new Main(argc, argv));
 	} catch (const std::exception& err) {
 		sys::log_message(

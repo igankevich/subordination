@@ -1,8 +1,8 @@
 #ifndef BSCHEDULER_PPL_REMOTE_CLIENT_HH
 #define BSCHEDULER_PPL_REMOTE_CLIENT_HH
 
-#include <memory>
 #include <cstddef>
+#include <memory>
 
 #include <unistdx/base/delete_each>
 #include <unistdx/io/fildesbuf>
@@ -24,11 +24,13 @@ namespace bsc {
 		typedef pipeline_base base_pipeline;
 		typedef T kernel_type;
 		typedef char Ch;
-		typedef basic_kernelbuf<sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>> kernelbuf_type;
+		typedef sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>
+			fildesbuf_type;
+		typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
 		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
 		typedef kstream<T> stream_type;
 		typedef kernel_protocol<T,Router,bits::forward_to_child<Router>>
-			protocol_type;
+		    protocol_type;
 		typedef Socket socket_type;
 		typedef Router router_type;
 		typedef sys::pid_type app_type;
@@ -54,23 +56,27 @@ namespace bsc {
 		_vaddr(vaddr),
 		_packetbuf(new kernelbuf_type),
 		_stream(_packetbuf.get()),
-		_proto()
-		{
+		_proto() {
 			this->_proto.setf(kernel_proto_flag::prepend_application);
 			this->_proto.set_endpoint(this->_vaddr);
 			this->_packetbuf->setfd(std::move(sock));
 		}
 
-		remote_client& operator=(const remote_client&) = delete;
-		remote_client& operator=(remote_client&&) = delete;
+		remote_client&
+		operator=(const remote_client&) = delete;
+
+		remote_client&
+		operator=(remote_client&&) = delete;
+
 		remote_client(const remote_client&) = delete;
+
 		remote_client(remote_client&& rhs) = delete;
 
 		virtual
 		~remote_client() {
 			// Here failed kernels are written to buffer,
 			// from which they must be recovered with recover_kernels().
-			sys::poll_event ev{socket().fd(), sys::poll_event::In};
+			sys::poll_event ev {socket().fd(), sys::poll_event::In};
 			this->handle(ev);
 			// recover kernels from upstream and downstream buffer
 			this->_proto.recover_kernels(this->socket().error());
@@ -83,7 +89,7 @@ namespace bsc {
 		}
 
 		void
-		forward(const kernel_header& hdr, sys::pstream& istr) {
+		forward(kernel_header& hdr, sys::pstream& istr) {
 			this->_proto.forward(hdr, istr, this->_stream);
 		}
 
@@ -130,17 +136,23 @@ namespace bsc {
 			this->_weight = rhs;
 		}
 
-		const sys::endpoint& vaddr() const { return _vaddr; }
-		void setvaddr(const sys::endpoint& rhs) { _vaddr = rhs; }
+		inline const sys::endpoint&
+		vaddr() const noexcept {
+			return this->_vaddr;
+		}
 
 		friend std::ostream&
 		operator<<(std::ostream& out, const remote_client& rhs) {
 			return out << sys::make_object(
-				"vaddr", rhs.vaddr(),
-				"socket", rhs.socket(),
-				"state", int(rhs.state()),
-				"weight", rhs.weight()
-			);
+				"vaddr",
+				rhs.vaddr(),
+				"socket",
+				rhs.socket(),
+				"state",
+				int(rhs.state()),
+				"weight",
+				rhs.weight()
+			    );
 		}
 
 	};

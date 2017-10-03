@@ -93,14 +93,13 @@ bsc::process_pipeline<K,R>
 		sys::poll_event {parent_out, 0, 0},
 		result.first->second
 	);
-	this->poller().notify_one();
 	return result.first;
 }
 
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
-::forward(const kernel_header& hdr, sys::pstream& istr) {
+::forward(kernel_header& hdr, sys::pstream& istr) {
 	lock_type lock(this->_mutex);
 	app_iterator result = this->find_by_app_id(hdr.app());
 	if (result == this->_apps.end()) {
@@ -114,6 +113,7 @@ bsc::process_pipeline<K,R>
 	}
 	this->log("fwd _ to _", hdr, hdr.app());
 	result->second->forward(hdr, istr);
+	this->poller().notify_one();
 }
 
 template <class K, class R>
@@ -162,12 +162,11 @@ template <class K, class R>
 void
 bsc::process_pipeline<K,R>
 ::on_process_exit(const sys::process& p, sys::proc_info status) {
-	this->log("process exited: _", status);
 	lock_type lock(this->_mutex);
 	app_iterator result = this->find_by_process_id(p.id());
 	if (result != this->_apps.end()) {
 		#ifndef NDEBUG
-		this->log("app finished: app=_", result->first);
+		this->log("app exited: app=_,", result->first, status);
 		#endif
 		result->second->close();
 	}

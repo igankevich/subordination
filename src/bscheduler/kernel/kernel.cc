@@ -24,6 +24,8 @@ bsc::kernel::read(sys::pstream& in) {
 	in >> this->_parent_id;
 	assert(not this->_principal);
 	in >> this->_principal_id;
+	this->setf(kernel_flag::parent_is_id);
+	this->setf(kernel_flag::principal_is_id);
 }
 
 void

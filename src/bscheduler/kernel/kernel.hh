@@ -64,9 +64,16 @@ namespace bsc {
 
 		inline size_t
 		hash() const {
-			return this->_principal && this->_principal->has_id()
-				? this->_principal->id()
-				: size_t(this->_principal) / alignof(size_t);
+			const bool b = this->isset(kernel_flag::principal_is_id);
+			size_t ret;
+			if (b) {
+				ret = this->_principal_id;
+			} else {
+				ret = this->_principal && this->_principal->has_id()
+					? this->_principal->id()
+					: size_t(this->_principal) / alignof(size_t);
+			}
+			return ret;
 		}
 
 		inline bool
@@ -113,6 +120,16 @@ namespace bsc {
 		friend std::ostream&
 		operator<<(std::ostream& out, const kernel& rhs);
 
+		inline const kernel_header&
+		header() const noexcept {
+			return static_cast<const kernel_header&>(*this);
+		}
+
+		inline kernel_header&
+		header() noexcept {
+			return static_cast<kernel_header&>(*this);
+		}
+
 	public:
 
 		/// New API
@@ -133,6 +150,9 @@ namespace bsc {
 		inline void
 		return_to_parent(exit_code ret = exit_code::success) noexcept {
 			return_to(_parent, ret);
+			if (this->from()) {
+				this->to(this->from());
+			}
 		}
 
 		inline void

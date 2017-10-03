@@ -1,4 +1,5 @@
 #include <bscheduler/api.hh>
+#include <bscheduler/base/error_handler.hh>
 
 class slave_kernel: public bsc::kernel {
 
@@ -89,8 +90,11 @@ public:
 
 int main(int argc, char* argv[]) {
 	using namespace bsc;
+	install_error_handler();
 	register_type<slave_kernel>();
 	factory_guard g;
-	send(new master_kernel);
+	if (this_application::is_master()) {
+		send(new master_kernel);
+	}
 	return wait_and_return();
 }

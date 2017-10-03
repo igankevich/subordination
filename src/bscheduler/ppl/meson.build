@@ -30,6 +30,7 @@ install_headers(
 	'compare_time.hh',
 	'external_process_handler.hh',
 	'io_pipeline.hh',
+	'kernel_header_flag.hh',
 	'kernel_proto_flag.hh',
 	'kernel_protocol.hh',
 	'local_server.hh',

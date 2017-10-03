@@ -69,11 +69,24 @@ namespace bsc {
 
 		void
 		send(kernel_type* k, stream_type& stream) {
+			// return local downstream kernels immediately
+			if (k->moves_downstream() && !k->to()) {
+				if (k->isset(kernel_flag::parent_is_id)){
+					this->plug_parent(k);
+				}
+				#ifndef NDEBUG
+				this->log("send local kernel _", *k);
+				#endif
+				router_type::send_local(k);
+				return;
+			}
 			bool delete_kernel = false;
 			if (kernel_goes_in_upstream_buffer(k)) {
 				this->ensure_has_id(k);
 				this->ensure_has_id(k->parent());
-				sys::log_message("proto", "save parent for _", *k);
+				#ifndef NDEBUG
+				this->log("save parent for _", *k);
+				#endif
 				traits_type::push(this->_upstream, k);
 			} else
 			if (kernel_goes_in_downstream_buffer(k)) {
@@ -82,12 +95,9 @@ namespace bsc {
 			if (!k->moves_everywhere()) {
 				delete_kernel = true;
 			}
-			sys::log_message(
-				"proto",
-				"send to _ kernel _",
-				this->_endpoint,
-				*k
-			);
+			#ifndef NDEBUG
+			this->log("send _ to _", *k, this->_endpoint);
+			#endif
 			this->write_kernel(k, stream);
 			/// The kernel is deleted if it goes downstream
 			/// and does not carry its parent.
@@ -98,22 +108,16 @@ namespace bsc {
 
 		void
 		forward(
-			const kernel_header& hdr,
+			kernel_header& hdr,
 			sys::pstream& istr,
 			stream_type& ostr
 		) {
 			ostr.begin_packet();
-			if (this->prepends_application()) {
-				const application* a = hdr.aptr();
-				if (!a) {
-					throw std::invalid_argument("no application in header");
-				}
-				ostr << *hdr.aptr();
-			}
-			ostr.append_payload(istr);
+			ostr << hdr;
+			ostr.append_payload_cur(istr);
 			ostr.end_packet();
 			#ifndef NDEBUG
-			sys::log_message("proto", "forward _", hdr);
+			this->log("fwd _", hdr);
 			#endif
 		}
 
@@ -127,11 +131,7 @@ namespace bsc {
 						bool ok = this->receive_kernel(k);
 						if (!ok) {
 							#ifndef NDEBUG
-							sys::log_message(
-								"proto",
-								"no principal found for _",
-								*k
-							);
+							this->log("no principal found for _", *k);
 							#endif
 							k->principal(k->parent());
 							this->send(k, stream);
@@ -139,24 +139,14 @@ namespace bsc {
 							router_type::send_local(k);
 						}
 					}
+				} catch (const kernel_error& err) {
+					log_read_error(err);
 				} catch (const error& err) {
-					sys::log_message(
-						"proto",
-						"read error _ app=_,pid=_",
-						err,
-						_thisapp,
-						sys::this_process::id()
-					);
+					log_read_error(err);
 				} catch (const std::exception& err) {
-					sys::log_message(
-						"proto",
-						"read error _ app=_,pid=_",
-						err.what(),
-						_thisapp,
-						sys::this_process::id()
-					);
+					log_read_error(err.what());
 				} catch (...) {
-					sys::log_message("proto", "read error _", "<unknown>");
+					log_read_error("<unknown>");
 				}
 			}
 		}
@@ -179,21 +169,23 @@ namespace bsc {
 				stream.begin_packet();
 				this->do_write_kernel(*k, stream);
 				stream.end_packet();
+			} catch (const kernel_error& err) {
+				log_write_error(err);
 			} catch (const error& err) {
-				sys::log_message("proto", "write error _", err);
+				log_write_error(err);
 			} catch (const std::exception& err) {
-				sys::log_message("proto", "write error _", err.what());
+				log_write_error(err.what());
 			} catch (...) {
-				sys::log_message("proto", "write error _", "<unknown>");
+				log_write_error("<unknown>");
 			}
 		}
 
 		void
 		do_write_kernel(kernel_type& k, stream_type& stream) {
-			stream << k.app();
 			if (this->has_src_and_dest()) {
-				stream << k.from() << k.to();
+				k.header().prepend_source_and_destination();
 			}
+			stream << k.header();
 			stream << k;
 		}
 
@@ -211,48 +203,36 @@ namespace bsc {
 		// receive {{{
 		kernel_type*
 		read_kernel(stream_type& stream) {
-			application_ptr aptr = nullptr;
-			if (this->prepends_application()) {
-				aptr = std::make_unique<application>();
-				stream >> *aptr;
-			}
 			kernel_header hdr;
 			kernel_type* k = nullptr;
-			application_type app;
-			stream >> app;
+			stream >> hdr;
 			if (this->has_other_application()) {
-				app = this->other_application_id();
+				hdr.setapp(this->other_application_id());
 				hdr.aptr(this->_otheraptr);
+				if (this->_endpoint) {
+					hdr.from(this->_endpoint);
+					hdr.prepend_source_and_destination();
+				}
 			}
-			if (this->prepends_application()) {
-				app = aptr->id();
-				hdr.aptr(aptr.get());
-			}
-			if (app != this->_thisapp) {
+			#ifndef NDEBUG
+			this->log("recv _", hdr);
+			#endif
+			if (hdr.app() != this->_thisapp) {
 				hdr.from(this->_endpoint);
-				hdr.setapp(app);
-				#ifndef NDEBUG
-				sys::log_message("proto", "fwd _", hdr);
-				#endif
 				this->_forward(hdr, stream);
 				// skip packet even if no forwarding was done
 				stream.skip_packet();
 			} else {
-				const bool b = this->has_src_and_dest();
-				sys::endpoint from, to;
-				if (b) {
-					stream >> from >> to;
-				}
 				stream >> k;
-				k->setapp(app);
-				if (b) {
-					k->from(from);
-					k->to(to);
+				k->setapp(hdr.app());
+				if (hdr.has_source_and_destination()) {
+					k->from(hdr.from());
+					k->to(hdr.to());
 				} else {
 					k->from(this->_endpoint);
 				}
 				if (k->carries_parent()) {
-					k->parent()->setapp(app);
+					k->parent()->setapp(hdr.app());
 				}
 			}
 			return k;
@@ -273,7 +253,7 @@ namespace bsc {
 				k->principal(result->second);
 			}
 			#ifndef NDEBUG
-			sys::log_message("proto", "recv _", *k);
+			this->log("recv _", *k);
 			#endif
 			return ok;
 		}
@@ -289,7 +269,7 @@ namespace bsc {
 				[k] (kernel_type* rhs) { return rhs->id() == k->id(); }
 			);
 			if (pos == this->_upstream.end()) {
-				sys::log_message("proto", "parent not found for _", *k);
+				this->log("parent not found for _", *k);
 				delete k;
 				throw std::invalid_argument("parent not found");
 			} else {
@@ -319,12 +299,12 @@ namespace bsc {
 		recover_kernel(kernel_type* k) {
 			if (k->moves_upstream()) {
 				#ifndef NDEBUG
-				sys::log_message("proto", "recover _", *k);
+				this->log("recover _", *k);
 				#endif
 				router_type::send_remote(k);
 			} else if (k->moves_somewhere()) {
 				#ifndef NDEBUG
-				sys::log_message("proto", "destination is unreachable for _", *k);
+				this->log("destination is unreachable for _", *k);
 				#endif
 				k->from(k->to());
 				k->return_code(exit_code::endpoint_not_connected);
@@ -332,11 +312,11 @@ namespace bsc {
 				router_type::send_local(k);
 			} else if (k->moves_downstream() && k->carries_parent()) {
 				#ifndef NDEBUG
-				sys::log_message("proto", "restore parent _", *k);
+				this->log("restore parent _", *k);
 				#endif
 				router_type::send_local(k);
 			} else {
-				sys::log_message("proto", "bad kernel in sent buffer: _", *k);
+				this->log("bad kernel in sent buffer: _", *k);
 			}
 		}
 		// }}}
@@ -351,6 +331,24 @@ namespace bsc {
 		id_type
 		generate_id() noexcept {
 			return ++this->_counter;
+		}
+
+		template <class E>
+		void
+		log_write_error(const E& err) {
+			this->log("write error _", err);
+		}
+
+		template <class E>
+		void
+		log_read_error(const E& err) {
+			this->log("read error _", err);
+		}
+
+		template <class ... Args>
+		inline void
+		log(const Args& ... args) {
+			sys::log_message("proto", args ...);
 		}
 
 	public:

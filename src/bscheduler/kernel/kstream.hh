@@ -21,7 +21,7 @@ namespace bsc {
 		template <class Router>
 		struct no_forward: public Router {
 			void
-			operator()(const kernel_header&, sys::pstream&) {
+			operator()(kernel_header&, sys::pstream&) {
 				assert("no forwarding");
 			}
 		};
@@ -29,7 +29,7 @@ namespace bsc {
 		template <class Router>
 		struct forward_to_child: public Router {
 			void
-			operator()(const kernel_header& hdr, sys::pstream& istr) {
+			operator()(kernel_header& hdr, sys::pstream& istr) {
 				this->forward_child(hdr, istr);
 			}
 		};
@@ -37,7 +37,7 @@ namespace bsc {
 		template <class Router>
 		struct forward_to_parent: public Router {
 			void
-			operator()(const kernel_header& hdr, sys::pstream& istr) {
+			operator()(kernel_header& hdr, sys::pstream& istr) {
 				this->forward_parent(hdr, istr);
 			}
 		};
@@ -52,13 +52,13 @@ namespace bsc {
 			send_remote(T*) {}
 
 			void
-			forward(const kernel_header&, sys::pstream&) {}
+			forward(kernel_header&, sys::pstream&) {}
 
 			void
-			forward_child(const kernel_header&, sys::pstream&) {}
+			forward_child(kernel_header&, sys::pstream&) {}
 
 			void
-			forward_parent(const kernel_header&, sys::pstream&) {}
+			forward_parent(kernel_header&, sys::pstream&) {}
 
 		};
 	}
