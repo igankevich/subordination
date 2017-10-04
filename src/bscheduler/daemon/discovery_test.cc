@@ -111,8 +111,7 @@ TEST(Discovery, Slaves) {
 		if (n == 2) {
 			expect_event_sequence(2, {
 				R"(^.*add ifaddr 10\.0\.0\.2.*$)",
-				R"(^.*set principal to 10\.0\.0\.1.*$)",
-				R"(^.*unset principal 10\.0\.0\.1.*$)"
+				R"(^.*set principal to 10\.0\.0\.1.*$)"
 			});
 			expect_event(2, R"(^.*set 10\.0\.0\.1.*weight to 1$)");
 		} else {
