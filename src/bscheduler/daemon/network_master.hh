@@ -91,8 +91,12 @@ namespace bsc {
 
 		inline bool
 		is_allowed(const ifaddr_type& rhs) const {
-			return this->_allowedifaddrs.find(rhs) !=
-			       this->_allowedifaddrs.end();
+			for (const ifaddr_type& ifa : this->_allowedifaddrs) {
+				if (ifa.contains(rhs.address())) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 	};
