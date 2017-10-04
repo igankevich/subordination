@@ -166,7 +166,7 @@ bsc::process_pipeline<K,R>
 	app_iterator result = this->find_by_process_id(p.id());
 	if (result != this->_apps.end()) {
 		#ifndef NDEBUG
-		this->log("app exited: app=_,", result->first, status);
+		this->log("app exited: app=_,_", result->first, status);
 		#endif
 		result->second->close();
 	}
