@@ -70,12 +70,13 @@ fi
 if test -z "$outdir"; then
 	outdir=/tmp
 fi
-mkdir -p $outdir
 
 export PATH=$PATH:/sbin
 mount -t sysfs sysfs /sys
 mount -t tmpfs tmpfs /run
 chmod 777 /run
+
+mkdir -p $outdir
 
 del_cluster
 for n in $(seq $node0 $node1); do
@@ -120,13 +121,13 @@ done
 submit_script=$(mktemp)
 cat >$submit_script << EOF
 hostname m\$1
-$submit 
+sleep 2
+exec $submit >$outdir/${cluster}submit.out 2>&1
 EOF
 chmod +x $submit_script
 # run submission command (if any) with a delay
 if test -n "$submit"; then
-	sleep 2
-	nohup ip netns exec $cluster$node0 unshare -u $submit_script $node0 >$outdir/$cluster-submit.out 2>&1 &
+	nohup ip netns exec $cluster$node0 unshare -u $submit_script $node0 >/dev/null 2>&1 &
 fi
 wait
 
