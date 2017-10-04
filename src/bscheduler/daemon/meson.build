@@ -57,42 +57,47 @@ test(
 	)
 )
 
-discovery_test = executable(
-	'discovery-test',
-	sources: 'discovery_test.cc',
-	include_directories: [srcdir],
-	dependencies: [unistdx,threads,bscheduler_daemon,gtest],
-	cpp_args: ['-DBSCHEDULER_DAEMON'],
-)
 
-foreach nodes : ['2', '4', '8']
-	foreach fanout : ['1000', '2']
-		suffix = '-' + nodes + '-' + fanout
-		test_env = environment()
-		test_env.set(
-			'_CLUSTER',
-			join_paths(meson.source_root(), 'src', 'test', 'cluster')
-		)
-		test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
-		test_env.set('_NODES', nodes)
-		test_env.set('_FANOUT', fanout)
-		test_env.set('_NAME', 'c' + suffix + '-')
-		test_env.set(
-			'_SUBMIT',
-			bsub_exe.full_path() + ' ' + test_application.full_path()
-		)
-		# run discovery test over virtual network
-		# using Linux namespaces
-		test(
-			'discovery-test' + suffix,
-			discovery_test,
-			args: [
-				bscheduler_exe.full_path(),
-				'fanout=' + fanout,
-				'allow_root=1'
-			],
-			env: test_env,
-			workdir: meson.build_root()
-		)
+if get_option('buildtype') != 'release'
+
+	discovery_test = executable(
+		'discovery-test',
+		sources: 'discovery_test.cc',
+		include_directories: [srcdir],
+		dependencies: [unistdx,threads,bscheduler_daemon,gtest],
+		cpp_args: ['-DBSCHEDULER_DAEMON'],
+	)
+	
+	foreach nodes : ['2', '4', '8']
+		foreach fanout : ['1000', '2']
+			suffix = '-' + nodes + '-' + fanout
+			test_env = environment()
+			test_env.set(
+				'_CLUSTER',
+				join_paths(meson.source_root(), 'src', 'test', 'cluster')
+			)
+			test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
+			test_env.set('_NODES', nodes)
+			test_env.set('_FANOUT', fanout)
+			test_env.set('_NAME', 'c' + suffix + '-')
+			test_env.set(
+				'_SUBMIT',
+				bsub_exe.full_path() + ' ' + test_application.full_path()
+			)
+			# run discovery test over virtual network
+			# using Linux namespaces
+			test(
+				'discovery-test' + suffix,
+				discovery_test,
+				args: [
+					bscheduler_exe.full_path(),
+					'fanout=' + fanout,
+					'allow_root=1'
+				],
+				env: test_env,
+				workdir: meson.build_root()
+			)
+		endforeach
 	endforeach
-endforeach
+
+endif
