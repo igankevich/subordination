@@ -58,8 +58,7 @@ test(
 )
 
 
-if get_option('buildtype') != 'release'
-
+if get_option('buildtype') == 'debug'
 	discovery_test = executable(
 		'discovery-test',
 		sources: 'discovery_test.cc',
@@ -67,7 +66,6 @@ if get_option('buildtype') != 'release'
 		dependencies: [unistdx,threads,bscheduler_daemon,gtest],
 		cpp_args: ['-DBSCHEDULER_DAEMON'],
 	)
-	
 	foreach nodes : ['2', '4', '8']
 		foreach fanout : ['1000', '2']
 			suffix = '-' + nodes + '-' + fanout
@@ -99,5 +97,4 @@ if get_option('buildtype') != 'release'
 			)
 		endforeach
 	endforeach
-
 endif

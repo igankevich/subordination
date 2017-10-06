@@ -45,8 +45,8 @@ public:
 class master_kernel: public bsc::kernel {
 
 private:
-	uint32_t _nkernels = 10;
-	uint32_t _nreturned = 0;
+	volatile uint32_t _nkernels = 10000;
+	volatile uint32_t _nreturned = 0;
 
 public:
 

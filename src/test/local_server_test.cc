@@ -58,8 +58,8 @@ TEST(LocalServer, IntersectIpV4) {
 	id_type id3 = 0;
 	for (id_type i=0; i<cnt; ++i) {
 		EXPECT_LE(i+1, std::numeric_limits<unsigned char>::max());
-		unsigned char uc = i;
-		ifaddr_type new_ifaddr{{127,0,0,1+uc}, 24};
+		unsigned char uc = i + 1;
+		ifaddr_type new_ifaddr{{127,0,0,uc}, 24};
 		bsc::determine_id_range(new_ifaddr, id2, id3);
 		EXPECT_LE(id0, id1);
 		EXPECT_EQ(id1, id2);

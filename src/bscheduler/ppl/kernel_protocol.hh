@@ -70,6 +70,7 @@ namespace bsc {
 		void
 		send(kernel_type* k, stream_type& stream) {
 			// return local downstream kernels immediately
+			/*
 			if (k->moves_downstream() && !k->to()) {
 				if (k->isset(kernel_flag::parent_is_id)){
 					this->plug_parent(k);
@@ -80,10 +81,11 @@ namespace bsc {
 				router_type::send_local(k);
 				return;
 			}
+			*/
 			bool delete_kernel = false;
 			if (kernel_goes_in_upstream_buffer(k)) {
-				this->ensure_has_id(k);
 				this->ensure_has_id(k->parent());
+				this->ensure_has_id(k);
 				#ifndef NDEBUG
 				this->log("save parent for _", *k);
 				#endif
