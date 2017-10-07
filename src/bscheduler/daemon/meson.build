@@ -78,10 +78,12 @@ if get_option('buildtype') == 'debug'
 			test_env.set('_NODES', nodes)
 			test_env.set('_FANOUT', fanout)
 			test_env.set('_NAME', 'c' + suffix + '-')
-			test_env.set(
-				'_SUBMIT',
-				bsub_exe.full_path() + ' ' + test_application.full_path()
-			)
+			if nodes == 2 and fanout == 2
+				test_env.set(
+					'_SUBMIT',
+					bsub_exe.full_path() + ' ' + test_application.full_path()
+				)
+			endif
 			# run discovery test over virtual network
 			# using Linux namespaces
 			test(

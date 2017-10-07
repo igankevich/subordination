@@ -70,7 +70,8 @@ namespace bsc {
 		void
 		send(kernel_type* k, stream_type& stream) {
 			// return local downstream kernels immediately
-			/*
+			// TODO we need to move some kernel flags to
+			// kernel header in order to use them in routing
 			if (k->moves_downstream() && !k->to()) {
 				if (k->isset(kernel_flag::parent_is_id)){
 					this->plug_parent(k);
@@ -81,7 +82,6 @@ namespace bsc {
 				router_type::send_local(k);
 				return;
 			}
-			*/
 			bool delete_kernel = false;
 			if (kernel_goes_in_upstream_buffer(k)) {
 				this->ensure_has_id(k->parent());
@@ -211,16 +211,15 @@ namespace bsc {
 			if (this->has_other_application()) {
 				hdr.setapp(this->other_application_id());
 				hdr.aptr(this->_otheraptr);
-				if (this->_endpoint) {
-					hdr.from(this->_endpoint);
-					hdr.prepend_source_and_destination();
-				}
+			}
+			if (this->_endpoint) {
+				hdr.from(this->_endpoint);
+				hdr.prepend_source_and_destination();
 			}
 			#ifndef NDEBUG
 			this->log("recv _", hdr);
 			#endif
 			if (hdr.app() != this->_thisapp) {
-				hdr.from(this->_endpoint);
 				this->_forward(hdr, stream);
 			} else {
 				stream >> k;

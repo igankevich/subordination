@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include "test_application.hh"
+
 const std::string
 cluster_name() {
 	return std::getenv("_NAME");
@@ -71,6 +73,25 @@ expect_event_sequence(
 }
 
 void
+expect_event_count(
+	const std::string& filename,
+	const std::string& regex_string,
+	size_t expected_count
+) {
+	std::ifstream in(filename);
+	EXPECT_TRUE(in.is_open()) << "filename=" << filename;
+	std::regex expr(regex_string);
+	std::string line;
+	size_t count = 0;
+	while (std::getline(in, line)) {
+		if (std::regex_match(line, expr)) {
+			++count;
+		}
+	}
+	EXPECT_EQ(expected_count, count);
+}
+
+void
 expect_event_sequence(int n, const std::vector<std::string>& regex_strings) {
 	expect_event_sequence(get_process_output_filename(n), regex_strings);
 }
@@ -78,6 +99,15 @@ expect_event_sequence(int n, const std::vector<std::string>& regex_strings) {
 void
 expect_event(int n, const std::string& regex_string) {
 	expect_event_sequence(get_process_output_filename(n), {regex_string});
+}
+
+void
+expect_event_count(int n, const std::string& regex_string, size_t count) {
+	expect_event_count(
+		get_process_output_filename(n),
+		regex_string,
+		count
+	);
 }
 
 TEST(Discovery, Daemon) {
@@ -188,6 +218,12 @@ TEST(Discovery, Fanout2Weights) {
 	}
 }
 
+TEST(Discovery, TestApplication) {
+	if (const char* submit = std::getenv("_SUBMIT")) {
+		expect_event(1, R"(^.*app exited:.*status=exited,exit_code=0.*$)");
+	}
+}
+
 int main(int argc, char* argv[]) {
 	sys::mkdirs(sys::path("."), sys::path(BSCHEDULER_LOG_DIRECTORY "/"));
 	_num_nodes = std::atoi(std::getenv("_NODES"));
@@ -206,8 +242,10 @@ int main(int argc, char* argv[]) {
 	args.append(s);
 	args.append("--outdir");
 	args.append(std::getenv("_LOGDIR"));
-	args.append("--submit");
-	args.append(std::getenv("_SUBMIT"));
+	if (const char* submit = std::getenv("_SUBMIT")) {
+		args.append("--submit");
+		args.append(submit);
+	}
 	args.append("--");
 	for (int i=1; i<argc; ++i) {
 		args.append(argv[i]);

@@ -1,6 +1,8 @@
 #include <bscheduler/api.hh>
 #include <bscheduler/base/error_handler.hh>
 
+#include "test_application.hh"
+
 class slave_kernel: public bsc::kernel {
 
 private:
@@ -45,8 +47,8 @@ public:
 class master_kernel: public bsc::kernel {
 
 private:
-	volatile uint32_t _nkernels = 10000;
-	volatile uint32_t _nreturned = 0;
+	uint32_t _nkernels = BSCHEDULER_TEST_NUM_KERNELS;
+	uint32_t _nreturned = 0;
 
 public:
 
