@@ -58,7 +58,7 @@ test(
 )
 
 
-if get_option('buildtype') == 'debug'
+if get_option('buildtype').contains('debug')
 	discovery_test = executable(
 		'discovery-test',
 		sources: 'discovery_test.cc',

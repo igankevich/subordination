@@ -6,7 +6,7 @@ project(
 	default_options: ['cpp_std=c++14']
 )
 
-if get_option('buildtype') == 'release'
+if not get_option('buildtype').contains('debug')
 	add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 
@@ -120,5 +120,20 @@ pkgconfig.generate(
 	name: 'bscheduler-submit',
 	filebase: 'bscheduler-submit',
 	description: 'Distributed programming C++ framework',
+)
+# }}}
+# archive {{{
+archive_name = meson.project_name() + '-' + meson.project_version()
+run_target(
+	'archive',
+	command: [
+		'git',
+		'archive',
+		'-o',
+		join_paths(meson.build_root(), archive_name + '.tar.xz'),
+		'--prefix',
+		archive_name + '/',
+		'HEAD'
+	]
 )
 # }}}
