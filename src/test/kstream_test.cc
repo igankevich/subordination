@@ -182,6 +182,7 @@ TYPED_TEST(KernelStreamTest, IO) {
 		fildesbuf_type;
 	typedef bsc::basic_kernelbuf<fildesbuf_type> buffer_type;
 	typedef bsc::kstream<kernel_type> stream_type;
+	typedef typename stream_type::ipacket_guard ipacket_guard;
 	for (size_t count=1; count<=100; ++count) {
 		std::vector<Carrier> expected(count);
 		std::vector<kernel_type*> result(count);
@@ -197,8 +198,8 @@ TYPED_TEST(KernelStreamTest, IO) {
 		for (size_t i=0; i<count; ++i) {
 			stream.sync();
 			stream.read_packet();
+			ipacket_guard g(&buffer);
 			stream >> result[i];
-			stream.skip_packet();
 		}
 		for (size_t i=0; i<result.size(); ++i) {
 			Carrier* tmp = dynamic_cast<Carrier*>(result[i]);

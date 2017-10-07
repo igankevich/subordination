@@ -29,7 +29,7 @@ namespace bsc {
 			kernelbuf_type;
 		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
 		typedef kstream<T> stream_type;
-		typedef sys::ipacket_guard<stream_type> ipacket_guard;
+		typedef typename stream_type::ipacket_guard ipacket_guard;
 		typedef sys::opacket_guard<stream_type> opacket_guard;
 
 	private:

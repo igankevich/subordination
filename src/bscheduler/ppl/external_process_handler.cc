@@ -25,7 +25,7 @@ bsc::external_process_handler<K,R>
 			// eats remaining bytes on exception
 			kernel_header::application_ptr ptr = nullptr;
 			kernel_header hdr;
-			ipacket_guard g(stream);
+			ipacket_guard g(stream.rdbuf());
 			kernel_type* tmp = nullptr;
 			stream >> hdr;
 			stream >> tmp;

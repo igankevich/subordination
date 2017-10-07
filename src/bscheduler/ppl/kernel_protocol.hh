@@ -36,7 +36,7 @@ namespace bsc {
 		typedef kstream<T> stream_type;
 		typedef sys::queue_pop_iterator<Kernels,Traits> queue_popper;
 		typedef typename T::id_type id_type;
-		typedef sys::ipacket_guard<stream_type> ipacket_guard;
+		typedef typename stream_type::ipacket_guard ipacket_guard;
 		typedef sys::opacket_guard<stream_type> opacket_guard;
 		typedef std::unique_ptr<application> application_ptr;
 
@@ -127,8 +127,6 @@ namespace bsc {
 		receive_kernels(stream_type& stream) noexcept {
 			while (stream.read_packet()) {
 				try {
-					// eats remaining bytes on exception
-					ipacket_guard g(stream);
 					if (kernel_type* k = this->read_kernel(stream)) {
 						bool ok = this->receive_kernel(k);
 						if (!ok) {
@@ -205,6 +203,8 @@ namespace bsc {
 		// receive {{{
 		kernel_type*
 		read_kernel(stream_type& stream) {
+			// eats remaining bytes on exception
+			ipacket_guard g(stream.rdbuf());
 			kernel_header hdr;
 			kernel_type* k = nullptr;
 			stream >> hdr;
@@ -222,8 +222,6 @@ namespace bsc {
 			if (hdr.app() != this->_thisapp) {
 				hdr.from(this->_endpoint);
 				this->_forward(hdr, stream);
-				// skip packet even if no forwarding was done
-				stream.skip_packet();
 			} else {
 				stream >> k;
 				k->setapp(hdr.app());
