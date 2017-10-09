@@ -49,7 +49,7 @@ bsc::network_master
 	using namespace std::chrono;
 	this->_timer = new network_timer;
 	this->_timer->after(this->_interval);
-	bsc::send<>(this->_timer, this);
+	bsc::send(this->_timer, this);
 }
 
 void

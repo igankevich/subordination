@@ -84,6 +84,13 @@ bsc::process_pipeline<K,R>
 			app
 		);
 	child->set_name(this->_name);
+	this->log(
+		"executing app=_,credentials=_:_,role=_",
+		app.id(),
+		app.uid(),
+		app.gid(),
+		app.role()
+	);
 	auto result = this->_apps.emplace(app.id(), child);
 	this->poller().enqueue_emplace(
 		sys::poll_event {parent_in, sys::poll_event::In, 0},
@@ -165,9 +172,7 @@ bsc::process_pipeline<K,R>
 	lock_type lock(this->_mutex);
 	app_iterator result = this->find_by_process_id(p.id());
 	if (result != this->_apps.end()) {
-		#ifndef NDEBUG
 		this->log("app exited: app=_,_", result->first, status);
-		#endif
 		result->second->close();
 	}
 }

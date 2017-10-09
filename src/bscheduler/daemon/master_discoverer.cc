@@ -67,11 +67,9 @@ void
 bsc::master_discoverer::send_timer() {
 	this->setstate(state_type::waiting);
 	using namespace std::chrono;
-	if (!this->_timer) {
-		this->_timer = new discovery_timer;
-	}
-	this->_timer->after(this->_interval);
-	bsc::send<>(this->_timer, this);
+	discovery_timer* k = new discovery_timer;
+	k->after(this->_interval);
+	bsc::send(k, this);
 }
 
 void

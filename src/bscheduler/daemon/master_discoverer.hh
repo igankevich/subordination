@@ -59,7 +59,6 @@ namespace bsc {
 		uint_type _fanout = 10000;
 		hierarchy_type _hierarchy;
 		iterator _iterator, _end;
-		discovery_timer* _timer = nullptr;
 		state_type _state = state_type::initial;
 
 	public:
