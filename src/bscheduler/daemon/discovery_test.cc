@@ -219,7 +219,7 @@ TEST(Discovery, Fanout2Weights) {
 }
 
 TEST(Discovery, TestApplication) {
-	if (const char* submit = std::getenv("_SUBMIT")) {
+	if (std::getenv("_SUBMIT")) {
 		expect_event(1, R"(^.*app exited:.*status=exited,exit_code=0.*$)");
 	}
 }

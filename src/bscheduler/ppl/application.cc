@@ -143,10 +143,8 @@ bsc::operator<<(std::ostream& out, const application& rhs) {
 		rhs._env,
 		"wd",
 		rhs._workdir,
-		"master",
-		rhs.is_master(),
-		"slave",
-		rhs.is_slave()
+		"role",
+		rhs.role()
 	    );
 }
 
@@ -293,3 +291,9 @@ bsc::application
 	read_vector(in, this->_env);
 	in >> this->_workdir;
 }
+
+std::ostream&
+bsc::operator<<(std::ostream& out, process_role_type rhs) {
+	return out << (rhs == process_role_type::master ? "master" : "slave");
+}
+

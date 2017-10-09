@@ -14,18 +14,20 @@ namespace bsc {
 
 	typedef uint64_t application_type;
 
+	enum class process_role_type {
+		master,
+		slave
+	};
+
+	std::ostream&
+	operator<<(std::ostream& out, process_role_type rhs);
+
 	class application {
 
 	public:
 		typedef std::string path_type;
 		typedef application_type id_type;
 		typedef std::vector<std::string> container_type;
-
-	private:
-		enum class process_role_type {
-			master,
-			slave
-		};
 
 	private:
 		id_type _id = 0;
@@ -69,6 +71,16 @@ namespace bsc {
 			return this->_id;
 		}
 
+		inline sys::uid_type
+		uid() const noexcept {
+			return this->_uid;
+		}
+
+		inline sys::gid_type
+		gid() const noexcept {
+			return this->_gid;
+		}
+
 		const std::string&
 		filename() const noexcept {
 			return this->_args.front();
@@ -92,6 +104,11 @@ namespace bsc {
 		inline bool
 		is_slave() const noexcept {
 			return this->_processrole == process_role_type::slave;
+		}
+
+		inline process_role_type
+		role() const noexcept {
+			return this->_processrole;
 		}
 
 		int

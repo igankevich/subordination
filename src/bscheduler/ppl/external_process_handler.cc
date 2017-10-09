@@ -30,7 +30,9 @@ bsc::external_process_handler<K,R>
 			stream >> hdr;
 			stream >> tmp;
 			k = dynamic_cast<Application_kernel*>(tmp);
+			#ifndef NDEBUG
 			this->log("recv _", *k);
+			#endif
 			application app(k->arguments(), k->environment());
 			sys::user_credentials creds = this->socket().credentials();
 			app.workdir(k->workdir());
