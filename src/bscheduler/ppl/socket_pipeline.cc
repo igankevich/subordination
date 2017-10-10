@@ -190,15 +190,16 @@ bsc::socket_pipeline<T,S,R>::forward(
 		this->_semaphore.notify_one();
 	} else {
 		if (this->end_reached()) {
+			this->find_next_client();
 			this->_mutex.unlock();
 			this->log("fwd _ to _", hdr, "localhost");
 			router_type::forward_child(hdr, istr);
 		} else {
 			this->log("fwd _ to _", hdr, this->current_client().vaddr());
 			this->current_client().forward(hdr, istr);
+			this->find_next_client();
 			this->_semaphore.notify_one();
 		}
-		this->find_next_client();
 	}
 }
 
@@ -320,7 +321,7 @@ bsc::socket_pipeline<T,S,R>::emplace_pipeline(
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>::process_kernels() {
-	lock_type lock(this->_mutex);
+//	lock_type lock(this->_mutex);
 	std::for_each(
 		sys::queue_popper(this->_kernels),
 		sys::queue_popper_end(this->_kernels),
@@ -450,6 +451,7 @@ bsc::socket_pipeline<T,S,R>::add_connected_pipeline(
 			vaddr
 		);
 	s->setstate(pipeline_state::starting);
+	s->set_name(this->_name);
 	// s.setparent(this);
 	auto result = emplace_pipeline(vaddr, std::move(s));
 	this->poller().emplace(

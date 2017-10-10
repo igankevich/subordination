@@ -10,6 +10,7 @@ bsc::process_handler<K,R>
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
 	}
+	this->log("_ _", __func__, event);
 	if (event.fd() == this->_outbuf->fd()) {
 		this->_ostream.sync();
 		if (this->_outbuf->dirty()) {

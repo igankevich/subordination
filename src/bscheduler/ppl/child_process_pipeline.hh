@@ -50,14 +50,14 @@ namespace bsc {
 		void
 		remove_client(event_handler_ptr ptr) override {
 			if (!this->has_stopped()) {
-				this->stop();
-				// this->factory()->stop();
+				this->xstop();
+				this->poller().notify_one();
 			}
 		}
 
 		void
 		process_kernels() override {
-			lock_type lock(this->_mutex);
+//			lock_type lock(this->_mutex);
 			std::for_each(
 				queue_popper(this->_kernels),
 				queue_popper(),

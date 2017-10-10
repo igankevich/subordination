@@ -6,8 +6,10 @@
 #include <queue>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 #include <unistdx/base/log_message>
+#include <unistdx/base/recursive_spin_mutex>
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
 #include <unistdx/io/fildesbuf>
@@ -24,8 +26,8 @@ namespace bsc {
 	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
 	using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
-		//std::mutex, std::unique_lock<std::mutex>,
-		sys::spin_mutex, sys::simple_lock<sys::spin_mutex>,
+//		std::recursive_mutex, std::unique_lock<std::recursive_mutex>,
+		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
 		sys::event_poller<std::shared_ptr<Handler>>>;
 
 	template<class T, class Handler>
@@ -73,10 +75,11 @@ namespace bsc {
 		void
 		do_run() override {
 			// start processing as early as possible
-			poller().notify_one();
+			//poller().notify_one();
 			lock_type lock(this->_mutex);
 			while (!this->has_stopped()) {
 				bool timeout = false;
+				this->log("while");
 				if (this->_start_timeout > duration::zero()) {
 					handler_const_iterator result =
 						this->handler_with_min_start_time_point();
@@ -90,7 +93,7 @@ namespace bsc {
 				if (!timeout) {
 					this->poller().wait(lock);
 				}
-				sys::unlock_guard<lock_type> g(lock);
+				//sys::unlock_guard<lock_type> g(lock);
 				process_kernels_if_any();
 				accept_connections_if_any();
 				handle_events();
@@ -189,11 +192,7 @@ namespace bsc {
 					try {
 						this->accept_connection(ev);
 					} catch (const std::exception& err) {
-						sys::log_message(
-							this->_name,
-							"failed to accept connection: _",
-							err.what()
-						);
+						this->log("failed to accept connection: _", err.what());
 					}
 				}
 			});

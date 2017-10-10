@@ -52,6 +52,7 @@ namespace bsc {
 		pool_type _downstream;
 		forward_type _forward;
 		id_type _counter = 0;
+		const char* _name = "proto";
 
 	public:
 
@@ -118,9 +119,6 @@ namespace bsc {
 			ostr << hdr;
 			ostr.append_payload_cur(istr);
 			ostr.end_packet();
-			#ifndef NDEBUG
-			this->log("fwd _", hdr);
-			#endif
 		}
 
 		void
@@ -165,7 +163,7 @@ namespace bsc {
 		void
 		write_kernel(kernel_type* k, stream_type& stream) noexcept {
 			try {
-				opacket_guard g(stream);
+				//opacket_guard g(stream);
 				stream.begin_packet();
 				this->do_write_kernel(*k, stream);
 				stream.end_packet();
@@ -347,10 +345,15 @@ namespace bsc {
 		template <class ... Args>
 		inline void
 		log(const Args& ... args) {
-			sys::log_message("proto", args ...);
+			sys::log_message(this->_name, args ...);
 		}
 
 	public:
+
+		inline void
+		set_name(const char* rhs) noexcept {
+			this->_name = rhs;
+		}
 
 		inline void
 		setf(kernel_proto_flag rhs) noexcept {

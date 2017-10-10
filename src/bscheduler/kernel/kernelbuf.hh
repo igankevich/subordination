@@ -27,10 +27,7 @@ namespace bsc {
 		typedef sys::bytes<portable_size_type, char_type> bytes_type;
 
 	public:
-		basic_kernelbuf() {
-			this->set_oheader(header_size());
-		}
-
+		basic_kernelbuf() = default;
 		virtual ~basic_kernelbuf() = default;
 
 		basic_kernelbuf(basic_kernelbuf&&) = delete;

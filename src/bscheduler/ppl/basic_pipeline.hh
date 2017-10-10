@@ -132,7 +132,7 @@ namespace bsc {
 		void
 		stop() {
 			lock_type lock(this->_mutex);
-			this->setstate(pipeline_state::stopped);
+			this->xstop();
 			this->_semaphore.notify_all();
 		}
 
@@ -154,6 +154,11 @@ namespace bsc {
 		}
 
 	protected:
+
+		inline void
+		xstop() {
+			this->setstate(pipeline_state::stopped);
+		}
 
 		virtual void
 		do_run() = 0;

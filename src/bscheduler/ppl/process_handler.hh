@@ -130,6 +130,20 @@ namespace bsc {
 			this->_proto.forward(hdr, istr, this->_ostream);
 		}
 
+		inline void
+		set_name(const char* rhs) noexcept {
+			this->pipeline_base::set_name(rhs);
+			this->_proto.set_name(rhs);
+			#ifndef NDEBUG
+			if (this->_inbuf) {
+				this->_inbuf->set_name(rhs);
+			}
+			if (this->_outbuf) {
+				this->_outbuf->set_name(rhs);
+			}
+			#endif
+		}
+
 	};
 
 }

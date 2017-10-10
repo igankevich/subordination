@@ -18,7 +18,7 @@ template <class K, class R>
 void
 bsc::process_pipeline<K,R>
 ::process_kernels() {
-	lock_type lock(this->_mutex);
+//	lock_type lock(this->_mutex);
 	std::for_each(
 		queue_popper(this->_kernels),
 		queue_popper(),

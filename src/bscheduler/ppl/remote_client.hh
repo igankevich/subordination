@@ -141,6 +141,17 @@ namespace bsc {
 			return this->_vaddr;
 		}
 
+		inline void
+		set_name(const char* rhs) noexcept {
+			this->pipeline_base::set_name(rhs);
+			this->_proto.set_name(rhs);
+			#ifndef NDEBUG
+			if (this->_packetbuf) {
+				this->_packetbuf->set_name(rhs);
+			}
+			#endif
+		}
+
 		friend std::ostream&
 		operator<<(std::ostream& out, const remote_client& rhs) {
 			return out << sys::make_object(
