@@ -180,7 +180,8 @@ bsc::socket_pipeline<T,S,R>::forward(
 	kernel_header& hdr,
 	sys::pstream& istr
 ) {
-	lock_type lock(this->_mutex);
+	// do not lock here as static_lock locks both mutexes
+	assert(this->other_mutex());
 	assert(hdr.is_foreign());
 	if (hdr.to()) {
 		event_handler_ptr ptr =
@@ -191,7 +192,6 @@ bsc::socket_pipeline<T,S,R>::forward(
 	} else {
 		if (this->end_reached()) {
 			this->find_next_client();
-			this->_mutex.unlock();
 			this->log("fwd _ to _", hdr, "localhost");
 			router_type::forward_child(hdr, istr);
 		} else {

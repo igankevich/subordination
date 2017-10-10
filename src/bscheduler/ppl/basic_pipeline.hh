@@ -45,8 +45,10 @@ namespace bsc {
 		typedef Mutex mutex_type;
 		typedef Lock lock_type;
 		typedef Semaphore sem_type;
-		typedef std::vector<std::unique_ptr<kernel_type> > kernel_sack;
 		typedef Traits traits_type;
+
+	protected:
+		typedef std::vector<std::unique_ptr<kernel_type> > kernel_sack;
 		typedef sys::queue_pop_iterator<kernel_pool,traits_type> queue_popper;
 
 	protected:

@@ -25,6 +25,7 @@ namespace bsc {
 		using typename base_pipeline::event_handler_ptr;
 		using typename base_pipeline::event_handler_type;
 		using typename base_pipeline::lock_type;
+		using typename base_pipeline::mutex_type;
 		typedef std::map<application_type,event_handler_ptr> map_type;
 		typedef typename map_type::iterator app_iterator;
 

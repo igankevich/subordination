@@ -108,7 +108,8 @@ template <class K, class R>
 void
 bsc::process_pipeline<K,R>
 ::forward(kernel_header& hdr, sys::pstream& istr) {
-	lock_type lock(this->_mutex);
+	// do not lock here as static_lock locks both mutexes
+	assert(this->other_mutex());
 	app_iterator result = this->find_by_app_id(hdr.app());
 	if (result == this->_apps.end()) {
 		if (const application* a = hdr.aptr()) {
@@ -154,17 +155,19 @@ bsc::process_pipeline<K,R>
 	using std::chrono::milliseconds;
 	lock_type lock(this->_mutex);
 	while (!this->has_stopped()) {
-		sys::unlock_guard<lock_type> g(lock);
 		if (this->_procs.size() == 0) {
+			sys::unlock_guard<lock_type> g(lock);
 			sleep_for(milliseconds(777));
 		} else {
 			try {
 				using namespace std::placeholders;
 				this->_procs.wait(
+					lock,
 					std::bind(&process_pipeline::on_process_exit, this, _1, _2)
 				);
 			} catch (const std::system_error& err) {
-				if (std::errc(err.code().value()) != std::errc::no_child_process) {
+				if (std::errc(err.code().value()) !=
+				    std::errc::no_child_process) {
 					this->log_error(err);
 				}
 			}

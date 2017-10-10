@@ -64,6 +64,10 @@ _downstream(_upstream.concurrency()) {
 	this->_child.set_name("proc");
 	this->_external.set_name("unix");
 	#endif
+	#if defined(BSCHEDULER_DAEMON)
+	this->_child.set_other_mutex(this->_parent.mutex());
+	this->_parent.set_other_mutex(this->_child.mutex());
+	#endif
 }
 
 template <class T>

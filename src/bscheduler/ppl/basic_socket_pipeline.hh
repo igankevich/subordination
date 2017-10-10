@@ -3,19 +3,20 @@
 
 #include <algorithm>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <thread>
 #include <vector>
-#include <mutex>
 
 #include <unistdx/base/log_message>
-#include <unistdx/base/recursive_spin_mutex>
-#include <unistdx/base/simple_lock>
-#include <unistdx/base/spin_mutex>
+//#include <unistdx/base/recursive_spin_mutex>
+//#include <unistdx/base/simple_lock>
+//#include <unistdx/base/spin_mutex>
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
+#include <bscheduler/base/static_lock.hh>
 #include <bscheduler/kernel/kstream.hh>
 #include <bscheduler/ppl/basic_pipeline.hh>
 
@@ -26,13 +27,14 @@ namespace bsc {
 	class Traits=sys::queue_traits<Kernels>,
 	class Threads=std::vector<std::thread>>
 	using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
-//		std::recursive_mutex, std::unique_lock<std::recursive_mutex>,
-		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
+		std::recursive_mutex, std::unique_lock<std::recursive_mutex>,
+//		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
 		sys::event_poller<std::shared_ptr<Handler>>>;
 
 	template<class T, class Handler>
-	struct basic_socket_pipeline: public Proxy_pipeline_base<T,Handler> {
+	class basic_socket_pipeline: public Proxy_pipeline_base<T,Handler> {
 
+	public:
 		typedef Handler event_handler_type;
 		typedef typename event_handler_type::clock_type clock_type;
 		typedef typename event_handler_type::time_point time_point;
@@ -47,6 +49,14 @@ namespace bsc {
 		typedef typename sem_type::handler_type event_handler_ptr;
 		typedef typename sem_type::const_iterator handler_const_iterator;
 
+	private:
+		typedef static_lock<mutex_type, mutex_type> static_lock_type;
+
+	private:
+		mutex_type* _othermutex = nullptr;
+
+	public:
+
 		basic_socket_pipeline(basic_socket_pipeline&& rhs) noexcept:
 		base_pipeline(std::move(rhs)),
 		_start_timeout(rhs._start_timeout)
@@ -59,6 +69,31 @@ namespace bsc {
 		~basic_socket_pipeline() = default;
 		basic_socket_pipeline(const basic_socket_pipeline&) = delete;
 		basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
+
+		inline void
+		set_other_mutex(mutex_type* rhs) noexcept {
+			this->_othermutex = rhs;
+		}
+
+		inline mutex_type*
+		other_mutex() noexcept {
+			return this->_othermutex;
+		}
+
+		inline mutex_type*
+		mutex() noexcept {
+			return &this->_mutex;
+		}
+
+		inline bool
+		this_mutex_is_first() const noexcept {
+			return &this->_mutex < this->_othermutex;
+		}
+
+		inline bool
+		other_mutex_is_first() const noexcept {
+			return !this->this_mutex_is_first();
+		}
 
 	protected:
 
@@ -76,10 +111,9 @@ namespace bsc {
 		do_run() override {
 			// start processing as early as possible
 			//poller().notify_one();
-			lock_type lock(this->_mutex);
+			static_lock_type lock(&this->_mutex, this->_othermutex);
 			while (!this->has_stopped()) {
 				bool timeout = false;
-				this->log("while");
 				if (this->_start_timeout > duration::zero()) {
 					handler_const_iterator result =
 						this->handler_with_min_start_time_point();
