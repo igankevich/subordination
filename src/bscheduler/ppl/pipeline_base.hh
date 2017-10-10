@@ -105,6 +105,11 @@ namespace bsc {
 			sys::log_message(this->_name, args ...);
 		}
 
+		inline void
+		log_error(const std::exception& err) {
+			sys::log_message(this->_name, "error: _", err.what());
+		}
+
 	};
 
 }

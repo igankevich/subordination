@@ -68,7 +68,7 @@ bsc::process_pipeline<K,R>
 				#if defined(__SANITIZE_ADDRESS__)
 		        return sys::this_process::execute_command("false");
 				#else
-				return 1;
+		        return 1;
 				#endif
 			}
 		}
@@ -85,11 +85,12 @@ bsc::process_pipeline<K,R>
 		);
 	child->set_name(this->_name);
 	this->log(
-		"executing app=_,credentials=_:_,role=_",
+		"executing app=_,credentials=_:_,role=_,pid=_",
 		app.id(),
 		app.uid(),
 		app.gid(),
-		app.role()
+		app.role(),
+		p.id()
 	);
 	auto result = this->_apps.emplace(app.id(), child);
 	this->poller().enqueue_emplace(
@@ -154,13 +155,19 @@ bsc::process_pipeline<K,R>
 	lock_type lock(this->_mutex);
 	while (!this->has_stopped()) {
 		sys::unlock_guard<lock_type> g(lock);
-		using namespace std::placeholders;
 		if (this->_procs.size() == 0) {
 			sleep_for(milliseconds(777));
 		} else {
-			this->_procs.wait(
-				std::bind(&process_pipeline::on_process_exit, this, _1, _2)
-			);
+			try {
+				using namespace std::placeholders;
+				this->_procs.wait(
+					std::bind(&process_pipeline::on_process_exit, this, _1, _2)
+				);
+			} catch (const std::system_error& err) {
+				if (std::errc(err.code().value()) != std::errc::no_child_process) {
+					this->log_error(err);
+				}
+			}
 		}
 	}
 }

@@ -78,7 +78,7 @@ if get_option('buildtype').contains('debug')
 			test_env.set('_NODES', nodes)
 			test_env.set('_FANOUT', fanout)
 			test_env.set('_NAME', 'c' + suffix + '-')
-			if nodes == 2 and fanout == 2
+			if nodes == '2' and fanout == '2'
 				test_env.set(
 					'_SUBMIT',
 					bsub_exe.full_path() + ' ' + test_application.full_path()

@@ -78,6 +78,7 @@ namespace bsc {
 			#endif
 			lock_type lock(this->_mutex);
 			if (!this->_parent) {
+				lock.unlock();
 				router_type::send_local(k);
 			} else {
 				traits_type::push(this->_kernels, k);
@@ -108,9 +109,6 @@ namespace bsc {
 
 		void
 		process_kernel(kernel_type* k) {
-			#ifndef NDEBUG
-			this->log("send _", *k);
-			#endif
 			if (this->_parent) {
 				this->_parent->send(k);
 			} else {
