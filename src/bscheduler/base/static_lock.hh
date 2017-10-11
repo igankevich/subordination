@@ -3,7 +3,7 @@
 
 namespace bsc {
 
-	template <class M1, class M2>
+	template <class M1, class M2=M1>
 	class static_lock {
 
 	private:

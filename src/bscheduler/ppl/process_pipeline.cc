@@ -70,6 +70,18 @@ bsc::process_pipeline<K,R>
 				#else
 		        return 1;
 				#endif
+			} catch (...) {
+		        this->log(
+					"failed to execute _: _",
+					app.filename(),
+					"<unknown error>"
+		        );
+		        // make address sanitizer happy
+				#if defined(__SANITIZE_ADDRESS__)
+		        return sys::this_process::execute_command("false");
+				#else
+		        return 1;
+				#endif
 			}
 		}
 	                        );

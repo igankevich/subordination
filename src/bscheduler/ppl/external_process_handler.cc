@@ -42,12 +42,18 @@ bsc::external_process_handler<K,R>
 				k->application(app.id());
 				router_type::execute(app);
 				k->return_to_parent(exit_code::success);
+			} catch (const sys::bad_call& err) {
+				k->return_to_parent(exit_code::error);
+				k->set_error(err.what());
+				this->log("execute error _,app=_", err, app.id());
 			} catch (const std::exception& err) {
 				k->return_to_parent(exit_code::error);
 				k->set_error(err.what());
+				this->log("execute error _,app=_", err.what(), app.id());
 			} catch (...) {
 				k->return_to_parent(exit_code::error);
 				k->set_error("unknown error");
+				this->log("execute error _", "<unknown>");
 			}
 		} catch (const error& err) {
 			this->log("read error _", err);

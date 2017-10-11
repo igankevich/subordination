@@ -85,16 +85,6 @@ namespace bsc {
 			return &this->_mutex;
 		}
 
-		inline bool
-		this_mutex_is_first() const noexcept {
-			return &this->_mutex < this->_othermutex;
-		}
-
-		inline bool
-		other_mutex_is_first() const noexcept {
-			return !this->this_mutex_is_first();
-		}
-
 	protected:
 
 		inline sem_type&
