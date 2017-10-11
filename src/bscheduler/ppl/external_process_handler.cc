@@ -9,10 +9,16 @@ bsc::external_process_handler<K,R>
 ::handle(sys::poll_event& event) {
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
+		event.setev(sys::poll_event::Out);
 	}
 	this->_stream.sync();
 	this->receive_kernels(this->_stream);
 	this->_stream.sync();
+//	if (this->_buffer->dirty()) {
+//		event.setev(sys::poll_event::Out);
+//	} else {
+//		event.unsetev(sys::poll_event::Out);
+//	}
 }
 
 template <class K, class R>

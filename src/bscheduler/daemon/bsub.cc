@@ -49,11 +49,19 @@ public:
 	react(kernel* child) {
 		Application_kernel* app = dynamic_cast<Application_kernel*>(child);
 		if (app->return_code() != bsc::exit_code::success) {
+			std::string message = app->error();
+			if (message.empty()) {
+				message = to_string(app->return_code());
+			}
+			std::string app_id =
+				app->application() == 0
+				? "application"
+				: std::to_string(app->application());
 			sys::log_message(
 				"bsub",
 				"failed to submit _: _",
-				app->application(),
-				app->error()
+				app_id,
+				message
 			);
 		} else {
 			sys::log_message("bsub", "submitted _", app->application());

@@ -1,6 +1,7 @@
 #include "application.hh"
 
 #include <algorithm>
+#include <limits>
 #include <ostream>
 #include <random>
 #include <sstream>
@@ -12,6 +13,8 @@
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
 #include <unistdx/base/make_object>
+#include <unistdx/base/simple_lock>
+#include <unistdx/base/spin_mutex>
 #include <unistdx/fs/path>
 #include <unistdx/io/fildes>
 #include <unistdx/it/intersperse_iterator>
@@ -25,12 +28,16 @@
 
 namespace {
 
+	std::independent_bits_engine<
+		std::random_device,
+		std::numeric_limits<char>::digits * sizeof(bsc::application_type),
+		bsc::application_type> rng;
+
+	sys::spin_mutex rng_mutex;
+
 	inline bsc::application_type
 	generate_application_id() noexcept {
-		std::independent_bits_engine<
-			std::random_device,
-			8* sizeof(bsc::application_type),
-			bsc::application_type> rng;
+		sys::simple_lock<sys::spin_mutex> lock(rng_mutex);
 		return rng();
 	}
 

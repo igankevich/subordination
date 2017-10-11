@@ -81,7 +81,10 @@ if get_option('buildtype').contains('debug')
 			if nodes == '2' and fanout == '2'
 				test_env.set(
 					'_SUBMIT',
-					bsub_exe.full_path() + ' ' + test_application.full_path()
+					bsub_exe.full_path() + ' ' +
+					'/home/igankevich/workspace/arma/build/src/arma' + ' ' +
+					'/home/igankevich/workspace/arma/input/standing_wave.arma'
+#					bsub_exe.full_path() + ' ' + test_application.full_path()
 				)
 			endif
 			# run discovery test over virtual network

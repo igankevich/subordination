@@ -325,7 +325,16 @@ bsc::socket_pipeline<T,S,R>::process_kernels() {
 	std::for_each(
 		sys::queue_popper(this->_kernels),
 		sys::queue_popper_end(this->_kernels),
-		[this] (kernel_type* rhs) { process_kernel(rhs); }
+		[this] (kernel_type* k) {
+			try {
+				this->process_kernel(k);
+			} catch (const std::exception& err) {
+				this->log_error(err);
+				k->from(k->to());
+				k->return_to_parent(exit_code::no_upstream_servers_available);
+				router_type::send_local(k);
+			}
+		}
 	);
 }
 

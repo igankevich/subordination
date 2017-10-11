@@ -1,15 +1,18 @@
 #include "error_handler.hh"
 
-#include <exception>
-#include <bscheduler/base/error.hh>
-#include <bscheduler/kernel/kernel_error.hh>
-#include <iostream>
 #include <unistd.h>
+
+#include <exception>
+#include <iostream>
+
 #include <unistdx/base/log_message>
+#include <unistdx/ipc/process>
 #include <unistdx/ipc/signal>
 #include <unistdx/util/backtrace>
 
+#include <bscheduler/base/error.hh>
 #include <bscheduler/base/thread_name.hh>
+#include <bscheduler/kernel/kernel_error.hh>
 
 void
 bsc::print_backtrace(int sig) noexcept {
@@ -25,6 +28,7 @@ bsc::print_backtrace(int sig) noexcept {
 
 void
 bsc::print_error() noexcept {
+	using namespace sys;
 	if (std::exception_ptr ptr = std::current_exception()) {
 		try {
 			std::rethrow_exception(ptr);
@@ -32,56 +36,62 @@ bsc::print_error() noexcept {
 			sys::log_message(
 				std::cerr,
 				"error_handler",
-				"error=_, thread=_-_",
+				"error=_, thread=_-_, process=_",
 				err,
 				this_thread::name,
-				this_thread::number
+				this_thread::number,
+				this_process::id()
 			);
 		} catch (const error& err) {
 			sys::log_message(
 				std::cerr,
 				"error_handler",
-				"error=_, thread=_-_",
+				"error=_, thread=_-_, process=_",
 				err,
 				this_thread::name,
-				this_thread::number
+				this_thread::number,
+				this_process::id()
 			);
 		} catch (const sys::bad_call& err) {
 			sys::log_message(
 				std::cerr,
 				"error_handler",
-				"error=_, thread=_-_",
+				"error=_, thread=_-_, process=_",
 				err,
 				this_thread::name,
-				this_thread::number
+				this_thread::number,
+				this_process::id()
 			);
 		} catch (const std::exception& err) {
 			sys::log_message(
 				std::cerr,
 				"error_handler",
-				"error=_, thread=_-_",
+				"error=_, thread=_-_, process=_",
 				err.what(),
 				this_thread::name,
-				this_thread::number
+				this_thread::number,
+				this_process::id()
 			);
 		} catch (...) {
 			sys::log_message(
 				std::cerr,
 				"error_handler",
-				"error=_, thread=_-_",
+				"error=_, thread=_-_, process=_",
 				"<unknown>",
 				this_thread::name,
-				this_thread::number
+				this_thread::number,
+				this_process::id()
 			);
 		}
 	} else {
 		sys::log_message(
 			std::cerr,
 			"error_handler",
-			"error=_, thread=_-_",
+			"error=_, thread=_-_, process=_",
 			"<none>",
 			this_thread::name,
-			this_thread::number
+			this_thread::number,
+			this_process::id()
 		);
 	}
 	sys::backtrace(STDERR_FILENO);
@@ -95,5 +105,6 @@ bsc::install_error_handler() {
 	std::set_unexpected(print_error);
 	ignore_signal(sys::signal::broken_pipe);
 	bind_signal(sys::signal::segmentation_fault, print_backtrace);
+	bind_signal(sys::signal::abort, print_backtrace);
 }
 

@@ -100,14 +100,12 @@ namespace bsc {
 			}
 			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
+			this->_proto.receive_kernels(this->_stream);
 			if (this->_packetbuf->dirty()) {
 				event.setev(sys::poll_event::Out);
 			} else {
 				event.unsetev(sys::poll_event::Out);
 			}
-			//if (event.in()) {
-			this->_proto.receive_kernels(this->_stream);
-			//}
 		}
 
 		inline const socket_type&
