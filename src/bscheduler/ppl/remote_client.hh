@@ -97,16 +97,15 @@ namespace bsc {
 		handle(sys::poll_event& event) {
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
-				event.setev(sys::poll_event::Out);
 			}
 			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
 			this->_proto.receive_kernels(this->_stream);
-//			if (this->_packetbuf->dirty()) {
-//				event.setev(sys::poll_event::Out);
-//			} else {
-//				event.unsetev(sys::poll_event::Out);
-//			}
+			if (this->_packetbuf->dirty()) {
+				event.setev(sys::poll_event::Out);
+			} else {
+				event.unsetev(sys::poll_event::Out);
+			}
 		}
 
 		inline const socket_type&
