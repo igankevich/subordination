@@ -94,11 +94,11 @@ namespace bsc {
 			sys::fd_type out = this_application::get_output_fd();
 			if (in != -1 && out != -1) {
 				this->poller().emplace(
-					sys::poll_event {in, sys::poll_event::In, 0},
+					sys::epoll_event {in, sys::epoll_event::In, 0},
 					this->_parent
 				);
 				this->poller().emplace(
-					sys::poll_event {out, 0, 0},
+					sys::epoll_event {out, 0, 0},
 					this->_parent
 				);
 				this->_parent->set_name(this->name());

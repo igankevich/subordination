@@ -11,16 +11,14 @@
 #include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/ppl/application.hh>
 #include <bscheduler/ppl/basic_socket_pipeline.hh>
-#include <bscheduler/ppl/process_handler.hh>
 
 namespace bsc {
 
 	template<class K, class R>
-	class process_pipeline:
-		public basic_socket_pipeline<K,process_handler<K,R>> {
+	class process_pipeline: public basic_socket_pipeline<K> {
 
 	private:
-		typedef basic_socket_pipeline<K,process_handler<K, R>> base_pipeline;
+		typedef basic_socket_pipeline<K> base_pipeline;
 		using typename base_pipeline::queue_popper;
 		using typename base_pipeline::event_handler_ptr;
 		using typename base_pipeline::event_handler_type;
@@ -52,17 +50,10 @@ namespace bsc {
 
 		~process_pipeline() = default;
 
-		void
-		remove_client(event_handler_ptr ptr) override;
-
-		void
-		process_kernels() override;
-
 		inline void
 		add(const application& app) {
 			lock_type lock(this->_mutex);
 			this->do_add(app);
-			this->poller().notify_one();
 		}
 
 		void
@@ -97,6 +88,9 @@ namespace bsc {
 
 		app_iterator
 		find_by_process_id(sys::pid_type pid);
+
+		template <class X, class Y> friend class process_notify_handler;
+		template <class X, class Y> friend class process_handler;
 
 	};
 

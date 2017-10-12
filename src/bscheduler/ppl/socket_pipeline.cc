@@ -109,7 +109,7 @@ bsc::socket_pipeline<T,S,R>::remove_client(client_iterator result) {
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
+bsc::socket_pipeline<T,S,R>::accept_connection(sys::epoll_event& ev) {
 	sys::endpoint addr;
 	socket_type sock;
 	server_iterator result = this->find_server(ev.fd());
@@ -123,7 +123,7 @@ bsc::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 		#ifndef NDEBUG
 		event_handler_ptr ptr =
 		#endif
-		add_connected_pipeline(std::move(sock), vaddr, sys::poll_event::In);
+		add_connected_pipeline(std::move(sock), vaddr, sys::epoll_event::In);
 		#ifndef NDEBUG
 		this->log("accept _", *ptr);
 		#endif
@@ -139,7 +139,7 @@ bsc::socket_pipeline<T,S,R>::accept_connection(sys::poll_event& ev) {
 			s->socket(std::move(sock));
 			remove_client(res);
 			_clients.emplace(vaddr, std::move(s));
-			poller().emplace(sys::poll_event{s->socket().fd(), sys::poll_event::Inout, sys::poll_event::Inout}, s);
+			poller().emplace(sys::epoll_event{s->socket().fd(), sys::epoll_event::Inout, sys::epoll_event::Inout}, s);
 		}
 		*/
 	}
@@ -162,7 +162,7 @@ bsc::socket_pipeline<T,S,R>::add_server(
 		srv.socket().set_user_timeout(this->_socket_timeout);
 		sys::fd_type fd = srv.socket().get_fd();
 		this->poller().insert_special(
-			sys::poll_event{fd, sys::poll_event::In}
+			sys::epoll_event{fd, sys::epoll_event::In}
 		);
 		if (!this->has_stopped()) {
 			this->_semaphore.notify_one();
@@ -185,7 +185,7 @@ bsc::socket_pipeline<T,S,R>::forward(
 	assert(hdr.is_foreign());
 	if (hdr.to()) {
 		event_handler_ptr ptr =
-			this->find_or_create_peer(hdr.to(), sys::poll_event::Inout);
+			this->find_or_create_peer(hdr.to(), sys::epoll_event::Inout);
 		this->log("fwd _ to _", hdr, hdr.to());
 		ptr->forward(hdr, istr);
 		this->_semaphore.notify_one();
@@ -396,7 +396,7 @@ bsc::socket_pipeline<T,S,R>::process_kernel(kernel_type* k) {
 		if (k->moves_somewhere()) {
 			ensure_identity(k, k->to());
 		}
-		this->find_or_create_peer(k->to(), sys::poll_event::Inout)->send(k);
+		this->find_or_create_peer(k->to(), sys::epoll_event::Inout)->send(k);
 	}
 }
 
@@ -404,7 +404,7 @@ template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>::find_or_create_peer(
 	const sys::endpoint& addr,
-	sys::poll_event::legacy_event ev
+	sys::epoll_event::legacy_event ev
 ) {
 	event_handler_ptr ret;
 	auto result = _clients.find(addr);
@@ -420,7 +420,7 @@ template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>::add_client(
 	const sys::endpoint& addr,
-	sys::poll_event::legacy_event events
+	sys::epoll_event::legacy_event events
 ) {
 	if (addr.family() == sys::family_type::unix) {
 		socket_type s(sys::family_type::unix);
@@ -447,8 +447,8 @@ typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>::add_connected_pipeline(
 	socket_type&& sock,
 	sys::endpoint vaddr,
-	sys::poll_event::legacy_event events,
-	sys::poll_event::legacy_event revents
+	sys::epoll_event::legacy_event events,
+	sys::epoll_event::legacy_event revents
 ) {
 	sys::fd_type fd = sock.fd();
 	if (vaddr.family() != sys::family_type::unix) {
@@ -464,7 +464,7 @@ bsc::socket_pipeline<T,S,R>::add_connected_pipeline(
 	// s.setparent(this);
 	auto result = emplace_pipeline(vaddr, std::move(s));
 	this->poller().emplace(
-		sys::poll_event{fd, events, revents},
+		sys::epoll_event{fd, events, revents},
 		result.first->second
 	);
 	#ifndef NDEBUG

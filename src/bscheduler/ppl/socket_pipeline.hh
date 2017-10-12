@@ -19,8 +19,7 @@
 namespace bsc {
 
 	template<class T, class Socket, class Router>
-	class socket_pipeline:
-		public basic_socket_pipeline<T,remote_client<T,Socket,Router>> {
+	class socket_pipeline: public basic_socket_pipeline<T> {
 
 	public:
 		typedef Socket socket_type;
@@ -29,7 +28,7 @@ namespace bsc {
 		typedef sys::ifaddr<addr_type> ifaddr_type;
 		typedef remote_client<T,Socket,Router> remote_client_type;
 		typedef local_server<addr_type,socket_type> server_type;
-		typedef basic_socket_pipeline<T,remote_client_type> base_pipeline;
+		typedef basic_socket_pipeline<T> base_pipeline;
 
 		using typename base_pipeline::kernel_type;
 		using typename base_pipeline::mutex_type;
@@ -86,7 +85,7 @@ namespace bsc {
 		void
 		add_client(const sys::endpoint& addr) {
 			lock_type lock(this->_mutex);
-			this->add_client(addr, sys::poll_event::In);
+			this->add_client(addr, sys::epoll_event::In);
 		}
 
 		void
@@ -146,7 +145,7 @@ namespace bsc {
 		remove_client(event_handler_ptr ptr) override;
 
 		void
-		accept_connection(sys::poll_event& ev) override;
+		accept_connection(sys::epoll_event& ev) override;
 
 		void
 		remove_client(client_iterator result);
@@ -216,21 +215,21 @@ namespace bsc {
 		event_handler_ptr
 		find_or_create_peer(
 			const sys::endpoint& addr,
-			sys::poll_event::legacy_event ev
+			sys::epoll_event::legacy_event ev
 		);
 
 		event_handler_ptr
 		add_client(
 			const sys::endpoint& addr,
-			sys::poll_event::legacy_event events
+			sys::epoll_event::legacy_event events
 		);
 
 		event_handler_ptr
 		add_connected_pipeline(
 			socket_type&& sock,
 			sys::endpoint vaddr,
-			sys::poll_event::legacy_event events,
-			sys::poll_event::legacy_event revents=0
+			sys::epoll_event::legacy_event events,
+			sys::epoll_event::legacy_event revents=0
 		);
 
 	};

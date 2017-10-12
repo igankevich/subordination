@@ -4,18 +4,19 @@
 #include <cassert>
 
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/poller>
+#include <unistdx/io/poller2>
 #include <unistdx/ipc/process>
 
 #include <bscheduler/kernel/kstream.hh>
 #include <bscheduler/ppl/application.hh>
+#include <bscheduler/ppl/basic_handler.hh>
 #include <bscheduler/ppl/kernel_protocol.hh>
 #include <bscheduler/ppl/pipeline_base.hh>
 
 namespace bsc {
 
 	template<class K, class R>
-	class process_handler: public pipeline_base {
+	class process_handler: public basic_handler {
 
 	public:
 		typedef K kernel_type;
@@ -120,7 +121,7 @@ namespace bsc {
 		}
 
 		void
-		handle(sys::poll_event& event);
+		handle(const sys::epoll_event& event) override;
 
 		void
 		forward(kernel_header& hdr, sys::pstream& istr) {

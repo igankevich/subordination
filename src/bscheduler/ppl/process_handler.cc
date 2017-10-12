@@ -6,7 +6,7 @@
 template <class K, class R>
 void
 bsc::process_handler<K,R>
-::handle(sys::poll_event& event) {
+::handle(const sys::epoll_event& event) {
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
 	}
@@ -16,11 +16,6 @@ bsc::process_handler<K,R>
 	} else {
 		this->_istream.sync();
 		this->_proto.receive_kernels(this->_istream);
-	}
-	if (this->_outbuf->dirty()) {
-		event.setev(sys::poll_event::Out);
-	} else {
-		event.unsetev(sys::poll_event::Out);
 	}
 }
 

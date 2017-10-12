@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/poller>
+#include <unistdx/io/poller2>
 #include <unistdx/net/endpoint>
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>
@@ -59,7 +59,7 @@ namespace bsc {
 		}
 
 		void
-		handle(sys::poll_event& event);
+		handle(sys::epoll_event& event);
 
 	private:
 

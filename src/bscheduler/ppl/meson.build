@@ -23,6 +23,7 @@ install_headers(
 	'application.hh',
 	'application_kernel.hh',
 	'basic_factory.hh',
+	'basic_handler.hh',
 	'basic_pipeline.hh',
 	'basic_router.hh',
 	'basic_socket_pipeline.hh',

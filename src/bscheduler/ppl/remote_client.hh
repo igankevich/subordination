@@ -76,7 +76,7 @@ namespace bsc {
 		~remote_client() {
 			// Here failed kernels are written to buffer,
 			// from which they must be recovered with recover_kernels().
-			sys::poll_event ev {socket().fd(), sys::poll_event::In};
+			sys::epoll_event ev {socket().fd(), sys::event::in};
 			this->handle(ev);
 			// recover kernels from upstream and downstream buffer
 			this->_proto.recover_kernels(this->socket().error());
@@ -94,18 +94,19 @@ namespace bsc {
 		}
 
 		void
-		handle(sys::poll_event& event) {
+		handle(sys::epoll_event& event) {
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
+				event.setev(sys::event::out);
 			}
 			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
 			this->_proto.receive_kernels(this->_stream);
-			if (this->_packetbuf->dirty()) {
-				event.setev(sys::poll_event::Out);
-			} else {
-				event.unsetev(sys::poll_event::Out);
-			}
+//			if (this->_packetbuf->dirty()) {
+//				event.setev(sys::event::out);
+//			} else {
+//				event.unsetev(sys::event::out);
+//			}
 		}
 
 		inline const socket_type&
