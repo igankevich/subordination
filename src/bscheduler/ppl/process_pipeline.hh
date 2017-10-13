@@ -1,8 +1,8 @@
 #ifndef BSCHEDULER_PPL_PROCESS_PIPELINE_HH
 #define BSCHEDULER_PPL_PROCESS_PIPELINE_HH
 
-#include <map>
 #include <memory>
+#include <unordered_map>
 
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
@@ -11,6 +11,7 @@
 #include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/ppl/application.hh>
 #include <bscheduler/ppl/basic_socket_pipeline.hh>
+#include <bscheduler/ppl/process_handler.hh>
 
 namespace bsc {
 
@@ -20,11 +21,11 @@ namespace bsc {
 	private:
 		typedef basic_socket_pipeline<K> base_pipeline;
 		using typename base_pipeline::queue_popper;
-		using typename base_pipeline::event_handler_ptr;
-		using typename base_pipeline::event_handler_type;
 		using typename base_pipeline::lock_type;
 		using typename base_pipeline::mutex_type;
-		typedef std::map<application_type,event_handler_ptr> map_type;
+		typedef process_handler<K,R> event_handler_type;
+		typedef std::shared_ptr<event_handler_type> event_handler_ptr;
+		typedef std::unordered_map<application_type,event_handler_ptr> map_type;
 		typedef typename map_type::iterator app_iterator;
 
 	public:

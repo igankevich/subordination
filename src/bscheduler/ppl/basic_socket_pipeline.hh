@@ -62,6 +62,7 @@ namespace bsc {
 
 	protected:
 		handler_container_type _handlers;
+		duration _start_timeout = duration::zero();
 
 	public:
 
@@ -111,9 +112,8 @@ namespace bsc {
 			const event_handler_ptr& ptr
 		) {
 			this->log("add _", *ptr);
-			lock_type lock(this->_mutex);
 			this->_handlers.emplace(ev.fd(), ptr);
-			this->_poller.emplace(ev.fd());
+			this->poller().emplace(ev.fd());
 		}
 
 		template <class X>
@@ -127,7 +127,6 @@ namespace bsc {
 
 		void
 		emplace_notify_handler(const event_handler_ptr& ptr) {
-			lock_type lock(this->_mutex);
 			this->_handlers.emplace(this->poller().pipe_in(), ptr);
 		}
 
@@ -219,6 +218,7 @@ namespace bsc {
 						h.has_stopped() ||
 						(timeout && this->is_timed_out(h, now))) {
 						this->log("remove _", h);
+						h.remove();
 						this->_handlers.erase(result);
 					}
 				}
@@ -231,10 +231,6 @@ namespace bsc {
 				rhs.start_time_point() + this->_start_timeout <= now;
 		}
 
-	protected:
-
-		duration _start_timeout = duration::zero();
-		static const int MAX_STOP_ITERATIONS = 13;
 	};
 
 }

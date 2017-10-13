@@ -107,12 +107,17 @@ namespace bsc {
 
 		void
 		write(std::ostream& out) const override {
-			out << "client " << this->_endpoint << ' ' << this->_buffer.fd();
+			out << "client " << this->_endpoint << ' ' << this->_buffer->fd();
 		}
 
 		inline sys::fd_type
 		fd() const noexcept {
-			return this->_socket.get_fd();
+			return this->_buffer->fd().get_fd();
+		}
+
+		inline const sys::socket&
+		socket() const noexcept {
+			return this->_buffer->fd();
 		}
 
 	private:
@@ -192,11 +197,7 @@ void
 bsc::unix_domain_socket_pipeline<K,R>
 ::add_client(const sys::endpoint& addr, sys::socket&& sock) {
 	auto ptr =
-		std::make_shared<unix_socket_client>(
-			addr,
-			std::move(sock),
-			*this
-		);
+		std::make_shared<unix_socket_client<K,R>>(addr, std::move(sock));
 	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
 	#ifndef NDEBUG
 	this->log("add _", addr);
@@ -206,22 +207,22 @@ bsc::unix_domain_socket_pipeline<K,R>
 template <class K, class R>
 void
 bsc::unix_domain_socket_pipeline<K,R>
-::add_server(const sys::endpoint& rhs) {
-	auto ptr = std::make_shared<unix_socket_server>(rhs, *this);
-	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
+::add_client(const sys::endpoint& addr) {
+	auto ptr = std::make_shared<unix_socket_client<K,R>>(addr);
+	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
 }
 
 template <class K, class R>
 void
 bsc::unix_domain_socket_pipeline<K,R>
-::add_client(const sys::endpoint& addr) {
-	auto ptr = std::make_shared<unix_socket_client>(addr, *this);
-	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
+::add_server(const sys::endpoint& rhs) {
+	auto ptr = std::make_shared<unix_socket_server<K,R>>(rhs, *this);
+	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }
 
 template class bsc::unix_domain_socket_pipeline<
 		BSCHEDULER_KERNEL_TYPE, bsc::basic_router<BSCHEDULER_KERNEL_TYPE>>;
-template class bsc::unix_domain_server<
+template class bsc::unix_socket_server<
 		BSCHEDULER_KERNEL_TYPE, bsc::basic_router<BSCHEDULER_KERNEL_TYPE>>;
-template class bsc::unix_domain_client<
+template class bsc::unix_socket_client<
 		BSCHEDULER_KERNEL_TYPE, bsc::basic_router<BSCHEDULER_KERNEL_TYPE>>;

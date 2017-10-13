@@ -1,5 +1,9 @@
 #include "process_handler.hh"
 
+#include <ostream>
+
+#include <unistdx/base/make_object>
+
 #include <bscheduler/config.hh>
 #include <bscheduler/ppl/basic_router.hh>
 
@@ -17,6 +21,25 @@ bsc::process_handler<K,R>
 		this->_istream.sync();
 		this->_proto.receive_kernels(this->_istream);
 	}
+}
+
+template <class K, class R>
+void
+bsc::process_handler<K,R>
+::write(std::ostream& out) const {
+	out << sys::make_object(
+		"pid=",
+		this->_childpid,
+		"app",
+		this->_application
+	    );
+}
+
+template <class K, class R>
+void
+bsc::process_handler<K,R>
+::remove() {
+	this->setstate(pipeline_state::stopped);
 }
 
 template class bsc::process_handler<

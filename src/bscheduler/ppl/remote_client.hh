@@ -12,27 +12,27 @@
 
 #include <bscheduler/kernel/kernel_instance_registry.hh>
 #include <bscheduler/kernel/kstream.hh>
+#include <bscheduler/ppl/basic_handler.hh>
 #include <bscheduler/ppl/kernel_protocol.hh>
-#include <bscheduler/ppl/pipeline_base.hh>
 
 namespace bsc {
 
-	template<class T, class Socket, class Router>
-	class remote_client: public pipeline_base {
+	template<class K, class S, class R>
+	class remote_client: public basic_handler {
 
 	public:
 		typedef pipeline_base base_pipeline;
-		typedef T kernel_type;
+		typedef K kernel_type;
 		typedef char Ch;
 		typedef sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>
 			fildesbuf_type;
 		typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
 		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
-		typedef kstream<T> stream_type;
-		typedef kernel_protocol<T,Router,bits::forward_to_child<Router>>
+		typedef kstream<K> stream_type;
+		typedef kernel_protocol<K,R,bits::forward_to_child<R>>
 		    protocol_type;
-		typedef Socket socket_type;
-		typedef Router router_type;
+		typedef S socket_type;
+		typedef R router_type;
 		typedef sys::pid_type app_type;
 		typedef uint32_t weight_type;
 
@@ -94,19 +94,13 @@ namespace bsc {
 		}
 
 		void
-		handle(sys::epoll_event& event) {
+		handle(const sys::epoll_event& event) override {
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
-				event.setev(sys::event::out);
 			}
 			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
 			this->_proto.receive_kernels(this->_stream);
-//			if (this->_packetbuf->dirty()) {
-//				event.setev(sys::event::out);
-//			} else {
-//				event.unsetev(sys::event::out);
-//			}
 		}
 
 		inline const socket_type&
@@ -151,17 +145,17 @@ namespace bsc {
 			#endif
 		}
 
-		friend std::ostream&
-		operator<<(std::ostream& out, const remote_client& rhs) {
-			return out << sys::make_object(
+		void
+		write(std::ostream& out) const override {
+			out << sys::make_object(
 				"vaddr",
-				rhs.vaddr(),
+				this->vaddr(),
 				"socket",
-				rhs.socket(),
+				this->socket(),
 				"state",
-				int(rhs.state()),
+				int(this->state()),
 				"weight",
-				rhs.weight()
+				this->weight()
 			    );
 		}
 

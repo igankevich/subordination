@@ -2,6 +2,7 @@
 #define BSCHEDULER_PPL_PROCESS_HANDLER_HH
 
 #include <cassert>
+#include <iosfwd>
 
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller2>
@@ -29,6 +30,11 @@ namespace bsc {
 		typedef kernel_protocol<K,R,bits::forward_to_parent<R>>
 			protocol_type;
 
+		enum class role_type {
+			child,
+			parent
+		};
+
 	private:
 		sys::pid_type _childpid;
 		kernelbuf_ptr _outbuf;
@@ -37,6 +43,7 @@ namespace bsc {
 		stream_type _istream;
 		protocol_type _proto;
 		application _application;
+		role_type _role;
 
 	public:
 
@@ -52,7 +59,8 @@ namespace bsc {
 		_inbuf(new kernelbuf_type),
 		_istream(_inbuf.get()),
 		_proto(),
-		_application(app)
+		_application(app),
+		_role(role_type::parent)
 		{
 			this->_proto.set_other_application(&this->_application);
 			this->_outbuf->setfd(std::move(pipe.parent_out()));
@@ -62,6 +70,7 @@ namespace bsc {
 			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
 		}
 
+		/*
 		process_handler(process_handler&& rhs):
 		_childpid(rhs._childpid),
 		_outbuf(std::move(rhs._outbuf)),
@@ -69,13 +78,15 @@ namespace bsc {
 		_inbuf(std::move(rhs._inbuf)),
 		_istream(std::move(rhs._istream)),
 		_proto(std::move(rhs._proto)),
-		_application(std::move(rhs._application))
+		_application(std::move(rhs._application)),
+		_role(rhs._role)
 		{
 			this->_inbuf->fd().validate();
 			this->_outbuf->fd().validate();
 			this->_istream.rdbuf(this->_inbuf.get());
 			this->_ostream.rdbuf(this->_outbuf.get());
 		}
+		*/
 
 		/// Called from child process.
 		explicit
@@ -86,7 +97,8 @@ namespace bsc {
 		_inbuf(new kernelbuf_type),
 		_istream(_inbuf.get()),
 		_proto(),
-		_application()
+		_application(),
+		_role(role_type::child)
 		{
 			this->_outbuf->setfd(std::move(pipe.out()));
 			this->_inbuf->setfd(std::move(pipe.in()));
@@ -122,6 +134,12 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& event) override;
+
+		void
+		write(std::ostream& out) const override;
+
+		void
+		remove() override;
 
 		void
 		forward(kernel_header& hdr, sys::pstream& istr) {

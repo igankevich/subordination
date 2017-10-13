@@ -14,46 +14,55 @@
 #include <bscheduler/kernel/kstream.hh>
 #include <bscheduler/ppl/basic_socket_pipeline.hh>
 #include <bscheduler/ppl/local_server.hh>
-#include <bscheduler/ppl/remote_client.hh>
 
 namespace bsc {
 
-	template<class T, class Socket, class Router>
-	class socket_pipeline: public basic_socket_pipeline<T> {
+	template <class K, class S, class R>
+	class local_server;
+
+	template <class K, class S, class R>
+	class remote_client;
+
+	template <class K, class S, class R>
+	class socket_notify_handler;
+
+	template<class K, class S, class R>
+	class socket_pipeline: public basic_socket_pipeline<K> {
 
 	public:
-		typedef Socket socket_type;
-		typedef Router router_type;
+		typedef S socket_type;
+		typedef R router_type;
 		typedef sys::ipv4_addr addr_type;
 		typedef sys::ifaddr<addr_type> ifaddr_type;
-		typedef remote_client<T,Socket,Router> remote_client_type;
-		typedef local_server<addr_type,socket_type> server_type;
-		typedef basic_socket_pipeline<T> base_pipeline;
+		typedef remote_client<K,S,R> remote_client_type;
+		typedef local_server<K,S,R> server_type;
+		typedef std::shared_ptr<server_type> server_ptr;
+		typedef basic_socket_pipeline<K> base_pipeline;
 
 		using typename base_pipeline::kernel_type;
 		using typename base_pipeline::mutex_type;
 		using typename base_pipeline::lock_type;
 		using typename base_pipeline::sem_type;
 		using typename base_pipeline::kernel_pool;
-		using typename base_pipeline::event_handler_type;
-		using typename base_pipeline::event_handler_ptr;
 		using typename base_pipeline::duration;
 
 	private:
+		typedef remote_client_type event_handler_type;
+		typedef std::shared_ptr<event_handler_type> event_handler_ptr;
 		typedef sys::ipaddr_traits<addr_type> traits_type;
-		typedef std::vector<server_type> server_container_type;
+		typedef std::vector<server_ptr> server_container_type;
 		typedef typename server_container_type::iterator server_iterator;
 		typedef typename server_container_type::const_iterator
-			server_const_iterator;
+		    server_const_iterator;
 		typedef std::unordered_map<sys::endpoint,event_handler_ptr>
-			client_container_type;
+		    client_container_type;
 		typedef typename client_container_type::iterator client_iterator;
 		typedef ifaddr_type::rep_type rep_type;
 		typedef mobile_kernel::id_type id_type;
 		typedef sys::field_iterator<server_const_iterator,0> ifaddr_iterator;
 		typedef event_handler_type client_type;
 		typedef event_handler_ptr client_ptr;
-		typedef typename client_type::weight_type weight_type;
+		typedef uint32_t weight_type;
 
 	private:
 		server_container_type _servers;
@@ -71,21 +80,24 @@ namespace bsc {
 
 	public:
 
-		socket_pipeline() {
-			using namespace std::chrono;
-			this->set_start_timeout(seconds(7));
-		}
+		socket_pipeline();
 
 		~socket_pipeline() = default;
+
 		socket_pipeline(const socket_pipeline&) = delete;
+
 		socket_pipeline(socket_pipeline&&) = delete;
-		socket_pipeline& operator=(const socket_pipeline&) = delete;
-		socket_pipeline& operator=(socket_pipeline&&) = delete;
+
+		socket_pipeline&
+		operator=(const socket_pipeline&) = delete;
+
+		socket_pipeline&
+		operator=(socket_pipeline&&) = delete;
 
 		void
 		add_client(const sys::endpoint& addr) {
 			lock_type lock(this->_mutex);
-			this->add_client(addr, sys::epoll_event::In);
+			this->do_add_client(addr);
 		}
 
 		void
@@ -104,9 +116,6 @@ namespace bsc {
 
 		void
 		add_server(const sys::endpoint& rhs, addr_type netmask);
-
-		void
-		remove_server(const ifaddr_type& ifaddr);
 
 		void
 		forward(kernel_header& hdr, sys::pstream& istr);
@@ -136,16 +145,13 @@ namespace bsc {
 			this->_uselocalhost = b;
 		}
 
+		void
+		remove_server(const ifaddr_type& ifaddr);
+
 	private:
 
 		void
-		remove_server(sys::fd_type fd) override;
-
-		void
-		remove_client(event_handler_ptr ptr) override;
-
-		void
-		accept_connection(sys::epoll_event& ev) override;
+		remove_client(const sys::endpoint& vaddr);
 
 		void
 		remove_client(client_iterator result);
@@ -196,41 +202,39 @@ namespace bsc {
 			this->_weightcnt = 0;
 		}
 
-		std::pair<client_iterator,bool>
-		emplace_pipeline(const sys::endpoint& vaddr, event_handler_ptr&& s);
+		void
+		emplace_client(const sys::endpoint& vaddr, const event_handler_ptr& s);
 
 		inline sys::endpoint
 		virtual_addr(const sys::endpoint& addr) const {
 			return addr.family() == sys::family_type::unix
-				? addr
-				: sys::endpoint(addr, this->_port);
+			       ? addr
+				   : sys::endpoint(addr, this->_port);
 		}
 
 		void
-		process_kernels() override;
+		process_kernels();
 
 		void
 		process_kernel(kernel_type* k);
 
 		event_handler_ptr
-		find_or_create_peer(
-			const sys::endpoint& addr,
-			sys::epoll_event::legacy_event ev
-		);
+		find_or_create_client(const sys::endpoint& addr);
 
 		event_handler_ptr
-		add_client(
-			const sys::endpoint& addr,
-			sys::epoll_event::legacy_event events
-		);
+		do_add_client(const sys::endpoint& addr);
 
 		event_handler_ptr
-		add_connected_pipeline(
-			socket_type&& sock,
-			sys::endpoint vaddr,
-			sys::epoll_event::legacy_event events,
-			sys::epoll_event::legacy_event revents=0
-		);
+		do_add_client(socket_type&& sock, sys::endpoint vaddr);
+
+		template <class K1, class S1, class R1>
+		friend class local_server;
+
+		template <class K1, class S1, class R1>
+		friend class remote_client;
+
+		template <class K1, class S1, class R1>
+		friend class socket_notify_handler;
 
 	};
 

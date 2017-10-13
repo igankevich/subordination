@@ -17,7 +17,12 @@ namespace bsc {
 		handle(const sys::epoll_event& ev) = 0;
 
 		virtual void
-		write(std::ostream& out) const = 0;
+		remove() {}
+
+		virtual void
+		write(std::ostream& out) const {
+			out << "handler";
+		}
 
 		inline friend std::ostream&
 		operator<<(std::ostream& out, const basic_handler& rhs) {

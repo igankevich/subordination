@@ -12,6 +12,7 @@ bscheduler_core_src += files([
 
 bscheduler_src += files([
 	'basic_factory.cc',
+	'child_process_pipeline.cc',
 	'external_process_handler.cc',
 	'process_handler.cc',
 	'process_pipeline.cc',

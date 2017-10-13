@@ -14,6 +14,7 @@
 #include <bscheduler/ppl/parallel_pipeline.hh>
 #if defined(BSCHEDULER_DAEMON) || defined(BSCHEDULER_SUBMIT)
 #include <bscheduler/ppl/socket_pipeline.hh>
+#include <unistdx/net/socket>
 #endif
 #include <bscheduler/ppl/process_pipeline.hh>
 #if defined(BSCHEDULER_APPLICATION)
