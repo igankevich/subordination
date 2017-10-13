@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/poller2>
+#include <unistdx/io/poller>
 #include <unistdx/net/endpoint>
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>

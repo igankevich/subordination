@@ -17,21 +17,24 @@ namespace bsc {
 
 	private:
 		sys::socket _socket;
+		sys::endpoint _endpoint;
 		this_type& _ppl;
 
 	public:
 
 		unix_socket_server(const sys::endpoint& endp, this_type& ppl):
+		_endpoint(endp),
 		_ppl(ppl)
 		{
 			this->_socket.bind(endp);
 			this->_socket.setopt(sys::socket::pass_credentials);
 			this->_socket.listen();
-			this->setstate(pipeline_state::started);
+			this->log("socket=_", this->_socket);
 		}
 
 		void
 		handle(const sys::epoll_event& ev) override {
+			this->log("_ _", __func__, ev);
 			sys::endpoint addr;
 			sys::socket sock;
 			this->_socket.accept(sock, addr);
@@ -40,7 +43,7 @@ namespace bsc {
 
 		void
 		write(std::ostream& out) const override {
-			out << "server " << this->_socket;
+			out << "server " << this->_endpoint;
 		}
 
 		inline sys::fd_type
@@ -97,6 +100,7 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& ev) override {
+			this->log("_ _", __func__, ev);
 			if (this->is_starting()) {
 				this->setstate(pipeline_state::started);
 			}

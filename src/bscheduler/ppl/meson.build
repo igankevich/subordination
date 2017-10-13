@@ -41,7 +41,6 @@ install_headers(
 	'pipeline_base.hh',
 	'process_handler.hh',
 	'process_pipeline.hh',
-	'remote_client.hh',
 	'socket_pipeline.hh',
 	'socket_pipeline_event.hh',
 	'thread_context.hh',

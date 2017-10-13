@@ -28,10 +28,10 @@ void
 bsc::process_handler<K,R>
 ::write(std::ostream& out) const {
 	out << sys::make_object(
-		"pid=",
+		"pid",
 		this->_childpid,
 		"app",
-		this->_application
+		this->_application.id()
 	    );
 }
 
@@ -40,6 +40,7 @@ void
 bsc::process_handler<K,R>
 ::remove() {
 	this->setstate(pipeline_state::stopped);
+	this->close();
 }
 
 template class bsc::process_handler<

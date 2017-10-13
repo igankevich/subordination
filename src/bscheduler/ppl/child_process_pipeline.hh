@@ -54,7 +54,21 @@ namespace bsc {
 			}
 		}
 
+	protected:
+
+		void
+		process_kernels() override;
+
 	private:
+
+		inline void
+		process_kernel(kernel_type* k) {
+			if (this->_parent && this->_parent->is_running()) {
+				this->_parent->send(k);
+			} else {
+				router_type::send_local(k);
+			}
+		}
 
 		template <class X, class Y> friend class child_notify_handler;
 		template <class X, class Y> friend class process_handler;

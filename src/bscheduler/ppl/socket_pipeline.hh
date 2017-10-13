@@ -213,7 +213,7 @@ namespace bsc {
 		}
 
 		void
-		process_kernels();
+		process_kernels() override;
 
 		void
 		process_kernel(kernel_type* k);

@@ -68,6 +68,11 @@ namespace bsc {
 			this->_allowroot = rhs;
 		}
 
+	protected:
+
+		void
+		process_kernels() override;
+
 	private:
 
 		app_iterator

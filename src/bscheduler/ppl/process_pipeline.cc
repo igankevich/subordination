@@ -12,6 +12,7 @@
 
 namespace bsc {
 
+	/*
 	template <class K, class R>
 	class process_notify_handler: public basic_handler {
 
@@ -41,6 +42,7 @@ namespace bsc {
 		}
 
 	};
+	*/
 
 }
 
@@ -48,9 +50,9 @@ template <class K, class R>
 void
 bsc::process_pipeline<K,R>
 ::do_run() {
-	this->emplace_notify_handler(
-		std::make_shared<process_notify_handler<K,R>>(*this)
-	);
+//	this->emplace_notify_handler(
+//		std::make_shared<process_notify_handler<K,R>>(*this)
+//	);
 	std::thread waiting_thread {
 		&process_pipeline::wait_for_all_processes_to_finish,
 		this
@@ -154,6 +156,19 @@ bsc::process_pipeline<K,R>
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
+::process_kernels() {
+	std::for_each(
+		queue_popper(this->_kernels),
+		queue_popper(),
+		[this] (kernel_type* rhs) {
+			this->process_kernel(rhs);
+		}
+	);
+}
+
+template <class K, class R>
+void
+bsc::process_pipeline<K,R>
 ::process_kernel(kernel_type* k) {
 	typedef typename map_type::value_type value_type;
 	if (k->moves_everywhere()) {
@@ -209,7 +224,7 @@ bsc::process_pipeline<K,R>
 	app_iterator result = this->find_by_process_id(p.id());
 	if (result != this->_apps.end()) {
 		this->log("app exited: app=_,_", result->first, status);
-		result->second->close();
+//		result->second->close();
 		this->_apps.erase(result);
 	}
 }

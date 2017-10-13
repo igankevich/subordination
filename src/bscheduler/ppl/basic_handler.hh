@@ -14,10 +14,17 @@ namespace bsc {
 	public:
 
 		virtual void
-		handle(const sys::epoll_event& ev) = 0;
+		handle(const sys::epoll_event& ev) {
+			this->consume_pipe(ev.fd());
+		}
 
+		/// Called when the handler is removed from the poller.
 		virtual void
 		remove() {}
+
+		/// Flush dirty buffers (if needed).
+		virtual void
+		flush() {}
 
 		virtual void
 		write(std::ostream& out) const {
@@ -29,6 +36,17 @@ namespace bsc {
 			rhs.write(out);
 			return out;
 		}
+
+	private:
+
+		void
+		consume_pipe(sys::fd_type fd) {
+			const size_t n = 20;
+			char tmp[n];
+			ssize_t c;
+			while ((c = ::read(fd, tmp, n)) != -1) ;
+		}
+
 
 	};
 

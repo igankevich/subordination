@@ -238,7 +238,6 @@ namespace bsc {
 
 		void
 		send(kernel_type* k) {
-			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_proto.send(k, this->_stream);
 		}
 
@@ -249,12 +248,17 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& event) override {
+			this->log("_ _", __func__, event);
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
 			}
-			this->_stream.rdbuf(this->_packetbuf.get());
 			this->_stream.sync();
 			this->_proto.receive_kernels(this->_stream);
+		}
+
+		void
+		flush() override {
+			this->_stream.sync();
 		}
 
 		inline const socket_type&
@@ -323,6 +327,7 @@ namespace bsc {
 
 	};
 
+	/*
 	template <class K, class S, class R>
 	class socket_notify_handler: public basic_handler {
 
@@ -344,6 +349,7 @@ namespace bsc {
 		}
 
 	};
+	*/
 
 }
 
@@ -352,9 +358,6 @@ bsc::socket_pipeline<T,S,R>
 ::socket_pipeline() {
 	using namespace std::chrono;
 	this->set_start_timeout(seconds(7));
-	this->emplace_notify_handler(
-		std::make_shared<socket_notify_handler<T,S,R>>(*this)
-	);
 }
 
 template <class T, class S, class R>

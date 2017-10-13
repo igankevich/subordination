@@ -57,7 +57,7 @@ _downstream(_upstream.concurrency()) {
 	#if defined(BSCHEDULER_DAEMON)
 	this->_parent.set_name("nic");
 	#elif defined(BSCHEDULER_SUBMIT)
-	this->_parent.set_name("unix");
+	this->_parent.set_name("chld");
 	#endif
 	#if defined(BSCHEDULER_DAEMON) && \
 	!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)

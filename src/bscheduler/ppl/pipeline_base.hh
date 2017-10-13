@@ -23,7 +23,7 @@ namespace bsc {
 
 	protected:
 		volatile pipeline_state _state = pipeline_state::initial;
-		time_point _start;
+		time_point _start = time_point(duration::zero());
 		const char* _name = "ppl";
 		unsigned _number = 0;
 
@@ -84,6 +84,11 @@ namespace bsc {
 			return this->_start;
 		}
 
+		inline bool
+		has_start_time_point() const noexcept {
+			return this->_start != time_point(duration::zero());
+		}
+
 		inline const char*
 		name() const noexcept {
 			return this->_name;
@@ -101,12 +106,12 @@ namespace bsc {
 
 		template <class ... Args>
 		inline void
-		log(const Args& ... args) {
+		log(const Args& ... args) const {
 			sys::log_message(this->_name, args ...);
 		}
 
 		inline void
-		log_error(const std::exception& err) {
+		log_error(const std::exception& err) const {
 			sys::log_message(this->_name, "error: _", err.what());
 		}
 

@@ -41,8 +41,13 @@ namespace bsc {
 		void
 		add_client(const sys::endpoint& addr, sys::socket&& sock);
 
-		template <class X, class Y> friend class unix_socket_server;
-		template <class X, class Y> friend class unix_socket_client;
+		void
+		process_kernels() override {}
+
+		template <class X, class Y>
+		friend class unix_socket_server;
+		template <class X, class Y>
+		friend class unix_socket_client;
 
 	};
 

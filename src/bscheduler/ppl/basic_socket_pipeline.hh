@@ -2,6 +2,7 @@
 #define BSCHEDULER_PPL_BASIC_SOCKET_PIPELINE_HH
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -14,7 +15,7 @@
 //#include <unistdx/base/simple_lock>
 //#include <unistdx/base/spin_mutex>
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/poller2>
+#include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
 #include <bscheduler/base/static_lock.hh>
@@ -25,13 +26,15 @@
 namespace bsc {
 
 	template<class T,
-	class Kernels=std::queue<T*>,
-	class Traits=sys::queue_traits<Kernels>,
-	class Threads=std::vector<std::thread>>
+	         class Kernels=std::queue<T*>,
+	         class Traits=sys::queue_traits<Kernels>,
+	         class Threads=std::vector<std::thread>>
 	using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
-		std::recursive_mutex, std::unique_lock<std::recursive_mutex>,
+	                                           std::recursive_mutex,
+	                                           std::unique_lock<std::
+	                                                            recursive_mutex>,
 //		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
-		sys::event_poller2>;
+	                                           sys::event_poller>;
 
 	template<class T>
 	class basic_socket_pipeline: public Proxy_pipeline_base<T> {
@@ -40,9 +43,9 @@ namespace bsc {
 		typedef basic_handler handler_type;
 		typedef std::shared_ptr<handler_type> event_handler_ptr;
 		typedef std::unordered_map<sys::fd_type,event_handler_ptr>
-			handler_container_type;
+		    handler_container_type;
 		typedef typename handler_container_type::const_iterator
-			handler_const_iterator;
+		    handler_const_iterator;
 		typedef typename handler_type::clock_type clock_type;
 		typedef typename handler_type::time_point time_point;
 		typedef typename handler_type::duration duration;
@@ -68,16 +71,19 @@ namespace bsc {
 
 		basic_socket_pipeline(basic_socket_pipeline&& rhs) noexcept:
 		base_pipeline(std::move(rhs)),
-		_start_timeout(rhs._start_timeout)
-		{}
+		_start_timeout(rhs._start_timeout) { }
 
 		basic_socket_pipeline():
-		base_pipeline(1u)
-		{}
+		base_pipeline(1u) {
+			this->emplace_notify_handler(std::make_shared<basic_handler>());
+		}
 
 		~basic_socket_pipeline() = default;
+
 		basic_socket_pipeline(const basic_socket_pipeline&) = delete;
-		basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
+
+		basic_socket_pipeline&
+		operator=(const basic_socket_pipeline&) = delete;
 
 		inline void
 		set_other_mutex(mutex_type* rhs) noexcept {
@@ -111,9 +117,13 @@ namespace bsc {
 			const sys::epoll_event& ev,
 			const event_handler_ptr& ptr
 		) {
-			this->log("add _", *ptr);
+			#ifndef NDEBUG
+			auto result = this->_handlers.find(ev.fd());
+			assert(result == this->_handlers.end());
+			#endif
+			this->log("add _, ev=_", *ptr, ev);
 			this->_handlers.emplace(ev.fd(), ptr);
-			this->poller().emplace(ev.fd());
+			this->poller().insert(ev);
 		}
 
 		template <class X>
@@ -122,19 +132,23 @@ namespace bsc {
 			const sys::epoll_event& ev,
 			const std::shared_ptr<X>& ptr
 		) {
-			this->emplace_handler(ev, std::static_pointer_cast<handler_type>(ptr));
+			this->emplace_handler(
+				ev,
+				std::static_pointer_cast<handler_type>(ptr)
+			);
 		}
 
 		void
 		emplace_notify_handler(const event_handler_ptr& ptr) {
-			this->_handlers.emplace(this->poller().pipe_in(), ptr);
+			sys::fd_type fd = this->poller().pipe_in();
+			this->log("add _", *ptr);
+			this->_handlers.emplace(fd, ptr);
 		}
 
 		template <class X>
 		void
 		emplace_notify_handler(const std::shared_ptr<X>& ptr) {
-			this->_handlers.emplace(
-				this->poller().pipe_in(),
+			this->emplace_notify_handler(
 				std::static_pointer_cast<handler_type>(ptr)
 			);
 		}
@@ -150,14 +164,16 @@ namespace bsc {
 					if (result != this->_handlers.end()) {
 						timeout = true;
 						const time_point tp = result->second->start_time_point()
-							+ this->_start_timeout;
+						                      + this->_start_timeout;
 						this->poller().wait_until(lock, tp);
 					}
 				}
 				if (!timeout) {
 					this->poller().wait(lock);
 				}
-				this->handle_events(timeout);
+				this->process_kernels();
+				this->handle_events();
+				this->flush_buffers(timeout);
 			}
 		}
 
@@ -165,9 +181,9 @@ namespace bsc {
 		run(Thread_context*) override {
 			do_run();
 			/**
-			do nothing with the context, because we can not
-			reliably garbage collect kernels sent from other nodes
-			*/
+			   do nothing with the context, because we can not
+			   reliably garbage collect kernels sent from other nodes
+			 */
 		}
 
 		inline void
@@ -175,33 +191,62 @@ namespace bsc {
 			this->_start_timeout = rhs;
 		}
 
+		virtual void
+		process_kernels() = 0;
+
 	private:
+
+		void
+		flush_buffers(bool timeout) {
+			const time_point now = timeout
+			                       ? clock_type::now()
+								   : time_point(duration::zero());
+			handler_const_iterator first = this->_handlers.begin();
+			handler_const_iterator last = this->_handlers.end();
+			while (first != last) {
+				handler_type& h = *first->second;
+				if (h.has_stopped() || (timeout && this->is_timed_out(
+											h,
+											now
+				                        ))) {
+					this->log("remove _", h);
+					h.remove();
+					first = this->_handlers.erase(first);
+				} else {
+					first->second->flush();
+					++first;
+				}
+			}
+		}
 
 		handler_const_iterator
 		handler_with_min_start_time_point() const noexcept {
-			typedef typename handler_container_type::value_type value_type;
-			handler_const_iterator end = this->_handlers.end();
-			handler_const_iterator first =
-				std::find_if(
-					this->_handlers.begin(), end,
-					[this] (const value_type& rhs) {
-						return rhs.second->is_starting();
+			handler_const_iterator first = this->_handlers.begin();
+			handler_const_iterator last = this->_handlers.end();
+			handler_const_iterator result = last;
+			while (first != last) {
+				handler_type& h = *first->second;
+				if (h.is_starting() && h.has_start_time_point()) {
+					if (result == last) {
+						result = first;
+					} else {
+						const auto old_t = result->second->start_time_point();
+						const auto new_t = h.start_time_point();
+						if (new_t < old_t) {
+							result = first;
+						}
 					}
-				);
-			return std::min_element(
-				first, end,
-				[] (const value_type& a, const value_type& b) {
-					return a.second->start_time_point()
-						 < b.second->start_time_point();
 				}
-			);
+				++first;
+			}
+			if (result != last) {
+				this->log("min _", *result->second);
+			}
+			return result;
 		}
 
 		void
-		handle_events(bool timeout) {
-			const time_point now = timeout
-				? clock_type::now()
-				: time_point(duration::zero());
+		handle_events() {
 			for (const sys::epoll_event& ev : this->poller()) {
 				auto result = this->_handlers.find(ev.fd());
 				if (result == this->_handlers.end()) {
@@ -212,11 +257,13 @@ namespace bsc {
 					try {
 						h.handle(ev);
 					} catch (const std::exception& err) {
-						this->log("failed to process fd _: _", ev.fd(), err.what());
+						this->log(
+							"failed to process fd _: _",
+							ev.fd(),
+							err.what()
+						);
 					}
-					if (!ev ||
-						h.has_stopped() ||
-						(timeout && this->is_timed_out(h, now))) {
+					if (!ev) {
 						this->log("remove _", h);
 						h.remove();
 						this->_handlers.erase(result);
@@ -228,7 +275,7 @@ namespace bsc {
 		bool
 		is_timed_out(const handler_type& rhs, const time_point& now) {
 			return rhs.is_starting() &&
-				rhs.start_time_point() + this->_start_timeout <= now;
+			       rhs.start_time_point() + this->_start_timeout <= now;
 		}
 
 	};

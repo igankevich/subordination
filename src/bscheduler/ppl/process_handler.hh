@@ -5,7 +5,7 @@
 #include <iosfwd>
 
 #include <unistdx/io/fildesbuf>
-#include <unistdx/io/poller2>
+#include <unistdx/io/poller>
 #include <unistdx/ipc/process>
 
 #include <bscheduler/kernel/kstream.hh>
@@ -134,6 +134,11 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& event) override;
+
+		void
+		flush() override {
+			this->_outbuf->sync();
+		}
 
 		void
 		write(std::ostream& out) const override;
