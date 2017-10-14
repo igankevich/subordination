@@ -31,16 +31,20 @@ bsc::process_handler<K,R>
 		"pid",
 		this->_childpid,
 		"app",
-		this->_application.id()
+		this->_application.id(),
+		"in",
+		this->_inbuf->fd(),
+		"out",
+		this->_outbuf->fd()
 	    );
 }
 
 template <class K, class R>
 void
 bsc::process_handler<K,R>
-::remove() {
-	this->setstate(pipeline_state::stopped);
-	this->close();
+::remove(sys::event_poller& poller) {
+	poller.erase(this->_inbuf->fd().get_fd());
+	poller.erase(this->_outbuf->fd().get_fd());
 }
 
 template class bsc::process_handler<

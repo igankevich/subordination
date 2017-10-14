@@ -144,7 +144,7 @@ namespace bsc {
 		write(std::ostream& out) const override;
 
 		void
-		remove() override;
+		remove(sys::event_poller& poller) override;
 
 		void
 		forward(kernel_header& hdr, sys::pstream& istr) {

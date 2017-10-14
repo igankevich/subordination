@@ -77,9 +77,9 @@ bsc::process_pipeline<K,R>
 	sys::two_way_pipe data_pipe;
 	const sys::process& p = _procs.emplace(
 		[&app,this,&data_pipe] () {
-		    data_pipe.close_in_child();
-		    data_pipe.validate();
 		    try {
+				data_pipe.close_in_child();
+				data_pipe.validate();
 		        return app.execute(data_pipe);
 			} catch (const std::exception& err) {
 		        this->log(
@@ -151,6 +151,7 @@ bsc::process_pipeline<K,R>
 	}
 	this->log("fwd _ to _", hdr, hdr.app());
 	result->second->forward(hdr, istr);
+	this->poller().notify_one();
 }
 
 template <class K, class R>

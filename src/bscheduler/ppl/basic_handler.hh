@@ -4,6 +4,7 @@
 #include <iosfwd>
 
 #include <unistdx/io/epoll_event>
+#include <unistdx/io/poller>
 
 #include <bscheduler/ppl/pipeline_base.hh>
 
@@ -20,7 +21,7 @@ namespace bsc {
 
 		/// Called when the handler is removed from the poller.
 		virtual void
-		remove() {}
+		remove(sys::event_poller& poller) {}
 
 		/// Flush dirty buffers (if needed).
 		virtual void

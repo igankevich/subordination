@@ -117,12 +117,10 @@ namespace bsc {
 			const sys::epoll_event& ev,
 			const event_handler_ptr& ptr
 		) {
-			#ifndef NDEBUG
-			auto result = this->_handlers.find(ev.fd());
-			assert(result == this->_handlers.end());
-			#endif
+			// N.B. we have two file descriptors (for the pipe)
+			// in the process handler, so do not use emplace here
 			this->log("add _, ev=_", *ptr, ev);
-			this->_handlers.emplace(ev.fd(), ptr);
+			this->_handlers[ev.fd()] = ptr;
 			this->poller().insert(ev);
 		}
 
@@ -209,8 +207,8 @@ namespace bsc {
 											h,
 											now
 				                        ))) {
-					this->log("remove _", h);
-					h.remove();
+					this->log("remove _ (_)", h, h.has_stopped() ? "stop" : "timeout");
+					h.remove(this->poller());
 					first = this->_handlers.erase(first);
 				} else {
 					first->second->flush();
@@ -264,8 +262,8 @@ namespace bsc {
 						);
 					}
 					if (!ev) {
-						this->log("remove _", h);
-						h.remove();
+						this->log("remove _ (bad event _)", h, ev);
+						h.remove(this->poller());
 						this->_handlers.erase(result);
 					}
 				}

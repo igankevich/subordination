@@ -154,7 +154,8 @@ namespace bsc {
 		}
 
 		void
-		remove() override {
+		remove(sys::event_poller& poller) override {
+			poller.erase(this->fd());
 			this->_ppl.remove_server(this->_ifaddr);
 		}
 
@@ -321,7 +322,8 @@ namespace bsc {
 		}
 
 		void
-		remove() override {
+		remove(sys::event_poller& poller) override {
+			poller.erase(this->_packetbuf->fd().get_fd());
 			this->_ppl.remove_client(this->vaddr());
 		}
 
