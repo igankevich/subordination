@@ -15,12 +15,8 @@ bsc::process_handler<K,R>
 		this->setstate(pipeline_state::started);
 	}
 	this->log("_ _", __func__, event);
-	if (event.fd() == this->_outbuf->fd()) {
-		this->_ostream.sync();
-	} else {
-		this->_istream.sync();
-		this->_proto.receive_kernels(this->_istream);
-	}
+	this->_stream.sync();
+	this->_proto.receive_kernels(this->_stream);
 }
 
 template <class K, class R>
@@ -33,9 +29,9 @@ bsc::process_handler<K,R>
 		"app",
 		this->_application.id(),
 		"in",
-		this->_inbuf->fd(),
+		this->in(),
 		"out",
-		this->_outbuf->fd()
+		this->out()
 	    );
 }
 
@@ -43,8 +39,8 @@ template <class K, class R>
 void
 bsc::process_handler<K,R>
 ::remove(sys::event_poller& poller) {
-	poller.erase(this->_inbuf->fd().get_fd());
-	poller.erase(this->_outbuf->fd().get_fd());
+	poller.erase(this->in());
+	poller.erase(this->out());
 	this->setstate(pipeline_state::stopped);
 }
 

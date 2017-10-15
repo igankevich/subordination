@@ -10,42 +10,6 @@
 #include <bscheduler/ppl/basic_router.hh>
 #include <bscheduler/ppl/kernel_protocol.hh>
 
-namespace bsc {
-
-	/*
-	template <class K, class R>
-	class process_notify_handler: public basic_handler {
-
-	public:
-		typedef K kernel_type;
-		typedef process_pipeline<K,R> this_type;
-		typedef typename this_type::queue_popper queue_popper;
-
-	private:
-		this_type& _ppl;
-
-	public:
-
-		explicit
-		process_notify_handler(this_type& ppl):
-		_ppl(ppl) {}
-
-		void
-		handle(const sys::epoll_event& ev) override {
-			std::for_each(
-				queue_popper(this->_ppl._kernels),
-				queue_popper(),
-				[this] (kernel_type* rhs) {
-				    this->_ppl.process_kernel(rhs);
-				}
-			);
-		}
-
-	};
-	*/
-
-}
-
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
@@ -78,8 +42,8 @@ bsc::process_pipeline<K,R>
 	const sys::process& p = _procs.emplace(
 		[&app,this,&data_pipe] () {
 		    try {
-				data_pipe.close_in_child();
-				data_pipe.validate();
+		        data_pipe.close_in_child();
+		        data_pipe.validate();
 		        return app.execute(data_pipe);
 			} catch (const std::exception& err) {
 		        this->log(
@@ -106,7 +70,8 @@ bsc::process_pipeline<K,R>
 		        return 1;
 				#endif
 			}
-		}
+		},
+		sys::process_flag::wait_for_exec
 	                        );
 	data_pipe.close_in_parent();
 	data_pipe.validate();
@@ -162,7 +127,7 @@ bsc::process_pipeline<K,R>
 		queue_popper(this->_kernels),
 		queue_popper(),
 		[this] (kernel_type* rhs) {
-			this->process_kernel(rhs);
+		    this->process_kernel(rhs);
 		}
 	);
 }

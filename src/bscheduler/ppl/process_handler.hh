@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iosfwd>
 
+#include <unistdx/io/fildes_pair>
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller>
 #include <unistdx/ipc/process>
@@ -24,7 +25,9 @@ namespace bsc {
 		typedef R router_type;
 
 	private:
-		typedef basic_kernelbuf<sys::fildesbuf> kernelbuf_type;
+		typedef sys::basic_fildesbuf<char, std::char_traits<char>, sys::fildes_pair>
+			fildesbuf_type;
+		typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
 		typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
 		typedef kstream<K> stream_type;
 		typedef kernel_protocol<K,R,bits::forward_to_parent<R>>
@@ -37,10 +40,8 @@ namespace bsc {
 
 	private:
 		sys::pid_type _childpid;
-		kernelbuf_ptr _outbuf;
-		stream_type _ostream;
-		kernelbuf_ptr _inbuf;
-		stream_type _istream;
+		kernelbuf_ptr _packetbuf;
+		stream_type _stream;
 		protocol_type _proto;
 		application _application;
 		role_type _role;
@@ -54,55 +55,31 @@ namespace bsc {
 			const application& app
 		):
 		_childpid(child),
-		_outbuf(new kernelbuf_type),
-		_ostream(_outbuf.get()),
-		_inbuf(new kernelbuf_type),
-		_istream(_inbuf.get()),
+		_packetbuf(new kernelbuf_type),
+		_stream(_packetbuf.get()),
 		_proto(),
 		_application(app),
 		_role(role_type::parent)
 		{
 			this->_proto.set_other_application(&this->_application);
-			this->_outbuf->setfd(std::move(pipe.parent_out()));
-			this->_outbuf->fd().validate();
-			this->_inbuf->setfd(std::move(pipe.parent_in()));
-			this->_inbuf->fd().validate();
 			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+			this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
+			this->_packetbuf->fd().in().validate();
+			this->_packetbuf->fd().out().validate();
 		}
-
-		/*
-		process_handler(process_handler&& rhs):
-		_childpid(rhs._childpid),
-		_outbuf(std::move(rhs._outbuf)),
-		_ostream(std::move(rhs._ostream)),
-		_inbuf(std::move(rhs._inbuf)),
-		_istream(std::move(rhs._istream)),
-		_proto(std::move(rhs._proto)),
-		_application(std::move(rhs._application)),
-		_role(rhs._role)
-		{
-			this->_inbuf->fd().validate();
-			this->_outbuf->fd().validate();
-			this->_istream.rdbuf(this->_inbuf.get());
-			this->_ostream.rdbuf(this->_outbuf.get());
-		}
-		*/
 
 		/// Called from child process.
 		explicit
 		process_handler(sys::pipe&& pipe):
 		_childpid(sys::this_process::id()),
-		_outbuf(new kernelbuf_type),
-		_ostream(_outbuf.get()),
-		_inbuf(new kernelbuf_type),
-		_istream(_inbuf.get()),
+		_packetbuf(new kernelbuf_type),
+		_stream(_packetbuf.get()),
 		_proto(),
 		_application(),
 		_role(role_type::child)
 		{
-			this->_outbuf->setfd(std::move(pipe.out()));
-			this->_inbuf->setfd(std::move(pipe.in()));
 			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+			this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
 		}
 
 		virtual
@@ -123,13 +100,12 @@ namespace bsc {
 
 		void
 		close() {
-			this->_outbuf->fd().close();
-			this->_inbuf->fd().close();
+			this->_packetbuf->fd().close();
 		}
 
 		void
 		send(kernel_type* k) {
-			this->_proto.send(k, this->_ostream);
+			this->_proto.send(k, this->_stream);
 		}
 
 		void
@@ -137,7 +113,7 @@ namespace bsc {
 
 		void
 		flush() override {
-			this->_outbuf->sync();
+			this->_packetbuf->pubflush();
 		}
 
 		void
@@ -151,7 +127,7 @@ namespace bsc {
 			// remove application before forwarding
 			// to child process
 			hdr.aptr(nullptr);
-			this->_proto.forward(hdr, istr, this->_ostream);
+			this->_proto.forward(hdr, istr, this->_stream);
 		}
 
 		inline void
@@ -159,13 +135,20 @@ namespace bsc {
 			this->pipeline_base::set_name(rhs);
 			this->_proto.set_name(rhs);
 			#ifndef NDEBUG
-			if (this->_inbuf) {
-				this->_inbuf->set_name(rhs);
-			}
-			if (this->_outbuf) {
-				this->_outbuf->set_name(rhs);
+			if (this->_packetbuf) {
+				this->_packetbuf->set_name(rhs);
 			}
 			#endif
+		}
+
+		inline sys::fd_type
+		in() const noexcept {
+			return this->_packetbuf->fd().in().get_fd();
+		}
+
+		inline sys::fd_type
+		out() const noexcept {
+			return this->_packetbuf->fd().out().get_fd();
 		}
 
 	};
