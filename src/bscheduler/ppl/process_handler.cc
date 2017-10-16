@@ -33,10 +33,10 @@ bsc::process_handler<K,R>
 		this->in(),
 		"out",
 		this->out(),
-		"pdirty",
-		this->_packetbuf->pdirty(),
-		"gdirty",
-		this->_packetbuf->gdirty()
+		"premaining",
+		this->_packetbuf->premaining(),
+		"gremaining",
+		this->_packetbuf->gremaining()
 	    );
 }
 

@@ -319,10 +319,10 @@ namespace bsc {
 				int(this->state()),
 				"weight",
 				this->weight(),
-				"pdirty",
-				this->_packetbuf->pdirty(),
-				"gdirty",
-				this->_packetbuf->gdirty()
+				"premaining",
+				this->_packetbuf->premaining(),
+				"gremaining",
+				this->_packetbuf->gremaining()
 			    );
 		}
 
