@@ -33,10 +33,10 @@ bsc::process_handler<K,R>
 		this->in(),
 		"out",
 		this->out(),
-		"premaining",
-		this->_packetbuf->premaining(),
-		"gremaining",
-		this->_packetbuf->gremaining()
+		"remaining",
+		this->_packetbuf->remaining(),
+		"available",
+		this->_packetbuf->available()
 	    );
 }
 

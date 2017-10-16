@@ -249,7 +249,6 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& event) override {
-			this->log("_ _", __func__, event);
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
 			}
@@ -319,10 +318,10 @@ namespace bsc {
 				int(this->state()),
 				"weight",
 				this->weight(),
-				"premaining",
-				this->_packetbuf->premaining(),
-				"gremaining",
-				this->_packetbuf->gremaining()
+				"remaining",
+				this->_packetbuf->remaining(),
+				"available",
+				this->_packetbuf->available()
 			    );
 		}
 
