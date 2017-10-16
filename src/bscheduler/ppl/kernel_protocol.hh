@@ -202,7 +202,7 @@ namespace bsc {
 		kernel_type*
 		read_kernel(stream_type& stream) {
 			// eats remaining bytes on exception
-			ipacket_guard g(stream.rdbuf());
+			//ipacket_guard g(stream.rdbuf());
 			kernel_header hdr;
 			kernel_type* k = nullptr;
 			stream >> hdr;
