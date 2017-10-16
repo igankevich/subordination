@@ -92,6 +92,12 @@ bsc::child_process_pipeline<K,R>
 	);
 }
 
+template <class K, class R>
+void
+bsc::child_process_pipeline<K,R>
+::print_state(std::ostream& out) {
+}
+
 template class bsc::child_process_pipeline<
 		BSCHEDULER_KERNEL_TYPE,
 		bsc::basic_router<BSCHEDULER_KERNEL_TYPE>>;

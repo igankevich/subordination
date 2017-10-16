@@ -1,6 +1,7 @@
 #ifndef BSCHEDULER_PPL_SOCKET_PIPELINE_HH
 #define BSCHEDULER_PPL_SOCKET_PIPELINE_HH
 
+#include <iosfwd>
 #include <unordered_map>
 #include <vector>
 
@@ -147,6 +148,9 @@ namespace bsc {
 
 		void
 		remove_server(const ifaddr_type& ifaddr);
+
+		void
+		print_state(std::ostream& out);
 
 	private:
 

@@ -2,6 +2,7 @@
 #define BSCHEDULER_PPL_CHILD_PROCESS_PIPELINE_HH
 
 #include <algorithm>
+#include <iosfwd>
 #include <memory>
 
 #include <unistdx/io/pipe>
@@ -53,6 +54,9 @@ namespace bsc {
 				this->poller().notify_one();
 			}
 		}
+
+		void
+		print_state(std::ostream& out);
 
 	protected:
 

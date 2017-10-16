@@ -149,6 +149,17 @@ bsc::Factory<T>
 	);
 }
 
+template <class T>
+void
+bsc::Factory<T>
+::print_state(std::ostream& out) {
+	this->_parent.print_state(out);
+	#if defined(BSCHEDULER_DAEMON) && \
+	!defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
+	this->_child.print_state(out);
+	#endif
+}
+
 template class bsc::Factory<BSCHEDULER_KERNEL_TYPE>;
 template class bsc::basic_router<BSCHEDULER_KERNEL_TYPE>;
 

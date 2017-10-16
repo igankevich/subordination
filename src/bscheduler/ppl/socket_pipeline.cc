@@ -310,8 +310,6 @@ namespace bsc {
 
 		void
 		write(std::ostream& out) const override {
-			out << "client " << this->vaddr();
-			/*
 			out << "client " << sys::make_object(
 				"vaddr",
 				this->vaddr(),
@@ -320,9 +318,12 @@ namespace bsc {
 				"state",
 				int(this->state()),
 				"weight",
-				this->weight()
+				this->weight(),
+				"pdirty",
+				this->_packetbuf->pdirty(),
+				"gdirty",
+				this->_packetbuf->gdirty()
 			    );
-				*/
 		}
 
 		void
@@ -759,6 +760,21 @@ bsc::socket_pipeline<T,S,R>
 	client_iterator result = this->_clients.find(addr);
 	if (result != this->_clients.end()) {
 		result->second->weight(new_weight);
+	}
+}
+
+template <class T, class S, class R>
+void
+bsc::socket_pipeline<T,S,R>
+::print_state(std::ostream& out) {
+	typedef typename server_container_type::value_type server_type;
+	typedef typename client_container_type::value_type client_pair;
+	lock_type lock(this->_mutex);
+	for (const server_type& val : this->_servers) {
+		this->log("server _", val);
+	}
+	for (const client_pair& val : this->_clients) {
+		this->log("client _, handler _", val.first, *val.second);
 	}
 }
 

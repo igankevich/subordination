@@ -7,6 +7,8 @@
 #define BSCHEDULER_APPLICATION
 #endif
 
+#include <iosfwd>
+
 #include <bscheduler/config.hh>
 #include <bscheduler/ppl/basic_pipeline.hh>
 #include <bscheduler/ppl/io_pipeline.hh>
@@ -188,6 +190,9 @@ namespace bsc {
 
 		void
 		wait();
+
+		void
+		print_state(std::ostream& out);
 
 	};
 

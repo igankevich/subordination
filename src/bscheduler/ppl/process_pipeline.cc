@@ -209,6 +209,20 @@ bsc::process_pipeline<K,R>
 	);
 }
 
+template <class K, class R>
+void
+bsc::process_pipeline<K,R>
+::print_state(std::ostream& out) {
+	typedef typename map_type::value_type value_type;
+	lock_type lock(this->_mutex);
+	for (const value_type& val : this->_apps) {
+		this->log("app _, handler _", val.first, *val.second);
+	}
+	for (const sys::process& p : this->_procs) {
+		this->log("process _", p);
+	}
+}
+
 template class bsc::process_pipeline<
 		BSCHEDULER_KERNEL_TYPE,
 		bsc::basic_router<BSCHEDULER_KERNEL_TYPE>>;

@@ -14,7 +14,6 @@ bsc::process_handler<K,R>
 	if (this->is_starting()) {
 		this->setstate(pipeline_state::started);
 	}
-	this->log("_ _", __func__, event);
 	if (event.in()) {
 		this->_packetbuf->pubfill();
 		this->_proto.receive_kernels(this->_stream);
@@ -33,7 +32,11 @@ bsc::process_handler<K,R>
 		"in",
 		this->in(),
 		"out",
-		this->out()
+		this->out(),
+		"pdirty",
+		this->_packetbuf->pdirty(),
+		"gdirty",
+		this->_packetbuf->gdirty()
 	    );
 }
 

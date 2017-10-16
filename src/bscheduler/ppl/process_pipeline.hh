@@ -68,6 +68,9 @@ namespace bsc {
 			this->_allowroot = rhs;
 		}
 
+		void
+		print_state(std::ostream& out);
+
 	protected:
 
 		void

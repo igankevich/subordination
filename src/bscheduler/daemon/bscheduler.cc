@@ -9,6 +9,18 @@
 #include "bscheduler_socket.hh"
 #include "network_master.hh"
 
+void
+print_state(int) {
+	std::clog << __func__ << std::endl;
+	bsc::factory.print_state(std::clog);
+}
+
+void
+install_debug_handler() {
+	using namespace sys::this_process;
+	bind_signal(sys::signal::quit, print_state);
+}
+
 int
 main(int argc, char* argv[]) {
 	#if defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
@@ -32,6 +44,7 @@ main(int argc, char* argv[]) {
 	};
 	sys::parse_arguments(argc, argv, options);
 	install_error_handler();
+	install_debug_handler();
 	types.register_type<Application_kernel>();
 	types.register_type<probe>();
 	types.register_type<hierarchy_kernel>();
