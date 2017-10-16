@@ -7,7 +7,7 @@ project(
 )
 
 #if not get_option('buildtype').contains('debug')
-add_global_arguments('-DNDEBUG', language: 'cpp')
+#add_global_arguments('-DNDEBUG', language: 'cpp')
 add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 #endif
