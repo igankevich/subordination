@@ -8,6 +8,7 @@
 
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
+#include <unistdx/ipc/process>
 #include <unistdx/ipc/thread_semaphore>
 #include <unistdx/it/container_traits>
 #include <unistdx/it/queue_popper>
@@ -122,6 +123,10 @@ namespace bsc {
 			for (std::thread& thr : this->_threads) {
 				thr = std::thread(
 					[this,thread_no] () {
+						try {
+							sys::this_process::set_name(this->_name);
+						} catch (...) {
+						}
 					    this_thread::name = this->_name;
 					    this_thread::number = thread_no;
 					    this->run(&this_thread::context);
