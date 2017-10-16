@@ -15,8 +15,10 @@ bsc::process_handler<K,R>
 		this->setstate(pipeline_state::started);
 	}
 	this->log("_ _", __func__, event);
-	this->_stream.sync();
-	this->_proto.receive_kernels(this->_stream);
+	if (event.in()) {
+		this->_packetbuf->pubfill();
+		this->_proto.receive_kernels(this->_stream);
+	}
 }
 
 template <class K, class R>

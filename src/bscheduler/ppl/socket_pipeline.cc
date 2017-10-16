@@ -253,13 +253,17 @@ namespace bsc {
 			if (this->is_starting() && !this->socket().error()) {
 				this->setstate(pipeline_state::started);
 			}
-			this->_stream.sync();
-			this->_proto.receive_kernels(this->_stream);
+			if (event.in()) {
+				this->_packetbuf->pubfill();
+				this->_proto.receive_kernels(this->_stream);
+			}
 		}
 
 		void
 		flush() override {
-			this->_stream.sync();
+			if (this->_packetbuf->dirty()) {
+				this->_packetbuf->pubflush();
+			}
 		}
 
 		inline const socket_type&

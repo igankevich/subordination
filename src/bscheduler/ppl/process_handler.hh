@@ -113,7 +113,9 @@ namespace bsc {
 
 		void
 		flush() override {
-			this->_packetbuf->pubflush();
+			if (this->_packetbuf->dirty()) {
+				this->_packetbuf->pubflush();
+			}
 		}
 
 		void
