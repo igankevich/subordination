@@ -70,8 +70,7 @@ bsc::process_pipeline<K,R>
 		        return 1;
 				#endif
 			}
-		},
-		sys::process_flag::wait_for_exec
+		}
 	                        );
 	data_pipe.close_in_parent();
 	data_pipe.validate();
