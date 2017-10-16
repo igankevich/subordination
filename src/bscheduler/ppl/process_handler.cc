@@ -16,6 +16,9 @@ bsc::process_handler<K,R>
 	}
 	if (event.in()) {
 		this->_packetbuf->pubfill();
+		if (this->_packetbuf->is_safe_to_compact()) {
+			this->_packetbuf->compact();
+		}
 		this->_proto.receive_kernels(this->_stream);
 	}
 }

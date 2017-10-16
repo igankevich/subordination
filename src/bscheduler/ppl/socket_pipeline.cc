@@ -253,6 +253,9 @@ namespace bsc {
 				this->setstate(pipeline_state::started);
 			}
 			if (event.in()) {
+				if (this->_packetbuf->is_safe_to_compact()) {
+					this->_packetbuf->compact();
+				}
 				this->_packetbuf->pubfill();
 				this->_proto.receive_kernels(this->_stream);
 			}

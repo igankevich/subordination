@@ -163,7 +163,7 @@ namespace bsc {
 		void
 		write_kernel(kernel_type* k, stream_type& stream) noexcept {
 			try {
-				//opacket_guard g(stream);
+				opacket_guard g(stream);
 				stream.begin_packet();
 				this->do_write_kernel(*k, stream);
 				stream.end_packet();
@@ -202,7 +202,7 @@ namespace bsc {
 		kernel_type*
 		read_kernel(stream_type& stream) {
 			// eats remaining bytes on exception
-			//ipacket_guard g(stream.rdbuf());
+			ipacket_guard g(stream.rdbuf());
 			kernel_header hdr;
 			kernel_type* k = nullptr;
 			stream >> hdr;
