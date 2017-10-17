@@ -463,16 +463,22 @@ bsc::socket_pipeline<T,S,R>
 	assert(hdr.is_foreign());
 	if (hdr.to()) {
 		event_handler_ptr ptr = this->find_or_create_client(hdr.to());
+		#ifndef NDEBUG
 		this->log("fwd _ to _", hdr, hdr.to());
+		#endif
 		ptr->forward(hdr, istr);
 		this->_semaphore.notify_one();
 	} else {
 		if (this->end_reached()) {
 			this->find_next_client();
+			#ifndef NDEBUG
 			this->log("fwd _ to _", hdr, "localhost");
+			#endif
 			router_type::forward_child(hdr, istr);
 		} else {
+			#ifndef NDEBUG
 			this->log("fwd _ to _", hdr, this->current_client().vaddr());
+			#endif
 			this->current_client().forward(hdr, istr);
 			this->find_next_client();
 			this->_semaphore.notify_one();

@@ -82,7 +82,6 @@ template <class K, class R>
 void
 bsc::child_process_pipeline<K,R>
 ::process_kernels() {
-	this->log("_ n=_", __func__, this->_kernels.size());
 	std::for_each(
 		queue_popper(this->_kernels),
 		queue_popper(),

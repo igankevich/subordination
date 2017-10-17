@@ -107,13 +107,17 @@ bsc::process_pipeline<K,R>
 	if (result == this->_apps.end()) {
 		if (const application* a = hdr.aptr()) {
 			a->make_slave();
+			#ifndef NDEBUG
 			this->log("fwd: add app _ ", *a);
+			#endif
 			result = this->do_add(*a);
 		} else {
 			BSCHEDULER_THROW(error, "bad application id");
 		}
 	}
+	#ifndef NDEBUG
 	this->log("fwd _ to _", hdr, hdr.app());
+	#endif
 	result->second->forward(hdr, istr);
 	this->poller().notify_one();
 }
