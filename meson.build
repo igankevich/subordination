@@ -6,11 +6,11 @@ project(
 	default_options: ['cpp_std=c++14']
 )
 
-#if not get_option('buildtype').contains('debug')
-#add_global_arguments('-DNDEBUG', language: 'cpp')
-add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
-add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
-#endif
+if not get_option('buildtype').contains('debug')
+	add_global_arguments('-DNDEBUG', language: 'cpp')
+endif
+#add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
+#add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 
 profiling_args = []
 if get_option('profile_node_discovery')
