@@ -70,35 +70,38 @@ namespace bsc {
 			sys::delete_each(queue_popper(this->_downstream), queue_popper());
 		}
 
-	void
-	send(kernel_type* k, stream_type& stream) {
-		// return local downstream kernels immediately
-		// TODO we need to move some kernel flags to
-		// kernel header in order to use them in routing
-		if (k->moves_downstream() && !k->to()) {
-			if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
-				if (k->carries_parent()) {
+		void
+		send(kernel_type* k, stream_type& stream) {
+			// return local downstream kernels immediately
+			// TODO we need to move some kernel flags to
+			// kernel header in order to use them in routing
+			if (k->moves_downstream() && !k->to()) {
+				if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
+					if (k->carries_parent()) {
+						delete k->parent();
+					}
+					this->plug_parent(k);
+				}
+				#ifndef NDEBUG
+				this->log("send local kernel _", *k);
+				#endif
+				router_type::send_local(k);
+				return;
+			}
+			bool delete_kernel = this->save_kernel(k);
+			#ifndef NDEBUG
+			this->log("send _ to _", *k, this->_endpoint);
+			#endif
+			this->write_kernel(k, stream);
+			/// The kernel is deleted if it goes downstream
+			/// and does not carry its parent.
+			if (delete_kernel) {
+				if (k->moves_downstream() && k->carries_parent()) {
 					delete k->parent();
 				}
-				this->plug_parent(k);
+				delete k;
 			}
-			#ifndef NDEBUG
-			this->log("send local kernel _", *k);
-			#endif
-			router_type::send_local(k);
-			return;
 		}
-		bool delete_kernel = this->save_kernel(k);
-		#ifndef NDEBUG
-		this->log("send _ to _", *k, this->_endpoint);
-		#endif
-		this->write_kernel(k, stream);
-		/// The kernel is deleted if it goes downstream
-		/// and does not carry its parent.
-		if (delete_kernel) {
-			delete k;
-		}
-	}
 
 		void
 		forward(foreign_kernel* k, stream_type& ostr) {
@@ -178,14 +181,17 @@ namespace bsc {
 			stream << k;
 		}
 
-		static bool
+		bool
 		kernel_goes_in_upstream_buffer(const kernel_type* rhs) noexcept {
-			return rhs->moves_upstream() || rhs->moves_somewhere();
+			return this->saves_upstream_kernels() &&
+				   (rhs->moves_upstream() || rhs->moves_somewhere());
 		}
 
-		static bool
+		bool
 		kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
-			return rhs->moves_downstream() && rhs->carries_parent();
+			return this->saves_downstream_kernels() &&
+				   rhs->moves_downstream() &&
+				   rhs->carries_parent();
 		}
 		// }}}
 
@@ -256,11 +262,15 @@ namespace bsc {
 			kernel_iterator pos = this->find_kernel(k, this->_upstream);
 			if (pos == this->_upstream.end()) {
 				if (k->carries_parent()) {
+					k->principal(k->parent());
 					this->log("recover parent for _", *k);
 					kernel_iterator result2 =
 						this->find_kernel(k, this->_downstream);
 					if (result2 != this->_downstream.end()) {
-						delete *result2;
+						kernel_type* old = *result2;
+						this->log("delete _", *old);
+						delete old->parent();
+						delete old;
 						this->_downstream.erase(result2);
 					}
 				} else {
@@ -305,6 +315,9 @@ namespace bsc {
 				traits_type::push(this->_upstream, k);
 			} else
 			if (kernel_goes_in_downstream_buffer(k)) {
+				#ifndef NDEBUG
+				this->log("save parent for _", *k);
+				#endif
 				traits_type::push(this->_downstream, k);
 			} else
 			if (!k->moves_everywhere()) {
@@ -431,6 +444,16 @@ namespace bsc {
 		inline bool
 		prepends_application() const noexcept {
 			return this->_flags & kernel_proto_flag::prepend_application;
+		}
+
+		inline bool
+		saves_upstream_kernels() const noexcept {
+			return this->_flags & kernel_proto_flag::save_upstream_kernels;
+		}
+
+		inline bool
+		saves_downstream_kernels() const noexcept {
+			return this->_flags & kernel_proto_flag::save_downstream_kernels;
 		}
 
 		inline bool

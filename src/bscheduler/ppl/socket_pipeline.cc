@@ -212,7 +212,11 @@ namespace bsc {
 		_stream(_packetbuf.get()),
 		_proto(),
 		_ppl(ppl) {
-			this->_proto.setf(kernel_proto_flag::prepend_application);
+			this->_proto.setf(
+				kernel_proto_flag::prepend_application |
+				kernel_proto_flag::save_upstream_kernels |
+				kernel_proto_flag::save_downstream_kernels
+			);
 			this->_proto.set_endpoint(this->_vaddr);
 			this->_packetbuf->setfd(std::move(sock));
 		}

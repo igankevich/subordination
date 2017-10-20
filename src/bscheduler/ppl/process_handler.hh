@@ -78,7 +78,10 @@ namespace bsc {
 		_application(),
 		_role(role_type::child)
 		{
-			this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+			this->_proto.setf(
+				kernel_proto_flag::prepend_source_and_destination |
+				kernel_proto_flag::save_upstream_kernels
+			);
 			this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
 		}
 
