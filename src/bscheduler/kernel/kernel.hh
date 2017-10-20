@@ -106,7 +106,7 @@ namespace bsc {
 		read(sys::pstream& in) override;
 
 		void
-		write(sys::pstream& out) override;
+		write(sys::pstream& out) const override;
 
 		virtual void
 		act();

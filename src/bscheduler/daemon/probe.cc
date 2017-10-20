@@ -1,7 +1,7 @@
 #include "probe.hh"
 
 void
-bsc::probe::write(sys::pstream& out) {
+bsc::probe::write(sys::pstream& out) const {
 	bsc::kernel::write(out);
 	out << this->_ifaddr << this->_oldprinc << this->_newprinc;
 }

@@ -37,7 +37,7 @@ struct Test_socket: public kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		sys::log_message("tst", "Test_socket::write()");
 		kernel::write(out);
 		out << uint32_t(_data.size());

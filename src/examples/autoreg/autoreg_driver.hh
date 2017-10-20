@@ -68,7 +68,7 @@ namespace autoreg {
 		}
 
 		void
-		write(sys::pstream& out) override {
+		write(sys::pstream& out) const override {
 			kernel::write(out);
 			out << zsize;
 			out << zdelta;

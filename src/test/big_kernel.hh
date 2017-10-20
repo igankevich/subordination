@@ -19,7 +19,7 @@ struct Big_kernel: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << uint32_t(_data.size());
 		for (size_t i=0; i<_data.size(); ++i)

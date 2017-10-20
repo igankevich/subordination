@@ -29,7 +29,7 @@ bsc::kernel::read(sys::pstream& in) {
 }
 
 void
-bsc::kernel::write(sys::pstream& out) {
+bsc::kernel::write(sys::pstream& out) const {
 	base_kernel::write(out);
 	out << carries_parent();
 	if (this->moves_downstream()) {

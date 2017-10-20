@@ -26,7 +26,7 @@ public:
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << this->_number << this->_nslaves;
 	}

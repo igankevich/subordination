@@ -12,7 +12,7 @@
 struct Good_kernel: public bsc::kernel {
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << _data;
 	}
@@ -52,7 +52,7 @@ private:
 struct Kernel_that_writes_more_than_reads: public Good_kernel {
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		Good_kernel::write(out);
 		// push dummy object to the stream
 		out << Datum();
@@ -83,7 +83,7 @@ struct Kernel_that_carries_its_parent: public bsc::kernel {
 	Kernel_that_carries_its_parent(int) {}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << _data;
 	}

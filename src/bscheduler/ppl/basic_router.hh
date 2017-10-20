@@ -9,6 +9,8 @@ namespace bsc {
 	template <class T>
 	struct basic_router {
 
+		typedef T kernel_type;
+
 		static void
 		send_local(T* rhs);
 

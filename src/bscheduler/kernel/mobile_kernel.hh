@@ -19,7 +19,7 @@ namespace bsc {
 		read(sys::pstream& in);
 
 		virtual void
-		write(sys::pstream& out);
+		write(sys::pstream& out) const;
 
 		inline id_type
 		id() const noexcept {

@@ -36,7 +36,7 @@ namespace bsc {
 		{}
 
 		void
-		write(sys::pstream& out) override;
+		write(sys::pstream& out) const override;
 
 		void
 		read(sys::pstream& in) override;

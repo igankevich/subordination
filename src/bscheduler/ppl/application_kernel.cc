@@ -26,7 +26,7 @@ namespace {
 
 void
 bsc::Application_kernel
-::write(sys::pstream& out) {
+::write(sys::pstream& out) const {
 	kernel::write(out);
 	write_vector(out, this->_args);
 	write_vector(out, this->_env);

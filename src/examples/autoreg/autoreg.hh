@@ -640,7 +640,7 @@ struct Generator1: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << part << part2;
 		out << phi << fsize;
@@ -744,7 +744,7 @@ struct Wave_surface_generator: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		bsc::kernel::write(out);
 		out << phi;
 		out << fsize;

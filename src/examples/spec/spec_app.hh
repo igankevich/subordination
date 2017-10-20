@@ -449,7 +449,7 @@ struct Station_kernel: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		kernel::write(out);
 		out << _observations;
 		out << _station;
@@ -546,7 +546,7 @@ struct Year_kernel: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		kernel::write(out);
 		out << _year;
 		out << int32_t(_observations.size());
@@ -657,7 +657,7 @@ struct Launcher: public bsc::kernel {
 	}
 
 	void
-	write(sys::pstream& out) override {
+	write(sys::pstream& out) const override {
 		kernel::write(out);
 		out << _count << _count_spectra;
 	}

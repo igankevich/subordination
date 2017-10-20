@@ -6,6 +6,6 @@ bsc::mobile_kernel::read(sys::pstream& in) {
 }
 
 void
-bsc::mobile_kernel::write(sys::pstream& out) {
+bsc::mobile_kernel::write(sys::pstream& out) const {
 	out << _result << _id;
 }
