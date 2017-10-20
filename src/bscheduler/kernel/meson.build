@@ -1,18 +1,20 @@
 bscheduler_core_src += files([
 	'exit_code.cc',
+	'foreign_kernel.cc',
 	'kernel.cc',
 	'kernel_error.cc',
 	'kernel_header.cc',
+	'kernel_instance_registry.cc',
 	'kernel_type.cc',
 	'kernel_type_error.cc',
-	'mobile_kernel.cc',
 	'kernel_type_registry.cc',
-	'kernel_instance_registry.cc',
+	'mobile_kernel.cc',
 ])
 
 install_headers(
 	'act.hh',
 	'exit_code.hh',
+	'foreign_kernel.hh',
 	'kernel.hh',
 	'kernel_base.hh',
 	'kernel_error.hh',

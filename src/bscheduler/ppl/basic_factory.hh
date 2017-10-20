@@ -128,8 +128,8 @@ namespace bsc {
 		}
 
 		inline void
-		forward_child(kernel_header& hdr, sys::pstream& istr) {
-			this->_child.forward(hdr, istr);
+		forward_child(foreign_kernel* hdr) {
+			this->_child.forward(hdr);
 		}
 
 		inline external_pipeline_type&
@@ -166,8 +166,8 @@ namespace bsc {
 		}
 
 		inline void
-		forward_parent(kernel_header& hdr, sys::pstream& istr) {
-			this->_parent.forward(hdr, istr);
+		forward_parent(foreign_kernel* hdr) {
+			this->_parent.forward(hdr);
 		}
 
 		#endif
@@ -219,22 +219,22 @@ namespace bsc {
 	template <class T>
 	void
 	basic_router<T>
-	::forward(kernel_header& hdr, sys::pstream& istr) {
-		factory.forward_child(hdr, istr);
+	::forward(foreign_kernel* hdr) {
+		factory.forward_child(hdr);
 	}
 
 	template <class T>
 	void
 	basic_router<T>
-	::forward_child(kernel_header& hdr, sys::pstream& istr) {
-		factory.forward_child(hdr, istr);
+	::forward_child(foreign_kernel* hdr) {
+		factory.forward_child(hdr);
 	}
 
 	template <class T>
 	void
 	basic_router<T>
-	::forward_parent(kernel_header& hdr, sys::pstream& istr) {
-		factory.forward_parent(hdr, istr);
+	::forward_parent(foreign_kernel* hdr) {
+		factory.forward_parent(hdr);
 	}
 
 	template <class T>
@@ -248,17 +248,17 @@ namespace bsc {
 	template <class T>
 	void
 	basic_router<T>
-	::forward(kernel_header& hdr, sys::pstream& istr) {}
+	::forward(foreign_kernel* hdr) {}
 
 	template <class T>
 	void
 	basic_router<T>
-	::forward_child(kernel_header& hdr, sys::pstream& istr) {}
+	::forward_child(foreign_kernel* hdr) {}
 
 	template <class T>
 	void
 	basic_router<T>
-	::forward_parent(kernel_header& hdr, sys::pstream& istr) {}
+	::forward_parent(foreign_kernel* hdr) {}
 
 	template <class T>
 	void

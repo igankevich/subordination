@@ -100,12 +100,12 @@ bsc::process_pipeline<K,R>
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
-::forward(kernel_header& hdr, sys::pstream& istr) {
+::forward(foreign_kernel* hdr) {
 	// do not lock here as static_lock locks both mutexes
 	assert(this->other_mutex());
-	app_iterator result = this->find_by_app_id(hdr.app());
+	app_iterator result = this->find_by_app_id(hdr->app());
 	if (result == this->_apps.end()) {
-		if (const application* a = hdr.aptr()) {
+		if (const application* a = hdr->aptr()) {
 			a->make_slave();
 			#ifndef NDEBUG
 			this->log("fwd: add app _ ", *a);
@@ -116,9 +116,9 @@ bsc::process_pipeline<K,R>
 		}
 	}
 	#ifndef NDEBUG
-	this->log("fwd _ to _", hdr, hdr.app());
+	this->log("fwd _ to _", *hdr, hdr->app());
 	#endif
-	result->second->forward(hdr, istr);
+	result->second->forward(hdr);
 	this->poller().notify_one();
 }
 

@@ -243,8 +243,8 @@ namespace bsc {
 		}
 
 		void
-		forward(kernel_header& hdr, sys::pstream& istr) {
-			this->_proto.forward(hdr, istr, this->_stream);
+		forward(foreign_kernel* hdr) {
+			this->_proto.forward(hdr, this->_stream);
 		}
 
 		void
@@ -454,32 +454,38 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::forward(
-	kernel_header& hdr,
-	sys::pstream& istr
-) {
+::forward(foreign_kernel* hdr) {
 	// do not lock here as static_lock locks both mutexes
 	assert(this->other_mutex());
-	assert(hdr.is_foreign());
-	if (hdr.to()) {
-		event_handler_ptr ptr = this->find_or_create_client(hdr.to());
+	assert(hdr->is_foreign());
+	if (hdr->to()) {
+		event_handler_ptr ptr = this->find_or_create_client(hdr->to());
 		#ifndef NDEBUG
-		this->log("fwd _ to _", hdr, hdr.to());
+		this->log("fwd _ to _", *hdr, hdr->to());
 		#endif
-		ptr->forward(hdr, istr);
+		ptr->forward(hdr);
 		this->_semaphore.notify_one();
 	} else {
+		if (this->end_reached() && hdr->moves_upstream() && hdr->carries_parent()) {
+			this->find_next_client();
+			if (this->end_reached()) {
+				this->log(
+					"forwarding kernel carrying parent to localhost _",
+					*hdr
+				);
+			}
+		}
 		if (this->end_reached()) {
 			this->find_next_client();
 			#ifndef NDEBUG
-			this->log("fwd _ to _", hdr, "localhost");
+			this->log("fwd _ to _", *hdr, "localhost");
 			#endif
-			router_type::forward_child(hdr, istr);
+			router_type::forward_child(hdr);
 		} else {
 			#ifndef NDEBUG
-			this->log("fwd _ to _", hdr, this->current_client().vaddr());
+			this->log("fwd _ to _", *hdr, this->current_client().vaddr());
 			#endif
-			this->current_client().forward(hdr, istr);
+			this->current_client().forward(hdr);
 			this->find_next_client();
 			this->_semaphore.notify_one();
 		}
@@ -648,7 +654,7 @@ bsc::socket_pipeline<T,S,R>
 		delete k;
 	} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
 		bool success = false;
-		if (this->_uselocalhost) {
+		if (this->_uselocalhost && !k->carries_parent()) {
 			if (this->end_reached()) {
 				// include localhost in round-robin
 				// (short-circuit kernels when no upstream servers

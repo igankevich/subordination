@@ -1,8 +1,9 @@
 #ifndef BSCHEDULER_KERNEL_KERNEL_HH
 #define BSCHEDULER_KERNEL_KERNEL_HH
 
-#include <unistdx/net/pstream>
 #include <memory>
+
+#include <unistdx/net/pstream>
 
 #include "mobile_kernel.hh"
 
@@ -194,6 +195,18 @@ namespace bsc {
 
 	std::ostream&
 	operator<<(std::ostream& out, const kernel& rhs);
+
+	inline sys::pstream&
+	operator<<(sys::pstream& out, const kernel& rhs) {
+		rhs.write(out);
+		return out;
+	}
+
+	inline sys::pstream&
+	operator>>(sys::pstream& in, kernel& rhs) {
+		rhs.read(in);
+		return in;
+	}
 
 }
 

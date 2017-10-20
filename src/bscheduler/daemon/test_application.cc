@@ -21,6 +21,10 @@ public:
 
 	void
 	act() override {
+		if (bsc::this_application::is_master()) {
+			sys::send(sys::signal::kill, sys::this_process::parent_id());
+			std::exit(sys::this_process::execute_command("false"));
+		}
 		sys::log_message("slave", "act [_/_]", this->_number, this->_nslaves);
 		bsc::commit<bsc::Remote>(this);
 	}
@@ -52,14 +56,16 @@ private:
 
 public:
 
+	master_kernel() = default;
+
+	~master_kernel() = default;
+
 	void
 	act() override {
 		sys::log_message("master", "start");
 		for (uint32_t i=0; i<this->_nkernels; ++i) {
-			bsc::upstream<bsc::Remote>(
-				this,
-				new slave_kernel(i+1, this->_nkernels)
-			);
+			slave_kernel* slave = new slave_kernel(i+1, this->_nkernels);
+			bsc::upstream<bsc::Remote>(this, slave);
 		}
 	}
 
@@ -84,19 +90,66 @@ public:
 		}
 		if (++this->_nreturned == this->_nkernels) {
 			sys::log_message("master", "finish");
-			bsc::commit(this);
+			bsc::commit<bsc::Remote>(this);
 		}
+	}
+
+	void
+	write(sys::pstream& out) const override {
+		bsc::kernel::write(out);
+	}
+
+	void
+	read(sys::pstream& in) override {
+		bsc::kernel::read(in);
 	}
 
 };
 
-int main(int argc, char* argv[]) {
+class grand_master_kernel: public bsc::kernel {
+
+public:
+
+	grand_master_kernel() = default;
+
+	~grand_master_kernel() = default;
+
+	void
+	act() override {
+		sys::log_message("grand", "start");
+		master_kernel* master = new master_kernel;
+		master->setf(bsc::kernel_flag::carries_parent);
+		bsc::upstream<bsc::Remote>(this, master);
+	}
+
+	void
+	react(bsc::kernel* child) {
+		sys::log_message("grand", "finish");
+		bsc::commit(this);
+	}
+
+	void
+	write(sys::pstream& out) const override {
+		bsc::kernel::write(out);
+	}
+
+	void
+	read(sys::pstream& in) override {
+		bsc::kernel::read(in);
+	}
+
+};
+
+int
+main(int argc, char* argv[]) {
 	using namespace bsc;
 	install_error_handler();
 	register_type<slave_kernel>();
+	register_type<master_kernel>();
+	register_type<grand_master_kernel>();
 	factory_guard g;
 	if (this_application::is_master()) {
-		send(new master_kernel);
+		send(new grand_master_kernel);
 	}
 	return wait_and_return();
 }

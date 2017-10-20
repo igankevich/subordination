@@ -19,15 +19,18 @@ namespace bsc {
 
 	private:
 		flag_type _flags = flag_type(0);
-		sys::endpoint _src{};
-		sys::endpoint _dst{};
+		sys::endpoint _src {};
+		sys::endpoint _dst {};
 		application_type _aid = this_application::get_id();
 		const application* _aptr = nullptr;
 
 	public:
 		kernel_header() = default;
-		kernel_header(const kernel_header&) = default;
-		kernel_header& operator=(const kernel_header&) = default;
+
+		kernel_header(const kernel_header&) = delete;
+
+		kernel_header&
+		operator=(const kernel_header&) = delete;
 
 		inline
 		~kernel_header() {
@@ -107,7 +110,8 @@ namespace bsc {
 
 		inline bool
 		has_source_and_destination() const noexcept {
-			return this->_flags & kernel_header_flag::has_source_and_destination;
+			return this->_flags &
+			       kernel_header_flag::has_source_and_destination;
 		}
 
 		inline void

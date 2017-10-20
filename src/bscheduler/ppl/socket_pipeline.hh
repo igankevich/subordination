@@ -119,7 +119,7 @@ namespace bsc {
 		add_server(const sys::endpoint& rhs, addr_type netmask);
 
 		void
-		forward(kernel_header& hdr, sys::pstream& istr);
+		forward(foreign_kernel* hdr);
 
 		inline void
 		set_port(sys::port_type rhs) noexcept {

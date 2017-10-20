@@ -8,8 +8,8 @@
 #include <unistdx/net/pstream>
 
 #include <bscheduler/base/error.hh>
+#include <bscheduler/kernel/foreign_kernel.hh>
 #include <bscheduler/kernel/kernel_error.hh>
-#include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/kernel/kernel_type_registry.hh>
 #include <bscheduler/kernel/kernelbuf.hh>
 #include <bscheduler/ppl/kernel_proto_flag.hh>
@@ -21,24 +21,24 @@ namespace bsc {
 		template <class Router>
 		struct no_forward: public Router {
 			void
-			operator()(kernel_header&, sys::pstream&) {
-				assert("no forwarding");
+			operator()(foreign_kernel*) {
+				assert(false);
 			}
 		};
 
 		template <class Router>
 		struct forward_to_child: public Router {
 			void
-			operator()(kernel_header& hdr, sys::pstream& istr) {
-				this->forward_child(hdr, istr);
+			operator()(foreign_kernel* hdr) {
+				this->forward_child(hdr);
 			}
 		};
 
 		template <class Router>
 		struct forward_to_parent: public Router {
 			void
-			operator()(kernel_header& hdr, sys::pstream& istr) {
-				this->forward_parent(hdr, istr);
+			operator()(foreign_kernel* hdr) {
+				this->forward_parent(hdr);
 			}
 		};
 
@@ -52,13 +52,13 @@ namespace bsc {
 			send_remote(T*) {}
 
 			void
-			forward(kernel_header&, sys::pstream&) {}
+			forward(foreign_kernel*) {}
 
 			void
-			forward_child(kernel_header&, sys::pstream&) {}
+			forward_child(foreign_kernel*) {}
 
 			void
-			forward_parent(kernel_header&, sys::pstream&) {}
+			forward_parent(foreign_kernel*) {}
 
 		};
 	}
@@ -77,38 +77,55 @@ namespace bsc {
 		kstream(kstream&&) = default;
 
 		inline kstream&
+		operator<<(foreign_kernel* k) {
+			return operator<<(*k);
+		}
+
+		inline kstream&
+		operator<<(foreign_kernel& k) {
+			this->write_foreign(k);
+			return *this;
+		}
+
+		inline kstream&
 		operator<<(kernel_type* k) {
 			return operator<<(*k);
 		}
 
 		kstream&
 		operator<<(kernel_type& k) {
-			this->write_kernel(k);
+			this->write_native(k);
 			if (k.carries_parent()) {
 				// embed parent into the packet
 				kernel_type* parent = k.parent();
 				if (!parent) {
 					throw std::invalid_argument("parent is null");
 				}
-				this->write_kernel(*parent);
+				this->write_native(*parent);
 			}
 			return *this;
 		}
 
 		kstream&
 		operator>>(kernel_type*& k) {
-			k = this->read_kernel();
+			k = this->read_native();
 			if (k->carries_parent()) {
-				kernel_type* parent = this->read_kernel();
+				kernel_type* parent = this->read_native();
 				k->parent(parent);
 			}
+			return *this;
+		}
+
+		kstream&
+		operator>>(foreign_kernel& k) {
+			this->read_foreign(k);
 			return *this;
 		}
 
 	private:
 
 		inline void
-		write_kernel(kernel_type& k) {
+		write_native(kernel_type& k) {
 			auto type = types.find(typeid(k));
 			if (type == types.end()) {
 				throw std::invalid_argument("kernel type is null");
@@ -118,8 +135,18 @@ namespace bsc {
 		}
 
 		inline kernel_type*
-		read_kernel() {
+		read_native() {
 			return static_cast<kernel_type*>(types.read_object(*this));
+		}
+
+		inline void
+		write_foreign(foreign_kernel& k) {
+			k.write(*this);
+		}
+
+		inline void
+		read_foreign(foreign_kernel& k) {
+			k.read(*this);
 		}
 
 	};

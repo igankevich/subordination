@@ -61,7 +61,7 @@ namespace bsc {
 		do_run() override;
 
 		void
-		forward(kernel_header& hdr, sys::pstream& istr);
+		forward(foreign_kernel* hdr);
 
 		inline void
 		allow_root(bool rhs) noexcept {

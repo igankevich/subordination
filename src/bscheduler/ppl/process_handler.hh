@@ -125,11 +125,11 @@ namespace bsc {
 		remove(sys::event_poller& poller) override;
 
 		void
-		forward(kernel_header& hdr, sys::pstream& istr) {
+		forward(foreign_kernel* k) {
 			// remove application before forwarding
 			// to child process
-			hdr.aptr(nullptr);
-			this->_proto.forward(hdr, istr, this->_stream);
+			k->aptr(nullptr);
+			this->_proto.forward(k, this->_stream);
 		}
 
 		inline void

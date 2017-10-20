@@ -9,6 +9,7 @@
 #include <unistdx/ipc/process>
 #include <unistdx/it/queue_popper>
 
+#include <bscheduler/kernel/foreign_kernel.hh>
 #include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/kernel/kernel_instance_registry.hh>
 #include <bscheduler/kernel/kstream.hh>
@@ -39,6 +40,7 @@ namespace bsc {
 		typedef typename stream_type::ipacket_guard ipacket_guard;
 		typedef sys::opacket_guard<stream_type> opacket_guard;
 		typedef std::unique_ptr<application> application_ptr;
+		typedef typename pool_type::iterator kernel_iterator;
 
 	private:
 		kernel_proto_flag _flags = kernel_proto_flag(0);
@@ -68,57 +70,46 @@ namespace bsc {
 			sys::delete_each(queue_popper(this->_downstream), queue_popper());
 		}
 
-		void
-		send(kernel_type* k, stream_type& stream) {
-			// return local downstream kernels immediately
-			// TODO we need to move some kernel flags to
-			// kernel header in order to use them in routing
-			if (k->moves_downstream() && !k->to()) {
-				if (k->isset(kernel_flag::parent_is_id)){
-					this->plug_parent(k);
+	void
+	send(kernel_type* k, stream_type& stream) {
+		// return local downstream kernels immediately
+		// TODO we need to move some kernel flags to
+		// kernel header in order to use them in routing
+		if (k->moves_downstream() && !k->to()) {
+			if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
+				if (k->carries_parent()) {
+					delete k->parent();
 				}
-				#ifndef NDEBUG
-				this->log("send local kernel _", *k);
-				#endif
-				router_type::send_local(k);
-				return;
-			}
-			bool delete_kernel = false;
-			if (kernel_goes_in_upstream_buffer(k)) {
-				this->ensure_has_id(k->parent());
-				this->ensure_has_id(k);
-				#ifndef NDEBUG
-				this->log("save parent for _", *k);
-				#endif
-				traits_type::push(this->_upstream, k);
-			} else
-			if (kernel_goes_in_downstream_buffer(k)) {
-				traits_type::push(this->_downstream, k);
-			} else
-			if (!k->moves_everywhere()) {
-				delete_kernel = true;
+				this->plug_parent(k);
 			}
 			#ifndef NDEBUG
-			this->log("send _ to _", *k, this->_endpoint);
+			this->log("send local kernel _", *k);
 			#endif
-			this->write_kernel(k, stream);
-			/// The kernel is deleted if it goes downstream
-			/// and does not carry its parent.
+			router_type::send_local(k);
+			return;
+		}
+		bool delete_kernel = this->save_kernel(k);
+		#ifndef NDEBUG
+		this->log("send _ to _", *k, this->_endpoint);
+		#endif
+		this->write_kernel(k, stream);
+		/// The kernel is deleted if it goes downstream
+		/// and does not carry its parent.
+		if (delete_kernel) {
+			delete k;
+		}
+	}
+
+		void
+		forward(foreign_kernel* k, stream_type& ostr) {
+			bool delete_kernel = this->save_kernel(k);
+			ostr.begin_packet();
+			ostr << k->header();
+			ostr << *k;
+			ostr.end_packet();
 			if (delete_kernel) {
 				delete k;
 			}
-		}
-
-		void
-		forward(
-			kernel_header& hdr,
-			sys::pstream& istr,
-			stream_type& ostr
-		) {
-			ostr.begin_packet();
-			ostr << hdr;
-			ostr.append_payload_cur(istr);
-			ostr.end_packet();
 		}
 
 		void
@@ -203,34 +194,36 @@ namespace bsc {
 		read_kernel(stream_type& stream) {
 			// eats remaining bytes on exception
 			ipacket_guard g(stream.rdbuf());
-			kernel_header hdr;
+			foreign_kernel* hdr = new foreign_kernel;
 			kernel_type* k = nullptr;
-			stream >> hdr;
+			stream >> hdr->header();
 			if (this->has_other_application()) {
-				hdr.setapp(this->other_application_id());
-				hdr.aptr(this->_otheraptr);
+				hdr->setapp(this->other_application_id());
+				hdr->aptr(this->_otheraptr);
 			}
 			if (this->_endpoint) {
-				hdr.from(this->_endpoint);
-				hdr.prepend_source_and_destination();
+				hdr->from(this->_endpoint);
+				hdr->prepend_source_and_destination();
 			}
 			#ifndef NDEBUG
-			this->log("recv _", hdr);
+			this->log("recv _", hdr->header());
 			#endif
-			if (hdr.app() != this->_thisapp) {
-				this->_forward(hdr, stream);
+			if (hdr->app() != this->_thisapp) {
+				stream >> *hdr;
+				this->_forward(hdr);
 			} else {
 				stream >> k;
-				k->setapp(hdr.app());
-				if (hdr.has_source_and_destination()) {
-					k->from(hdr.from());
-					k->to(hdr.to());
+				k->setapp(hdr->app());
+				if (hdr->has_source_and_destination()) {
+					k->from(hdr->from());
+					k->to(hdr->to());
 				} else {
 					k->from(this->_endpoint);
 				}
 				if (k->carries_parent()) {
-					k->parent()->setapp(hdr.app());
+					k->parent()->setapp(hdr->app());
 				}
+				delete hdr;
 			}
 			return k;
 		}
@@ -260,26 +253,66 @@ namespace bsc {
 			if (!k->has_id()) {
 				throw std::invalid_argument("downstream kernel without an id");
 			}
-			auto pos = std::find_if(
-				this->_upstream.begin(),
-				this->_upstream.end(),
-				[k] (kernel_type* rhs) { return rhs->id() == k->id(); }
-			);
+			kernel_iterator pos = this->find_kernel(k, this->_upstream);
 			if (pos == this->_upstream.end()) {
-				this->log("parent not found for _", *k);
-				delete k;
-				throw std::invalid_argument("parent not found");
+				if (k->carries_parent()) {
+					this->log("recover parent for _", *k);
+					kernel_iterator result2 =
+						this->find_kernel(k, this->_downstream);
+					if (result2 != this->_downstream.end()) {
+						delete *result2;
+						this->_downstream.erase(result2);
+					}
+				} else {
+					this->log("parent not found for _", *k);
+					delete k;
+					throw std::invalid_argument("parent not found");
+				}
 			} else {
 				kernel_type* orig = *pos;
 				k->parent(orig->parent());
 				k->principal(k->parent());
 				delete orig;
 				this->_upstream.erase(pos);
+				#ifndef NDEBUG
+				this->log("plug parent for _", *k);
+				#endif
 			}
+		}
+
+		kernel_iterator
+		find_kernel(kernel_type* k, pool_type& pool) {
+			return std::find_if(
+				pool.begin(),
+				pool.end(),
+				[k] (kernel_type* rhs) { return rhs->id() == k->id(); }
+			);
 		}
 		// }}}
 
 		// recover {{{
+		bool
+		save_kernel(kernel_type* k) {
+			bool delete_kernel = false;
+			if (kernel_goes_in_upstream_buffer(k)) {
+				if (k->is_native()) {
+					this->ensure_has_id(k->parent());
+					this->ensure_has_id(k);
+				}
+				#ifndef NDEBUG
+				this->log("save parent for _", *k);
+				#endif
+				traits_type::push(this->_upstream, k);
+			} else
+			if (kernel_goes_in_downstream_buffer(k)) {
+				traits_type::push(this->_downstream, k);
+			} else
+			if (!k->moves_everywhere()) {
+				delete_kernel = true;
+			}
+			return delete_kernel;
+		}
+
 		void
 		do_recover_kernels(pool_type& rhs) noexcept {
 			using namespace std::placeholders;
@@ -287,33 +320,52 @@ namespace bsc {
 				queue_popper(rhs),
 				queue_popper(rhs),
 				[this] (kernel_type* rhs) {
-					this->recover_kernel(rhs);
+					try {
+						this->recover_kernel(rhs);
+					} catch (const std::exception& err) {
+						this->log("failed to recover kernel _", *rhs);
+						delete rhs;
+					}
 				}
 			);
 		}
 
 		void
 		recover_kernel(kernel_type* k) {
-			if (k->moves_upstream()) {
+			const bool native = k->is_native();
+			if (k->moves_upstream() && !k->to()) {
 				#ifndef NDEBUG
 				this->log("recover _", *k);
 				#endif
-				router_type::send_remote(k);
-			} else if (k->moves_somewhere()) {
+				if (native) {
+					router_type::send_remote(k);
+				} else {
+					router_type::forward_parent(dynamic_cast<foreign_kernel*>(k));
+				}
+			} else if (k->moves_somewhere() || (k->moves_upstream() && k->to())) {
 				#ifndef NDEBUG
 				this->log("destination is unreachable for _", *k);
 				#endif
 				k->from(k->to());
 				k->return_code(exit_code::endpoint_not_connected);
 				k->principal(k->parent());
-				router_type::send_local(k);
+				if (native) {
+					router_type::send_local(k);
+				} else {
+					this->_forward(dynamic_cast<foreign_kernel*>(k));
+				}
 			} else if (k->moves_downstream() && k->carries_parent()) {
 				#ifndef NDEBUG
 				this->log("restore parent _", *k);
 				#endif
-				router_type::send_local(k);
+				if (native) {
+					router_type::send_local(k);
+				} else {
+					this->_forward(dynamic_cast<foreign_kernel*>(k));
+				}
 			} else {
 				this->log("bad kernel in sent buffer: _", *k);
+				delete k;
 			}
 		}
 		// }}}
