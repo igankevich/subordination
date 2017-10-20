@@ -3,6 +3,23 @@
 
 #include "test_application.hh"
 
+std::string failure = "no";
+
+inline bool
+test_without_failures() {
+	return failure.empty() || failure == "no-failure";
+}
+
+inline bool
+test_slave_failure() {
+	return failure == "slave-failure";
+}
+
+inline bool
+test_master_failure() {
+	return failure == "master-failure";
+}
+
 class slave_kernel: public bsc::kernel {
 
 private:
@@ -21,9 +38,14 @@ public:
 
 	void
 	act() override {
-		if (bsc::this_application::is_master()) {
-			sys::send(sys::signal::kill, sys::this_process::parent_id());
-			std::exit(sys::this_process::execute_command("false"));
+		if (!test_without_failures()) {
+			using namespace bsc::this_application;
+			if ((test_master_failure() && is_master()) ||
+				(test_slave_failure() && is_slave())) {
+				using namespace sys;
+				send(signal::kill, this_process::parent_id());
+				std::exit(this_process::execute_command("false"));
+			}
 		}
 		sys::log_message("slave", "act [_/_]", this->_number, this->_nslaves);
 		bsc::commit<bsc::Remote>(this);
@@ -90,7 +112,11 @@ public:
 		}
 		if (++this->_nreturned == this->_nkernels) {
 			sys::log_message("master", "finish");
-			bsc::commit<bsc::Remote>(this);
+			if (test_without_failures()) {
+				bsc::commit(this);
+			} else {
+				bsc::commit<bsc::Remote>(this);
+			}
 		}
 	}
 
@@ -142,6 +168,9 @@ public:
 
 int
 main(int argc, char* argv[]) {
+	if (argc >= 2) {
+		failure = argv[1];
+	}
 	using namespace bsc;
 	install_error_handler();
 	register_type<slave_kernel>();
@@ -149,7 +178,11 @@ main(int argc, char* argv[]) {
 	register_type<grand_master_kernel>();
 	factory_guard g;
 	if (this_application::is_master()) {
-		send(new grand_master_kernel);
+		if (test_master_failure()) {
+			send(new grand_master_kernel);
+		} else {
+			send(new master_kernel);
+		}
 	}
 	return wait_and_return();
 }

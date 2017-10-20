@@ -58,6 +58,8 @@ test(
 )
 
 
+# run discovery test over virtual network
+# using Linux namespaces
 if get_option('buildtype').contains('debug')
 	discovery_test = executable(
 		'discovery-test',
@@ -69,37 +71,48 @@ if get_option('buildtype').contains('debug')
 	foreach nodes : ['2', '4', '8']
 		foreach fanout : ['1000', '2']
 			suffix = '-' + nodes + '-' + fanout
-			test_env = environment()
-			test_env.set(
-				'_CLUSTER',
-				join_paths(meson.source_root(), 'src', 'test', 'cluster')
-			)
-			test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
-			test_env.set('_NODES', nodes)
-			test_env.set('_FANOUT', fanout)
-			test_env.set('_NAME', 'c' + suffix + '-')
 			if nodes == '2' and fanout == '2'
+				foreach arg : ['no-failure', 'slave-failure', 'master-failure']
+					test_env = environment()
+					test_env.set(
+						'_CLUSTER',
+						join_paths(meson.source_root(), 'src', 'test', 'cluster')
+					)
+					test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
+					test_env.set('_NODES', nodes)
+					test_env.set('_FANOUT', fanout)
+					test_env.set('_NAME', 'c' + suffix + '-')
+					test_env.set('_FAILURE', arg)
+					test_env.set(
+						'_SUBMIT',
+						bsub_exe.full_path() + ' ' + test_application.full_path() + ' ' + arg
+					)
+					test(
+						'discovery-test' + suffix + '-' + arg,
+						discovery_test,
+						args: [bscheduler_exe.full_path(), 'fanout=' + fanout, 'allow_root=1'],
+						env: test_env,
+						workdir: meson.build_root()
+					)
+				endforeach
+			else
+				test_env = environment()
 				test_env.set(
-					'_SUBMIT',
-#					bsub_exe.full_path() + ' ' +
-#					'/home/igankevich/workspace/arma/build/src/arma' + ' ' +
-#					'/home/igankevich/workspace/arma/input/standing_wave.arma'
-					bsub_exe.full_path() + ' ' + test_application.full_path()
+					'_CLUSTER',
+					join_paths(meson.source_root(), 'src', 'test', 'cluster')
+				)
+				test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
+				test_env.set('_NODES', nodes)
+				test_env.set('_FANOUT', fanout)
+				test_env.set('_NAME', 'c' + suffix + '-')
+				test(
+					'discovery-test' + suffix,
+					discovery_test,
+					args: [bscheduler_exe.full_path(), 'fanout=' + fanout, 'allow_root=1'],
+					env: test_env,
+					workdir: meson.build_root()
 				)
 			endif
-			# run discovery test over virtual network
-			# using Linux namespaces
-			test(
-				'discovery-test' + suffix,
-				discovery_test,
-				args: [
-					bscheduler_exe.full_path(),
-					'fanout=' + fanout,
-					'allow_root=1'
-				],
-				env: test_env,
-				workdir: meson.build_root()
-			)
 		endforeach
 	endforeach
 endif

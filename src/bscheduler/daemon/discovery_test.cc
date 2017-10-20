@@ -18,9 +18,14 @@
 
 #include "test_application.hh"
 
-const std::string
+std::string
 cluster_name() {
 	return std::getenv("_NAME");
+}
+
+std::string
+failure() {
+	return std::getenv("_FAILURE");
 }
 
 int _num_nodes = 0;
@@ -220,7 +225,11 @@ TEST(Discovery, Fanout2Weights) {
 
 TEST(Discovery, TestApplication) {
 	if (std::getenv("_SUBMIT")) {
-		expect_event(1, R"(^.*app exited:.*status=exited,exit_code=0.*$)");
+		int process_no = failure() == "master-failure" ? 2 : 1;
+		expect_event(
+			process_no,
+			R"(^.*app exited:.*status=exited,exit_code=0.*$)"
+		);
 	}
 }
 
