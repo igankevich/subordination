@@ -66,7 +66,7 @@ bsc::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
 	return out;
 }
 
-void*
+bsc::kernel*
 bsc::kernel_type_registry::read_object(sys::pstream& packet) {
 	id_type id;
 	packet >> id;

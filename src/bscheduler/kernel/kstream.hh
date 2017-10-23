@@ -136,7 +136,7 @@ namespace bsc {
 
 		inline kernel_type*
 		read_native() {
-			return static_cast<kernel_type*>(types.read_object(*this));
+			return types.read_object(*this);
 		}
 
 		inline void

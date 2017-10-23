@@ -243,7 +243,7 @@ namespace autoreg {
 			bsc::upstream(this, new Variance_WN<T>(ar_coefs, acf_model));
 		}
 		if (typeid(*child) == typeid(Variance_WN<T>)) {
-			T var_wn = reinterpret_cast<Variance_WN<T>*>(child)->get_sum();
+			T var_wn = dynamic_cast<Variance_WN<T>*>(child)->get_sum();
 		#ifndef NDEBUG
 			sys::log_message("autoreg", "var(acf) = _", var_acf(acf_model));
 			sys::log_message("autoreg", "var(eps) = _", var_wn);

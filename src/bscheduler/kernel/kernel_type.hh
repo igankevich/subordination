@@ -8,6 +8,8 @@
 
 #include <unistdx/net/pstream>
 
+#include <bscheduler/kernel/kernel.hh>
+
 namespace bsc {
 
 	class kernel_type {
@@ -15,7 +17,7 @@ namespace bsc {
 	public:
 		/// A portable type id
 		typedef uint16_t id_type;
-		typedef std::function<void* (sys::pstream&)> read_type;
+		typedef std::function<kernel* (sys::pstream&)> read_type;
 
 	private:
 		id_type _id;
@@ -37,7 +39,7 @@ namespace bsc {
 		_index(idx)
 		{}
 
-		inline void*
+		inline kernel*
 		read(sys::pstream& in) const {
 			return this->_read(in);
 		}

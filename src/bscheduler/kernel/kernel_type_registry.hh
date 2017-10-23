@@ -4,6 +4,7 @@
 #include <vector>
 #include <iosfwd>
 
+#include <bscheduler/kernel/kernel.hh>
 #include <bscheduler/kernel/kernel_type.hh>
 #include <bscheduler/kernel/kernel_type_error.hh>
 
@@ -46,7 +47,7 @@ namespace bsc {
 		register_type() {
 			this->register_type({
 				this->generate_id(),
-				[] (sys::pstream& in) -> void* {
+				[] (sys::pstream& in) -> kernel* {
 					X* k = new X;
 					k->read(in);
 					return k;
@@ -58,7 +59,7 @@ namespace bsc {
 		friend std::ostream&
 		operator<<(std::ostream& out, const kernel_type_registry& rhs);
 
-		void*
+		kernel*
 		read_object(sys::pstream& packet);
 
 	private:
