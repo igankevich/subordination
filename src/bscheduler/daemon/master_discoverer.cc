@@ -21,12 +21,14 @@ bsc::operator<<(std::ostream& out, probe_result rhs) {
 }
 
 void
-bsc::master_discoverer::on_start() {
+bsc::master_discoverer
+::on_start() {
 	this->probe_next_node();
 }
 
 void
-bsc::master_discoverer::on_kernel(bsc::kernel* k) {
+bsc::master_discoverer
+::on_kernel(bsc::kernel* k) {
 	if (typeid(*k) == typeid(discovery_timer)) {
 		// start probing only if it has not been started already
 		if (this->state() == state_type::waiting) {
@@ -44,27 +46,31 @@ bsc::master_discoverer::on_kernel(bsc::kernel* k) {
 }
 
 void
-bsc::master_discoverer::probe_next_node() {
+bsc::master_discoverer
+::probe_next_node() {
 	this->setstate(state_type::probing);
 	if (this->_iterator == this->_end) {
+		this->_iterator = iterator(this->ifaddr(), this->_fanout);
 		this->log("_: all addresses have been probed", this->ifaddr());
 		this->send_timer();
 	} else {
 		addr_type addr = *this->_iterator;
 		sys::endpoint new_principal(addr, this->port());
 		this->log("_: probe _", this->ifaddr(), addr);
-		prober* p = new prober(
-			this->ifaddr(),
-			this->_hierarchy.principal().endpoint(),
-			new_principal
-		            );
+		prober* p =
+			new prober(
+				this->ifaddr(),
+				this->_hierarchy.principal().endpoint(),
+				new_principal
+			);
 		bsc::upstream(this, p);
 		++this->_iterator;
 	}
 }
 
 void
-bsc::master_discoverer::send_timer() {
+bsc::master_discoverer
+::send_timer() {
 	this->setstate(state_type::waiting);
 	using namespace std::chrono;
 	discovery_timer* k = new discovery_timer;
@@ -73,7 +79,8 @@ bsc::master_discoverer::send_timer() {
 }
 
 void
-bsc::master_discoverer::update_subordinates(probe* p) {
+bsc::master_discoverer
+::update_subordinates(probe* p) {
 	const sys::endpoint src = p->from();
 	probe_result result = this->process_probe(p);
 	this->log("_: _ subordinate _", this->ifaddr(), result, src);
@@ -93,7 +100,8 @@ bsc::master_discoverer::update_subordinates(probe* p) {
 }
 
 bsc::probe_result
-bsc::master_discoverer::process_probe(probe* p) {
+bsc::master_discoverer
+::process_probe(probe* p) {
 	probe_result result = probe_result::retain;
 	if (p->from() == this->_hierarchy.principal()) {
 		// principal tries to become subordinate
@@ -114,7 +122,8 @@ bsc::master_discoverer::process_probe(probe* p) {
 }
 
 void
-bsc::master_discoverer::update_principal(prober* p) {
+bsc::master_discoverer
+::update_principal(prober* p) {
 	if (p->return_code() != exit_code::success) {
 		this->log(
 			"_: prober returned from _: _",
@@ -138,7 +147,8 @@ bsc::master_discoverer::update_principal(prober* p) {
 }
 
 void
-bsc::master_discoverer::on_event(socket_pipeline_kernel* ev) {
+bsc::master_discoverer
+::on_event(socket_pipeline_kernel* ev) {
 	switch (ev->event()) {
 	case socket_pipeline_event::add_client:
 		this->on_client_add(ev->endpoint());
@@ -155,11 +165,12 @@ bsc::master_discoverer::on_event(socket_pipeline_kernel* ev) {
 }
 
 void
-bsc::master_discoverer::on_client_add(const sys::endpoint& endp) {
-}
+bsc::master_discoverer
+::on_client_add(const sys::endpoint& endp) {}
 
 void
-bsc::master_discoverer::on_client_remove(const sys::endpoint& endp) {
+bsc::master_discoverer
+::on_client_remove(const sys::endpoint& endp) {
 	if (endp == this->_hierarchy.principal()) {
 		this->log("_: unset principal _", this->ifaddr(), endp);
 		this->_hierarchy.unset_principal();
@@ -171,8 +182,10 @@ bsc::master_discoverer::on_client_remove(const sys::endpoint& endp) {
 }
 
 void
-bsc::master_discoverer::broadcast_hierarchy(
-	sys::endpoint ignored_endpoint
+bsc::master_discoverer
+::broadcast_hierarchy(
+	sys::endpoint
+	ignored_endpoint
 ) {
 	const weight_type total = this->_hierarchy.total_weight();
 	for (const hierarchy_node& sub : this->_hierarchy) {
@@ -191,7 +204,8 @@ bsc::master_discoverer::broadcast_hierarchy(
 }
 
 void
-bsc::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
+bsc::master_discoverer
+::send_weight(const sys::endpoint& dest, weight_type w) {
 	hierarchy_kernel* h = new hierarchy_kernel(this->ifaddr(), w);
 	h->parent(this);
 	h->set_principal_id(1);
@@ -200,7 +214,8 @@ bsc::master_discoverer::send_weight(const sys::endpoint& dest, weight_type w) {
 }
 
 void
-bsc::master_discoverer::update_weights(hierarchy_kernel* k) {
+bsc::master_discoverer
+::update_weights(hierarchy_kernel* k) {
 	if (k->moves_downstream() && k->return_code() != exit_code::success) {
 		this->log(
 			"_: failed to send hierarchy to _",
@@ -227,4 +242,3 @@ bsc::master_discoverer::update_weights(hierarchy_kernel* k) {
 		}
 	}
 }
-
