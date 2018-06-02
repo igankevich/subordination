@@ -44,7 +44,9 @@ public:
 				(test_slave_failure() && is_slave())) {
 				using namespace sys;
 				send(signal::kill, this_process::parent_id());
-				std::exit(this_process::execute_command("false"));
+				sys::argstream args;
+				args.append("false");
+				std::exit(this_process::execute_command(args));
 			}
 		}
 		sys::log_message("slave", "act [_/_]", this->_number, this->_nslaves);

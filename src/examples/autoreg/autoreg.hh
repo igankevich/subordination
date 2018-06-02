@@ -1,8 +1,11 @@
 #ifndef EXAMPLES_AUTOREG_AUTOREG_HH
 #define EXAMPLES_AUTOREG_AUTOREG_HH
 
-#include <random>
 #include <chrono>
+#include <iomanip>
+#include <random>
+
+#include <unistdx/base/make_object>
 
 #include "domain.hh"
 #include "grid.hh"

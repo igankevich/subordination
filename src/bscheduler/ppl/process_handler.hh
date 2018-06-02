@@ -148,12 +148,12 @@ namespace bsc {
 
 		inline sys::fd_type
 		in() const noexcept {
-			return this->_packetbuf->fd().in().get_fd();
+			return this->_packetbuf->fd().in().fd();
 		}
 
 		inline sys::fd_type
 		out() const noexcept {
-			return this->_packetbuf->fd().out().get_fd();
+			return this->_packetbuf->fd().out().fd();
 		}
 
 	};

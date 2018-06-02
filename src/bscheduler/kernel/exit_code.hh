@@ -1,7 +1,7 @@
 #ifndef BSCHEDULER_KERNEL_EXIT_CODE_HH
 #define BSCHEDULER_KERNEL_EXIT_CODE_HH
 
-#include <unistdx/net/pstream>
+#include <unistdx/net/bstream>
 
 namespace bsc {
 
@@ -24,13 +24,13 @@ namespace bsc {
 		return out << to_string(rhs);
 	}
 
-	inline sys::pstream&
-	operator<<(sys::pstream& out, exit_code rhs) {
+	inline sys::bstream&
+	operator<<(sys::bstream& out, exit_code rhs) {
 		return out << exit_code_type(rhs);
 	}
 
-	inline sys::pstream&
-	operator>>(sys::pstream& in, exit_code& rhs) {
+	inline sys::bstream&
+	operator>>(sys::bstream& in, exit_code& rhs) {
 		exit_code_type tmp;
 		in >> tmp;
 		rhs = exit_code(tmp);

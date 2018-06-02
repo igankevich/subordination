@@ -213,11 +213,11 @@ bsc::application
 	// pass application ID
 	env.append(generate_env(BSCHEDULER_ENV_APPLICATION_ID, this->_id));
 	// pass in/out file descriptors
-	env.append(generate_env(BSCHEDULER_ENV_PIPE_IN, pipe.child_in().get_fd()));
+	env.append(generate_env(BSCHEDULER_ENV_PIPE_IN, pipe.child_in().fd()));
 	env.append(
 		generate_env(
 			BSCHEDULER_ENV_PIPE_OUT,
-			pipe.child_out().get_fd()
+			pipe.child_out().fd()
 		)
 	);
 	// pass role
@@ -266,7 +266,7 @@ bsc::application
 	if (!this->_workdir.empty()) {
 		sys::this_process::workdir(this->_workdir);
 	}
-	return sys::this_process::exec_command(args.argv(), env.argv());
+	return sys::this_process::execute_command(args.argv(), env.argv());
 }
 
 void

@@ -74,8 +74,8 @@ bsc::process_pipeline<K,R>
 	                        );
 	data_pipe.close_in_parent();
 	data_pipe.validate();
-	sys::fd_type parent_in = data_pipe.parent_in().get_fd();
-	sys::fd_type parent_out = data_pipe.parent_out().get_fd();
+	sys::fd_type parent_in = data_pipe.parent_in().fd();
+	sys::fd_type parent_out = data_pipe.parent_out().fd();
 	auto child =
 		std::make_shared<event_handler_type>(
 			p.id(),

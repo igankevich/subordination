@@ -3,8 +3,9 @@
 
 #include <zlib.h>
 
-#include <fstream>
 #include <cmath>
+#include <fstream>
+#include <iomanip>
 #include <map>
 
 #include <unistdx/base/log_message>
@@ -61,13 +62,13 @@ struct Date {
 			<< std::setw(2) << rhs._minutes;
 	}
 
-	friend sys::pstream&
-	operator>>(sys::pstream& in, Date& rhs) {
+	friend sys::bstream&
+	operator>>(sys::bstream& in, Date& rhs) {
 		return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
 	}
 
-	friend sys::pstream&
-	operator<<(sys::pstream& out, const Date& rhs) {
+	friend sys::bstream&
+	operator<<(sys::bstream& out, const Date& rhs) {
 		return out << rhs._year << rhs._month << rhs._day << rhs._hours << rhs._minutes;
 	}
 
@@ -127,11 +128,11 @@ struct Observation {
 		return out << rhs._year << ',' << rhs._station<< ',' << rhs._var;
 	}
 
-	friend sys::pstream& operator>>(sys::pstream& in, Observation& rhs) {
+	friend sys::bstream& operator>>(sys::bstream& in, Observation& rhs) {
 		return in >> rhs._year >> rhs._station >> rhs._var;
 	}
 
-	friend sys::pstream& operator<<(sys::pstream& out, const Observation& rhs) {
+	friend sys::bstream& operator<<(sys::bstream& out, const Observation& rhs) {
 		return out << rhs._year << rhs._station << rhs._var;
 	}
 
@@ -146,8 +147,8 @@ namespace sys {
 	namespace bits {
 
 		template<class Container>
-		sys::pstream&
-		write_container(sys::pstream& out, const Container& rhs) {
+		sys::bstream&
+		write_container(sys::bstream& out, const Container& rhs) {
 			typedef typename Container::value_type value_type;
 			out << uint64_t(rhs.size());
 			std::for_each(
@@ -161,8 +162,8 @@ namespace sys {
 		}
 
 		template<class Container>
-		sys::pstream&
-		read_container(sys::pstream& in, Container& rhs) {
+		sys::bstream&
+		read_container(sys::bstream& in, Container& rhs) {
 			typedef typename Container::value_type value_type;
 			uint64_t n = 0;
 			in >> n;
@@ -178,8 +179,8 @@ namespace sys {
 		}
 
 		template<class Container>
-		sys::pstream&
-		read_map(sys::pstream& in, Container& rhs) {
+		sys::bstream&
+		read_map(sys::bstream& in, Container& rhs) {
 			typedef typename Container::key_type key_type;
 			typedef typename Container::mapped_type mapped_type;
 			uint64_t n = 0;
@@ -197,50 +198,50 @@ namespace sys {
 	}
 
 	template<class T>
-	sys::pstream&
-	operator<<(sys::pstream& out, const std::vector<T>& rhs) {
+	sys::bstream&
+	operator<<(sys::bstream& out, const std::vector<T>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class T>
-	sys::pstream&
-	operator>>(sys::pstream& in, std::vector<T>& rhs) {
+	sys::bstream&
+	operator>>(sys::bstream& in, std::vector<T>& rhs) {
 		return bits::read_container(in, rhs);
 	}
 
 	template<class K, class V>
-	sys::pstream&
-	operator<<(sys::pstream& out, const std::unordered_map<K,V>& rhs) {
+	sys::bstream&
+	operator<<(sys::bstream& out, const std::unordered_map<K,V>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class K, class V>
-	sys::pstream&
-	operator>>(sys::pstream& in, std::unordered_map<K,V>& rhs) {
+	sys::bstream&
+	operator>>(sys::bstream& in, std::unordered_map<K,V>& rhs) {
 		return bits::read_map(in, rhs);
 	}
 
 	template<class K, class V>
-	sys::pstream&
-	operator<<(sys::pstream& out, const std::map<K,V>& rhs) {
+	sys::bstream&
+	operator<<(sys::bstream& out, const std::map<K,V>& rhs) {
 		return bits::write_container(out, rhs);
 	}
 
 	template<class K, class V>
-	sys::pstream&
-	operator>>(sys::pstream& in, std::map<K,V>& rhs) {
+	sys::bstream&
+	operator>>(sys::bstream& in, std::map<K,V>& rhs) {
 		return bits::read_map(in, rhs);
 	}
 
 	template<class X, class Y>
-	sys::pstream&
-	operator<<(sys::pstream& out, const std::pair<X,Y>& rhs) {
+	sys::bstream&
+	operator<<(sys::bstream& out, const std::pair<X,Y>& rhs) {
 		return out << rhs.first << rhs.second;
 	}
 
 	template<class X, class Y>
-	sys::pstream&
-	operator>>(sys::pstream& in, std::pair<X,Y>& rhs) {
+	sys::bstream&
+	operator>>(sys::bstream& in, std::pair<X,Y>& rhs) {
 		return in >> rhs.first >> rhs.second;
 	}
 

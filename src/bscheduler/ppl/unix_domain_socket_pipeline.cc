@@ -48,7 +48,7 @@ namespace bsc {
 
 		inline sys::fd_type
 		fd() const noexcept {
-			return this->_socket.get_fd();
+			return this->_socket.fd();
 		}
 
 	};
@@ -116,7 +116,7 @@ namespace bsc {
 
 		inline sys::fd_type
 		fd() const noexcept {
-			return this->_buffer->fd().get_fd();
+			return this->_buffer->fd().fd();
 		}
 
 		inline const sys::socket&

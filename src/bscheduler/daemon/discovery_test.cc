@@ -262,7 +262,7 @@ int main(int argc, char* argv[]) {
 	sys::log_message("tst", "executing _", args);
 	sys::process child([&] () {
 		try {
-			return sys::this_process::exec_command(args.argv());
+			return sys::this_process::execute_command(args);
 		} catch (const std::system_error& err) {
 			sys::log_message("tst", "failed to execute unshare: _", err.what());
 			return 1;

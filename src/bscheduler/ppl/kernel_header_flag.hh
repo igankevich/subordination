@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include <unistdx/net/pstream>
+#include <unistdx/net/bstream>
 
 namespace bsc {
 
@@ -50,21 +50,21 @@ namespace bsc {
 			return *this;
 		}
 
-		friend sys::pstream&
-		operator<<(sys::pstream& out, const kernel_header_flag& rhs);
+		friend sys::bstream&
+		operator<<(sys::bstream& out, const kernel_header_flag& rhs);
 
-		friend sys::pstream&
-		operator>>(sys::pstream& in, kernel_header_flag& rhs);
+		friend sys::bstream&
+		operator>>(sys::bstream& in, kernel_header_flag& rhs);
 
 	};
 
-	inline sys::pstream&
-	operator<<(sys::pstream& out, const kernel_header_flag& rhs) {
+	inline sys::bstream&
+	operator<<(sys::bstream& out, const kernel_header_flag& rhs) {
 		return out << rhs._flag;
 	}
 
-	inline sys::pstream&
-	operator>>(sys::pstream& in, kernel_header_flag& rhs) {
+	inline sys::bstream&
+	operator>>(sys::bstream& in, kernel_header_flag& rhs) {
 		return in >> rhs._flag;
 	}
 

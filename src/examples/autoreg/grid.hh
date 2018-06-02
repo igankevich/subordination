@@ -43,13 +43,13 @@ namespace autoreg {
 			return out;
 		}
 
-		friend sys::pstream&
-		operator<<(sys::pstream& out, const Surface_part& rhs) {
+		friend sys::bstream&
+		operator<<(sys::bstream& out, const Surface_part& rhs) {
 			return out << rhs._part << rhs._t0 << rhs._t1;
 		}
 
-		friend sys::pstream&
-		operator>>(sys::pstream& in, Surface_part& rhs) {
+		friend sys::bstream&
+		operator>>(sys::bstream& in, Surface_part& rhs) {
 			return in >> rhs._part >> rhs._t0 >> rhs._t1;
 		}
 
@@ -87,13 +87,13 @@ namespace autoreg {
 			return this->_nparts;
 		}
 
-		friend sys::pstream&
-		operator<<(sys::pstream& stream, const Uniform_grid& rhs) {
+		friend sys::bstream&
+		operator<<(sys::bstream& stream, const Uniform_grid& rhs) {
 			return stream << rhs._size << rhs._nparts;
 		}
 
-		friend sys::pstream&
-		operator>>(sys::pstream& stream, Uniform_grid& rhs) {
+		friend sys::bstream&
+		operator>>(sys::bstream& stream, Uniform_grid& rhs) {
 			return stream >> rhs._size >> rhs._nparts;
 		}
 

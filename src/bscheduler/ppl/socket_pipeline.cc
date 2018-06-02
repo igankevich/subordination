@@ -4,6 +4,7 @@
 #include <cassert>
 #include <stdexcept>
 
+#include <unistdx/base/make_object>
 #include <unistdx/net/socket>
 
 #include <bscheduler/config.hh>
@@ -105,7 +106,7 @@ namespace bsc {
 
 		inline sys::fd_type
 		fd() const noexcept {
-			return this->_socket.get_fd();
+			return this->_socket.fd();
 		}
 
 		inline const socket_type&
@@ -238,7 +239,7 @@ namespace bsc {
 			sys::epoll_event ev {socket().fd(), sys::event::in};
 			this->handle(ev);
 			// recover kernels from upstream and downstream buffer
-			this->_proto.recover_kernels(this->socket().error());
+			this->_proto.recover_kernels(ev.err());
 		}
 
 		void
@@ -253,7 +254,7 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& event) override {
-			if (this->is_starting() && !this->socket().error()) {
+			if (this->is_starting() && !event.err()) {
 				this->setstate(pipeline_state::started);
 			}
 			if (event.in()) {
@@ -334,7 +335,7 @@ namespace bsc {
 
 		void
 		remove(sys::event_poller& poller) override {
-			poller.erase(this->_packetbuf->fd().get_fd());
+			poller.erase(this->_packetbuf->fd().fd());
 			this->_ppl.remove_client(this->vaddr());
 		}
 
@@ -519,7 +520,7 @@ bsc::socket_pipeline<T,S,R>
 		this->_servers.begin(),
 		this->_servers.end(),
 		[fd] (const value_type& rhs) {
-		    return rhs->socket().get_fd() == fd;
+		    return rhs->socket().fd() == fd;
 		}
 	);
 }

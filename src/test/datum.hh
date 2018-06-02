@@ -3,7 +3,7 @@
 
 #include <random>
 #include <chrono>
-#include <unistdx/net/pstream>
+#include <unistdx/net/bstream>
 
 typedef std::chrono::nanoseconds::rep Time;
 
@@ -55,15 +55,15 @@ struct Datum {
 			u != rhs.u || v != rhs.v || w != rhs.w;
 	}
 
-	friend sys::pstream&
-	operator<<(sys::pstream& out, const Datum& rhs) {
+	friend sys::bstream&
+	operator<<(sys::bstream& out, const Datum& rhs) {
 		return out
 			<< rhs.x << rhs.y << rhs.z
 			<< rhs.u << rhs.v << rhs.w;
 	}
 
-	friend sys::pstream&
-	operator>>(sys::pstream& in, Datum& rhs) {
+	friend sys::bstream&
+	operator>>(sys::bstream& in, Datum& rhs) {
 		return in
 			>> rhs.x >> rhs.y >> rhs.z
 			>> rhs.u >> rhs.v >> rhs.w;
