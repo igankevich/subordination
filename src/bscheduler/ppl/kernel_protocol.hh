@@ -7,8 +7,8 @@
 
 #include <unistdx/base/delete_each>
 #include <unistdx/ipc/process>
-#include <unistdx/it/queue_popper>
 
+#include <bscheduler/base/queue_popper.hh>
 #include <bscheduler/kernel/foreign_kernel.hh>
 #include <bscheduler/kernel/kernel_header.hh>
 #include <bscheduler/kernel/kernel_instance_registry.hh>
@@ -23,7 +23,7 @@ namespace bsc {
 		class Router,
 		class Forward=bits::no_forward<Router>,
 		class Kernels=std::deque<T*>,
-		class Traits=sys::deque_traits<Kernels>>
+		class Traits=deque_traits<Kernels>>
 	class kernel_protocol {
 
 	public:
@@ -35,7 +35,7 @@ namespace bsc {
 
 	private:
 		typedef kstream<T> stream_type;
-		typedef sys::queue_pop_iterator<Kernels,Traits> queue_popper;
+		typedef queue_pop_iterator<Kernels,Traits> queue_popper;
 		typedef typename T::id_type id_type;
 		typedef typename stream_type::ipacket_guard ipacket_guard;
 		typedef sys::opacket_guard<stream_type> opacket_guard;

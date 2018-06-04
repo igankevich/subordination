@@ -10,15 +10,15 @@
 #include <unistdx/base/spin_mutex>
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/thread_semaphore>
-#include <unistdx/it/container_traits>
-#include <unistdx/it/queue_popper>
-#include <unistdx/it/queue_pusher>
 #include <unistdx/util/system>
 
+#include <bscheduler/base/container_traits.hh>
+#include <bscheduler/base/queue_popper.hh>
+#include <bscheduler/base/queue_pusher.hh>
 #include <bscheduler/base/thread_name.hh>
+#include <bscheduler/kernel/kernel_type.hh>
 #include <bscheduler/ppl/pipeline_base.hh>
 #include <bscheduler/ppl/thread_context.hh>
-#include <bscheduler/kernel/kernel_type.hh>
 
 namespace bsc {
 
@@ -31,7 +31,7 @@ namespace bsc {
 	template<
 		class T,
 		class Kernels=std::queue<T*>,
-		class Traits=sys::queue_traits<Kernels>,
+		class Traits=queue_traits<Kernels>,
 		class Threads=std::vector<std::thread>,
 		class Mutex=sys::spin_mutex,
 		class Lock=sys::simple_lock<Mutex>,
@@ -50,7 +50,7 @@ namespace bsc {
 
 	protected:
 		typedef std::vector<std::unique_ptr<kernel_type> > kernel_sack;
-		typedef sys::queue_pop_iterator<kernel_pool,traits_type> queue_popper;
+		typedef queue_pop_iterator<kernel_pool,traits_type> queue_popper;
 
 	protected:
 		kernel_pool _kernels;
@@ -112,7 +112,7 @@ namespace bsc {
 				)
 			);
 			#endif
-			std::copy_n(kernels, n, sys::queue_pusher(this->_kernels));
+			std::copy_n(kernels, n, queue_pusher(this->_kernels));
 			this->_semaphore.notify_one();
 		}
 

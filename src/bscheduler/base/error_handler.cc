@@ -17,7 +17,6 @@
 void
 bsc::print_backtrace(int sig) noexcept {
 	sys::log_message(
-		std::cerr,
 		"error_handler",
 		"caught _",
 		sys::signal(sig)
@@ -34,7 +33,6 @@ bsc::print_error() noexcept {
 			std::rethrow_exception(ptr);
 		} catch (const kernel_error& err) {
 			sys::log_message(
-				std::cerr,
 				"error_handler",
 				"error=_, thread=_-_, process=_",
 				err,
@@ -44,7 +42,6 @@ bsc::print_error() noexcept {
 			);
 		} catch (const error& err) {
 			sys::log_message(
-				std::cerr,
 				"error_handler",
 				"error=_, thread=_-_, process=_",
 				err,
@@ -54,7 +51,6 @@ bsc::print_error() noexcept {
 			);
 		} catch (const sys::bad_call& err) {
 			sys::log_message(
-				std::cerr,
 				"error_handler",
 				"error=_, thread=_-_, process=_",
 				err,
@@ -64,7 +60,6 @@ bsc::print_error() noexcept {
 			);
 		} catch (const std::exception& err) {
 			sys::log_message(
-				std::cerr,
 				"error_handler",
 				"error=_, thread=_-_, process=_",
 				err.what(),
@@ -74,7 +69,6 @@ bsc::print_error() noexcept {
 			);
 		} catch (...) {
 			sys::log_message(
-				std::cerr,
 				"error_handler",
 				"error=_, thread=_-_, process=_",
 				"<unknown>",
@@ -85,7 +79,6 @@ bsc::print_error() noexcept {
 		}
 	} else {
 		sys::log_message(
-			std::cerr,
 			"error_handler",
 			"error=_, thread=_-_, process=_",
 			"<none>",

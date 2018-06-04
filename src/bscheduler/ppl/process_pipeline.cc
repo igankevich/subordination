@@ -2,7 +2,6 @@
 
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>
-#include <unistdx/it/queue_popper>
 
 #include <bscheduler/config.hh>
 #include <bscheduler/kernel/kstream.hh>

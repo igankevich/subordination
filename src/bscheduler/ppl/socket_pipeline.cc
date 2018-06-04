@@ -620,8 +620,8 @@ bsc::socket_pipeline<T,S,R>
 ::process_kernels() {
 //	lock_type lock(this->_mutex);
 	std::for_each(
-		sys::queue_popper(this->_kernels),
-		sys::queue_popper_end(this->_kernels),
+		queue_popper(this->_kernels),
+		queue_popper_end(this->_kernels),
 		[this] (kernel_type* k) {
 		    try {
 		        this->process_kernel(k);

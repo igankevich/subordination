@@ -3,7 +3,7 @@ project(
 	'cpp',
 	version: '0.2',
 	meson_version: '>=0.42.0',
-	default_options: ['cpp_std=c++14']
+	default_options: ['cpp_std=c++11']
 )
 
 if not get_option('buildtype').contains('debug')

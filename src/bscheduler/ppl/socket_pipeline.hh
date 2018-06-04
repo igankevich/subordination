@@ -7,7 +7,6 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/it/field_iterator>
-#include <unistdx/it/queue_popper>
 #include <unistdx/net/endpoint>
 #include <unistdx/net/ifaddr>
 

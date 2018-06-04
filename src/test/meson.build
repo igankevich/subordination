@@ -1,4 +1,14 @@
 test(
+	'queue-pusher-test',
+	executable(
+		'queue-pusher-test',
+		sources: 'queue_pusher_test.cc',
+		include_directories: srcdir,
+		dependencies: [unistdx, gtest, bscheduler_core]
+	)
+)
+
+test(
 	'kstream-test',
 	executable(
 		'kstream-test',

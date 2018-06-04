@@ -6,7 +6,6 @@
 #include <memory>
 
 #include <unistdx/io/pipe>
-#include <unistdx/it/queue_popper>
 
 #include <bscheduler/ppl/basic_socket_pipeline.hh>
 #include <bscheduler/ppl/process_handler.hh>

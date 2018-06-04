@@ -316,7 +316,6 @@ struct Station_kernel: public bsc::kernel {
 	int check_read(const std::string& filename, int ret) {
 		if (ret == -1) {
 			sys::log_message(
-				std::cerr,
 				"spec",
 				"error while reading file \"_\"",
 				filename
@@ -364,7 +363,6 @@ struct Station_kernel: public bsc::kernel {
 				::gzFile file = ::gzopen(ob.filename().c_str(), "rb");
 				if (file == NULL) {
 					sys::log_message(
-						std::cerr,
 						"spec",
 						"unable to open file \"_\" for reading",
 						ob.filename()

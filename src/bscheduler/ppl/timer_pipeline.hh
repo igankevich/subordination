@@ -16,7 +16,7 @@ namespace bsc {
 
 		template<class T>
 		using Priority_queue_traits =
-				  sys::priority_queue_traits<Priority_queue<T>>;
+				  priority_queue_traits<Priority_queue<T>>;
 
 		template<class T>
 		using Timer_pipeline_base =

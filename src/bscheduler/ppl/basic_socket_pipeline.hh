@@ -18,6 +18,7 @@
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
+#include <bscheduler/base/container_traits.hh>
 #include <bscheduler/base/static_lock.hh>
 #include <bscheduler/kernel/kstream.hh>
 #include <bscheduler/ppl/basic_handler.hh>
@@ -27,7 +28,7 @@ namespace bsc {
 
 	template<class T,
 	         class Kernels=std::queue<T*>,
-	         class Traits=sys::queue_traits<Kernels>,
+	         class Traits=queue_traits<Kernels>,
 	         class Threads=std::vector<std::thread>>
 	using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
 	                                           std::recursive_mutex,
