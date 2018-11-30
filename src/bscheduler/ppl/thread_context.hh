@@ -33,7 +33,9 @@ namespace bsc {
 		wait(Lock& lock) {
 			if (--this->_nthreads == 0) {
 				this->_nthreads = this->_saved_nthreads;
-				this->_semaphore.notify_all();
+				for (int i=0; i<this->_nthreads; ++i) {
+					this->_semaphore.notify_one();
+				}
 			} else {
 				this->_semaphore.wait(lock);
 			}

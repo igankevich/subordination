@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <memory>
 
-#include <unistdx/net/endpoint>
+#include <unistdx/net/socket_address>
 
 #include <bscheduler/ppl/application.hh>
 #include <bscheduler/ppl/kernel_header_flag.hh>
@@ -19,8 +19,8 @@ namespace bsc {
 
 	private:
 		flag_type _flags = flag_type(0);
-		sys::endpoint _src {};
-		sys::endpoint _dst {};
+		sys::socket_address _src {};
+		sys::socket_address _dst {};
 		application_type _aid = this_application::get_id();
 		const application* _aptr = nullptr;
 
@@ -39,23 +39,23 @@ namespace bsc {
 			}
 		}
 
-		inline const sys::endpoint&
+		inline const sys::socket_address&
 		from() const noexcept {
 			return this->_src;
 		}
 
 		inline void
-		from(const sys::endpoint& rhs) noexcept {
+		from(const sys::socket_address& rhs) noexcept {
 			this->_src = rhs;
 		}
 
-		inline const sys::endpoint&
+		inline const sys::socket_address&
 		to() const noexcept {
 			return this->_dst;
 		}
 
 		inline void
-		to(const sys::endpoint& rhs) noexcept {
+		to(const sys::socket_address& rhs) noexcept {
 			this->_dst = rhs;
 		}
 

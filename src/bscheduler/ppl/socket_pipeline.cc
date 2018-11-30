@@ -52,18 +52,18 @@ namespace bsc {
 	class local_server: public basic_handler {
 
 	public:
-		typedef sys::ipv4_addr addr_type;
+		typedef sys::ipv4_address addr_type;
 		typedef K kernel_type;
 		typedef S socket_type;
 		typedef R router_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 		typedef typename ifaddr_type::rep_type id_type;
 		typedef id_type counter_type;
 		typedef socket_pipeline<K,S,R> this_type;
 
 	private:
 		ifaddr_type _ifaddr;
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		id_type _pos0 = 0;
 		id_type _pos1 = 0;
 		counter_type _counter {0};
@@ -73,13 +73,13 @@ namespace bsc {
 	public:
 		inline explicit
 		local_server(
-			const ifaddr_type& ifaddr,
+			const ifaddr_type& interface_address,
 			sys::port_type port,
 			this_type& ppl
 		):
-		_ifaddr(ifaddr),
-		_endpoint(ifaddr.address(), port),
-		_socket(sys::endpoint(ifaddr.address(), port)),
+		_ifaddr(interface_address),
+		_endpoint(interface_address.address(), port),
+		_socket(sys::socket_address(interface_address.address(), port)),
 		_ppl(ppl) {
 			this->init();
 		}
@@ -95,12 +95,12 @@ namespace bsc {
 		operator=(local_server&&) = default;
 
 		inline const ifaddr_type
-		ifaddr() const noexcept {
+		interface_address() const noexcept {
 			return this->_ifaddr;
 		}
 
-		inline const sys::endpoint&
-		endpoint() const noexcept {
+		inline const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 
@@ -133,10 +133,10 @@ namespace bsc {
 
 		void
 		handle(const sys::epoll_event& ev) override {
-			sys::endpoint addr;
+			sys::socket_address addr;
 			socket_type sock;
 			this->_socket.accept(sock, addr);
-			sys::endpoint vaddr = _ppl.virtual_addr(addr);
+			sys::socket_address vaddr = _ppl.virtual_addr(addr);
 			auto res = _ppl._clients.find(vaddr);
 			if (res == _ppl._clients.end()) {
 				#ifndef NDEBUG
@@ -196,7 +196,7 @@ namespace bsc {
 		);
 
 	private:
-		sys::endpoint _vaddr;
+		sys::socket_address _vaddr;
 		kernelbuf_ptr _packetbuf;
 		stream_type _stream;
 		protocol_type _proto;
@@ -207,7 +207,7 @@ namespace bsc {
 	public:
 		remote_client() = default;
 
-		remote_client(socket_type&& sock, sys::endpoint vaddr, this_type& ppl):
+		remote_client(socket_type&& sock, sys::socket_address vaddr, this_type& ppl):
 		_vaddr(vaddr),
 		_packetbuf(new kernelbuf_type),
 		_stream(_packetbuf.get()),
@@ -299,7 +299,7 @@ namespace bsc {
 			this->_weight = rhs;
 		}
 
-		inline const sys::endpoint&
+		inline const sys::socket_address&
 		vaddr() const noexcept {
 			return this->_vaddr;
 		}
@@ -377,9 +377,9 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::remove_server(const ifaddr_type& ifaddr) {
+::remove_server(const ifaddr_type& interface_address) {
 	lock_type lock(this->_mutex);
-	server_iterator result = this->find_server(ifaddr);
+	server_iterator result = this->find_server(interface_address);
 	if (result != this->_servers.end()) {
 		this->remove_server(result);
 	}
@@ -389,19 +389,19 @@ template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
 ::remove_server(server_iterator result) {
-	// copy ifaddr
-	ifaddr_type ifaddr = (*result)->ifaddr();
+	// copy interface_address
+	ifaddr_type interface_address = (*result)->interface_address();
 	this->_servers.erase(result);
 	fire_event_kernels<router_type>(
 		socket_pipeline_event::remove_server,
-		ifaddr
+		interface_address
 	);
 }
 
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::remove_client(const sys::endpoint& vaddr) {
+::remove_client(const sys::socket_address& vaddr) {
 	client_iterator result = _clients.find(vaddr);
 	if (result != this->_clients.end()) {
 		this->remove_client(result);
@@ -412,12 +412,12 @@ template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
 ::remove_client(client_iterator result) {
-	// copy endpoint
-	sys::endpoint endpoint = result->first;
+	// copy socket_address
+	sys::socket_address socket_address = result->first;
 	#ifndef NDEBUG
 	const char* reason =
 		result->second->is_starting() ? "timed out" : "connection closed";
-	this->log("remove client _ (_)", endpoint, reason);
+	this->log("remove client _ (_)", socket_address, reason);
 	#endif
 	if (result == this->_iterator) {
 		this->advance_client_iterator();
@@ -426,20 +426,20 @@ bsc::socket_pipeline<T,S,R>
 	this->_clients.erase(result);
 	fire_event_kernels<router_type>(
 		socket_pipeline_event::remove_client,
-		endpoint
+		socket_address
 	);
 }
 
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::add_server(const sys::endpoint& rhs, addr_type netmask) {
+::add_server(const sys::socket_address& rhs, addr_type netmask) {
 	lock_type lock(this->_mutex);
-	ifaddr_type ifaddr(traits_type::address(rhs), netmask);
-	if (this->find_server(ifaddr) == this->_servers.end()) {
+	ifaddr_type interface_address(traits_type::address(rhs), netmask);
+	if (this->find_server(interface_address) == this->_servers.end()) {
 		auto ptr =
 			std::make_shared<server_type>(
-				ifaddr,
+				interface_address,
 				traits_type::port(rhs),
 				*this
 			);
@@ -451,7 +451,7 @@ bsc::socket_pipeline<T,S,R>
 		this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 		fire_event_kernels<router_type>(
 			socket_pipeline_event::add_server,
-			ifaddr
+			interface_address
 		);
 	}
 }
@@ -500,13 +500,13 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::server_iterator
 bsc::socket_pipeline<T,S,R>
-::find_server(const ifaddr_type& ifaddr) {
+::find_server(const ifaddr_type& interface_address) {
 	typedef typename server_container_type::value_type value_type;
 	return std::find_if(
 		this->_servers.begin(),
 		this->_servers.end(),
-		[&ifaddr] (const value_type& rhs) {
-		    return rhs->ifaddr() == ifaddr;
+		[&interface_address] (const value_type& rhs) {
+		    return rhs->interface_address() == interface_address;
 		}
 	);
 }
@@ -528,13 +528,13 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::server_iterator
 bsc::socket_pipeline<T,S,R>
-::find_server(const sys::endpoint& dest) {
+::find_server(const sys::socket_address& dest) {
 	typedef typename server_container_type::value_type value_type;
 	return std::find_if(
 		this->_servers.begin(),
 		this->_servers.end(),
 		[&dest] (const value_type& rhs) {
-		    return rhs->ifaddr().contains(dest.addr4());
+		    return rhs->interface_address().contains(dest.addr4());
 		}
 	);
 }
@@ -544,7 +544,7 @@ void
 bsc::socket_pipeline<T,S,R>
 ::ensure_identity(
 	kernel_type* k,
-	const sys::endpoint& dest
+	const sys::socket_address& dest
 ) {
 	if (dest.family() == sys::family_type::unix) {
 		set_kernel_id_2(k, this->_counter);
@@ -600,9 +600,9 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::emplace_client(const sys::endpoint& vaddr, const event_handler_ptr& s) {
+::emplace_client(const sys::socket_address& vaddr, const event_handler_ptr& s) {
 	const bool save = !this->end_reached();
-	sys::endpoint e;
+	sys::socket_address e;
 	if (save) {
 		e = this->_iterator->first;
 	}
@@ -657,7 +657,7 @@ bsc::socket_pipeline<T,S,R>
 		}
 		// delete broadcast kernel
 		delete k;
-	} else if (k->moves_upstream() && k->to() == sys::endpoint()) {
+	} else if (k->moves_upstream() && k->to() == sys::socket_address()) {
 		bool success = false;
 		if (this->_uselocalhost && !k->carries_parent()) {
 			if (this->end_reached()) {
@@ -687,7 +687,7 @@ bsc::socket_pipeline<T,S,R>
 		// been available
 		router_type::send_local(k);
 	} else {
-		// create endpoint if necessary, and send kernel
+		// create socket_address if necessary, and send kernel
 		if (not k->to()) {
 			k->to(k->from());
 		}
@@ -701,7 +701,7 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>
-::find_or_create_client(const sys::endpoint& addr) {
+::find_or_create_client(const sys::socket_address& addr) {
 	event_handler_ptr ret;
 	auto result = _clients.find(addr);
 	if (result == _clients.end()) {
@@ -715,7 +715,7 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>
-::do_add_client(const sys::endpoint& addr) {
+::do_add_client(const sys::socket_address& addr) {
 	if (addr.family() == sys::family_type::unix) {
 		socket_type s(sys::family_type::unix);
 		s.setopt(socket_type::pass_credentials);
@@ -727,15 +727,24 @@ bsc::socket_pipeline<T,S,R>
 			throw std::invalid_argument("no matching server found");
 		}
 		// bind to server address with ephemeral port
-		sys::endpoint srv_addr((*result)->endpoint(), 0);
-		return this->do_add_client(socket_type(srv_addr, addr), addr);
+		sys::socket_address srv_addr((*result)->socket_address(), 0);
+		socket_type s(addr.family());
+		s.bind(srv_addr);
+		try {
+			s.connect(addr);
+		} catch (const sys::bad_call& err) {
+			if (err.errc() != std::errc::connection_refused) {
+				throw;
+			}
+		}
+		return this->do_add_client(std::move(s), addr);
 	}
 }
 
 template <class T, class S, class R>
 typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
 bsc::socket_pipeline<T,S,R>
-::do_add_client(socket_type&& sock, sys::endpoint vaddr) {
+::do_add_client(socket_type&& sock, sys::socket_address vaddr) {
 	sys::fd_type fd = sock.fd();
 	if (vaddr.family() != sys::family_type::unix) {
 		sock.set_user_timeout(this->_socket_timeout);
@@ -760,7 +769,7 @@ bsc::socket_pipeline<T,S,R>
 template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
-::stop_client(const sys::endpoint& addr) {
+::stop_client(const sys::socket_address& addr) {
 	lock_type lock(this->_mutex);
 	client_iterator result = this->_clients.find(addr);
 	if (result != this->_clients.end()) {
@@ -772,7 +781,7 @@ template <class T, class S, class R>
 void
 bsc::socket_pipeline<T,S,R>
 ::set_client_weight(
-	const sys::endpoint& addr,
+	const sys::socket_address& addr,
 	weight_type new_weight
 ) {
 	lock_type lock(this->_mutex);

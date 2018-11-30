@@ -5,7 +5,7 @@
 std::ostream&
 bsc::operator<<(std::ostream& out, const hierarchy_node& rhs) {
 	return out << sys::make_object(
-		"endpoint", rhs.endpoint(),
+		"socket_address", rhs.socket_address(),
 		"weight", rhs.weight()
 	);
 }

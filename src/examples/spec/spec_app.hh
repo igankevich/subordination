@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <sstream>
 
 #include <unistdx/base/log_message>
 #include <unistdx/fs/path>

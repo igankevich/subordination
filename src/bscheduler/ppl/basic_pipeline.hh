@@ -140,7 +140,10 @@ namespace bsc {
 		stop() {
 			lock_type lock(this->_mutex);
 			this->xstop();
-			this->_semaphore.notify_all();
+			const size_t nthreads = this->_threads.size();
+			for (size_t i=0; i<nthreads; ++i) {
+				this->_semaphore.notify_one();
+			}
 		}
 
 		void

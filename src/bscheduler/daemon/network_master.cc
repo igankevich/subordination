@@ -6,7 +6,7 @@
 #include <unistdx/base/log_message>
 #include <unistdx/it/field_iterator>
 #include <unistdx/it/intersperse_iterator>
-#include <unistdx/net/ifaddrs>
+#include <unistdx/net/interface_addresses>
 
 namespace {
 
@@ -62,8 +62,8 @@ bsc::network_master::set_type
 bsc::network_master
 ::enumerate_ifaddrs() {
 	set_type new_ifaddrs;
-	sys::ifaddrs addrs;
-	for (const sys::ifaddrs::value_type& ifa : addrs) {
+	sys::interface_addresses addrs;
+	for (const sys::interface_addresses::value_type& ifa : addrs) {
 		if (ifa.ifa_addr && ifa.ifa_addr->sa_family == traits_type::family) {
 			ifaddr_type a(*ifa.ifa_addr, *ifa.ifa_netmask);
 			if (!a.is_loopback() && !a.is_widearea()) {
@@ -100,11 +100,11 @@ bsc::network_master
 		}
 	}
 	// update servers in socket pipeline
-	for (const ifaddr_type& ifaddr : ifaddrs_to_rm) {
-		this->remove_ifaddr(ifaddr);
+	for (const ifaddr_type& interface_address : ifaddrs_to_rm) {
+		this->remove_ifaddr(interface_address);
 	}
-	for (const ifaddr_type& ifaddr : ifaddrs_to_add) {
-		this->add_ifaddr(ifaddr);
+	for (const ifaddr_type& interface_address : ifaddrs_to_add) {
+		this->add_ifaddr(interface_address);
 	}
 	this->send_timer();
 }
@@ -127,7 +127,7 @@ bsc::network_master
 void
 bsc::network_master
 ::add_ifaddr(const ifaddr_type& ifa) {
-	sys::log_message("net", "add ifaddr _", ifa);
+	sys::log_message("net", "add interface address _", ifa);
 	bsc::factory.nic().add_server(ifa);
 	if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
 		const sys::port_type port = ::bsc::factory.nic().port();
@@ -140,7 +140,7 @@ bsc::network_master
 void
 bsc::network_master
 ::remove_ifaddr(const ifaddr_type& ifa) {
-	sys::log_message("net", "remove ifaddr _", ifa);
+	sys::log_message("net", "remove interface address _", ifa);
 	bsc::factory.nic().remove_server(ifa);
 	auto result = this->_ifaddrs.find(ifa);
 	if (result != this->_ifaddrs.end()) {
@@ -153,9 +153,9 @@ bsc::network_master
 void
 bsc::network_master
 ::forward_probe(probe* p) {
-	map_iterator result = this->find_discoverer(p->ifaddr().address());
+	map_iterator result = this->find_discoverer(p->interface_address().address());
 	if (result == this->_ifaddrs.end()) {
-		sys::log_message("net", "bad probe _", p->ifaddr());
+		sys::log_message("net", "bad probe _", p->interface_address());
 	} else {
 		p->setf(kernel_flag::do_not_delete);
 		bsc::send(p, result->second);
@@ -165,9 +165,9 @@ bsc::network_master
 void
 bsc::network_master
 ::forward_hierarchy_kernel(hierarchy_kernel* p) {
-	map_iterator result = this->find_discoverer(p->ifaddr().address());
+	map_iterator result = this->find_discoverer(p->interface_address().address());
 	if (result == this->_ifaddrs.end()) {
-		sys::log_message("net", "bad hierarchy kernel _", p->ifaddr());
+		sys::log_message("net", "bad hierarchy kernel _", p->interface_address());
 	} else {
 		p->setf(kernel_flag::do_not_delete);
 		bsc::send(p, result->second);
@@ -192,10 +192,10 @@ bsc::network_master
 ::on_event(socket_pipeline_kernel* ev) {
 	if (ev->event() == socket_pipeline_event::remove_client ||
 	    ev->event() == socket_pipeline_event::add_client) {
-		const addr_type& a = traits_type::address(ev->endpoint());
+		const addr_type& a = traits_type::address(ev->socket_address());
 		map_iterator result = this->find_discoverer(a);
 		if (result == this->_ifaddrs.end()) {
-			sys::log_message("net", "bad event endpoint _", a);
+			sys::log_message("net", "bad event socket_address _", a);
 		} else {
 			ev->setf(kernel_flag::do_not_delete);
 			bsc::send(ev, result->second);

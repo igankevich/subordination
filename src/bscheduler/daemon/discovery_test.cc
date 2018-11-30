@@ -64,14 +64,14 @@ expect_event_sequence(
 	}
 	if (first != last) {
 		std::stringstream msg;
-		msg << "unmatched expressions: ";
+		msg << "unmatched expressions: \n";
 		size_t offset = first - expressions.begin();
 		std::copy(
 			regex_strings.begin() + offset,
 			regex_strings.end(),
 			std::ostream_iterator<std::string>(msg, "\n")
 		);
-		FAIL() << msg.str();
+		FAIL() << msg.str() << ", filename=" << filename;
 	} else {
 		SUCCEED();
 	}
@@ -120,12 +120,12 @@ TEST(Discovery, Daemon) {
 	if (_fanout >= n || n == 2) {
 		if (n == 2) {
 			expect_event_sequence(1, {
-				R"(^.*add ifaddr 10\.0\.0\.1.*$)",
+				R"(^.*add interface address 10\.0\.0\.1.*$)",
 				R"(^.*add subordinate 10\.0\.0\.2.*$)",
 			});
 			expect_event(1, R"(^.*set 10\.0\.0\.2.*weight to 1$)");
 		} else {
-			expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+			expect_event(1, R"(^.*add interface address 10\.0\.0\.1.*$)");
 			for (int i=2; i<=n; ++i) {
 				std::stringstream re;
 				re <<  R"(^.*add subordinate 10\.0\.0\.)" << i << ".*$";
@@ -145,14 +145,14 @@ TEST(Discovery, Slaves) {
 	if (_fanout >= n || n == 2) {
 		if (n == 2) {
 			expect_event_sequence(2, {
-				R"(^.*add ifaddr 10\.0\.0\.2.*$)",
+				R"(^.*add interface address 10\.0\.0\.2.*$)",
 				R"(^.*set principal to 10\.0\.0\.1.*$)"
 			});
 			expect_event(2, R"(^.*set 10\.0\.0\.1.*weight to 1$)");
 		} else {
 			for (int i=2; i<=n; ++i) {
 				std::stringstream re;
-				re << R"(^.*add ifaddr 10\.0\.0\.)" << i << ".*$";
+				re << R"(^.*add interface address 10\.0\.0\.)" << i << ".*$";
 				expect_event(i, re.str());
 				expect_event(i,	R"(^.*set principal to 10\.0\.0\.1.*$)");
 				std::stringstream re2;
@@ -168,7 +168,7 @@ TEST(Discovery, Fanout2Hierarchy) {
 	if (_fanout != 2 || n == 2) {
 		return;
 	}
-	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+	expect_event(1, R"(^.*add interface address 10\.0\.0\.1.*$)");
 	if (n == 4) {
 		expect_event(1, R"(^.*add subordinate 10\.0\.0\.2.*$)");
 		expect_event(1, R"(^.*add subordinate 10\.0\.0\.3.*$)");
@@ -191,7 +191,7 @@ TEST(Discovery, Fanout2Weights) {
 	if (_fanout != 2 || n == 2) {
 		return;
 	}
-	expect_event(1, R"(^.*add ifaddr 10\.0\.0\.1.*$)");
+	expect_event(1, R"(^.*add interface address 10\.0\.0\.1.*$)");
 	if (n == 4) {
 		// upstream
 		expect_event(1, R"(^.*set 10\.0\.0\.2.*weight to 2$)");
@@ -262,17 +262,15 @@ int main(int argc, char* argv[]) {
 	sys::log_message("tst", "executing _", args);
 	sys::process child([&] () {
 		try {
-			return sys::this_process::execute_command(args);
+			sys::this_process::execute_command(args);
 		} catch (const std::system_error& err) {
 			sys::log_message("tst", "failed to execute unshare: _", err.what());
 			return 1;
 		}
 	});
-	sys::proc_status status = child.wait();
+	sys::process_status status = child.wait();
 	if (status.exited() && status.exit_code() == 0) {
-		int no_argc = 0;
-		char** no_argv = nullptr;
-		::testing::InitGoogleTest(&no_argc, no_argv);
+		::testing::InitGoogleTest(&argc, argv);
 		return RUN_ALL_TESTS();
 	}
 	return status.exit_code();

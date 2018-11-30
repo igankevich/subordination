@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include <unistdx/base/log_message>
-#include <unistdx/net/endpoint>
+#include <unistdx/net/socket_address>
 #include <unistdx/net/pstream>
 
 #include <bscheduler/base/error.hh>

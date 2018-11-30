@@ -4,8 +4,8 @@
 #include <iosfwd>
 #include <unordered_set>
 
-#include <unistdx/net/endpoint>
-#include <unistdx/net/ifaddr>
+#include <unistdx/net/socket_address>
+#include <unistdx/net/interface_address>
 
 #include "hierarchy_node.hh"
 
@@ -16,7 +16,7 @@ namespace bsc {
 
 	public:
 		typedef Addr addr_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 		typedef std::unordered_set<hierarchy_node> container_type;
 		typedef typename container_type::const_iterator const_iterator;
 		typedef typename container_type::size_type size_type;
@@ -25,15 +25,15 @@ namespace bsc {
 
 	protected:
 		ifaddr_type _ifaddr;
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		hierarchy_node _principal;
 		container_type _subordinates;
 
 	public:
 
-		hierarchy(const ifaddr_type& ifaddr, const sys::port_type port):
-		_ifaddr(ifaddr),
-		_endpoint(ifaddr.address(), port),
+		hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
+		_ifaddr(interface_address),
+		_endpoint(interface_address.address(), port),
 		_principal(),
 		_subordinates()
 		{}
@@ -43,12 +43,12 @@ namespace bsc {
 		hierarchy(hierarchy&&) = default;
 
 		const ifaddr_type&
-		ifaddr() const noexcept {
+		interface_address() const noexcept {
 			return this->_ifaddr;
 		}
 
-		const sys::endpoint&
-		endpoint() const noexcept {
+		const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 
@@ -63,18 +63,18 @@ namespace bsc {
 		}
 
 		void
-		set_principal(const sys::endpoint& new_princ) {
-			this->_principal.endpoint(new_princ);
+		set_principal(const sys::socket_address& new_princ) {
+			this->_principal.socket_address(new_princ);
 			this->_subordinates.erase(this->_principal);
 		}
 
 		void
-		add_subordinate(const sys::endpoint& addr) {
+		add_subordinate(const sys::socket_address& addr) {
 			this->_subordinates.emplace(addr);
 		}
 
 		bool
-		remove_subordinate(const sys::endpoint& addr) {
+		remove_subordinate(const sys::socket_address& addr) {
 			return this->_subordinates.erase(node_type(addr)) > 0;
 		}
 
@@ -85,16 +85,16 @@ namespace bsc {
 
 		bool
 		has_principal() const noexcept {
-			return static_cast<bool>(this->_principal.endpoint());
+			return static_cast<bool>(this->_principal.socket_address());
 		}
 
 		bool
-		has_principal(const sys::endpoint& rhs) const noexcept {
-			return this->_principal.endpoint() == rhs;
+		has_principal(const sys::socket_address& rhs) const noexcept {
+			return this->_principal.socket_address() == rhs;
 		}
 
 		bool
-		has_subordinate(const sys::endpoint& rhs) const noexcept {
+		has_subordinate(const sys::socket_address& rhs) const noexcept {
 			return this->_subordinates.find(node_type(rhs)) !=
 			       this->_subordinates.end();
 		}
@@ -143,7 +143,7 @@ namespace bsc {
 		}
 
 		bool
-		set_subordinate_weight(const sys::endpoint& endp, weight_type w);
+		set_subordinate_weight(const sys::socket_address& endp, weight_type w);
 
 		template <class X>
 		friend std::ostream&

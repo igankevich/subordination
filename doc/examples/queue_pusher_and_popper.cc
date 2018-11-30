@@ -2,8 +2,8 @@
 #include <iterator>
 #include <string>
 
-#include <unistdx/it/queue_popper>
-#include <unistdx/it/queue_pusher>
+#include <bscheduler/base/queue_popper.hh>
+#include <bscheduler/base/queue_pusher.hh>
 
 /**
 \example queue_pusher_and_popper.cc
@@ -17,13 +17,13 @@ int main(int arch, char* argv[]) {
 	std::copy(
 		sys::cstring_iterator<char*>(argv),
 		sys::cstring_iterator<char*>(),
-		sys::queue_pusher(q)
+		bsc::queue_pusher(q)
 	);
 	/// [Push elements]
 	/// [Pop elements]
 	std::copy(
-		sys::queue_popper(q),
-		sys::queue_popper(),
+		bsc::queue_popper(q),
+		bsc::queue_popper(),
 		std::ostream_iterator<std::string>(std::cout, "\n")
 	);
 	/// [Pop elements]

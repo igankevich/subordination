@@ -1,7 +1,7 @@
 #include "position_in_tree.hh"
 
 #include <ostream>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/ipv4_address>
 
 template <class Addr>
 bsc::position_in_tree<Addr>::position_in_tree(
@@ -83,10 +83,10 @@ bsc::operator<<(std::ostream& out, const position_in_tree<Addr>& rhs) {
 		<< rhs._fanout << ')';
 }
 
-template class bsc::position_in_tree<sys::ipv4_addr>;
+template class bsc::position_in_tree<sys::ipv4_address>;
 
 template std::ostream&
 bsc::operator<<(
 	std::ostream& out,
-	const position_in_tree<sys::ipv4_addr>& rhs
+	const position_in_tree<sys::ipv4_address>& rhs
 );

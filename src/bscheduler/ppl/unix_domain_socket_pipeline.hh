@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include <unistdx/net/endpoint>
+#include <unistdx/net/socket_address>
 #include <unistdx/net/socket>
 
 #include <bscheduler/ppl/basic_socket_pipeline.hh>
@@ -31,15 +31,15 @@ namespace bsc {
 		unix_domain_socket_pipeline(unix_domain_socket_pipeline&& rhs) = delete;
 
 		void
-		add_server(const sys::endpoint& rhs);
+		add_server(const sys::socket_address& rhs);
 
 		void
-		add_client(const sys::endpoint& addr);
+		add_client(const sys::socket_address& addr);
 
 	private:
 
 		void
-		add_client(const sys::endpoint& addr, sys::socket&& sock);
+		add_client(const sys::socket_address& addr, sys::socket&& sock);
 
 		void
 		process_kernels() override {}

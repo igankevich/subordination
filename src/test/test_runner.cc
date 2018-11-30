@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <numeric>
 
-#include <unistdx/base/cmdline>
+#include <unistdx/base/command_line>
 #include <unistdx/base/ios_guard>
 #include <unistdx/ipc/argstream>
 #include <unistdx/ipc/execute>
@@ -92,7 +92,7 @@ struct Executor {
 		} else if (_strategy == Strategy::Master_slave) {
 			// wait for master process
 			if (_procs.front()) {
-				sys::proc_status stat = _procs.front().wait();
+				sys::process_status stat = _procs.front().wait();
 				std::clog << "master process terminated: " << stat << std::endl;
 				retval = stat.exit_code() | sys::signal_type(stat.term_signal());
 			}
@@ -104,7 +104,7 @@ struct Executor {
 						if (rhs) {
 							rhs.terminate();
 						}
-						sys::proc_status stat = rhs.wait();
+						sys::process_status stat = rhs.wait();
 						std::clog << "child process terminated: " << stat << std::endl;
 					}
 				);
@@ -149,7 +149,7 @@ private:
 		return std::accumulate(
 			first, last, 0,
 			[] (int ret, sys::process& rhs) {
-				sys::proc_status stat = rhs.wait();
+				sys::process_status stat = rhs.wait();
 				std::clog << "child process terminated: " << stat << std::endl;
 				return ret | stat.exit_code() | sys::signal_type(stat.term_signal());
 			}

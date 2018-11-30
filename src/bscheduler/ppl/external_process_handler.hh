@@ -5,7 +5,7 @@
 
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller>
-#include <unistdx/net/endpoint>
+#include <unistdx/net/socket_address>
 #include <unistdx/net/pstream>
 #include <unistdx/net/socket>
 
@@ -33,14 +33,14 @@ namespace bsc {
 		typedef sys::opacket_guard<stream_type> opacket_guard;
 
 	private:
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		kernelbuf_ptr _buffer;
 		stream_type _stream;
 
 	public:
 
 		inline
-		external_process_handler(const sys::endpoint& e, sys::socket&& sock):
+		external_process_handler(const sys::socket_address& e, sys::socket&& sock):
 		_endpoint(e),
 		_buffer(new kernelbuf_type),
 		_stream(_buffer.get())
@@ -48,8 +48,8 @@ namespace bsc {
 			this->_buffer->setfd(std::move(sock));
 		}
 
-		inline const sys::endpoint&
-		endpoint() const noexcept {
+		inline const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 

@@ -1,8 +1,8 @@
 #ifndef BSCHEDULER_DAEMON_HIERARCHY_KERNEL_HH
 #define BSCHEDULER_DAEMON_HIERARCHY_KERNEL_HH
 
-#include <unistdx/net/ifaddr>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/interface_address>
+#include <unistdx/net/ipv4_address>
 
 #include <bscheduler/api.hh>
 
@@ -11,8 +11,8 @@ namespace bsc {
 	class hierarchy_kernel: public bsc::kernel {
 
 	public:
-		typedef sys::ipv4_addr addr_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::ipv4_address addr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 
 	private:
 		ifaddr_type _ifaddr;
@@ -23,13 +23,13 @@ namespace bsc {
 		hierarchy_kernel() = default;
 
 		inline
-		hierarchy_kernel(const ifaddr_type& ifaddr, uint32_t weight):
-		_ifaddr(ifaddr),
+		hierarchy_kernel(const ifaddr_type& interface_address, uint32_t weight):
+		_ifaddr(interface_address),
 		_weight(weight)
 		{}
 
 		inline const ifaddr_type&
-		ifaddr() const noexcept {
+		interface_address() const noexcept {
 			return this->_ifaddr;
 		}
 

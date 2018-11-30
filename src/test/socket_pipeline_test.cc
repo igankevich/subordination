@@ -1,7 +1,7 @@
 #include <bscheduler/base/error_handler.hh>
 #include <bscheduler/api.hh>
 
-#include <unistdx/base/cmdline>
+#include <unistdx/base/command_line>
 
 #include "role.hh"
 #include "datum.hh"
@@ -164,10 +164,10 @@ TEST(NICServerTest, All) {
 	using bsc::factory;
 	bsc::register_type<Test_socket>();
 	sys::port_type port = 10000 + 2*sys::port_type(failure);
-	sys::endpoint principal_endpoint({127,0,0,1}, port);
-	sys::endpoint subordinate_endpoint({127,0,0,1}, port+1);
-	sys::ipv4_addr netmask =
-		sys::ipaddr_traits<sys::ipv4_addr>::loopback_mask();
+	sys::socket_address principal_endpoint({127,0,0,1}, port);
+	sys::socket_address subordinate_endpoint({127,0,0,1}, port+1);
+	sys::ipv4_address netmask =
+		sys::ipaddr_traits<sys::ipv4_address>::loopback_mask();
 	if (role == Role::Slave) {
 		factory.nic().set_port(port+1);
 		factory.nic().add_server(principal_endpoint, netmask);
@@ -201,9 +201,7 @@ main(int argc, char* argv[]) {
 	bsc::install_error_handler();
 	// init gtest without arguments to pass custom arguments
 	// from custom test runner
-	int no_argc = 0;
-	char** no_argv = nullptr;
-	::testing::InitGoogleTest(&no_argc, no_argv);
+	::testing::InitGoogleTest(&argc, argv);
 	sys::this_process::ignore_signal(sys::signal::broken_pipe);
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),

@@ -43,6 +43,8 @@ bsc::process_pipeline<K,R>
 		    try {
 		        data_pipe.close_in_child();
 		        data_pipe.validate();
+				data_pipe.child_in().unsetf(sys::fd_flag::fd_close_on_exec);
+				data_pipe.child_out().unsetf(sys::fd_flag::fd_close_on_exec);
 		        return app.execute(data_pipe);
 			} catch (const std::exception& err) {
 		        this->log(
@@ -52,7 +54,8 @@ bsc::process_pipeline<K,R>
 		        );
 		        // make address sanitizer happy
 				#if defined(__SANITIZE_ADDRESS__)
-		        return sys::this_process::execute_command("false");
+		        sys::this_process::execute_command("false");
+				return 1;
 				#else
 		        return 1;
 				#endif
@@ -64,7 +67,8 @@ bsc::process_pipeline<K,R>
 		        );
 		        // make address sanitizer happy
 				#if defined(__SANITIZE_ADDRESS__)
-		        return sys::this_process::execute_command("false");
+		        sys::this_process::execute_command("false");
+				return 1;
 				#else
 		        return 1;
 				#endif
@@ -187,7 +191,7 @@ bsc::process_pipeline<K,R>
 template <class K, class R>
 void
 bsc::process_pipeline<K,R>
-::on_process_exit(const sys::process& p, sys::proc_info status) {
+::on_process_exit(const sys::process& p, sys::process_status status) {
 	lock_type lock(this->_mutex);
 	app_iterator result = this->find_by_process_id(p.id());
 	if (result != this->_apps.end()) {

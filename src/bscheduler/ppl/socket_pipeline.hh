@@ -7,8 +7,8 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/it/field_iterator>
-#include <unistdx/net/endpoint>
-#include <unistdx/net/ifaddr>
+#include <unistdx/net/socket_address>
+#include <unistdx/net/interface_address>
 
 #include <bscheduler/kernel/kernel_instance_registry.hh>
 #include <bscheduler/kernel/kstream.hh>
@@ -32,8 +32,8 @@ namespace bsc {
 	public:
 		typedef S socket_type;
 		typedef R router_type;
-		typedef sys::ipv4_addr addr_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::ipv4_address addr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 		typedef remote_client<K,S,R> remote_client_type;
 		typedef local_server<K,S,R> server_type;
 		typedef std::shared_ptr<server_type> server_ptr;
@@ -54,7 +54,7 @@ namespace bsc {
 		typedef typename server_container_type::iterator server_iterator;
 		typedef typename server_container_type::const_iterator
 		    server_const_iterator;
-		typedef std::unordered_map<sys::endpoint,event_handler_ptr>
+		typedef std::unordered_map<sys::socket_address,event_handler_ptr>
 		    client_container_type;
 		typedef typename client_container_type::iterator client_iterator;
 		typedef ifaddr_type::rep_type rep_type;
@@ -95,27 +95,27 @@ namespace bsc {
 		operator=(socket_pipeline&&) = delete;
 
 		void
-		add_client(const sys::endpoint& addr) {
+		add_client(const sys::socket_address& addr) {
 			lock_type lock(this->_mutex);
 			this->do_add_client(addr);
 		}
 
 		void
-		stop_client(const sys::endpoint& addr);
+		stop_client(const sys::socket_address& addr);
 
 		void
-		set_client_weight(const sys::endpoint& addr, weight_type new_weight);
+		set_client_weight(const sys::socket_address& addr, weight_type new_weight);
 
 		void
 		add_server(const ifaddr_type& rhs) {
 			this->add_server(
-				sys::endpoint(rhs.address(), this->_port),
+				sys::socket_address(rhs.address(), this->_port),
 				rhs.netmask()
 			);
 		}
 
 		void
-		add_server(const sys::endpoint& rhs, addr_type netmask);
+		add_server(const sys::socket_address& rhs, addr_type netmask);
 
 		void
 		forward(foreign_kernel* hdr);
@@ -146,7 +146,7 @@ namespace bsc {
 		}
 
 		void
-		remove_server(const ifaddr_type& ifaddr);
+		remove_server(const ifaddr_type& interface_address);
 
 		void
 		print_state(std::ostream& out);
@@ -154,7 +154,7 @@ namespace bsc {
 	private:
 
 		void
-		remove_client(const sys::endpoint& vaddr);
+		remove_client(const sys::socket_address& vaddr);
 
 		void
 		remove_client(client_iterator result);
@@ -163,16 +163,16 @@ namespace bsc {
 		remove_server(server_iterator result);
 
 		server_iterator
-		find_server(const ifaddr_type& ifaddr);
+		find_server(const ifaddr_type& interface_address);
 
 		server_iterator
 		find_server(sys::fd_type fd);
 
 		server_iterator
-		find_server(const sys::endpoint& dest);
+		find_server(const sys::socket_address& dest);
 
 		void
-		ensure_identity(kernel_type* k, const sys::endpoint& dest);
+		ensure_identity(kernel_type* k, const sys::socket_address& dest);
 
 		/// round robin over upstream hosts
 		void
@@ -206,13 +206,13 @@ namespace bsc {
 		}
 
 		void
-		emplace_client(const sys::endpoint& vaddr, const event_handler_ptr& s);
+		emplace_client(const sys::socket_address& vaddr, const event_handler_ptr& s);
 
-		inline sys::endpoint
-		virtual_addr(const sys::endpoint& addr) const {
+		inline sys::socket_address
+		virtual_addr(const sys::socket_address& addr) const {
 			return addr.family() == sys::family_type::unix
 			       ? addr
-				   : sys::endpoint(addr, this->_port);
+				   : sys::socket_address(addr, this->_port);
 		}
 
 		void
@@ -222,13 +222,13 @@ namespace bsc {
 		process_kernel(kernel_type* k);
 
 		event_handler_ptr
-		find_or_create_client(const sys::endpoint& addr);
+		find_or_create_client(const sys::socket_address& addr);
 
 		event_handler_ptr
-		do_add_client(const sys::endpoint& addr);
+		do_add_client(const sys::socket_address& addr);
 
 		event_handler_ptr
-		do_add_client(socket_type&& sock, sys::endpoint vaddr);
+		do_add_client(socket_type&& sock, sys::socket_address vaddr);
 
 		template <class K1, class S1, class R1>
 		friend class local_server;

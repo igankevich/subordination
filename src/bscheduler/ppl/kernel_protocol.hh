@@ -45,7 +45,7 @@ namespace bsc {
 	private:
 		kernel_proto_flag _flags = kernel_proto_flag(0);
 		/// Endpoint from which kernels come.
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		/// Cluster-wide application ID.
 		application_type _thisapp = this_application::get_id();
 		/// Application of the kernels coming in.
@@ -472,12 +472,12 @@ namespace bsc {
 		}
 
 		inline void
-		set_endpoint(const sys::endpoint& rhs) noexcept {
+		set_endpoint(const sys::socket_address& rhs) noexcept {
 			this->_endpoint = rhs;
 		}
 
-		inline const sys::endpoint&
-		endpoint() const noexcept {
+		inline const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 

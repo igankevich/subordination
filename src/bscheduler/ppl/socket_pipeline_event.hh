@@ -5,8 +5,8 @@
 
 #include <bscheduler/config.hh>
 
-#include <unistdx/net/ifaddr>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/interface_address>
+#include <unistdx/net/ipv4_address>
 
 namespace bsc {
 
@@ -20,13 +20,13 @@ namespace bsc {
 	class socket_pipeline_kernel: public BSCHEDULER_KERNEL_TYPE {
 
 	public:
-		typedef sys::ipv4_addr addr_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::ipv4_address addr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 
 	private:
 		socket_pipeline_event _event = socket_pipeline_event(0);
 		ifaddr_type _ifaddr;
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 
 	public:
 		socket_pipeline_kernel() = default;
@@ -35,10 +35,10 @@ namespace bsc {
 		inline
 		socket_pipeline_kernel(
 			socket_pipeline_event event,
-			const ifaddr_type& ifaddr
+			const ifaddr_type& interface_address
 		):
 		_event(event),
-		_ifaddr(ifaddr) {
+		_ifaddr(interface_address) {
 			assert(
 				event == socket_pipeline_event::add_server ||
 				event == socket_pipeline_event::remove_server
@@ -48,10 +48,10 @@ namespace bsc {
 		inline
 		socket_pipeline_kernel(
 			socket_pipeline_event event,
-			const sys::endpoint& endpoint
+			const sys::socket_address& socket_address
 		):
 		_event(event),
-		_endpoint(endpoint)
+		_endpoint(socket_address)
 		{
 			assert(
 				event == socket_pipeline_event::add_client ||
@@ -64,13 +64,13 @@ namespace bsc {
 			return this->_event;
 		}
 
-		inline const sys::endpoint&
-		endpoint() const noexcept {
+		inline const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 
 		inline const ifaddr_type&
-		ifaddr() const noexcept {
+		interface_address() const noexcept {
 			return this->_ifaddr;
 		}
 

@@ -1,9 +1,9 @@
 #ifndef BSCHEDULER_DAEMON_PROBE_HH
 #define BSCHEDULER_DAEMON_PROBE_HH
 
-#include <unistdx/net/endpoint>
-#include <unistdx/net/ifaddr>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/socket_address>
+#include <unistdx/net/interface_address>
+#include <unistdx/net/ipv4_address>
 
 #include <bscheduler/api.hh>
 
@@ -12,13 +12,13 @@ namespace bsc {
 	class probe: public bsc::kernel {
 
 	public:
-		typedef sys::ipv4_addr addr_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::ipv4_address addr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 
 	private:
 		ifaddr_type _ifaddr;
-		sys::endpoint _oldprinc;
-		sys::endpoint _newprinc;
+		sys::socket_address _oldprinc;
+		sys::socket_address _newprinc;
 
 	public:
 
@@ -26,11 +26,11 @@ namespace bsc {
 
 		inline
 		probe(
-			const ifaddr_type& ifaddr,
-			const sys::endpoint& oldprinc,
-			const sys::endpoint& newprinc
+			const ifaddr_type& interface_address,
+			const sys::socket_address& oldprinc,
+			const sys::socket_address& newprinc
 		):
-		_ifaddr(ifaddr),
+		_ifaddr(interface_address),
 		_oldprinc(oldprinc),
 		_newprinc(newprinc)
 		{}
@@ -41,18 +41,18 @@ namespace bsc {
 		void
 		read(sys::pstream& in) override;
 
-		inline const sys::endpoint&
+		inline const sys::socket_address&
 		new_principal() const noexcept {
 			return this->_newprinc;
 		}
 
-		inline const sys::endpoint&
+		inline const sys::socket_address&
 		old_principal() const noexcept {
 			return this->_oldprinc;
 		}
 
 		inline const ifaddr_type&
-		ifaddr() const noexcept {
+		interface_address() const noexcept {
 			return this->_ifaddr;
 		}
 

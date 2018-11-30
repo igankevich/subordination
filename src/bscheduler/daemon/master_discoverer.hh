@@ -5,8 +5,8 @@
 #include <iosfwd>
 
 #include <unistdx/base/log_message>
-#include <unistdx/net/ifaddr>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/interface_address>
+#include <unistdx/net/ipv4_address>
 
 #include <bscheduler/api.hh>
 #include <bscheduler/ppl/socket_pipeline_event.hh>
@@ -38,9 +38,9 @@ namespace bsc {
 	class master_discoverer: public resident_kernel {
 
 	public:
-		typedef sys::ipv4_addr addr_type;
+		typedef sys::ipv4_address addr_type;
 		typedef addr_type::rep_type uint_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 		typedef tree_hierarchy_iterator<addr_type> iterator;
 		typedef hierarchy<addr_type> hierarchy_type;
 		typedef std::chrono::system_clock clock_type;
@@ -64,13 +64,13 @@ namespace bsc {
 	public:
 		inline
 		master_discoverer(
-			const ifaddr_type& ifaddr,
+			const ifaddr_type& interface_address,
 			const sys::port_type port,
 			uint_type fanout
 		):
 		_fanout(fanout),
-		_hierarchy(ifaddr, port),
-		_iterator(ifaddr, fanout)
+		_hierarchy(interface_address, port),
+		_iterator(interface_address, fanout)
 		{}
 
 		void
@@ -82,8 +82,8 @@ namespace bsc {
 	private:
 
 		const ifaddr_type&
-		ifaddr() const noexcept {
-			return this->_hierarchy.ifaddr();
+		interface_address() const noexcept {
+			return this->_hierarchy.interface_address();
 		}
 
 		sys::port_type
@@ -120,16 +120,16 @@ namespace bsc {
 		on_event(socket_pipeline_kernel* k);
 
 		void
-		on_client_add(const sys::endpoint& endp);
+		on_client_add(const sys::socket_address& endp);
 
 		void
-		on_client_remove(const sys::endpoint& endp);
+		on_client_remove(const sys::socket_address& endp);
 
 		void
-		broadcast_hierarchy(sys::endpoint ignored_endpoint = sys::endpoint());
+		broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
 
 		void
-		send_weight(const sys::endpoint& dest, weight_type w);
+		send_weight(const sys::socket_address& dest, weight_type w);
 
 		void
 		update_weights(hierarchy_kernel* k);

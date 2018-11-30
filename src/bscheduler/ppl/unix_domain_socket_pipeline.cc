@@ -17,12 +17,12 @@ namespace bsc {
 
 	private:
 		sys::socket _socket;
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		this_type& _ppl;
 
 	public:
 
-		unix_socket_server(const sys::endpoint& endp, this_type& ppl):
+		unix_socket_server(const sys::socket_address& endp, this_type& ppl):
 		_endpoint(endp),
 		_ppl(ppl)
 		{
@@ -35,7 +35,7 @@ namespace bsc {
 		void
 		handle(const sys::epoll_event& ev) override {
 			this->log("_ _", __func__, ev);
-			sys::endpoint addr;
+			sys::socket_address addr;
 			sys::socket sock;
 			this->_socket.accept(sock, addr);
 			this->_ppl.add_client(addr, std::move(sock));
@@ -70,14 +70,14 @@ namespace bsc {
 		typedef sys::opacket_guard<stream_type> opacket_guard;
 
 	private:
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		kernelbuf_ptr _buffer;
 		stream_type _stream;
 
 	public:
 
 		explicit
-		unix_socket_client(const sys::endpoint& endp):
+		unix_socket_client(const sys::socket_address& endp):
 		_endpoint(endp),
 		_buffer(new kernelbuf_type),
 		_stream(_buffer.get())
@@ -89,7 +89,7 @@ namespace bsc {
 			this->setstate(pipeline_state::starting);
 		}
 
-		unix_socket_client(const sys::endpoint& endp, sys::socket&& sock):
+		unix_socket_client(const sys::socket_address& endp, sys::socket&& sock):
 		_endpoint(endp),
 		_buffer(new kernelbuf_type),
 		_stream(_buffer.get())
@@ -199,7 +199,7 @@ namespace bsc {
 template <class K, class R>
 void
 bsc::unix_domain_socket_pipeline<K,R>
-::add_client(const sys::endpoint& addr, sys::socket&& sock) {
+::add_client(const sys::socket_address& addr, sys::socket&& sock) {
 	auto ptr =
 		std::make_shared<unix_socket_client<K,R>>(addr, std::move(sock));
 	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
@@ -211,7 +211,7 @@ bsc::unix_domain_socket_pipeline<K,R>
 template <class K, class R>
 void
 bsc::unix_domain_socket_pipeline<K,R>
-::add_client(const sys::endpoint& addr) {
+::add_client(const sys::socket_address& addr) {
 	auto ptr = std::make_shared<unix_socket_client<K,R>>(addr);
 	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
 }
@@ -219,7 +219,7 @@ bsc::unix_domain_socket_pipeline<K,R>
 template <class K, class R>
 void
 bsc::unix_domain_socket_pipeline<K,R>
-::add_server(const sys::endpoint& rhs) {
+::add_server(const sys::socket_address& rhs) {
 	auto ptr = std::make_shared<unix_socket_server<K,R>>(rhs, *this);
 	this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }

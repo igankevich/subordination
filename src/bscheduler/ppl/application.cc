@@ -257,16 +257,18 @@ bsc::application
 		if (errfd) {
 			errfd.remap(STDERR_FILENO);
 		}
-	} catch (const std::exception& err) {
+	} catch (const sys::bad_call& err) {
 		sys::log_message("app", "unable to redirect stdout/stderr");
 	}
+	sys::log_message("app", "execute _", env);
 	// switch user and group IDs
 	sys::this_process::set_identity(this->_uid, this->_gid);
 	// change working directory
 	if (!this->_workdir.empty()) {
 		sys::this_process::workdir(this->_workdir);
 	}
-	return sys::this_process::execute_command(args.argv(), env.argv());
+	sys::this_process::execute_command(args.argv(), env.argv());
+	return 0;
 }
 
 void

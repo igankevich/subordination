@@ -1,6 +1,6 @@
-#include <unistdx/base/cmdline>
-#include <unistdx/net/ifaddr>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/base/command_line>
+#include <unistdx/net/interface_address>
+#include <unistdx/net/ipv4_address>
 
 #include <bscheduler/api.hh>
 #include <bscheduler/base/error_handler.hh>
@@ -32,8 +32,8 @@ main(int argc, char* argv[]) {
 	}
 	#endif
 	using namespace bsc;
-	sys::ipv4_addr::rep_type fanout = 10000;
-	sys::ifaddr<sys::ipv4_addr> servers;
+	sys::ipv4_address::rep_type fanout = 10000;
+	sys::interface_address<sys::ipv4_address> servers;
 	bool allow_root = false;
 	sys::input_operator_type options[] = {
 		sys::ignore_first_argument(),
@@ -51,7 +51,7 @@ main(int argc, char* argv[]) {
 	factory_guard g;
 	#if !defined(BSCHEDULER_PROFILE_NODE_DISCOVERY)
 	factory.external().add_server(
-		sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET)
+		sys::socket_address(BSCHEDULER_UNIX_DOMAIN_SOCKET)
 	);
 	factory.child().allow_root(allow_root);
 	#endif

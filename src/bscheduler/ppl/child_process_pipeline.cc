@@ -67,14 +67,24 @@ bsc::child_process_pipeline<K,R>
 			std::make_shared<event_handler_type>(sys::pipe(in, out));
 		this->_parent->setstate(pipeline_state::starting);
 		this->_parent->set_name(this->name());
-		this->emplace_handler(
-			sys::epoll_event(in, sys::event::in),
-			this->_parent
-		);
-		this->emplace_handler(
-			sys::epoll_event(out, sys::event::out),
-			this->_parent
-		);
+		try {
+			this->emplace_handler(
+				sys::epoll_event(in, sys::event::in),
+				this->_parent
+			);
+		} catch (const sys::bad_call& err) {
+			std::clog << err << std::endl;
+			std::clog << "in=" << in << std::endl;
+		}
+		try {
+			this->emplace_handler(
+				sys::epoll_event(out, sys::event::out),
+				this->_parent
+			);
+		} catch (const sys::bad_call& err) {
+			std::clog << err << std::endl;
+			std::clog << "out=" << out << std::endl;
+		}
 	}
 }
 

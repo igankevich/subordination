@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <unistdx/net/ifaddrs>
+#include <unistdx/net/interface_addresses>
 
 #include <bscheduler/api.hh>
 #include <bscheduler/daemon/master_discoverer.hh>
@@ -18,9 +18,9 @@ namespace bsc {
 	class network_master: public bsc::kernel {
 
 	private:
-		typedef sys::ipv4_addr addr_type;
+		typedef sys::ipv4_address addr_type;
 		typedef addr_type::rep_type uint_type;
-		typedef sys::ifaddr<addr_type> ifaddr_type;
+		typedef sys::interface_address<addr_type> ifaddr_type;
 		typedef typename sys::ipaddr_traits<addr_type> traits_type;
 		typedef std::unordered_set<ifaddr_type> set_type;
 		typedef std::unordered_map<ifaddr_type,master_discoverer*> map_type;

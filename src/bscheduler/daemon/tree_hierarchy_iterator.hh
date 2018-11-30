@@ -3,7 +3,7 @@
 
 #include "position_in_tree.hh"
 #include <iterator>
-#include <unistdx/net/ifaddr>
+#include <unistdx/net/interface_address>
 
 namespace bsc {
 
@@ -13,7 +13,7 @@ namespace bsc {
 
 	public:
 		typedef Addr addr_type;
-		typedef sys::ifaddr<Addr> ifaddr_type;
+		typedef sys::interface_address<Addr> ifaddr_type;
 		typedef position_in_tree<Addr> position_type;
 		typedef typename addr_type::rep_type pos_type;
 		typedef Addr value_type;
@@ -52,7 +52,7 @@ namespace bsc {
 		{}
 
 		tree_hierarchy_iterator(
-			const ifaddr_type& ifaddr,
+			const ifaddr_type& interface_address,
 			pos_type fanout,
 			pos_type offset=0,
 			pos_type stride=1

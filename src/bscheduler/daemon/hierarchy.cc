@@ -2,13 +2,13 @@
 
 #include <algorithm>
 
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/ipv4_address>
 #include <unistdx/it/intersperse_iterator>
 
 template <class Addr>
 std::ostream&
 bsc::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
-	out << "ifaddr=" << rhs._ifaddr << ',';
+	out << "interface_address=" << rhs._ifaddr << ',';
 	out << "principal=" << rhs._principal << ',';
 	out << "subordinates=";
 	std::copy(
@@ -22,7 +22,7 @@ bsc::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
 template <class Addr>
 bool
 bsc::hierarchy<Addr>::set_subordinate_weight(
-	const sys::endpoint& endp,
+	const sys::socket_address& endp,
 	weight_type w
 ) {
 	bool changed = false;
@@ -54,7 +54,7 @@ bsc::hierarchy<Addr>::total_subordinate_weight() const noexcept {
 	return sum;
 }
 
-template class bsc::hierarchy<sys::ipv4_addr>;
+template class bsc::hierarchy<sys::ipv4_address>;
 
 template std::ostream&
-bsc::operator<<(std::ostream& out, const hierarchy<sys::ipv4_addr>& rhs);
+bsc::operator<<(std::ostream& out, const hierarchy<sys::ipv4_address>& rhs);

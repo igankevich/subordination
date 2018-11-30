@@ -1,23 +1,23 @@
 #include "tree_hierarchy_iterator.hh"
 
 #include <stdexcept>
-#include <unistdx/net/ipv4_addr>
+#include <unistdx/net/ipv4_address>
 #if !defined(NDEBUG) && defined(BSCHEDULER_DEBUG_TREE_HIERARCHY_ITERATOR)
 #include <unistdx/base/log_message>
 #endif
 
 template <class Addr>
 bsc::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
-	const ifaddr_type& ifaddr,
+	const ifaddr_type& interface_address,
 	pos_type fanout,
 	pos_type offset,
 	pos_type stride
 ):
-_ifaddr(ifaddr),
+_ifaddr(interface_address),
 _fanout(fanout),
 _offset(offset),
 _stride(stride),
-_basepos(this->to_virtual_position(ifaddr.position()), fanout),
+_basepos(this->to_virtual_position(interface_address.position()), fanout),
 _parentpos(this->_basepos.layer() - 1, this->_basepos.offset()/fanout, fanout),
 _currentpos(this->_basepos) {
 	if (this->_fanout == 0) {
@@ -141,4 +141,4 @@ bsc::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
 	}
 }
 
-template class bsc::tree_hierarchy_iterator<sys::ipv4_addr>;
+template class bsc::tree_hierarchy_iterator<sys::ipv4_address>;

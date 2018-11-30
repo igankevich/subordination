@@ -3,7 +3,7 @@
 
 #include <iosfwd>
 
-#include <unistdx/net/endpoint>
+#include <unistdx/net/socket_address>
 
 namespace bsc {
 
@@ -13,7 +13,7 @@ namespace bsc {
 		typedef uint32_t weight_type;
 
 	private:
-		sys::endpoint _endpoint;
+		sys::socket_address _endpoint;
 		mutable weight_type _weight = 1;
 
 	public:
@@ -21,13 +21,13 @@ namespace bsc {
 		hierarchy_node() = default;
 
 		inline explicit
-		hierarchy_node(const sys::endpoint& endpoint):
-		_endpoint(endpoint)
+		hierarchy_node(const sys::socket_address& socket_address):
+		_endpoint(socket_address)
 		{}
 
 		inline
-		hierarchy_node(const sys::endpoint& endpoint, weight_type w):
-		_endpoint(endpoint),
+		hierarchy_node(const sys::socket_address& socket_address, weight_type w):
+		_endpoint(socket_address),
 		_weight(w)
 		{}
 
@@ -37,13 +37,13 @@ namespace bsc {
 			this->_weight = 0;
 		}
 
-		inline const sys::endpoint&
-		endpoint() const noexcept {
+		inline const sys::socket_address&
+		socket_address() const noexcept {
 			return this->_endpoint;
 		}
 
 		inline void
-		endpoint(const sys::endpoint& rhs) noexcept {
+		socket_address(const sys::socket_address& rhs) noexcept {
 			this->_endpoint = rhs;
 		}
 
@@ -76,13 +76,13 @@ namespace bsc {
 	operator<<(std::ostream& out, const hierarchy_node& rhs);
 
 	inline bool
-	operator==(const hierarchy_node& lhs, const sys::endpoint& rhs) noexcept {
-		return lhs.endpoint() == rhs;
+	operator==(const hierarchy_node& lhs, const sys::socket_address& rhs) noexcept {
+		return lhs.socket_address() == rhs;
 	}
 
 	inline bool
-	operator==(const sys::endpoint& lhs, const hierarchy_node& rhs) noexcept {
-		return lhs == rhs.endpoint();
+	operator==(const sys::socket_address& lhs, const hierarchy_node& rhs) noexcept {
+		return lhs == rhs.socket_address();
 	}
 
 }
@@ -90,14 +90,14 @@ namespace bsc {
 namespace std {
 
 	template<>
-	struct hash<bsc::hierarchy_node>: public hash<sys::endpoint> {
+	struct hash<bsc::hierarchy_node>: public hash<sys::socket_address> {
 
 		typedef size_t result_type;
 		typedef bsc::hierarchy_node argument_type;
 
 		inline size_t
 		operator()(const argument_type& rhs) const noexcept {
-			return this->hash<sys::endpoint>::operator()(rhs.endpoint());
+			return this->hash<sys::socket_address>::operator()(rhs.socket_address());
 		}
 
 	};

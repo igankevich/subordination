@@ -18,9 +18,9 @@ TEST(TreeHierarchyIterator, Fanout2) {
 	// no. of layers = 3
 	// fanout = 2
 	const int fanout = 2;
-	typedef sys::ipv4_addr addr_type;
+	typedef sys::ipv4_address addr_type;
 	typedef bsc::tree_hierarchy_iterator<addr_type> iterator;
-	typedef sys::ifaddr<addr_type> ifaddr_type;
+	typedef sys::interface_address<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
 	EXPECT_EQ(
@@ -91,9 +91,9 @@ TEST(TreeHierarchyIterator, Fanout3) {
 	// no. of layers = 3
 	// fanout = 3
 	const int fanout = 3;
-	typedef sys::ipv4_addr addr_type;
+	typedef sys::ipv4_address addr_type;
 	typedef bsc::tree_hierarchy_iterator<addr_type> iterator;
-	typedef sys::ifaddr<addr_type> ifaddr_type;
+	typedef sys::interface_address<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
 	EXPECT_EQ(
@@ -226,9 +226,9 @@ TEST(TreeHierarchyIterator, NonZeroOffset) {
     // offset = 1
 	const int fanout = 3;
 	const int offset = 1;
-	typedef sys::ipv4_addr addr_type;
+	typedef sys::ipv4_address addr_type;
 	typedef bsc::tree_hierarchy_iterator<addr_type> iterator;
-	typedef sys::ifaddr<addr_type> ifaddr_type;
+	typedef sys::interface_address<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	sys::log_message("tst", "1");
 	EXPECT_EQ(
@@ -257,9 +257,9 @@ TEST(TreeHierarchyIterator, LargeFanOut) {
     // fanout = 2
     // offset = 1
 	const int fanout = 20000;
-	typedef sys::ipv4_addr addr_type;
+	typedef sys::ipv4_address addr_type;
 	typedef bsc::tree_hierarchy_iterator<addr_type> iterator;
-	typedef sys::ifaddr<addr_type> ifaddr_type;
+	typedef sys::interface_address<addr_type> ifaddr_type;
 	typedef std::vector<addr_type> container_type;
 	EXPECT_EQ(
 		container_type({{127,0,0,1}, {127,0,0,2}, {127,0,0,3}, {127,0,0,4}}),

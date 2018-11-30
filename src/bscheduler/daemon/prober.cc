@@ -20,7 +20,7 @@ bsc::prober::react(bsc::kernel* k) {
 }
 
 void
-bsc::prober::send_probe(const sys::endpoint& dest) {
+bsc::prober::send_probe(const sys::socket_address& dest) {
 	++this->_nprobes;
 	probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
 	p->to(dest);

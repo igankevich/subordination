@@ -50,17 +50,17 @@ bsc::master_discoverer
 ::probe_next_node() {
 	this->setstate(state_type::probing);
 	if (this->_iterator == this->_end) {
-		this->_iterator = iterator(this->ifaddr(), this->_fanout);
-		this->log("_: all addresses have been probed", this->ifaddr());
+		this->_iterator = iterator(this->interface_address(), this->_fanout);
+		this->log("_: all addresses have been probed", this->interface_address());
 		this->send_timer();
 	} else {
 		addr_type addr = *this->_iterator;
-		sys::endpoint new_principal(addr, this->port());
-		this->log("_: probe _", this->ifaddr(), addr);
+		sys::socket_address new_principal(addr, this->port());
+		this->log("_: probe _", this->interface_address(), addr);
 		prober* p =
 			new prober(
-				this->ifaddr(),
-				this->_hierarchy.principal().endpoint(),
+				this->interface_address(),
+				this->_hierarchy.principal().socket_address(),
 				new_principal
 			);
 		bsc::upstream(this, p);
@@ -81,9 +81,9 @@ bsc::master_discoverer
 void
 bsc::master_discoverer
 ::update_subordinates(probe* p) {
-	const sys::endpoint src = p->from();
+	const sys::socket_address src = p->from();
 	probe_result result = this->process_probe(p);
-	this->log("_: _ subordinate _", this->ifaddr(), result, src);
+	this->log("_: _ subordinate _", this->interface_address(), result, src);
 	bool changed = true;
 	if (result == probe_result::add_subordinate) {
 		this->_hierarchy.add_subordinate(src);
@@ -110,9 +110,9 @@ bsc::master_discoverer
 		result = probe_result::reject_subordinate;
 	} else {
 		if (p->old_principal() != p->new_principal()) {
-			if (p->new_principal() == this->_hierarchy.endpoint()) {
+			if (p->new_principal() == this->_hierarchy.socket_address()) {
 				result = probe_result::add_subordinate;
-			} else if (p->old_principal() == this->_hierarchy.endpoint()) {
+			} else if (p->old_principal() == this->_hierarchy.socket_address()) {
 				result = probe_result::remove_subordinate;
 			}
 		}
@@ -127,18 +127,18 @@ bsc::master_discoverer
 	if (p->return_code() != exit_code::success) {
 		this->log(
 			"_: prober returned from _: _",
-			this->ifaddr(),
+			this->interface_address(),
 			p->new_principal(),
 			p->return_code()
 		);
 		this->probe_next_node();
 	} else {
-		const sys::endpoint& oldp = p->old_principal();
-		const sys::endpoint& newp = p->new_principal();
+		const sys::socket_address& oldp = p->old_principal();
+		const sys::socket_address& newp = p->new_principal();
 		if (oldp) {
 			::bsc::factory.nic().stop_client(oldp);
 		}
-		this->log("_: set principal to _", this->ifaddr(), newp);
+		this->log("_: set principal to _", this->interface_address(), newp);
 		this->_hierarchy.set_principal(newp);
 		this->broadcast_hierarchy();
 		// try to find better principal after a period of time
@@ -151,10 +151,10 @@ bsc::master_discoverer
 ::on_event(socket_pipeline_kernel* ev) {
 	switch (ev->event()) {
 	case socket_pipeline_event::add_client:
-		this->on_client_add(ev->endpoint());
+		this->on_client_add(ev->socket_address());
 		break;
 	case socket_pipeline_event::remove_client:
-		this->on_client_remove(ev->endpoint());
+		this->on_client_remove(ev->socket_address());
 		break;
 	case socket_pipeline_event::add_server:
 	case socket_pipeline_event::remove_server:
@@ -166,17 +166,17 @@ bsc::master_discoverer
 
 void
 bsc::master_discoverer
-::on_client_add(const sys::endpoint& endp) {}
+::on_client_add(const sys::socket_address& endp) {}
 
 void
 bsc::master_discoverer
-::on_client_remove(const sys::endpoint& endp) {
+::on_client_remove(const sys::socket_address& endp) {
 	if (endp == this->_hierarchy.principal()) {
-		this->log("_: unset principal _", this->ifaddr(), endp);
+		this->log("_: unset principal _", this->interface_address(), endp);
 		this->_hierarchy.unset_principal();
 		this->probe_next_node();
 	} else {
-		this->log("_: remove subordinate _", this->ifaddr(), endp);
+		this->log("_: remove subordinate _", this->interface_address(), endp);
 		this->_hierarchy.remove_subordinate(endp);
 	}
 }
@@ -184,29 +184,29 @@ bsc::master_discoverer
 void
 bsc::master_discoverer
 ::broadcast_hierarchy(
-	sys::endpoint
+	sys::socket_address
 	ignored_endpoint
 ) {
 	const weight_type total = this->_hierarchy.total_weight();
 	for (const hierarchy_node& sub : this->_hierarchy) {
-		if (sub.endpoint() != ignored_endpoint) {
+		if (sub.socket_address() != ignored_endpoint) {
 			assert(total >= sub.weight());
-			this->send_weight(sub.endpoint(), total - sub.weight());
+			this->send_weight(sub.socket_address(), total - sub.weight());
 		}
 	}
 	if (this->_hierarchy.has_principal()) {
 		const hierarchy_node& princ = this->_hierarchy.principal();
-		if (princ.endpoint() != ignored_endpoint) {
+		if (princ.socket_address() != ignored_endpoint) {
 			assert(total >= princ.weight());
-			this->send_weight(princ.endpoint(), total - princ.weight());
+			this->send_weight(princ.socket_address(), total - princ.weight());
 		}
 	}
 }
 
 void
 bsc::master_discoverer
-::send_weight(const sys::endpoint& dest, weight_type w) {
-	hierarchy_kernel* h = new hierarchy_kernel(this->ifaddr(), w);
+::send_weight(const sys::socket_address& dest, weight_type w) {
+	hierarchy_kernel* h = new hierarchy_kernel(this->interface_address(), w);
 	h->parent(this);
 	h->set_principal_id(1);
 	h->to(dest);
@@ -219,11 +219,11 @@ bsc::master_discoverer
 	if (k->moves_downstream() && k->return_code() != exit_code::success) {
 		this->log(
 			"_: failed to send hierarchy to _",
-			this->ifaddr(),
+			this->interface_address(),
 			k->from()
 		);
 	} else {
-		const sys::endpoint& src = k->from();
+		const sys::socket_address& src = k->from();
 		bool changed = false;
 		if (this->_hierarchy.has_principal(src)) {
 			changed = this->_hierarchy.set_principal_weight(k->weight());
@@ -232,7 +232,7 @@ bsc::master_discoverer
 		}
 		this->log(
 			"_: set _ weight to _",
-			this->ifaddr(),
+			this->interface_address(),
 			k->from(),
 			k->weight()
 		);

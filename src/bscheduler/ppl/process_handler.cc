@@ -47,8 +47,20 @@ template <class K, class R>
 void
 bsc::process_handler<K,R>
 ::remove(sys::event_poller& poller) {
-	poller.erase(this->in());
-	poller.erase(this->out());
+	try {
+		poller.erase(this->in());
+	} catch (const sys::bad_call& err) {
+		if (err.errc() != std::errc::no_such_file_or_directory) {
+			throw;
+		}
+	}
+	try {
+		poller.erase(this->out());
+	} catch (const sys::bad_call& err) {
+		if (err.errc() != std::errc::no_such_file_or_directory) {
+			throw;
+		}
+	}
 	this->setstate(pipeline_state::stopped);
 }
 

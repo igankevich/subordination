@@ -1,11 +1,13 @@
 #include <algorithm>
 #include <functional>
-#include <gtest/gtest.h>
 #include <queue>
 #include <random>
-#include <unistdx/it/queue_popper>
-#include <unistdx/it/queue_pusher>
 #include <vector>
+
+#include <gtest/gtest.h>
+
+#include <bscheduler/base/queue_popper.hh>
+#include <bscheduler/base/queue_pusher.hh>
 
 #define MAKE_QUEUE_PUSHER_TEST(Queue, Pusher) \
 	std::default_random_engine rng; \
@@ -26,16 +28,16 @@
 typedef std::default_random_engine::result_type T;
 
 TEST(QueuePusherAndPopper, Queue) {
-	MAKE_QUEUE_PUSHER_TEST(std::queue<T>, sys::queue_pusher);
-	MAKE_QUEUE_POPPER_TEST(std::queue<T>, sys::queue_popper);
+	MAKE_QUEUE_PUSHER_TEST(std::queue<T>, bsc::queue_pusher);
+	MAKE_QUEUE_POPPER_TEST(std::queue<T>, bsc::queue_popper);
 }
 
 TEST(QueuePusherAndPopper, PriorityQueue) {
-	MAKE_QUEUE_PUSHER_TEST(std::priority_queue<T>, sys::priority_queue_pusher);
-	MAKE_QUEUE_POPPER_TEST(std::priority_queue<T>, sys::priority_queue_popper);
+	MAKE_QUEUE_PUSHER_TEST(std::priority_queue<T>, bsc::priority_queue_pusher);
+	MAKE_QUEUE_POPPER_TEST(std::priority_queue<T>, bsc::priority_queue_popper);
 }
 
 TEST(QueuePusherAndPopper, Deque) {
-	MAKE_QUEUE_PUSHER_TEST(std::deque<T>, sys::deque_pusher);
-	MAKE_QUEUE_POPPER_TEST(std::deque<T>, sys::deque_popper);
+	MAKE_QUEUE_PUSHER_TEST(std::deque<T>, bsc::deque_pusher);
+	MAKE_QUEUE_POPPER_TEST(std::deque<T>, bsc::deque_popper);
 }

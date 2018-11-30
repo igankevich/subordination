@@ -88,7 +88,7 @@ namespace bsc {
 		wait_for_all_processes_to_finish();
 
 		void
-		on_process_exit(const sys::process& p, sys::proc_info status);
+		on_process_exit(const sys::process& p, sys::process_status status);
 
 		inline app_iterator
 		find_by_app_id(application_type id) {

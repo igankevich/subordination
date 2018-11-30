@@ -21,7 +21,7 @@ new_application_kernel(int argc, char* argv[]) {
 		env.emplace_back(*first);
 	}
 	Application_kernel* k = new Application_kernel(args, env);
-	k->to(sys::endpoint(BSCHEDULER_UNIX_DOMAIN_SOCKET));
+	k->to(sys::socket_address(BSCHEDULER_UNIX_DOMAIN_SOCKET));
 	return k;
 }
 
