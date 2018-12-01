@@ -6,7 +6,6 @@
 #include <string>
 
 #include <unistdx/base/log_message>
-#include <unistdx/fs/mkdirs>
 #include <unistdx/fs/path>
 #include <unistdx/ipc/argstream>
 #include <unistdx/ipc/execute>
@@ -234,7 +233,6 @@ TEST(Discovery, TestApplication) {
 }
 
 int main(int argc, char* argv[]) {
-	sys::mkdirs(sys::path("."), sys::path(BSCHEDULER_LOG_DIRECTORY "/"));
 	_num_nodes = std::atoi(std::getenv("_NODES"));
 	_fanout = std::atoi(std::getenv("_FANOUT"));
 	std::string s = "1-";

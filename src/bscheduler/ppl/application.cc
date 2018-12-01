@@ -82,11 +82,7 @@ namespace {
 	inline std::string
 	generate_filename(bsc::application_type app, const char* suffix) {
 		std::stringstream filename;
-		filename
-		    << BSCHEDULER_LOG_DIRECTORY
-		    << sys::file_separator
-		    << app
-		    << suffix;
+		filename << app << suffix;
 		return filename.str();
 	}
 
