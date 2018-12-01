@@ -1,0 +1,98 @@
+Name:           @name@
+Version:        @version@
+Release:        @release@%{?dist}
+Summary:        Distributed programming C++ framework
+
+License:        @license@
+URL:            https://igankevich.github.io/bscheduler/index.html
+Source0:        @name@-%{version}.tar.xz
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+%{?systemd_ordering}
+Requires(pre): shadow-utils
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description
+Fault tolerant batch job scheduler.
+
+%package        libs
+Summary:        Bscheduler libraries
+Requires:       %{name}%{?_isa} = %{version}-%{release}
+
+%description    libs
+The %{name}-libs package contains common %{name} libraries.
+
+%package        devel
+Summary:        Development files for %{name}
+Requires:       %{name}%{?_isa} = %{version}-%{release}
+Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
+
+%description    devel
+The %{name}-devel package contains libraries and header files for
+developing applications that use %{name}.
+
+%global debug_package %{nil}
+
+%prep
+%autosetup
+
+%build
+%meson
+%meson_build
+
+%install
+%meson_install
+
+%check
+%meson_test
+
+%pre
+getent group bscheduler >/dev/null || groupadd -r bscheduler
+getent passwd bscheduler >/dev/null || \
+	useradd -r -s /sbin/nologin -d / -g bscheduler \
+		-c "Bscheduler daemon user" bscheduler
+
+%post
+%systemd_post bscheduler.service
+
+%post libs -p /sbin/ldconfig
+
+%preun
+%systemd_preun bscheduler.service
+
+%postun
+%systemd_postun_with_restart bscheduler.service
+
+%postun libs -p /sbin/ldconfig
+
+%files
+%defattr(0755,root,root,0755)
+%{_bindir}/bsub
+%{_sbindir}/bscheduler
+%defattr(0644,bscheduler,bscheduler,0755)
+%dir %{_localstatedir}/log/bscheduler
+%defattr(0644,root,root,0755)
+%{_unitdir}/bscheduler.service
+%config(noreplace) %{_sysconfdir}/sysconfig/bscheduler
+
+%files libs
+%defattr(0755,root,root,0755)
+%{_libdir}/libbscheduler-app.so.*
+%{_libdir}/libbscheduler-core.so.*
+%{_libdir}/libbscheduler-daemon.so.*
+%{_libdir}/libbscheduler-submit.so.*
+
+%files devel
+%defattr(0644,root,root,0755)
+%{_includedir}/bscheduler
+%{_libdir}/pkgconfig/bscheduler-*.pc
+%{_libdir}/libbscheduler-*.so
+
+%changelog
+* Sat Dec 1 2018 Ivan Gankevich <i.gankevich@spbu.ru> 0.2.2-1
+Update for the latest unistdx version.
+* Wed Oct 25 2017 Ivan Gankevich <igankevich@ya.ru> 0.2-6
+Split into three subpackages.
+* Wed Sep 27 2017 Ivan Gankevich <igankevich@ya.ru> 0.2-1
+Packaged everything.

@@ -1,7 +1,7 @@
 project(
 	'bscheduler',
 	'cpp',
-	version: '0.2.1',
+	version: '0.2.2',
 	meson_version: '>=0.42.0',
 	default_options: ['cpp_std=c++11']
 )
@@ -34,6 +34,7 @@ gtest = dependency('gtest', main: true)
 srcdir = include_directories('src')
 
 subdir('src')
+subdir('pkg')
 
 # doxygen {{{
 doxygen = find_program('doxygen', required: false)
@@ -120,20 +121,5 @@ pkgconfig.generate(
 	name: 'bscheduler-submit',
 	filebase: 'bscheduler-submit',
 	description: 'Distributed programming C++ framework',
-)
-# }}}
-# archive {{{
-archive_name = meson.project_name() + '-' + meson.project_version()
-run_target(
-	'archive',
-	command: [
-		'git',
-		'archive',
-		'-o',
-		join_paths(meson.build_root(), archive_name + '.tar.xz'),
-		'--prefix',
-		archive_name + '/',
-		'HEAD'
-	]
 )
 # }}}
