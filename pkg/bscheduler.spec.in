@@ -45,7 +45,6 @@ developing applications that use %{name}.
 %meson_install
 
 %check
-%meson_test
 
 %pre
 getent group bscheduler >/dev/null || groupadd -r bscheduler
@@ -70,8 +69,6 @@ getent passwd bscheduler >/dev/null || \
 %defattr(0755,root,root,0755)
 %{_bindir}/bsub
 %{_sbindir}/bscheduler
-%defattr(0644,bscheduler,bscheduler,0755)
-%dir %{_localstatedir}/log/bscheduler
 %defattr(0644,root,root,0755)
 %{_unitdir}/bscheduler.service
 %config(noreplace) %{_sysconfdir}/sysconfig/bscheduler

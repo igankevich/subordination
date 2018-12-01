@@ -5,8 +5,11 @@ bscheduler_core_src += files([
 ])
 
 install_headers(
-	'error.hh',
+	'container_traits.hh',
 	'error_handler.hh',
+	'error.hh',
+	'queue_popper.hh',
+	'queue_pusher.hh',
 	'static_lock.hh',
 	'thread_name.hh',
 	subdir: join_paths(meson.project_name(), 'base')
