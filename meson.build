@@ -28,7 +28,7 @@ config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))
 
 threads = dependency('threads')
-unistdx = dependency('unistdx')
+unistdx = dependency('unistdx', version: '>=0.4.15')
 gtest = dependency('gtest', main: true)
 
 srcdir = include_directories('src')
