@@ -168,7 +168,10 @@ namespace bsc {
 					}
 				}
 				if (!timeout) {
-					this->poller().wait(lock);
+					this->poller().wait(
+						lock,
+						[this] () { return this->has_stopped(); }
+					);
 				}
 				this->process_kernels();
 				this->handle_events();
