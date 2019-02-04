@@ -243,15 +243,13 @@ bsc::application
 		}
 	}
 	// redirect stdout/stderr
-	sys::fildes outfd, errfd;
+	sys::fildes outfd(STDOUT_FILENO), errfd(STDERR_FILENO);
 	try {
-		outfd = std::move(open_file(this->_id, ".out"));
-		errfd = std::move(open_file(this->_id, ".err"));
-		if (outfd) {
-			outfd.remap(STDOUT_FILENO);
+		if (sys::fildes out{open_file(this->_id, ".out")}) {
+			outfd = out;
 		}
-		if (errfd) {
-			errfd.remap(STDERR_FILENO);
+		if (sys::fildes err{open_file(this->_id, ".err")}) {
+			errfd = err;
 		}
 	} catch (const sys::bad_call& err) {
 		sys::log_message("app", "unable to redirect stdout/stderr");
