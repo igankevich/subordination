@@ -1,0 +1,18 @@
+import os
+import os.path
+import urllib.request
+
+os.chdir('@build_root@')
+
+# download STL doxygen tags
+std_tag_xml_url='http://upload.cppreference.com/mwiki/images/f/f8/cppreference-doxygen-web.tag.xml'
+std_tag_xml='@std_tag_xml@'
+if not os.path.isfile(std_tag_xml):
+    request = urllib.request.urlopen(std_tag_xml_url)
+    with open(std_tag_xml, 'wb') as f:
+        f.write(request.read())
+
+# run doxygen
+os.system('@doxygen@ @doxyfile@')
+
+# vim:filetype=python
