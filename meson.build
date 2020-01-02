@@ -3,8 +3,11 @@ project(
     'cpp',
     version: '0.2.4',
     meson_version: '>=0.46.0',
-    default_options: ['cpp_std=c++11']
+    default_options: ['cpp_std=c++11'],
+    license: 'gpl3+'
 )
+
+project_description = 'A framework for distributed programming'
 
 cpp = meson.get_compiler('cpp')
 
@@ -84,7 +87,7 @@ pkgconfig.generate(
     version: meson.project_version(),
     name: 'subordination-core',
     filebase: 'subordination-core',
-    description: 'Distributed programming C++ framework',
+    description: project_description,
 )
 pkgconfig.generate(
     subordination_app_lib,
@@ -94,7 +97,7 @@ pkgconfig.generate(
     version: meson.project_version(),
     name: 'subordination-app',
     filebase: 'subordination-app',
-    description: 'Distributed programming C++ framework',
+    description: project_description,
 )
 pkgconfig.generate(
     subordination_daemon_lib,
@@ -104,7 +107,7 @@ pkgconfig.generate(
     version: meson.project_version(),
     name: 'subordination-daemon',
     filebase: 'subordination-daemon',
-    description: 'Distributed programming C++ framework',
+    description: project_description,
 )
 pkgconfig.generate(
     subordination_submit_lib,
@@ -114,6 +117,6 @@ pkgconfig.generate(
     version: meson.project_version(),
     name: 'subordination-submit',
     filebase: 'subordination-submit',
-    description: 'Distributed programming C++ framework',
+    description: project_description,
 )
 # }}}

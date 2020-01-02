@@ -1,5 +1,5 @@
-#ifndef TUTORIAL_HH
-#define TUTORIAL_HH
+#ifndef DOC_PAGES_TUTORIAL_HH
+#define DOC_PAGES_TUTORIAL_HH
 
 /**
 \page tutorial Tutorial

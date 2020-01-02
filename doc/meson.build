@@ -1,7 +1,7 @@
 python = import('python').find_installation(required: false)
 doxygen = find_program('doxygen', required: false)
 if doxygen.found() and python.found()
-    theme_dir = join_paths(meson.current_source_dir(), 'theme')
+    html_dir = join_paths(meson.build_root(), 'html')
     std_tag_xml = 'std.tag.xml'
     std_tag_url = 'http://en.cppreference.com/w/'
     build_py = configuration_data()
@@ -11,17 +11,19 @@ if doxygen.found() and python.found()
     build_py.set('doxyfile', join_paths(meson.current_build_dir(), 'Doxyfile'))
     configure_file(input: 'build.py.in', output: 'build.py', configuration: build_py)
     doxyfile = configuration_data()
+    doxyfile.set('PROJECT_BRIEF', project_description)
     doxyfile.set('OUTPUT_DIRECTORY', meson.build_root())
     excluded_files = [
         'meson.build',
         join_paths(meson.source_root(), 'src', meson.project_name(), 'test'),
-        join_paths(meson.source_root(), 'doc', 'theme'),
+        join_paths(meson.source_root(), 'src', 'examples'),
     ]
     doxyfile.set('EXCLUDE', ' '.join(excluded_files))
     doxyfile.set('EXCLUDE_SYMBOLS', ' '.join(['bits']))
     input_files = [
         join_paths(meson.source_root(), 'src'),
-        meson.current_source_dir(),
+        join_paths(meson.source_root(), 'doc'),
+        join_paths(meson.source_root(), 'doc', 'pages'),
     ]
     doxyfile.set('INPUT', ' '.join(input_files))
     perl = find_program('perl', required: false)
@@ -39,14 +41,16 @@ if doxygen.found() and python.found()
         doxyfile.set('HAVE_DOT', 'NO')
     endif
     doxyfile.set('TAGFILES', std_tag_xml + '=' + std_tag_url)
-    doxyfile.set('LAYOUT_FILE', join_paths(theme_dir, 'layout.xml'))
-    doxyfile.set('HTML_EXTRA_STYLESHEET', join_paths(theme_dir, 'doxygen-extra.css'))
-    doxyfile.set('HTML_EXTRA_FILES', join_paths(theme_dir, 'extra.js'))
-    doxyfile.set('HTML_HEADER', join_paths(theme_dir, 'header.html'))
-    doxyfile.set('HTML_FOOTER', join_paths(theme_dir, 'footer.html'))
+    doxyfile.set('LAYOUT_FILE', 'layout.xml')
+    doxyfile.set('HTML_EXTRA_STYLESHEET', '')
+    doxyfile.set('HTML_EXTRA_FILES', '')
+    doxyfile.set('HTML_HEADER', '')
+    doxyfile.set('HTML_FOOTER', '')
+    doxyfile.set('HTML_OUTPUT', html_dir)
     configure_file(input: 'Doxyfile.in', output: 'Doxyfile', configuration: doxyfile)
     run_target(
         'doc',
         command: [python, join_paths(meson.current_build_dir(), 'build.py')],
     )
+    run_target('doc-server', command: [python, '-m', 'http.server', '--directory', html_dir])
 endif

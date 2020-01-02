@@ -1,4 +1,4 @@
-\mainpage Introduction to Subordination
+\mainpage Introduction
 
 Subordination is a framework for developing distributed applications which features
 - \ref api "concise API" consisting of a few base classes and a handful of
@@ -20,7 +20,7 @@ TODO
 
 \section license License
 
-TODO
+GPL3+
 
 \section contributing Contributing
 
