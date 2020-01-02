@@ -8,7 +8,7 @@ option(
 option(
 	'kernel_header',
 	type: 'string',
-	value: 'bscheduler/kernel/kernel.hh',
+	value: 'subordination/kernel/kernel.hh',
 	description: 'header file containing definition of kernel_type'
 )
 

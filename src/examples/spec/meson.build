@@ -1,8 +1,10 @@
-libz = dependency('zlib')
+zlib = dependency('zlib', required: false)
 
-executable(
-	'spec',
-	sources: 'spec.cc',
-	include_directories: [srcdir],
-	dependencies: [threads, libz, unistdx, bscheduler_app]
-)
+if zlib.found()
+    executable(
+        'spec',
+        sources: 'spec.cc',
+        include_directories: [srcdir],
+        dependencies: [threads, zlib, unistdx, subordination_app]
+    )
+endif

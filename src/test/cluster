@@ -108,8 +108,8 @@ cat >$script << EOF
 hostname m\$1
 mkdir -p /var/tmp/m\$1
 mount --bind /var/tmp/m\$1 /tmp
-mkdir -p var/log/bscheduler
-mount --bind /var/tmp/m\$1 var/log/bscheduler
+mkdir -p var/log/subordination
+mount --bind /var/tmp/m\$1 var/log/subordination
 exec $app >$outdir/$cluster\$1.out 2>&1
 EOF
 chmod +x $script

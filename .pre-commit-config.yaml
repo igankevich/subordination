@@ -1,0 +1,21 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.4.0
+    hooks:
+    -   id: check-added-large-files
+        args: ['--maxkb=100']
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: check-yaml
+    -   id: detect-private-key
+    -   id: forbid-new-submodules
+    -   id: no-commit-to-branch
+        args: [--branch, dev, --branch, master]
+        name: 'Do not commit to dev/master'
+-   repo: https://github.com/igankevich/pre-commit-cpp
+    rev: 0.2.2
+    hooks:
+    -   id: normalise
+        files: \.(h|hh|cc|cpp|cl|py|hh\.in|h\.in|build)$
+    -   id: header-guard
+        files: \.(h|hh|hh\.in|h\.in)$

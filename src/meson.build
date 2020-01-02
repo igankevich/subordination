@@ -1,3 +1,3 @@
-subdir('bscheduler')
+subdir('subordination')
 subdir('test')
 subdir('examples')

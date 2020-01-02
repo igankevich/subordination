@@ -1,7 +1,10 @@
+#ifndef TUTORIAL_HH
+#define TUTORIAL_HH
+
 /**
 \page tutorial Tutorial
 
-Every Bscheduler application is composed of computational \link bsc::kernel <em>
+Every Subordination application is composed of computational \link bsc::kernel <em>
 kernels</em>\endlink --- self-contained objects which store data and have routines
 to process it. In each routine a kernel may create any number of \em
 subordinates to decompose application into smaller parts. Some kernels can be
@@ -35,12 +38,12 @@ these are standard
   schedule-based execution of kernels).
 
 Standard pipelines for all devices except NIC are initialised in \c
-bscheduler/api.hh header. To initialise NIC pipeline you need to tell it which
+subordination/api.hh header. To initialise NIC pipeline you need to tell it which
 pipeline is local and which one is remote. The following code snippet shows the
 usual way of doing this.
 
 \code{.cpp}
-#include <bscheduler/api.hh>
+#include <subordination/api.hh>
 \endcode
 
 The second step is to subclass \link bsc::kernel <code>kernel</code>\endlink
@@ -50,16 +53,16 @@ stage of your programme and for parallel parts of each stage.
 \code{.cpp}
 struct My_app: public kernel {
 
-	void
-	act() {
-		std::cout << "Hello world" << std::endl;
-		bsc::commit(this);
-	}
+    void
+    act() {
+        std::cout << "Hello world" << std::endl;
+        bsc::commit(this);
+    }
 
-	void
-	react(kernel*) {
-		// not needed for such a simple programme
-	}
+    void
+    react(kernel*) {
+        // not needed for such a simple programme
+    }
 
 };
 \endcode
@@ -78,12 +81,12 @@ one via \link bsc::send <code>send</code>\endlink function.
 
 \code{.cpp}
 int main() {
-	using namespace bsc;
-	install_error_handler();  // print backtrace on exception or signal
-	factory_guard g;          // automatically start and stop the factory
-	send(new My_app);         // start the programme by sending the first
-	                          // kernel to the pipeline
-	return wait_and_return(); // wait for the programme completion
+    using namespace bsc;
+    install_error_handler();  // print backtrace on exception or signal
+    factory_guard g;          // automatically start and stop the factory
+    send(new My_app);         // start the programme by sending the first
+                              // kernel to the pipeline
+    return wait_and_return(); // wait for the programme completion
 }
 \endcode
 
@@ -99,21 +102,21 @@ distributed system:
   principal and no other node --- and
 - failure of a \em principal node --- a node with multiple connections.
 
-In Bscheduler the "node" refers both to a cluster node and to a kernel, failures
+In Subordination the "node" refers both to a cluster node and to a kernel, failures
 of which are handled differently.
 
 \subsection kernel-failures Handling kernel failures
 
 Since any subordinate kernel is part of a hierarchy the simplest method of
 handling its failure is to let its principal restart it on a healthy cluster
-node. Bscheduler does this automatically for any kernel that has parent. This
+node. Subordination does this automatically for any kernel that has parent. This
 approach works well unless your hierarchy is deep and require restarting a lot
 of kernels upon a failure; however, this approach does not work for the main
 kernel --- the first kernel of an application that does not have a parent.
 
 In case of the main kernel failure the only option is to keep a copy of it on
 some other cluster node and restore from it when the former node fails.
-Bscheduler implements this for any kernel with the \link
+Subordination implements this for any kernel with the \link
 bsc::kernel_flag::carries_parent <code>carries_parent</code>\endlink flag set,
 but the approach works only for those principal kernels that have only one
 subordinate at a time (extending algorithm to cover more cases is one of the
@@ -130,7 +133,7 @@ Cluster node failures are much simpler to mitigate: there is no state to be
 lost and the only invariant that should be preserved in a cluster is
 connectivity of nodes. All nodes should "know" each other and be able to
 establish arbitrary connections between each other; in other words, nodes
-should be able to \em discover each other. Bscheduler implements this
+should be able to \em discover each other. Subordination implements this
 functionality without distributed consensus algorithm: the framework builds tree
 hierarchy of nodes using IP addresses and pre-set fan-out value to rank nodes.
 Using this algorithm a node computes IP address of its would-be principal and
@@ -141,7 +144,7 @@ bootstrap phase and upon a failure of any principal.
 
 \section hierarchy Hierarchical architecture
 
-At high-level Bscheduler framework is composed of multiple layers:
+At high-level Subordination framework is composed of multiple layers:
 
 - physical layer (fully-connected servers and network switches),
 - middleware layer (hierarchy of nodes),
@@ -155,7 +158,7 @@ in the current layer is to small to hold it.
 
 \section bottomup Bottom-up design
 
-Bscheduler framework uses [bottom-up](http://www.paulgraham.com/progbot.html)
+Subordination framework uses [bottom-up](http://www.paulgraham.com/progbot.html)
 source code development approach which means we create low-level abstractions
 to simplify high-level code and make it clean and readable. There are three
 layers of abstractions:
@@ -171,3 +174,5 @@ still we would like to separate them via
 and <a href="http://erdani.com/publications/traits.html">traits classes</a>.
 
 */
+
+#endif // vim:filetype=cpp

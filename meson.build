@@ -1,25 +1,25 @@
 project(
-	'bscheduler',
-	'cpp',
-	version: '0.2.4',
-	meson_version: '>=0.42.0',
-	default_options: ['cpp_std=c++11']
+    'subordination',
+    'cpp',
+    version: '0.2.4',
+    meson_version: '>=0.46.0',
+    default_options: ['cpp_std=c++11']
 )
 
 if not get_option('buildtype').contains('debug')
-	add_global_arguments('-DNDEBUG', language: 'cpp')
+    add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 #add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 
 profiling_args = []
 if get_option('profile_node_discovery')
-	profiling_args += ['-DBSCHEDULER_PROFILE_NODE_DISCOVERY']
+    profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
 endif
 
 cpp = meson.get_compiler('cpp')
 if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
-	add_global_link_arguments('-rdynamic', language: 'cpp')
+    add_global_link_arguments('-rdynamic', language: 'cpp')
 endif
 
 # configuration
@@ -35,91 +35,66 @@ srcdir = include_directories('src')
 
 subdir('src')
 subdir('pkg')
+subdir('doc')
 
-# doxygen {{{
-doxygen = find_program('doxygen', required: false)
-if doxygen.found()
-	run_target(
-		'doc',
-		command: [
-			doxygen,
-			join_paths(meson.source_root(), 'Doxyfile'),
-		]
-	)
-endif
-# }}}
 # cppcheck {{{
 cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()
-	run_target(
-		'cppcheck',
-		command: [
-			cppcheck,
-			'--enable=all',
-			'--quiet',
-			'--force',
-			'--language=c++',
-			'--std=c++11',
-			'--template=gcc',
-			'-I' + join_paths(meson.source_root(), 'src'),
-			'-I' + join_paths(meson.build_root(), 'src'),
-			join_paths(meson.source_root(), 'src'),
-		]
-	)
+    run_target(
+        'cppcheck',
+        command: [
+            cppcheck,
+            '--enable=all',
+            '--quiet',
+            '--force',
+            '--language=c++',
+            '--std=c++11',
+            '--template=gcc',
+            '-I' + join_paths(meson.source_root(), 'src'),
+            '-I' + join_paths(meson.build_root(), 'src'),
+            join_paths(meson.source_root(), 'src'),
+        ]
+    )
 endif
 # }}}
-# systemd service {{{
-systemd_config = configuration_data()
-systemd_config.set('prefix', get_option('prefix'))
-systemd_config.set('sbindir', get_option('sbindir'))
-systemd_config.set('bscheduler_exe', bscheduler_exe.full_path().split('/')[-1])
-systemd_config.set('bscheduler_args', 'fanout=10000')
-systemd_config.set('project_name', meson.project_name())
-configure_file(
-	input: 'bscheduler.service.in',
-	output: meson.project_name() + '.service',
-	configuration: systemd_config,
-	install_dir: get_option('unitdir')
-)
-configure_file(
-	input: 'bscheduler.in',
-	output: meson.project_name(),
-	configuration: systemd_config,
-	install_dir: join_paths(get_option('sysconfdir'), 'sysconfig')
-)
-# }}}
 # pkgconfig {{{
-unistdx_lib = '-lunistdx'
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
-	libraries: [bscheduler_core_lib, unistdx_lib],
-	version: meson.project_version(),
-	name: 'bscheduler-core',
-	filebase: 'bscheduler-core',
-	description: 'Distributed programming C++ framework',
+    subordination_core_lib,
+    requires: [unistdx],
+    version: meson.project_version(),
+    name: 'subordination-core',
+    filebase: 'subordination-core',
+    description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_app_lib, bscheduler_core_lib, unistdx_lib],
-	extra_cflags: '-DBSCHEDULER_APPLICATION',
-	version: meson.project_version(),
-	name: 'bscheduler-app',
-	filebase: 'bscheduler-app',
-	description: 'Distributed programming C++ framework',
+    subordination_app_lib,
+    libraries: [subordination_core_lib],
+    requires: [unistdx],
+    extra_cflags: '-DSUBORDINATION_APPLICATION',
+    version: meson.project_version(),
+    name: 'subordination-app',
+    filebase: 'subordination-app',
+    description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_daemon_lib, bscheduler_core_lib, unistdx_lib],
-	extra_cflags: '-DBSCHEDULER_DAEMON',
-	version: meson.project_version(),
-	name: 'bscheduler-daemon',
-	filebase: 'bscheduler-daemon',
-	description: 'Distributed programming C++ framework',
+    subordination_daemon_lib,
+    libraries: [subordination_core_lib],
+    requires: [unistdx],
+    extra_cflags: '-DSUBORDINATION_DAEMON',
+    version: meson.project_version(),
+    name: 'subordination-daemon',
+    filebase: 'subordination-daemon',
+    description: 'Distributed programming C++ framework',
 )
 pkgconfig.generate(
-	libraries: [bscheduler_submit_lib, bscheduler_core_lib, unistdx_lib],
-	extra_cflags: '-DBSCHEDULER_SUBMIT',
-	version: meson.project_version(),
-	name: 'bscheduler-submit',
-	filebase: 'bscheduler-submit',
-	description: 'Distributed programming C++ framework',
+    subordination_submit_lib,
+    libraries: [subordination_core_lib],
+    requires: [unistdx],
+    extra_cflags: '-DSUBORDINATION_SUBMIT',
+    version: meson.project_version(),
+    name: 'subordination-submit',
+    filebase: 'subordination-submit',
+    description: 'Distributed programming C++ framework',
 )
 # }}}
