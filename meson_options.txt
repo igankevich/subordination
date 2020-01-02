@@ -25,3 +25,17 @@ option(
 	value: 'lib/systemd/system',
 	description: 'systemd unit directory'
 )
+
+option(
+	'with_doc',
+	type: 'boolean',
+	value: false,
+	description: 'build documentation'
+)
+
+option(
+	'with_rpm',
+	type: 'boolean',
+	value: false,
+	description: 'build RPM package'
+)

@@ -6,18 +6,31 @@ project(
     default_options: ['cpp_std=c++11']
 )
 
+cpp = meson.get_compiler('cpp')
+
 if not get_option('buildtype').contains('debug')
     add_global_arguments('-DNDEBUG', language: 'cpp')
 endif
 #add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 
+foreach arg : [
+    '-Werror=return-type',
+    '-Werror=return-local-addr',
+    '-Wcast-align']
+    if cpp.has_argument(arg)
+        add_global_arguments(arg, language: 'cpp')
+    endif
+endforeach
+
+with_doc = get_option('with_doc')
+with_rpm = get_option('with_rpm')
+
 profiling_args = []
 if get_option('profile_node_discovery')
     profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
 endif
 
-cpp = meson.get_compiler('cpp')
 if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
     add_global_link_arguments('-rdynamic', language: 'cpp')
 endif
@@ -34,8 +47,14 @@ gtest = dependency('gtest', main: true)
 srcdir = include_directories('src')
 
 subdir('src')
-subdir('pkg')
-subdir('doc')
+
+if with_rpm
+    subdir('rpm')
+endif
+
+if with_doc
+    subdir('doc')
+endif
 
 # cppcheck {{{
 cppcheck = find_program('cppcheck', required: false)

@@ -1,0 +1,52 @@
+#!/bin/sh
+
+URL="ssh://git@fennec:29418/${CI_REPO_SLUG}.git"
+CMMSHQ_URL="cmmshq.ru:/usr/share/nginx/html/doc/subordination"
+
+if test "$CI_PULL_REQUEST" != "false"
+then
+	echo "Skipping pull requests"
+	exit 0
+fi
+
+export GUIX_MANIFEST=guix/manifest.scm
+export GUIX_CHANNELS=guix/channels.scm
+
+echo
+echo "Environment:"
+env | grep -E '^(CI_|HOME|SINGULARITY|GUIX)' | sort | column -t -s= -R 1
+echo
+
+/usr/libexec/gitbucket-ci << EOF
+# prefix all commands with
+# slurm_job TESTNAME CMD ARG1 ARG2
+
+test_flags() {
+	flags="\$@"
+    d=/var/tmp/\$(uuidgen)
+	echo "
+		set -ex
+		meson \$flags . \$d
+		cd \$d
+		meson test --verbose
+		rm -rf \$d"
+}
+
+slurm_job "sanitize-address" sh -c "\$(test_flags -Db_sanitize=address)"
+slurm_job "sanitize=none" sh -c "\$(test_flags -Db_sanitize=none)"
+
+# build documentation
+if test "$CI_BUILD_BRANCH" = "dev" || test -n "$CI_PULL_REQUEST"
+then
+	d=/var/tmp/\$(uuidgen)
+	slurm_job "doc" sh -c "
+		set -ex
+		meson -Dwith_doc=true . \$d
+		cd \$d
+		ninja -v doc
+		rsync -acv --delete html/ $CMMSHQ_URL/
+	"
+fi
+
+EOF
+
