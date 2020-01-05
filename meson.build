@@ -1,7 +1,7 @@
 project(
     'subordination',
     'cpp',
-    version: '0.2.4',
+    version: '0.2.5',
     meson_version: '>=0.46.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'
@@ -21,7 +21,7 @@ endif
 foreach arg : [
     '-Werror=return-type',
     '-Werror=return-local-addr',
-    '-Wcast-align']
+    '-Werror=cast-align']
     if cpp.has_argument(arg)
         add_global_arguments(arg, language: 'cpp')
     endif
@@ -45,7 +45,7 @@ config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.4.15')
+unistdx = dependency('unistdx', version: '>=0.7.2')
 gtest = dependency('gtest', main: true)
 
 srcdir = include_directories('src')

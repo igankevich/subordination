@@ -12,6 +12,7 @@
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
 #include <unistdx/it/intersperse_iterator>
+#include <unistdx/net/network_interface>
 
 enum struct Strategy {
     Master_slave,
@@ -74,6 +75,9 @@ struct Executor {
 
     void
     execute() {
+        using unshare = sys::unshare_flag;
+        sys::this_process::unshare(unshare::users | unshare::network);
+        { sys::network_interface lo("lo"); lo.setf(sys::network_interface::flag::up); }
         std::for_each(
             _arguments.begin(), _arguments.end(),
             [this] (const sys::argstream& rhs) {

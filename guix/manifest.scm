@@ -16,7 +16,7 @@
 
 (packages->manifest
   (list
-    unistdx
+    unistdx-0.7.2
     (list gcc-9 "lib")
     gcc-toolchain-9
     googletest
