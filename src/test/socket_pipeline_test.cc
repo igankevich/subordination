@@ -3,8 +3,8 @@
 
 #include <unistdx/base/command_line>
 
-#include "role.hh"
-#include "datum.hh"
+#include <test/role.hh>
+#include <test/datum.hh>
 
 #include <gtest/gtest.h>
 

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "subordination_socket.hh"
+#include <subordination/daemon/subordination_socket.hh>
 
 using sbn::Application_kernel;
 using namespace sbn;

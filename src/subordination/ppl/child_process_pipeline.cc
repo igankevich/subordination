@@ -1,4 +1,4 @@
-#include "child_process_pipeline.hh"
+#include <subordination/ppl/child_process_pipeline.hh>
 
 #include <subordination/config.hh>
 #include <subordination/ppl/application.hh>

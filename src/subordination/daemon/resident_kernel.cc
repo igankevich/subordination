@@ -1,4 +1,4 @@
-#include "resident_kernel.hh"
+#include <subordination/daemon/resident_kernel.hh>
 
 #include <typeinfo>
 

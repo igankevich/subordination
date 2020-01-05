@@ -1,4 +1,4 @@
-#include "io_pipeline.hh"
+#include <subordination/ppl/io_pipeline.hh>
 
 #include <subordination/config.hh>
 

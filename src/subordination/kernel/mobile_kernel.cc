@@ -1,4 +1,4 @@
-#include "mobile_kernel.hh"
+#include <subordination/kernel/mobile_kernel.hh>
 
 void
 sbn::mobile_kernel::read(sys::pstream& in) {

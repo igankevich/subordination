@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_PPL_IO_PIPELINE_HH
 #define SUBORDINATION_PPL_IO_PIPELINE_HH
 
-#include "parallel_pipeline.hh"
+#include <subordination/ppl/parallel_pipeline.hh>
 
 namespace sbn {
 

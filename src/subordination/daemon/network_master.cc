@@ -1,4 +1,4 @@
-#include "network_master.hh"
+#include <subordination/daemon/network_master.hh>
 
 #include <algorithm>
 #include <iterator>

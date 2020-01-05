@@ -1,4 +1,4 @@
-#include "unix_domain_socket_pipeline.hh"
+#include <subordination/ppl/unix_domain_socket_pipeline.hh>
 
 #include <unistdx/io/fildesbuf>
 

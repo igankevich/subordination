@@ -1,4 +1,4 @@
-#include "hierarchy_node.hh"
+#include <subordination/daemon/hierarchy_node.hh>
 
 #include <unistdx/base/make_object>
 
@@ -9,4 +9,3 @@ sbn::operator<<(std::ostream& out, const hierarchy_node& rhs) {
         "weight", rhs.weight()
     );
 }
-

@@ -3,9 +3,9 @@
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/basic_pipeline.hh>
 
-#include "datum.hh"
-#include "big_kernel.hh"
-#include "make_types.hh"
+#include <test/datum.hh>
+#include <test/big_kernel.hh>
+#include <test/make_types.hh>
 
 #include <gtest/gtest.h>
 

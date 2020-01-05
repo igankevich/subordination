@@ -12,4 +12,3 @@ struct TypePair {
 #define MAKE_TYPE_PAIR(a, b) ::TypePair<a,b>
 
 #endif // vim:filetype=cpp
-

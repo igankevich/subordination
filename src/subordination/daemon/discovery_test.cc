@@ -15,7 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#include "test_application.hh"
+#include <subordination/daemon/test_application.hh>
 
 std::string
 cluster_name() {

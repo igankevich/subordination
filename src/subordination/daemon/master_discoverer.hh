@@ -11,12 +11,12 @@
 #include <subordination/api.hh>
 #include <subordination/ppl/socket_pipeline_event.hh>
 
-#include "hierarchy.hh"
-#include "hierarchy_kernel.hh"
-#include "probe.hh"
-#include "prober.hh"
-#include "resident_kernel.hh"
-#include "tree_hierarchy_iterator.hh"
+#include <subordination/daemon/hierarchy.hh>
+#include <subordination/daemon/hierarchy_kernel.hh>
+#include <subordination/daemon/probe.hh>
+#include <subordination/daemon/prober.hh>
+#include <subordination/daemon/resident_kernel.hh>
+#include <subordination/daemon/tree_hierarchy_iterator.hh>
 
 
 namespace sbn {

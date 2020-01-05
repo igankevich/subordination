@@ -1,4 +1,4 @@
-#include "exit_code.hh"
+#include <subordination/kernel/exit_code.hh>
 
 #include <array>
 
@@ -23,4 +23,3 @@ sbn::to_string(exit_code rhs) noexcept {
     }
     return str;
 }
-

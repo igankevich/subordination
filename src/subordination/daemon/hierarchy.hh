@@ -7,7 +7,7 @@
 #include <unistdx/net/socket_address>
 #include <unistdx/net/interface_address>
 
-#include "hierarchy_node.hh"
+#include <subordination/daemon/hierarchy_node.hh>
 
 namespace sbn {
 

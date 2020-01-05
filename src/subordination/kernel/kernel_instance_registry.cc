@@ -1,9 +1,9 @@
-#include "kernel_instance_registry.hh"
+#include <subordination/kernel/kernel_instance_registry.hh>
 
 #include <algorithm>
 #include <iterator>
 
-#include "config.hh"
+#include <subordination/config.hh>
 
 namespace {
 

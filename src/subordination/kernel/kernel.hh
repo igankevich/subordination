@@ -5,7 +5,7 @@
 
 #include <unistdx/net/pstream>
 
-#include "mobile_kernel.hh"
+#include <subordination/kernel/mobile_kernel.hh>
 
 namespace sbn {
 

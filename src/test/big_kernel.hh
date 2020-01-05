@@ -3,7 +3,7 @@
 
 #include <subordination/api.hh>
 
-#include "datum.hh"
+#include <test/datum.hh>
 
 template<uint32_t Size>
 struct Big_kernel: public sbn::kernel {

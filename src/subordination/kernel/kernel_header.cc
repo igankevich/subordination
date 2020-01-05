@@ -1,4 +1,4 @@
-#include "kernel_header.hh"
+#include <subordination/kernel/kernel_header.hh>
 
 #include <unistdx/base/make_object>
 #include <ostream>
@@ -51,4 +51,3 @@ sbn::kernel_header::read_header(sys::pstream& in) {
         in >> this->_src >> this->_dst;
     }
 }
-

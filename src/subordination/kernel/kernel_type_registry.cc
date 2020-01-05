@@ -1,4 +1,4 @@
-#include "kernel_type_registry.hh"
+#include <subordination/kernel/kernel_type_registry.hh>
 
 #include <ostream>
 #include <algorithm>

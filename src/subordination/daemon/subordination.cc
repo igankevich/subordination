@@ -8,8 +8,8 @@
 #include <subordination/base/error_handler.hh>
 #include <subordination/ppl/application_kernel.hh>
 
-#include "subordination_socket.hh"
-#include "network_master.hh"
+#include <subordination/daemon/subordination_socket.hh>
+#include <subordination/daemon/network_master.hh>
 
 void
 print_state(int) {

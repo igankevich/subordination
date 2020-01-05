@@ -1,4 +1,4 @@
-#include "probe.hh"
+#include <subordination/daemon/probe.hh>
 
 void
 sbn::probe::write(sys::pstream& out) const {
@@ -11,4 +11,3 @@ sbn::probe::read(sys::pstream& in) {
     sbn::kernel::read(in);
     in >> this->_ifaddr >> this->_oldprinc >> this->_newprinc;
 }
-

@@ -1,4 +1,4 @@
-#include "application.hh"
+#include <subordination/ppl/application.hh>
 
 #include <algorithm>
 #include <limits>
@@ -299,4 +299,3 @@ std::ostream&
 sbn::operator<<(std::ostream& out, process_role_type rhs) {
     return out << (rhs == process_role_type::master ? "master" : "slave");
 }
-

@@ -1,4 +1,4 @@
-#include "kernel.hh"
+#include <subordination/kernel/kernel.hh>
 
 #include <subordination/base/error.hh>
 #include <unistdx/base/make_object>
@@ -82,4 +82,3 @@ sbn::operator<<(std::ostream& out, const kernel& rhs) {
         "principal", rhs._principal
     );
 }
-

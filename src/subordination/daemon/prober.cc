@@ -1,4 +1,4 @@
-#include "prober.hh"
+#include <subordination/daemon/prober.hh>
 
 void
 sbn::prober::act() {

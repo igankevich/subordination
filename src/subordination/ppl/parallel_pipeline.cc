@@ -1,5 +1,5 @@
-#include "parallel_pipeline.hh"
-#include "config.hh"
+#include <subordination/ppl/parallel_pipeline.hh>
+#include <subordination/config.hh>
 
 #include <subordination/kernel/act.hh>
 #include <unistdx/util/backtrace>

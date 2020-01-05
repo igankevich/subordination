@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_DAEMON_TREE_HIERARCHY_ITERATOR_HH
 #define SUBORDINATION_DAEMON_TREE_HIERARCHY_ITERATOR_HH
 
-#include "position_in_tree.hh"
+#include <subordination/daemon/position_in_tree.hh>
 #include <iterator>
 #include <unistdx/net/interface_address>
 

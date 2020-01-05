@@ -1,5 +1,5 @@
-#include "multi_pipeline.hh"
-#include "config.hh"
+#include <subordination/ppl/multi_pipeline.hh>
+#include <subordination/config.hh>
 
 template <class T>
 sbn::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
@@ -49,4 +49,3 @@ sbn::Multi_pipeline<T>::wait() {
 }
 
 template class sbn::Multi_pipeline<SUBORDINATION_KERNEL_TYPE>;
-

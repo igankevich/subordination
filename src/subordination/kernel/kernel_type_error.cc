@@ -1,4 +1,4 @@
-#include "kernel_type_error.hh"
+#include <subordination/kernel/kernel_type_error.hh>
 
 std::ostream&
 sbn::operator<<(std::ostream& out, const kenel_type_error& rhs) {
@@ -6,4 +6,3 @@ sbn::operator<<(std::ostream& out, const kenel_type_error& rhs) {
     return out << rhs.what() << ": '" << rhs._tp1 << "' and '"
         << rhs._tp2 << "'";
 }
-

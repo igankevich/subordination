@@ -1,4 +1,4 @@
-#include "socket_pipeline.hh"
+#include <subordination/ppl/socket_pipeline.hh>
 
 #include <algorithm>
 #include <cassert>

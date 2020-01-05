@@ -1,4 +1,4 @@
-#include "master_discoverer.hh"
+#include <subordination/daemon/master_discoverer.hh>
 
 #include <array>
 #include <cassert>

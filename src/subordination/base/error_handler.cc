@@ -1,4 +1,4 @@
-#include "error_handler.hh"
+#include <subordination/base/error_handler.hh>
 
 #include <unistd.h>
 
@@ -100,4 +100,3 @@ sbn::install_error_handler() {
     bind_signal(sys::signal::segmentation_fault, print_backtrace);
     bind_signal(sys::signal::abort, print_backtrace);
 }
-

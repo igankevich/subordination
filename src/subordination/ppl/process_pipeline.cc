@@ -1,4 +1,4 @@
-#include "process_pipeline.hh"
+#include <subordination/ppl/process_pipeline.hh>
 
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>

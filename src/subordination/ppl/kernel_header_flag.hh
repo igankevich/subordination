@@ -101,4 +101,3 @@ namespace sbn {
 }
 
 #endif // vim:filetype=cpp
-

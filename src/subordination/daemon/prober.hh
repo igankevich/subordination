@@ -7,7 +7,7 @@
 
 #include <subordination/api.hh>
 
-#include "probe.hh"
+#include <subordination/daemon/probe.hh>
 
 namespace sbn {
 

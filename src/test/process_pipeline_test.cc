@@ -7,7 +7,7 @@
 using namespace sbn;
 using sbn::application;
 
-#include "datum.hh"
+#include <test/datum.hh>
 
 
 const uint32_t NUM_SIZES = 10;

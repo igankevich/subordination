@@ -1,4 +1,4 @@
-#include "foreign_kernel.hh"
+#include <subordination/kernel/foreign_kernel.hh>
 
 void
 sbn::foreign_kernel

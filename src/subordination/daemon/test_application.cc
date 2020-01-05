@@ -1,7 +1,7 @@
 #include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
 
-#include "test_application.hh"
+#include <subordination/daemon/test_application.hh>
 
 std::string failure = "no";
 
