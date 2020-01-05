@@ -13,7 +13,7 @@ namespace {
 }
 
 std::ostream&
-bsc::operator<<(std::ostream& out, probe_result rhs) {
+sbn::operator<<(std::ostream& out, probe_result rhs) {
     const size_t i = static_cast<size_t>(rhs);
     const char* s = i >= 0 && i <= all_results.size()
                     ? all_results[i] : "<unknown>";
@@ -21,14 +21,14 @@ bsc::operator<<(std::ostream& out, probe_result rhs) {
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::on_start() {
     this->probe_next_node();
 }
 
 void
-bsc::master_discoverer
-::on_kernel(bsc::kernel* k) {
+sbn::master_discoverer
+::on_kernel(sbn::kernel* k) {
     if (typeid(*k) == typeid(discovery_timer)) {
         // start probing only if it has not been started already
         if (this->state() == state_type::waiting) {
@@ -46,7 +46,7 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::probe_next_node() {
     this->setstate(state_type::probing);
     if (this->_iterator == this->_end) {
@@ -63,23 +63,23 @@ bsc::master_discoverer
                 this->_hierarchy.principal().socket_address(),
                 new_principal
             );
-        bsc::upstream(this, p);
+        sbn::upstream(this, p);
         ++this->_iterator;
     }
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::send_timer() {
     this->setstate(state_type::waiting);
     using namespace std::chrono;
     discovery_timer* k = new discovery_timer;
     k->after(this->_interval);
-    bsc::send(k, this);
+    sbn::send(k, this);
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::update_subordinates(probe* p) {
     const sys::socket_address src = p->from();
     probe_result result = this->process_probe(p);
@@ -96,11 +96,11 @@ bsc::master_discoverer
         this->broadcast_hierarchy();
     }
     p->setf(kernel_flag::do_not_delete);
-    bsc::commit<bsc::Remote>(p);
+    sbn::commit<sbn::Remote>(p);
 }
 
-bsc::probe_result
-bsc::master_discoverer
+sbn::probe_result
+sbn::master_discoverer
 ::process_probe(probe* p) {
     probe_result result = probe_result::retain;
     if (p->from() == this->_hierarchy.principal()) {
@@ -122,7 +122,7 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::update_principal(prober* p) {
     if (p->return_code() != exit_code::success) {
         this->log(
@@ -136,7 +136,7 @@ bsc::master_discoverer
         const sys::socket_address& oldp = p->old_principal();
         const sys::socket_address& newp = p->new_principal();
         if (oldp) {
-            ::bsc::factory.nic().stop_client(oldp);
+            ::sbn::factory.nic().stop_client(oldp);
         }
         this->log("_: set principal to _", this->interface_address(), newp);
         this->_hierarchy.set_principal(newp);
@@ -147,7 +147,7 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::on_event(socket_pipeline_kernel* ev) {
     switch (ev->event()) {
     case socket_pipeline_event::add_client:
@@ -165,11 +165,11 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::on_client_add(const sys::socket_address& endp) {}
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::on_client_remove(const sys::socket_address& endp) {
     if (endp == this->_hierarchy.principal()) {
         this->log("_: unset principal _", this->interface_address(), endp);
@@ -182,7 +182,7 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::broadcast_hierarchy(
     sys::socket_address
     ignored_endpoint
@@ -204,17 +204,17 @@ bsc::master_discoverer
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::send_weight(const sys::socket_address& dest, weight_type w) {
     hierarchy_kernel* h = new hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
     h->set_principal_id(1);
     h->to(dest);
-    bsc::send<bsc::Remote>(h);
+    sbn::send<sbn::Remote>(h);
 }
 
 void
-bsc::master_discoverer
+sbn::master_discoverer
 ::update_weights(hierarchy_kernel* k) {
     if (k->moves_downstream() && k->return_code() != exit_code::success) {
         this->log(
@@ -237,7 +237,7 @@ bsc::master_discoverer
             k->weight()
         );
         if (changed) {
-            ::bsc::factory.nic().set_client_weight(src, k->weight());
+            ::sbn::factory.nic().set_client_weight(src, k->weight());
             this->broadcast_hierarchy(src);
         }
     }

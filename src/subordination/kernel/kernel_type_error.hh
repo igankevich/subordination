@@ -4,7 +4,7 @@
 #include <subordination/base/error.hh>
 #include <subordination/kernel/kernel_type.hh>
 
-namespace bsc {
+namespace sbn {
 
     class kenel_type_error: public error {
 

@@ -5,16 +5,16 @@
 
 #include <gtest/gtest.h>
 
-using namespace bsc;
+using namespace sbn;
 
-struct Sleepy_kernel: public bsc::kernel {
+struct Sleepy_kernel: public sbn::kernel {
 
     void pos(size_t p) { _pos = p; }
     size_t pos() const { return _pos; }
 
     void act() override {
         using namespace std::chrono;
-        const auto now = bsc::kernel::clock_type::now();
+        const auto now = sbn::kernel::clock_type::now();
         const auto at = this->at();
         const auto delta = duration_cast<nanoseconds>(now-at).count();
         std::clog << '#' << _pos << " wakes up "
@@ -28,7 +28,7 @@ private:
 
 };
 
-struct Main: public bsc::kernel {
+struct Main: public sbn::kernel {
 
     Main(size_t nkernels, std::chrono::milliseconds period):
     _nkernels(nkernels),
@@ -37,7 +37,7 @@ struct Main: public bsc::kernel {
 
     void
     act() override {
-        std::vector<bsc::kernel*> kernels(_nkernels);
+        std::vector<sbn::kernel*> kernels(_nkernels);
         // send kernels in inverse chronological order
         for (size_t i=0; i<this->_nkernels; ++i) {
             kernels[i] = new_sleepy_kernel(
@@ -45,11 +45,11 @@ struct Main: public bsc::kernel {
                 this->_nkernels - i
             );
         }
-        bsc::factory.send_timer(kernels.data(), kernels.size());
+        sbn::factory.send_timer(kernels.data(), kernels.size());
     }
 
     void
-    react(bsc::kernel* child) override {
+    react(sbn::kernel* child) override {
         Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
         EXPECT_EQ(k->pos(), last_pos+1) << "Invalid order of scheduled kernels";
         ++last_pos;
@@ -61,7 +61,7 @@ struct Main: public bsc::kernel {
 
 private:
 
-    bsc::kernel*
+    sbn::kernel*
     new_sleepy_kernel(int delay, int pos) {
         Sleepy_kernel* k = new Sleepy_kernel;
         k->after(delay * _period);
@@ -77,8 +77,8 @@ private:
 };
 
 TEST(TimerServerTest, All) {
-    bsc::install_error_handler();
+    sbn::install_error_handler();
     factory_guard g;
     send<Local>(new Main(10, std::chrono::milliseconds(500)));
-    EXPECT_EQ(0, bsc::wait_and_return());
+    EXPECT_EQ(0, sbn::wait_and_return());
 }

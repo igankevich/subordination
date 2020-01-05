@@ -20,7 +20,7 @@
 #include <subordination/ppl/pipeline_base.hh>
 #include <subordination/ppl/thread_context.hh>
 
-namespace bsc {
+namespace sbn {
 
     void
     graceful_shutdown(int ret);

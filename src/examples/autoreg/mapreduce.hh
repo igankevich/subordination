@@ -3,7 +3,7 @@
 
 #include <subordination/api.hh>
 
-namespace bsc {
+namespace sbn {
 
     class Notification: public kernel {};
 

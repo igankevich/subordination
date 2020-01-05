@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_PPL_COMPARE_TIME_HH
 #define SUBORDINATION_PPL_COMPARE_TIME_HH
 
-namespace bsc {
+namespace sbn {
 
     template<class T>
     struct Compare_time {

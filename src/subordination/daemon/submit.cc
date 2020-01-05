@@ -7,8 +7,8 @@
 
 #include "subordination_socket.hh"
 
-using bsc::Application_kernel;
-using namespace bsc;
+using sbn::Application_kernel;
+using namespace sbn;
 
 Application_kernel*
 new_application_kernel(int argc, char* argv[]) {
@@ -48,7 +48,7 @@ public:
     void
     react(kernel* child) {
         Application_kernel* app = dynamic_cast<Application_kernel*>(child);
-        if (app->return_code() != bsc::exit_code::success) {
+        if (app->return_code() != sbn::exit_code::success) {
             std::string message = app->error();
             if (message.empty()) {
                 message = to_string(app->return_code());
@@ -58,13 +58,13 @@ public:
                 ? "application"
                 : std::to_string(app->application());
             sys::log_message(
-                "bsub",
+                "submit",
                 "failed to submit _: _",
                 app_id,
                 message
             );
         } else {
-            sys::log_message("bsub", "submitted _", app->application());
+            sys::log_message("submit", "submitted _", app->application());
         }
         commit<Local>(this, app->return_code());
     }
@@ -76,19 +76,19 @@ int main(int argc, char* argv[]) {
         std::cerr << "Please, specify at least one argument." << std::endl;
         return 1;
     }
-    bsc::install_error_handler();
-    bsc::types.register_type<Application_kernel>();
+    sbn::install_error_handler();
+    sbn::types.register_type<Application_kernel>();
     factory_guard g;
-    bsc::factory.parent().use_localhost(false);
+    sbn::factory.parent().use_localhost(false);
     try {
-        bsc::send(new Main(argc, argv));
+        sbn::send(new Main(argc, argv));
     } catch (const std::exception& err) {
         sys::log_message(
-            "bsub",
+            "submit",
             "failed to connect to daemon process: _",
             err.what()
         );
-        bsc::graceful_shutdown(1);
+        sbn::graceful_shutdown(1);
     }
-    return bsc::wait_and_return();
+    return sbn::wait_and_return();
 }

@@ -11,7 +11,7 @@
 
 #include <subordination/ppl/basic_socket_pipeline.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class K, class R>
     class unix_domain_socket_pipeline: public basic_socket_pipeline<K> {

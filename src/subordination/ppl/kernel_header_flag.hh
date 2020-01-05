@@ -5,7 +5,7 @@
 
 #include <unistdx/net/bstream>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_header_flag {
 

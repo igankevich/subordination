@@ -14,7 +14,7 @@
 void
 print_state(int) {
     std::clog << __func__ << std::endl;
-    bsc::factory.print_state(std::clog);
+    sbn::factory.print_state(std::clog);
 }
 
 void
@@ -33,7 +33,7 @@ main(int argc, char* argv[]) {
         sys::log_message("discovery", "time since epoch _ms", t.count());
     }
     #endif
-    using namespace bsc;
+    using namespace sbn;
     sys::ipv4_address::rep_type fanout = 10000;
     sys::interface_address<sys::ipv4_address> servers;
     bool allow_root = false;

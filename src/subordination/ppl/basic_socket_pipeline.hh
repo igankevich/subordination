@@ -24,7 +24,7 @@
 #include <subordination/ppl/basic_handler.hh>
 #include <subordination/ppl/basic_pipeline.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class T,
              class Kernels=std::queue<T*>,
@@ -167,15 +167,22 @@ namespace bsc {
                         this->poller().wait_until(lock, tp);
                     }
                 }
-                if (!timeout) {
+                auto process = [this,timeout] () {
+                    this->process_kernels();
+                    this->handle_events();
+                    this->flush_buffers(timeout);
+                    return this->has_stopped();
+                };
+                if (timeout) {
+                    process();
+                } else {
+                    this->poller().wait(lock, process);
+                    /*
                     this->poller().wait(
                         lock,
                         [this] () { return this->has_stopped(); }
-                    );
+                    );*/
                 }
-                this->process_kernels();
-                this->handle_events();
-                this->flush_buffers(timeout);
             }
         }
 

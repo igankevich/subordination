@@ -17,13 +17,13 @@ int main(int arch, char* argv[]) {
     std::copy(
         sys::cstring_iterator<char*>(argv),
         sys::cstring_iterator<char*>(),
-        bsc::queue_pusher(q)
+        sbn::queue_pusher(q)
     );
     /// [Push elements]
     /// [Pop elements]
     std::copy(
-        bsc::queue_popper(q),
-        bsc::queue_popper(),
+        sbn::queue_popper(q),
+        sbn::queue_popper(),
         std::ostream_iterator<std::string>(std::cout, "\n")
     );
     /// [Pop elements]

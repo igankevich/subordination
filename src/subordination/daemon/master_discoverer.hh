@@ -19,11 +19,11 @@
 #include "tree_hierarchy_iterator.hh"
 
 
-namespace bsc {
+namespace sbn {
 
     /// Timer which is used to periodically scan nodes
     /// to find the best principal node.
-    class discovery_timer: public bsc::kernel {};
+    class discovery_timer: public sbn::kernel {};
 
     enum class probe_result {
         add_subordinate = 0,
@@ -77,7 +77,7 @@ namespace bsc {
         on_start() override;
 
         void
-        on_kernel(bsc::kernel* k) override;
+        on_kernel(sbn::kernel* k) override;
 
     private:
 

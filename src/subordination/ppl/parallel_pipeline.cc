@@ -6,7 +6,7 @@
 
 template <class T>
 void
-bsc::parallel_pipeline<T>::do_run() {
+sbn::parallel_pipeline<T>::do_run() {
     lock_type lock(this->_mutex);
     this->_semaphore.wait(lock, [this,&lock] () {
         while (!this->_kernels.empty()) {
@@ -14,7 +14,7 @@ bsc::parallel_pipeline<T>::do_run() {
             traits_type::pop(this->_kernels);
             sys::unlock_guard<lock_type> g(lock);
             try {
-                ::bsc::act(k);
+                ::sbn::act(k);
             } catch (...) {
                 sys::backtrace(2);
                 throw;
@@ -24,4 +24,4 @@ bsc::parallel_pipeline<T>::do_run() {
     });
 }
 
-template class bsc::parallel_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::parallel_pipeline<SUBORDINATION_KERNEL_TYPE>;

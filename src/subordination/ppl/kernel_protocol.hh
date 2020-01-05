@@ -16,7 +16,7 @@
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/kernel_proto_flag.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <
         class T,

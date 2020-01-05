@@ -9,9 +9,9 @@
 
 #include "probe.hh"
 
-namespace bsc {
+namespace sbn {
 
-    class prober: public bsc::kernel {
+    class prober: public sbn::kernel {
 
     public:
         typedef sys::ipv4_address addr_type;
@@ -40,7 +40,7 @@ namespace bsc {
         act() override;
 
         void
-        react(bsc::kernel* k) override;
+        react(sbn::kernel* k) override;
 
         inline const sys::socket_address&
         new_principal() const noexcept {

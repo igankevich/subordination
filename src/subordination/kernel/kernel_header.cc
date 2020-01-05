@@ -4,7 +4,7 @@
 #include <ostream>
 
 std::ostream&
-bsc::operator<<(std::ostream& out, const kernel_header& rhs) {
+sbn::operator<<(std::ostream& out, const kernel_header& rhs) {
     out << sys::make_fields(
         "src", rhs._src,
         "dst", rhs._dst,
@@ -21,7 +21,7 @@ bsc::operator<<(std::ostream& out, const kernel_header& rhs) {
 }
 
 void
-bsc::kernel_header::write_header(sys::pstream& out) const {
+sbn::kernel_header::write_header(sys::pstream& out) const {
     out << this->_flags;
     if (this->has_application()) {
         out << *this->_aptr;
@@ -34,7 +34,7 @@ bsc::kernel_header::write_header(sys::pstream& out) const {
 }
 
 void
-bsc::kernel_header::read_header(sys::pstream& in) {
+sbn::kernel_header::read_header(sys::pstream& in) {
     in >> this->_flags;
     if (this->has_application()) {
         this->_flags |= flag_type::owns_application;

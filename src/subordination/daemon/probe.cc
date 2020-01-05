@@ -1,14 +1,14 @@
 #include "probe.hh"
 
 void
-bsc::probe::write(sys::pstream& out) const {
-    bsc::kernel::write(out);
+sbn::probe::write(sys::pstream& out) const {
+    sbn::kernel::write(out);
     out << this->_ifaddr << this->_oldprinc << this->_newprinc;
 }
 
 void
-bsc::probe::read(sys::pstream& in) {
-    bsc::kernel::read(in);
+sbn::probe::read(sys::pstream& in) {
+    sbn::kernel::read(in);
     in >> this->_ifaddr >> this->_oldprinc >> this->_newprinc;
 }
 

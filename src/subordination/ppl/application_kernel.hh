@@ -9,7 +9,7 @@
 
 #include <subordination/config.hh>
 
-namespace bsc {
+namespace sbn {
 
     class Application_kernel: public SUBORDINATION_KERNEL_TYPE {
 

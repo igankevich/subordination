@@ -34,7 +34,7 @@ namespace {
     template <class Router, class ... Args>
     void
     fire_event_kernels(const Args& ... args) {
-        using namespace bsc;
+        using namespace sbn;
         instances_guard g(instances);
         for (const auto& pair : instances) {
             socket_pipeline_kernel* ev = new socket_pipeline_kernel(args ...);
@@ -46,7 +46,7 @@ namespace {
 
 }
 
-namespace bsc {
+namespace sbn {
 
     template <class K, class S, class R>
     class local_server: public basic_handler {
@@ -368,7 +368,7 @@ namespace bsc {
 }
 
 template <class T, class S, class R>
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::socket_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
@@ -376,7 +376,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::remove_server(const ifaddr_type& interface_address) {
     lock_type lock(this->_mutex);
     server_iterator result = this->find_server(interface_address);
@@ -387,7 +387,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::remove_server(server_iterator result) {
     // copy interface_address
     ifaddr_type interface_address = (*result)->interface_address();
@@ -400,7 +400,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::remove_client(const sys::socket_address& vaddr) {
     client_iterator result = _clients.find(vaddr);
     if (result != this->_clients.end()) {
@@ -410,7 +410,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::remove_client(client_iterator result) {
     // copy socket_address
     sys::socket_address socket_address = result->first;
@@ -432,7 +432,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::add_server(const sys::socket_address& rhs, addr_type netmask) {
     lock_type lock(this->_mutex);
     ifaddr_type interface_address(traits_type::address(rhs), netmask);
@@ -458,7 +458,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::forward(foreign_kernel* hdr) {
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
@@ -498,8 +498,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::server_iterator
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::server_iterator
+sbn::socket_pipeline<T,S,R>
 ::find_server(const ifaddr_type& interface_address) {
     typedef typename server_container_type::value_type value_type;
     return std::find_if(
@@ -512,8 +512,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::server_iterator
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::server_iterator
+sbn::socket_pipeline<T,S,R>
 ::find_server(sys::fd_type fd) {
     typedef typename server_container_type::value_type value_type;
     return std::find_if(
@@ -526,8 +526,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::server_iterator
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::server_iterator
+sbn::socket_pipeline<T,S,R>
 ::find_server(const sys::socket_address& dest) {
     typedef typename server_container_type::value_type value_type;
     return std::find_if(
@@ -541,7 +541,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::ensure_identity(
     kernel_type* k,
     const sys::socket_address& dest
@@ -567,7 +567,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::find_next_client() {
     if (this->_clients.empty()) {
         return;
@@ -599,7 +599,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::emplace_client(const sys::socket_address& vaddr, const event_handler_ptr& s) {
     const bool save = !this->end_reached();
     sys::socket_address e;
@@ -616,7 +616,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::process_kernels() {
 //	lock_type lock(this->_mutex);
     std::for_each(
@@ -637,7 +637,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::process_kernel(kernel_type* k) {
     // short circuit local server
     /*
@@ -699,8 +699,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::event_handler_ptr
+sbn::socket_pipeline<T,S,R>
 ::find_or_create_client(const sys::socket_address& addr) {
     event_handler_ptr ret;
     auto result = _clients.find(addr);
@@ -713,8 +713,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::event_handler_ptr
+sbn::socket_pipeline<T,S,R>
 ::do_add_client(const sys::socket_address& addr) {
     if (addr.family() == sys::family_type::unix) {
         socket_type s(sys::family_type::unix);
@@ -742,8 +742,8 @@ bsc::socket_pipeline<T,S,R>
 }
 
 template <class T, class S, class R>
-typename bsc::socket_pipeline<T,S,R>::event_handler_ptr
-bsc::socket_pipeline<T,S,R>
+typename sbn::socket_pipeline<T,S,R>::event_handler_ptr
+sbn::socket_pipeline<T,S,R>
 ::do_add_client(socket_type&& sock, sys::socket_address vaddr) {
     sys::fd_type fd = sock.fd();
     if (vaddr.family() != sys::family_type::unix) {
@@ -768,7 +768,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::stop_client(const sys::socket_address& addr) {
     lock_type lock(this->_mutex);
     client_iterator result = this->_clients.find(addr);
@@ -779,7 +779,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::set_client_weight(
     const sys::socket_address& addr,
     weight_type new_weight
@@ -793,7 +793,7 @@ bsc::socket_pipeline<T,S,R>
 
 template <class T, class S, class R>
 void
-bsc::socket_pipeline<T,S,R>
+sbn::socket_pipeline<T,S,R>
 ::print_state(std::ostream& out) {
     typedef typename server_container_type::value_type server_type;
     typedef typename client_container_type::value_type client_pair;
@@ -806,7 +806,7 @@ bsc::socket_pipeline<T,S,R>
     }
 }
 
-template class bsc::socket_pipeline<
+template class sbn::socket_pipeline<
         SUBORDINATION_KERNEL_TYPE,
         sys::socket,
-        bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

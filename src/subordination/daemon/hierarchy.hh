@@ -9,7 +9,7 @@
 
 #include "hierarchy_node.hh"
 
-namespace bsc {
+namespace sbn {
 
     template<class Addr>
     class hierarchy {

@@ -15,7 +15,7 @@
 #include <subordination/ppl/basic_socket_pipeline.hh>
 #include <subordination/ppl/local_server.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <class K, class S, class R>
     class local_server;

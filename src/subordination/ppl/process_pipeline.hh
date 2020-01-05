@@ -13,7 +13,7 @@
 #include <subordination/ppl/basic_socket_pipeline.hh>
 #include <subordination/ppl/process_handler.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class K, class R>
     class process_pipeline: public basic_socket_pipeline<K> {

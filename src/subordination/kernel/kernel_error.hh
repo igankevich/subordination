@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <iosfwd>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_error: public std::runtime_error {
 

@@ -5,7 +5,7 @@
 
 #include <subordination/base/container_traits.hh>
 
-namespace bsc {
+namespace sbn {
 
     /**
     \brief Input iterator that removes element from the container on increment.
@@ -101,7 +101,7 @@ namespace bsc {
         inline queue_pop_iterator&
         operator++(int) {
             throw
-            std::logic_error("can not post increment bsc::queue_pop_iterator");
+            std::logic_error("can not post increment sbn::queue_pop_iterator");
             return *this;
         }
 

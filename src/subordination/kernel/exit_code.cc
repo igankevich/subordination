@@ -15,7 +15,7 @@ namespace {
 }
 
 const char*
-bsc::to_string(exit_code rhs) noexcept {
+sbn::to_string(exit_code rhs) noexcept {
     const exit_code_type i = exit_code_type(rhs);
     const char* str = "unknown";
     if (i < all_exit_codes.size()) {

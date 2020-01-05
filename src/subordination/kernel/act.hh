@@ -4,7 +4,7 @@
 #include <subordination/kernel/kernel.hh>
 #include <subordination/ppl/basic_pipeline.hh>
 
-namespace bsc {
+namespace sbn {
 
     inline void
     act(kernel* k) {

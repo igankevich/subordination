@@ -9,7 +9,7 @@
 
 template <class K, class R>
 void
-bsc::process_handler<K,R>
+sbn::process_handler<K,R>
 ::handle(const sys::epoll_event& event) {
     if (this->is_starting()) {
         this->setstate(pipeline_state::started);
@@ -25,7 +25,7 @@ bsc::process_handler<K,R>
 
 template <class K, class R>
 void
-bsc::process_handler<K,R>
+sbn::process_handler<K,R>
 ::write(std::ostream& out) const {
     out << sys::make_object(
         "pid",
@@ -45,7 +45,7 @@ bsc::process_handler<K,R>
 
 template <class K, class R>
 void
-bsc::process_handler<K,R>
+sbn::process_handler<K,R>
 ::remove(sys::event_poller& poller) {
     try {
         poller.erase(this->in());
@@ -64,5 +64,5 @@ bsc::process_handler<K,R>
     this->setstate(pipeline_state::stopped);
 }
 
-template class bsc::process_handler<
-        SUBORDINATION_KERNEL_TYPE, bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::process_handler<
+        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

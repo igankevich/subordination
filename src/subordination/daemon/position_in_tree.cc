@@ -4,7 +4,7 @@
 #include <unistdx/net/ipv4_address>
 
 template <class Addr>
-bsc::position_in_tree<Addr>::position_in_tree(
+sbn::position_in_tree<Addr>::position_in_tree(
     pos_type linear_pos,
     pos_type fanout
 ) noexcept {
@@ -21,8 +21,8 @@ bsc::position_in_tree<Addr>::position_in_tree(
 }
 
 template <class Addr>
-typename bsc::position_in_tree<Addr>::pos_type
-bsc::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
+typename sbn::position_in_tree<Addr>::pos_type
+sbn::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
     pos_type pos = 0;
     pos_type l = 0;
     pos_type n = 1; // no. of nodes in the layer l
@@ -36,8 +36,8 @@ bsc::position_in_tree<Addr>::to_position_in_address_range() const noexcept {
 }
 
 template <class Addr>
-typename bsc::position_in_tree<Addr>::pos_type
-bsc::position_in_tree<Addr>::num_nodes() const noexcept {
+typename sbn::position_in_tree<Addr>::pos_type
+sbn::position_in_tree<Addr>::num_nodes() const noexcept {
     pos_type n = 1; // no. of nodes in the layer l
     const pos_type nl = this->_layer;
     const pos_type fn = this->_fanout;
@@ -48,8 +48,8 @@ bsc::position_in_tree<Addr>::num_nodes() const noexcept {
 }
 
 template <class Addr>
-bsc::position_in_tree<Addr>&
-bsc::position_in_tree<Addr>::operator++() noexcept {
+sbn::position_in_tree<Addr>&
+sbn::position_in_tree<Addr>::operator++() noexcept {
     if (this->_offset == this->num_nodes() - 1) {
         ++this->_layer;
         this->_offset = 0;
@@ -60,8 +60,8 @@ bsc::position_in_tree<Addr>::operator++() noexcept {
 }
 
 template <class Addr>
-bsc::position_in_tree<Addr>&
-bsc::position_in_tree<Addr>::operator--() noexcept {
+sbn::position_in_tree<Addr>&
+sbn::position_in_tree<Addr>::operator--() noexcept {
     if (this->_layer == 0 && this->_offset == 0) {
         return *this;
     }
@@ -76,17 +76,17 @@ bsc::position_in_tree<Addr>::operator--() noexcept {
 
 template <class Addr>
 std::ostream&
-bsc::operator<<(std::ostream& out, const position_in_tree<Addr>& rhs) {
+sbn::operator<<(std::ostream& out, const position_in_tree<Addr>& rhs) {
     return out << '('
         << rhs._layer << ','
         << rhs._offset << ','
         << rhs._fanout << ')';
 }
 
-template class bsc::position_in_tree<sys::ipv4_address>;
+template class sbn::position_in_tree<sys::ipv4_address>;
 
 template std::ostream&
-bsc::operator<<(
+sbn::operator<<(
     std::ostream& out,
     const position_in_tree<sys::ipv4_address>& rhs
 );

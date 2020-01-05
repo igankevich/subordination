@@ -14,7 +14,7 @@
 #include <subordination/kernel/kernelbuf.hh>
 #include <subordination/ppl/kernel_proto_flag.hh>
 
-namespace bsc {
+namespace sbn {
 
     namespace bits {
 

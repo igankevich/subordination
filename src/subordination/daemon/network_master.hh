@@ -11,11 +11,11 @@
 #include <subordination/daemon/master_discoverer.hh>
 #include <subordination/ppl/socket_pipeline_event.hh>
 
-namespace bsc {
+namespace sbn {
 
-    class network_timer: public bsc::kernel {};
+    class network_timer: public sbn::kernel {};
 
-    class network_master: public bsc::kernel {
+    class network_master: public sbn::kernel {
 
     private:
         typedef sys::ipv4_address addr_type;
@@ -40,7 +40,7 @@ namespace bsc {
         act() override;
 
         void
-        react(bsc::kernel* child) override;
+        react(sbn::kernel* child) override;
 
         inline void
         fanout(uint_type rhs) noexcept {

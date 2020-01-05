@@ -8,7 +8,7 @@
 
 #include <subordination/ppl/pipeline_base.hh>
 
-namespace bsc {
+namespace sbn {
 
     class basic_handler: public pipeline_base {
 

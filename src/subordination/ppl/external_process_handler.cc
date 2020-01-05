@@ -5,7 +5,7 @@
 
 template <class K, class R>
 void
-bsc::external_process_handler<K,R>
+sbn::external_process_handler<K,R>
 ::handle(sys::epoll_event& event) {
     if (this->is_starting()) {
         this->setstate(pipeline_state::started);
@@ -23,7 +23,7 @@ bsc::external_process_handler<K,R>
 
 template <class K, class R>
 void
-bsc::external_process_handler<K,R>
+sbn::external_process_handler<K,R>
 ::receive_kernels(stream_type& stream) noexcept {
     while (stream.read_packet()) {
         Application_kernel* k = nullptr;
@@ -90,5 +90,5 @@ bsc::external_process_handler<K,R>
 }
 
 
-template class bsc::external_process_handler<
-        SUBORDINATION_KERNEL_TYPE,bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::external_process_handler<
+        SUBORDINATION_KERNEL_TYPE,sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

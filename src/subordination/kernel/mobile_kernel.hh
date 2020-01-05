@@ -4,7 +4,7 @@
 #include <subordination/kernel/kernel_base.hh>
 #include <subordination/kernel/kernel_header.hh>
 
-namespace bsc {
+namespace sbn {
 
     class mobile_kernel: public kernel_base, public kernel_header {
 

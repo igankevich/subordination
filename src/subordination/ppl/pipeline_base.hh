@@ -4,7 +4,7 @@
 #include <chrono>
 #include <unistdx/base/log_message>
 
-namespace bsc {
+namespace sbn {
 
     enum struct pipeline_state {
         initial,

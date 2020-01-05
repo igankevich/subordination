@@ -8,7 +8,7 @@
 
 #include <subordination/ppl/basic_handler.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <class Addr>
     inline void

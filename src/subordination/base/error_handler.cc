@@ -15,7 +15,7 @@
 #include <subordination/kernel/kernel_error.hh>
 
 void
-bsc::print_backtrace(int sig) noexcept {
+sbn::print_backtrace(int sig) noexcept {
     sys::log_message(
         "error_handler",
         "caught _",
@@ -26,7 +26,7 @@ bsc::print_backtrace(int sig) noexcept {
 }
 
 void
-bsc::print_error() noexcept {
+sbn::print_error() noexcept {
     using namespace sys;
     if (std::exception_ptr ptr = std::current_exception()) {
         try {
@@ -92,7 +92,7 @@ bsc::print_error() noexcept {
 }
 
 void
-bsc::install_error_handler() {
+sbn::install_error_handler() {
     using namespace sys::this_process;
     std::set_terminate(print_error);
     std::set_unexpected(print_error);

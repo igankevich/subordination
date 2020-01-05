@@ -4,8 +4,8 @@
 #define XSTRINGIFY(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
 
-using namespace bsc;
-using bsc::application;
+using namespace sbn;
+using sbn::application;
 
 #include "datum.hh"
 
@@ -82,7 +82,7 @@ struct Main: public kernel {
         sys::log_message("tst", "returned _/_", _num_returned+1, NUM_SIZES);
         if (++_num_returned == NUM_SIZES) {
             sys::log_message("tst", "finished");
-            commit<Local>(this, bsc::exit_code::success);
+            commit<Local>(this, sbn::exit_code::success);
         }
     }
 
@@ -93,7 +93,7 @@ private:
 
 int
 main(int argc, char* argv[]) {
-    using namespace bsc;
+    using namespace sbn;
     install_error_handler();
     types.register_type<Test_socket>();
     factory_guard g;

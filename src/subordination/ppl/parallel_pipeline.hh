@@ -3,7 +3,7 @@
 
 #include "basic_pipeline.hh"
 
-namespace bsc {
+namespace sbn {
 
     template<class T>
     class parallel_pipeline: public basic_pipeline<T> {

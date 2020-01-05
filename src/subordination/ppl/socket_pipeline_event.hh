@@ -8,7 +8,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-namespace bsc {
+namespace sbn {
 
     enum class socket_pipeline_event {
         add_client,

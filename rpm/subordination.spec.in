@@ -67,7 +67,7 @@ getent passwd subordination >/dev/null || \
 
 %files
 %defattr(0755,root,root,0755)
-%{_bindir}/bsub
+%{_bindir}/submit
 %{_sbindir}/subordination
 %defattr(0644,root,root,0755)
 %{_unitdir}/subordination.service

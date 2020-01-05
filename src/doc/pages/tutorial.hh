@@ -4,14 +4,14 @@
 /**
 \page tutorial Tutorial
 
-Every Subordination application is composed of computational \link bsc::kernel <em>
+Every Subordination application is composed of computational \link sbn::kernel <em>
 kernels</em>\endlink --- self-contained objects which store data and have routines
 to process it. In each routine a kernel may create any number of \em
 subordinates to decompose application into smaller parts. Some kernels can be
 transferred to another cluster node to make application distributed. An
 application exits when there are no kernels left to process.
 
-Kernels are processed by \link bsc::basic_pipeline <em>pipelines</em>\endlink
+Kernels are processed by \link sbn::basic_pipeline <em>pipelines</em>\endlink
 --- kernel queues with processing threads attached. Each device has its own
 pipeline (there is a pipeline for CPU, I/O device and NIC) which allows them to work
 in parallel: process one part of data with CPU pipeline and simultaneously write
@@ -22,19 +22,19 @@ main kernel to one of the them. After that programme execution resembles that
 of sequential programme with each nested call to a procedure replaced with
 construction of a subordinate kernel and sending it to appropriate pipeline.
 The difference is that pipelines process kernels \em asynchronously, so
-procedure code is decomposed into \link bsc::kernel::act()
+procedure code is decomposed into \link sbn::kernel::act()
 <code>act()</code>\endlink routine which constructs subordinates and \link
-bsc::kernel::react(kernel*) <code>react()</code>\endlink routine which
+sbn::kernel::react(kernel*) <code>react()</code>\endlink routine which
 processes results they return.
 
 \section api Developing distributed applications
 
 The first step is to decide which pipelines your programme needs. Most probably
 these are standard
-- \link bsc::parallel_pipeline CPU pipeline\endlink,
-- \link bsc::io_pipeline I/O pipeline\endlink,
-- \link bsc::socket_pipeline NIC pipeline\endlink and
-- \link bsc::timer_pipeline Timer pipeline\endlink (for periodic and
+- \link sbn::parallel_pipeline CPU pipeline\endlink,
+- \link sbn::io_pipeline I/O pipeline\endlink,
+- \link sbn::socket_pipeline NIC pipeline\endlink and
+- \link sbn::timer_pipeline Timer pipeline\endlink (for periodic and
   schedule-based execution of kernels).
 
 Standard pipelines for all devices except NIC are initialised in \c
@@ -46,7 +46,7 @@ usual way of doing this.
 #include <subordination/api.hh>
 \endcode
 
-The second step is to subclass \link bsc::kernel <code>kernel</code>\endlink
+The second step is to subclass \link sbn::kernel <code>kernel</code>\endlink
 and implement \c act() and \c react() member functions for each sequential
 stage of your programme and for parallel parts of each stage.
 
@@ -56,7 +56,7 @@ struct My_app: public kernel {
     void
     act() {
         std::cout << "Hello world" << std::endl;
-        bsc::commit(this);
+        sbn::commit(this);
     }
 
     void
@@ -77,11 +77,11 @@ portion construct and send new kernel to CPU pipeline to process it in
 parallel.
 
 Finally, you need to start every pipeline and send the main kernel to the local
-one via \link bsc::send <code>send</code>\endlink function.
+one via \link sbn::send <code>send</code>\endlink function.
 
 \code{.cpp}
 int main() {
-    using namespace bsc;
+    using namespace sbn;
     install_error_handler();  // print backtrace on exception or signal
     factory_guard g;          // automatically start and stop the factory
     send(new My_app);         // start the programme by sending the first
@@ -90,7 +90,7 @@ int main() {
 }
 \endcode
 
-Use \link bsc::commit <code>commit</code>\endlink to return the kernel to its
+Use \link sbn::commit <code>commit</code>\endlink to return the kernel to its
 parent and reclaim system resources.
 
 \section failover Automatic failure handling
@@ -117,7 +117,7 @@ kernel --- the first kernel of an application that does not have a parent.
 In case of the main kernel failure the only option is to keep a copy of it on
 some other cluster node and restore from it when the former node fails.
 Subordination implements this for any kernel with the \link
-bsc::kernel_flag::carries_parent <code>carries_parent</code>\endlink flag set,
+sbn::kernel_flag::carries_parent <code>carries_parent</code>\endlink flag set,
 but the approach works only for those principal kernels that have only one
 subordinate at a time (extending algorithm to cover more cases is one of the
 goals of ongoing research).

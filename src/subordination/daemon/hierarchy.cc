@@ -7,7 +7,7 @@
 
 template <class Addr>
 std::ostream&
-bsc::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
+sbn::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
     out << "interface_address=" << rhs._ifaddr << ',';
     out << "principal=" << rhs._principal << ',';
     out << "subordinates=";
@@ -21,7 +21,7 @@ bsc::operator<<(std::ostream& out, const hierarchy<Addr>& rhs) {
 
 template <class Addr>
 bool
-bsc::hierarchy<Addr>::set_subordinate_weight(
+sbn::hierarchy<Addr>::set_subordinate_weight(
     const sys::socket_address& endp,
     weight_type w
 ) {
@@ -38,15 +38,15 @@ bsc::hierarchy<Addr>::set_subordinate_weight(
 }
 
 template <class Addr>
-typename bsc::hierarchy<Addr>::weight_type
-bsc::hierarchy<Addr>::total_weight() const noexcept {
+typename sbn::hierarchy<Addr>::weight_type
+sbn::hierarchy<Addr>::total_weight() const noexcept {
     // add 1 for the current node
     return this->principal_weight() + this->total_subordinate_weight() + 1;
 }
 
 template <class Addr>
-typename bsc::hierarchy<Addr>::weight_type
-bsc::hierarchy<Addr>::total_subordinate_weight() const noexcept {
+typename sbn::hierarchy<Addr>::weight_type
+sbn::hierarchy<Addr>::total_subordinate_weight() const noexcept {
     weight_type sum = 0;
     for (const node_type& n : this->_subordinates) {
         sum += n.weight();
@@ -54,7 +54,7 @@ bsc::hierarchy<Addr>::total_subordinate_weight() const noexcept {
     return sum;
 }
 
-template class bsc::hierarchy<sys::ipv4_address>;
+template class sbn::hierarchy<sys::ipv4_address>;
 
 template std::ostream&
-bsc::operator<<(std::ostream& out, const hierarchy<sys::ipv4_address>& rhs);
+sbn::operator<<(std::ostream& out, const hierarchy<sys::ipv4_address>& rhs);

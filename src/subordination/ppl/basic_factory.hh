@@ -29,7 +29,7 @@
 #include <subordination/ppl/basic_router.hh>
 #include <subordination/ppl/timer_pipeline.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <class T>
     class Factory: public pipeline_base {

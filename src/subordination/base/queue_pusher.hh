@@ -5,7 +5,7 @@
 
 #include <subordination/base/container_traits.hh>
 
-namespace bsc {
+namespace sbn {
 
     namespace bits {
 

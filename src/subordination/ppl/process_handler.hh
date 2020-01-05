@@ -15,7 +15,7 @@
 #include <subordination/ppl/kernel_protocol.hh>
 #include <subordination/ppl/pipeline_base.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class K, class R>
     class process_handler: public basic_handler {

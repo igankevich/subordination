@@ -5,7 +5,7 @@
 #include <subordination/ppl/parallel_pipeline.hh>
 #include <vector>
 
-namespace bsc {
+namespace sbn {
 
     template <class T>
     class Multi_pipeline: public pipeline_base {

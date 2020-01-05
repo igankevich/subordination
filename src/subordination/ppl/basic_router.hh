@@ -4,7 +4,7 @@
 #include <subordination/ppl/application.hh>
 #include <subordination/kernel/kernel_header.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <class T>
     struct basic_router {

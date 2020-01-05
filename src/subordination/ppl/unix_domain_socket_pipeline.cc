@@ -7,7 +7,7 @@
 #include <subordination/ppl/application_kernel.hh>
 #include <subordination/ppl/basic_router.hh>
 
-namespace bsc {
+namespace sbn {
 
     template <class K, class R>
     class unix_socket_server: public basic_handler {
@@ -198,7 +198,7 @@ namespace bsc {
 
 template <class K, class R>
 void
-bsc::unix_domain_socket_pipeline<K,R>
+sbn::unix_domain_socket_pipeline<K,R>
 ::add_client(const sys::socket_address& addr, sys::socket&& sock) {
     auto ptr =
         std::make_shared<unix_socket_client<K,R>>(addr, std::move(sock));
@@ -210,7 +210,7 @@ bsc::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::unix_domain_socket_pipeline<K,R>
+sbn::unix_domain_socket_pipeline<K,R>
 ::add_client(const sys::socket_address& addr) {
     auto ptr = std::make_shared<unix_socket_client<K,R>>(addr);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
@@ -218,15 +218,15 @@ bsc::unix_domain_socket_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::unix_domain_socket_pipeline<K,R>
+sbn::unix_domain_socket_pipeline<K,R>
 ::add_server(const sys::socket_address& rhs) {
     auto ptr = std::make_shared<unix_socket_server<K,R>>(rhs, *this);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }
 
-template class bsc::unix_domain_socket_pipeline<
-        SUBORDINATION_KERNEL_TYPE, bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
-template class bsc::unix_socket_server<
-        SUBORDINATION_KERNEL_TYPE, bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
-template class bsc::unix_socket_client<
-        SUBORDINATION_KERNEL_TYPE, bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::unix_domain_socket_pipeline<
+        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::unix_socket_server<
+        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::unix_socket_client<
+        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

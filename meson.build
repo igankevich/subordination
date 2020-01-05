@@ -16,6 +16,7 @@ if not get_option('buildtype').contains('debug')
 endif
 #add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
+#add_global_arguments('-DUNISTDX_DEBUG_EVENT_POLLER', language: 'cpp')
 
 foreach arg : [
     '-Werror=return-type',

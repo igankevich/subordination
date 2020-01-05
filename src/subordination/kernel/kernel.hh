@@ -7,7 +7,7 @@
 
 #include "mobile_kernel.hh"
 
-namespace bsc {
+namespace sbn {
 
     struct kernel: public mobile_kernel {
 

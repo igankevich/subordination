@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_BASE_ERROR_HANDLER_HH
 #define SUBORDINATION_BASE_ERROR_HANDLER_HH
 
-namespace bsc {
+namespace sbn {
 
     [[noreturn]] void
     print_backtrace(int sig) noexcept;

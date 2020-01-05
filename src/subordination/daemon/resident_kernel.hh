@@ -3,13 +3,13 @@
 
 #include <subordination/api.hh>
 
-namespace bsc {
+namespace sbn {
 
-    class resident_kernel: public bsc::kernel {
+    class resident_kernel: public sbn::kernel {
 
     private:
-        struct start_message: public bsc::kernel {};
-        struct stop_message: public bsc::kernel {};
+        struct start_message: public sbn::kernel {};
+        struct stop_message: public sbn::kernel {};
 
     public:
 
@@ -27,7 +27,7 @@ namespace bsc {
         act() override;
 
         void
-        react(bsc::kernel* k) override;
+        react(sbn::kernel* k) override;
 
     protected:
 
@@ -38,7 +38,7 @@ namespace bsc {
         on_stop();
 
         virtual void
-        on_kernel(bsc::kernel* k);
+        on_kernel(sbn::kernel* k);
 
     };
 

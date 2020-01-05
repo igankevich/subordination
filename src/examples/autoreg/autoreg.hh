@@ -90,7 +90,7 @@ namespace {
 using namespace autoreg;
 
 template<class T>
-struct Variance_WN: public bsc::kernel {
+struct Variance_WN: public sbn::kernel {
 
     Variance_WN(const std::valarray<T>& ar_coefs_, const std::valarray<T>& acf_):
         ar_coefs(ar_coefs_), acf(acf_), _sum(0) {}
@@ -98,14 +98,14 @@ struct Variance_WN: public bsc::kernel {
     void act() override {
         int bs = 64;
         int n = ar_coefs.size();
-        bsc::upstream(this, bsc::mapreduce([](int) {}, [this](int i){
+        sbn::upstream(this, sbn::mapreduce([](int) {}, [this](int i){
             _sum += ar_coefs[i]*acf[i];
         }, 0, n, bs));
     }
 
-    void react(bsc::kernel*) override {
+    void react(sbn::kernel*) override {
         _sum = acf[0] - _sum;
-        bsc::commit(this);
+        sbn::commit(this);
     }
 
     T
@@ -124,7 +124,7 @@ private:
 template<class T> T var_acf(std::valarray<T>& acf) { return acf[0]; }
 
 template<class T>
-struct Yule_walker: public bsc::kernel {
+struct Yule_walker: public sbn::kernel {
 
     Yule_walker(const std::valarray<T>& acf_,
                  const size3& acf_size_,
@@ -137,7 +137,7 @@ struct Yule_walker: public bsc::kernel {
         int block_size = 16*4;
         int m = b.size();
         auto identity = [](int){};
-        bsc::upstream(this, bsc::mapreduce([this](int i) {
+        sbn::upstream(this, sbn::mapreduce([this](int i) {
             const int n = acf.size()-1;
             const Index<3> id(acf_size);
             const Index<2> ida(size2(n, n));
@@ -155,15 +155,15 @@ struct Yule_walker: public bsc::kernel {
                 a[i1] = acf[i2];
             }
         }, identity, 0, n, block_size));
-        bsc::upstream(this, bsc::mapreduce([this](int i) {
+        sbn::upstream(this, sbn::mapreduce([this](int i) {
             const Index<3> id(acf_size);
             b[i] = acf[id( id.t(i+1), id.x(i+1), id.y(i+1) )];
         }, identity, 0, m, block_size));
     }
 
-    void react(bsc::kernel*) override {
+    void react(sbn::kernel*) override {
         if (++count == 2) {
-            bsc::commit(this);
+            sbn::commit(this);
         }
     }
 
@@ -215,7 +215,7 @@ void approx_acf(const T alpha,
 //struct ACF_sub;
 
 template<class T>
-struct ACF_generator: public bsc::kernel {
+struct ACF_generator: public sbn::kernel {
 
     typedef int I;
 
@@ -233,7 +233,7 @@ struct ACF_generator: public bsc::kernel {
         int bs = 2;
         int n = acf_size[0];
         auto identity = [](int){};
-        bsc::upstream(this, bsc::mapreduce([this](int t) {
+        sbn::upstream(this, sbn::mapreduce([this](int t) {
             const Index<3> id(acf_size);
             int x1 = acf_size[1];
             int y1 = acf_size[2];
@@ -248,8 +248,8 @@ struct ACF_generator: public bsc::kernel {
         }, identity, 0, n, bs));
     }
 
-    void react(bsc::kernel*) override {
-        bsc::commit<bsc::Local>(this);
+    void react(sbn::kernel*) override {
+        sbn::commit<sbn::Local>(this);
     }
 
 private:
@@ -286,7 +286,7 @@ private:
 
 
 template<class T>
-struct Solve_Yule_Walker: public bsc::kernel {
+struct Solve_Yule_Walker: public sbn::kernel {
 
     Solve_Yule_Walker(std::valarray<T>& ar_coefs2, std::valarray<T>& aa, std::valarray<T>& bb, const size3& acf_size):
         ar_coefs(ar_coefs2), a(aa), b(bb), _acf_size(acf_size)
@@ -349,7 +349,7 @@ struct Solve_Yule_Walker: public bsc::kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
         }
-        bsc::commit<bsc::Local>(this);
+        sbn::commit<sbn::Local>(this);
     }
 
 private:
@@ -360,7 +360,7 @@ private:
 };
 
 template<class T>
-struct Autoreg_coefs: public bsc::kernel {
+struct Autoreg_coefs: public sbn::kernel {
     Autoreg_coefs(const std::valarray<T>& acf_model_,
                    const size3& acf_size_,
                    std::valarray<T>& ar_coefs_):
@@ -370,15 +370,15 @@ struct Autoreg_coefs: public bsc::kernel {
     {}
 
     void act() override {
-        bsc::upstream<bsc::Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
+        sbn::upstream<sbn::Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
     }
 
     void react(kernel*) override {
         state++;
         if (state == 1) {
-            bsc::upstream<bsc::Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+            sbn::upstream<sbn::Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
         } else {
-            bsc::commit<bsc::Local>(this);
+            sbn::commit<sbn::Local>(this);
         }
     }
 
@@ -540,7 +540,7 @@ void trim_zeta(
 namespace autoreg {
 
 template<class T, class Grid>
-struct Generator1: public bsc::kernel {
+struct Generator1: public sbn::kernel {
 
     Generator1() = default;
 
@@ -569,7 +569,7 @@ struct Generator1: public bsc::kernel {
     void act() override {
         if (_writefile) {
             write_part_to_file(zeta);
-            bsc::commit<bsc::Remote>(this);
+            sbn::commit<sbn::Remote>(this);
         } else {
             #ifndef NDEBUG
             sys::log_message(
@@ -607,20 +607,20 @@ struct Generator1: public bsc::kernel {
 //					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
                     Note* note = new Note;
                     note->return_to(left_neighbour);
-                    bsc::send(note);
+                    sbn::send(note);
 //					downstream(local_pipeline(), new Note(), left_neighbour);
                 }
-                bsc::send(this, this);
+                sbn::send(this, this);
 //				downstream(local_pipeline(), this, this);
             } else {
                 trim_zeta(zeta2, zsize2, zsize, zeta);
                 _writefile = true;
-                bsc::send(this);
+                sbn::send(this);
             }
         }
     }
 
-    void react(bsc::kernel*) override {
+    void react(sbn::kernel*) override {
         count++;
         // received two kernels or last part
 //		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
@@ -644,7 +644,7 @@ struct Generator1: public bsc::kernel {
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << part << part2;
         out << phi << fsize;
         out << var_eps;
@@ -656,7 +656,7 @@ struct Generator1: public bsc::kernel {
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         in >> part >> part2;
         in >> phi >> fsize;
         in >> var_eps;
@@ -668,7 +668,7 @@ struct Generator1: public bsc::kernel {
 
 private:
 
-    struct Note: public bsc::kernel {};
+    struct Note: public sbn::kernel {};
 
     Surface_part part, part2;
     std::valarray<T> phi;
@@ -686,7 +686,7 @@ private:
 };
 
 template<class T, class Grid>
-struct Wave_surface_generator: public bsc::kernel {
+struct Wave_surface_generator: public sbn::kernel {
 
     Wave_surface_generator() = default;
 
@@ -729,11 +729,11 @@ struct Wave_surface_generator: public bsc::kernel {
             generators[i]->set_neighbour(generators[i-1]);
         }
         for (std::size_t i=0; i<num_parts; ++i) {
-            bsc::upstream<bsc::Remote>(this, generators[i]);
+            sbn::upstream<sbn::Remote>(this, generators[i]);
         }
     }
 
-    void react(bsc::kernel* child) override {
+    void react(sbn::kernel* child) override {
         #ifndef NDEBUG
         sys::log_message(
             "autoreg",
@@ -742,13 +742,13 @@ struct Wave_surface_generator: public bsc::kernel {
         );
         #endif
         if (++count == grid.num_parts()) {
-            bsc::commit<bsc::Remote>(this);
+            sbn::commit<sbn::Remote>(this);
         }
     }
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << phi;
         out << fsize;
         out << var_eps;
@@ -762,7 +762,7 @@ struct Wave_surface_generator: public bsc::kernel {
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         in >> phi;
         in >> fsize;
         in >> var_eps;

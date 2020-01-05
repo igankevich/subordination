@@ -12,7 +12,7 @@
 #include <subordination/kernel/exit_code.hh>
 #include <subordination/kernel/kernel_flag.hh>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_base {
 
@@ -95,10 +95,6 @@ namespace bsc {
         carries_parent() const noexcept {
             return this->isset(kernel_flag::carries_parent);
         }
-
-        #ifdef SPRINGY
-        float _mass = 1.f;
-        #endif
 
     };
 

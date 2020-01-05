@@ -39,7 +39,7 @@ namespace {
 }
 
 template <class T>
-bsc::Factory<T>
+sbn::Factory<T>
 ::Factory():
 #if defined(SUBORDINATION_SUBMIT) || defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
 _upstream(1),
@@ -72,7 +72,7 @@ _downstream(_upstream.concurrency()) {
 
 template <class T>
 void
-bsc::Factory<T>
+sbn::Factory<T>
 ::start() {
     this->setstate(pipeline_state::starting);
     start_all(
@@ -99,7 +99,7 @@ bsc::Factory<T>
 
 template <class T>
 void
-bsc::Factory<T>
+sbn::Factory<T>
 ::stop() {
     this->setstate(pipeline_state::stopping);
     stop_all(
@@ -126,7 +126,7 @@ bsc::Factory<T>
 
 template <class T>
 void
-bsc::Factory<T>
+sbn::Factory<T>
 ::wait() {
     wait_all(
         this->_upstream,
@@ -151,7 +151,7 @@ bsc::Factory<T>
 
 template <class T>
 void
-bsc::Factory<T>
+sbn::Factory<T>
 ::print_state(std::ostream& out) {
     this->_parent.print_state(out);
     #if defined(SUBORDINATION_DAEMON) && \
@@ -160,7 +160,7 @@ bsc::Factory<T>
     #endif
 }
 
-template class bsc::Factory<SUBORDINATION_KERNEL_TYPE>;
-template class bsc::basic_router<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::Factory<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::basic_router<SUBORDINATION_KERNEL_TYPE>;
 
-bsc::Factory<SUBORDINATION_KERNEL_TYPE> bsc::factory;
+sbn::Factory<SUBORDINATION_KERNEL_TYPE> sbn::factory;

@@ -6,7 +6,7 @@
 #include <subordination/ppl/compare_time.hh>
 #include <unistdx/ipc/semaphore>
 
-namespace bsc {
+namespace sbn {
 
     namespace bits {
 

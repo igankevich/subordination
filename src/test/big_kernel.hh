@@ -6,7 +6,7 @@
 #include "datum.hh"
 
 template<uint32_t Size>
-struct Big_kernel: public bsc::kernel {
+struct Big_kernel: public sbn::kernel {
 
     Big_kernel():
     _data(Size)
@@ -15,12 +15,12 @@ struct Big_kernel: public bsc::kernel {
     virtual ~Big_kernel() = default;
 
     void act() override {
-        bsc::commit<bsc::Remote>(this);
+        sbn::commit<sbn::Remote>(this);
     }
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << uint32_t(_data.size());
         for (size_t i=0; i<_data.size(); ++i)
             out << _data[i];
@@ -28,7 +28,7 @@ struct Big_kernel: public bsc::kernel {
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         uint32_t sz;
         in >> sz;
         _data.resize(sz);

@@ -5,7 +5,7 @@
 #include <mutex>
 #include <subordination/config.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class T>
     class kernel_instance_registry {

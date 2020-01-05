@@ -1,7 +1,7 @@
 option(
 	'kernel_type',
 	type: 'string',
-	value: '::bsc::kernel',
+	value: '::sbn::kernel',
 	description: 'base type for all kernels'
 )
 

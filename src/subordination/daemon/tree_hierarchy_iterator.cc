@@ -7,7 +7,7 @@
 #endif
 
 template <class Addr>
-bsc::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
+sbn::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
     const ifaddr_type& interface_address,
     pos_type fanout,
     pos_type offset,
@@ -31,7 +31,7 @@ _currentpos(this->_basepos) {
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::next() {
+sbn::tree_hierarchy_iterator<Addr>::next() {
     addr_type old_addr;
     do {
         old_addr = this->_address;
@@ -65,7 +65,7 @@ bsc::tree_hierarchy_iterator<Addr>::next() {
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::init() {
+sbn::tree_hierarchy_iterator<Addr>::init() {
     state_type new_state = state_type::traversing_parent_node;
     if (this->_basepos.layer() == 0) {
         new_state = state_type::end;
@@ -75,14 +75,14 @@ bsc::tree_hierarchy_iterator<Addr>::init() {
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::traverse_parent_node() {
+sbn::tree_hierarchy_iterator<Addr>::traverse_parent_node() {
     this->set_current_position(this->_parentpos);
     this->setstate(state_type::traversing_upper_layers);
 }
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
+sbn::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
     if (this->_state != this->_oldstate) {
         // initialise current position to be the position of the first node
         // in the parent's layer
@@ -107,7 +107,7 @@ bsc::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::advance_upper() {
+sbn::tree_hierarchy_iterator<Addr>::advance_upper() {
     if (this->_currentpos.is_last()) {
         this->_currentpos.decrement_layer();
         #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
@@ -123,7 +123,7 @@ bsc::tree_hierarchy_iterator<Addr>::advance_upper() {
 
 template <class Addr>
 void
-bsc::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
+sbn::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
     if (this->_state != this->_oldstate) {
         // initialise current position to be the position of the first node
         // in the base node's layer
@@ -141,4 +141,4 @@ bsc::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
     }
 }
 
-template class bsc::tree_hierarchy_iterator<sys::ipv4_address>;
+template class sbn::tree_hierarchy_iterator<sys::ipv4_address>;

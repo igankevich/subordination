@@ -1,3 +1,3 @@
 #include "thread_context.hh"
 
-bsc::Thread_context bsc::this_thread::context;
+sbn::Thread_context sbn::this_thread::context;

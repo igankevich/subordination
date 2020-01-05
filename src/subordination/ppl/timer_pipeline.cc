@@ -3,7 +3,7 @@
 
 template <class T>
 void
-bsc::timer_pipeline<T>::do_run() {
+sbn::timer_pipeline<T>::do_run() {
     while (!this->has_stopped()) {
         lock_type lock(this->_mutex);
         this->wait_until_kernel_arrives(lock);
@@ -12,10 +12,10 @@ bsc::timer_pipeline<T>::do_run() {
             if (!this->wait_until_kernel_is_ready(lock, k)) {
                 traits_type::pop(this->_kernels);
                 lock.unlock();
-                ::bsc::act(k);
+                ::sbn::act(k);
             }
         }
     }
 }
 
-template class bsc::timer_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::timer_pipeline<SUBORDINATION_KERNEL_TYPE>;

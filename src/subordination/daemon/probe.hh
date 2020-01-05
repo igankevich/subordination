@@ -7,9 +7,9 @@
 
 #include <subordination/api.hh>
 
-namespace bsc {
+namespace sbn {
 
-    class probe: public bsc::kernel {
+    class probe: public sbn::kernel {
 
     public:
         typedef sys::ipv4_address addr_type;

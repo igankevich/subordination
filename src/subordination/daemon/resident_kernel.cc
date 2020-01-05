@@ -3,12 +3,12 @@
 #include <typeinfo>
 
 void
-bsc::resident_kernel::act() {
+sbn::resident_kernel::act() {
     this->start();
 }
 
 void
-bsc::resident_kernel::react(bsc::kernel* k) {
+sbn::resident_kernel::react(sbn::kernel* k) {
     if (typeid(*k) == typeid(start_message)) {
         this->on_start();
     } else if (typeid(*k) == typeid(stop_message)) {
@@ -22,10 +22,10 @@ bsc::resident_kernel::react(bsc::kernel* k) {
 }
 
 void
-bsc::resident_kernel::on_start() {}
+sbn::resident_kernel::on_start() {}
 
 void
-bsc::resident_kernel::on_stop() {}
+sbn::resident_kernel::on_stop() {}
 
 void
-bsc::resident_kernel::on_kernel(bsc::kernel* k) {}
+sbn::resident_kernel::on_kernel(sbn::kernel* k) {}

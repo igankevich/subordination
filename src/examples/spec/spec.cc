@@ -5,7 +5,7 @@
 
 int
 main(int argc, char** argv) {
-    using namespace bsc;
+    using namespace sbn;
     install_error_handler();
     factory_guard g;
     send(new Spec_app);

@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_BASE_STATIC_LOCK_HH
 #define SUBORDINATION_BASE_STATIC_LOCK_HH
 
-namespace bsc {
+namespace sbn {
 
     template <class M1, class M2=M1>
     class static_lock {

@@ -2,7 +2,7 @@
 #include "config.hh"
 
 template <class T>
-bsc::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
+sbn::Multi_pipeline<T>::Multi_pipeline(unsigned npipelines):
 _pipelines(npipelines) {
     unsigned num = 0;
     for (base_pipeline& ppl : this->_pipelines) {
@@ -13,7 +13,7 @@ _pipelines(npipelines) {
 
 template <class T>
 void
-bsc::Multi_pipeline<T>::set_name(const char* rhs) {
+sbn::Multi_pipeline<T>::set_name(const char* rhs) {
     for (base_pipeline& ppl : this->_pipelines) {
         ppl.set_name(rhs);
     }
@@ -22,7 +22,7 @@ bsc::Multi_pipeline<T>::set_name(const char* rhs) {
 
 template <class T>
 void
-bsc::Multi_pipeline<T>::start() {
+sbn::Multi_pipeline<T>::start() {
     this->setstate(pipeline_state::starting);
     for (base_pipeline& ppl : this->_pipelines) {
         ppl.start();
@@ -32,7 +32,7 @@ bsc::Multi_pipeline<T>::start() {
 
 template <class T>
 void
-bsc::Multi_pipeline<T>::stop() {
+sbn::Multi_pipeline<T>::stop() {
     this->setstate(pipeline_state::stopping);
     for (base_pipeline& ppl : this->_pipelines) {
         ppl.stop();
@@ -42,11 +42,11 @@ bsc::Multi_pipeline<T>::stop() {
 
 template <class T>
 void
-bsc::Multi_pipeline<T>::wait() {
+sbn::Multi_pipeline<T>::wait() {
     for (base_pipeline& ppl : this->_pipelines) {
         ppl.wait();
     }
 }
 
-template class bsc::Multi_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::Multi_pipeline<SUBORDINATION_KERNEL_TYPE>;
 

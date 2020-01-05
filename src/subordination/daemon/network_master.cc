@@ -44,22 +44,22 @@ namespace {
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::send_timer() {
     using namespace std::chrono;
     this->_timer = new network_timer;
     this->_timer->after(this->_interval);
-    bsc::send(this->_timer, this);
+    sbn::send(this->_timer, this);
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::act() {
     this->send_timer();
 }
 
-bsc::network_master::set_type
-bsc::network_master
+sbn::network_master::set_type
+sbn::network_master
 ::enumerate_ifaddrs() {
     set_type new_ifaddrs;
     sys::interface_addresses addrs;
@@ -75,7 +75,7 @@ bsc::network_master
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::update_ifaddrs() {
     set_type new_ifaddrs = this->enumerate_ifaddrs();
     set_type ifaddrs_to_add =
@@ -110,8 +110,8 @@ bsc::network_master
 }
 
 void
-bsc::network_master
-::react(bsc::kernel* child) {
+sbn::network_master
+::react(sbn::kernel* child) {
     if (child == this->_timer) {
         this->update_ifaddrs();
         this->_timer = nullptr;
@@ -125,23 +125,23 @@ bsc::network_master
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::add_ifaddr(const ifaddr_type& ifa) {
     sys::log_message("net", "add interface address _", ifa);
-    bsc::factory.nic().add_server(ifa);
+    sbn::factory.nic().add_server(ifa);
     if (this->_ifaddrs.find(ifa) == this->_ifaddrs.end()) {
-        const sys::port_type port = ::bsc::factory.nic().port();
+        const sys::port_type port = ::sbn::factory.nic().port();
         master_discoverer* d = new master_discoverer(ifa, port, this->_fanout);
         this->_ifaddrs.emplace(ifa, d);
-        bsc::upstream(this, d);
+        sbn::upstream(this, d);
     }
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::remove_ifaddr(const ifaddr_type& ifa) {
     sys::log_message("net", "remove interface address _", ifa);
-    bsc::factory.nic().remove_server(ifa);
+    sbn::factory.nic().remove_server(ifa);
     auto result = this->_ifaddrs.find(ifa);
     if (result != this->_ifaddrs.end()) {
         // the kernel is deleted automatically
@@ -151,31 +151,31 @@ bsc::network_master
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::forward_probe(probe* p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_ifaddrs.end()) {
         sys::log_message("net", "bad probe _", p->interface_address());
     } else {
         p->setf(kernel_flag::do_not_delete);
-        bsc::send(p, result->second);
+        sbn::send(p, result->second);
     }
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::forward_hierarchy_kernel(hierarchy_kernel* p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_ifaddrs.end()) {
         sys::log_message("net", "bad hierarchy kernel _", p->interface_address());
     } else {
         p->setf(kernel_flag::do_not_delete);
-        bsc::send(p, result->second);
+        sbn::send(p, result->second);
     }
 }
 
-bsc::network_master::map_iterator
-bsc::network_master
+sbn::network_master::map_iterator
+sbn::network_master
 ::find_discoverer(const addr_type& a) {
     typedef typename map_type::value_type value_type;
     return std::find_if(
@@ -188,7 +188,7 @@ bsc::network_master
 }
 
 void
-bsc::network_master
+sbn::network_master
 ::on_event(socket_pipeline_kernel* ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
@@ -198,7 +198,7 @@ bsc::network_master
             sys::log_message("net", "bad event socket_address _", a);
         } else {
             ev->setf(kernel_flag::do_not_delete);
-            bsc::send(ev, result->second);
+            sbn::send(ev, result->second);
         }
     }
 }

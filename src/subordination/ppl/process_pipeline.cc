@@ -11,7 +11,7 @@
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::do_run() {
 //	this->emplace_notify_handler(
 //		std::make_shared<process_notify_handler<K,R>>(*this)
@@ -33,8 +33,8 @@ bsc::process_pipeline<K,R>
 }
 
 template <class K, class R>
-typename bsc::process_pipeline<K,R>::app_iterator
-bsc::process_pipeline<K,R>
+typename sbn::process_pipeline<K,R>::app_iterator
+sbn::process_pipeline<K,R>
 ::do_add(const application& app) {
     app.allow_root(this->_allowroot);
     sys::two_way_pipe data_pipe;
@@ -102,7 +102,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::forward(foreign_kernel* hdr) {
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
@@ -127,7 +127,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::process_kernels() {
     std::for_each(
         queue_popper(this->_kernels),
@@ -140,7 +140,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::process_kernel(kernel_type* k) {
     typedef typename map_type::value_type value_type;
     if (k->moves_everywhere()) {
@@ -162,7 +162,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::wait_for_all_processes_to_finish() {
     using std::this_thread::sleep_for;
     using std::chrono::milliseconds;
@@ -190,7 +190,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::on_process_exit(const sys::process& p, sys::process_status status) {
     lock_type lock(this->_mutex);
     app_iterator result = this->find_by_process_id(p.id());
@@ -202,8 +202,8 @@ bsc::process_pipeline<K,R>
 }
 
 template <class K, class R>
-typename bsc::process_pipeline<K,R>::app_iterator
-bsc::process_pipeline<K,R>
+typename sbn::process_pipeline<K,R>::app_iterator
+sbn::process_pipeline<K,R>
 ::find_by_process_id(sys::pid_type pid) {
     typedef typename map_type::value_type value_type;
     return std::find_if(
@@ -217,7 +217,7 @@ bsc::process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::process_pipeline<K,R>
+sbn::process_pipeline<K,R>
 ::print_state(std::ostream& out) {
     typedef typename map_type::value_type value_type;
     lock_type lock(this->_mutex);
@@ -229,6 +229,6 @@ bsc::process_pipeline<K,R>
     }
 }
 
-template class bsc::process_pipeline<
+template class sbn::process_pipeline<
         SUBORDINATION_KERNEL_TYPE,
-        bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

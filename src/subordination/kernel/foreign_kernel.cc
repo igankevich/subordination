@@ -1,19 +1,19 @@
 #include "foreign_kernel.hh"
 
 void
-bsc::foreign_kernel
+sbn::foreign_kernel
 ::write(sys::pstream& out) const {
     out << this->_type;
-    bsc::kernel::write(out);
+    sbn::kernel::write(out);
     out.write(this->_payload, this->_size);
 }
 
 void
-bsc::foreign_kernel
+sbn::foreign_kernel
 ::read(sys::pstream& in) {
     sys::packetbuf* buf = in.rdbuf();
     in >> this->_type;
-    bsc::kernel::read(in);
+    sbn::kernel::read(in);
     if (this->_payload) {
         this->free();
     }

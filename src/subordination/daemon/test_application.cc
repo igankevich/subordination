@@ -20,7 +20,7 @@ test_master_failure() {
     return failure == "master-failure";
 }
 
-class slave_kernel: public bsc::kernel {
+class slave_kernel: public sbn::kernel {
 
 private:
     uint32_t _number = 0;
@@ -39,7 +39,7 @@ public:
     void
     act() override {
         if (!test_without_failures()) {
-            using namespace bsc::this_application;
+            using namespace sbn::this_application;
             if ((test_master_failure() && is_master()) ||
                 (test_slave_failure() && is_slave())) {
                 using namespace sys;
@@ -50,18 +50,18 @@ public:
             }
         }
         sys::log_message("slave", "act [_/_]", this->_number, this->_nslaves);
-        bsc::commit<bsc::Remote>(this);
+        sbn::commit<sbn::Remote>(this);
     }
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << this->_number << this->_nslaves;
     }
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         in >> this->_number >> this->_nslaves;
     }
 
@@ -72,7 +72,7 @@ public:
 
 };
 
-class master_kernel: public bsc::kernel {
+class master_kernel: public sbn::kernel {
 
 private:
     uint32_t _nkernels = SUBORDINATION_TEST_NUM_KERNELS;
@@ -89,12 +89,12 @@ public:
         sys::log_message("master", "start");
         for (uint32_t i=0; i<this->_nkernels; ++i) {
             slave_kernel* slave = new slave_kernel(i+1, this->_nkernels);
-            bsc::upstream<bsc::Remote>(this, slave);
+            sbn::upstream<sbn::Remote>(this, slave);
         }
     }
 
     void
-    react(bsc::kernel* child) {
+    react(sbn::kernel* child) {
         slave_kernel* k = dynamic_cast<slave_kernel*>(child);
         if (k->from()) {
             sys::log_message(
@@ -115,26 +115,26 @@ public:
         if (++this->_nreturned == this->_nkernels) {
             sys::log_message("master", "finish");
             if (test_without_failures()) {
-                bsc::commit(this);
+                sbn::commit(this);
             } else {
-                bsc::commit<bsc::Remote>(this);
+                sbn::commit<sbn::Remote>(this);
             }
         }
     }
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
     }
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
     }
 
 };
 
-class grand_master_kernel: public bsc::kernel {
+class grand_master_kernel: public sbn::kernel {
 
 public:
 
@@ -146,24 +146,24 @@ public:
     act() override {
         sys::log_message("grand", "start");
         master_kernel* master = new master_kernel;
-        master->setf(bsc::kernel_flag::carries_parent);
-        bsc::upstream<bsc::Remote>(this, master);
+        master->setf(sbn::kernel_flag::carries_parent);
+        sbn::upstream<sbn::Remote>(this, master);
     }
 
     void
-    react(bsc::kernel* child) {
+    react(sbn::kernel* child) {
         sys::log_message("grand", "finish");
-        bsc::commit(this);
+        sbn::commit(this);
     }
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
     }
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
     }
 
 };
@@ -173,7 +173,7 @@ main(int argc, char* argv[]) {
     if (argc >= 2) {
         failure = argv[1];
     }
-    using namespace bsc;
+    using namespace sbn;
     install_error_handler();
     register_type<slave_kernel>();
     register_type<master_kernel>();

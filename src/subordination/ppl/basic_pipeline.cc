@@ -11,7 +11,7 @@ namespace {
 }
 
 void
-bsc::graceful_shutdown(int ret) {
+sbn::graceful_shutdown(int ret) {
     try {
         return_value.set_value(ret);
     } catch (const std::future_error& err) {
@@ -20,6 +20,6 @@ bsc::graceful_shutdown(int ret) {
 }
 
 int
-bsc::wait_and_return() {
+sbn::wait_and_return() {
     return return_value.get_future().get();
 }

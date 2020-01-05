@@ -5,7 +5,7 @@
 
 #include <unistdx/net/socket_address>
 
-namespace bsc {
+namespace sbn {
 
     class hierarchy_node {
 
@@ -90,10 +90,10 @@ namespace bsc {
 namespace std {
 
     template<>
-    struct hash<bsc::hierarchy_node>: public hash<sys::socket_address> {
+    struct hash<sbn::hierarchy_node>: public hash<sys::socket_address> {
 
         typedef size_t result_type;
-        typedef bsc::hierarchy_node argument_type;
+        typedef sbn::hierarchy_node argument_type;
 
         inline size_t
         operator()(const argument_type& rhs) const noexcept {

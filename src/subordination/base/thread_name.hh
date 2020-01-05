@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_BASE_THREAD_NAME_HH
 #define SUBORDINATION_BASE_THREAD_NAME_HH
 
-namespace bsc {
+namespace sbn {
 
     namespace this_thread {
 

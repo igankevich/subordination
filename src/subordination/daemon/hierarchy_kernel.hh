@@ -6,9 +6,9 @@
 
 #include <subordination/api.hh>
 
-namespace bsc {
+namespace sbn {
 
-    class hierarchy_kernel: public bsc::kernel {
+    class hierarchy_kernel: public sbn::kernel {
 
     public:
         typedef sys::ipv4_address addr_type;

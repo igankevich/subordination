@@ -9,7 +9,7 @@
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/kernel_header_flag.hh>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_header {
 

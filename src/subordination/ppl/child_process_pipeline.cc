@@ -4,7 +4,7 @@
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/basic_router.hh>
 
-namespace bsc {
+namespace sbn {
 
     /*
     template <class K, class R>
@@ -52,7 +52,7 @@ namespace bsc {
 }
 
 template <class K, class R>
-bsc::child_process_pipeline<K,R>
+sbn::child_process_pipeline<K,R>
 ::child_process_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
@@ -80,7 +80,7 @@ bsc::child_process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::child_process_pipeline<K,R>
+sbn::child_process_pipeline<K,R>
 ::process_kernels() {
     std::for_each(
         queue_popper(this->_kernels),
@@ -93,10 +93,10 @@ bsc::child_process_pipeline<K,R>
 
 template <class K, class R>
 void
-bsc::child_process_pipeline<K,R>
+sbn::child_process_pipeline<K,R>
 ::print_state(std::ostream& out) {
 }
 
-template class bsc::child_process_pipeline<
+template class sbn::child_process_pipeline<
         SUBORDINATION_KERNEL_TYPE,
-        bsc::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;

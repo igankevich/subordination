@@ -41,9 +41,9 @@ std::atomic<uint32_t> shutdown_counter(0);
 Role role = Role::Master;
 Failure failure = Failure::No;
 
-using namespace bsc;
+using namespace sbn;
 
-struct Test_socket: public bsc::kernel {
+struct Test_socket: public sbn::kernel {
 
     Test_socket():
     _data()
@@ -68,7 +68,7 @@ struct Test_socket: public bsc::kernel {
                 const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
                 if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
                     std::clog << "go offline" << std::endl;
-                    bsc::graceful_shutdown(0);
+                    sbn::graceful_shutdown(0);
                 }
             } else {
                 commit<Local>(this);
@@ -80,7 +80,7 @@ struct Test_socket: public bsc::kernel {
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << uint32_t(_data.size());
         for (size_t i=0; i<_data.size(); ++i)
             out << _data[i];
@@ -88,7 +88,7 @@ struct Test_socket: public bsc::kernel {
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         uint32_t sz;
         in >> sz;
         _data.resize(sz);
@@ -104,7 +104,7 @@ private:
     std::vector<Datum> _data;
 };
 
-struct Sender: public bsc::kernel {
+struct Sender: public sbn::kernel {
 
     explicit
     Sender(uint32_t n):
@@ -118,7 +118,7 @@ struct Sender: public bsc::kernel {
         }
     }
 
-    void react(bsc::kernel* child) override {
+    void react(sbn::kernel* child) override {
         Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
         std::vector<Datum> output = test_kernel->data();
         EXPECT_EQ(this->_input.size(), output.size());
@@ -137,7 +137,7 @@ private:
     std::vector<Datum> _input;
 };
 
-struct Main: public bsc::kernel {
+struct Main: public sbn::kernel {
 
     void
     act() override {
@@ -148,9 +148,9 @@ struct Main: public bsc::kernel {
     }
 
     void
-    react(bsc::kernel*) override {
+    react(sbn::kernel*) override {
         if (++_num_returned == POWERS.size()) {
-            commit<Local>(this, bsc::exit_code::success);
+            commit<Local>(this, sbn::exit_code::success);
         }
     }
 
@@ -161,8 +161,8 @@ private:
 };
 
 TEST(NICServerTest, All) {
-    using bsc::factory;
-    bsc::register_type<Test_socket>();
+    using sbn::factory;
+    sbn::register_type<Test_socket>();
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     sys::socket_address principal_endpoint({127,0,0,1}, port);
     sys::socket_address subordinate_endpoint({127,0,0,1}, port+1);
@@ -187,7 +187,7 @@ TEST(NICServerTest, All) {
         send<Local>(new Main);
     }
 
-    int retval = bsc::wait_and_return();
+    int retval = sbn::wait_and_return();
 
     if (!(failure == Failure::Slave && role == Role::Slave)) {
         EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
@@ -198,7 +198,7 @@ TEST(NICServerTest, All) {
 
 int
 main(int argc, char* argv[]) {
-    bsc::install_error_handler();
+    sbn::install_error_handler();
     // init gtest without arguments to pass custom arguments
     // from custom test runner
     ::testing::InitGoogleTest(&argc, argv);

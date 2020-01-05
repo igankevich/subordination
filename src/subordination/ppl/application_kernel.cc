@@ -25,7 +25,7 @@ namespace {
 }
 
 void
-bsc::Application_kernel
+sbn::Application_kernel
 ::write(sys::pstream& out) const {
     kernel::write(out);
     write_vector(out, this->_args);
@@ -34,7 +34,7 @@ bsc::Application_kernel
 }
 
 void
-bsc::Application_kernel
+sbn::Application_kernel
 ::read(sys::pstream& in) {
     kernel::read(in);
     read_vector(in, this->_args);

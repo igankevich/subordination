@@ -2,4 +2,4 @@
 
 #include <subordination/config.hh>
 
-template class bsc::io_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::io_pipeline<SUBORDINATION_KERNEL_TYPE>;

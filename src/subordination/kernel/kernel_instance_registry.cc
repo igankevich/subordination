@@ -43,13 +43,13 @@ namespace {
 
 template <class T>
 std::ostream&
-bsc::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
+sbn::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
     std::unique_lock<std::mutex> lock(rhs._mutex);
     std::ostream_iterator<Entry<T>> it(out, "\n");
     std::copy(rhs._instances.cbegin(), rhs._instances.cend(), it);
     return out;
 }
 
-bsc::instance_registry_type bsc::instances;
+sbn::instance_registry_type sbn::instances;
 
-template class bsc::kernel_instance_registry<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::kernel_instance_registry<SUBORDINATION_KERNEL_TYPE>;

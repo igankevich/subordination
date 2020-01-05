@@ -10,7 +10,7 @@
 
 #include <subordination/kernel/kernel.hh>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_type {
 
@@ -102,14 +102,14 @@ namespace bsc {
 namespace std {
 
     template<>
-    struct hash<bsc::kernel_type>: public std::hash<bsc::kernel_type::id_type> {
+    struct hash<sbn::kernel_type>: public std::hash<sbn::kernel_type::id_type> {
 
         typedef size_t result_type;
-        typedef bsc::kernel_type argument_type;
+        typedef sbn::kernel_type argument_type;
 
         size_t
-        operator()(const bsc::kernel_type& rhs) const noexcept {
-            return std::hash<bsc::kernel_type::id_type>::operator()(rhs.id());
+        operator()(const sbn::kernel_type& rhs) const noexcept {
+            return std::hash<sbn::kernel_type::id_type>::operator()(rhs.id());
         }
 
     };

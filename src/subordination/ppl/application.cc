@@ -30,20 +30,20 @@ namespace {
 
     std::independent_bits_engine<
         std::random_device,
-        std::numeric_limits<char>::digits * sizeof(bsc::application_type),
-        bsc::application_type> rng;
+        std::numeric_limits<char>::digits * sizeof(sbn::application_type),
+        sbn::application_type> rng;
 
     sys::spin_mutex rng_mutex;
 
-    inline bsc::application_type
+    inline sbn::application_type
     generate_application_id() noexcept {
         sys::simple_lock<sys::spin_mutex> lock(rng_mutex);
         return rng();
     }
 
-    inline bsc::application_type
+    inline sbn::application_type
     get_appliction_id() noexcept {
-        bsc::application_type id = 0;
+        sbn::application_type id = 0;
         if (const char* s = ::getenv(SUBORDINATION_ENV_APPLICATION_ID)) {
             std::stringstream str(s);
             str >> id;
@@ -66,7 +66,7 @@ namespace {
         return !std::getenv(SUBORDINATION_ENV_SLAVE);
     }
 
-    bsc::application_type this_app = get_appliction_id();
+    sbn::application_type this_app = get_appliction_id();
     sys::fd_type this_pipe_in = get_pipe_fd(SUBORDINATION_ENV_PIPE_IN);
     sys::fd_type this_pipe_out = get_pipe_fd(SUBORDINATION_ENV_PIPE_OUT);
     bool this_is_master = get_master();
@@ -80,14 +80,14 @@ namespace {
     }
 
     inline std::string
-    generate_filename(bsc::application_type app, const char* suffix) {
+    generate_filename(sbn::application_type app, const char* suffix) {
         std::stringstream filename;
         filename << app << suffix;
         return filename.str();
     }
 
     inline sys::fildes
-    open_file(bsc::application_type app, const char* suffix) {
+    open_file(sbn::application_type app, const char* suffix) {
         return sys::fildes(
             generate_filename(app, suffix).data(),
             sys::open_flag::create | sys::open_flag::write_only,
@@ -132,7 +132,7 @@ namespace std {
 }
 
 std::ostream&
-bsc::operator<<(std::ostream& out, const application& rhs) {
+sbn::operator<<(std::ostream& out, const application& rhs) {
     return out << sys::make_object(
         "id",
         rhs._id,
@@ -151,37 +151,37 @@ bsc::operator<<(std::ostream& out, const application& rhs) {
         );
 }
 
-bsc::application_type
-bsc::this_application
+sbn::application_type
+sbn::this_application
 ::get_id() noexcept {
     return this_app;
 }
 
 sys::fd_type
-bsc::this_application
+sbn::this_application
 ::get_input_fd() noexcept {
     return this_pipe_in;
 }
 
 sys::fd_type
-bsc::this_application
+sbn::this_application
 ::get_output_fd() noexcept {
     return this_pipe_out;
 }
 
 bool
-bsc::this_application
+sbn::this_application
 ::is_master() noexcept {
     return this_is_master;
 }
 
 bool
-bsc::this_application
+sbn::this_application
 ::is_slave() noexcept {
     return !this_is_master;
 }
 
-bsc::application
+sbn::application
 ::application(
     const container_type& args,
     const container_type& env
@@ -197,7 +197,7 @@ _env(env) {
 }
 
 int
-bsc::application
+sbn::application
 ::execute(const sys::two_way_pipe& pipe) const {
     sys::argstream args, env;
     for (const std::string& a : this->_args) {
@@ -266,7 +266,7 @@ bsc::application
 }
 
 void
-bsc
+sbn
 ::swap(application& lhs, application& rhs) {
     std::swap(lhs._id, rhs._id);
     std::swap(lhs._uid, rhs._uid);
@@ -278,7 +278,7 @@ bsc
 }
 
 void
-bsc::application
+sbn::application
 ::write(sys::pstream& out) const {
     out << this->_id << this->_uid << this->_gid;
     write_vector(out, this->_args);
@@ -287,7 +287,7 @@ bsc::application
 }
 
 void
-bsc::application
+sbn::application
 ::read(sys::pstream& in) {
     in >> this->_id >> this->_uid >> this->_gid;
     read_vector(in, this->_args);
@@ -296,7 +296,7 @@ bsc::application
 }
 
 std::ostream&
-bsc::operator<<(std::ostream& out, process_role_type rhs) {
+sbn::operator<<(std::ostream& out, process_role_type rhs) {
     return out << (rhs == process_role_type::master ? "master" : "slave");
 }
 

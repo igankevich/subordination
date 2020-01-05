@@ -4,7 +4,7 @@
 #include <subordination/config.hh>
 #include <subordination/ppl/basic_factory.hh>
 
-namespace bsc {
+namespace sbn {
 
     typedef SUBORDINATION_KERNEL_TYPE kernel;
 
@@ -44,7 +44,7 @@ namespace bsc {
     commit(kernel* rhs, exit_code ret) {
         if (!rhs->parent()) {
             delete rhs;
-            bsc::graceful_shutdown(static_cast<int>(ret));
+            sbn::graceful_shutdown(static_cast<int>(ret));
         } else {
             rhs->return_to_parent(ret);
             send<target>(rhs);
@@ -73,13 +73,13 @@ namespace bsc {
 
         inline
         factory_guard() {
-            ::bsc::factory.start();
+            ::sbn::factory.start();
         }
 
         inline
         ~factory_guard() {
-            ::bsc::factory.stop();
-            ::bsc::factory.wait();
+            ::sbn::factory.stop();
+            ::sbn::factory.wait();
         }
 
     };

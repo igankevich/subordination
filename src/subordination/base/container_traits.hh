@@ -3,7 +3,7 @@
 
 #include <stdexcept>
 
-namespace bsc {
+namespace sbn {
 
     /**
     \brief Container trais.

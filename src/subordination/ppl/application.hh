@@ -10,7 +10,7 @@
 #include <unistdx/ipc/identity>
 #include <unistdx/net/pstream>
 
-namespace bsc {
+namespace sbn {
 
     typedef uint64_t application_type;
 

@@ -14,7 +14,7 @@
 #include <subordination/ppl/application_kernel.hh>
 #include <subordination/ppl/pipeline_base.hh>
 
-namespace bsc {
+namespace sbn {
 
     template<class T, class Router>
     class external_process_handler: public pipeline_base {

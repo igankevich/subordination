@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_PPL_KERNEL_PROTO_FLAG_HH
 #define SUBORDINATION_PPL_KERNEL_PROTO_FLAG_HH
 
-namespace bsc {
+namespace sbn {
 
     class kernel_proto_flag {
 

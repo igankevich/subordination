@@ -8,7 +8,7 @@
 #include <subordination/kernel/kernel_type.hh>
 #include <subordination/kernel/kernel_type_error.hh>
 
-namespace bsc {
+namespace sbn {
 
     class kernel_type_registry {
 

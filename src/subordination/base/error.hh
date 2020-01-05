@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <stdexcept>
 
-namespace bsc {
+namespace sbn {
 
     class error: public std::runtime_error {
 
@@ -40,6 +40,6 @@ namespace bsc {
 }
 
 #define SUBORDINATION_THROW(error, ...) \
-    throw ::bsc::error(__VA_ARGS__).set_location(__FILE__,__LINE__,__func__)
+    throw ::sbn::error(__VA_ARGS__).set_location(__FILE__,__LINE__,__func__)
 
 #endif // vim:filetype=cpp

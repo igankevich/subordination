@@ -4,7 +4,7 @@
 
 int
 main(int argc, char** argv) {
-    using namespace bsc;
+    using namespace sbn;
     install_error_handler();
     types.register_type<autoreg::Autoreg_model<Real>>();
     types.register_type<autoreg::Generator1<Real,autoreg::Uniform_grid>>();

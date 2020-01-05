@@ -5,7 +5,7 @@
 #include <iterator>
 #include <unistdx/net/interface_address>
 
-namespace bsc {
+namespace sbn {
 
     template <class Addr>
     class tree_hierarchy_iterator:

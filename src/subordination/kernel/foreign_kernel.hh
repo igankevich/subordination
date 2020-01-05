@@ -4,14 +4,14 @@
 #include <subordination/kernel/kernel.hh>
 #include <subordination/kernel/kernel_type.hh>
 
-namespace bsc {
+namespace sbn {
 
     class foreign_kernel: public kernel {
 
     private:
         typedef char char_type;
         typedef size_t size_type;
-        typedef ::bsc::kernel_type::id_type id_type;
+        typedef ::sbn::kernel_type::id_type id_type;
 
     private:
         size_type _size = 0;

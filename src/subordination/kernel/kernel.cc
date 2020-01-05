@@ -5,15 +5,15 @@
 
 namespace {
 
-    inline bsc::kernel::id_type
-    get_id(const bsc::kernel* rhs) {
-        return !rhs ? bsc::mobile_kernel::no_id() : rhs->id();
+    inline sbn::kernel::id_type
+    get_id(const sbn::kernel* rhs) {
+        return !rhs ? sbn::mobile_kernel::no_id() : rhs->id();
     }
 
 }
 
 void
-bsc::kernel::read(sys::pstream& in) {
+sbn::kernel::read(sys::pstream& in) {
     base_kernel::read(in);
     bool b = false;
     in >> b;
@@ -29,7 +29,7 @@ bsc::kernel::read(sys::pstream& in) {
 }
 
 void
-bsc::kernel::write(sys::pstream& out) const {
+sbn::kernel::write(sys::pstream& out) const {
     base_kernel::write(out);
     out << carries_parent();
     if (this->moves_downstream()) {
@@ -49,20 +49,20 @@ bsc::kernel::write(sys::pstream& out) const {
 }
 
 void
-bsc::kernel::act() {}
+sbn::kernel::act() {}
 
 void
-bsc::kernel::react(kernel*) {
+sbn::kernel::react(kernel*) {
     SUBORDINATION_THROW(error, "empty react");
 }
 
 void
-bsc::kernel::error(kernel* rhs) {
+sbn::kernel::error(kernel* rhs) {
     this->react(rhs);
 }
 
 std::ostream&
-bsc::operator<<(std::ostream& out, const kernel& rhs) {
+sbn::operator<<(std::ostream& out, const kernel& rhs) {
     const char state[] = {
         (rhs.moves_upstream()   ? 'u' : '-'),
         (rhs.moves_downstream() ? 'd' : '-'),

@@ -249,7 +249,7 @@ namespace sys {
 
 }
 
-struct Spectrum_kernel: public bsc::kernel {
+struct Spectrum_kernel: public sbn::kernel {
 
     enum {
         DENSITY = 'w',
@@ -268,7 +268,7 @@ struct Spectrum_kernel: public bsc::kernel {
     void act() override {
         // TODO Filter 999 values.
         _variance = compute_variance();
-        bsc::commit(this);
+        sbn::commit(this);
     }
 
     float spectrum(int32_t i, float angle) {
@@ -304,7 +304,7 @@ private:
 
 const float Spectrum_kernel::PI = std::acos(-1.0f);
 
-struct Station_kernel: public bsc::kernel {
+struct Station_kernel: public sbn::kernel {
 
     typedef std::unordered_map<Variable, Observation> Map;
 
@@ -348,14 +348,14 @@ struct Station_kernel: public bsc::kernel {
             #endif
             _observations.clear();
             _spectra.clear();
-            bsc::commit<bsc::Remote>(this);
+            sbn::commit<sbn::Remote>(this);
         }
     }
 
     void act() override {
         // skip records when some variables are missing
         if (_observations.size() != NUM_VARIABLES) {
-            bsc::commit<bsc::Remote>(this);
+            sbn::commit<sbn::Remote>(this);
             return;
         }
         std::for_each(_observations.cbegin(), _observations.cend(),
@@ -428,7 +428,7 @@ struct Station_kernel: public bsc::kernel {
             [this] (decltype(_spectra)::value_type& pair) {
                 Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
 //				k->setf(kernel_flag::priority_service);
-                bsc::upstream(this, k);
+                sbn::upstream(this, k);
             }
         );
     }
@@ -471,7 +471,7 @@ private:
     static const int NUM_VARIABLES = 5;
 };
 
-struct Year_kernel: public bsc::kernel {
+struct Year_kernel: public sbn::kernel {
 
     typedef std::unordered_map<Station,
         std::unordered_map<Variable, Observation>> Map;
@@ -496,7 +496,7 @@ struct Year_kernel: public bsc::kernel {
         return _count == _observations.size();
     }
 
-    void react(bsc::kernel* child) override {
+    void react(sbn::kernel* child) override {
         Station_kernel* k = dynamic_cast<Station_kernel*>(child);
         if (!_output_file.is_open()) {
             _output_file.open(output_filename());
@@ -512,14 +512,14 @@ struct Year_kernel: public bsc::kernel {
         #endif
         _num_spectra += k->num_processed_spectra();
         if (++_count == _observations.size()) {
-            bsc::commit(this);
+            sbn::commit(this);
         }
     }
 
     void act() override {
         std::for_each(_observations.cbegin(), _observations.cend(),
             [this] (const decltype(_observations)::value_type& pair) {
-                bsc::upstream<bsc::Remote>(
+                sbn::upstream<sbn::Remote>(
                     this,
                     new Station_kernel(pair.second, pair.first, _year)
                 );
@@ -574,7 +574,7 @@ private:
     std::ofstream _output_file;
 };
 
-struct Launcher: public bsc::kernel {
+struct Launcher: public sbn::kernel {
 
     typedef std::unordered_map<Station,
         std::unordered_map<Variable, Observation>> Map;
@@ -642,9 +642,9 @@ struct Launcher: public bsc::kernel {
                     log << _count_spectra << std::endl;
                 }
                 #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-                bsc::commit<bsc::Local>(this);
+                sbn::commit<sbn::Local>(this);
                 #else
-                bsc::commit<bsc::Remote>(this);
+                sbn::commit<sbn::Remote>(this);
                 #endif
             }
         }
@@ -666,7 +666,7 @@ struct Launcher: public bsc::kernel {
     submit_station_kernels(Map _observations, Year _year) {
         std::for_each(_observations.cbegin(), _observations.cend(),
             [this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-                bsc::upstream<bsc::Remote>(
+                sbn::upstream<sbn::Remote>(
                     this,
                     new Station_kernel(pair.second, pair.first, _year)
                 );
@@ -682,7 +682,7 @@ private:
     std::unordered_map<Year, Year_kernel*> _yearkernels;
 };
 
-struct Spec_app: public bsc::kernel {
+struct Spec_app: public sbn::kernel {
 
     void
     act() override {
@@ -690,17 +690,17 @@ struct Spec_app: public bsc::kernel {
         sys::log_message("spec", "program start");
         #endif
         #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-        bsc::upstream<bsc::Local>(this, new Launcher);
+        sbn::upstream<sbn::Local>(this, new Launcher);
         #else
         Launcher* launcher = new Launcher;
-        launcher->setf(bsc::kernel_flag::carries_parent);
-        bsc::upstream<bsc::Remote>(this, launcher);
+        launcher->setf(sbn::kernel_flag::carries_parent);
+        sbn::upstream<sbn::Remote>(this, launcher);
         #endif
     }
 
     void
     react(kernel*) override {
-        bsc::commit<bsc::Local>(this);
+        sbn::commit<sbn::Local>(this);
     }
 
 };

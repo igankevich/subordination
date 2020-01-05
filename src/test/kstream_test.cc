@@ -9,17 +9,17 @@
 
 #include <gtest/gtest.h>
 
-struct Good_kernel: public bsc::kernel {
+struct Good_kernel: public sbn::kernel {
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << _data;
     }
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         in >> _data;
     }
 
@@ -72,10 +72,10 @@ struct Kernel_that_reads_more_than_writes: public Good_kernel {
 
 };
 
-struct Kernel_that_carries_its_parent: public bsc::kernel {
+struct Kernel_that_carries_its_parent: public sbn::kernel {
 
     Kernel_that_carries_its_parent() {
-        this->setf(bsc::kernel_flag::carries_parent);
+        this->setf(sbn::kernel_flag::carries_parent);
         this->parent(&_carry);
         assert(this->parent());
     }
@@ -84,13 +84,13 @@ struct Kernel_that_carries_its_parent: public bsc::kernel {
 
     void
     write(sys::pstream& out) const override {
-        bsc::kernel::write(out);
+        sbn::kernel::write(out);
         out << _data;
     }
 
     void
     read(sys::pstream& in) override {
-        bsc::kernel::read(in);
+        sbn::kernel::read(in);
         in >> _data;
     }
 
@@ -129,7 +129,7 @@ private:
 
 };
 
-struct Dummy_kernel: public bsc::kernel {};
+struct Dummy_kernel: public sbn::kernel {};
 
 typedef Big_kernel<100> Big_kernel_type;
 
@@ -138,12 +138,12 @@ bool registered = false;
 void
 register_all() {
     if (!registered) {
-        bsc::register_type<Good_kernel>();
-        bsc::register_type<Kernel_that_writes_more_than_reads>();
-        bsc::register_type<Kernel_that_reads_more_than_writes>();
-        bsc::register_type<Dummy_kernel>();
-        bsc::register_type<Big_kernel_type>();
-        bsc::register_type({
+        sbn::register_type<Good_kernel>();
+        sbn::register_type<Kernel_that_writes_more_than_reads>();
+        sbn::register_type<Kernel_that_reads_more_than_writes>();
+        sbn::register_type<Dummy_kernel>();
+        sbn::register_type<Big_kernel_type>();
+        sbn::register_type({
             [] (sys::pstream& in) {
                 Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
                 k->read(in);
@@ -151,7 +151,7 @@ register_all() {
             },
             typeid(Kernel_that_carries_its_parent)
         });
-        std::clog << "Registered types:\n" << bsc::types << std::flush;
+        std::clog << "Registered types:\n" << sbn::types << std::flush;
         registered = true;
     }
 }
@@ -176,12 +176,12 @@ TYPED_TEST_CASE(
 
 TYPED_TEST(KernelStreamTest, IO) {
     typedef TypeParam Carrier;
-    typedef bsc::kernel kernel_type;
+    typedef sbn::kernel kernel_type;
     typedef std::stringbuf sink_type;
     typedef sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>
         fildesbuf_type;
-    typedef bsc::basic_kernelbuf<fildesbuf_type> buffer_type;
-    typedef bsc::kstream<kernel_type> stream_type;
+    typedef sbn::basic_kernelbuf<fildesbuf_type> buffer_type;
+    typedef sbn::kstream<kernel_type> stream_type;
     typedef typename stream_type::ipacket_guard ipacket_guard;
     for (size_t count=1; count<=100; ++count) {
         std::vector<Carrier> expected(count);

@@ -3,7 +3,7 @@
 
 #include <unistdx/net/bstream>
 
-namespace bsc {
+namespace sbn {
 
     typedef uint16_t exit_code_type;
 
