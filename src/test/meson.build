@@ -3,7 +3,7 @@ test(
     executable(
         'queue-pusher-test',
         sources: 'queue_pusher_test.cc',
-        include_directories: srcdir,
+        include_directories: src,
         dependencies: [unistdx, gtest, subordination_core]
     )
 )
@@ -13,7 +13,7 @@ test(
     executable(
         'kstream-test',
         sources: 'kstream_test.cc',
-        include_directories: srcdir,
+        include_directories: src,
         dependencies: [unistdx, gtest, subordination_daemon],
         cpp_args: ['-DSUBORDINATION_DAEMON']
     )
@@ -24,33 +24,26 @@ test(
     executable(
         'local-server-test',
         sources: 'local_server_test.cc',
-        include_directories: srcdir,
+        include_directories: src,
         dependencies: [unistdx, gtest, subordination_daemon],
         cpp_args: ['-DSUBORDINATION_DAEMON']
     )
-)
-
-test_runner = executable(
-    'test-runner',
-    sources: 'test_runner.cc',
-    include_directories: srcdir,
-    dependencies: unistdx
 )
 
 socket_pipeline_test = executable(
     'socket-pipeline-test',
     sources: 'socket_pipeline_test.cc',
     dependencies: [threads, unistdx, gtest, subordination_daemon],
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: ['-DSUBORDINATION_DAEMON']
 )
 
 test(
     'socket-pipeline-no-failure',
-    test_runner,
+    dtest_exe,
     args: [
         '--exit-code=master',
-        '--cluster-size=2',
+        '--size=2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
     ],
@@ -59,7 +52,7 @@ test(
 
 test(
     'socket-pipeline-slave-failure',
-    test_runner,
+    dtest_exe,
     args: [
         '--exit-code=master',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
@@ -74,7 +67,7 @@ test(
         'timer-pipeline-test',
         sources: 'timer_pipeline_test.cc',
         dependencies: [threads, unistdx, gtest, subordination_daemon],
-        include_directories: srcdir,
+        include_directories: src,
         cpp_args: ['-DSUBORDINATION_DAEMON']
     )
 )
@@ -83,7 +76,7 @@ app_exe = executable(
     'process-pipeline-test-app',
     sources: 'process_pipeline_test.cc',
     dependencies: [threads, unistdx, subordination_app],
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: [
         '-DSUBORDINATION_APPLICATION',
         '-DSUBORDINATION_TEST_APP',
@@ -94,7 +87,7 @@ daemon_exe = executable(
     'process-pipeline-test',
     sources: 'process_pipeline_test.cc',
     dependencies: [threads, unistdx, subordination_daemon],
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: [
         '-DSUBORDINATION_DAEMON',
         '-DSUBORDINATION_TEST_SERVER',

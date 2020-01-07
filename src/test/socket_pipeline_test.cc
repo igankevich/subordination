@@ -166,7 +166,7 @@ TEST(NICServerTest, All) {
     sbn::register_type<Test_socket>();
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     ipv4_interface_address network{{127,0,0,1},8};
-    if (const char* text = std::getenv("TEST_RUNNER_INTERFACE_ADDRESS")) {
+    if (const char* text = std::getenv("DTEST_INTERFACE_ADDRESS")) {
         std::stringstream tmp(text);
         tmp >> network;
     }

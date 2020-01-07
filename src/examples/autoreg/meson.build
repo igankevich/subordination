@@ -3,7 +3,7 @@ benchmark(
     executable(
         'autoreg',
         sources: 'autoreg.cc',
-        include_directories: [srcdir],
+        include_directories: [src],
         dependencies: [threads, unistdx, subordination_app],
     )
 )

@@ -48,7 +48,7 @@ threads = dependency('threads')
 unistdx = dependency('unistdx', version: '>=0.12.0')
 gtest = dependency('gtest', main: true)
 
-srcdir = include_directories('src')
+src = include_directories('src')
 
 subdir('src')
 

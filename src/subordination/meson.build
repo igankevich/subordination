@@ -26,13 +26,13 @@ subordination_core_lib = shared_library(
     sources: subordination_core_src,
     dependencies: [threads,unistdx],
     version: meson.project_version(),
-    include_directories: srcdir,
+    include_directories: src,
     install: true,
 )
 
 subordination_core = declare_dependency(
     link_with: subordination_core_lib,
-    include_directories: srcdir
+    include_directories: src
 )
 
 subordination_daemon_lib = shared_library(
@@ -41,7 +41,7 @@ subordination_daemon_lib = shared_library(
     dependencies: [threads,unistdx,subordination_core],
     version: meson.project_version(),
     install: true,
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: ['-DSUBORDINATION_DAEMON'] + profiling_args,
 )
 
@@ -51,7 +51,7 @@ subordination_submit_lib = shared_library(
     dependencies: [threads,unistdx,subordination_core],
     version: meson.project_version(),
     install: true,
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: ['-DSUBORDINATION_SUBMIT'],
 )
 
@@ -61,23 +61,23 @@ subordination_app_lib = shared_library(
     dependencies: [threads,unistdx,subordination_core],
     version: meson.project_version(),
     install: true,
-    include_directories: srcdir,
+    include_directories: src,
     cpp_args: ['-DSUBORDINATION_APPLICATION'],
 )
 
 subordination_daemon = declare_dependency(
     link_with: [subordination_daemon_lib,subordination_core_lib],
-    include_directories: srcdir
+    include_directories: src
 )
 
 subordination_submit = declare_dependency(
     link_with: [subordination_submit_lib,subordination_core_lib],
-    include_directories: srcdir
+    include_directories: src
 )
 
 subordination_app = declare_dependency(
     link_with: [subordination_app_lib,subordination_core_lib],
-    include_directories: srcdir
+    include_directories: src
 )
 
 subdir('daemon')

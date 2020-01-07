@@ -15,7 +15,7 @@ subordination_src = files([
 subordination_exe = executable(
     'subordination',
     sources: subordination_src,
-    include_directories: [srcdir],
+    include_directories: [src],
     dependencies: [unistdx,threads,subordination_daemon],
     cpp_args: ['-DSUBORDINATION_DAEMON'] + profiling_args,
     install: true,
@@ -29,7 +29,7 @@ bsub_src = files([
 bsub_exe = executable(
     'submit',
     sources: bsub_src,
-    include_directories: [srcdir],
+    include_directories: [src],
     dependencies: [unistdx,threads,subordination_submit],
     cpp_args: ['-DSUBORDINATION_SUBMIT'],
     install: true
@@ -38,7 +38,7 @@ bsub_exe = executable(
 test_application = executable(
     'test-application',
     sources: 'test_application.cc',
-    include_directories: [srcdir],
+    include_directories: [src],
     dependencies: [unistdx,threads,subordination_app],
     cpp_args: ['-DSUBORDINATION_APPLICATION'],
 )
@@ -64,7 +64,7 @@ if get_option('buildtype').contains('debug') and false
     discovery_test = executable(
         'discovery-test',
         sources: 'discovery_test.cc',
-        include_directories: [srcdir],
+        include_directories: [src],
         dependencies: [unistdx,threads,subordination_daemon,gtest],
         cpp_args: ['-DSUBORDINATION_DAEMON'],
     )
