@@ -42,6 +42,7 @@ Role role = Role::Master;
 Failure failure = Failure::No;
 
 using namespace sbn;
+using ipv4_interface_address = sys::interface_address<sys::ipv4_address>;
 
 struct Test_socket: public sbn::kernel {
 
@@ -164,17 +165,21 @@ TEST(NICServerTest, All) {
     using sbn::factory;
     sbn::register_type<Test_socket>();
     sys::port_type port = 10000 + 2*sys::port_type(failure);
-    sys::socket_address principal_endpoint({127,0,0,1}, port);
-    sys::socket_address subordinate_endpoint({127,0,0,1}, port+1);
-    sys::ipv4_address netmask =
-        sys::ipaddr_traits<sys::ipv4_address>::loopback_mask();
+    ipv4_interface_address network{{127,0,0,1},8};
+    if (const char* text = std::getenv("TEST_RUNNER_INTERFACE_ADDRESS")) {
+        std::stringstream tmp(text);
+        tmp >> network;
+    }
+    auto address = network.begin();
+    sys::socket_address subordinate_endpoint(*address++, port+1);
+    sys::socket_address principal_endpoint(*address++, port);
     if (role == Role::Slave) {
         factory.nic().set_port(port+1);
-        factory.nic().add_server(principal_endpoint, netmask);
+        factory.nic().add_server(principal_endpoint, network.netmask());
     }
     if (role == Role::Master) {
         factory.nic().set_port(port);
-        factory.nic().add_server(subordinate_endpoint, netmask);
+        factory.nic().add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start
         using namespace std::this_thread;
         using namespace std::chrono;
