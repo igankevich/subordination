@@ -2,6 +2,7 @@
 #include <subordination/api.hh>
 
 #include <unistdx/base/command_line>
+#include <unistdx/ipc/process>
 
 #include <test/role.hh>
 #include <test/datum.hh>
@@ -9,6 +10,7 @@
 #include <gtest/gtest.h>
 
 using test::Role;
+using sys::this_process::hostname;
 
 enum struct Failure: sys::port_type {
     No = 0,
@@ -61,6 +63,7 @@ struct Test_socket: public sbn::kernel {
     }
 
     void act() override {
+        sys::log_message("tst", "act _", hostname());
         //std::clog << "Test_socket::act()" << std::endl;
         if (failure == Failure::Slave) {
             if (role == Role::Slave) {
@@ -124,7 +127,7 @@ struct Sender: public sbn::kernel {
         std::vector<Datum> output = test_kernel->data();
         EXPECT_EQ(this->_input.size(), output.size());
         EXPECT_EQ(this->_input, output);
-        sys::log_message("tst", "returned _/_", _num_returned+1, NUM_KERNELS);
+        sys::log_message("tst", "returned _/_ _", _num_returned+1, NUM_KERNELS, hostname());
         if (++_num_returned == NUM_KERNELS) {
             commit<Local>(this);
         }

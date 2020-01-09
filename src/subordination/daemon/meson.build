@@ -22,20 +22,20 @@ subordination_exe = executable(
     install_dir: get_option('sbindir')
 )
 
-bsub_src = files([
+submit_src = files([
     'submit.cc',
 ])
 
-bsub_exe = executable(
+submit_exe = executable(
     'submit',
-    sources: bsub_src,
+    sources: submit_src,
     include_directories: [src],
     dependencies: [unistdx,threads,subordination_submit],
     cpp_args: ['-DSUBORDINATION_SUBMIT'],
     install: true
 )
 
-test_application = executable(
+test_app_exe = executable(
     'test-application',
     sources: 'test_application.cc',
     include_directories: [src],
@@ -57,62 +57,42 @@ test(
     )
 )
 
-# run discovery test over virtual network
-# using Linux namespaces
-# TODO fix the test
-if get_option('buildtype').contains('debug') and false
-    discovery_test = executable(
-        'discovery-test',
-        sources: 'discovery_test.cc',
-        include_directories: [src],
-        dependencies: [unistdx,threads,subordination_daemon,gtest],
-        cpp_args: ['-DSUBORDINATION_DAEMON'],
-    )
-    foreach nodes : ['2', '4', '8']
-        foreach fanout : ['1000', '2']
-            suffix = '-' + nodes + '-' + fanout
-            if nodes == '2' and fanout == '2'
-                foreach arg : ['no-failure', 'slave-failure', 'master-failure']
-                    test_env = environment()
-                    test_env.set(
-                        '_CLUSTER',
-                        join_paths(meson.source_root(), 'src', 'test', 'cluster')
-                    )
-                    test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
-                    test_env.set('_NODES', nodes)
-                    test_env.set('_FANOUT', fanout)
-                    test_env.set('_NAME', 'c' + suffix + '-')
-                    test_env.set('_FAILURE', arg)
-                    test_env.set(
-                        '_SUBMIT',
-                        bsub_exe.full_path() + ' ' + test_application.full_path() + ' ' + arg
-                    )
-                    test(
-                        'discovery-test' + suffix + '-' + arg,
-                        discovery_test,
-                        args: [subordination_exe.full_path(), 'fanout=' + fanout, 'allow_root=1'],
-                        env: test_env,
-                        workdir: meson.build_root()
-                    )
-                endforeach
-            else
-                test_env = environment()
-                test_env.set(
-                    '_CLUSTER',
-                    join_paths(meson.source_root(), 'src', 'test', 'cluster')
-                )
-                test_env.set('_LOGDIR', join_paths(meson.build_root(), 'logs' + suffix))
-                test_env.set('_NODES', nodes)
-                test_env.set('_FANOUT', fanout)
-                test_env.set('_NAME', 'c' + suffix + '-')
-                test(
-                    'discovery-test' + suffix,
-                    discovery_test,
-                    args: [subordination_exe.full_path(), 'fanout=' + fanout, 'allow_root=1'],
-                    env: test_env,
-                    workdir: meson.build_root()
-                )
-            endif
+
+discovery_test_exe = executable(
+    'discovery-test',
+    sources: 'discovery_test.cc',
+    include_directories: [src],
+    dependencies: [unistdx,threads,subordination_daemon,gtest],
+    cpp_args: ['-DSUBORDINATION_DAEMON'],
+)
+
+foreach nodes : ['2', '4']
+    foreach fanout : ['2', '1000']
+        foreach failure : ['no-failure', 'slave-failure', 'master-failure']
+            suffix = '-' + nodes + '-' + fanout + '-' + failure
+            env = environment()
+            env.set('DTEST_EXE', dtest_exe.full_path())
+            env.set('DTEST_NAME', 'x')
+            env.set('DTEST_SIZE', nodes)
+            env.set('SBN_FANOUT', fanout)
+            env.set('SBN_FAILURE', failure)
+            # test executable is a wrapper for dtest
+            # (all arguments are forwarded to dtest)
+            test(
+                'discovery-test' + suffix,
+                discovery_test_exe,
+                args: [
+                    # run daemon on each cluster node
+                    '--exec', '*',
+                    subordination_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
+                    # submit test application from the first node
+                    '--exec', '1',
+                    submit_exe.full_path(), test_app_exe.full_path(), failure
+                ],
+                env: env,
+                workdir: meson.build_root(),
+                is_parallel: false
+            )
         endforeach
     endforeach
-endif
+endforeach

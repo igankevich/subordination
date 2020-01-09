@@ -1,7 +1,13 @@
 #include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
-
 #include <subordination/daemon/test_application.hh>
+#include <test/config.hh>
+
+template <class ... Args>
+inline void
+log(const Args& ... args) {
+    sys::log_message(__FILE__, args...);
+}
 
 std::string failure = "no";
 
@@ -42,14 +48,18 @@ public:
             using namespace sbn::this_application;
             if ((test_master_failure() && is_master()) ||
                 (test_slave_failure() && is_slave())) {
+                log(
+                    "kill _ at _ parent _",
+                    is_master() ? "master" : "slave",
+                    sys::this_process::hostname(),
+                    sys::this_process::parent_id()
+                );
                 using namespace sys;
                 send(signal::kill, this_process::parent_id());
-                sys::argstream args;
-                args.append("false");
-                this_process::execute_command(args);
+                this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
             }
         }
-        sys::log_message("slave", "act [_/_]", this->_number, this->_nslaves);
+        log("slave act id _ [_/_]", id(), this->_number, this->_nslaves);
         sbn::commit<sbn::Remote>(this);
     }
 
@@ -86,7 +96,7 @@ public:
 
     void
     act() override {
-        sys::log_message("master", "start");
+        log("master start");
         for (uint32_t i=0; i<this->_nkernels; ++i) {
             slave_kernel* slave = new slave_kernel(i+1, this->_nkernels);
             sbn::upstream<sbn::Remote>(this, slave);
@@ -97,23 +107,12 @@ public:
     react(sbn::kernel* child) {
         slave_kernel* k = dynamic_cast<slave_kernel*>(child);
         if (k->from()) {
-            sys::log_message(
-                "master",
-                "react [_/_] from _",
-                k->number(),
-                this->_nkernels,
-                k->from()
-            );
+            log("master react [_/_] from _", k->number(), this->_nkernels, k->from());
         } else {
-            sys::log_message(
-                "master",
-                "react [_/_]",
-                k->number(),
-                this->_nkernels
-            );
+            log("master react [_/_]", k->number(), this->_nkernels);
         }
         if (++this->_nreturned == this->_nkernels) {
-            sys::log_message("master", "finish");
+            log("master finish");
             if (test_without_failures()) {
                 sbn::commit(this);
             } else {
@@ -144,7 +143,7 @@ public:
 
     void
     act() override {
-        sys::log_message("grand", "start");
+        log("grand start");
         master_kernel* master = new master_kernel;
         master->setf(sbn::kernel_flag::carries_parent);
         sbn::upstream<sbn::Remote>(this, master);
@@ -152,7 +151,7 @@ public:
 
     void
     react(sbn::kernel* child) {
-        sys::log_message("grand", "finish");
+        log("grand finish");
         sbn::commit(this);
     }
 

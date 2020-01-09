@@ -237,11 +237,11 @@ sbn::application
     // disallow running as superuser/supergroup
     if (!this->_allowroot) {
         if (this->_uid == sys::superuser() || this->_gid == sys::supergroup()) {
-            throw std::runtime_error(
-                      "executing as superuser/supergroup is disallowed"
-            );
+            throw std::runtime_error("executing as superuser/supergroup is disallowed");
         }
     }
+    sys::log_message("app", "execute");
+    /*
     // redirect stdout/stderr
     sys::fildes outfd(STDOUT_FILENO), errfd(STDERR_FILENO);
     try {
@@ -253,8 +253,8 @@ sbn::application
         }
     } catch (const sys::bad_call& err) {
         sys::log_message("app", "unable to redirect stdout/stderr");
-    }
-    sys::log_message("app", "execute _", env);
+    }*/
+    //sys::log_message("app", "execute _", env);
     // switch user and group IDs
     sys::this_process::set_identity(this->_uid, this->_gid);
     // change working directory
@@ -266,8 +266,7 @@ sbn::application
 }
 
 void
-sbn
-::swap(application& lhs, application& rhs) {
+sbn::swap(application& lhs, application& rhs) {
     std::swap(lhs._id, rhs._id);
     std::swap(lhs._uid, rhs._uid);
     std::swap(lhs._gid, rhs._gid);

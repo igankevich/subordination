@@ -68,6 +68,7 @@ sbn::operator<<(std::ostream& out, const kernel& rhs) {
         (rhs.moves_downstream() ? 'd' : '-'),
         (rhs.moves_somewhere()  ? 's' : '-'),
         (rhs.moves_everywhere() ? 'b' : '-'),
+        (rhs.carries_parent()   ? 'p' : '-'),
         0
     };
     return out << sys::make_object(

@@ -234,12 +234,16 @@ namespace sbn {
 
         virtual
         ~remote_client() {
+            recover();
+        }
+
+        void recover() {
             // Here failed kernels are written to buffer,
             // from which they must be recovered with recover_kernels().
             sys::epoll_event ev {socket().fd(), sys::event::in};
             this->handle(ev);
             // recover kernels from upstream and downstream buffer
-            this->_proto.recover_kernels(ev.err());
+            this->_proto.recover_kernels(true);
         }
 
         void
@@ -402,6 +406,7 @@ template <class T, class S, class R>
 void
 sbn::socket_pipeline<T,S,R>
 ::remove_client(const sys::socket_address& vaddr) {
+    this->log("remove client _", vaddr);
     client_iterator result = _clients.find(vaddr);
     if (result != this->_clients.end()) {
         this->remove_client(result);

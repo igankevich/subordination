@@ -6,9 +6,11 @@ dtest_src = files([
     'exit_code.cc',
 ])
 
+dtest_deps = [unistdx,threads]
+
 dtest_exe = executable(
     'dtest',
     sources: dtest_src,
     include_directories: src,
-    dependencies: unistdx
+    dependencies: dtest_deps,
 )

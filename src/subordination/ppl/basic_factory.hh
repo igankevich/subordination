@@ -227,6 +227,9 @@ namespace sbn {
     void
     basic_router<T>
     ::forward_child(foreign_kernel* hdr) {
+        #ifndef NDEBUG
+        sys::log_message(__FILE__, "forward-child _", hdr->header());
+        #endif
         factory.forward_child(hdr);
     }
 

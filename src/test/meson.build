@@ -1,3 +1,12 @@
+empty_exe = executable('empty', sources: 'empty.cc')
+test_config = configuration_data()
+test_config.set('empty_exe_path', empty_exe.full_path())
+configure_file(
+    input: 'config.hh.in',
+    output: 'config.hh',
+    configuration: test_config
+)
+
 test(
     'queue-pusher-test',
     executable(
@@ -42,8 +51,8 @@ test(
     'socket-pipeline-no-failure',
     dtest_exe,
     args: [
-        '--exit-code=master',
-        '--size=2',
+        '--exit-code', 'master',
+        '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
     ],
@@ -54,7 +63,7 @@ test(
     'socket-pipeline-slave-failure',
     dtest_exe,
     args: [
-        '--exit-code=master',
+        '--exit-code', 'master',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
     ],

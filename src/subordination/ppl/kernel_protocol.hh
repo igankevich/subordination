@@ -145,6 +145,10 @@ namespace sbn {
 
         void
         recover_kernels(bool down) {
+            #ifndef NDEBUG
+            this->log("recover kernels upstream _ downstream _",
+                      this->_upstream.size(), this->_downstream.size());
+            #endif
             this->do_recover_kernels(this->_upstream);
             if (down) {
                 this->do_recover_kernels(this->_downstream);
@@ -345,6 +349,9 @@ namespace sbn {
 
         void
         recover_kernel(kernel_type* k) {
+            #ifndef NDEBUG
+            this->log("try to recover _", k->id());
+            #endif
             const bool native = k->is_native();
             if (k->moves_upstream() && !k->to()) {
                 #ifndef NDEBUG

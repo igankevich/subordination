@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <unistdx/io/pipe>
+#include <unistdx/ipc/process>
 #include <unistdx/ipc/signal>
 
 #include <dtest/application.hh>
@@ -24,8 +26,26 @@ int main(int argc, char* argv[]) {
     try {
         init_signal_handlers();
         app.init(argc, argv);
-        app.run();
-        ret = app.wait();
+        sys::pipe pipe;
+        pipe.in().unsetf(sys::open_flag::non_blocking);
+        pipe.out().unsetf(sys::open_flag::non_blocking);
+        using pf = sys::process_flag;
+        sys::process child([&pipe] () {
+            try {
+                pipe.out().close();
+                char ch;
+                pipe.in().read(&ch, 1);
+                app.run();
+                return app.wait();
+            } catch (const std::exception& err) {
+                std::cerr << err.what() << std::endl;
+                return 1;
+            }
+        }, pf::unshare_users | pf::unshare_network | pf::signal_parent);
+        child.init_user_namespace();
+        pipe.in().close();
+        pipe.out().write("x", 1);
+        ret = child.wait().exit_code();
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         app.terminate();

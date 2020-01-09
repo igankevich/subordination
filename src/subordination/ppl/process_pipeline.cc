@@ -1,4 +1,4 @@
-#include <subordination/ppl/process_pipeline.hh>
+#include <sstream>
 
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>
@@ -8,6 +8,7 @@
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/basic_router.hh>
 #include <subordination/ppl/kernel_protocol.hh>
+#include <subordination/ppl/process_pipeline.hh>
 
 template <class K, class R>
 void
@@ -104,10 +105,16 @@ template <class K, class R>
 void
 sbn::process_pipeline<K,R>
 ::forward(foreign_kernel* hdr) {
+    #ifndef NDEBUG
+    this->log("forward _", hdr->header());
+    #endif
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
     app_iterator result = this->find_by_app_id(hdr->app());
     if (result == this->_apps.end()) {
+    #ifndef NDEBUG
+    this->log("forward _", hdr->header());
+    #endif
         if (const application* a = hdr->aptr()) {
             a->make_slave();
             #ifndef NDEBUG
@@ -118,9 +125,9 @@ sbn::process_pipeline<K,R>
             SUBORDINATION_THROW(error, "bad application id");
         }
     }
-    #ifndef NDEBUG
-    this->log("fwd _ to _", *hdr, hdr->app());
-    #endif
+    //#ifndef NDEBUG
+    //this->log("fwd _ to _", *hdr, hdr->app());
+    //#endif
     result->second->forward(hdr);
     this->poller().notify_one();
 }

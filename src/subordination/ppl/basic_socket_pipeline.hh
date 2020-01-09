@@ -114,10 +114,7 @@ namespace sbn {
         }
 
         void
-        emplace_handler(
-            const sys::epoll_event& ev,
-            const event_handler_ptr& ptr
-        ) {
+        emplace_handler(const sys::epoll_event& ev, const event_handler_ptr& ptr) {
             // N.B. we have two file descriptors (for the pipe)
             // in the process handler, so do not use emplace here
             this->log("add _, ev=_", *ptr, ev);
@@ -127,14 +124,8 @@ namespace sbn {
 
         template <class X>
         void
-        emplace_handler(
-            const sys::epoll_event& ev,
-            const std::shared_ptr<X>& ptr
-        ) {
-            this->emplace_handler(
-                ev,
-                std::static_pointer_cast<handler_type>(ptr)
-            );
+        emplace_handler(const sys::epoll_event& ev, const std::shared_ptr<X>& ptr) {
+            this->emplace_handler(ev, std::static_pointer_cast<handler_type>(ptr));
         }
 
         void
@@ -266,11 +257,7 @@ namespace sbn {
                     try {
                         h.handle(ev);
                     } catch (const std::exception& err) {
-                        this->log(
-                            "failed to process fd _: _",
-                            ev.fd(),
-                            err.what()
-                        );
+                        this->log("failed to process fd _: _", ev.fd(), err.what());
                     }
                     if (!ev) {
                         this->log("remove _ (bad event _)", h, ev);
