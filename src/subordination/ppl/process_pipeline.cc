@@ -112,9 +112,6 @@ sbn::process_pipeline<K,R>
     assert(this->other_mutex());
     app_iterator result = this->find_by_app_id(hdr->app());
     if (result == this->_apps.end()) {
-    #ifndef NDEBUG
-    this->log("forward _", hdr->header());
-    #endif
         if (const application* a = hdr->aptr()) {
             a->make_slave();
             #ifndef NDEBUG
@@ -231,8 +228,8 @@ sbn::process_pipeline<K,R>
     for (const value_type& val : this->_apps) {
         this->log("app _, handler _", val.first, *val.second);
     }
-    for (const sys::process& p : this->_procs) {
-        this->log("process _", p);
+    for (const auto& p : this->_procs) {
+        this->log("process _", p.id());
     }
 }
 

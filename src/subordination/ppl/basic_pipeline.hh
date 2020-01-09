@@ -124,7 +124,7 @@ namespace sbn {
                 thr = std::thread(
                     [this,thread_no] () {
                         try {
-                            sys::this_process::set_name(this->_name);
+                            sys::this_process::name(this->_name);
                         } catch (...) {
                         }
                         this_thread::name = this->_name;
