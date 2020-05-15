@@ -56,7 +56,8 @@ test(
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
     ],
-    workdir: meson.current_build_dir()
+    workdir: meson.current_build_dir(),
+    is_parallel: false
 )
 
 test(
@@ -67,7 +68,8 @@ test(
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
     ],
-    workdir: meson.current_build_dir()
+    workdir: meson.current_build_dir(),
+    is_parallel: false
 )
 
 test(
