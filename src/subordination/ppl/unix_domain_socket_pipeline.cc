@@ -37,8 +37,9 @@ namespace sbn {
             this->log("_ _", __func__, ev);
             sys::socket_address addr;
             sys::socket sock;
-            this->_socket.accept(sock, addr);
-            this->_ppl.add_client(addr, std::move(sock));
+            while (this->_socket.accept(sock, addr)) {
+                this->_ppl.add_client(addr, std::move(sock));
+            }
         };
 
         void

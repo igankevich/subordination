@@ -1,6 +1,5 @@
 #!/bin/sh
 
-URL="ssh://git@fennec:29418/${CI_REPO_SLUG}.git"
 CMMSHQ_URL="cmmshq.ru:/usr/share/nginx/html/doc/subordination"
 
 if test "$CI_PULL_REQUEST" != "false"
@@ -33,7 +32,7 @@ test_flags() {
 }
 
 slurm_job "sanitize-address" sh -c "\$(test_flags -Db_sanitize=address)"
-slurm_job "sanitize=none" sh -c "\$(test_flags -Db_sanitize=none)"
+slurm_job "sanitize-none" sh -c "\$(test_flags -Db_sanitize=none)"
 
 # build documentation
 if test "$CI_BUILD_BRANCH" = "dev" || test -n "$CI_PULL_REQUEST"

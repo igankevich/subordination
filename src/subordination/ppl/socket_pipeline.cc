@@ -135,17 +135,18 @@ namespace sbn {
         handle(const sys::epoll_event& ev) override {
             sys::socket_address addr;
             socket_type sock;
-            this->_socket.accept(sock, addr);
-            sys::socket_address vaddr = _ppl.virtual_addr(addr);
-            auto res = _ppl._clients.find(vaddr);
-            if (res == _ppl._clients.end()) {
-                #ifndef NDEBUG
-                auto ptr =
-                #endif
-                this->_ppl.do_add_client(std::move(sock), vaddr);
-                #ifndef NDEBUG
-                this->log("accept _", *ptr);
-                #endif
+            while (this->_socket.accept(sock, addr)) {
+                sys::socket_address vaddr = _ppl.virtual_addr(addr);
+                auto res = _ppl._clients.find(vaddr);
+                if (res == _ppl._clients.end()) {
+                    #ifndef NDEBUG
+                    auto ptr =
+                    #endif
+                    this->_ppl.do_add_client(std::move(sock), vaddr);
+                    #ifndef NDEBUG
+                    this->log("accept _", *ptr);
+                    #endif
+                }
             }
         }
 

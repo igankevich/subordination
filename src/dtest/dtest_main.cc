@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 
 #include <unistdx/io/pipe>
 #include <unistdx/ipc/process>
@@ -35,14 +36,17 @@ int main(int argc, char* argv[]) {
                 pipe.out().close();
                 char ch;
                 pipe.in().read(&ch, 1);
+                using f = sys::unshare_flag;
+                sys::this_process::unshare(f::users | f::network);
                 app.run();
                 return app.wait();
             } catch (const std::exception& err) {
                 std::cerr << err.what() << std::endl;
                 return 1;
             }
-        }, pf::unshare_users | pf::unshare_network | pf::signal_parent);
-        child.init_user_namespace();
+        //}, pf::unshare_users | pf::unshare_network | pf::signal_parent, 4096*10);
+        }, pf::fork, 4096*10);
+        //child.init_user_namespace();
         pipe.in().close();
         pipe.out().write("x", 1);
         ret = child.wait().exit_code();

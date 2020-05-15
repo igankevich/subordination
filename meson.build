@@ -18,7 +18,8 @@ endif
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_EVENT_POLLER', language: 'cpp')
 
-foreach arg : ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
+foreach arg : ['-Werror=return-type', '-Werror=return-local-addr',
+    '-Werror=cast-align', '-fvisibility-inlines-hidden']
     if cpp.has_argument(arg)
         add_global_arguments(arg, language: 'cpp')
     endif
@@ -42,7 +43,7 @@ config.set('kernel_type', get_option('kernel_type'))
 config.set('kernel_header', get_option('kernel_header'))
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.19.2')
+unistdx = dependency('unistdx', version: '>=0.19.10')
 gtest = dependency('gtest', main: true)
 
 src = include_directories('src')

@@ -13,7 +13,7 @@ auto dts::cluster::nodes() -> std::vector<cluster_node> {
     }
     auto address = this->_network.begin();
     auto peer_address = this->_peer_network.begin();
-    auto ndigits = std::to_string(num_nodes).size();
+    auto ndigits = num_nodes/10+1;
     for (size_t i=0; i<num_nodes; ++i) {
         result.emplace_back();
         auto& node = result.back();

@@ -14,6 +14,7 @@
 #include <unistdx/ipc/argstream>
 #include <unistdx/ipc/execute>
 #include <unistdx/ipc/process>
+#include <unistdx/net/veth_interface>
 
 #include <subordination/config.hh>
 
@@ -260,7 +261,7 @@ int main(int argc, char* argv[]) {
             log("failed to execute _: _", args, err.what());
         }
         return 1;
-    }};
+    }, sys::process_flag::fork, 4096*10};
     stderr.out().close();
     sys::event_poller poller;
     poller.emplace(stderr.in().fd(), sys::event::in);
@@ -276,7 +277,7 @@ int main(int argc, char* argv[]) {
         [&] () { test_application(all_lines, _fanout, _num_nodes); },
     };
     auto ntests = tests.size();
-    std::vector<std::string> errors(ntests);
+    std::vector<std::string> errors(ntests), errors0(ntests);
     bool success = false;
     poller.wait(lock, [&] () {
         auto pipe_fd = poller.pipe_in();
@@ -313,14 +314,18 @@ int main(int argc, char* argv[]) {
                 errors[i] = err.what();
             }
         }
-        for (size_t i=0; i<ntests; ++i) {
-            std::cerr << "Test #" << (i+1);
-            if (errors[i].empty()) {
-                std::cerr << " OK\n";
-            } else {
-                std::cerr << " FAIL\n" << errors[i] << '\n';
+        if (errors != errors0) {
+            std::cerr << "========================================\n";
+            for (size_t i=0; i<ntests; ++i) {
+                std::cerr << "Test #" << (i+1);
+                if (errors[i].empty()) {
+                    std::cerr << " OK\n";
+                } else {
+                    std::cerr << " FAIL\n" << errors[i] << '\n';
+                }
             }
         }
+        std::swap(errors0, errors);
         return success;
     });
     child.terminate();

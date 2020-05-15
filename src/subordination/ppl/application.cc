@@ -256,7 +256,10 @@ sbn::application
     }*/
     //sys::log_message("app", "execute _", env);
     // switch user and group IDs
-    sys::this_process::set_identity(this->_uid, this->_gid);
+    if (sys::this_process::user() != this->_uid ||
+        sys::this_process::group() != this->_gid) {
+        sys::this_process::set_identity(this->_uid, this->_gid);
+    }
     // change working directory
     if (!this->_workdir.empty()) {
         sys::this_process::workdir(this->_workdir);
