@@ -17,14 +17,14 @@ env | grep -E '^(CI_|HOME|SINGULARITY|GUIX)' | sort | column -t -s= -R 1
 echo
 
 /usr/libexec/gitbucket-ci << EOF
-# prefix all commands with
-# slurm_job TESTNAME CMD ARG1 ARG2
+export SBN_MANIFEST=ci
 
 test_flags() {
 	flags="\$@"
     d=/var/tmp/\$(uuidgen)
 	echo "
 		set -ex
+        export PYTHONUNBUFFERED=1
 		meson \$flags . \$d
 		cd \$d
 		meson test --verbose
@@ -46,6 +46,5 @@ then
 		rsync -acv --delete html/ $CMMSHQ_URL/
 	"
 fi
-
 EOF
 
