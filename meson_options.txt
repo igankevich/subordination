@@ -1,14 +1,14 @@
 option(
 	'kernel_type',
 	type: 'string',
-	value: '::bsc::kernel',
+	value: '::sbn::kernel',
 	description: 'base type for all kernels'
 )
 
 option(
 	'kernel_header',
 	type: 'string',
-	value: 'bscheduler/kernel/kernel.hh',
+	value: 'subordination/kernel/kernel.hh',
 	description: 'header file containing definition of kernel_type'
 )
 
@@ -24,4 +24,18 @@ option(
 	type: 'string',
 	value: 'lib/systemd/system',
 	description: 'systemd unit directory'
+)
+
+option(
+	'with_site',
+	type: 'boolean',
+	value: false,
+	description: 'build documentation and web pages'
+)
+
+option(
+	'with_rpm',
+	type: 'boolean',
+	value: false,
+	description: 'build RPM package'
 )

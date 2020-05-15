@@ -1,104 +1,109 @@
-test(
-	'queue-pusher-test',
-	executable(
-		'queue-pusher-test',
-		sources: 'queue_pusher_test.cc',
-		include_directories: srcdir,
-		dependencies: [unistdx, gtest, bscheduler_core]
-	)
+empty_exe = executable('empty', sources: 'empty.cc')
+test_config = configuration_data()
+test_config.set('empty_exe_path', empty_exe.full_path())
+configure_file(
+    input: 'config.hh.in',
+    output: 'config.hh',
+    configuration: test_config
 )
 
 test(
-	'kstream-test',
-	executable(
-		'kstream-test',
-		sources: 'kstream_test.cc',
-		include_directories: srcdir,
-		dependencies: [unistdx, gtest, bscheduler_daemon],
-		cpp_args: ['-DBSCHEDULER_DAEMON']
-	)
+    'queue-pusher-test',
+    executable(
+        'queue-pusher-test',
+        sources: 'queue_pusher_test.cc',
+        include_directories: src,
+        dependencies: [unistdx, gtest, subordination_core]
+    )
 )
 
 test(
-	'local-server-test',
-	executable(
-		'local-server-test',
-		sources: 'local_server_test.cc',
-		include_directories: srcdir,
-		dependencies: [unistdx, gtest, bscheduler_daemon],
-		cpp_args: ['-DBSCHEDULER_DAEMON']
-	)
+    'kstream-test',
+    executable(
+        'kstream-test',
+        sources: 'kstream_test.cc',
+        include_directories: src,
+        dependencies: [unistdx, gtest, subordination_daemon],
+        cpp_args: ['-DSUBORDINATION_DAEMON']
+    )
 )
 
-test_runner = executable(
-	'test-runner',
-	sources: 'test_runner.cc',
-	include_directories: srcdir,
-	dependencies: unistdx
+test(
+    'local-server-test',
+    executable(
+        'local-server-test',
+        sources: 'local_server_test.cc',
+        include_directories: src,
+        dependencies: [unistdx, gtest, subordination_daemon],
+        cpp_args: ['-DSUBORDINATION_DAEMON']
+    )
 )
 
 socket_pipeline_test = executable(
-	'socket-pipeline-test',
-	sources: 'socket_pipeline_test.cc',
-	dependencies: [threads, unistdx, gtest, bscheduler_daemon],
-	include_directories: srcdir,
-	cpp_args: ['-DBSCHEDULER_DAEMON']
+    'socket-pipeline-test',
+    sources: 'socket_pipeline_test.cc',
+    dependencies: [threads, unistdx, gtest, subordination_daemon],
+    include_directories: src,
+    cpp_args: ['-DSUBORDINATION_DAEMON']
 )
 
 test(
-	'socket-pipeline-no-failure',
-	test_runner,
-	args: [
-		'--strategy=master-slave',
-		'--exec', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
-		'--exec', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
-	],
-	workdir: meson.current_build_dir()
+    'socket-pipeline-no-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'master',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
 )
 
 test(
-	'socket-pipeline-slave-failure',
-	test_runner,
-	args: [
-		'--strategy=master-slave',
-		'--exec', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
-		'--exec', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
-	],
-	workdir: meson.current_build_dir()
+    'socket-pipeline-slave-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'master',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
 )
 
 test(
-	'timer-pipeline-test',
-	executable(
-		'timer-pipeline-test',
-		sources: 'timer_pipeline_test.cc',
-		dependencies: [threads, unistdx, gtest, bscheduler_daemon],
-		include_directories: srcdir,
-		cpp_args: ['-DBSCHEDULER_DAEMON']
-	)
+    'timer-pipeline-test',
+    executable(
+        'timer-pipeline-test',
+        sources: 'timer_pipeline_test.cc',
+        dependencies: [threads, unistdx, gtest, subordination_daemon],
+        include_directories: src,
+        cpp_args: ['-DSUBORDINATION_DAEMON']
+    )
 )
 
 app_exe = executable(
-	'process-pipeline-test-app',
-	sources: 'process_pipeline_test.cc',
-	dependencies: [threads, unistdx, bscheduler_app],
-	include_directories: srcdir,
-	cpp_args: [
-		'-DBSCHEDULER_APPLICATION',
-		'-DBSCHEDULER_TEST_APP',
-	]
+    'process-pipeline-test-app',
+    sources: 'process_pipeline_test.cc',
+    dependencies: [threads, unistdx, subordination_app],
+    include_directories: src,
+    cpp_args: [
+        '-DSUBORDINATION_APPLICATION',
+        '-DSUBORDINATION_TEST_APP',
+    ]
 )
 
 daemon_exe = executable(
-	'process-pipeline-test',
-	sources: 'process_pipeline_test.cc',
-	dependencies: [threads, unistdx, bscheduler_daemon],
-	include_directories: srcdir,
-	cpp_args: [
-		'-DBSCHEDULER_DAEMON',
-		'-DBSCHEDULER_TEST_SERVER',
-		'-DBSCHEDULER_APP_PATH=' + app_exe.full_path()
-	]
+    'process-pipeline-test',
+    sources: 'process_pipeline_test.cc',
+    dependencies: [threads, unistdx, subordination_daemon],
+    include_directories: src,
+    cpp_args: [
+        '-DSUBORDINATION_DAEMON',
+        '-DSUBORDINATION_TEST_SERVER',
+        '-DSUBORDINATION_APP_PATH=' + app_exe.full_path()
+    ]
 )
 
 test('process-pipeline', daemon_exe)

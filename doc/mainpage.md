@@ -1,6 +1,6 @@
-\mainpage Introduction to Bscheduler
+\mainpage Introduction
 
-Factory is a framework for developing distributed applications which features
+Subordination is a framework for developing distributed applications which features
 - \ref api "concise API" consisting of a few base classes and a handful of
   global functions and allowing fully asycnhronous execution of your code;
 - \ref kernel-failures "automatic fault-tolerance" for batch processing
@@ -20,10 +20,10 @@ TODO
 
 \section license License
 
-TODO
+GPL3+
 
 \section contributing Contributing
 
 Feel free to contribute or post a bug at project page listed below.
-- Source code repository: <https://github.com/igankevich/bscheduler>
-- Issue tracker: <https://github.com/igankevich/bscheduler/issues>
+- Source code repository: <https://github.com/igankevich/subordination>
+- Issue tracker: <https://github.com/igankevich/subordination/issues>

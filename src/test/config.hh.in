@@ -1,0 +1,6 @@
+#ifndef TEST_CONFIG_HH_IN
+#define TEST_CONFIG_HH_IN
+
+#define SBN_TEST_EMPTY_EXE_PATH "@empty_exe_path@"
+
+#endif // vim:filetype=cpp

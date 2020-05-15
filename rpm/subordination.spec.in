@@ -1,0 +1,95 @@
+Name:           @name@
+Version:        @version@
+Release:        @release@%{?dist}
+Summary:        Distributed programming C++ framework
+
+License:        @license@
+URL:            https://igankevich.github.io/subordination/index.html
+Source0:        @name@-%{version}.tar.xz
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+%{?systemd_ordering}
+Requires(pre): shadow-utils
+Requires(post): /sbin/ldconfig
+Requires(postun): /sbin/ldconfig
+
+%description
+Fault tolerant batch job scheduler.
+
+%package        libs
+Summary:        Subordination libraries
+Requires:       %{name}%{?_isa} = %{version}-%{release}
+
+%description    libs
+The %{name}-libs package contains common %{name} libraries.
+
+%package        devel
+Summary:        Development files for %{name}
+Requires:       %{name}%{?_isa} = %{version}-%{release}
+Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
+
+%description    devel
+The %{name}-devel package contains libraries and header files for
+developing applications that use %{name}.
+
+%global debug_package %{nil}
+
+%prep
+%autosetup
+
+%build
+%meson
+%meson_build
+
+%install
+%meson_install
+
+%check
+
+%pre
+getent group subordination >/dev/null || groupadd -r subordination
+getent passwd subordination >/dev/null || \
+	useradd -r -s /sbin/nologin -d / -g subordination \
+		-c "Subordination daemon user" subordination
+
+%post
+%systemd_post subordination.service
+
+%post libs -p /sbin/ldconfig
+
+%preun
+%systemd_preun subordination.service
+
+%postun
+%systemd_postun_with_restart subordination.service
+
+%postun libs -p /sbin/ldconfig
+
+%files
+%defattr(0755,root,root,0755)
+%{_bindir}/submit
+%{_sbindir}/subordination
+%defattr(0644,root,root,0755)
+%{_unitdir}/subordination.service
+%config(noreplace) %{_sysconfdir}/sysconfig/subordination
+
+%files libs
+%defattr(0755,root,root,0755)
+%{_libdir}/libsubordination-app.so.*
+%{_libdir}/libsubordination-core.so.*
+%{_libdir}/libsubordination-daemon.so.*
+%{_libdir}/libsubordination-submit.so.*
+
+%files devel
+%defattr(0644,root,root,0755)
+%{_includedir}/subordination
+%{_libdir}/pkgconfig/subordination-*.pc
+%{_libdir}/libsubordination-*.so
+
+%changelog
+* Sat Dec 1 2018 Ivan Gankevich <i.gankevich@spbu.ru> 0.2.2-1
+Update for the latest unistdx version.
+* Wed Oct 25 2017 Ivan Gankevich <igankevich@ya.ru> 0.2-6
+Split into three subpackages.
+* Wed Sep 27 2017 Ivan Gankevich <igankevich@ya.ru> 0.2-1
+Packaged everything.

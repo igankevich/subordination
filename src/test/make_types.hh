@@ -3,8 +3,8 @@
 
 template <class A, class B>
 struct TypePair {
-	typedef A First;
-	typedef B Second;
+    typedef A First;
+    typedef B Second;
 };
 
 #define MAKE_TYPES(...) ::testing::Types<__VA_ARGS__>
@@ -12,4 +12,3 @@ struct TypePair {
 #define MAKE_TYPE_PAIR(a, b) ::TypePair<a,b>
 
 #endif // vim:filetype=cpp
-

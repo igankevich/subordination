@@ -27,47 +27,47 @@ using namespace autoreg;
 
 typedef float Real;
 
-struct Autoreg_app: public bsc::kernel {
+struct Autoreg_app: public sbn::kernel {
 
-	Autoreg_app():
-	model_filename("autoreg.model")
-	{}
+    Autoreg_app():
+    model_filename("autoreg.model")
+    {}
 
-	template<class XXX>
-	Autoreg_app(XXX&, int, char**):
-	Autoreg_app()
-	{}
+    template<class XXX>
+    Autoreg_app(XXX&, int, char**):
+    Autoreg_app()
+    {}
 
-	void
-	act() {
-		Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
-		try {
-			std::ifstream cfg(model_filename.c_str());
-			if (cfg.is_open()) {
-				cfg >> *model;
-			} else {
-				#ifndef NDEBUG
-				sys::log_message("autoreg", "using default parameters");
-				#endif
-			}
-		} catch (const std::exception& e) {
-			std::cerr << e.what();
-			exit(1);
-		}
-		bsc::upstream(this, model);
-	}
+    void
+    act() {
+        Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
+        try {
+            std::ifstream cfg(model_filename.c_str());
+            if (cfg.is_open()) {
+                cfg >> *model;
+            } else {
+                #ifndef NDEBUG
+                sys::log_message("autoreg", "using default parameters");
+                #endif
+            }
+        } catch (const std::exception& e) {
+            std::cerr << e.what();
+            exit(1);
+        }
+        sbn::upstream(this, model);
+    }
 
-	void
-	react(bsc::kernel*) {
-		#ifndef NDEBUG
-		sys::log_message("autoreg", "finished all");
-		#endif
-		bsc::commit(this);
-	}
+    void
+    react(sbn::kernel*) {
+        #ifndef NDEBUG
+        sys::log_message("autoreg", "finished all");
+        #endif
+        sbn::commit(this);
+    }
 
 private:
 
-	std::string model_filename;
+    std::string model_filename;
 
 };
 
