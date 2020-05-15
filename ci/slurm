@@ -1,11 +1,11 @@
 #!/bin/sh
 
-CMMSHQ_URL="cmmshq.ru:/usr/share/nginx/html/doc/subordination"
+CMMSHQ_URL="cmmshq.ru:/srv/subordination"
 
 if test "$CI_PULL_REQUEST" != "false"
 then
-	echo "Skipping pull requests"
-	exit 0
+    echo "Skipping pull requests"
+    exit 0
 fi
 
 export GUIX_MANIFEST=guix/manifest.scm
@@ -16,19 +16,37 @@ echo "Environment:"
 env | grep -E '^(CI_|HOME|SINGULARITY|GUIX)' | sort | column -t -s= -R 1
 echo
 
+if test "$CI_BUILD_BRANCH" = "site"
+then
+    echo "Building the site"
+    echo
+/usr/libexec/gitbucket-ci << EOF
+export SBN_MANIFEST=ci,site
+slurm_job "site" sh -c "
+    set -ex
+    meson -Dwith_site=true . \$d
+    cd \$d
+    ninja -v site
+    rsync -e 'ssh -p 22222' -acv --delete html/ $CMMSHQ_URL/
+    rm -rf \$d
+"
+EOF
+else
+    echo "Building the project"
+    echo
 /usr/libexec/gitbucket-ci << EOF
 export SBN_MANIFEST=ci
 
 test_flags() {
-	flags="\$@"
+    flags="\$@"
     d=/var/tmp/\$(uuidgen)
-	echo "
-		set -ex
+    echo "
+        set -ex
         export PYTHONUNBUFFERED=1
-		meson \$flags . \$d
-		cd \$d
-		meson test --verbose
-		rm -rf \$d"
+        meson \$flags . \$d
+        cd \$d
+        meson test --verbose
+        rm -rf \$d"
 }
 
 slurm_job "sanitize-address" sh -c "\$(test_flags -Db_sanitize=address)"
@@ -37,14 +55,14 @@ slurm_job "sanitize-none" sh -c "\$(test_flags -Db_sanitize=none)"
 # build documentation
 if test "$CI_BUILD_BRANCH" = "dev" || test -n "$CI_PULL_REQUEST"
 then
-	d=/var/tmp/\$(uuidgen)
-	slurm_job "doc" sh -c "
-		set -ex
-		meson -Dwith_doc=true . \$d
-		cd \$d
-		ninja -v doc
-		rsync -acv --delete html/ $CMMSHQ_URL/
-	"
+    d=/var/tmp/\$(uuidgen)
+    slurm_job "doc" sh -c "
+        set -ex
+        meson -Dwith_doc=true . \$d
+        cd \$d
+        ninja -v doc
+        rsync -acv --delete html/ $CMMSHQ_URL/
+    "
 fi
 EOF
-
+fi

@@ -25,7 +25,7 @@ foreach arg : ['-Werror=return-type', '-Werror=return-local-addr',
     endif
 endforeach
 
-with_doc = get_option('with_doc')
+with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
 
 profiling_args = []
@@ -54,7 +54,7 @@ if with_rpm
     subdir('rpm')
 endif
 
-if with_doc
+if with_site
     subdir('doc')
 endif
 

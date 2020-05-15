@@ -27,10 +27,10 @@ option(
 )
 
 option(
-	'with_doc',
+	'with_site',
 	type: 'boolean',
 	value: false,
-	description: 'build documentation'
+	description: 'build documentation and web pages'
 )
 
 option(

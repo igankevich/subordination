@@ -49,8 +49,8 @@ if doxygen.found() and python.found()
     doxyfile.set('HTML_OUTPUT', html_dir)
     configure_file(input: 'Doxyfile.in', output: 'Doxyfile', configuration: doxyfile)
     run_target(
-        'doc',
+        'site',
         command: [python, join_paths(meson.current_build_dir(), 'build.py')],
     )
-    run_target('doc-server', command: [python, '-m', 'http.server', '--directory', html_dir])
+    run_target('site-server', command: [python, '-m', 'http.server', '--directory', html_dir])
 endif
