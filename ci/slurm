@@ -51,18 +51,5 @@ test_flags() {
 
 slurm_job "sanitize-address" sh -c "\$(test_flags -Db_sanitize=address)"
 slurm_job "sanitize-none" sh -c "\$(test_flags -Db_sanitize=none)"
-
-# build documentation
-if test "$CI_BUILD_BRANCH" = "dev" || test -n "$CI_PULL_REQUEST"
-then
-    d=/var/tmp/\$(uuidgen)
-    slurm_job "doc" sh -c "
-        set -ex
-        meson -Dwith_doc=true . \$d
-        cd \$d
-        ninja -v doc
-        rsync -acv --delete html/ $CMMSHQ_URL/
-    "
-fi
 EOF
 fi
