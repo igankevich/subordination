@@ -1,7 +1,5 @@
 #!/bin/sh
 
-CMMSHQ_URL="cmmshq.ru:/srv/subordination"
-
 if test "$CI_PULL_REQUEST" != "false"
 then
     echo "Skipping pull requests"
@@ -25,33 +23,34 @@ export SBN_MANIFEST=ci,site
 slurm_job "site" sh -c '
     set -ex
     export PYTHONUNBUFFERED=1
-    d=/tmp/sbn-$(uuidgen)
+    dst="cmmshq.ru:/srv/subordination"
+    d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
     meson -Dwith_site=true . $d
     cd $d
     ninja -v site
-    rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ $CMMSHQ_URL/
+    rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ $dst/
     rm -rf $d
 '
 EOF
 else
     echo "Building the project"
     echo
-/usr/libexec/gitbucket-ci << EOF
+/usr/libexec/gitbucket-ci << 'EOF'
 export SBN_MANIFEST=ci
 
 test_flags() {
-    flags="\$@"
-    d=/tmp/sbn-\$(uuidgen)
+    flags="$@"
     echo "
         set -ex
         export PYTHONUNBUFFERED=1
-        meson \$flags . \$d
-        cd \$d
+        d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
+        meson $flags . $d
+        cd $d
         meson test --verbose
-        rm -rf \$d"
+        rm -rf $d"
 }
 
-slurm_job "sanitize-address" sh -c "\$(test_flags -Db_sanitize=address)"
-slurm_job "sanitize-none" sh -c "\$(test_flags -Db_sanitize=none)"
+slurm_job "sanitize-address" sh -c "$(test_flags -Db_sanitize=address)"
+slurm_job "sanitize-none" sh -c "$(test_flags -Db_sanitize=none)"
 EOF
 fi
