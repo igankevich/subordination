@@ -1,26 +1,3 @@
-(use-package-modules
- base
- build-tools
- check
- cmake
- commencement
- compression
- gcc
- ninja
- pkg-config
- unistdx
- pre-commit
- curl
- graphviz
- documentation
- perl
- tex
- guile-xyz
- groff
- rsync
- ssh
- bash)
-
 (define sbn-manifest
   (let ((v (getenv "SBN_MANIFEST")))
     (if v (string-split v #\,) '())))
@@ -31,16 +8,28 @@
 (packages->manifest
  (append
   (list
+   (@ (gnu packages build-tools) meson)
+   (@ (gnu packages ninja) ninja)
+   (@ (gnu packages cmake) cmake)
+   (@ (gnu packages pkg-config) pkg-config)
+   (@ (gnu packages commencement) gcc-toolchain-9)
+   (list (@ (gnu packages gcc) gcc-9) "lib")
+   (@ (gnu packages check) googletest)
    (@ (gnu packages unistdx) unistdx)
-   (list gcc-9 "lib")
-   gcc-toolchain-9
-   googletest
-   pkg-config
-   cmake
-   ninja
-   meson
-   python-pre-commit
-   zlib)
-  (if-enabled "site" (list curl graphviz doxygen perl texlive-bin haunt
-                           guile-syntax-highlight groff))
-  (if-enabled "ci" (list rsync openssh coreutils bash))))
+   (@ (gnu packages pre-commit) python-pre-commit)
+   (@ (gnu packages compression) zlib))
+  (if-enabled "site"
+              (list
+               (@ (gnu packages documentation) doxygen)
+               (@ (gnu packages tex) texlive-bin)
+               (@ (gnu packages guile) guile-2.2)
+               (@ (gnu packages guile-xyz) haunt)
+               (@ (gnu packages guile-xyz) guile-syntax-highlight)
+               (@ (gnu packages groff) groff)
+               (@ (gnu packages xml) libxslt)))
+  (if-enabled "ci"
+              (list
+               (@ (gnu packages rsync) rsync)
+               (@ (gnu packages ssh) openssh)
+               (@ (gnu packages base) coreutils)
+               (@ (gnu packages bash) bash)))))

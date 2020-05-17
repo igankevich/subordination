@@ -1,8 +1,5 @@
-#ifndef DOC_PAGES_TUTORIAL_HH
-#define DOC_PAGES_TUTORIAL_HH
-
-/**
 \page tutorial Tutorial
+\ingroup tutorials
 
 Every Subordination application is composed of computational \link sbn::kernel <em>
 kernels</em>\endlink --- self-contained objects which store data and have routines
@@ -24,7 +21,7 @@ construction of a subordinate kernel and sending it to appropriate pipeline.
 The difference is that pipelines process kernels \em asynchronously, so
 procedure code is decomposed into \link sbn::kernel::act()
 <code>act()</code>\endlink routine which constructs subordinates and \link
-sbn::kernel::react(kernel*) <code>react()</code>\endlink routine which
+sbn::kernel::react <code>react()</code>\endlink routine which
 processes results they return.
 
 \section api Developing distributed applications
@@ -37,10 +34,10 @@ these are standard
 - \link sbn::timer_pipeline Timer pipeline\endlink (for periodic and
   schedule-based execution of kernels).
 
-Standard pipelines for all devices except NIC are initialised in \c
-subordination/api.hh header. To initialise NIC pipeline you need to tell it which
-pipeline is local and which one is remote. The following code snippet shows the
-usual way of doing this.
+Standard pipelines for all devices except NIC are initialised in <a
+href="/files/api.hh.html">subordination/api.hh</a> header. To
+initialise NIC pipeline you need to tell it which pipeline is local and which
+one is remote. The following code snippet shows the usual way of doing this.
 
 \code{.cpp}
 #include <subordination/api.hh>
@@ -163,7 +160,7 @@ source code development approach which means we create low-level abstractions
 to simplify high-level code and make it clean and readable. There are three
 layers of abstractions:
 
-- \link sys operating system layer\endlink, which contains thin C++ wrappers
+- operating system layer, which contains thin C++ wrappers
   for POSIX and Linux system calls and data structures, and
 - generic C++ abstractions layer,
 - top layer which contains all business logic.
@@ -172,7 +169,3 @@ From the developer perspective it is unclear which layer is the bottom one, but
 still we would like to separate them via
 <a href="https://erdani.com/publications/xp2000.pdf">policy-based programming</a>
 and <a href="http://erdani.com/publications/traits.html">traits classes</a>.
-
-*/
-
-#endif // vim:filetype=cpp

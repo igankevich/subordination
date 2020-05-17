@@ -13,7 +13,7 @@ export GUIX_CHANNELS=guix/channels.scm
 
 echo
 echo "Environment:"
-env | grep -E '^(CI_|HOME|SINGULARITY|GUIX)' | sort | column -t -s= -R 1
+env | grep -E '^(CI_|HOME|GUIX)' | sort | column -t -s= -R 1
 echo
 
 if test "$CI_BUILD_BRANCH" = "site"
@@ -24,10 +24,11 @@ then
 export SBN_MANIFEST=ci,site
 slurm_job "site" sh -c "
     set -ex
+    export PYTHONUNBUFFERED=1
     meson -Dwith_site=true . \$d
     cd \$d
     ninja -v site
-    rsync -e 'ssh -p 22222' -acv --delete html/ $CMMSHQ_URL/
+    rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ $CMMSHQ_URL/
     rm -rf \$d
 "
 EOF
@@ -39,7 +40,7 @@ export SBN_MANIFEST=ci
 
 test_flags() {
     flags="\$@"
-    d=/var/tmp/\$(uuidgen)
+    d=/tmp/sbn-\$(uuidgen)
     echo "
         set -ex
         export PYTHONUNBUFFERED=1

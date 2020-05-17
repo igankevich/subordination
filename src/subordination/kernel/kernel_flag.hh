@@ -7,7 +7,7 @@ namespace sbn {
     enum struct kernel_flag {
         deleted = 0,
         /**
-           Setting the flag tells \link sbn::kstream\endlink that
+           Setting the flag tells \link sbn::kstream \endlink that
            the kernel carries a backup copy of its parent to the subordinate
            node. This is the main mechanism of providing fault tolerance for
            principal kernels, it works only when <em>principal kernel have

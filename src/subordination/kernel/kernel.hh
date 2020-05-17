@@ -109,11 +109,11 @@ namespace sbn {
         void
         write(sys::pstream& out) const override;
 
-        virtual void
-        act();
+        /// \brief Performs the task or launches subordinate kernels to do so.
+        virtual void act();
 
-        virtual void
-        react(kernel* child);
+        /// \brief Collects the output from the task from subordinate kernel \p child.
+        virtual void react(kernel* child);
 
         virtual void
         error(kernel* rhs);

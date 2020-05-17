@@ -89,9 +89,9 @@ namespace sbn {
     };
 
     /**
-    \brief Construct \link queue_push_iterator\endlink
+    \brief Construct \link queue_push_iterator \endlink
     which inserts elements to container \p rhs.
-    \details This iterator uses \link queue_traits\endlink.
+    \details This iterator uses \link queue_traits \endlink.
     */
     template<class C>
     inline queue_push_iterator<C>
@@ -101,7 +101,7 @@ namespace sbn {
 
     /**
     \copybrief queue_pusher
-    \details This iterator uses \link priority_queue_traits\endlink.
+    \details This iterator uses \link priority_queue_traits \endlink.
     */
     template<class C>
     inline queue_push_iterator<C,priority_queue_traits<C>>
@@ -111,7 +111,7 @@ namespace sbn {
 
     /**
     \copybrief queue_pusher
-    \details This iterator uses \link deque_traits\endlink.
+    \details This iterator uses \link deque_traits \endlink.
     */
     template<class C>
     inline queue_push_iterator<C,deque_traits<C>>

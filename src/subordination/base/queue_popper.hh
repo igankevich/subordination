@@ -108,9 +108,9 @@ namespace sbn {
     };
 
     /**
-    \brief Construct \link queue_pop_iterator\endlink
+    \brief Construct \link queue_pop_iterator \endlink
     which "points" to the beginning of container \p cont.
-    \details This iterator uses \link queue_traits\endlink.
+    \details This iterator uses \link queue_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C>
@@ -119,9 +119,9 @@ namespace sbn {
     }
 
     /**
-    \brief Construct \link queue_pop_iterator\endlink
+    \brief Construct \link queue_pop_iterator \endlink
     which "points" to the end of container.
-    \details This iterator uses \link queue_traits\endlink.
+    \details This iterator uses \link queue_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C>
@@ -131,7 +131,7 @@ namespace sbn {
 
     /**
     \copybrief queue_popper
-    \details This iterator uses \link priority_queue_traits\endlink.
+    \details This iterator uses \link priority_queue_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C,priority_queue_traits<C>>
@@ -141,7 +141,7 @@ namespace sbn {
 
     /**
     \copybrief queue_popper_end
-    \details This iterator uses \link priority_queue_traits\endlink.
+    \details This iterator uses \link priority_queue_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C,priority_queue_traits<C>>
@@ -151,7 +151,7 @@ namespace sbn {
 
     /**
     \copybrief queue_popper
-    \details This iterator uses \link deque_traits\endlink.
+    \details This iterator uses \link deque_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C,deque_traits<C>>
@@ -161,7 +161,7 @@ namespace sbn {
 
     /**
     \copybrief queue_popper_end
-    \details This iterator uses \link deque_traits\endlink.
+    \details This iterator uses \link deque_traits \endlink.
     */
     template<class C>
     inline queue_pop_iterator<C,deque_traits<C>>

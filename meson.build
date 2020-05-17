@@ -2,7 +2,7 @@ project(
     'subordination',
     'cpp',
     version: '0.2.5',
-    meson_version: '>=0.46.0',
+    meson_version: '>=0.47.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'
 )
@@ -52,10 +52,6 @@ subdir('src')
 
 if with_rpm
     subdir('rpm')
-endif
-
-if with_site
-    subdir('doc')
 endif
 
 # cppcheck {{{

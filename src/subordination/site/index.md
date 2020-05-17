@@ -1,4 +1,4 @@
-\mainpage Introduction
+\mainpage Subordination
 
 Subordination is a framework for developing distributed applications which features
 - \ref api "concise API" consisting of a few base classes and a handful of
@@ -10,20 +10,5 @@ Subordination is a framework for developing distributed applications which featu
 - \ref bottomup "bottom-up programming" approach which makes source code base
   easy to extend an maintain.
 
-\section usage Usage
-
-\ref tutorial
-
-\section install Installation
-
-TODO
-
-\section license License
-
-GPL3+
-
-\section contributing Contributing
-
-Feel free to contribute or post a bug at project page listed below.
-- Source code repository: <https://github.com/igankevich/subordination>
-- Issue tracker: <https://github.com/igankevich/subordination/issues>
+\defgroup tutorials Tutorials
+\brief First steps.

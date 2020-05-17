@@ -81,3 +81,7 @@ subordination_app = declare_dependency(
 )
 
 subdir('daemon')
+if with_site
+    subdir('doxygen')
+    subdir('site')
+endif
