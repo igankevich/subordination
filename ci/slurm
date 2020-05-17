@@ -20,18 +20,18 @@ if test "$CI_BUILD_BRANCH" = "site"
 then
     echo "Building the site"
     echo
-/usr/libexec/gitbucket-ci << EOF
+/usr/libexec/gitbucket-ci << 'EOF'
 export SBN_MANIFEST=ci,site
-slurm_job "site" sh -c "
+slurm_job "site" sh -c '
     set -ex
     export PYTHONUNBUFFERED=1
-    d=/tmp/sbn-\$(uuidgen)
-    meson -Dwith_site=true . \$d
-    cd \$d
+    d=/tmp/sbn-$(uuidgen)
+    meson -Dwith_site=true . $d
+    cd $d
     ninja -v site
     rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ $CMMSHQ_URL/
-    rm -rf \$d
-"
+    rm -rf $d
+'
 EOF
 else
     echo "Building the project"
