@@ -28,7 +28,7 @@ slurm_job "site" sh -c '
     meson -Dwith_site=true . $d
     cd $d
     ninja -v site
-    rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ $dst/
+    rsync -e "ssh -p 22222" -acv --delete src/subordination/site/ $dst/
     rm -rf $d
 '
 EOF
