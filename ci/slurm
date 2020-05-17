@@ -40,14 +40,14 @@ export SBN_MANIFEST=ci
 
 test_flags() {
     flags="$@"
-    echo "
+    echo '
         set -ex
         export PYTHONUNBUFFERED=1
         d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
-        meson $flags . $d
+        meson '$flags' . $d
         cd $d
         meson test --verbose
-        rm -rf $d"
+        rm -rf $d'
 }
 
 slurm_job "sanitize-address" sh -c "$(test_flags -Db_sanitize=address)"
