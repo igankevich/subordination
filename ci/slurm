@@ -25,6 +25,7 @@ export SBN_MANIFEST=ci,site
 slurm_job "site" sh -c "
     set -ex
     export PYTHONUNBUFFERED=1
+    d=/tmp/sbn-\$(uuidgen)
     meson -Dwith_site=true . \$d
     cd \$d
     ninja -v site
