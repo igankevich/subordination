@@ -7,7 +7,7 @@ std_tag_xml = join_paths(meson.build_root(), 'std.tag.xml')
 std_tag_url = 'http://en.cppreference.com/w/'
 build_py = configuration_data()
 build_py.set('build_root', meson.build_root())
-build_py.set('current_build_dir', meson.current_build_dir())
+build_py.set('current_source_dir', meson.current_source_dir())
 build_py.set('std_tag_xml', std_tag_xml)
 build_py.set('doxygen', doxygen.path())
 build_py.set('doxyfile', doxyfile_path)

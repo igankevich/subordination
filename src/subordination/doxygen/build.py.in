@@ -14,7 +14,7 @@ if not os.path.isfile(std_tag_xml):
 
 # N.B. Doxygen is sensitive to the working directory if you use pages.
 # Always run it in the current source directory.
-os.chdir('@current_build_dir@')
+os.chdir('@current_source_dir@')
 os.system('@doxygen@ @doxyfile@')
 
 # vim:filetype=python

@@ -1271,7 +1271,7 @@
 (if man-output-dir (process-man))
 (if assets-output-dir (process-images))
 (remove-anonymous-members)
-(remove-src-dir)
+;;(remove-src-dir)
 (post-process-locations)
 (index-file-definitions)
 (index-namespace-definitions)
