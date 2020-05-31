@@ -54,9 +54,8 @@ public:
                     sys::this_process::hostname(),
                     sys::this_process::parent_id()
                 );
-                using namespace sys;
-                send(signal::kill, this_process::parent_id());
-                this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
+                send(sys::signal::kill, sys::this_process::parent_id());
+                sys::this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
             }
         }
         log("slave act id _ [_/_]", id(), this->_number, this->_nslaves);
