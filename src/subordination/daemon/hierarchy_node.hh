@@ -70,10 +70,23 @@ namespace sbn {
         friend std::ostream&
         operator<<(std::ostream& out, const hierarchy_node& rhs);
 
+        void write(sys::pstream& out) const;
+        void read(sys::pstream& in);
+
     };
 
     std::ostream&
     operator<<(std::ostream& out, const hierarchy_node& rhs);
+
+    inline sys::pstream&
+    operator<<(sys::pstream& out, const hierarchy_node& rhs) {
+        rhs.write(out); return out;
+    }
+
+    inline sys::pstream&
+    operator>>(sys::pstream& in, hierarchy_node& rhs) {
+        rhs.read(in); return in;
+    }
 
     inline bool
     operator==(const hierarchy_node& lhs, const sys::socket_address& rhs) noexcept {

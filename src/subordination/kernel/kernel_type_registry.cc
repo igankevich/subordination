@@ -1,7 +1,7 @@
 #include <subordination/kernel/kernel_type_registry.hh>
 
-#include <ostream>
 #include <algorithm>
+#include <ostream>
 
 #include <subordination/kernel/kernel_error.hh>
 
@@ -48,13 +48,10 @@ sbn::kernel_type_registry::register_type(kernel_type type) {
     if (result != this->end()) {
         SUBORDINATION_THROW(kenel_type_error, type, *result);
     }
-    if (type) {
-        result = this->find(type.id());
-        if (result != this->end()) {
-            SUBORDINATION_THROW(kenel_type_error, type, *result);
-        }
-    } else {
-        type.setid(this->generate_id());
+    if (!type.has_id()) { throw std::invalid_argument("bad id"); }
+    result = this->find(type.id());
+    if (result != this->end()) {
+        SUBORDINATION_THROW(kenel_type_error, type, *result);
     }
     this->_types.emplace_back(type);
 }

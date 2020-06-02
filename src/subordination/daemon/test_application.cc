@@ -173,9 +173,9 @@ main(int argc, char* argv[]) {
     }
     using namespace sbn;
     install_error_handler();
-    register_type<slave_kernel>();
-    register_type<master_kernel>();
-    register_type<grand_master_kernel>();
+    register_type<slave_kernel>(1);
+    register_type<master_kernel>(2);
+    register_type<grand_master_kernel>(3);
     factory_guard g;
     if (this_application::is_master()) {
         if (test_master_failure()) {

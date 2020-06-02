@@ -196,8 +196,8 @@ namespace sbn {
         );
 
     private:
-        sys::socket_address _vaddr;
-        kernelbuf_ptr _packetbuf;
+        sys::socket_address _socket_address;
+        kernelbuf_ptr _buffer;
         stream_type _stream;
         protocol_type _proto;
         /// The number of nodes "behind" this one in the hierarchy.
@@ -208,9 +208,9 @@ namespace sbn {
         remote_client() = default;
 
         remote_client(socket_type&& sock, sys::socket_address vaddr, this_type& ppl):
-        _vaddr(vaddr),
-        _packetbuf(new kernelbuf_type),
-        _stream(_packetbuf.get()),
+        _socket_address(vaddr),
+        _buffer(new kernelbuf_type),
+        _stream(_buffer.get()),
         _proto(),
         _ppl(ppl) {
             this->_proto.setf(
@@ -218,8 +218,8 @@ namespace sbn {
                 kernel_proto_flag::save_upstream_kernels |
                 kernel_proto_flag::save_downstream_kernels
             );
-            this->_proto.set_endpoint(this->_vaddr);
-            this->_packetbuf->setfd(std::move(sock));
+            this->_proto.socket_address(this->_socket_address);
+            this->_buffer->setfd(std::move(sock));
         }
 
         remote_client&
@@ -262,35 +262,35 @@ namespace sbn {
                 this->setstate(pipeline_state::started);
             }
             if (event.in()) {
-                if (this->_packetbuf->is_safe_to_compact()) {
-                    this->_packetbuf->compact();
+                if (this->_buffer->is_safe_to_compact()) {
+                    this->_buffer->compact();
                 }
-                this->_packetbuf->pubfill();
+                this->_buffer->pubfill();
                 this->_proto.receive_kernels(this->_stream);
             }
         }
 
         void
         flush() override {
-            if (this->_packetbuf->dirty()) {
-                this->_packetbuf->pubflush();
+            if (this->_buffer->dirty()) {
+                this->_buffer->pubflush();
             }
         }
 
         inline const socket_type&
         socket() const noexcept {
-            return this->_packetbuf->fd();
+            return this->_buffer->fd();
         }
 
         inline socket_type&
         socket() noexcept {
-            return this->_packetbuf->fd();
+            return this->_buffer->fd();
         }
 
         void
         socket(sys::socket&& rhs) {
-            this->_packetbuf->pubsync();
-            this->_packetbuf->setfd(socket_type(std::move(rhs)));
+            this->_buffer->pubsync();
+            this->_buffer->setfd(socket_type(std::move(rhs)));
         }
 
         inline weight_type
@@ -304,8 +304,8 @@ namespace sbn {
         }
 
         inline const sys::socket_address&
-        vaddr() const noexcept {
-            return this->_vaddr;
+        socket_address() const noexcept {
+            return this->_socket_address;
         }
 
         inline void
@@ -313,8 +313,8 @@ namespace sbn {
             this->pipeline_base::set_name(rhs);
             this->_proto.set_name(rhs);
             #ifndef NDEBUG
-            if (this->_packetbuf) {
-                this->_packetbuf->set_name(rhs);
+            if (this->_buffer) {
+                this->_buffer->set_name(rhs);
             }
             #endif
         }
@@ -323,7 +323,7 @@ namespace sbn {
         write(std::ostream& out) const override {
             out << "client " << sys::make_object(
                 "vaddr",
-                this->vaddr(),
+                this->socket_address(),
                 "socket",
                 this->socket(),
                 "state",
@@ -331,16 +331,16 @@ namespace sbn {
                 "weight",
                 this->weight(),
                 "remaining",
-                this->_packetbuf->remaining(),
+                this->_buffer->remaining(),
                 "available",
-                this->_packetbuf->available()
+                this->_buffer->available()
                 );
         }
 
         void
         remove(sys::event_poller& poller) override {
-            poller.erase(this->_packetbuf->fd().fd());
-            this->_ppl.remove_client(this->vaddr());
+            poller.erase(this->_buffer->fd().fd());
+            this->_ppl.remove_client(this->socket_address());
         }
 
     };
@@ -407,7 +407,7 @@ void
 sbn::socket_pipeline<T,S,R>
 ::remove_client(const sys::socket_address& vaddr) {
     this->log("remove client _", vaddr);
-    client_iterator result = _clients.find(vaddr);
+    client_iterator result = this->_clients.find(vaddr);
     if (result != this->_clients.end()) {
         this->remove_client(result);
     }
@@ -493,7 +493,7 @@ sbn::socket_pipeline<T,S,R>
             router_type::forward_child(hdr);
         } else {
             #ifndef NDEBUG
-            this->log("fwd _ to _", *hdr, this->current_client().vaddr());
+            this->log("fwd _ to _", *hdr, this->current_client().socket_address());
             #endif
             this->current_client().forward(hdr);
             this->find_next_client();
@@ -682,7 +682,7 @@ sbn::socket_pipeline<T,S,R>
             }
         }
         if (success) {
-            ensure_identity(k, this->_iterator->second->vaddr());
+            ensure_identity(k, this->_iterator->second->socket_address());
             this->_iterator->second->send(k);
         }
         this->find_next_client();

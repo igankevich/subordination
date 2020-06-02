@@ -24,6 +24,6 @@ sbn::prober::send_probe(const sys::socket_address& dest) {
     ++this->_nprobes;
     probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
     p->to(dest);
-    p->set_principal_id(1);
+    p->set_principal_id(1); // TODO
     sbn::upstream<sbn::Remote>(this, p);
 }

@@ -1,8 +1,8 @@
 #ifndef SUBORDINATION_KERNEL_KERNEL_TYPE_REGISTRY_HH
 #define SUBORDINATION_KERNEL_KERNEL_TYPE_REGISTRY_HH
 
-#include <vector>
 #include <iosfwd>
+#include <vector>
 
 #include <subordination/kernel/kernel.hh>
 #include <subordination/kernel/kernel_type.hh>
@@ -42,17 +42,16 @@ namespace sbn {
         void
         register_type(kernel_type type);
 
-        template<class X>
-        void
-        register_type() {
+        template <class Type> void
+        register_type(id_type id) {
             this->register_type({
-                this->generate_id(),
+                id,
                 [] (sys::pstream& in) -> kernel* {
-                    X* k = new X;
+                    Type* k = new Type;
                     k->read(in);
                     return k;
                 },
-                typeid(X)
+                typeid(Type)
             });
         }
 
@@ -62,13 +61,6 @@ namespace sbn {
         kernel*
         read_object(sys::pstream& packet);
 
-    private:
-
-        inline id_type
-        generate_id() noexcept {
-            return ++this->_counter;
-        }
-
     };
 
     std::ostream&
@@ -76,10 +68,10 @@ namespace sbn {
 
     extern kernel_type_registry types;
 
-    template<class X>
+    template <class Type>
     inline void
-    register_type() {
-        types.register_type<X>();
+    register_type(kernel_type::id_type id) {
+        types.register_type<Type>(id);
     }
 
     inline void

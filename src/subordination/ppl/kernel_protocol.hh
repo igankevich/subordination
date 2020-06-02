@@ -45,7 +45,7 @@ namespace sbn {
     private:
         kernel_proto_flag _flags = kernel_proto_flag(0);
         /// Endpoint from which kernels come.
-        sys::socket_address _endpoint;
+        sys::socket_address _socket_address;
         /// Cluster-wide application ID.
         application_type _thisapp = this_application::get_id();
         /// Application of the kernels coming in.
@@ -90,7 +90,7 @@ namespace sbn {
             }
             bool delete_kernel = this->save_kernel(k);
             #ifndef NDEBUG
-            this->log("send _ to _", *k, this->_endpoint);
+            this->log("send _ to _", *k, this->_socket_address);
             #endif
             this->write_kernel(k, stream);
             /// The kernel is deleted if it goes downstream
@@ -115,12 +115,17 @@ namespace sbn {
             }
         }
 
-        void
-        receive_kernels(stream_type& stream) noexcept {
+        void receive_kernels(stream_type& stream) noexcept {
+            this->receive_kernels(stream, [] (kernel_type*) {});
+        }
+
+        template <class Callback> void
+        receive_kernels(stream_type& stream, Callback func) noexcept {
             while (stream.read_packet()) {
                 try {
                     if (kernel_type* k = this->read_kernel(stream)) {
                         bool ok = this->receive_kernel(k);
+                        func(k);
                         if (!ok) {
                             #ifndef NDEBUG
                             this->log("no principal found for _", *k);
@@ -211,8 +216,8 @@ namespace sbn {
                 hdr->setapp(this->other_application_id());
                 hdr->aptr(this->_otheraptr);
             }
-            if (this->_endpoint) {
-                hdr->from(this->_endpoint);
+            if (this->_socket_address) {
+                hdr->from(this->_socket_address);
                 hdr->prepend_source_and_destination();
             }
             #ifndef NDEBUG
@@ -228,7 +233,7 @@ namespace sbn {
                     k->from(hdr->from());
                     k->to(hdr->to());
                 } else {
-                    k->from(this->_endpoint);
+                    k->from(this->_socket_address);
                 }
                 if (k->carries_parent()) {
                     k->parent()->setapp(hdr->app());
@@ -479,13 +484,13 @@ namespace sbn {
         }
 
         inline void
-        set_endpoint(const sys::socket_address& rhs) noexcept {
-            this->_endpoint = rhs;
+        socket_address(const sys::socket_address& rhs) noexcept {
+            this->_socket_address = rhs;
         }
 
         inline const sys::socket_address&
         socket_address() const noexcept {
-            return this->_endpoint;
+            return this->_socket_address;
         }
 
     };

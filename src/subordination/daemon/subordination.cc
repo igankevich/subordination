@@ -6,10 +6,10 @@
 
 #include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
-#include <subordination/ppl/application_kernel.hh>
-
-#include <subordination/daemon/subordination_socket.hh>
+#include <subordination/config.hh>
 #include <subordination/daemon/network_master.hh>
+#include <subordination/daemon/status_kernel.hh>
+#include <subordination/ppl/application_kernel.hh>
 
 void
 print_state(int) {
@@ -45,11 +45,12 @@ main(int argc, char* argv[]) {
         nullptr
     };
     sys::parse_arguments(argc, argv, options);
-    install_error_handler();
+    //install_error_handler();
     install_debug_handler();
-    types.register_type<Application_kernel>();
-    types.register_type<probe>();
-    types.register_type<hierarchy_kernel>();
+    types.register_type<Application_kernel>(1);
+    types.register_type<probe>(2);
+    types.register_type<Hierarchy_kernel>(3);
+    types.register_type<Status_kernel>(4);
     factory_guard g;
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.external().add_server(
@@ -58,6 +59,7 @@ main(int argc, char* argv[]) {
     factory.child().allow_root(allow_root);
     #endif
     network_master* m = new network_master;
+    m->id(1);
     m->allow(servers);
     m->fanout(fanout);
     {

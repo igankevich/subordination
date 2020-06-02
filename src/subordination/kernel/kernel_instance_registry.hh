@@ -21,7 +21,6 @@ namespace sbn {
 
     private:
         container_type _instances;
-        mutable id_type _counter = 0;
         mutable std::mutex _mutex;
 
     public:
@@ -53,9 +52,7 @@ namespace sbn {
 
         inline void
         add(kernel_type* k) {
-            if (!k->has_id()) {
-                k->id(++this->_counter);
-            }
+            if (!k->has_id()) { throw std::invalid_argument("bad id"); }
             this->_instances[k->id()] = k;
         }
 

@@ -8,7 +8,7 @@
 
 namespace sbn {
 
-    class hierarchy_kernel: public sbn::kernel {
+    class Hierarchy_kernel: public sbn::kernel {
 
     public:
         typedef sys::ipv4_address addr_type;
@@ -20,10 +20,10 @@ namespace sbn {
 
     public:
 
-        hierarchy_kernel() = default;
+        Hierarchy_kernel() = default;
 
         inline
-        hierarchy_kernel(const ifaddr_type& interface_address, uint32_t weight):
+        Hierarchy_kernel(const ifaddr_type& interface_address, uint32_t weight):
         _ifaddr(interface_address),
         _weight(weight)
         {}

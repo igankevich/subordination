@@ -38,7 +38,7 @@ if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
 endif
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.19.10')
+unistdx = dependency('unistdx', version: '>=0.20.4')
 gtest = dependency('gtest', main: true)
 
 src = include_directories('src')
@@ -71,17 +71,17 @@ endif
 # }}}
 # pkgconfig {{{
 pkgconfig = import('pkgconfig')
-pkgconfig.generate(
-    subordination_core_lib,
-    requires: [unistdx],
-    version: meson.project_version(),
-    name: 'subordination-core',
-    filebase: 'subordination-core',
-    description: project_description,
-)
+#pkgconfig.generate(
+#    subordination_core_lib,
+#    requires: [unistdx],
+#    version: meson.project_version(),
+#    name: 'subordination-core',
+#    filebase: 'subordination-core',
+#    description: project_description,
+#)
 pkgconfig.generate(
     subordination_app_lib,
-    libraries: [subordination_core_lib],
+    libraries: [],
     requires: [unistdx],
     extra_cflags: '-DSUBORDINATION_APPLICATION',
     version: meson.project_version(),
@@ -91,7 +91,7 @@ pkgconfig.generate(
 )
 pkgconfig.generate(
     subordination_daemon_lib,
-    libraries: [subordination_core_lib],
+    libraries: [],
     requires: [unistdx],
     extra_cflags: '-DSUBORDINATION_DAEMON',
     version: meson.project_version(),
@@ -101,7 +101,7 @@ pkgconfig.generate(
 )
 pkgconfig.generate(
     subordination_submit_lib,
-    libraries: [subordination_core_lib],
+    libraries: [],
     requires: [unistdx],
     extra_cflags: '-DSUBORDINATION_SUBMIT',
     version: meson.project_version(),

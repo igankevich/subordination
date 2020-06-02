@@ -22,7 +22,7 @@
 #include <subordination/ppl/child_process_pipeline.hh>
 #endif
 #if defined(SUBORDINATION_DAEMON)
-#include <subordination/ppl/unix_domain_socket_pipeline.hh>
+#include <subordination/ppl/unix_socket_pipeline.hh>
 #endif
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/basic_router.hh>
@@ -48,7 +48,7 @@ namespace sbn {
         #endif
         #if defined(SUBORDINATION_DAEMON) && \
         !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        typedef unix_domain_socket_pipeline<T, basic_router<T>>
+        typedef unix_socket_pipeline<T, basic_router<T>>
             external_pipeline_type;
         #endif
         #if defined(SUBORDINATION_DAEMON) && \
@@ -97,6 +97,14 @@ namespace sbn {
         inline void
         send_remote(kernel_type* k) {
             this->_parent.send(k);
+        }
+
+        inline void
+        send_external(kernel_type* k) {
+            #if defined(SUBORDINATION_DAEMON) && \
+            !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+            this->_external.send(k);
+            #endif
         }
 
         inline void

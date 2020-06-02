@@ -1,11 +1,11 @@
-#include <subordination/base/error_handler.hh>
 #include <subordination/api.hh>
+#include <subordination/base/error_handler.hh>
 
 #include <unistdx/base/command_line>
 #include <unistdx/ipc/process>
 
-#include <test/role.hh>
 #include <test/datum.hh>
+#include <test/role.hh>
 
 #include <gtest/gtest.h>
 
@@ -166,7 +166,7 @@ private:
 
 TEST(NICServerTest, All) {
     using sbn::factory;
-    sbn::register_type<Test_socket>();
+    sbn::register_type<Test_socket>(1);
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     ipv4_interface_address network{{127,0,0,1},8};
     if (const char* text = std::getenv("DTEST_INTERFACE_ADDRESS")) {

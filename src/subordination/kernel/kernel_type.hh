@@ -1,10 +1,10 @@
 #ifndef SUBORDINATION_KERNEL_KERNEL_TYPE_HH
 #define SUBORDINATION_KERNEL_KERNEL_TYPE_HH
 
-#include <typeinfo>
-#include <typeindex>
-#include <iosfwd>
 #include <functional>
+#include <iosfwd>
+#include <typeindex>
+#include <typeinfo>
 
 #include <unistdx/net/pstream>
 
@@ -63,6 +63,8 @@ namespace sbn {
         name() const noexcept {
             return this->_index.name();
         }
+
+        inline bool has_id() const noexcept { return this->_id != 0; }
 
         inline explicit
         operator bool() const noexcept {

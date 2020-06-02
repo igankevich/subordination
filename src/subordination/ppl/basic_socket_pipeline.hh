@@ -131,7 +131,6 @@ namespace sbn {
         void
         emplace_notify_handler(const event_handler_ptr& ptr) {
             sys::fd_type fd = this->poller().pipe_in();
-            this->log("add _", *ptr);
             this->_handlers.emplace(fd, ptr);
         }
 

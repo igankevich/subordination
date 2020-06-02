@@ -1,3 +1,5 @@
+#include <subordination/api.hh>
+#include <subordination/ppl/application.hh>
 #include <subordination/ppl/application_kernel.hh>
 
 namespace {
@@ -40,4 +42,32 @@ sbn::Application_kernel
     read_vector(in, this->_args);
     read_vector(in, this->_env);
     in >> this->_workdir >> this->_error >> this->_application;
+}
+
+void sbn::Application_kernel::act() {
+    #if defined(SUBORDINATION_DAEMON)
+    ::sbn::application app(arguments(), environment());
+    app.workdir(workdir());
+    app.set_credentials(credentials().uid, credentials().gid);
+    app.make_master();
+    try {
+        application(app.id());
+        factory.child().add(app);
+        commit<External>(this, exit_code::success);
+    } catch (const sys::bad_call& err) {
+        set_error(err.what());
+        commit<External>(this, exit_code::error);
+        this->log("execute error _,app=_", err, app.id());
+    } catch (const std::exception& err) {
+        set_error(err.what());
+        commit<External>(this, exit_code::error);
+        this->log("execute error _,app=_", err.what(), app.id());
+    } catch (...) {
+        set_error("unknown error");
+        commit<External>(this, exit_code::error);
+        this->log("execute error _", "<unknown>");
+    }
+    #else
+    return_to_parent();
+    #endif
 }

@@ -1,5 +1,3 @@
-#include <subordination/daemon/network_master.hh>
-
 #include <algorithm>
 #include <iterator>
 
@@ -7,6 +5,9 @@
 #include <unistdx/it/field_iterator>
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/interface_addresses>
+
+#include <subordination/daemon/network_master.hh>
+#include <subordination/daemon/status_kernel.hh>
 
 namespace {
 
@@ -117,11 +118,24 @@ sbn::network_master
         this->_timer = nullptr;
     } else if (typeid(*child) == typeid(probe)) {
         this->forward_probe(dynamic_cast<probe*>(child));
-    } else if (typeid(*child) == typeid(hierarchy_kernel)) {
-        this->forward_hierarchy_kernel(dynamic_cast<hierarchy_kernel*>(child));
+    } else if (typeid(*child) == typeid(Hierarchy_kernel)) {
+        this->forward_hierarchy_kernel(dynamic_cast<Hierarchy_kernel*>(child));
     } else if (typeid(*child) == typeid(socket_pipeline_kernel)) {
         this->on_event(dynamic_cast<socket_pipeline_kernel*>(child));
+    } else if (typeid(*child) == typeid(Status_kernel)) {
+        report_status(dynamic_cast<Status_kernel*>(child));
     }
+}
+
+void sbn::network_master::report_status(Status_kernel* status) {
+    Status_kernel::hierarchy_array hierarchies;
+    hierarchies.reserve(this->_ifaddrs.size());
+    for (const auto& pair : this->_ifaddrs) {
+        hierarchies.emplace_back(pair.second->hierarchy());
+    }
+    status->hierarchies(std::move(hierarchies));
+    status->setf(kernel_flag::do_not_delete);
+    sbn::commit<sbn::External>(status);
 }
 
 void
@@ -164,7 +178,7 @@ sbn::network_master
 
 void
 sbn::network_master
-::forward_hierarchy_kernel(hierarchy_kernel* p) {
+::forward_hierarchy_kernel(Hierarchy_kernel* p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_ifaddrs.end()) {
         sys::log_message("net", "bad hierarchy kernel _", p->interface_address());

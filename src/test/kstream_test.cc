@@ -3,8 +3,8 @@
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/basic_pipeline.hh>
 
-#include <test/datum.hh>
 #include <test/big_kernel.hh>
+#include <test/datum.hh>
 #include <test/make_types.hh>
 
 #include <gtest/gtest.h>
@@ -138,12 +138,13 @@ bool registered = false;
 void
 register_all() {
     if (!registered) {
-        sbn::register_type<Good_kernel>();
-        sbn::register_type<Kernel_that_writes_more_than_reads>();
-        sbn::register_type<Kernel_that_reads_more_than_writes>();
-        sbn::register_type<Dummy_kernel>();
-        sbn::register_type<Big_kernel_type>();
+        sbn::register_type<Good_kernel>(1);
+        sbn::register_type<Kernel_that_writes_more_than_reads>(2);
+        sbn::register_type<Kernel_that_reads_more_than_writes>(3);
+        sbn::register_type<Dummy_kernel>(4);
+        sbn::register_type<Big_kernel_type>(5);
         sbn::register_type({
+            6,
             [] (sys::pstream& in) {
                 Kernel_that_carries_its_parent* k = new Kernel_that_carries_its_parent(0);
                 k->read(in);

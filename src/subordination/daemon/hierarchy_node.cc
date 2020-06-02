@@ -1,11 +1,17 @@
 #include <subordination/daemon/hierarchy_node.hh>
 
-#include <unistdx/base/make_object>
-
 std::ostream&
 sbn::operator<<(std::ostream& out, const hierarchy_node& rhs) {
-    return out << sys::make_object(
-        "socket_address", rhs.socket_address(),
-        "weight", rhs.weight()
-    );
+    if (rhs.socket_address()) { out << rhs.socket_address() << '*' << rhs.weight(); }
+    return out;
+}
+
+void sbn::hierarchy_node::write(sys::pstream& out) const {
+    out << this->_endpoint;
+    out << this->_weight;
+}
+
+void sbn::hierarchy_node::read(sys::pstream& in) {
+    in >> this->_endpoint;
+    in >> this->_weight;
 }

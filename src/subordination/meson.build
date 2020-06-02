@@ -1,3 +1,15 @@
+configure_file(
+    input: 'config.hh.in',
+    output: 'config.hh',
+    #configuration: configuration_data(),
+    copy: true,
+    install_dir: join_paths(
+        get_option('prefix'),
+        get_option('includedir'),
+        meson.project_name()
+    )
+)
+
 subordination_src = files()
 subordination_core_src = files()
 
@@ -10,24 +22,24 @@ install_headers(
     subdir: meson.project_name()
 )
 
-subordination_core_lib = shared_library(
-    'subordination-core',
-    sources: subordination_core_src,
-    dependencies: [threads,unistdx],
-    version: meson.project_version(),
-    include_directories: src,
-    install: true,
-)
-
-subordination_core = declare_dependency(
-    link_with: subordination_core_lib,
-    include_directories: src
-)
+# subordination_core_lib = shared_library(
+#     'subordination-core',
+#     sources: subordination_core_src,
+#     dependencies: [threads,unistdx],
+#     version: meson.project_version(),
+#     include_directories: src,
+#     install: true,
+# )
+#
+# subordination_core = declare_dependency(
+#     link_with: subordination_core_lib,
+#     include_directories: src
+# )
 
 subordination_daemon_lib = shared_library(
     'subordination-daemon',
-    sources: subordination_src,
-    dependencies: [threads,unistdx,subordination_core],
+    sources: subordination_src + subordination_core_src,
+    dependencies: [threads,unistdx],
     version: meson.project_version(),
     install: true,
     include_directories: src,
@@ -36,8 +48,8 @@ subordination_daemon_lib = shared_library(
 
 subordination_submit_lib = shared_library(
     'subordination-submit',
-    sources: subordination_src,
-    dependencies: [threads,unistdx,subordination_core],
+    sources: subordination_src + subordination_core_src,
+    dependencies: [threads,unistdx],
     version: meson.project_version(),
     install: true,
     include_directories: src,
@@ -46,8 +58,8 @@ subordination_submit_lib = shared_library(
 
 subordination_app_lib = shared_library(
     'subordination-app',
-    sources: subordination_src,
-    dependencies: [threads,unistdx,subordination_core],
+    sources: subordination_src + subordination_core_src,
+    dependencies: [threads,unistdx],
     version: meson.project_version(),
     install: true,
     include_directories: src,
@@ -55,17 +67,17 @@ subordination_app_lib = shared_library(
 )
 
 subordination_daemon = declare_dependency(
-    link_with: [subordination_daemon_lib,subordination_core_lib],
+    link_with: [subordination_daemon_lib],
     include_directories: src
 )
 
 subordination_submit = declare_dependency(
-    link_with: [subordination_submit_lib,subordination_core_lib],
+    link_with: [subordination_submit_lib],
     include_directories: src
 )
 
 subordination_app = declare_dependency(
-    link_with: [subordination_app_lib,subordination_core_lib],
+    link_with: [subordination_app_lib],
     include_directories: src
 )
 

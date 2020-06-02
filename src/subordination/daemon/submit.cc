@@ -1,11 +1,11 @@
-#include <subordination/base/error_handler.hh>
-#include <subordination/ppl/application_kernel.hh>
-#include <subordination/api.hh>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include <subordination/daemon/subordination_socket.hh>
+#include <subordination/api.hh>
+#include <subordination/base/error_handler.hh>
+#include <subordination/config.hh>
+#include <subordination/ppl/application_kernel.hh>
 
 using sbn::Application_kernel;
 using namespace sbn;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     sbn::install_error_handler();
-    sbn::types.register_type<Application_kernel>();
+    sbn::types.register_type<Application_kernel>(1);
     factory_guard g;
     sbn::factory.parent().use_localhost(false);
     try {

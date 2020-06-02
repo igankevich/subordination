@@ -13,7 +13,7 @@ test(
         'queue-pusher-test',
         sources: 'queue_pusher_test.cc',
         include_directories: src,
-        dependencies: [unistdx, gtest, subordination_core]
+        dependencies: [unistdx, gtest, subordination_daemon]
     )
 )
 

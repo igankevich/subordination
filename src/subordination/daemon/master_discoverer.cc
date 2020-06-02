@@ -1,12 +1,12 @@
-#include <subordination/daemon/master_discoverer.hh>
-
 #include <array>
 #include <cassert>
 #include <ostream>
 
+#include <subordination/daemon/master_discoverer.hh>
+
 namespace {
 
-    std::array<const char*,4> all_results {
+    constexpr const std::array<const char*,4> all_results {
         "add", "remove", "reject", "retain"
     };
 
@@ -40,8 +40,8 @@ sbn::master_discoverer
         this->update_principal(dynamic_cast<prober*>(k));
     } else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
         this->on_event(dynamic_cast<socket_pipeline_kernel*>(k));
-    } else if (typeid(*k) == typeid(hierarchy_kernel)) {
-        this->update_weights(dynamic_cast<hierarchy_kernel*>(k));
+    } else if (typeid(*k) == typeid(Hierarchy_kernel)) {
+        this->update_weights(dynamic_cast<Hierarchy_kernel*>(k));
     }
 }
 
@@ -206,7 +206,7 @@ sbn::master_discoverer
 void
 sbn::master_discoverer
 ::send_weight(const sys::socket_address& dest, weight_type w) {
-    hierarchy_kernel* h = new hierarchy_kernel(this->interface_address(), w);
+    auto* h = new Hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
     h->set_principal_id(1);
     h->to(dest);
@@ -215,7 +215,7 @@ sbn::master_discoverer
 
 void
 sbn::master_discoverer
-::update_weights(hierarchy_kernel* k) {
+::update_weights(Hierarchy_kernel* k) {
     if (k->moves_downstream() && k->return_code() != exit_code::success) {
         this->log(
             "_: failed to send hierarchy to _",

@@ -77,17 +77,12 @@ namespace sbn {
         remove_ifaddr(const ifaddr_type& rhs);
 
         /// forward the probe to an appropriate discoverer
-        void
-        forward_probe(probe* p);
+        void forward_probe(probe* p);
+        void forward_hierarchy_kernel(Hierarchy_kernel* p);
+        void on_event(socket_pipeline_kernel* k);
+        void report_status(Status_kernel* status);
 
-        void
-        forward_hierarchy_kernel(hierarchy_kernel* p);
-
-        map_iterator
-        find_discoverer(const addr_type& a);
-
-        void
-        on_event(socket_pipeline_kernel* k);
+        map_iterator find_discoverer(const addr_type& a);
 
         inline bool
         is_allowed(const ifaddr_type& rhs) const {

@@ -1,5 +1,4 @@
 subordination_src = files([
-    'subordination.cc',
     'hierarchy.cc',
     'hierarchy_kernel.cc',
     'hierarchy_node.cc',
@@ -9,6 +8,8 @@ subordination_src = files([
     'probe.cc',
     'prober.cc',
     'resident_kernel.cc',
+    'status_kernel.cc',
+    'subordination.cc',
     'tree_hierarchy_iterator.cc',
 ])
 
@@ -29,6 +30,22 @@ submit_src = files([
 submit_exe = executable(
     'submit',
     sources: submit_src,
+    include_directories: [src],
+    dependencies: [unistdx,threads,subordination_submit],
+    cpp_args: ['-DSUBORDINATION_SUBMIT'],
+    install: true
+)
+
+status_src = files([
+    'status.cc',
+    'status_kernel.cc',
+    'hierarchy.cc',
+    'hierarchy_node.cc',
+])
+
+status_exe = executable(
+    'status',
+    sources: status_src,
     include_directories: [src],
     dependencies: [unistdx,threads,subordination_submit],
     cpp_args: ['-DSUBORDINATION_SUBMIT'],

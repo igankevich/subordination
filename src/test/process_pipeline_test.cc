@@ -95,7 +95,7 @@ int
 main(int argc, char* argv[]) {
     using namespace sbn;
     install_error_handler();
-    types.register_type<Test_socket>();
+    types.register_type<Test_socket>(1);
     factory_guard g;
     #if defined(SUBORDINATION_TEST_SERVER)
     application app({XSTRINGIFY(SUBORDINATION_APP_PATH)}, {});

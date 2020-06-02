@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 
+#include <unistdx/base/log_message>
 #include <unistdx/fs/canonical_path>
+#include <unistdx/net/socket>
 
 #include <subordination/kernel/kernel.hh>
 
@@ -22,6 +24,7 @@ namespace sbn {
         std::string _error;
         application_type _application = 0;
         sys::canonical_path _workdir;
+        sys::user_credentials _credentials;
 
     public:
 
@@ -38,10 +41,7 @@ namespace sbn {
         Application_kernel() = default;
         virtual ~Application_kernel() = default;
 
-        void
-        act() override {
-            this->return_to_parent();
-        }
+        void act() override;
 
         inline const container_type&
         arguments() const noexcept {
@@ -83,11 +83,25 @@ namespace sbn {
             this->_workdir = rhs;
         }
 
+        inline const sys::user_credentials& credentials() const noexcept {
+            return this->_credentials;
+        }
+
+        inline void credentials(const sys::user_credentials& rhs) noexcept {
+            this->_credentials = rhs;
+        }
+
         void
         write(sys::pstream& out) const override;
 
         void
         read(sys::pstream& in) override;
+
+        template <class ... Args>
+        inline void
+        log(const Args& ... args) const {
+            sys::log_message("app", args ...);
+        }
 
     };
 
