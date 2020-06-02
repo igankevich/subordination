@@ -19,8 +19,6 @@
 #include <unistdx/io/fildes>
 #include <unistdx/it/intersperse_iterator>
 
-#include <subordination/config.hh>
-
 #define SUBORDINATION_ENV_APPLICATION_ID "SUBORDINATION_APPLICATION_ID"
 #define SUBORDINATION_ENV_PIPE_IN "SUBORDINATION_PIPE_IN"
 #define SUBORDINATION_ENV_PIPE_OUT "SUBORDINATION_PIPE_OUT"

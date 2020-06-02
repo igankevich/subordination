@@ -1,8 +1,6 @@
-#include <subordination/ppl/child_process_pipeline.hh>
-
-#include <subordination/config.hh>
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/basic_router.hh>
+#include <subordination/ppl/child_process_pipeline.hh>
 
 namespace sbn {
 
@@ -97,6 +95,4 @@ sbn::child_process_pipeline<K,R>
 ::print_state(std::ostream& out) {
 }
 
-template class sbn::child_process_pipeline<
-        SUBORDINATION_KERNEL_TYPE,
-        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::child_process_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;

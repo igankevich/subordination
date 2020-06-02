@@ -3,8 +3,6 @@
 
 #include <cassert>
 
-#include <subordination/config.hh>
-
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
@@ -17,7 +15,7 @@ namespace sbn {
         remove_server,
     };
 
-    class socket_pipeline_kernel: public SUBORDINATION_KERNEL_TYPE {
+    class socket_pipeline_kernel: public kernel {
 
     public:
         typedef sys::ipv4_address addr_type;

@@ -2,8 +2,6 @@
 
 #include <unistdx/util/system>
 
-#include <subordination/config.hh>
-
 namespace {
 
     inline void
@@ -160,7 +158,7 @@ sbn::Factory<T>
     #endif
 }
 
-template class sbn::Factory<SUBORDINATION_KERNEL_TYPE>;
-template class sbn::basic_router<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::Factory<sbn::kernel>;
+template class sbn::basic_router<sbn::kernel>;
 
-sbn::Factory<SUBORDINATION_KERNEL_TYPE> sbn::factory;
+sbn::Factory<sbn::kernel> sbn::factory;

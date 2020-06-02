@@ -2,7 +2,6 @@
 
 #include <unistdx/io/fildesbuf>
 
-#include <subordination/config.hh>
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/application_kernel.hh>
 #include <subordination/ppl/basic_router.hh>
@@ -225,9 +224,6 @@ sbn::unix_domain_socket_pipeline<K,R>
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }
 
-template class sbn::unix_domain_socket_pipeline<
-        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
-template class sbn::unix_socket_server<
-        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
-template class sbn::unix_socket_client<
-        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::unix_domain_socket_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;
+template class sbn::unix_socket_server<sbn::kernel, sbn::basic_router<sbn::kernel>>;
+template class sbn::unix_socket_client<sbn::kernel, sbn::basic_router<sbn::kernel>>;

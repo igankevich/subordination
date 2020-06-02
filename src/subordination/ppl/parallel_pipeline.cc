@@ -1,5 +1,4 @@
 #include <subordination/ppl/parallel_pipeline.hh>
-#include <subordination/config.hh>
 
 #include <subordination/kernel/act.hh>
 #include <unistdx/util/backtrace>
@@ -24,4 +23,4 @@ sbn::parallel_pipeline<T>::do_run() {
     });
 }
 
-template class sbn::parallel_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::parallel_pipeline<sbn::kernel>;

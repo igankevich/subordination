@@ -12,11 +12,12 @@
    (@ (gnu packages ninja) ninja)
    (@ (gnu packages cmake) cmake)
    (@ (gnu packages pkg-config) pkg-config)
-   (@ (gnu packages commencement) gcc-toolchain-9)
-   (list (@ (gnu packages gcc) gcc-9) "lib")
+   (@ (gnu packages commencement) gcc-toolchain)
+   (list (@ (gnu packages gcc) gcc) "lib")
    (@ (gnu packages check) googletest)
    (@ (gnu packages unistdx) unistdx)
    (@ (gnu packages pre-commit) python-pre-commit)
+   (@ (gnu packages python-xyz) python-chardet)
    (@ (gnu packages compression) zlib))
   (if-enabled "site"
               (list

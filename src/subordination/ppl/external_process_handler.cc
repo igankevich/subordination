@@ -1,6 +1,5 @@
 #include <subordination/ppl/external_process_handler.hh>
 
-#include <subordination/config.hh>
 #include <subordination/ppl/basic_router.hh>
 
 template <class K, class R>
@@ -90,5 +89,4 @@ sbn::external_process_handler<K,R>
 }
 
 
-template class sbn::external_process_handler<
-        SUBORDINATION_KERNEL_TYPE,sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::external_process_handler<sbn::kernel,sbn::basic_router<sbn::kernel>>;

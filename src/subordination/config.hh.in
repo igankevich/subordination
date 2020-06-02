@@ -1,8 +1,4 @@
 #ifndef SUBORDINATION_CONFIG_HH_IN
 #define SUBORDINATION_CONFIG_HH_IN
 
-#include "@kernel_header@"
-
-#define SUBORDINATION_KERNEL_TYPE @kernel_type@
-
 #endif // SUBORDINATION_CONFIG_HH_IN vim:filetype=cpp

@@ -16,8 +16,6 @@
 #include <unistdx/ipc/process>
 #include <unistdx/net/veth_interface>
 
-#include <subordination/config.hh>
-
 #include <gtest/gtest.h>
 
 #include <subordination/daemon/test_application.hh>

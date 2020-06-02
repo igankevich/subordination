@@ -7,14 +7,14 @@
 
 #include <unistdx/fs/canonical_path>
 
-#include <subordination/config.hh>
+#include <subordination/kernel/kernel.hh>
 
 namespace sbn {
 
-    class Application_kernel: public SUBORDINATION_KERNEL_TYPE {
+    class Application_kernel: public kernel {
 
     public:
-        typedef SUBORDINATION_KERNEL_TYPE kernel_type;
+        typedef kernel kernel_type;
         typedef std::vector<std::string> container_type;
 
     private:

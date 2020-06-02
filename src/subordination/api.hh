@@ -1,12 +1,9 @@
 #ifndef SUBORDINATION_API_HH
 #define SUBORDINATION_API_HH
 
-#include <subordination/config.hh>
 #include <subordination/ppl/basic_factory.hh>
 
 namespace sbn {
-
-    typedef SUBORDINATION_KERNEL_TYPE kernel;
 
     enum Target {
         Local,

@@ -4,7 +4,6 @@
 
 #include <unistdx/base/make_object>
 
-#include <subordination/config.hh>
 #include <subordination/ppl/basic_router.hh>
 
 template <class K, class R>
@@ -64,5 +63,4 @@ sbn::process_handler<K,R>
     this->setstate(pipeline_state::stopped);
 }
 
-template class sbn::process_handler<
-        SUBORDINATION_KERNEL_TYPE, sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::process_handler<sbn::kernel, sbn::basic_router<sbn::kernel>>;

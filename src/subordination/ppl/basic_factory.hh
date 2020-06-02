@@ -9,7 +9,6 @@
 
 #include <iosfwd>
 
-#include <subordination/config.hh>
 #include <subordination/ppl/basic_pipeline.hh>
 #include <subordination/ppl/io_pipeline.hh>
 #include <subordination/ppl/multi_pipeline.hh>
@@ -196,7 +195,7 @@ namespace sbn {
 
     };
 
-    typedef Factory<SUBORDINATION_KERNEL_TYPE> factory_type;
+    typedef Factory<kernel> factory_type;
 
     extern factory_type factory;
 

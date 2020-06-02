@@ -1,5 +1,4 @@
 #include <subordination/ppl/timer_pipeline.hh>
-#include <subordination/config.hh>
 
 template <class T>
 void
@@ -18,4 +17,4 @@ sbn::timer_pipeline<T>::do_run() {
     }
 }
 
-template class sbn::timer_pipeline<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::timer_pipeline<sbn::kernel>;

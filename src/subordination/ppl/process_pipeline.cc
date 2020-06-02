@@ -3,7 +3,6 @@
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>
 
-#include <subordination/config.hh>
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/basic_router.hh>
@@ -233,6 +232,4 @@ sbn::process_pipeline<K,R>
     }
 }
 
-template class sbn::process_pipeline<
-        SUBORDINATION_KERNEL_TYPE,
-        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::process_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;

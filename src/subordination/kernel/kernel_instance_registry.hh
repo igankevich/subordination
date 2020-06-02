@@ -1,9 +1,10 @@
 #ifndef SUBORDINATION_KERNEL_KERNEL_INSTANCE_REGISTRY_HH
 #define SUBORDINATION_KERNEL_KERNEL_INSTANCE_REGISTRY_HH
 
-#include <unordered_map>
 #include <mutex>
-#include <subordination/config.hh>
+#include <unordered_map>
+
+#include <subordination/kernel/kernel.hh>
 
 namespace sbn {
 
@@ -73,7 +74,7 @@ namespace sbn {
     std::ostream&
     operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs);
 
-    typedef kernel_instance_registry<SUBORDINATION_KERNEL_TYPE> instance_registry_type;
+    typedef kernel_instance_registry<kernel> instance_registry_type;
     typedef std::lock_guard<instance_registry_type> instances_guard;
     extern instance_registry_type instances;
 

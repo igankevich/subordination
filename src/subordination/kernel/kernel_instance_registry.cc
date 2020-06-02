@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <iterator>
 
-#include <subordination/config.hh>
 
 namespace {
 
@@ -52,4 +51,4 @@ sbn::operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs) {
 
 sbn::instance_registry_type sbn::instances;
 
-template class sbn::kernel_instance_registry<SUBORDINATION_KERNEL_TYPE>;
+template class sbn::kernel_instance_registry<sbn::kernel>;

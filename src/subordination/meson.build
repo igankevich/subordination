@@ -1,14 +1,3 @@
-configure_file(
-    input: 'config.hh.in',
-    output: 'config.hh',
-    configuration: config,
-    install_dir: join_paths(
-        get_option('prefix'),
-        get_option('includedir'),
-        meson.project_name()
-    )
-)
-
 subordination_src = files()
 subordination_core_src = files()
 

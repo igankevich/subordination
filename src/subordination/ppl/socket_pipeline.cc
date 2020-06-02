@@ -7,7 +7,6 @@
 #include <unistdx/base/make_object>
 #include <unistdx/net/socket>
 
-#include <subordination/config.hh>
 #include <subordination/kernel/kernel_instance_registry.hh>
 #include <subordination/ppl/basic_router.hh>
 #include <subordination/ppl/kernel_protocol.hh>
@@ -812,7 +811,4 @@ sbn::socket_pipeline<T,S,R>
     }
 }
 
-template class sbn::socket_pipeline<
-        SUBORDINATION_KERNEL_TYPE,
-        sys::socket,
-        sbn::basic_router<SUBORDINATION_KERNEL_TYPE>>;
+template class sbn::socket_pipeline<sbn::kernel, sys::socket, sbn::basic_router<sbn::kernel>>;

@@ -1,8 +1,8 @@
 #ifndef SUBORDINATION_PPL_BASIC_ROUTER_HH
 #define SUBORDINATION_PPL_BASIC_ROUTER_HH
 
+#include <subordination/kernel/foreign_kernel.hh>
 #include <subordination/ppl/application.hh>
-#include <subordination/kernel/kernel_header.hh>
 
 namespace sbn {
 
