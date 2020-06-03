@@ -97,7 +97,6 @@ public:
         message("returned _/_", _num_returned+1, NUM_SIZES);
         if (++_num_returned == NUM_SIZES) {
             message("finished");
-            delete this;
             sbn::graceful_shutdown(0);
         }
     }
@@ -111,7 +110,7 @@ main(int argc, char* argv[]) {
     sbn::types.register_type<Test_socket>(1);
     #if defined(SUBORDINATION_TEST_SERVER)
     sbn::application app({SBN_TEST_APP_EXE_PATH}, {});
-    process.set_name("process");
+    process.name("process");
     process.native_pipeline(&local);
     process.foreign_pipeline(&process);
     process.remote_pipeline(nullptr);
@@ -122,7 +121,7 @@ main(int argc, char* argv[]) {
     auto in = sbn::this_application::get_input_fd();
     auto out = sbn::this_application::get_output_fd();
     message("tst", "in = _, out = _", in, out);
-    local.set_name("local");
+    local.name("local");
     local.send(new Main);
     #endif
     return sbn::wait_and_return();

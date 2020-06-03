@@ -12,23 +12,13 @@ sbn::process_pipeline::process_pipeline() {
     this->_protocol.setf(f::prepend_source_and_destination);
 }
 
-void
-sbn::process_pipeline
-::do_run() {
-    std::thread waiting_thread {
-        &process_pipeline::wait_for_all_processes_to_finish,
-        this
-    };
-    basic_socket_pipeline::do_run();
+void sbn::process_pipeline::loop() {
+    std::thread waiting_thread([this] () { this->wait_loop(); });
+    basic_socket_pipeline::loop();
     #ifndef NDEBUG
-    this->log(
-        "waiting for all processes to finish: pid=_",
-        sys::this_process::id()
-    );
+    this->log("waiting for all processes to finish: pid=_", sys::this_process::id());
     #endif
-    if (waiting_thread.joinable()) {
-        waiting_thread.join();
-    }
+    if (waiting_thread.joinable()) { waiting_thread.join(); }
 }
 
 typename sbn::process_pipeline::app_iterator
@@ -79,7 +69,7 @@ sbn::process_pipeline
     sys::fd_type parent_out = data_pipe.parent_out().fd();
     auto child = std::make_shared<event_handler_type>(p.id(), std::move(data_pipe), app);
     child->protocol(&this->_protocol);
-    child->set_name(this->_name);
+    child->name(this->_name);
     this->log(
         "executing app=_,credentials=_:_,role=_,pid=_",
         app.id(),
@@ -147,9 +137,7 @@ void sbn::process_pipeline::process_kernel(kernel* k) {
     }
 }
 
-void
-sbn::process_pipeline
-::wait_for_all_processes_to_finish() {
+void sbn::process_pipeline::wait_loop() {
     using std::this_thread::sleep_for;
     using std::chrono::milliseconds;
     lock_type lock(this->_mutex);
@@ -159,30 +147,22 @@ sbn::process_pipeline
             sleep_for(milliseconds(777));
         } else {
             try {
-                using namespace std::placeholders;
-                this->_procs.wait(
-                    lock,
-                    std::bind(&process_pipeline::on_process_exit, this, _1, _2)
+                this->_procs.wait(lock,
+                    [this] (const sys::process& p, sys::process_status status) {
+                        auto result = this->find_by_process_id(p.id());
+                        if (result != this->_apps.end()) {
+                            this->log("app exited: app=_,_", result->first, status);
+                            //result->second->close();
+                            this->_apps.erase(result);
+                        }
+                    }
                 );
             } catch (const std::system_error& err) {
-                if (std::errc(err.code().value()) !=
-                    std::errc::no_child_process) {
+                if (std::errc(err.code().value()) != std::errc::no_child_process) {
                     this->log_error(err);
                 }
             }
         }
-    }
-}
-
-void
-sbn::process_pipeline
-::on_process_exit(const sys::process& p, sys::process_status status) {
-    lock_type lock(this->_mutex);
-    app_iterator result = this->find_by_process_id(p.id());
-    if (result != this->_apps.end()) {
-        this->log("app exited: app=_,_", result->first, status);
-//		result->second->close();
-        this->_apps.erase(result);
     }
 }
 

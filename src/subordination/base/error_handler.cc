@@ -1,4 +1,4 @@
-#include <subordination/base/error_handler.hh>
+#include <subordination/base/error.hh>
 
 #include <unistd.h>
 
@@ -11,81 +11,41 @@
 #include <unistdx/util/backtrace>
 
 #include <subordination/base/error.hh>
-#include <subordination/base/thread_name.hh>
+#include <subordination/base/error_handler.hh>
 #include <subordination/kernel/kernel_error.hh>
 
-void
-sbn::print_backtrace(int sig) noexcept {
-    sys::log_message(
-        "error_handler",
-        "caught _",
-        sys::signal(sig)
-    );
+void sbn::print_backtrace(int sig) noexcept {
+    char name[16] {'\0'};
+    #if defined(UNISTDX_HAVE_PRCTL)
+    ::prctl(PR_GET_NAME, name);
+    #endif
+    sys::log_message("error", "process _ caught _", name, sys::signal(sig));
     sys::backtrace(STDERR_FILENO);
     std::exit(sig);
 }
 
-void
-sbn::print_error() noexcept {
+void sbn::print_error() noexcept {
     using namespace sys;
+    char name[16] {'\0'};
+    #if defined(UNISTDX_HAVE_PRCTL)
+    ::prctl(PR_GET_NAME, name);
+    #endif
     if (std::exception_ptr ptr = std::current_exception()) {
         try {
             std::rethrow_exception(ptr);
         } catch (const kernel_error& err) {
-            sys::log_message(
-                "error_handler",
-                "error=_, thread=_-_, process=_",
-                err,
-                this_thread::name,
-                this_thread::number,
-                this_process::id()
-            );
+            sys::log_message("error", "error=_, process=_", err, name);
         } catch (const error& err) {
-            sys::log_message(
-                "error_handler",
-                "error=_, thread=_-_, process=_",
-                err,
-                this_thread::name,
-                this_thread::number,
-                this_process::id()
-            );
+            sys::log_message("error", "error=_, process=_", err, name);
         } catch (const sys::bad_call& err) {
-            sys::log_message(
-                "error_handler",
-                "error=_, thread=_-_, process=_",
-                err,
-                this_thread::name,
-                this_thread::number,
-                this_process::id()
-            );
+            sys::log_message("error", "error=_, process=_", err, name);
         } catch (const std::exception& err) {
-            sys::log_message(
-                "error_handler",
-                "error=_, thread=_-_, process=_",
-                err.what(),
-                this_thread::name,
-                this_thread::number,
-                this_process::id()
-            );
+            sys::log_message("error", "error=_, process=_", err.what(), name);
         } catch (...) {
-            sys::log_message(
-                "error_handler",
-                "error=_, thread=_-_, process=_",
-                "<unknown>",
-                this_thread::name,
-                this_thread::number,
-                this_process::id()
-            );
+            sys::log_message("error", "error=_, process=_", "<unknown>", name);
         }
     } else {
-        sys::log_message(
-            "error_handler",
-            "error=_, thread=_-_, process=_",
-            "<none>",
-            this_thread::name,
-            this_thread::number,
-            this_process::id()
-        );
+        sys::log_message("error", "error=_, process=_", "<none>", name);
     }
     sys::backtrace(STDERR_FILENO);
     std::exit(1);

@@ -408,7 +408,7 @@ namespace sbn {
     public:
 
         inline void
-        set_name(const char* rhs) noexcept {
+        name(const char* rhs) noexcept {
             this->_name = rhs;
         }
 

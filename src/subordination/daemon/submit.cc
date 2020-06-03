@@ -60,7 +60,6 @@ public:
         } else {
             sys::log_message("submit", "submitted _", app->application());
         }
-        delete this;
         sbn::graceful_shutdown(int(app->return_code()));
     }
 

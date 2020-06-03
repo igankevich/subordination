@@ -2,14 +2,12 @@
 
 sbnd::Factory::Factory(): Factory(sys::thread_concurrency()) {}
 
-sbnd::Factory::Factory(unsigned concurrency): _local(concurrency), _downstream(concurrency) {
-    this->_local.set_name("upstrm");
-    this->_downstream.set_name("dwnstrm");
-    this->_scheduled.set_name("tmr");
-    this->_remote.set_name("nic");
+sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
+    this->_local.name("upstrm");
+    this->_remote.name("nic");
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_process.set_name("proc");
-    this->_external.set_name("unix");
+    this->_process.name("proc");
+    this->_external.name("unix");
     #endif
     this->_process.set_other_mutex(this->_remote.mutex());
     this->_process.native_pipeline(&this->_local);

@@ -27,23 +27,21 @@
 
 namespace sbn {
 
-    class basic_socket_pipeline: public basic_pipeline {
+    class basic_socket_pipeline: public pipeline {
 
     public:
-        typedef basic_handler handler_type;
-        typedef std::shared_ptr<handler_type> event_handler_ptr;
-        typedef std::unordered_map<sys::fd_type,event_handler_ptr>
-            handler_container_type;
-        typedef typename handler_container_type::const_iterator
-            handler_const_iterator;
-        typedef typename handler_type::clock_type clock_type;
-        typedef typename handler_type::time_point time_point;
-        typedef typename handler_type::duration duration;
+        typedef std::shared_ptr<basic_handler> event_handler_ptr;
+        typedef std::unordered_map<sys::fd_type,event_handler_ptr> handler_container_type;
+        typedef typename handler_container_type::const_iterator handler_const_iterator;
+        typedef typename basic_handler::clock_type clock_type;
+        typedef typename basic_handler::time_point time_point;
+        typedef typename basic_handler::duration duration;
 
         using kernel_queue = std::queue<kernel*>;
         using mutex_type = std::recursive_mutex;
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = sys::event_poller;
+        using thread_type = std::thread;
 
     private:
         typedef static_lock<mutex_type, mutex_type> static_lock_type;
@@ -53,6 +51,7 @@ namespace sbn {
 
     protected:
         kernel_queue _kernels;
+        thread_type _thread;
         mutex_type _mutex;
         semaphore_type _semaphore;
         handler_container_type _handlers;
@@ -62,7 +61,7 @@ namespace sbn {
     public:
 
         inline
-        basic_socket_pipeline(): basic_pipeline(1u) {
+        basic_socket_pipeline() {
             this->emplace_notify_handler(std::make_shared<basic_handler>());
         }
 
@@ -86,6 +85,11 @@ namespace sbn {
             for (size_t i=0; i<n; ++i) { this->_kernels.emplace(kernels[i]); }
             this->_semaphore.notify_all();
         }
+
+        void start();
+        void stop();
+        void wait();
+        void clear();
 
         inline void
         set_other_mutex(mutex_type* rhs) noexcept {
@@ -116,8 +120,6 @@ namespace sbn {
 
     protected:
 
-        void collect_kernels(kernel_sack& sack) override;
-
         inline semaphore_type& poller() noexcept { return this->_semaphore; }
         inline const semaphore_type& poller() const noexcept { return this->_semaphore; }
 
@@ -133,7 +135,7 @@ namespace sbn {
         template <class X>
         void
         emplace_handler(const sys::epoll_event& ev, const std::shared_ptr<X>& ptr) {
-            this->emplace_handler(ev, std::static_pointer_cast<handler_type>(ptr));
+            this->emplace_handler(ev, std::static_pointer_cast<basic_handler>(ptr));
         }
 
         void
@@ -146,51 +148,8 @@ namespace sbn {
         void
         emplace_notify_handler(const std::shared_ptr<X>& ptr) {
             this->emplace_notify_handler(
-                std::static_pointer_cast<handler_type>(ptr)
+                std::static_pointer_cast<basic_handler>(ptr)
             );
-        }
-
-        void
-        do_run() override {
-            static_lock_type lock(&this->_mutex, this->_othermutex);
-            while (!this->stopped()) {
-                bool timeout = false;
-                if (this->_start_timeout > duration::zero()) {
-                    handler_const_iterator result =
-                        this->handler_with_min_start_time_point();
-                    if (result != this->_handlers.end()) {
-                        timeout = true;
-                        const time_point tp = result->second->start_time_point()
-                                              + this->_start_timeout;
-                        this->poller().wait_until(lock, tp);
-                    }
-                }
-                auto process = [this,timeout] () {
-                    this->process_kernels();
-                    this->handle_events();
-                    this->flush_buffers(timeout);
-                    return this->stopped();
-                };
-                if (timeout) {
-                    process();
-                } else {
-                    this->poller().wait(lock, process);
-                    /*
-                    this->poller().wait(
-                        lock,
-                        [this] () { return this->stopped(); }
-                    );*/
-                }
-            }
-        }
-
-        void
-        run(Thread_context*) override {
-            do_run();
-            /**
-               do nothing with the context, because we can not
-               reliably garbage collect kernels sent from other nodes
-             */
         }
 
         inline void
@@ -198,8 +157,8 @@ namespace sbn {
             this->_start_timeout = rhs;
         }
 
-        virtual void
-        process_kernels() = 0;
+        virtual void process_kernels() = 0;
+        virtual void loop();
 
     private:
 
@@ -211,7 +170,7 @@ namespace sbn {
             handler_const_iterator first = this->_handlers.begin();
             handler_const_iterator last = this->_handlers.end();
             while (first != last) {
-                handler_type& h = *first->second;
+                basic_handler& h = *first->second;
                 if (h.stopped() || (timeout && this->is_timed_out(
                                             h,
                                             now
@@ -232,7 +191,7 @@ namespace sbn {
             handler_const_iterator last = this->_handlers.end();
             handler_const_iterator result = last;
             while (first != last) {
-                handler_type& h = *first->second;
+                basic_handler& h = *first->second;
                 if (h.is_starting() && h.has_start_time_point()) {
                     if (result == last) {
                         result = first;
@@ -259,7 +218,7 @@ namespace sbn {
                 if (result == this->_handlers.end()) {
                     this->log("unable to process fd _", ev.fd());
                 } else {
-                    handler_type& h = *result->second;
+                    basic_handler& h = *result->second;
                     // process event by calling event handler function
                     try {
                         h.handle(ev);
@@ -276,7 +235,7 @@ namespace sbn {
         }
 
         bool
-        is_timed_out(const handler_type& rhs, const time_point& now) {
+        is_timed_out(const basic_handler& rhs, const time_point& now) {
             return rhs.is_starting() &&
                    rhs.start_time_point() + this->_start_timeout <= now;
         }

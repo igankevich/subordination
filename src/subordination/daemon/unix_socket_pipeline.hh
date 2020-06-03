@@ -76,9 +76,9 @@ namespace sbnd {
         inline const sys::socket& socket() const noexcept { return this->_buffer->fd(); }
 
         inline void
-        set_name(const char* rhs) noexcept {
-            this->pipeline_base::set_name(rhs);
-            this->_protocol->set_name(rhs);
+        name(const char* rhs) noexcept {
+            this->pipeline_base::name(rhs);
+            this->_protocol->name(rhs);
             #ifndef NDEBUG
             if (this->_buffer) {
                 this->_buffer->set_name(rhs);

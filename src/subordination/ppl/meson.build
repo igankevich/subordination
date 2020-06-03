@@ -3,18 +3,14 @@ subordination_core_src += files([
     'application_kernel.cc',
     'basic_factory.cc',
     'basic_pipeline.cc',
-    'basic_pipeline.cc',
     'basic_socket_pipeline.cc',
     'child_process_pipeline.cc',
     'kernel_protocol.cc',
-    'multi_pipeline.cc',
     'parallel_pipeline.cc',
     'pipeline_base.cc',
     'process_handler.cc',
     'process_pipeline.cc',
     'socket_pipeline.cc',
-    'thread_context.cc',
-    'timer_pipeline.cc',
 ])
 
 install_headers(
@@ -25,19 +21,15 @@ install_headers(
     'basic_pipeline.hh',
     'basic_socket_pipeline.hh',
     'child_process_pipeline.hh',
-    'io_pipeline.hh',
     'kernel_header_flag.hh',
     'kernel_proto_flag.hh',
     'kernel_protocol.hh',
     'local_server.hh',
-    'multi_pipeline.hh',
     'parallel_pipeline.hh',
     'pipeline_base.hh',
     'process_handler.hh',
     'process_pipeline.hh',
     'socket_pipeline.hh',
     'socket_pipeline_event.hh',
-    'thread_context.hh',
-    'timer_pipeline.hh',
     subdir: join_paths(meson.project_name(), 'ppl')
 )

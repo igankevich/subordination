@@ -18,7 +18,7 @@ void sbn::child_process_pipeline::send(kernel* k) {
 sbn::child_process_pipeline::child_process_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
-    this->set_name("chld");
+    this->name("chld");
     using f = kernel_proto_flag;
     this->_protocol.setf(f::prepend_source_and_destination | f::save_upstream_kernels);
     sys::fd_type in = this_application::get_input_fd();
@@ -28,7 +28,7 @@ sbn::child_process_pipeline::child_process_pipeline() {
             std::make_shared<event_handler_type>(sys::pipe(in, out));
         this->_parent->protocol(&this->_protocol);
         this->_parent->setstate(pipeline_state::starting);
-        this->_parent->set_name(this->name());
+        this->_parent->name(this->name());
         this->emplace_handler(
             sys::epoll_event(in, sys::event::in),
             this->_parent

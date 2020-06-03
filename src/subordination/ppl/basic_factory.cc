@@ -2,107 +2,41 @@
 
 #include <unistdx/util/system>
 
-namespace {
-
-    inline void
-    start_all() {}
-
-    template <class Pipeline, class ... Args>
-    void
-    start_all(Pipeline& ppl, Args& ... args) {
-        ppl.start();
-        start_all(args ...);
-    }
-
-    inline void
-    stop_all() {}
-
-    template <class Pipeline, class ... Args>
-    void
-    stop_all(Pipeline& ppl, Args& ... args) {
-        ppl.stop();
-        stop_all(args ...);
-    }
-
-    inline void
-    wait_all() {}
-
-    template <class Pipeline, class ... Args>
-    void
-    wait_all(Pipeline& ppl, Args& ... args) {
-        ppl.wait();
-        wait_all(args ...);
-    }
-
-}
-
 sbn::Factory::Factory():
 #if defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-_native(1),
-_downstream(1) {
+_local(1) {
 #else
-_native(sys::thread_concurrency()),
-_downstream(_native.concurrency()) {
+_local(sys::thread_concurrency()) {
 #endif
-    this->_native.set_name("upstrm");
-    this->_downstream.set_name("dwnstrm");
-    this->_scheduled.set_name("tmr");
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_io.set_name("io");
-    #endif
-    this->_parent.set_name("chld");
-    this->_parent.native_pipeline(&this->_native);
-    this->_parent.foreign_pipeline(&this->_parent);
-    this->_parent.remote_pipeline(&this->_parent);
+    this->_local.name("upstrm");
+    this->_remote.name("chld");
+    this->_remote.native_pipeline(&this->_local);
+    this->_remote.foreign_pipeline(&this->_remote);
+    this->_remote.remote_pipeline(&this->_remote);
 }
 
 void sbn::Factory::start() {
     this->setstate(pipeline_state::starting);
-    start_all(
-        this->_native,
-        this->_downstream
-        ,
-        this->_scheduled
-        #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_io
-        #endif
-        ,
-        this->_parent
-    );
+    this->_local.start();
+    this->_remote.start();
     this->setstate(pipeline_state::started);
 }
 
 void sbn::Factory::stop() {
     this->setstate(pipeline_state::stopping);
-    stop_all(
-        this->_native,
-        this->_downstream
-        ,
-        this->_scheduled
-        #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_io
-        #endif
-        ,
-        this->_parent
-    );
+    this->_local.stop();
+    this->_remote.stop();
     this->setstate(pipeline_state::stopped);
 }
 
 void sbn::Factory::wait() {
-    wait_all(
-        this->_native,
-        this->_downstream
-        ,
-        this->_scheduled
-        #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_io
-        #endif
-        ,
-        this->_parent
-    );
+    this->_local.wait();
+    this->_remote.wait();
+}
+
+void sbn::Factory::clear() {
+    this->_local.clear();
+    this->_remote.clear();
 }
 
 sbn::Factory sbn::factory;

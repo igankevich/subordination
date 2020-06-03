@@ -54,7 +54,6 @@ public:
                 write_rec(std::cout, h);
             }
         }
-        delete this;
         sbn::graceful_shutdown(int(status->return_code()));
     }
 

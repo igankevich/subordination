@@ -172,7 +172,6 @@ struct Main: public sbn::kernel {
     void
     react(sbn::kernel*) override {
         if (++_num_returned == POWERS.size()) {
-            delete this;
             sbn::graceful_shutdown(0);
         }
     }

@@ -44,7 +44,7 @@ namespace sbn {
             this->do_add(app);
         }
 
-        void do_run() override;
+        void loop() override;
         void forward(foreign_kernel* hdr) override;
 
         inline void
@@ -65,11 +65,7 @@ namespace sbn {
         void
         process_kernel(kernel* k);
 
-        void
-        wait_for_all_processes_to_finish();
-
-        void
-        on_process_exit(const sys::process& p, sys::process_status status);
+        void wait_loop();
 
         inline app_iterator
         find_by_app_id(application_type id) {

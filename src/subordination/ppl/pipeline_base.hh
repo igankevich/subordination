@@ -1,8 +1,6 @@
 #ifndef SUBORDINATION_PPL_PIPELINE_BASE_HH
 #define SUBORDINATION_PPL_PIPELINE_BASE_HH
 
-#include <chrono>
-
 #include <unistdx/base/log_message>
 
 #include <subordination/kernel/foreign_kernel.hh>
@@ -19,16 +17,9 @@ namespace sbn {
 
     class pipeline_base {
 
-    public:
-        using clock_type = std::chrono::system_clock;
-        using time_point = clock_type::time_point;
-        using duration = clock_type::duration;
-
     protected:
         volatile pipeline_state _state = pipeline_state::initial;
-        time_point _start = time_point(duration::zero());
         const char* _name = "ppl";
-        unsigned _number = 0;
 
     public:
         pipeline_base() = default;
@@ -37,18 +28,7 @@ namespace sbn {
         pipeline_base(const pipeline_base&) = delete;
         pipeline_base& operator=(pipeline_base&) = delete;
 
-        inline void
-        setstate(pipeline_state rhs) noexcept {
-            this->_state = rhs;
-            if (rhs == pipeline_state::starting) {
-                this->_start = clock_type::now();
-            }
-        }
-
-        inline pipeline_state
-        state() const noexcept {
-            return this->_state;
-        }
+        inline pipeline_state state() const noexcept { return this->_state; }
 
         inline bool
         is_starting() const noexcept {
@@ -76,30 +56,8 @@ namespace sbn {
             return this->_state == pipeline_state::stopped;
         }
 
-        inline time_point
-        start_time_point() const noexcept {
-            return this->_start;
-        }
-
-        inline bool
-        has_start_time_point() const noexcept {
-            return this->_start != time_point(duration::zero());
-        }
-
-        inline const char*
-        name() const noexcept {
-            return this->_name;
-        }
-
-        inline void
-        set_name(const char* rhs) noexcept {
-            this->_name = rhs;
-        }
-
-        inline void
-        set_number(unsigned rhs) noexcept {
-            this->_number = rhs;
-        }
+        inline const char* name() const noexcept { return this->_name; }
+        inline void name(const char* rhs) noexcept { this->_name = rhs; }
 
         template <class ... Args>
         inline void
@@ -111,6 +69,10 @@ namespace sbn {
         log_error(const std::exception& err) const {
             sys::log_message(this->_name, "error: _", err.what());
         }
+
+    protected:
+
+        inline void setstate(pipeline_state rhs) noexcept { this->_state = rhs; }
 
     };
 
