@@ -339,7 +339,7 @@ struct Station_kernel: public sbn::kernel {
         Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(child);
         _out_matrix[k->date()] = k->variance();
         if (--_count == 0) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message(
                 "spec",
                 "finished station _, year _, total no. of spectra _",
@@ -414,7 +414,7 @@ struct Station_kernel: public sbn::kernel {
         }
         const size_t new_size = _spectra.size();
         if (new_size < old_size) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message(
                 "spec",
                 "removed _ incomplete records from station _, year _",
@@ -502,7 +502,7 @@ struct Year_kernel: public sbn::kernel {
             _output_file.open(output_filename());
         }
         k->write_output_to(_output_file, _year);
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message(
             "spec",
             "finished station _, year _, [_/_], total no. of spectra _, from _",
@@ -536,7 +536,7 @@ struct Year_kernel: public sbn::kernel {
         for (int32_t i=0; i<num_stations; ++i) {
             int32_t num_observations;
             in >> num_observations;
-            for (int32_t i=0; i<num_observations; ++i) {
+            for (int32_t j=0; j<num_observations; ++j) {
                 Observation ob;
                 in >> ob;
                 _observations[ob.station()][ob.variable()] = ob;
@@ -591,7 +591,7 @@ struct Launcher: public sbn::kernel {
     }
 
     void act() override {
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message("spec", "launcher start");
         #endif
         _time0 = current_time_nano();
@@ -622,14 +622,14 @@ struct Launcher: public sbn::kernel {
         Year_kernel* k = _yearkernels[k1->year()];
         k->react(k1);
         if (k->finished()) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message("spec", "finished year _", k->year());
             #endif
             _count_spectra += k->num_processed_spectra();
             _yearkernels.erase(k1->year());
             delete k;
             if (++_count == 0) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 sys::log_message("spec", "total number of processed spectra _", _count_spectra);
                 #endif
                 {
@@ -686,7 +686,7 @@ struct Spec_app: public sbn::kernel {
 
     void
     act() override {
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message("spec", "program start");
         #endif
         #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)

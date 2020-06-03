@@ -205,9 +205,6 @@ TEST(NICServerTest, All) {
         using namespace std::chrono;
         sleep_for(milliseconds(1000));
         remote.add_client(principal_endpoint);
-    }
-
-    if (role == Role::Master) {
         local.send(new Main);
     }
 

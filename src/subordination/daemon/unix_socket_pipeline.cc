@@ -69,7 +69,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
     ptr->protocol(&this->_protocol);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
     this->_clients.emplace(addr, ptr);
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
     this->log("add _", addr);
     #endif
 }

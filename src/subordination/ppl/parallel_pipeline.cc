@@ -118,8 +118,7 @@ void sbn::parallel_pipeline::stop() {
 
 void sbn::parallel_pipeline::wait() {
     for (auto& t : this->_upstream_threads) { if (t.joinable()) { t.join(); } }
-    auto& t = this->_timer_thread;
-    if (t.joinable()) { t.join(); }
+    if (this->_timer_thread.joinable()) { this->_timer_thread.join(); }
     for (auto& t : this->_downstream_threads) { if (t.joinable()) { t.join(); } }
     lock_type lock(this->_mutex);
     this->setstate(pipeline_state::stopped);

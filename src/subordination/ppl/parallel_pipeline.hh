@@ -72,16 +72,16 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto* k = kernels[i];
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("send _", *k);
                 #endif
                 if (k->moves_downstream()) {
-                    const auto i = k->hash() % this->_downstream_kernels.size();
-                    this->_downstream_kernels[i].emplace(k);
+                    const auto n = k->hash() % this->_downstream_kernels.size();
+                    this->_downstream_kernels[n].emplace(k);
                     if (this->_downstream_threads.empty()) {
                         notify_upstream = true;
                     } else {
-                        this->_downstream_semaphores[i].notify_one();
+                        this->_downstream_semaphores[n].notify_one();
                     }
                 } else if (k->scheduled()) {
                     this->_timer_kernels.emplace(k), notify_timer = true;
@@ -94,7 +94,7 @@ namespace sbn {
         }
 
         inline void send_upstream(kernel* k) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);
@@ -103,7 +103,7 @@ namespace sbn {
         }
 
         inline void send_downstream(kernel* k) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);
@@ -117,7 +117,7 @@ namespace sbn {
         }
 
         inline void send_timer(kernel* k) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             this->_timer_kernels.emplace(k);

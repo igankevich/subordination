@@ -64,14 +64,14 @@ namespace sbn {
                     }
                     this->plug_parent(k);
                 }
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("send local kernel _", *k);
                 #endif
                 this->_native_pipeline->send(k);
                 return;
             }
             bool delete_kernel = this->save_kernel(k);
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("send _ to _", *k, to);
             #endif
             this->write_kernel(k, stream);
@@ -114,7 +114,7 @@ namespace sbn {
                         bool ok = this->receive_kernel(k);
                         func(k);
                         if (!ok) {
-                            #ifndef NDEBUG
+                            #if defined(SBN_DEBUG)
                             this->log("no principal found for _", *k);
                             #endif
                             k->principal(k->parent());
@@ -137,7 +137,7 @@ namespace sbn {
 
         void
         recover_kernels(bool down) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("recover kernels upstream _ downstream _",
                       this->_upstream.size(), this->_downstream.size());
             #endif
@@ -206,7 +206,7 @@ namespace sbn {
                 hdr->from(from);
                 hdr->prepend_source_and_destination();
             }
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("recv _", hdr->header());
             #endif
             if (hdr->app() != this->_thisapp) {
@@ -243,7 +243,7 @@ namespace sbn {
                 }
                 k->principal(result->second);
             }
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("recv _", *k);
             #endif
             return ok;
@@ -278,7 +278,7 @@ namespace sbn {
                 k->principal(k->parent());
                 delete orig;
                 this->_upstream.erase(pos);
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("plug parent for _", *k);
                 #endif
             }
@@ -301,13 +301,13 @@ namespace sbn {
                     this->ensure_has_id(k->parent());
                     this->ensure_has_id(k);
                 }
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("save parent for _", *k);
                 #endif
                 this->_upstream.push_back(k);
             } else
             if (kernel_goes_in_downstream_buffer(k)) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("save parent for _", *k);
                 #endif
                 this->_downstream.push_back(k);
@@ -335,12 +335,12 @@ namespace sbn {
 
         void
         recover_kernel(kernel* k) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("try to recover _", k->id());
             #endif
             const bool native = k->is_native();
             if (k->moves_upstream() && !k->to()) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("recover _", *k);
                 #endif
                 if (native) {
@@ -349,7 +349,7 @@ namespace sbn {
                     this->_remote_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
                 }
             } else if (k->moves_somewhere() || (k->moves_upstream() && k->to())) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("destination is unreachable for _", *k);
                 #endif
                 k->from(k->to());
@@ -361,7 +361,7 @@ namespace sbn {
                     this->_foreign_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
                 }
             } else if (k->moves_downstream() && k->carries_parent()) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 this->log("restore parent _", *k);
                 #endif
                 if (native) {

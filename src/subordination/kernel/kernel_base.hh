@@ -5,7 +5,7 @@
 #include <cassert>
 #include <chrono>
 
-#ifndef NDEBUG
+#if defined(SBN_DEBUG)
 #include <unistdx/util/backtrace>
 #endif
 
@@ -30,7 +30,7 @@ namespace sbn {
     public:
         virtual
         ~kernel_base() {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             if (this->isset(kernel_flag::deleted)) {
                 sys::backtrace(2);
             }

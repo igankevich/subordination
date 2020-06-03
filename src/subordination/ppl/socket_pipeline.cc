@@ -113,11 +113,11 @@ namespace sbn {
                 sys::socket_address vaddr = this->_parent->virtual_addr(addr);
                 auto res = this->_parent->_clients.find(vaddr);
                 if (res == this->_parent->_clients.end()) {
-                    #ifndef NDEBUG
+                    #if defined(SBN_DEBUG)
                     auto ptr =
                     #endif
                     this->_parent->do_add_client(std::move(sock), vaddr);
-                    #ifndef NDEBUG
+                    #if defined(SBN_DEBUG)
                     this->log("accept _", *ptr);
                     #endif
                 }
@@ -252,7 +252,7 @@ namespace sbn {
         name(const char* rhs) noexcept {
             this->pipeline_base::name(rhs);
             this->_protocol->name(rhs);
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             if (this->_buffer) {
                 this->_buffer->set_name(rhs);
             }
@@ -344,7 +344,7 @@ sbn::socket_pipeline
 ::remove_client(client_iterator result) {
     // copy socket_address
     sys::socket_address socket_address = result->first;
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
     const char* reason =
         result->second->is_starting() ? "timed out" : "connection closed";
     this->log("remove client _ (_)", socket_address, reason);
@@ -372,7 +372,7 @@ sbn::socket_pipeline
                 this
             );
         this->_servers.emplace_back(ptr);
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         this->log("add server _", rhs);
         #endif
         ptr->socket().set_user_timeout(this->_socket_timeout);
@@ -390,7 +390,7 @@ sbn::socket_pipeline
     assert(hdr->is_foreign());
     if (hdr->to()) {
         auto ptr = this->find_or_create_client(hdr->to());
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         this->log("fwd _ to _", *hdr, hdr->to());
         #endif
         ptr->forward(hdr);
@@ -404,12 +404,12 @@ sbn::socket_pipeline
         }
         if (this->end_reached()) {
             this->find_next_client();
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *hdr, "localhost");
             #endif
             this->_protocol.foreign_pipeline()->forward(hdr);
         } else {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *hdr, this->current_client().socket_address());
             #endif
             this->current_client().forward(hdr);

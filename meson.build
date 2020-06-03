@@ -11,8 +11,8 @@ project_description = 'A framework for distributed programming'
 
 cpp = meson.get_compiler('cpp')
 
-if not get_option('buildtype').contains('debug')
-    add_global_arguments('-DNDEBUG', language: 'cpp')
+if get_option('buildtype').contains('debug')
+    add_global_arguments('-DSBN_DEBUG', language: 'cpp')
 endif
 #add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
@@ -25,16 +25,16 @@ foreach arg : ['-Werror=return-type', '-Werror=return-local-addr',
     endif
 endforeach
 
+if cpp.has_link_argument('-rdynamic')
+    add_global_link_arguments('-rdynamic', language: 'cpp')
+endif
+
 with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
 
 profiling_args = []
 if get_option('profile_node_discovery')
     profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
-endif
-
-if cpp.get_id() == 'gcc' or cpp.has_link_argument('-rdynamic')
-    add_global_link_arguments('-rdynamic', language: 'cpp')
 endif
 
 threads = dependency('threads')

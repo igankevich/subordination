@@ -27,14 +27,14 @@ namespace sbn {
         };
 
         void
-        act() {
+        act() override {
             for (I i=a; i<b; i+=bs) {
                 upstream<Local>(this, new Worker(f, i, std::min(i+bs, b)));
             }
         }
 
         void
-        react(kernel* k) {
+        react(kernel* k) override {
             Worker* w = dynamic_cast<Worker*>(k);
             I x1 = w->a, x2 = w->b;
             for (I i=x1; i<x2; ++i) g(i);

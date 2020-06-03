@@ -100,7 +100,7 @@ namespace sbn {
         name(const char* rhs) noexcept {
             this->pipeline_base::name(rhs);
             this->_protocol->name(rhs);
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             if (this->_buffer) {
                 this->_buffer->set_name(rhs);
             }

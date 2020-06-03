@@ -81,8 +81,7 @@ namespace sbn {
         void
         add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void
-        forward(foreign_kernel* hdr);
+        void forward(foreign_kernel* hdr) override;
 
         inline void
         set_port(sys::port_type rhs) noexcept {

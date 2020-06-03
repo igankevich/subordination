@@ -28,12 +28,11 @@ namespace sbn {
         virtual ~child_process_pipeline() = default;
         child_process_pipeline(child_process_pipeline&& rhs) = default;
 
-        void send(kernel* k);
+        void send(kernel* k) override;
 
     protected:
 
-        void
-        process_kernels() override;
+        void process_kernels() override;
 
     private:
 

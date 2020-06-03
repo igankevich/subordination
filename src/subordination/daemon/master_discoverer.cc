@@ -16,8 +16,7 @@ namespace {
 std::ostream&
 sbnd::operator<<(std::ostream& out, probe_result rhs) {
     const size_t i = static_cast<size_t>(rhs);
-    const char* s = i >= 0 && i <= all_results.size()
-                    ? all_results[i] : "<unknown>";
+    const char* s = i <= all_results.size() ? all_results[i] : "<unknown>";
     return out << s;
 }
 

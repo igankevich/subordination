@@ -15,7 +15,7 @@ sbn::process_pipeline::process_pipeline() {
 void sbn::process_pipeline::loop() {
     std::thread waiting_thread([this] () { this->wait_loop(); });
     basic_socket_pipeline::loop();
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
     this->log("waiting for all processes to finish: pid=_", sys::this_process::id());
     #endif
     if (waiting_thread.joinable()) { waiting_thread.join(); }
@@ -87,7 +87,7 @@ sbn::process_pipeline
 void
 sbn::process_pipeline
 ::forward(foreign_kernel* hdr) {
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
     this->log("forward _", hdr->header());
     #endif
     // do not lock here as static_lock locks both mutexes
@@ -96,7 +96,7 @@ sbn::process_pipeline
     if (result == this->_apps.end()) {
         if (const application* a = hdr->aptr()) {
             a->make_slave();
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("fwd: add app _ ", *a);
             #endif
             result = this->do_add(*a);
@@ -104,7 +104,7 @@ sbn::process_pipeline
             SUBORDINATION_THROW(error, "bad application id");
         }
     }
-    //#ifndef NDEBUG
+    //#if defined(SBN_DEBUG)
     //this->log("fwd _ to _", *hdr, hdr->app());
     //#endif
     result->second->forward(hdr);

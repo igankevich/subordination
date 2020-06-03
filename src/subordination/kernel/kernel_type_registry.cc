@@ -5,22 +5,6 @@
 
 #include <subordination/kernel/kernel_error.hh>
 
-namespace {
-
-    struct Entry {
-        Entry(const sbn::kernel_type& rhs): _type(rhs) {}
-
-        inline friend std::ostream&
-        operator<<(std::ostream& out, const Entry& rhs) {
-            return out << "/type/" << rhs._type.id() << '/' << rhs._type;
-        }
-
-    private:
-        const sbn::kernel_type& _type;
-    };
-
-}
-
 sbn::kernel_type_registry::const_iterator
 sbn::kernel_type_registry::find(id_type id) const noexcept {
     return std::find_if(
@@ -58,8 +42,9 @@ sbn::kernel_type_registry::register_type(kernel_type type) {
 
 std::ostream&
 sbn::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
-    std::ostream_iterator<Entry> it(out, "\n");
-    std::copy(rhs._types.begin(), rhs._types.end(), it);
+    for (const auto& type : rhs._types) {
+        out << "/type/" << type.id() << '/' << type;
+    }
     return out;
 }
 

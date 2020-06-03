@@ -72,7 +72,7 @@ namespace sbn {
         basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
 
         inline void send(kernel* k) override {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);

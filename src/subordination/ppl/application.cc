@@ -77,6 +77,7 @@ namespace {
         return str.str();
     }
 
+    /*
     inline std::string
     generate_filename(sbn::application_type app, const char* suffix) {
         std::stringstream filename;
@@ -92,6 +93,7 @@ namespace {
             0644
         );
     }
+    */
 
     void
     write_vector(sys::pstream& out, const std::vector<std::string>& rhs) {

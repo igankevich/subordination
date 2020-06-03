@@ -45,7 +45,7 @@ public:
     }
 
     void
-    react(kernel* child) {
+    react(kernel* child) override {
         auto* app = dynamic_cast<application_kernel*>(child);
         if (app->return_code() != sbn::exit_code::success) {
             std::string message = app->error();

@@ -39,14 +39,14 @@ struct Autoreg_app: public sbn::kernel {
     {}
 
     void
-    act() {
+    act() override {
         Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
         try {
             std::ifstream cfg(model_filename.c_str());
             if (cfg.is_open()) {
                 cfg >> *model;
             } else {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 sys::log_message("autoreg", "using default parameters");
                 #endif
             }
@@ -58,8 +58,8 @@ struct Autoreg_app: public sbn::kernel {
     }
 
     void
-    react(sbn::kernel*) {
-        #ifndef NDEBUG
+    react(sbn::kernel*) override {
+        #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "finished all");
         #endif
         sbn::commit(this);

@@ -2,7 +2,7 @@
 #include <subordination/ppl/child_process_pipeline.hh>
 
 void sbn::child_process_pipeline::send(kernel* k) {
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
     this->log("send _", *k);
     #endif
     lock_type lock(this->_mutex);
