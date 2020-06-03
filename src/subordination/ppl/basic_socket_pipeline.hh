@@ -11,14 +11,10 @@
 #include <vector>
 
 #include <unistdx/base/log_message>
-//#include <unistdx/base/recursive_spin_mutex>
-//#include <unistdx/base/simple_lock>
-//#include <unistdx/base/spin_mutex>
 #include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
-#include <subordination/base/container_traits.hh>
 #include <subordination/base/static_lock.hh>
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/basic_handler.hh>
@@ -44,6 +40,7 @@ namespace sbn {
         using thread_type = std::thread;
 
     private:
+        // TODO probably we do not need this
         typedef static_lock<mutex_type, mutex_type> static_lock_type;
 
     private:

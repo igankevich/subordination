@@ -4,6 +4,45 @@
 #include <subordination/kernel/act.hh>
 #include <subordination/ppl/parallel_pipeline.hh>
 
+namespace {
+
+    template <class T>
+    struct Front {
+        inline static typename T::const_reference
+        front(const T& container) { return container.front(); }
+    };
+
+    template <class A, class B, class C>
+    struct Front<std::priority_queue<A,B,C>> {
+        inline static typename std::priority_queue<A,B,C>::const_reference
+        front(const std::priority_queue<A,B,C>& container) { return container.top(); }
+    };
+
+    template <class T, class Sack> inline void
+    clear_queue(T& queue, Sack& sack) {
+        while (!queue.empty()) {
+            auto* k = Front<T>::front(queue);
+            k->mark_as_deleted(sack);
+            queue.pop();
+        }
+    }
+
+    inline void process_kernel(sbn::kernel* k, sbn::pipeline* error_pipeline) {
+        try {
+            ::sbn::act(k);
+        } catch (...) {
+            sys::backtrace(2);
+            if (error_pipeline) {
+                k->return_to_parent(sbn::exit_code::error);
+                error_pipeline->send(k);
+            } else {
+                delete k;
+            }
+        }
+    }
+
+}
+
 void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream_queue) {
     lock_type lock(this->_mutex);
     this->_upstream_semaphore.wait(lock, [this,&lock,&downstream_queue] () {
@@ -12,12 +51,7 @@ void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream_queue) {
                 auto* k = downstream_queue.front();
                 downstream_queue.pop();
                 sys::unlock_guard<lock_type> g(lock);
-                try {
-                    ::sbn::act(k);
-                } catch (...) {
-                    sys::backtrace(2);
-                    throw; // TODO send back to parent
-                }
+                process_kernel(k, this->_error_pipeline);
             }
         }
         auto& queue = this->_upstream_kernels;
@@ -25,12 +59,7 @@ void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream_queue) {
             auto* k = queue.front();
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            try {
-                ::sbn::act(k);
-            } catch (...) {
-                sys::backtrace(2);
-                throw; // TODO send back to parent
-            }
+            process_kernel(k, this->_error_pipeline);
         }
         return this->stopped();
     });
@@ -49,12 +78,7 @@ void sbn::parallel_pipeline::timer_loop() {
             auto* k = queue.top();
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            try {
-                ::sbn::act(k);
-            } catch (...) {
-                sys::backtrace(2);
-                throw; // TODO send back to parent
-            }
+            process_kernel(k, this->_error_pipeline);
         }
     }
 }
@@ -66,12 +90,7 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
             auto* k = queue.front();
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            try {
-                ::sbn::act(k);
-            } catch (...) {
-                sys::backtrace(2);
-                throw; // TODO send back to parent
-            }
+            process_kernel(k, this->_error_pipeline);
         }
         return this->stopped();
     });
@@ -126,27 +145,10 @@ void sbn::parallel_pipeline::wait() {
 
 void sbn::parallel_pipeline::clear() {
     std::vector<std::unique_ptr<kernel>> sack;
-    {
-        auto& queue = this->_upstream_kernels;
-        while (!queue.empty()) {
-            queue.front()->mark_as_deleted(sack);
-            queue.pop();
-        }
-    }
-    {
-        auto& queue = this->_timer_kernels;
-        while (!queue.empty()) {
-            queue.top()->mark_as_deleted(sack);
-            queue.pop();
-        }
-    }
-    {
-        for (auto& queue : this->_downstream_kernels) {
-            while (!queue.empty()) {
-                queue.front()->mark_as_deleted(sack);
-                queue.pop();
-            }
-        }
+    clear_queue(this->_upstream_kernels, sack);
+    clear_queue(this->_timer_kernels, sack);
+    for (auto& queue : this->_downstream_kernels) {
+        clear_queue(queue, sack);
     }
 }
 

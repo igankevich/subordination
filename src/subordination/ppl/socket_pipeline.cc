@@ -382,9 +382,7 @@ sbn::socket_pipeline
     }
 }
 
-void
-sbn::socket_pipeline
-::forward(foreign_kernel* hdr) {
+void sbn::socket_pipeline::forward(foreign_kernel* hdr) {
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
     assert(hdr->is_foreign());
@@ -530,20 +528,18 @@ void
 sbn::socket_pipeline
 ::process_kernels() {
 //	lock_type lock(this->_mutex);
-    std::for_each(
-        queue_popper(this->_kernels),
-        queue_popper_end(this->_kernels),
-        [this] (kernel* k) {
-            try {
-                this->process_kernel(k);
-            } catch (const std::exception& err) {
-                this->log_error(err);
-                k->from(k->to());
-                k->return_to_parent(exit_code::no_upstream_servers_available);
-                this->_protocol.native_pipeline()->send(k);
-            }
+    while (!this->_kernels.empty()) {
+        auto* k = this->_kernels.front();
+        this->_kernels.pop();
+        try {
+            this->process_kernel(k);
+        } catch (const std::exception& err) {
+            this->log_error(err);
+            k->from(k->to());
+            k->return_to_parent(exit_code::no_upstream_servers_available);
+            this->_protocol.native_pipeline()->send(k);
         }
-    );
+    }
 }
 
 void

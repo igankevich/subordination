@@ -12,9 +12,6 @@
 #include <unistdx/ipc/thread_semaphore>
 #include <unistdx/util/system>
 
-#include <subordination/base/container_traits.hh>
-#include <subordination/base/queue_popper.hh>
-#include <subordination/base/queue_pusher.hh>
 #include <subordination/kernel/kernel_type.hh>
 #include <subordination/ppl/pipeline_base.hh>
 

@@ -9,6 +9,7 @@ _local(1) {
 _local(sys::thread_concurrency()) {
 #endif
     this->_local.name("upstrm");
+    this->_local.error_pipeline(&this->_remote);
     this->_remote.name("chld");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);

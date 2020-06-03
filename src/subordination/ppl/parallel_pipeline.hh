@@ -47,6 +47,8 @@ namespace sbn {
         kernel_queue_array _downstream_kernels;
         thread_array _downstream_threads;
         semaphore_array _downstream_semaphores;
+        /// Kernels that threw an exception are sent to this pipeline.
+        pipeline* _error_pipeline = nullptr;
 
     public:
 
@@ -139,6 +141,10 @@ namespace sbn {
 
         inline size_t num_upstream_threads() const noexcept {
             return this->_upstream_threads.size();
+        }
+
+        inline void error_pipeline(pipeline* rhs) noexcept {
+            this->_error_pipeline = rhs;
         }
 
     private:

@@ -1,15 +1,4 @@
 test(
-    'queue-pusher-test',
-    executable(
-        'queue-pusher-test',
-        sources: 'queue_pusher_test.cc',
-        include_directories: src,
-        dependencies: [unistdx, gtest, subordination_core],
-        implicit_include_directories: false,
-    )
-)
-
-test(
     'kstream-test',
     executable(
         'kstream-test',

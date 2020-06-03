@@ -2,6 +2,7 @@
 
 sbnc::Factory::Factory() {
     this->_local.name("local");
+    this->_local.error_pipeline(&this->_remote);
     this->_remote.name("remote");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);
