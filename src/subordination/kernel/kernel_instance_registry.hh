@@ -8,19 +8,18 @@
 
 namespace sbn {
 
-    template<class T>
     class kernel_instance_registry {
 
     public:
-        typedef T kernel_type;
-        typedef typename kernel_type::id_type id_type;
-        typedef std::unordered_map<id_type, kernel_type*> container_type;
-        typedef typename container_type::iterator iterator;
-        typedef typename container_type::const_iterator const_iterator;
-        typedef typename container_type::value_type value_type;
+        using kernel_type = kernel;
+        using id_type = typename kernel_type::id_type;
+        using kernel_table = std::unordered_map<id_type, kernel_type*>;
+        using iterator = typename kernel_table::iterator;
+        using const_iterator = typename kernel_table::const_iterator;
+        using value_type = typename kernel_table::value_type;
 
     private:
-        container_type _instances;
+        kernel_table _instances;
         mutable std::mutex _mutex;
 
     public:
@@ -61,18 +60,16 @@ namespace sbn {
             this->_instances.erase(k->id());
         }
 
-        template <class X>
         friend std::ostream&
-        operator<<(std::ostream& out, const kernel_instance_registry<X>& rhs);
+        operator<<(std::ostream& out, const kernel_instance_registry& rhs);
 
     };
 
-    template <class T>
     std::ostream&
-    operator<<(std::ostream& out, const kernel_instance_registry<T>& rhs);
+    operator<<(std::ostream& out, const kernel_instance_registry& rhs);
 
-    typedef kernel_instance_registry<kernel> instance_registry_type;
-    typedef std::lock_guard<instance_registry_type> instances_guard;
+    using instance_registry_type = kernel_instance_registry;
+    using instances_guard = std::lock_guard<instance_registry_type>;
     extern instance_registry_type instances;
 
 }

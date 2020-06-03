@@ -1,15 +1,47 @@
-#include <subordination/ppl/process_handler.hh>
-
 #include <ostream>
 
 #include <unistdx/base/make_object>
 
-#include <subordination/ppl/basic_router.hh>
+#include <subordination/ppl/basic_factory.hh>
+#include <subordination/ppl/process_handler.hh>
 
-template <class K, class R>
-void
-sbn::process_handler<K,R>
-::handle(const sys::epoll_event& event) {
+/// Called from parent process.
+sbn::process_handler::process_handler(sys::pid_type&& child,
+                                      sys::two_way_pipe&& pipe,
+                                      const application& app):
+_childpid(child),
+_packetbuf(new kernelbuf_type),
+_stream(_packetbuf.get()),
+_proto(),
+_application(app),
+_role(role_type::parent)
+{
+    this->_proto.set_other_application(&this->_application);
+    this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
+    this->_proto.foreign_pipeline(&factory.parent());
+    this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
+    this->_packetbuf->fd().in().validate();
+    this->_packetbuf->fd().out().validate();
+}
+
+/// Called from child process.
+sbn::process_handler::process_handler(sys::pipe&& pipe):
+_childpid(sys::this_process::id()),
+_packetbuf(new kernelbuf_type),
+_stream(_packetbuf.get()),
+_proto(),
+_application(),
+_role(role_type::child)
+{
+    this->_proto.setf(
+        kernel_proto_flag::prepend_source_and_destination |
+        kernel_proto_flag::save_upstream_kernels
+    );
+    this->_proto.foreign_pipeline(&factory.parent());
+    this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
+}
+
+void sbn::process_handler::handle(const sys::epoll_event& event) {
     if (this->is_starting()) {
         this->setstate(pipeline_state::started);
     }
@@ -18,14 +50,11 @@ sbn::process_handler<K,R>
         if (this->_packetbuf->is_safe_to_compact()) {
             this->_packetbuf->compact();
         }
-        this->_proto.receive_kernels(this->_stream);
+        this->_proto.receive_kernels(this->_stream, sys::socket_address{});
     }
 }
 
-template <class K, class R>
-void
-sbn::process_handler<K,R>
-::write(std::ostream& out) const {
+void sbn::process_handler::write(std::ostream& out) const {
     out << sys::make_object(
         "pid",
         this->_childpid,
@@ -42,10 +71,7 @@ sbn::process_handler<K,R>
         );
 }
 
-template <class K, class R>
-void
-sbn::process_handler<K,R>
-::remove(sys::event_poller& poller) {
+void sbn::process_handler::remove(sys::event_poller& poller) {
     try {
         poller.erase(this->in());
     } catch (const sys::bad_call& err) {
@@ -62,5 +88,3 @@ sbn::process_handler<K,R>
     }
     this->setstate(pipeline_state::stopped);
 }
-
-template class sbn::process_handler<sbn::kernel, sbn::basic_router<sbn::kernel>>;

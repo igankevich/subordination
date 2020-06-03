@@ -4,8 +4,8 @@
 #include <cassert>
 
 #include <unistdx/base/log_message>
-#include <unistdx/net/socket_address>
 #include <unistdx/net/pstream>
+#include <unistdx/net/socket_address>
 
 #include <subordination/base/error.hh>
 #include <subordination/kernel/foreign_kernel.hh>
@@ -16,57 +16,7 @@
 
 namespace sbn {
 
-    namespace bits {
-
-        template <class Router>
-        struct no_forward: public Router {
-            void
-            operator()(foreign_kernel*) {
-                assert(false);
-            }
-        };
-
-        template <class Router>
-        struct forward_to_child: public Router {
-            void
-            operator()(foreign_kernel* hdr) {
-                this->forward_child(hdr);
-            }
-        };
-
-        template <class Router>
-        struct forward_to_parent: public Router {
-            void
-            operator()(foreign_kernel* hdr) {
-                this->forward_parent(hdr);
-            }
-        };
-
-        template <class T>
-        struct no_router {
-
-            void
-            send_local(T* rhs) {}
-
-            void
-            send_remote(T*) {}
-
-            void
-            forward(foreign_kernel*) {}
-
-            void
-            forward_child(foreign_kernel*) {}
-
-            void
-            forward_parent(foreign_kernel*) {}
-
-        };
-    }
-
-    template<class T>
     struct kstream: public sys::pstream {
-
-        typedef T kernel_type;
 
         using sys::pstream::operator<<;
         using sys::pstream::operator>>;
@@ -88,16 +38,16 @@ namespace sbn {
         }
 
         inline kstream&
-        operator<<(kernel_type* k) {
+        operator<<(kernel* k) {
             return operator<<(*k);
         }
 
         kstream&
-        operator<<(kernel_type& k) {
+        operator<<(kernel& k) {
             this->write_native(k);
             if (k.carries_parent()) {
                 // embed parent into the packet
-                kernel_type* parent = k.parent();
+                auto* parent = k.parent();
                 if (!parent) {
                     throw std::invalid_argument("parent is null");
                 }
@@ -107,10 +57,10 @@ namespace sbn {
         }
 
         kstream&
-        operator>>(kernel_type*& k) {
+        operator>>(kernel*& k) {
             k = this->read_native();
             if (k->carries_parent()) {
-                kernel_type* parent = this->read_native();
+                auto* parent = this->read_native();
                 k->parent(parent);
             }
             return *this;
@@ -125,7 +75,7 @@ namespace sbn {
     private:
 
         inline void
-        write_native(kernel_type& k) {
+        write_native(kernel& k) {
             auto type = types.find(typeid(k));
             if (type == types.end()) {
                 throw std::invalid_argument("kernel type is null");
@@ -134,7 +84,7 @@ namespace sbn {
             k.write(*this);
         }
 
-        inline kernel_type*
+        inline kernel*
         read_native() {
             return types.read_object(*this);
         }

@@ -23,22 +23,21 @@
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/basic_handler.hh>
 #include <subordination/ppl/basic_pipeline.hh>
+#include <subordination/ppl/kernel_protocol.hh>
 
 namespace sbn {
 
-    template<class T,
-             class Kernels=std::queue<T*>,
+    template<class Kernels=std::queue<kernel*>,
              class Traits=queue_traits<Kernels>,
              class Threads=std::vector<std::thread>>
-    using Proxy_pipeline_base = basic_pipeline<T, Kernels, Traits, Threads,
+    using Proxy_pipeline_base = basic_pipeline<Kernels, Traits, Threads,
                                                std::recursive_mutex,
                                                std::unique_lock<std::
                                                                 recursive_mutex>,
 //		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
                                                sys::event_poller>;
 
-    template<class T>
-    class basic_socket_pipeline: public Proxy_pipeline_base<T> {
+    class basic_socket_pipeline: public Proxy_pipeline_base<> {
 
     public:
         typedef basic_handler handler_type;
@@ -51,8 +50,7 @@ namespace sbn {
         typedef typename handler_type::time_point time_point;
         typedef typename handler_type::duration duration;
 
-        typedef Proxy_pipeline_base<T> base_pipeline;
-        using typename base_pipeline::kernel_type;
+        using base_pipeline = Proxy_pipeline_base<>;
         using typename base_pipeline::mutex_type;
         using typename base_pipeline::lock_type;
         using typename base_pipeline::sem_type;
@@ -66,6 +64,7 @@ namespace sbn {
 
     protected:
         handler_container_type _handlers;
+        kernel_protocol _protocol;
         duration _start_timeout = duration::zero();
 
     public:
@@ -99,6 +98,18 @@ namespace sbn {
         inline mutex_type*
         mutex() noexcept {
             return &this->_mutex;
+        }
+
+        inline void foreign_pipeline(pipeline* rhs) noexcept {
+            this->_protocol.foreign_pipeline(rhs);
+        }
+
+        inline void native_pipeline(pipeline* rhs) noexcept {
+            this->_protocol.native_pipeline(rhs);
+        }
+
+        inline void remote_pipeline(pipeline* rhs) noexcept {
+            this->_protocol.remote_pipeline(rhs);
         }
 
     protected:

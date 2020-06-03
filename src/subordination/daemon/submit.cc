@@ -7,12 +7,12 @@
 #include <subordination/config.hh>
 #include <subordination/ppl/application_kernel.hh>
 
-using sbn::Application_kernel;
+using sbn::application_kernel;
 using namespace sbn;
 
-Application_kernel*
+application_kernel*
 new_application_kernel(int argc, char* argv[]) {
-    typedef Application_kernel::container_type container_type;
+    typedef application_kernel::container_type container_type;
     container_type args, env;
     for (int i=1; i<argc; ++i) {
         args.emplace_back(argv[i]);
@@ -20,7 +20,7 @@ new_application_kernel(int argc, char* argv[]) {
     for (char** first=environ; *first; ++first) {
         env.emplace_back(*first);
     }
-    Application_kernel* k = new Application_kernel(args, env);
+    application_kernel* k = new application_kernel(args, env);
     k->to(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
     return k;
 }
@@ -47,7 +47,7 @@ public:
 
     void
     react(kernel* child) {
-        Application_kernel* app = dynamic_cast<Application_kernel*>(child);
+        application_kernel* app = dynamic_cast<application_kernel*>(child);
         if (app->return_code() != sbn::exit_code::success) {
             std::string message = app->error();
             if (message.empty()) {
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     sbn::install_error_handler();
-    sbn::types.register_type<Application_kernel>(1);
+    sbn::types.register_type<application_kernel>(1);
     factory_guard g;
     sbn::factory.parent().use_localhost(false);
     try {

@@ -27,7 +27,7 @@ namespace {
 }
 
 void
-sbn::Application_kernel
+sbn::application_kernel
 ::write(sys::pstream& out) const {
     kernel::write(out);
     write_vector(out, this->_args);
@@ -36,7 +36,7 @@ sbn::Application_kernel
 }
 
 void
-sbn::Application_kernel
+sbn::application_kernel
 ::read(sys::pstream& in) {
     kernel::read(in);
     read_vector(in, this->_args);
@@ -44,7 +44,7 @@ sbn::Application_kernel
     in >> this->_workdir >> this->_error >> this->_application;
 }
 
-void sbn::Application_kernel::act() {
+void sbn::application_kernel::act() {
     #if defined(SUBORDINATION_DAEMON)
     ::sbn::application app(arguments(), environment());
     app.workdir(workdir());

@@ -15,22 +15,17 @@
 
 namespace sbn {
 
-    template<class K, class R>
-    class process_pipeline: public basic_socket_pipeline<K> {
+    class process_pipeline: public basic_socket_pipeline {
 
     private:
-        typedef basic_socket_pipeline<K> base_pipeline;
+        using base_pipeline = basic_socket_pipeline;
         using typename base_pipeline::queue_popper;
         using typename base_pipeline::lock_type;
         using typename base_pipeline::mutex_type;
-        typedef process_handler<K,R> event_handler_type;
-        typedef std::shared_ptr<event_handler_type> event_handler_ptr;
-        typedef std::unordered_map<application_type,event_handler_ptr> map_type;
-        typedef typename map_type::iterator app_iterator;
-
-    public:
-        typedef R router_type;
-        typedef K kernel_type;
+        using event_handler_type = process_handler;
+        using event_handler_ptr = std::shared_ptr<event_handler_type>;
+        using map_type = std::unordered_map<application_type,event_handler_ptr>;
+        using app_iterator = typename map_type::iterator;
 
     private:
         map_type _apps;
@@ -41,15 +36,11 @@ namespace sbn {
     public:
 
         process_pipeline() = default;
-
-        process_pipeline(const process_pipeline&) = delete;
-
-        process_pipeline&
-        operator=(const process_pipeline&) = delete;
-
-        process_pipeline(process_pipeline&& rhs) = default;
-
         ~process_pipeline() = default;
+        process_pipeline(const process_pipeline&) = delete;
+        process_pipeline& operator=(const process_pipeline&) = delete;
+        process_pipeline(process_pipeline&& rhs) = default;
+        process_pipeline& operator=(process_pipeline&) = default;
 
         inline void
         add(const application& app) {
@@ -57,19 +48,13 @@ namespace sbn {
             this->do_add(app);
         }
 
-        void
-        do_run() override;
-
-        void
-        forward(foreign_kernel* hdr);
+        void do_run() override;
+        void forward(foreign_kernel* hdr) override;
 
         inline void
         allow_root(bool rhs) noexcept {
             this->_allowroot = rhs;
         }
-
-        void
-        print_state(std::ostream& out);
 
     protected:
 
@@ -82,7 +67,7 @@ namespace sbn {
         do_add(const application& app);
 
         void
-        process_kernel(kernel_type* k);
+        process_kernel(kernel* k);
 
         void
         wait_for_all_processes_to_finish();
@@ -98,8 +83,7 @@ namespace sbn {
         app_iterator
         find_by_process_id(sys::pid_type pid);
 
-        template <class X, class Y> friend class process_notify_handler;
-        template <class X, class Y> friend class process_handler;
+        friend class process_handler;
 
     };
 

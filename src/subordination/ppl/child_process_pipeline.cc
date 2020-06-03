@@ -1,63 +1,25 @@
 #include <subordination/ppl/application.hh>
-#include <subordination/ppl/basic_router.hh>
+#include <subordination/ppl/basic_factory.hh>
 #include <subordination/ppl/child_process_pipeline.hh>
 
-namespace sbn {
-
-    /*
-    template <class K, class R>
-    class child_notify_handler: public basic_handler {
-
-    public:
-        typedef K kernel_type;
-        typedef R router_type;
-        typedef child_process_pipeline<K,R> this_type;
-        typedef typename this_type::queue_popper queue_popper;
-
-    private:
-        this_type& _ppl;
-
-    public:
-
-        explicit
-        child_notify_handler(this_type& ppl):
-        _ppl(ppl) {}
-
-        void
-        handle(const sys::epoll_event& ev) override {
-            std::for_each(
-                queue_popper(this->_ppl._kernels),
-                queue_popper(),
-                [this] (kernel_type* rhs) {
-                    this->process_kernel(rhs);
-                }
-            );
-        }
-
-        void
-        process_kernel(kernel_type* k) {
-            if (this->_ppl._parent && this->_ppl._parent->is_running()) {
-                this->_ppl._parent->send(k);
-            } else {
-                router_type::send_local(k);
-            }
-        }
-
-    };
-
-    */
-
+void sbn::child_process_pipeline::send(kernel* k) {
+    #ifndef NDEBUG
+    this->log("send _", *k);
+    #endif
+    lock_type lock(this->_mutex);
+    if (!this->_parent) {
+        lock.unlock();
+        this->_protocol.native_pipeline()->send(k);
+    } else {
+        traits_type::push(this->_kernels, k);
+        this->poller().notify_one();
+    }
 }
 
-template <class K, class R>
-sbn::child_process_pipeline<K,R>
-::child_process_pipeline() {
+sbn::child_process_pipeline::child_process_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
     this->set_name("chld");
-//	this->emplace_notify_handler(
-//		std::make_shared<child_notify_handler<K,R>>(*this)
-//	);
     sys::fd_type in = this_application::get_input_fd();
     sys::fd_type out = this_application::get_output_fd();
     if (in != -1 && out != -1) {
@@ -76,23 +38,14 @@ sbn::child_process_pipeline<K,R>
     }
 }
 
-template <class K, class R>
-void
-sbn::child_process_pipeline<K,R>
-::process_kernels() {
-    std::for_each(
-        queue_popper(this->_kernels),
-        queue_popper(),
-        [this] (kernel_type* rhs) {
-            this->process_kernel(rhs);
+void sbn::child_process_pipeline::process_kernels() {
+    while (!this->_kernels.empty()) {
+        auto* k = this->_kernels.front();
+        this->_kernels.pop();
+        if (this->_parent && this->_parent->is_running()) {
+            this->_parent->send(k);
+        } else {
+            this->_protocol.native_pipeline()->send(k);
         }
-    );
+    }
 }
-
-template <class K, class R>
-void
-sbn::child_process_pipeline<K,R>
-::print_state(std::ostream& out) {
-}
-
-template class sbn::child_process_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;

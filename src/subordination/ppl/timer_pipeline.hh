@@ -10,26 +10,21 @@ namespace sbn {
 
     namespace bits {
 
-        template<class T>
-        using Priority_queue =
-                  std::priority_queue<T*, std::vector<T*>, Compare_time<T>>;
+        using priority_queue =
+            std::priority_queue<kernel*, std::vector<kernel*>, Compare_time<kernel>>;
 
-        template<class T>
-        using Priority_queue_traits =
-                  priority_queue_traits<Priority_queue<T>>;
-
-        template<class T>
-        using Timer_pipeline_base =
-                  basic_pipeline<T, Priority_queue<T>,
-                                 Priority_queue_traits<T>>;
+        using timer_pipeline_base = basic_pipeline<
+            priority_queue,
+            priority_queue_traits<priority_queue>>;
 
     }
 
-    template<class T>
-    struct timer_pipeline: public bits::Timer_pipeline_base<T> {
+    class timer_pipeline: public bits::timer_pipeline_base {
 
-        typedef bits::Timer_pipeline_base<T> base_pipeline;
-        using typename base_pipeline::kernel_type;
+    private:
+        using base_pipeline = bits::timer_pipeline_base;
+
+    public:
         using typename base_pipeline::mutex_type;
         using typename base_pipeline::lock_type;
         using typename base_pipeline::sem_type;
@@ -46,9 +41,8 @@ namespace sbn {
         {}
 
         timer_pipeline(const timer_pipeline&) = delete;
-
-        timer_pipeline&
-        operator=(const timer_pipeline&) = delete;
+        timer_pipeline& operator=(const timer_pipeline&) = delete;
+        timer_pipeline& operator=(timer_pipeline&&) = delete;
 
         ~timer_pipeline() = default;
 
@@ -68,7 +62,7 @@ namespace sbn {
         }
 
         inline bool
-        wait_until_kernel_is_ready(lock_type& lock, kernel_type* k) {
+        wait_until_kernel_is_ready(lock_type& lock, kernel* k) {
             return this->_semaphore.wait_until(
                 lock,
                 k->at(),

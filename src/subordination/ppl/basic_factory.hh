@@ -25,126 +25,92 @@
 #include <subordination/ppl/unix_socket_pipeline.hh>
 #endif
 #include <subordination/ppl/application.hh>
-#include <subordination/ppl/basic_router.hh>
 #include <subordination/ppl/timer_pipeline.hh>
 
 namespace sbn {
 
-    template <class T>
     class Factory: public pipeline_base {
 
     public:
-        typedef T kernel_type;
-        typedef parallel_pipeline<T> cpu_pipeline_type;
-        typedef timer_pipeline<T> timer_pipeline_type;
-        typedef io_pipeline<T> io_pipeline_type;
-        typedef Multi_pipeline<T> downstream_pipeline_type;
         #if defined(SUBORDINATION_APPLICATION)
-        typedef child_process_pipeline<T, basic_router<T>>
-            parent_pipeline_type;
+        using parent_pipeline_type = child_process_pipeline;
         #elif defined(SUBORDINATION_DAEMON) || defined(SUBORDINATION_SUBMIT)
-        typedef socket_pipeline<T, sys::socket, basic_router<T>>
-            parent_pipeline_type;
-        #endif
-        #if defined(SUBORDINATION_DAEMON) && \
-        !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        typedef unix_socket_pipeline<T, basic_router<T>>
-            external_pipeline_type;
-        #endif
-        #if defined(SUBORDINATION_DAEMON) && \
-        !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        typedef process_pipeline<T, basic_router<T>>
-            child_pipeline_type;
+        using parent_pipeline_type = socket_pipeline;
         #endif
 
     private:
-        cpu_pipeline_type _upstream;
-        downstream_pipeline_type _downstream;
-        timer_pipeline_type _timer;
+        parallel_pipeline _native;
+        multi_pipeline _downstream;
+        timer_pipeline _scheduled;
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        io_pipeline_type _io;
+        io_pipeline _io;
         #endif
         parent_pipeline_type _parent;
         #if defined(SUBORDINATION_DAEMON) && \
         !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        child_pipeline_type _child;
-        external_pipeline_type _external;
+        process_pipeline _child;
+        unix_socket_pipeline _external;
         #endif
 
     public:
+
         Factory();
-
-        virtual
-        ~Factory() = default;
-
+        virtual ~Factory() = default;
         Factory(const Factory&) = delete;
-
         Factory(Factory&&) = delete;
 
         inline void
-        send(kernel_type* k) {
+        send(kernel* k) {
             if (k->scheduled()) {
-                this->_timer.send(k);
+                this->_scheduled.send(k);
             } else if (k->moves_downstream()) {
                 const size_t i = k->hash();
                 const size_t n = this->_downstream.size();
                 this->_downstream[i%n].send(k);
             } else {
-                this->_upstream.send(k);
+                this->_native.send(k);
             }
         }
 
         inline void
-        send_remote(kernel_type* k) {
+        send_remote(kernel* k) {
             this->_parent.send(k);
         }
 
         inline void
-        send_external(kernel_type* k) {
+        send_external(kernel* k) {
             #if defined(SUBORDINATION_DAEMON) && \
             !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
             this->_external.send(k);
             #endif
         }
 
-        inline void
-        send_timer(kernel_type* k) {
-            this->_timer.send(k);
-        }
-
-        inline void
-        send_timer(kernel_type** k, size_t n) {
-            this->_timer.send(k, n);
-        }
+        inline void schedule(kernel* k) { this->_scheduled.send(k); }
+        inline void schedule(kernel** k, size_t n) { this->_scheduled.send(k, n); }
 
         #if defined(SUBORDINATION_DAEMON) && \
         !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         inline void
-        send_child(kernel_type* k) {
+        send_child(kernel* k) {
             this->_child.send(k);
         }
 
-        inline child_pipeline_type&
+        inline process_pipeline&
         child() noexcept {
             return this->_child;
         }
 
-        inline const child_pipeline_type&
+        inline const process_pipeline&
         child() const noexcept {
             return this->_child;
         }
 
-        inline void
-        forward_child(foreign_kernel* hdr) {
-            this->_child.forward(hdr);
-        }
-
-        inline external_pipeline_type&
+        inline unix_socket_pipeline&
         external() noexcept {
             return this->_external;
         }
 
-        inline const external_pipeline_type&
+        inline const unix_socket_pipeline&
         external() const noexcept {
             return this->_external;
         }
@@ -172,109 +138,27 @@ namespace sbn {
             return this->_parent;
         }
 
-        inline void
-        forward_parent(foreign_kernel* hdr) {
-            this->_parent.forward(hdr);
-        }
-
         #endif
 
-        inline timer_pipeline_type&
+        inline timer_pipeline&
         timer() noexcept {
-            return this->_timer;
+            return this->_scheduled;
         }
 
-        inline const timer_pipeline_type&
+        inline const timer_pipeline&
         timer() const noexcept {
-            return this->_timer;
+            return this->_scheduled;
         }
 
-        void
-        start();
-
-        void
-        stop();
-
-        void
-        wait();
-
-        void
-        print_state(std::ostream& out);
+        void start();
+        void stop();
+        void wait();
 
     };
 
-    typedef Factory<kernel> factory_type;
+    using factory_type = Factory;
 
     extern factory_type factory;
-
-    template <class T>
-    void
-    basic_router<T>
-    ::send_local(T* rhs) {
-        factory.send(rhs);
-    }
-
-    template <class T>
-    void
-    basic_router<T>
-    ::send_remote(T* rhs) {
-        factory.send_remote(rhs);
-    }
-
-    #if defined(SUBORDINATION_DAEMON) && \
-    !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    template <class T>
-    void
-    basic_router<T>
-    ::forward(foreign_kernel* hdr) {
-        factory.forward_child(hdr);
-    }
-
-    template <class T>
-    void
-    basic_router<T>
-    ::forward_child(foreign_kernel* hdr) {
-        #ifndef NDEBUG
-        sys::log_message(__FILE__, "forward-child _", hdr->header());
-        #endif
-        factory.forward_child(hdr);
-    }
-
-    template <class T>
-    void
-    basic_router<T>
-    ::forward_parent(foreign_kernel* hdr) {
-        factory.forward_parent(hdr);
-    }
-
-    template <class T>
-    void
-    basic_router<T>
-    ::execute(const application& app) {
-        factory.child().add(app);
-    }
-
-    #else
-    template <class T>
-    void
-    basic_router<T>
-    ::forward(foreign_kernel* hdr) {}
-
-    template <class T>
-    void
-    basic_router<T>
-    ::forward_child(foreign_kernel* hdr) {}
-
-    template <class T>
-    void
-    basic_router<T>
-    ::forward_parent(foreign_kernel* hdr) {}
-
-    template <class T>
-    void
-    basic_router<T>
-    ::execute(const application& app) {}
-    #endif // if defined(SUBORDINATION_DAEMON)
 
 }
 

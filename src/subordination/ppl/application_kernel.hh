@@ -13,7 +13,7 @@
 
 namespace sbn {
 
-    class Application_kernel: public kernel {
+    class application_kernel: public kernel {
 
     public:
         typedef kernel kernel_type;
@@ -29,7 +29,7 @@ namespace sbn {
     public:
 
         inline
-        Application_kernel(
+        application_kernel(
             const container_type& args,
             const container_type& env
         ):
@@ -38,8 +38,8 @@ namespace sbn {
         _workdir(".")
         {}
 
-        Application_kernel() = default;
-        virtual ~Application_kernel() = default;
+        application_kernel() = default;
+        virtual ~application_kernel() = default;
 
         void act() override;
 

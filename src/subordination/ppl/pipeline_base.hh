@@ -2,7 +2,10 @@
 #define SUBORDINATION_PPL_PIPELINE_BASE_HH
 
 #include <chrono>
+
 #include <unistdx/base/log_message>
+
+#include <subordination/kernel/foreign_kernel.hh>
 
 namespace sbn {
 
@@ -17,9 +20,9 @@ namespace sbn {
     class pipeline_base {
 
     public:
-        typedef std::chrono::system_clock clock_type;
-        typedef clock_type::time_point time_point;
-        typedef clock_type::duration duration;
+        using clock_type = std::chrono::system_clock;
+        using time_point = clock_type::time_point;
+        using duration = clock_type::duration;
 
     protected:
         volatile pipeline_state _state = pipeline_state::initial;
@@ -29,16 +32,10 @@ namespace sbn {
 
     public:
         pipeline_base() = default;
-
-        virtual
-        ~pipeline_base() = default;
-
+        virtual ~pipeline_base() = default;
         pipeline_base(pipeline_base&&) = default;
-
         pipeline_base(const pipeline_base&) = delete;
-
-        pipeline_base&
-        operator=(pipeline_base&) = delete;
+        pipeline_base& operator=(pipeline_base&) = delete;
 
         inline void
         setstate(pipeline_state rhs) noexcept {
@@ -114,6 +111,14 @@ namespace sbn {
         log_error(const std::exception& err) const {
             sys::log_message(this->_name, "error: _", err.what());
         }
+
+    };
+
+    class pipeline: public pipeline_base {
+
+    public:
+        virtual void send(kernel* k) = 0;
+        virtual void forward(foreign_kernel* k);
 
     };
 

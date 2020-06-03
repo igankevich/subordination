@@ -5,18 +5,15 @@
 
 namespace sbn {
 
-    template<class T>
-    class parallel_pipeline: public basic_pipeline<T> {
+    class parallel_pipeline: public basic_pipeline<> {
 
     public:
-        typedef basic_pipeline<T> base_pipeline;
-        using typename base_pipeline::kernel_type;
-        using typename base_pipeline::lock_type;
-        using typename base_pipeline::traits_type;
+        using typename basic_pipeline::lock_type;
+        using typename basic_pipeline::traits_type;
 
         inline
         parallel_pipeline(parallel_pipeline&& rhs) noexcept:
-        base_pipeline(std::move(rhs))
+        basic_pipeline(std::move(rhs))
         {}
 
         inline
@@ -26,7 +23,7 @@ namespace sbn {
 
         inline explicit
         parallel_pipeline(unsigned concurrency) noexcept:
-        base_pipeline(concurrency)
+        basic_pipeline(concurrency)
         {}
 
         parallel_pipeline(const parallel_pipeline&) = delete;
@@ -35,8 +32,7 @@ namespace sbn {
 
     protected:
 
-        void
-        do_run() override;
+        void do_run() override;
 
     };
 

@@ -29,28 +29,27 @@ namespace sbn {
     wait_and_return();
 
     template<
-        class T,
-        class Kernels=std::queue<T*>,
+        class Kernels=std::queue<kernel*>,
         class Traits=queue_traits<Kernels>,
         class Threads=std::vector<std::thread>,
         class Mutex=sys::spin_mutex,
         class Lock=sys::simple_lock<Mutex>,
         class Semaphore=sys::thread_semaphore
     >
-    class basic_pipeline: public pipeline_base {
+    class basic_pipeline: public pipeline {
 
     public:
-        typedef T kernel_type;
-        typedef Kernels kernel_pool;
-        typedef Threads thread_pool;
-        typedef Mutex mutex_type;
-        typedef Lock lock_type;
-        typedef Semaphore sem_type;
-        typedef Traits traits_type;
+        using kernel_pool = Kernels;
+        using thread_pool = Threads;
+        using mutex_type = Mutex;
+        using lock_type = Lock;
+        using sem_type = Semaphore;
+        using traits_type = Traits;
+        static_assert(!std::is_same<Kernels,kernel>::value, "bad first argument");
 
     protected:
-        typedef std::vector<std::unique_ptr<kernel_type> > kernel_sack;
-        typedef queue_pop_iterator<kernel_pool,traits_type> queue_popper;
+        using kernel_sack = std::vector<std::unique_ptr<kernel>>;
+        using queue_popper = queue_pop_iterator<kernel_pool,traits_type>;
 
     protected:
         kernel_pool _kernels;
@@ -91,7 +90,7 @@ namespace sbn {
         operator=(const basic_pipeline&) = delete;
 
         void
-        send(kernel_type* k) {
+        send(kernel* k) {
             #ifndef NDEBUG
             this->log("send _", *k);
             #endif
@@ -101,14 +100,14 @@ namespace sbn {
         }
 
         void
-        send(kernel_type** kernels, size_t n) {
+        send(kernel** kernels, size_t n) {
             lock_type lock(this->_mutex);
             #ifndef NDEBUG
             assert(
                 not std::any_of(
                     kernels,
                     kernels+n,
-                    std::mem_fn(&kernel_type::moves_downstream)
+                    std::mem_fn(&kernel::moves_downstream)
                 )
             );
             #endif
@@ -191,7 +190,7 @@ namespace sbn {
             std::for_each(
                 queue_popper(this->_kernels),
                 queue_popper(),
-                [sack] (kernel_type* rhs) { rhs->mark_as_deleted(sack); }
+                [sack] (kernel* rhs) { rhs->mark_as_deleted(sack); }
             );
         }
 

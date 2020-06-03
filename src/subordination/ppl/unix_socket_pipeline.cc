@@ -1,29 +1,20 @@
+#include <subordination/ppl/basic_factory.hh>
 #include <subordination/ppl/unix_socket_pipeline.hh>
 
 namespace sbn {
 
-    template <class K, class R>
     class unix_socket_server: public basic_handler {
 
     private:
-        typedef unix_socket_pipeline<K,R> this_type;
 
     private:
         sys::socket _socket;
         sys::socket_address _socket_address;
-        this_type& _ppl;
+        unix_socket_pipeline* _parent = nullptr;
 
     public:
 
-        unix_socket_server(const sys::socket_address& endp, this_type& ppl):
-        _socket_address(endp),
-        _ppl(ppl)
-        {
-            this->_socket.bind(endp);
-            this->_socket.setopt(sys::socket::pass_credentials);
-            this->_socket.listen();
-            this->log("socket=_", this->_socket);
-        }
+        inline explicit unix_socket_server(sys::socket&& s): _socket(std::move(s)) {}
 
         void
         handle(const sys::epoll_event& ev) override {
@@ -31,7 +22,7 @@ namespace sbn {
             sys::socket_address addr;
             sys::socket sock;
             while (this->_socket.accept(sock, addr)) {
-                this->_ppl.add_client(addr, std::move(sock));
+                this->_parent->add_client(addr, std::move(sock));
             }
         };
 
@@ -45,16 +36,38 @@ namespace sbn {
             return this->_socket.fd();
         }
 
+        inline void socket_address(const sys::socket_address& rhs) noexcept {
+            this->_socket_address = rhs;
+        }
+
+        inline void parent(unix_socket_pipeline* rhs) noexcept {
+            this->_parent = rhs;
+        }
+
     };
 
 }
 
-template <class K, class R>
-void
-sbn::unix_socket_pipeline<K,R>
-::add_client(const sys::socket_address& addr, sys::socket&& sock) {
-    auto ptr =
-        std::make_shared<unix_socket_client<K,R>>(addr, std::move(sock));
+sbn::unix_socket_client::unix_socket_client(sys::socket&& sock):
+_buffer(new kernelbuf_type),
+_stream(_buffer.get()) {
+    this->_buffer->setfd(std::move(sock));
+    this->setstate(pipeline_state::starting);
+}
+
+sbn::unix_socket_pipeline::unix_socket_pipeline() {
+    this->_protocol.setf(
+        kernel_proto_flag::prepend_application |
+        kernel_proto_flag::save_upstream_kernels |
+        kernel_proto_flag::save_downstream_kernels
+    );
+}
+
+void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr,
+                                           sys::socket&& sock) {
+    auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
+    ptr->socket_address(addr);
+    ptr->protocol(&this->_protocol);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
     this->_clients.emplace(addr, ptr);
     #ifndef NDEBUG
@@ -62,25 +75,30 @@ sbn::unix_socket_pipeline<K,R>
     #endif
 }
 
-template <class K, class R>
-void
-sbn::unix_socket_pipeline<K,R>
-::add_client(const sys::socket_address& addr) {
-    auto ptr = std::make_shared<unix_socket_client<K,R>>(addr);
+void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
+    sys::socket s(sys::family_type::unix);
+    s.setopt(sys::socket::pass_credentials);
+    s.connect(addr);
+    auto ptr = std::make_shared<unix_socket_client>(std::move(s));
+    ptr->socket_address(addr);
+    ptr->protocol(&this->_protocol);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
     this->_clients.emplace(addr, ptr);
 }
 
-template <class K, class R>
-void
-sbn::unix_socket_pipeline<K,R>
-::add_server(const sys::socket_address& rhs) {
-    auto ptr = std::make_shared<unix_socket_server<K,R>>(rhs, *this);
+void sbn::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
+    sys::socket s(sys::family_type::unix);
+    s.bind(rhs);
+    s.setopt(sys::socket::pass_credentials);
+    s.listen();
+    this->log("socket=_", s);
+    auto ptr = std::make_shared<unix_socket_server>(std::move(s));
+    ptr->parent(this);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }
 
-template <class K, class R> void
-sbn::unix_socket_pipeline<K,R>::process_kernels() {
+void
+sbn::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto* kernel = this->_kernels.front();
         this->_kernels.pop();
@@ -88,19 +106,15 @@ sbn::unix_socket_pipeline<K,R>::process_kernels() {
     }
 }
 
-template <class K, class R> void
-sbn::unix_socket_pipeline<K,R>::process_kernel(kernel_type* kernel) {
-    if (kernel->moves_downstream()) {
-        if (!kernel->to()) {
-            kernel->to(kernel->from());
+void
+sbn::unix_socket_pipeline::process_kernel(kernel* k) {
+    if (k->moves_downstream()) {
+        if (!k->to()) {
+            k->to(k->from());
         }
-        auto client = this->_clients.find(kernel->to());
+        auto client = this->_clients.find(k->to());
         if (client != this->_clients.end()) {
-            client->second->send(kernel);
+            client->second->send(k);
         }
     }
 }
-
-template class sbn::unix_socket_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;
-template class sbn::unix_socket_server<sbn::kernel, sbn::basic_router<sbn::kernel>>;
-template class sbn::unix_socket_client<sbn::kernel, sbn::basic_router<sbn::kernel>>;

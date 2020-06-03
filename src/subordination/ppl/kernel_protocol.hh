@@ -8,70 +8,54 @@
 #include <unistdx/base/delete_each>
 #include <unistdx/ipc/process>
 
-#include <subordination/base/queue_popper.hh>
 #include <subordination/kernel/foreign_kernel.hh>
 #include <subordination/kernel/kernel_header.hh>
 #include <subordination/kernel/kernel_instance_registry.hh>
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/application.hh>
 #include <subordination/ppl/kernel_proto_flag.hh>
+#include <subordination/ppl/pipeline_base.hh>
 
 namespace sbn {
 
-    template <
-        class T,
-        class Router,
-        class Forward=bits::no_forward<Router>,
-        class Kernels=std::deque<T*>,
-        class Traits=deque_traits<Kernels>>
     class kernel_protocol {
 
     public:
-        typedef T kernel_type;
-        typedef Router router_type;
-        typedef Forward forward_type;
-        typedef Kernels pool_type;
-        typedef Traits traits_type;
+        using kernel_queue = std::deque<kernel*>;
 
     private:
-        typedef kstream<T> stream_type;
-        typedef queue_pop_iterator<Kernels,Traits> queue_popper;
-        typedef typename T::id_type id_type;
-        typedef typename stream_type::ipacket_guard ipacket_guard;
-        typedef sys::opacket_guard<stream_type> opacket_guard;
-        typedef std::unique_ptr<application> application_ptr;
-        typedef typename pool_type::iterator kernel_iterator;
+        using stream_type = kstream;
+        using id_type = typename kernel::id_type;
+        using ipacket_guard = typename stream_type::ipacket_guard;
+        using opacket_guard = sys::opacket_guard<stream_type>;
+        using kernel_iterator = typename kernel_queue::iterator;
 
     private:
-        kernel_proto_flag _flags = kernel_proto_flag(0);
-        /// Endpoint from which kernels come.
-        sys::socket_address _socket_address;
+        kernel_proto_flag _flags{};
         /// Cluster-wide application ID.
         application_type _thisapp = this_application::get_id();
         /// Application of the kernels coming in.
         const application* _otheraptr = 0;
-        pool_type _upstream;
-        pool_type _downstream;
-        forward_type _forward;
+        kernel_queue _upstream, _downstream;
+        pipeline* _foreign_pipeline = nullptr;
+        pipeline* _native_pipeline = nullptr;
+        pipeline* _remote_pipeline = nullptr;
         id_type _counter = 0;
         const char* _name = "proto";
 
     public:
 
+        // TODO attach protocol to the pipeline not client/server handlers
+
         kernel_protocol() = default;
         kernel_protocol(kernel_protocol&&) = default;
-
         kernel_protocol(const kernel_protocol&) = delete;
         kernel_protocol& operator=(const kernel_protocol&) = delete;
         kernel_protocol& operator=(kernel_protocol&&) = delete;
-
-        ~kernel_protocol() {
-            sys::delete_each(queue_popper(this->_upstream), queue_popper());
-            sys::delete_each(queue_popper(this->_downstream), queue_popper());
-        }
+        ~kernel_protocol();
 
         void
-        send(kernel_type* k, stream_type& stream) {
+        send(kernel* k, stream_type& stream, const sys::socket_address& to) {
             // return local downstream kernels immediately
             // TODO we need to move some kernel flags to
             // kernel header in order to use them in routing
@@ -85,12 +69,12 @@ namespace sbn {
                 #ifndef NDEBUG
                 this->log("send local kernel _", *k);
                 #endif
-                router_type::send_local(k);
+                this->_native_pipeline->send(k);
                 return;
             }
             bool delete_kernel = this->save_kernel(k);
             #ifndef NDEBUG
-            this->log("send _ to _", *k, this->_socket_address);
+            this->log("send _ to _", *k, to);
             #endif
             this->write_kernel(k, stream);
             /// The kernel is deleted if it goes downstream
@@ -115,15 +99,18 @@ namespace sbn {
             }
         }
 
-        void receive_kernels(stream_type& stream) noexcept {
-            this->receive_kernels(stream, [] (kernel_type*) {});
+        /// \param[in] from socket address from which kernels are received
+        void receive_kernels(stream_type& stream, const sys::socket_address& from) noexcept {
+            this->receive_kernels(stream, from, [] (kernel*) {});
         }
 
         template <class Callback> void
-        receive_kernels(stream_type& stream, Callback func) noexcept {
+        receive_kernels(stream_type& stream,
+                        const sys::socket_address& from,
+                        Callback func) noexcept {
             while (stream.read_packet()) {
                 try {
-                    if (kernel_type* k = this->read_kernel(stream)) {
+                    if (auto* k = this->read_kernel(stream, from)) {
                         bool ok = this->receive_kernel(k);
                         func(k);
                         if (!ok) {
@@ -131,9 +118,9 @@ namespace sbn {
                             this->log("no principal found for _", *k);
                             #endif
                             k->principal(k->parent());
-                            this->send(k, stream);
+                            this->send(k, stream, from);
                         } else {
-                            router_type::send_local(k);
+                            this->_native_pipeline->send(k);
                         }
                     }
                 } catch (const kernel_error& err) {
@@ -162,9 +149,8 @@ namespace sbn {
 
     private:
 
-        // send {{{
         void
-        write_kernel(kernel_type* k, stream_type& stream) noexcept {
+        write_kernel(kernel* k, stream_type& stream) noexcept {
             try {
                 opacket_guard g(stream);
                 stream.begin_packet();
@@ -182,7 +168,7 @@ namespace sbn {
         }
 
         void
-        do_write_kernel(kernel_type& k, stream_type& stream) {
+        do_write_kernel(kernel& k, stream_type& stream) {
             if (this->has_src_and_dest()) {
                 k.header().prepend_source_and_destination();
             }
@@ -191,33 +177,31 @@ namespace sbn {
         }
 
         bool
-        kernel_goes_in_upstream_buffer(const kernel_type* rhs) noexcept {
+        kernel_goes_in_upstream_buffer(const kernel* rhs) noexcept {
             return this->saves_upstream_kernels() &&
                    (rhs->moves_upstream() || rhs->moves_somewhere());
         }
 
         bool
-        kernel_goes_in_downstream_buffer(const kernel_type* rhs) noexcept {
+        kernel_goes_in_downstream_buffer(const kernel* rhs) noexcept {
             return this->saves_downstream_kernels() &&
                    rhs->moves_downstream() &&
                    rhs->carries_parent();
         }
-        // }}}
 
-        // receive {{{
-        kernel_type*
-        read_kernel(stream_type& stream) {
+        kernel*
+        read_kernel(stream_type& stream, const sys::socket_address& from) {
             // eats remaining bytes on exception
             ipacket_guard g(stream.rdbuf());
             foreign_kernel* hdr = new foreign_kernel;
-            kernel_type* k = nullptr;
+            kernel* k = nullptr;
             stream >> hdr->header();
             if (this->has_other_application()) {
                 hdr->setapp(this->other_application_id());
                 hdr->aptr(this->_otheraptr);
             }
-            if (this->_socket_address) {
-                hdr->from(this->_socket_address);
+            if (from) {
+                hdr->from(from);
                 hdr->prepend_source_and_destination();
             }
             #ifndef NDEBUG
@@ -225,7 +209,7 @@ namespace sbn {
             #endif
             if (hdr->app() != this->_thisapp) {
                 stream >> *hdr;
-                this->_forward(hdr);
+                this->_foreign_pipeline->forward(hdr);
             } else {
                 stream >> k;
                 k->setapp(hdr->app());
@@ -233,7 +217,7 @@ namespace sbn {
                     k->from(hdr->from());
                     k->to(hdr->to());
                 } else {
-                    k->from(this->_socket_address);
+                    k->from(from);
                 }
                 if (k->carries_parent()) {
                     k->parent()->setapp(hdr->app());
@@ -244,7 +228,7 @@ namespace sbn {
         }
 
         bool
-        receive_kernel(kernel_type* k) {
+        receive_kernel(kernel* k) {
             bool ok = true;
             if (k->moves_downstream()) {
                 this->plug_parent(k);
@@ -264,19 +248,18 @@ namespace sbn {
         }
 
         void
-        plug_parent(kernel_type* k) {
+        plug_parent(kernel* k) {
             if (!k->has_id()) {
                 throw std::invalid_argument("downstream kernel without an id");
             }
-            kernel_iterator pos = this->find_kernel(k, this->_upstream);
+            auto pos = this->find_kernel(k, this->_upstream);
             if (pos == this->_upstream.end()) {
                 if (k->carries_parent()) {
                     k->principal(k->parent());
                     this->log("recover parent for _", *k);
-                    kernel_iterator result2 =
-                        this->find_kernel(k, this->_downstream);
+                    auto result2 = this->find_kernel(k, this->_downstream);
                     if (result2 != this->_downstream.end()) {
-                        kernel_type* old = *result2;
+                        kernel* old = *result2;
                         this->log("delete _", *old);
                         delete old->parent();
                         delete old;
@@ -288,7 +271,7 @@ namespace sbn {
                     throw std::invalid_argument("parent not found");
                 }
             } else {
-                kernel_type* orig = *pos;
+                kernel* orig = *pos;
                 k->parent(orig->parent());
                 k->principal(k->parent());
                 delete orig;
@@ -300,18 +283,16 @@ namespace sbn {
         }
 
         kernel_iterator
-        find_kernel(kernel_type* k, pool_type& pool) {
+        find_kernel(kernel* k, kernel_queue& pool) {
             return std::find_if(
                 pool.begin(),
                 pool.end(),
-                [k] (kernel_type* rhs) { return rhs->id() == k->id(); }
+                [k] (kernel* rhs) { return rhs->id() == k->id(); }
             );
         }
-        // }}}
 
-        // recover {{{
         bool
-        save_kernel(kernel_type* k) {
+        save_kernel(kernel* k) {
             bool delete_kernel = false;
             if (kernel_goes_in_upstream_buffer(k)) {
                 if (k->is_native()) {
@@ -321,13 +302,13 @@ namespace sbn {
                 #ifndef NDEBUG
                 this->log("save parent for _", *k);
                 #endif
-                traits_type::push(this->_upstream, k);
+                this->_upstream.push_back(k);
             } else
             if (kernel_goes_in_downstream_buffer(k)) {
                 #ifndef NDEBUG
                 this->log("save parent for _", *k);
                 #endif
-                traits_type::push(this->_downstream, k);
+                this->_downstream.push_back(k);
             } else
             if (!k->moves_everywhere()) {
                 delete_kernel = true;
@@ -336,24 +317,22 @@ namespace sbn {
         }
 
         void
-        do_recover_kernels(pool_type& rhs) noexcept {
+        do_recover_kernels(kernel_queue& rhs) noexcept {
             using namespace std::placeholders;
-            std::for_each(
-                queue_popper(rhs),
-                queue_popper(rhs),
-                [this] (kernel_type* rhs) {
-                    try {
-                        this->recover_kernel(rhs);
-                    } catch (const std::exception& err) {
-                        this->log("failed to recover kernel _", *rhs);
-                        delete rhs;
-                    }
+            while (!rhs.empty()) {
+                auto* k = rhs.front();
+                rhs.pop_front();
+                try {
+                    this->recover_kernel(k);
+                } catch (const std::exception& err) {
+                    this->log("failed to recover kernel _", *k);
+                    delete k;
                 }
-            );
+            }
         }
 
         void
-        recover_kernel(kernel_type* k) {
+        recover_kernel(kernel* k) {
             #ifndef NDEBUG
             this->log("try to recover _", k->id());
             #endif
@@ -363,9 +342,9 @@ namespace sbn {
                 this->log("recover _", *k);
                 #endif
                 if (native) {
-                    router_type::send_remote(k);
+                    this->_remote_pipeline->send(k);
                 } else {
-                    router_type::forward_parent(dynamic_cast<foreign_kernel*>(k));
+                    this->_remote_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
                 }
             } else if (k->moves_somewhere() || (k->moves_upstream() && k->to())) {
                 #ifndef NDEBUG
@@ -375,28 +354,27 @@ namespace sbn {
                 k->return_code(exit_code::endpoint_not_connected);
                 k->principal(k->parent());
                 if (native) {
-                    router_type::send_local(k);
+                    this->_native_pipeline->send(k);
                 } else {
-                    this->_forward(dynamic_cast<foreign_kernel*>(k));
+                    this->_foreign_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
                 }
             } else if (k->moves_downstream() && k->carries_parent()) {
                 #ifndef NDEBUG
                 this->log("restore parent _", *k);
                 #endif
                 if (native) {
-                    router_type::send_local(k);
+                    this->_native_pipeline->send(k);
                 } else {
-                    this->_forward(dynamic_cast<foreign_kernel*>(k));
+                    this->_foreign_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
                 }
             } else {
                 this->log("bad kernel in sent buffer: _", *k);
                 delete k;
             }
         }
-        // }}}
 
         void
-        ensure_has_id(kernel_type* k) {
+        ensure_has_id(kernel* k) {
             if (!k->has_id()) {
                 k->id(this->generate_id());
             }
@@ -483,15 +461,15 @@ namespace sbn {
             return this->_otheraptr->id();
         }
 
-        inline void
-        socket_address(const sys::socket_address& rhs) noexcept {
-            this->_socket_address = rhs;
-        }
-
-        inline const sys::socket_address&
-        socket_address() const noexcept {
-            return this->_socket_address;
-        }
+        inline const pipeline* foreign_pipeline() const noexcept { return this->_foreign_pipeline; }
+        inline pipeline* foreign_pipeline() noexcept { return this->_foreign_pipeline; }
+        inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
+        inline const pipeline* native_pipeline() const noexcept { return this->_native_pipeline; }
+        inline pipeline* native_pipeline() noexcept { return this->_native_pipeline; }
+        inline void native_pipeline(pipeline* rhs) noexcept { this->_native_pipeline = rhs; }
+        inline const pipeline* remote_pipeline() const noexcept { return this->_remote_pipeline; }
+        inline pipeline* remote_pipeline() noexcept { return this->_remote_pipeline; }
+        inline void remote_pipeline(pipeline* rhs) noexcept { this->_remote_pipeline = rhs; }
 
     };
 

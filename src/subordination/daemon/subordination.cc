@@ -14,7 +14,7 @@
 void
 print_state(int) {
     std::clog << __func__ << std::endl;
-    sbn::factory.print_state(std::clog);
+    //sbn::factory.print_state(std::clog);
 }
 
 void
@@ -47,7 +47,7 @@ main(int argc, char* argv[]) {
     sys::parse_arguments(argc, argv, options);
     //install_error_handler();
     install_debug_handler();
-    types.register_type<Application_kernel>(1);
+    types.register_type<application_kernel>(1);
     types.register_type<probe>(2);
     types.register_type<Hierarchy_kernel>(3);
     types.register_type<Status_kernel>(4);

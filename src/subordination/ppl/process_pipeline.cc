@@ -5,17 +5,11 @@
 
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/application.hh>
-#include <subordination/ppl/basic_router.hh>
-#include <subordination/ppl/kernel_protocol.hh>
 #include <subordination/ppl/process_pipeline.hh>
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
+sbn::process_pipeline
 ::do_run() {
-//	this->emplace_notify_handler(
-//		std::make_shared<process_notify_handler<K,R>>(*this)
-//	);
     std::thread waiting_thread {
         &process_pipeline::wait_for_all_processes_to_finish,
         this
@@ -32,9 +26,8 @@ sbn::process_pipeline<K,R>
     }
 }
 
-template <class K, class R>
-typename sbn::process_pipeline<K,R>::app_iterator
-sbn::process_pipeline<K,R>
+typename sbn::process_pipeline::app_iterator
+sbn::process_pipeline
 ::do_add(const application& app) {
     app.allow_root(this->_allowroot);
     sys::two_way_pipe data_pipe;
@@ -100,9 +93,8 @@ sbn::process_pipeline<K,R>
     return result.first;
 }
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
+sbn::process_pipeline
 ::forward(foreign_kernel* hdr) {
     #ifndef NDEBUG
     this->log("forward _", hdr->header());
@@ -128,23 +120,21 @@ sbn::process_pipeline<K,R>
     this->poller().notify_one();
 }
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
+sbn::process_pipeline
 ::process_kernels() {
     std::for_each(
         queue_popper(this->_kernels),
         queue_popper(),
-        [this] (kernel_type* rhs) {
+        [this] (kernel* rhs) {
             this->process_kernel(rhs);
         }
     );
 }
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
-::process_kernel(kernel_type* k) {
+sbn::process_pipeline
+::process_kernel(kernel* k) {
     typedef typename map_type::value_type value_type;
     if (k->moves_everywhere()) {
         std::for_each(
@@ -163,9 +153,8 @@ sbn::process_pipeline<K,R>
     }
 }
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
+sbn::process_pipeline
 ::wait_for_all_processes_to_finish() {
     using std::this_thread::sleep_for;
     using std::chrono::milliseconds;
@@ -191,9 +180,8 @@ sbn::process_pipeline<K,R>
     }
 }
 
-template <class K, class R>
 void
-sbn::process_pipeline<K,R>
+sbn::process_pipeline
 ::on_process_exit(const sys::process& p, sys::process_status status) {
     lock_type lock(this->_mutex);
     app_iterator result = this->find_by_process_id(p.id());
@@ -204,9 +192,8 @@ sbn::process_pipeline<K,R>
     }
 }
 
-template <class K, class R>
-typename sbn::process_pipeline<K,R>::app_iterator
-sbn::process_pipeline<K,R>
+typename sbn::process_pipeline::app_iterator
+sbn::process_pipeline
 ::find_by_process_id(sys::pid_type pid) {
     typedef typename map_type::value_type value_type;
     return std::find_if(
@@ -217,19 +204,3 @@ sbn::process_pipeline<K,R>
         }
     );
 }
-
-template <class K, class R>
-void
-sbn::process_pipeline<K,R>
-::print_state(std::ostream& out) {
-    typedef typename map_type::value_type value_type;
-    lock_type lock(this->_mutex);
-    for (const value_type& val : this->_apps) {
-        this->log("app _, handler _", val.first, *val.second);
-    }
-    for (const auto& p : this->_procs) {
-        this->log("process _", p.id());
-    }
-}
-
-template class sbn::process_pipeline<sbn::kernel, sbn::basic_router<sbn::kernel>>;

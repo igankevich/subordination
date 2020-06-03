@@ -17,21 +17,15 @@
 
 namespace sbn {
 
-    template<class K, class R>
     class process_handler: public basic_handler {
-
-    public:
-        typedef K kernel_type;
-        typedef R router_type;
 
     private:
         typedef sys::basic_fildesbuf<char, std::char_traits<char>, sys::fildes_pair>
             fildesbuf_type;
         typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
         typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
-        typedef kstream<K> stream_type;
-        typedef kernel_protocol<K,R,bits::forward_to_parent<R>>
-            protocol_type;
+        typedef kstream stream_type;
+        typedef kernel_protocol protocol_type;
 
         enum class role_type {
             child,
@@ -49,41 +43,12 @@ namespace sbn {
     public:
 
         /// Called from parent process.
-        process_handler(
-            sys::pid_type&& child,
-            sys::two_way_pipe&& pipe,
-            const application& app
-        ):
-        _childpid(child),
-        _packetbuf(new kernelbuf_type),
-        _stream(_packetbuf.get()),
-        _proto(),
-        _application(app),
-        _role(role_type::parent)
-        {
-            this->_proto.set_other_application(&this->_application);
-            this->_proto.setf(kernel_proto_flag::prepend_source_and_destination);
-            this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
-            this->_packetbuf->fd().in().validate();
-            this->_packetbuf->fd().out().validate();
-        }
+        process_handler(sys::pid_type&& child,
+                        sys::two_way_pipe&& pipe,
+                        const application& app);
 
         /// Called from child process.
-        explicit
-        process_handler(sys::pipe&& pipe):
-        _childpid(sys::this_process::id()),
-        _packetbuf(new kernelbuf_type),
-        _stream(_packetbuf.get()),
-        _proto(),
-        _application(),
-        _role(role_type::child)
-        {
-            this->_proto.setf(
-                kernel_proto_flag::prepend_source_and_destination |
-                kernel_proto_flag::save_upstream_kernels
-            );
-            this->_packetbuf->setfd(sys::fildes_pair(std::move(pipe)));
-        }
+        explicit process_handler(sys::pipe&& pipe);
 
         virtual
         ~process_handler() {
@@ -107,8 +72,8 @@ namespace sbn {
         }
 
         void
-        send(kernel_type* k) {
-            this->_proto.send(k, this->_stream);
+        send(kernel* k) {
+            this->_proto.send(k, this->_stream, sys::socket_address{});
         }
 
         void

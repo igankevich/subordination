@@ -1,7 +1,7 @@
 #include <subordination/api.hh>
+#include <subordination/base/error_handler.hh>
 #include <subordination/ppl/parallel_pipeline.hh>
 #include <subordination/ppl/timer_pipeline.hh>
-#include <subordination/base/error_handler.hh>
 
 #include <gtest/gtest.h>
 
@@ -45,7 +45,7 @@ struct Main: public sbn::kernel {
                 this->_nkernels - i
             );
         }
-        sbn::factory.send_timer(kernels.data(), kernels.size());
+        sbn::factory.schedule(kernels.data(), kernels.size());
     }
 
     void

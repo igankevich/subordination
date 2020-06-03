@@ -36,19 +36,17 @@ namespace {
 
 }
 
-template <class T>
-sbn::Factory<T>
-::Factory():
+sbn::Factory::Factory():
 #if defined(SUBORDINATION_SUBMIT) || defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-_upstream(1),
+_native(1),
 _downstream(1) {
 #else
-_upstream(sys::thread_concurrency()),
-_downstream(_upstream.concurrency()) {
+_native(sys::thread_concurrency()),
+_downstream(_native.concurrency()) {
 #endif
-    this->_upstream.set_name("upstrm");
+    this->_native.set_name("upstrm");
     this->_downstream.set_name("dwnstrm");
-    this->_timer.set_name("tmr");
+    this->_scheduled.set_name("tmr");
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     this->_io.set_name("io");
     #endif
@@ -66,18 +64,29 @@ _downstream(_upstream.concurrency()) {
     this->_child.set_other_mutex(this->_parent.mutex());
     this->_parent.set_other_mutex(this->_child.mutex());
     #endif
+    #if defined(SUBORDINATION_DAEMON)
+    this->_child.native_pipeline(&this->_native);
+    this->_child.foreign_pipeline(&this->_child);
+    this->_child.remote_pipeline(&this->_parent);
+    this->_parent.native_pipeline(&this->_native);
+    this->_parent.foreign_pipeline(&this->_child);
+    this->_parent.remote_pipeline(&this->_parent);
+    #endif
+    #if defined(SUBORDINATION_DAEMON) && \
+    !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+    this->_external.native_pipeline(&this->_native);
+    this->_external.foreign_pipeline(&this->_child);
+    this->_external.remote_pipeline(&this->_parent);
+    #endif
 }
 
-template <class T>
-void
-sbn::Factory<T>
-::start() {
+void sbn::Factory::start() {
     this->setstate(pipeline_state::starting);
     start_all(
-        this->_upstream,
+        this->_native,
         this->_downstream
         ,
-        this->_timer
+        this->_scheduled
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         ,
         this->_io
@@ -95,16 +104,13 @@ sbn::Factory<T>
     this->setstate(pipeline_state::started);
 }
 
-template <class T>
-void
-sbn::Factory<T>
-::stop() {
+void sbn::Factory::stop() {
     this->setstate(pipeline_state::stopping);
     stop_all(
-        this->_upstream,
+        this->_native,
         this->_downstream
         ,
-        this->_timer
+        this->_scheduled
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         ,
         this->_io
@@ -122,15 +128,12 @@ sbn::Factory<T>
     this->setstate(pipeline_state::stopped);
 }
 
-template <class T>
-void
-sbn::Factory<T>
-::wait() {
+void sbn::Factory::wait() {
     wait_all(
-        this->_upstream,
+        this->_native,
         this->_downstream
         ,
-        this->_timer
+        this->_scheduled
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         ,
         this->_io
@@ -147,18 +150,4 @@ sbn::Factory<T>
     );
 }
 
-template <class T>
-void
-sbn::Factory<T>
-::print_state(std::ostream& out) {
-    this->_parent.print_state(out);
-    #if defined(SUBORDINATION_DAEMON) && \
-    !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_child.print_state(out);
-    #endif
-}
-
-template class sbn::Factory<sbn::kernel>;
-template class sbn::basic_router<sbn::kernel>;
-
-sbn::Factory<sbn::kernel> sbn::factory;
+sbn::Factory sbn::factory;

@@ -6,67 +6,38 @@
 #include <vector>
 
 #include <unistdx/base/log_message>
-#include <unistdx/it/field_iterator>
-#include <unistdx/net/socket_address>
 #include <unistdx/net/interface_address>
+#include <unistdx/net/socket>
+#include <unistdx/net/socket_address>
 
 #include <subordination/kernel/kernel_instance_registry.hh>
 #include <subordination/kernel/kstream.hh>
 #include <subordination/ppl/basic_socket_pipeline.hh>
 #include <subordination/ppl/local_server.hh>
+#include <subordination/ppl/types.hh>
 
 namespace sbn {
 
-    template <class K, class S, class R>
-    class local_server;
-
-    template <class K, class S, class R>
-    class remote_client;
-
-    template <class K, class S, class R>
-    class socket_notify_handler;
-
-    template<class K, class S, class R>
-    class socket_pipeline: public basic_socket_pipeline<K> {
+    class socket_pipeline: public basic_socket_pipeline {
 
     public:
-        typedef S socket_type;
-        typedef R router_type;
-        typedef sys::ipv4_address addr_type;
-        typedef sys::interface_address<addr_type> ifaddr_type;
-        typedef remote_client<K,S,R> remote_client_type;
-        typedef local_server<K,S,R> server_type;
-        typedef std::shared_ptr<server_type> server_ptr;
-        typedef basic_socket_pipeline<K> base_pipeline;
-
-        using typename base_pipeline::kernel_type;
-        using typename base_pipeline::mutex_type;
-        using typename base_pipeline::lock_type;
-        using typename base_pipeline::sem_type;
-        using typename base_pipeline::kernel_pool;
-        using typename base_pipeline::duration;
+        using ip_address = sys::ipv4_address;
+        using interface_address = sys::interface_address<ip_address>;
 
     private:
-        typedef remote_client_type event_handler_type;
-        typedef std::shared_ptr<event_handler_type> event_handler_ptr;
-        typedef sys::ipaddr_traits<addr_type> traits_type;
-        typedef std::vector<server_ptr> server_container_type;
-        typedef typename server_container_type::iterator server_iterator;
-        typedef typename server_container_type::const_iterator
-            server_const_iterator;
-        typedef std::unordered_map<sys::socket_address,event_handler_ptr>
-            client_container_type;
-        typedef typename client_container_type::iterator client_iterator;
-        typedef ifaddr_type::rep_type rep_type;
-        typedef mobile_kernel::id_type id_type;
-        typedef sys::field_iterator<server_const_iterator,0> ifaddr_iterator;
-        typedef event_handler_type client_type;
-        typedef event_handler_ptr client_ptr;
-        typedef uint32_t weight_type;
+        using server_ptr = std::shared_ptr<local_server>;
+        using server_array = std::vector<server_ptr>;
+        using server_iterator = typename server_array::iterator;
+        using server_const_iterator = typename server_array::const_iterator;
+        using client_ptr = std::shared_ptr<remote_client>;
+        using client_table = std::unordered_map<sys::socket_address,client_ptr>;
+        using client_iterator = typename client_table::iterator;
+        using id_type = mobile_kernel::id_type;
+        using weight_type = uint32_t;
 
     private:
-        server_container_type _servers;
-        client_container_type _clients;
+        server_array _servers;
+        client_table _clients;
         /// Iterator to client container which is used to distribute the
         /// kernels between several clients taking into account their weight.
         client_iterator _iterator = this->_clients.end();
@@ -81,18 +52,11 @@ namespace sbn {
     public:
 
         socket_pipeline();
-
         ~socket_pipeline() = default;
-
         socket_pipeline(const socket_pipeline&) = delete;
-
         socket_pipeline(socket_pipeline&&) = delete;
-
-        socket_pipeline&
-        operator=(const socket_pipeline&) = delete;
-
-        socket_pipeline&
-        operator=(socket_pipeline&&) = delete;
+        socket_pipeline& operator=(const socket_pipeline&) = delete;
+        socket_pipeline& operator=(socket_pipeline&&) = delete;
 
         void
         add_client(const sys::socket_address& addr) {
@@ -107,7 +71,7 @@ namespace sbn {
         set_client_weight(const sys::socket_address& addr, weight_type new_weight);
 
         void
-        add_server(const ifaddr_type& rhs) {
+        add_server(const interface_address& rhs) {
             this->add_server(
                 sys::socket_address(rhs.address(), this->_port),
                 rhs.netmask()
@@ -115,7 +79,7 @@ namespace sbn {
         }
 
         void
-        add_server(const sys::socket_address& rhs, addr_type netmask);
+        add_server(const sys::socket_address& rhs, ip_address netmask);
 
         void
         forward(foreign_kernel* hdr);
@@ -146,7 +110,7 @@ namespace sbn {
         }
 
         void
-        remove_server(const ifaddr_type& interface_address);
+        remove_server(const interface_address& interface_address);
 
         void
         print_state(std::ostream& out);
@@ -163,7 +127,7 @@ namespace sbn {
         remove_server(server_iterator result);
 
         server_iterator
-        find_server(const ifaddr_type& interface_address);
+        find_server(const interface_address& interface_address);
 
         server_iterator
         find_server(sys::fd_type fd);
@@ -172,7 +136,7 @@ namespace sbn {
         find_server(const sys::socket_address& dest);
 
         void
-        ensure_identity(kernel_type* k, const sys::socket_address& dest);
+        ensure_identity(kernel* k, const sys::socket_address& dest);
 
         /// round robin over upstream hosts
         void
@@ -189,12 +153,12 @@ namespace sbn {
             this->_weightcnt = 0;
         }
 
-        inline const client_type&
+        inline const remote_client&
         current_client() const noexcept {
             return *this->_iterator->second;
         }
 
-        inline client_type&
+        inline remote_client&
         current_client() noexcept {
             return *this->_iterator->second;
         }
@@ -206,7 +170,7 @@ namespace sbn {
         }
 
         void
-        emplace_client(const sys::socket_address& vaddr, const event_handler_ptr& s);
+        emplace_client(const sys::socket_address& vaddr, const client_ptr& s);
 
         inline sys::socket_address
         virtual_addr(const sys::socket_address& addr) const {
@@ -219,25 +183,21 @@ namespace sbn {
         process_kernels() override;
 
         void
-        process_kernel(kernel_type* k);
+        process_kernel(kernel* k);
 
-        event_handler_ptr
+        client_ptr
         find_or_create_client(const sys::socket_address& addr);
 
-        event_handler_ptr
+        client_ptr
         do_add_client(const sys::socket_address& addr);
 
-        event_handler_ptr
-        do_add_client(socket_type&& sock, sys::socket_address vaddr);
+        client_ptr
+        do_add_client(sys::socket&& sock, sys::socket_address vaddr);
 
-        template <class K1, class S1, class R1>
+        void fire_event_kernels(socket_pipeline_kernel* event);
+
         friend class local_server;
-
-        template <class K1, class S1, class R1>
         friend class remote_client;
-
-        template <class K1, class S1, class R1>
-        friend class socket_notify_handler;
 
     };
 

@@ -182,7 +182,7 @@ TYPED_TEST(KernelStreamTest, IO) {
     typedef sys::basic_fildesbuf<char, std::char_traits<char>, sink_type>
         fildesbuf_type;
     typedef sbn::basic_kernelbuf<fildesbuf_type> buffer_type;
-    typedef sbn::kstream<kernel_type> stream_type;
+    typedef sbn::kstream stream_type;
     typedef typename stream_type::ipacket_guard ipacket_guard;
     for (size_t count=1; count<=100; ++count) {
         std::vector<Carrier> expected(count);
