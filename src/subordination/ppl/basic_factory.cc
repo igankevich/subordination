@@ -37,7 +37,7 @@ namespace {
 }
 
 sbn::Factory::Factory():
-#if defined(SUBORDINATION_SUBMIT) || defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+#if defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
 _native(1),
 _downstream(1) {
 #else
@@ -50,34 +50,10 @@ _downstream(_native.concurrency()) {
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     this->_io.set_name("io");
     #endif
-    #if defined(SUBORDINATION_DAEMON)
-    this->_parent.set_name("nic");
-    #elif defined(SUBORDINATION_SUBMIT)
     this->_parent.set_name("chld");
-    #endif
-    #if defined(SUBORDINATION_DAEMON) && \
-    !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_child.set_name("proc");
-    this->_external.set_name("unix");
-    #endif
-    #if defined(SUBORDINATION_DAEMON)
-    this->_child.set_other_mutex(this->_parent.mutex());
-    this->_parent.set_other_mutex(this->_child.mutex());
-    #endif
-    #if defined(SUBORDINATION_DAEMON)
-    this->_child.native_pipeline(&this->_native);
-    this->_child.foreign_pipeline(&this->_child);
-    this->_child.remote_pipeline(&this->_parent);
     this->_parent.native_pipeline(&this->_native);
-    this->_parent.foreign_pipeline(&this->_child);
+    this->_parent.foreign_pipeline(&this->_parent);
     this->_parent.remote_pipeline(&this->_parent);
-    #endif
-    #if defined(SUBORDINATION_DAEMON) && \
-    !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_external.native_pipeline(&this->_native);
-    this->_external.foreign_pipeline(&this->_child);
-    this->_external.remote_pipeline(&this->_parent);
-    #endif
 }
 
 void sbn::Factory::start() {
@@ -93,13 +69,6 @@ void sbn::Factory::start() {
         #endif
         ,
         this->_parent
-        #if defined(SUBORDINATION_DAEMON) && \
-        !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_child
-        ,
-        this->_external
-        #endif
     );
     this->setstate(pipeline_state::started);
 }
@@ -117,13 +86,6 @@ void sbn::Factory::stop() {
         #endif
         ,
         this->_parent
-        #if defined(SUBORDINATION_DAEMON) && \
-        !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_child
-        ,
-        this->_external
-        #endif
     );
     this->setstate(pipeline_state::stopped);
 }
@@ -140,13 +102,6 @@ void sbn::Factory::wait() {
         #endif
         ,
         this->_parent
-        #if defined(SUBORDINATION_DAEMON) && \
-        !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        ,
-        this->_child
-        ,
-        this->_external
-        #endif
     );
 }
 

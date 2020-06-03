@@ -1,9 +1,9 @@
-#include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
 #include <subordination/config.hh>
+#include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
 
-using namespace sbn;
+using namespace sbnd;
 
 template <class T> void
 rec(std::ostream& out, const char* key, const T& value) {
@@ -27,7 +27,7 @@ void write_rec(std::ostream& out, const Status_kernel::hierarchy_type& h) {
 }
 
 
-class Main: public kernel {
+class Main: public sbn::kernel {
 
 private:
     int _argc;
@@ -40,11 +40,12 @@ public:
         auto* status = new Status_kernel;
         status->to(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
         status->set_principal_id(1); // TODO
-        upstream<Remote>(this, status);
+        status->parent(this);
+        sbnc::factory.remote().send(status);
     }
 
     void
-    react(kernel* child) override {
+    react(sbn::kernel* child) override {
         auto* status = dynamic_cast<Status_kernel*>(child);
         if (status->return_code() != sbn::exit_code::success) {
             sys::log_message("status", "error: _", status->return_code());
@@ -53,7 +54,8 @@ public:
                 write_rec(std::cout, h);
             }
         }
-        commit<Local>(this, status->return_code());
+        delete this;
+        sbn::graceful_shutdown(int(status->return_code()));
     }
 
 };
@@ -61,17 +63,16 @@ public:
 int main(int argc, char* argv[]) {
     //sbn::install_error_handler();
     sbn::types.register_type<Status_kernel>(4);
-    factory_guard g;
-    sbn::factory.parent().use_localhost(false);
     try {
-        sbn::send(new Main(argc, argv));
+        sbnc::factory.start();
+        sbnc::factory.remote().use_localhost(false);
+        sbnc::factory.local().send(new Main(argc, argv));
     } catch (const std::exception& err) {
-        sys::log_message(
-            "submit",
-            "failed to connect to daemon process: _",
-            err.what()
-        );
+        sys::log_message("submit", "failed to connect to daemon process: _", err.what());
         sbn::graceful_shutdown(1);
     }
-    return sbn::wait_and_return();
+    auto ret = sbn::wait_and_return();
+    sbnc::factory.stop();
+    sbnc::factory.wait();
+    return ret;
 }

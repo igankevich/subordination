@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 
-#include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
 #include <subordination/config.hh>
+#include <subordination/daemon/small_factory.hh>
 #include <subordination/ppl/application_kernel.hh>
 
 using sbn::application_kernel;
@@ -39,15 +39,14 @@ public:
 
     void
     act() override {
-        upstream<Remote>(
-            this,
-            new_application_kernel(this->_argc, this->_argv)
-        );
+        auto* k = new_application_kernel(this->_argc, this->_argv);
+        k->parent(this);
+        sbnc::factory.remote().send(k);
     }
 
     void
     react(kernel* child) {
-        application_kernel* app = dynamic_cast<application_kernel*>(child);
+        auto* app = dynamic_cast<application_kernel*>(child);
         if (app->return_code() != sbn::exit_code::success) {
             std::string message = app->error();
             if (message.empty()) {
@@ -57,16 +56,12 @@ public:
                 app->application() == 0
                 ? "application"
                 : std::to_string(app->application());
-            sys::log_message(
-                "submit",
-                "failed to submit _: _",
-                app_id,
-                message
-            );
+            sys::log_message("submit", "failed to submit _: _", app_id, message);
         } else {
             sys::log_message("submit", "submitted _", app->application());
         }
-        commit<Local>(this, app->return_code());
+        delete this;
+        sbn::graceful_shutdown(int(app->return_code()));
     }
 
 };
@@ -78,17 +73,16 @@ int main(int argc, char* argv[]) {
     }
     sbn::install_error_handler();
     sbn::types.register_type<application_kernel>(1);
-    factory_guard g;
-    sbn::factory.parent().use_localhost(false);
     try {
-        sbn::send(new Main(argc, argv));
+        sbnc::factory.start();
+        sbnc::factory.remote().use_localhost(false);
+        sbnc::factory.local().send(new Main(argc, argv));
     } catch (const std::exception& err) {
-        sys::log_message(
-            "submit",
-            "failed to connect to daemon process: _",
-            err.what()
-        );
+        sys::log_message("submit", "failed to connect to daemon process: _", err.what());
         sbn::graceful_shutdown(1);
     }
-    return sbn::wait_and_return();
+    auto ret = sbn::wait_and_return();
+    sbnc::factory.stop();
+    sbnc::factory.wait();
+    return ret;
 }

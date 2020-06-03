@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_PPL_APPLICATION_KERNEL_HH
-#define SUBORDINATION_PPL_APPLICATION_KERNEL_HH
+#ifndef SUBORDINATION_DAEMON_APPLICATION_KERNEL_HH
+#define SUBORDINATION_DAEMON_APPLICATION_KERNEL_HH
 
 #include <cstdint>
 #include <string>
@@ -11,18 +11,17 @@
 
 #include <subordination/kernel/kernel.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class application_kernel: public kernel {
+    class application_kernel: public sbn::kernel {
 
     public:
-        typedef kernel kernel_type;
-        typedef std::vector<std::string> container_type;
+        using container_type = std::vector<std::string>;
 
     private:
         container_type _args, _env;
         std::string _error;
-        application_type _application = 0;
+        sbn::application_type _application = 0;
         sys::canonical_path _workdir;
         sys::user_credentials _credentials;
 
@@ -63,13 +62,13 @@ namespace sbn {
             return this->_error;
         }
 
-        application_type
+        sbn::application_type
         application() const noexcept {
             return this->_application;
         }
 
         inline void
-        application(application_type rhs) noexcept {
+        application(sbn::application_type rhs) noexcept {
             this->_application = rhs;
         }
 
@@ -81,6 +80,10 @@ namespace sbn {
         inline void
         workdir(const sys::canonical_path& rhs) {
             this->_workdir = rhs;
+        }
+
+        inline const sys::user_credentials& credentials() const noexcept {
+            return this->_credentials;
         }
 
         inline void credentials(const sys::user_credentials& rhs) noexcept {

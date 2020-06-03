@@ -1,29 +1,32 @@
+#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/prober.hh>
 
 void
-sbn::prober::act() {
+sbnd::prober::act() {
     this->send_probe(this->_newprinc);
 }
 
 void
-sbn::prober::react(sbn::kernel* k) {
+sbnd::prober::react(sbn::kernel* k) {
     probe* p = dynamic_cast<probe*>(k);
     if (p->from() == this->_newprinc) {
         this->return_code(p->return_code());
-        if (this->return_code() == exit_code::success && this->_oldprinc) {
+        if (this->return_code() == sbn::exit_code::success && this->_oldprinc) {
             this->send_probe(this->_oldprinc);
         }
     }
     if (--this->_nprobes == 0) {
-        sbn::commit<sbn::Local>(this);
+        this->return_to_parent(sbn::exit_code::success);
+        factory.local().send(this);
     }
 }
 
 void
-sbn::prober::send_probe(const sys::socket_address& dest) {
+sbnd::prober::send_probe(const sys::socket_address& dest) {
     ++this->_nprobes;
     probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
     p->to(dest);
     p->set_principal_id(1); // TODO
-    sbn::upstream<sbn::Remote>(this, p);
+    p->parent(this);
+    factory.remote().send(p);
 }

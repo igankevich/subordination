@@ -1,8 +1,10 @@
-#include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
+#include <subordination/ppl/parallel_pipeline.hh>
+#include <subordination/ppl/socket_pipeline.hh>
 
 #include <unistdx/base/command_line>
 #include <unistdx/ipc/process>
+#include <unistdx/net/interface_address>
 
 #include <test/datum.hh>
 #include <test/role.hh>
@@ -43,8 +45,17 @@ std::atomic<uint32_t> shutdown_counter(0);
 Role role = Role::Master;
 Failure failure = Failure::No;
 
-using namespace sbn;
 using ipv4_interface_address = sys::interface_address<sys::ipv4_address>;
+
+
+sbn::parallel_pipeline local{1};
+sbn::socket_pipeline remote;
+
+template <class ... Args>
+inline void
+message(const Args& ... args) {
+    sys::log_message("test", args ...);
+}
 
 struct Test_socket: public sbn::kernel {
 
@@ -63,7 +74,7 @@ struct Test_socket: public sbn::kernel {
     }
 
     void act() override {
-        sys::log_message("tst", "act _", hostname());
+        message("act _", sys::this_process::hostname());
         //std::clog << "Test_socket::act()" << std::endl;
         if (failure == Failure::Slave) {
             if (role == Role::Slave) {
@@ -75,10 +86,12 @@ struct Test_socket: public sbn::kernel {
                     sbn::graceful_shutdown(0);
                 }
             } else {
-                commit<Local>(this);
+                return_to_parent(sbn::exit_code::success);
+                local.send(this);
             }
         } else {
-            commit<Remote>(this);
+            return_to_parent(sbn::exit_code::success);
+            remote.send(this);
         }
     }
 
@@ -118,18 +131,21 @@ struct Sender: public sbn::kernel {
 
     void act() override {
         for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-            upstream<Remote>(this, new Test_socket(_input));
+            auto* k = new Test_socket(_input);
+            k->parent(this);
+            remote.send(k);
         }
     }
 
     void react(sbn::kernel* child) override {
-        Test_socket* test_kernel = dynamic_cast<Test_socket*>(child);
+        auto* test_kernel = dynamic_cast<Test_socket*>(child);
         std::vector<Datum> output = test_kernel->data();
         EXPECT_EQ(this->_input.size(), output.size());
         EXPECT_EQ(this->_input, output);
-        sys::log_message("tst", "returned _/_ _", _num_returned+1, NUM_KERNELS, hostname());
+        message("returned _/_ _", _num_returned+1, NUM_KERNELS, sys::this_process::hostname());
         if (++_num_returned == NUM_KERNELS) {
-            commit<Local>(this);
+            this->return_to_parent(sbn::exit_code::success);
+            local.send(this);
         }
     }
 
@@ -147,14 +163,17 @@ struct Main: public sbn::kernel {
     act() override {
         for (uint32_t i=0; i<POWERS.size(); ++i) {
             size_t sz = 1 << POWERS[i];
-            upstream<Local>(this, new Sender(sz));
+            auto* sender = new Sender(sz);
+            sender->parent(this);
+            local.send(sender);
         }
     }
 
     void
     react(sbn::kernel*) override {
         if (++_num_returned == POWERS.size()) {
-            commit<Local>(this, sbn::exit_code::success);
+            delete this;
+            sbn::graceful_shutdown(0);
         }
     }
 
@@ -165,7 +184,6 @@ private:
 };
 
 TEST(NICServerTest, All) {
-    using sbn::factory;
     sbn::register_type<Test_socket>(1);
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     ipv4_interface_address network{{127,0,0,1},8};
@@ -177,22 +195,21 @@ TEST(NICServerTest, All) {
     sys::socket_address subordinate_endpoint(*address++, port+1);
     sys::socket_address principal_endpoint(*address++, port);
     if (role == Role::Slave) {
-        factory.nic().set_port(port+1);
-        factory.nic().add_server(principal_endpoint, network.netmask());
+        remote.set_port(port+1);
+        remote.add_server(principal_endpoint, network.netmask());
     }
     if (role == Role::Master) {
-        factory.nic().set_port(port);
-        factory.nic().add_server(subordinate_endpoint, network.netmask());
+        remote.set_port(port);
+        remote.add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start
         using namespace std::this_thread;
         using namespace std::chrono;
         sleep_for(milliseconds(1000));
-        factory.nic().add_client(principal_endpoint);
+        remote.add_client(principal_endpoint);
     }
 
-    factory_guard g;
     if (role == Role::Master) {
-        send<Local>(new Main);
+        local.send(new Main);
     }
 
     int retval = sbn::wait_and_return();
@@ -207,8 +224,6 @@ TEST(NICServerTest, All) {
 int
 main(int argc, char* argv[]) {
     sbn::install_error_handler();
-    // init gtest without arguments to pass custom arguments
-    // from custom test runner
     ::testing::InitGoogleTest(&argc, argv);
     sys::this_process::ignore_signal(sys::signal::broken_pipe);
     sys::input_operator_type options[] = {

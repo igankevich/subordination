@@ -1,13 +1,13 @@
 #ifndef SUBORDINATION_DAEMON_PROBE_HH
 #define SUBORDINATION_DAEMON_PROBE_HH
 
-#include <unistdx/net/socket_address>
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
+#include <unistdx/net/socket_address>
 
-#include <subordination/api.hh>
+#include <subordination/kernel/kernel.hh>
 
-namespace sbn {
+namespace sbnd {
 
     class probe: public sbn::kernel {
 

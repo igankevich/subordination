@@ -8,15 +8,11 @@ subordination_core_src += files([
     'pipeline_base.cc',
     'thread_context.cc',
     'timer_pipeline.cc',
-])
-
-subordination_src += files([
     'basic_factory.cc',
     'child_process_pipeline.cc',
     'process_handler.cc',
     'process_pipeline.cc',
     'socket_pipeline.cc',
-    'unix_socket_pipeline.cc',
 ])
 
 install_headers(
@@ -42,6 +38,5 @@ install_headers(
     'socket_pipeline_event.hh',
     'thread_context.hh',
     'timer_pipeline.hh',
-    'unix_socket_pipeline.hh',
     subdir: join_paths(meson.project_name(), 'ppl')
 )

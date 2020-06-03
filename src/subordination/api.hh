@@ -8,8 +8,6 @@ namespace sbn {
     enum Target {
         Local,
         Remote,
-        Child,
-        External
     };
 
     template <Target t=Target::Local>
@@ -28,12 +26,6 @@ namespace sbn {
     inline void
     send<Remote>(kernel* k) {
         factory.send_remote(k);
-    }
-
-    template <>
-    inline void
-    send<External>(kernel* k) {
-        factory.send_external(k);
     }
 
     template<Target target=Target::Local>

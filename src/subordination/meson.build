@@ -10,7 +10,6 @@ configure_file(
     )
 )
 
-subordination_src = files()
 subordination_core_src = files()
 
 subdir('base')
@@ -22,63 +21,28 @@ install_headers(
     subdir: meson.project_name()
 )
 
-# subordination_core_lib = shared_library(
-#     'subordination-core',
-#     sources: subordination_core_src,
-#     dependencies: [threads,unistdx],
-#     version: meson.project_version(),
-#     include_directories: src,
-#     install: true,
-# )
-#
-# subordination_core = declare_dependency(
-#     link_with: subordination_core_lib,
-#     include_directories: src
-# )
-
-subordination_daemon_lib = shared_library(
-    'subordination-daemon',
-    sources: subordination_src + subordination_core_src,
+subordination_core_lib = library(
+    'subordination-core',
+    sources: subordination_core_src,
     dependencies: [threads,unistdx],
     version: meson.project_version(),
-    install: true,
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_DAEMON'] + profiling_args,
+    install: true,
+    implicit_include_directories: false,
 )
 
-subordination_submit_lib = shared_library(
-    'subordination-submit',
-    sources: subordination_src + subordination_core_src,
-    dependencies: [threads,unistdx],
-    version: meson.project_version(),
-    install: true,
-    include_directories: src,
-    cpp_args: ['-DSUBORDINATION_SUBMIT'],
-)
-
-subordination_app_lib = shared_library(
-    'subordination-app',
-    sources: subordination_src + subordination_core_src,
-    dependencies: [threads,unistdx],
-    version: meson.project_version(),
-    install: true,
-    include_directories: src,
-    cpp_args: ['-DSUBORDINATION_APPLICATION'],
-)
-
-subordination_daemon = declare_dependency(
-    link_with: [subordination_daemon_lib],
+subordination_core = declare_dependency(
+    link_with: subordination_core_lib,
     include_directories: src
 )
 
-subordination_submit = declare_dependency(
-    link_with: [subordination_submit_lib],
-    include_directories: src
-)
-
-subordination_app = declare_dependency(
-    link_with: [subordination_app_lib],
-    include_directories: src
+pkgconfig.generate(
+    subordination_core_lib,
+    requires: [unistdx],
+    version: meson.project_version(),
+    name: 'subordination-core',
+    filebase: 'subordination-core',
+    description: project_description,
 )
 
 subdir('daemon')

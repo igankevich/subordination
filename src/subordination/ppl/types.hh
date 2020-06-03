@@ -25,9 +25,6 @@ namespace sbn {
     class socket_pipeline;
     class socket_pipeline_kernel;
     class timer_pipeline;
-    class unix_socket_client;
-    class unix_socket_pipeline;
-    class unix_socket_server;
     enum class process_role_type;
     enum class role_type;
     enum class socket_pipeline_event;

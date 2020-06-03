@@ -7,11 +7,10 @@
 
 #include <unistdx/net/interface_addresses>
 
-#include <subordination/api.hh>
 #include <subordination/daemon/master_discoverer.hh>
 #include <subordination/ppl/socket_pipeline_event.hh>
 
-namespace sbn {
+namespace sbnd {
 
     class network_timer: public sbn::kernel {};
 
@@ -22,13 +21,13 @@ namespace sbn {
         typedef addr_type::rep_type uint_type;
         typedef sys::interface_address<addr_type> ifaddr_type;
         typedef typename sys::ipaddr_traits<addr_type> traits_type;
-        typedef std::unordered_set<ifaddr_type> set_type;
-        typedef std::unordered_map<ifaddr_type,master_discoverer*> map_type;
-        typedef typename map_type::iterator map_iterator;
+        typedef std::unordered_set<ifaddr_type> interface_address_set;
+        typedef std::unordered_map<ifaddr_type,master_discoverer*> discoverer_table;
+        typedef typename discoverer_table::iterator map_iterator;
 
     private:
-        map_type _ifaddrs;
-        set_type _allowedifaddrs;
+        discoverer_table _discoverers;
+        interface_address_set _allowedifaddrs;
         uint_type _fanout = 10000;
         network_timer* _timer = nullptr;
         /// Interface address list update interval.
@@ -64,7 +63,7 @@ namespace sbn {
         void
         send_timer();
 
-        set_type
+        interface_address_set
         enumerate_ifaddrs();
 
         void
@@ -79,7 +78,7 @@ namespace sbn {
         /// forward the probe to an appropriate discoverer
         void forward_probe(probe* p);
         void forward_hierarchy_kernel(Hierarchy_kernel* p);
-        void on_event(socket_pipeline_kernel* k);
+        void on_event(sbn::socket_pipeline_kernel* k);
         void report_status(Status_kernel* status);
 
         map_iterator find_discoverer(const addr_type& a);

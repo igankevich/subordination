@@ -13,4 +13,5 @@ dtest_exe = executable(
     sources: dtest_src,
     include_directories: src,
     dependencies: dtest_deps,
+    implicit_include_directories: false,
 )

@@ -10,7 +10,7 @@
 
 #include <subordination/daemon/hierarchy_node.hh>
 
-namespace sbn {
+namespace sbnd {
 
     template<class Addr>
     class Hierarchy {

@@ -1,4 +1,6 @@
 subordination_src = files([
+    'application_kernel.cc',
+    'factory.cc',
     'hierarchy.cc',
     'hierarchy_kernel.cc',
     'hierarchy_node.cc',
@@ -11,19 +13,22 @@ subordination_src = files([
     'status_kernel.cc',
     'subordination.cc',
     'tree_hierarchy_iterator.cc',
+    'unix_socket_pipeline.cc',
 ])
 
 subordination_exe = executable(
     'subordination',
     sources: subordination_src,
     include_directories: [src],
-    dependencies: [unistdx,threads,subordination_daemon],
-    cpp_args: ['-DSUBORDINATION_DAEMON'] + profiling_args,
+    dependencies: [unistdx,threads,subordination_core],
+    cpp_args: profiling_args,
     install: true,
-    install_dir: get_option('sbindir')
+    install_dir: get_option('sbindir'),
+    implicit_include_directories: false,
 )
 
 submit_src = files([
+    'small_factory.cc',
     'submit.cc',
 ])
 
@@ -31,9 +36,9 @@ submit_exe = executable(
     'submit',
     sources: submit_src,
     include_directories: [src],
-    dependencies: [unistdx,threads,subordination_submit],
-    cpp_args: ['-DSUBORDINATION_SUBMIT'],
-    install: true
+    dependencies: [unistdx,threads,subordination_core],
+    install: true,
+    implicit_include_directories: false,
 )
 
 status_src = files([
@@ -41,23 +46,24 @@ status_src = files([
     'status_kernel.cc',
     'hierarchy.cc',
     'hierarchy_node.cc',
+    'small_factory.cc',
 ])
 
 status_exe = executable(
     'status',
     sources: status_src,
     include_directories: [src],
-    dependencies: [unistdx,threads,subordination_submit],
-    cpp_args: ['-DSUBORDINATION_SUBMIT'],
-    install: true
+    dependencies: [unistdx,threads,subordination_core],
+    install: true,
+    implicit_include_directories: false,
 )
 
 test_app_exe = executable(
     'test-application',
     sources: 'test_application.cc',
     include_directories: [src],
-    dependencies: [unistdx,threads,subordination_app],
-    cpp_args: ['-DSUBORDINATION_APPLICATION'],
+    dependencies: [unistdx,threads,subordination_core],
+    implicit_include_directories: false,
 )
 
 test(
@@ -69,8 +75,9 @@ test(
             'tree_hierarchy_iterator.cc',
             'tree_hierarchy_iterator_test.cc'
         ],
-        dependencies: [gtest,unistdx,threads,subordination_daemon],
-        cpp_args: ['-DSUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR']
+        dependencies: [gtest,unistdx,threads,subordination_core],
+        cpp_args: ['-DSUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR'],
+        implicit_include_directories: false,
     )
 )
 
@@ -79,8 +86,8 @@ discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
     include_directories: [src],
-    dependencies: [unistdx,threads,subordination_daemon,gtest],
-    cpp_args: ['-DSUBORDINATION_DAEMON'],
+    dependencies: [unistdx,threads,subordination_core,gtest],
+    implicit_include_directories: false,
 )
 
 if get_option('b_sanitize') != 'address'

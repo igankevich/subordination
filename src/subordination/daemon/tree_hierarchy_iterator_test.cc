@@ -1,5 +1,5 @@
-#include <subordination/daemon/tree_hierarchy_iterator.hh>
 #include <gtest/gtest.h>
+#include <subordination/daemon/tree_hierarchy_iterator.hh>
 #include <unistdx/base/log_message>
 
 template <class Addr, class Iterator>
@@ -19,7 +19,7 @@ TEST(TreeHierarchyIterator, Fanout2) {
     // fanout = 2
     const int fanout = 2;
     typedef sys::ipv4_address addr_type;
-    typedef sbn::tree_hierarchy_iterator<addr_type> iterator;
+    typedef sbnd::tree_hierarchy_iterator<addr_type> iterator;
     typedef sys::interface_address<addr_type> ifaddr_type;
     typedef std::vector<addr_type> container_type;
     sys::log_message("tst", "1");
@@ -92,7 +92,7 @@ TEST(TreeHierarchyIterator, Fanout3) {
     // fanout = 3
     const int fanout = 3;
     typedef sys::ipv4_address addr_type;
-    typedef sbn::tree_hierarchy_iterator<addr_type> iterator;
+    typedef sbnd::tree_hierarchy_iterator<addr_type> iterator;
     typedef sys::interface_address<addr_type> ifaddr_type;
     typedef std::vector<addr_type> container_type;
     sys::log_message("tst", "1");
@@ -227,7 +227,7 @@ TEST(TreeHierarchyIterator, NonZeroOffset) {
     const int fanout = 3;
     const int offset = 1;
     typedef sys::ipv4_address addr_type;
-    typedef sbn::tree_hierarchy_iterator<addr_type> iterator;
+    typedef sbnd::tree_hierarchy_iterator<addr_type> iterator;
     typedef sys::interface_address<addr_type> ifaddr_type;
     typedef std::vector<addr_type> container_type;
     sys::log_message("tst", "1");
@@ -258,7 +258,7 @@ TEST(TreeHierarchyIterator, LargeFanOut) {
     // offset = 1
     const int fanout = 20000;
     typedef sys::ipv4_address addr_type;
-    typedef sbn::tree_hierarchy_iterator<addr_type> iterator;
+    typedef sbnd::tree_hierarchy_iterator<addr_type> iterator;
     typedef sys::interface_address<addr_type> ifaddr_type;
     typedef std::vector<addr_type> container_type;
     EXPECT_EQ(

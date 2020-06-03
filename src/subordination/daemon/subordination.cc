@@ -4,17 +4,17 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/api.hh>
 #include <subordination/base/error_handler.hh>
 #include <subordination/config.hh>
+#include <subordination/daemon/application_kernel.hh>
+#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/network_master.hh>
 #include <subordination/daemon/status_kernel.hh>
-#include <subordination/ppl/application_kernel.hh>
 
 void
 print_state(int) {
     std::clog << __func__ << std::endl;
-    //sbn::factory.print_state(std::clog);
+    //sbnd::factory.print_state(std::clog);
 }
 
 void
@@ -33,7 +33,7 @@ main(int argc, char* argv[]) {
         sys::log_message("discovery", "time since epoch _ms", t.count());
     }
     #endif
-    using namespace sbn;
+    using namespace sbnd;
     sys::ipv4_address::rep_type fanout = 10000;
     sys::interface_address<sys::ipv4_address> servers;
     bool allow_root = false;
@@ -47,25 +47,31 @@ main(int argc, char* argv[]) {
     sys::parse_arguments(argc, argv, options);
     //install_error_handler();
     install_debug_handler();
-    types.register_type<application_kernel>(1);
-    types.register_type<probe>(2);
-    types.register_type<Hierarchy_kernel>(3);
-    types.register_type<Status_kernel>(4);
-    factory_guard g;
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    factory.external().add_server(
-        sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET)
-    );
-    factory.child().allow_root(allow_root);
-    #endif
-    network_master* m = new network_master;
-    m->id(1);
-    m->allow(servers);
-    m->fanout(fanout);
-    {
-        instances_guard g(instances);
-        instances.add(m);
+    sbn::types.register_type<application_kernel>(1);
+    sbn::types.register_type<probe>(2);
+    sbn::types.register_type<Hierarchy_kernel>(3);
+    sbn::types.register_type<Status_kernel>(4);
+    try {
+        factory.start();
+        #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+        factory.external().add_server(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+        factory.child().allow_root(allow_root);
+        #endif
+        network_master* m = new network_master;
+        m->id(1);
+        m->allow(servers);
+        m->fanout(fanout);
+        {
+            sbn::instances_guard g(sbn::instances);
+            sbn::instances.add(m);
+        }
+        factory.local().send(m);
+    } catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        sbn::graceful_shutdown(1);
     }
-    send<Local>(m);
-    return wait_and_return();
+    auto ret = sbn::wait_and_return();
+    factory.stop();
+    factory.wait();
+    return ret;
 }

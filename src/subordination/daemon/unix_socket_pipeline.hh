@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_PPL_UNIX_SOCKET_PIPELINE_HH
-#define SUBORDINATION_PPL_UNIX_SOCKET_PIPELINE_HH
+#ifndef SUBORDINATION_DAEMON_UNIX_SOCKET_PIPELINE_HH
+#define SUBORDINATION_DAEMON_UNIX_SOCKET_PIPELINE_HH
 
 #include <algorithm>
 #include <memory>
@@ -10,21 +10,21 @@
 #include <unistdx/net/socket>
 #include <unistdx/net/socket_address>
 
+#include <subordination/daemon/application_kernel.hh>
 #include <subordination/kernel/kstream.hh>
-#include <subordination/ppl/application_kernel.hh>
 #include <subordination/ppl/basic_socket_pipeline.hh>
 #include <subordination/ppl/kernel_protocol.hh>
 #include <subordination/ppl/types.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class unix_socket_client: public basic_handler {
+    class unix_socket_client: public sbn::basic_handler {
 
     private:
         using kernelbuf_type =
-            basic_kernelbuf<sys::basic_fildesbuf<char,std::char_traits<char>,sys::socket>>;
+            sbn::basic_kernelbuf<sys::basic_fildesbuf<char,std::char_traits<char>,sys::socket>>;
         using kernelbuf_ptr = std::unique_ptr<kernelbuf_type>;
-        using stream_type = kstream;
+        using stream_type = sbn::kstream;
         using ipacket_guard = typename stream_type::ipacket_guard;
         using opacket_guard = sys::opacket_guard<stream_type>;
 
@@ -32,27 +32,28 @@ namespace sbn {
         sys::socket_address _socket_address;
         kernelbuf_ptr _buffer;
         stream_type _stream;
-        kernel_protocol* _protocol = nullptr;
+        sbn::kernel_protocol* _protocol = nullptr;
 
     public:
 
         explicit unix_socket_client(sys::socket&& sock);
 
-        inline void send(kernel* k) {
+        inline void send(sbn::kernel* k) {
             this->_protocol->send(k, this->_stream, this->_socket_address);
         }
 
         void
         handle(const sys::epoll_event& event) override {
             this->log("_ _", __func__, event);
-            if (this->is_starting()) { this->setstate(pipeline_state::started); }
+            if (this->is_starting()) { this->setstate(sbn::pipeline_state::started); }
             if (event.in()) {
                 if (this->_buffer->is_safe_to_compact()) { this->_buffer->compact(); }
                 this->_buffer->pubfill();
                 this->_protocol->receive_kernels(
                     this->_stream,
                     this->_socket_address,
-                    [this] (kernel* k) {
+                    nullptr,
+                    [this] (sbn::kernel* k) {
                         if (auto* app = dynamic_cast<application_kernel*>(k)) {
                             app->credentials(socket().credentials());
                         }
@@ -89,11 +90,11 @@ namespace sbn {
             this->_socket_address = rhs;
         }
 
-        inline void protocol(kernel_protocol* rhs) noexcept { this->_protocol = rhs; }
+        inline void protocol(sbn::kernel_protocol* rhs) noexcept { this->_protocol = rhs; }
 
     };
 
-    class unix_socket_pipeline: public basic_socket_pipeline {
+    class unix_socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:
         using client_type = unix_socket_client;
@@ -117,7 +118,7 @@ namespace sbn {
         void add_client(const sys::socket_address& addr, sys::socket&& sock);
 
         void process_kernels() override;
-        void process_kernel(kernel* k);
+        void process_kernel(sbn::kernel* k);
 
         friend class unix_socket_server;
         friend class unix_socket_client;

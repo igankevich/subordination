@@ -34,8 +34,6 @@ namespace sbn {
         kernel_proto_flag _flags{};
         /// Cluster-wide application ID.
         application_type _thisapp = this_application::get_id();
-        /// Application of the kernels coming in.
-        const application* _otheraptr = 0;
         kernel_queue _upstream, _downstream;
         pipeline* _foreign_pipeline = nullptr;
         pipeline* _native_pipeline = nullptr;
@@ -100,17 +98,19 @@ namespace sbn {
         }
 
         /// \param[in] from socket address from which kernels are received
-        void receive_kernels(stream_type& stream, const sys::socket_address& from) noexcept {
-            this->receive_kernels(stream, from, [] (kernel*) {});
+        void receive_kernels(stream_type& stream, const sys::socket_address& from,
+                             const application* from_application=nullptr) noexcept {
+            this->receive_kernels(stream, from, from_application, [] (kernel*) {});
         }
 
         template <class Callback> void
         receive_kernels(stream_type& stream,
                         const sys::socket_address& from,
+                        const application* from_application,
                         Callback func) noexcept {
             while (stream.read_packet()) {
                 try {
-                    if (auto* k = this->read_kernel(stream, from)) {
+                    if (auto* k = this->read_kernel(stream, from, from_application)) {
                         bool ok = this->receive_kernel(k);
                         func(k);
                         if (!ok) {
@@ -190,15 +190,17 @@ namespace sbn {
         }
 
         kernel*
-        read_kernel(stream_type& stream, const sys::socket_address& from) {
+        read_kernel(stream_type& stream,
+                    const sys::socket_address& from,
+                    const application* from_application) {
             // eats remaining bytes on exception
             ipacket_guard g(stream.rdbuf());
             foreign_kernel* hdr = new foreign_kernel;
             kernel* k = nullptr;
             stream >> hdr->header();
-            if (this->has_other_application()) {
-                hdr->setapp(this->other_application_id());
-                hdr->aptr(this->_otheraptr);
+            if (from_application) {
+                hdr->setapp(from_application->id());
+                hdr->aptr(from_application);
             }
             if (from) {
                 hdr->from(from);
@@ -444,21 +446,6 @@ namespace sbn {
         inline bool
         saves_downstream_kernels() const noexcept {
             return this->_flags & kernel_proto_flag::save_downstream_kernels;
-        }
-
-        inline bool
-        has_other_application() const noexcept {
-            return this->_otheraptr;
-        }
-
-        inline void
-        set_other_application(const application* rhs) noexcept {
-            this->_otheraptr = rhs;
-        }
-
-        inline application_type
-        other_application_id() const noexcept {
-            return this->_otheraptr->id();
         }
 
         inline const pipeline* foreign_pipeline() const noexcept { return this->_foreign_pipeline; }

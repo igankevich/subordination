@@ -8,7 +8,7 @@
 
 template <class Addr>
 std::ostream&
-sbn::operator<<(std::ostream& out, const Hierarchy<Addr>& rhs) {
+sbnd::operator<<(std::ostream& out, const Hierarchy<Addr>& rhs) {
     out << "interface_address=" << rhs._ifaddr << ',';
     out << "principal=" << rhs._principal << ',';
     out << "subordinates=";
@@ -22,7 +22,7 @@ sbn::operator<<(std::ostream& out, const Hierarchy<Addr>& rhs) {
 
 template <class Addr>
 bool
-sbn::Hierarchy<Addr>::set_subordinate_weight(
+sbnd::Hierarchy<Addr>::set_subordinate_weight(
     const sys::socket_address& endp,
     weight_type w
 ) {
@@ -39,15 +39,15 @@ sbn::Hierarchy<Addr>::set_subordinate_weight(
 }
 
 template <class Addr>
-typename sbn::Hierarchy<Addr>::weight_type
-sbn::Hierarchy<Addr>::total_weight() const noexcept {
+typename sbnd::Hierarchy<Addr>::weight_type
+sbnd::Hierarchy<Addr>::total_weight() const noexcept {
     // add 1 for the current node
     return this->principal_weight() + this->total_subordinate_weight() + 1;
 }
 
 template <class Addr>
-typename sbn::Hierarchy<Addr>::weight_type
-sbn::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
+typename sbnd::Hierarchy<Addr>::weight_type
+sbnd::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
     weight_type sum = 0;
     for (const node_type& n : this->_subordinates) {
         sum += n.weight();
@@ -56,7 +56,7 @@ sbn::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
 }
 
 template <class T> void
-sbn::Hierarchy<T>::write(sys::pstream& out) const {
+sbnd::Hierarchy<T>::write(sys::pstream& out) const {
     out << this->_ifaddr;
     out << this->_endpoint;
     out << this->_principal;
@@ -64,14 +64,14 @@ sbn::Hierarchy<T>::write(sys::pstream& out) const {
 }
 
 template <class T> void
-sbn::Hierarchy<T>::read(sys::pstream& in) {
+sbnd::Hierarchy<T>::read(sys::pstream& in) {
     in >> this->_ifaddr;
     in >> this->_endpoint;
     in >> this->_principal;
     read_set(in, this->_subordinates);
 }
 
-template class sbn::Hierarchy<sys::ipv4_address>;
+template class sbnd::Hierarchy<sys::ipv4_address>;
 
 template std::ostream&
-sbn::operator<<(std::ostream& out, const Hierarchy<sys::ipv4_address>& rhs);
+sbnd::operator<<(std::ostream& out, const Hierarchy<sys::ipv4_address>& rhs);

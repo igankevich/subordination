@@ -4,9 +4,9 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/api.hh>
+#include <subordination/kernel/kernel.hh>
 
-namespace sbn {
+namespace sbnd {
 
     class Hierarchy_kernel: public sbn::kernel {
 
@@ -28,26 +28,12 @@ namespace sbn {
         _weight(weight)
         {}
 
-        inline const ifaddr_type&
-        interface_address() const noexcept {
-            return this->_ifaddr;
-        }
+        inline const ifaddr_type& interface_address() const noexcept { return this->_ifaddr; }
+        inline void weight(uint32_t rhs) noexcept { this->_weight = rhs; }
+        inline uint32_t weight() const noexcept { return this->_weight; }
 
-        inline void
-        weight(uint32_t rhs) noexcept {
-            this->_weight = rhs;
-        }
-
-        inline uint32_t
-        weight() const noexcept {
-            return this->_weight;
-        }
-
-        void
-        write(sys::pstream& out) const override;
-
-        void
-        read(sys::pstream& in) override;
+        void write(sys::pstream& out) const override;
+        void read(sys::pstream& in) override;
 
     };
 

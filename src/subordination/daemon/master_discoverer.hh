@@ -8,7 +8,6 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/api.hh>
 #include <subordination/ppl/socket_pipeline_event.hh>
 
 #include <subordination/daemon/hierarchy.hh>
@@ -20,7 +19,7 @@
 #include <subordination/daemon/types.hh>
 
 
-namespace sbn {
+namespace sbnd {
 
     /// Timer which is used to periodically scan nodes
     /// to find the best principal node.
@@ -120,7 +119,7 @@ namespace sbn {
         }
 
         void
-        on_event(socket_pipeline_kernel* k);
+        on_event(sbn::socket_pipeline_kernel* k);
 
         void
         on_client_add(const sys::socket_address& endp);

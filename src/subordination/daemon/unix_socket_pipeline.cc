@@ -1,9 +1,8 @@
-#include <subordination/ppl/basic_factory.hh>
-#include <subordination/ppl/unix_socket_pipeline.hh>
+#include <subordination/daemon/unix_socket_pipeline.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class unix_socket_server: public basic_handler {
+    class unix_socket_server: public sbn::basic_handler {
 
     private:
 
@@ -48,22 +47,22 @@ namespace sbn {
 
 }
 
-sbn::unix_socket_client::unix_socket_client(sys::socket&& sock):
+sbnd::unix_socket_client::unix_socket_client(sys::socket&& sock):
 _buffer(new kernelbuf_type),
 _stream(_buffer.get()) {
     this->_buffer->setfd(std::move(sock));
-    this->setstate(pipeline_state::starting);
+    this->setstate(sbn::pipeline_state::starting);
 }
 
-sbn::unix_socket_pipeline::unix_socket_pipeline() {
+sbnd::unix_socket_pipeline::unix_socket_pipeline() {
     this->_protocol.setf(
-        kernel_proto_flag::prepend_application |
-        kernel_proto_flag::save_upstream_kernels |
-        kernel_proto_flag::save_downstream_kernels
+        sbn::kernel_proto_flag::prepend_application |
+        sbn::kernel_proto_flag::save_upstream_kernels |
+        sbn::kernel_proto_flag::save_downstream_kernels
     );
 }
 
-void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr,
+void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
                                            sys::socket&& sock) {
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
     ptr->socket_address(addr);
@@ -75,7 +74,7 @@ void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr,
     #endif
 }
 
-void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
+void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     sys::socket s(sys::family_type::unix);
     s.setopt(sys::socket::pass_credentials);
     s.connect(addr);
@@ -86,7 +85,7 @@ void sbn::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     this->_clients.emplace(addr, ptr);
 }
 
-void sbn::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
+void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
     sys::socket s(sys::family_type::unix);
     s.bind(rhs);
     s.setopt(sys::socket::pass_credentials);
@@ -97,8 +96,7 @@ void sbn::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
 }
 
-void
-sbn::unix_socket_pipeline::process_kernels() {
+void sbnd::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto* kernel = this->_kernels.front();
         this->_kernels.pop();
@@ -107,7 +105,7 @@ sbn::unix_socket_pipeline::process_kernels() {
 }
 
 void
-sbn::unix_socket_pipeline::process_kernel(kernel* k) {
+sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
     if (k->moves_downstream()) {
         if (!k->to()) {
             k->to(k->from());

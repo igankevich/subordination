@@ -6,13 +6,13 @@
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/kernel/kernel.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class Status_kernel: public kernel {
+    class Status_kernel: public sbn::kernel {
 
     public:
         using address_type = sys::ipv4_address;
-        using hierarchy_type = ::sbn::Hierarchy<address_type>;
+        using hierarchy_type = Hierarchy<address_type>;
         using hierarchy_array = std::vector<hierarchy_type>;
 
     private:

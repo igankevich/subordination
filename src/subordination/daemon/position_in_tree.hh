@@ -7,7 +7,7 @@
 #include <iosfwd>
 #include <tuple>
 
-namespace sbn {
+namespace sbnd {
 
     template <class Addr>
     class position_in_tree {
@@ -141,19 +141,17 @@ namespace sbn {
 namespace std {
 
     template<class Addr>
-    struct hash<sbn::position_in_tree<Addr>>:
-        public std::hash<typename sbn::position_in_tree<Addr>::pos_type> {
+    struct hash<sbnd::position_in_tree<Addr>>:
+        public std::hash<typename sbnd::position_in_tree<Addr>::pos_type> {
 
         typedef size_t result_type;
-        typedef sbn::position_in_tree<Addr> argument_type;
-        typedef typename sbn::position_in_tree<Addr>::pos_type pos_type;
+        typedef sbnd::position_in_tree<Addr> argument_type;
+        typedef typename sbnd::position_in_tree<Addr>::pos_type pos_type;
 
         inline result_type
         operator()(const argument_type& rhs) const noexcept {
             typedef std::hash<pos_type> tp;
-            return
-                tp::operator()(rhs.layer()) ^
-                tp::operator()(rhs.offset());
+            return tp::operator()(rhs.layer()) ^ tp::operator()(rhs.offset());
 
         }
 

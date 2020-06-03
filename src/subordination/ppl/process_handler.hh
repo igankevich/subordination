@@ -25,18 +25,14 @@ namespace sbn {
         typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
         typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
         typedef kstream stream_type;
-        typedef kernel_protocol protocol_type;
 
-        enum class role_type {
-            child,
-            parent
-        };
+        enum class role_type {child, parent};
 
     private:
         sys::pid_type _childpid;
-        kernelbuf_ptr _packetbuf;
+        kernelbuf_ptr _buffer;
         stream_type _stream;
-        protocol_type _proto;
+        kernel_protocol* _protocol = nullptr;
         application _application;
         role_type _role;
 
@@ -53,7 +49,7 @@ namespace sbn {
         virtual
         ~process_handler() {
             // recover kernels from upstream and downstream buffer
-            this->_proto.recover_kernels(true);
+            this->_protocol->recover_kernels(true);
         }
 
         const sys::pid_type&
@@ -68,12 +64,12 @@ namespace sbn {
 
         void
         close() {
-            this->_packetbuf->fd().close();
+            this->_buffer->fd().close();
         }
 
         void
         send(kernel* k) {
-            this->_proto.send(k, this->_stream, sys::socket_address{});
+            this->_protocol->send(k, this->_stream, sys::socket_address{});
         }
 
         void
@@ -81,8 +77,8 @@ namespace sbn {
 
         void
         flush() override {
-            if (this->_packetbuf->dirty()) {
-                this->_packetbuf->pubflush();
+            if (this->_buffer->dirty()) {
+                this->_buffer->pubflush();
             }
         }
 
@@ -97,29 +93,31 @@ namespace sbn {
             // remove application before forwarding
             // to child process
             k->aptr(nullptr);
-            this->_proto.forward(k, this->_stream);
+            this->_protocol->forward(k, this->_stream);
         }
 
         inline void
         set_name(const char* rhs) noexcept {
             this->pipeline_base::set_name(rhs);
-            this->_proto.set_name(rhs);
+            this->_protocol->set_name(rhs);
             #ifndef NDEBUG
-            if (this->_packetbuf) {
-                this->_packetbuf->set_name(rhs);
+            if (this->_buffer) {
+                this->_buffer->set_name(rhs);
             }
             #endif
         }
 
         inline sys::fd_type
         in() const noexcept {
-            return this->_packetbuf->fd().in().fd();
+            return this->_buffer->fd().in().fd();
         }
 
         inline sys::fd_type
         out() const noexcept {
-            return this->_packetbuf->fd().out().fd();
+            return this->_buffer->fd().out().fd();
         }
+
+        inline void protocol(kernel_protocol* rhs) noexcept { this->_protocol = rhs; }
 
     };
 

@@ -33,7 +33,7 @@ if get_option('profile_node_discovery')
     profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
 endif
 
-if cpp.get_id() == 'gcc' or cpp.has_argument('-rdynamic')
+if cpp.get_id() == 'gcc' or cpp.has_link_argument('-rdynamic')
     add_global_link_arguments('-rdynamic', language: 'cpp')
 endif
 
@@ -42,6 +42,7 @@ unistdx = dependency('unistdx', version: '>=0.20.4')
 gtest = dependency('gtest', main: true)
 
 src = include_directories('src')
+pkgconfig = import('pkgconfig')
 
 subdir('src')
 
@@ -68,45 +69,4 @@ if cppcheck.found()
         ]
     )
 endif
-# }}}
-# pkgconfig {{{
-pkgconfig = import('pkgconfig')
-#pkgconfig.generate(
-#    subordination_core_lib,
-#    requires: [unistdx],
-#    version: meson.project_version(),
-#    name: 'subordination-core',
-#    filebase: 'subordination-core',
-#    description: project_description,
-#)
-pkgconfig.generate(
-    subordination_app_lib,
-    libraries: [],
-    requires: [unistdx],
-    extra_cflags: '-DSUBORDINATION_APPLICATION',
-    version: meson.project_version(),
-    name: 'subordination-app',
-    filebase: 'subordination-app',
-    description: project_description,
-)
-pkgconfig.generate(
-    subordination_daemon_lib,
-    libraries: [],
-    requires: [unistdx],
-    extra_cflags: '-DSUBORDINATION_DAEMON',
-    version: meson.project_version(),
-    name: 'subordination-daemon',
-    filebase: 'subordination-daemon',
-    description: project_description,
-)
-pkgconfig.generate(
-    subordination_submit_lib,
-    libraries: [],
-    requires: [unistdx],
-    extra_cflags: '-DSUBORDINATION_SUBMIT',
-    version: meson.project_version(),
-    name: 'subordination-submit',
-    filebase: 'subordination-submit',
-    description: project_description,
-)
 # }}}

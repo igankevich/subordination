@@ -2,6 +2,7 @@
 #include <cassert>
 #include <ostream>
 
+#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/master_discoverer.hh>
 
 namespace {
@@ -13,7 +14,7 @@ namespace {
 }
 
 std::ostream&
-sbn::operator<<(std::ostream& out, probe_result rhs) {
+sbnd::operator<<(std::ostream& out, probe_result rhs) {
     const size_t i = static_cast<size_t>(rhs);
     const char* s = i >= 0 && i <= all_results.size()
                     ? all_results[i] : "<unknown>";
@@ -21,13 +22,13 @@ sbn::operator<<(std::ostream& out, probe_result rhs) {
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::on_start() {
     this->probe_next_node();
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::on_kernel(sbn::kernel* k) {
     if (typeid(*k) == typeid(discovery_timer)) {
         // start probing only if it has not been started already
@@ -38,15 +39,15 @@ sbn::master_discoverer
         this->update_subordinates(dynamic_cast<probe*>(k));
     } else if (typeid(*k) == typeid(prober)) {
         this->update_principal(dynamic_cast<prober*>(k));
-    } else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
-        this->on_event(dynamic_cast<socket_pipeline_kernel*>(k));
+    } else if (typeid(*k) == typeid(sbn::socket_pipeline_kernel)) {
+        this->on_event(dynamic_cast<sbn::socket_pipeline_kernel*>(k));
     } else if (typeid(*k) == typeid(Hierarchy_kernel)) {
         this->update_weights(dynamic_cast<Hierarchy_kernel*>(k));
     }
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::probe_next_node() {
     this->setstate(state_type::probing);
     if (this->_iterator == this->_end) {
@@ -63,23 +64,25 @@ sbn::master_discoverer
                 this->_hierarchy.principal().socket_address(),
                 new_principal
             );
-        sbn::upstream(this, p);
+        p->parent(this);
+        factory.local().send(p);
         ++this->_iterator;
     }
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::send_timer() {
     this->setstate(state_type::waiting);
     using namespace std::chrono;
     discovery_timer* k = new discovery_timer;
     k->after(this->_interval);
-    sbn::send(k, this);
+    k->principal(this);
+    factory.local().send(k);
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::update_subordinates(probe* p) {
     const sys::socket_address src = p->from();
     probe_result result = this->process_probe(p);
@@ -95,18 +98,19 @@ sbn::master_discoverer
     if (changed) {
         this->broadcast_hierarchy();
     }
-    p->setf(kernel_flag::do_not_delete);
-    sbn::commit<sbn::Remote>(p);
+    p->setf(sbn::kernel_flag::do_not_delete);
+    p->return_to_parent(sbn::exit_code::success);
+    factory.remote().send(p);
 }
 
-sbn::probe_result
-sbn::master_discoverer
+sbnd::probe_result
+sbnd::master_discoverer
 ::process_probe(probe* p) {
     probe_result result = probe_result::retain;
     if (p->from() == this->_hierarchy.principal()) {
         // principal tries to become subordinate
         // which is prohibited
-        p->return_code(exit_code::error);
+        p->return_code(sbn::exit_code::error);
         result = probe_result::reject_subordinate;
     } else {
         if (p->old_principal() != p->new_principal()) {
@@ -116,15 +120,15 @@ sbn::master_discoverer
                 result = probe_result::remove_subordinate;
             }
         }
-        p->return_code(exit_code::success);
+        p->return_code(sbn::exit_code::success);
     }
     return result;
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::update_principal(prober* p) {
-    if (p->return_code() != exit_code::success) {
+    if (p->return_code() != sbn::exit_code::success) {
         this->log(
             "_: prober returned from _: _",
             this->interface_address(),
@@ -135,9 +139,7 @@ sbn::master_discoverer
     } else {
         const sys::socket_address& oldp = p->old_principal();
         const sys::socket_address& newp = p->new_principal();
-        if (oldp) {
-            ::sbn::factory.nic().stop_client(oldp);
-        }
+        if (oldp) { factory.remote().stop_client(oldp); }
         this->log("_: set principal to _", this->interface_address(), newp);
         this->_hierarchy.set_principal(newp);
         this->broadcast_hierarchy();
@@ -147,29 +149,29 @@ sbn::master_discoverer
 }
 
 void
-sbn::master_discoverer
-::on_event(socket_pipeline_kernel* ev) {
+sbnd::master_discoverer
+::on_event(sbn::socket_pipeline_kernel* ev) {
     switch (ev->event()) {
-    case socket_pipeline_event::add_client:
-        this->on_client_add(ev->socket_address());
-        break;
-    case socket_pipeline_event::remove_client:
-        this->on_client_remove(ev->socket_address());
-        break;
-    case socket_pipeline_event::add_server:
-    case socket_pipeline_event::remove_server:
-    default:
-        // ignore server events
-        break;
+        case sbn::socket_pipeline_event::add_client:
+            this->on_client_add(ev->socket_address());
+            break;
+        case sbn::socket_pipeline_event::remove_client:
+            this->on_client_remove(ev->socket_address());
+            break;
+        case sbn::socket_pipeline_event::add_server:
+        case sbn::socket_pipeline_event::remove_server:
+        default:
+            // ignore server events
+            break;
     }
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::on_client_add(const sys::socket_address& endp) {}
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::on_client_remove(const sys::socket_address& endp) {
     if (endp == this->_hierarchy.principal()) {
         this->log("_: unset principal _", this->interface_address(), endp);
@@ -182,7 +184,7 @@ sbn::master_discoverer
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::broadcast_hierarchy(
     sys::socket_address
     ignored_endpoint
@@ -204,19 +206,19 @@ sbn::master_discoverer
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::send_weight(const sys::socket_address& dest, weight_type w) {
     auto* h = new Hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
     h->set_principal_id(1);
     h->to(dest);
-    sbn::send<sbn::Remote>(h);
+    factory.remote().send(h);
 }
 
 void
-sbn::master_discoverer
+sbnd::master_discoverer
 ::update_weights(Hierarchy_kernel* k) {
-    if (k->moves_downstream() && k->return_code() != exit_code::success) {
+    if (k->moves_downstream() && k->return_code() != sbn::exit_code::success) {
         this->log(
             "_: failed to send hierarchy to _",
             this->interface_address(),
@@ -237,7 +239,7 @@ sbn::master_discoverer
             k->weight()
         );
         if (changed) {
-            ::sbn::factory.nic().set_client_weight(src, k->weight());
+            factory.remote().set_client_weight(src, k->weight());
             this->broadcast_hierarchy(src);
         }
     }

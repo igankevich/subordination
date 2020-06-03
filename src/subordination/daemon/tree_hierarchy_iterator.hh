@@ -1,11 +1,11 @@
 #ifndef SUBORDINATION_DAEMON_TREE_HIERARCHY_ITERATOR_HH
 #define SUBORDINATION_DAEMON_TREE_HIERARCHY_ITERATOR_HH
 
-#include <subordination/daemon/position_in_tree.hh>
 #include <iterator>
+#include <subordination/daemon/position_in_tree.hh>
 #include <unistdx/net/interface_address>
 
-namespace sbn {
+namespace sbnd {
 
     template <class Addr>
     class tree_hierarchy_iterator:

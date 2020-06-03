@@ -6,7 +6,7 @@
 
 #include <unistdx/net/pstream>
 
-namespace sbn {
+namespace sbnd {
 
     template <class T> inline void
     write_set(sys::pstream& out, const std::unordered_set<T>& rhs) {

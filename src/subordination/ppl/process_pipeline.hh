@@ -35,7 +35,7 @@ namespace sbn {
 
     public:
 
-        process_pipeline() = default;
+        process_pipeline();
         ~process_pipeline() = default;
         process_pipeline(const process_pipeline&) = delete;
         process_pipeline& operator=(const process_pipeline&) = delete;
