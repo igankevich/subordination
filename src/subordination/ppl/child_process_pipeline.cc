@@ -10,7 +10,7 @@ void sbn::child_process_pipeline::send(kernel* k) {
         lock.unlock();
         this->_protocol.native_pipeline()->send(k);
     } else {
-        traits_type::push(this->_kernels, k);
+        this->_kernels.emplace(k);
         this->poller().notify_one();
     }
 }

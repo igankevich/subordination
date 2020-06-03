@@ -3,17 +3,17 @@
 
 namespace sbn {
 
+    class Factory;
     class application;
     class application_kernel;
     class basic_handler;
-    template<class K, class T, class Th, class M, class L, class S> class basic_pipeline;
+    class basic_pipeline;
     class basic_socket_pipeline;
     class child_process_pipeline;
-    class Factory;
     class io_pipeline;
     class kernel_header_flag;
-    class kernel_protocol;
     class kernel_proto_flag;
+    class kernel_protocol;
     class local_server;
     class multi_pipeline;
     class parallel_pipeline;

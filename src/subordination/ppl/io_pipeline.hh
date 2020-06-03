@@ -8,27 +8,14 @@ namespace sbn {
     class io_pipeline: public parallel_pipeline {
 
     public:
-
-        inline
-        io_pipeline(io_pipeline&& rhs) noexcept:
-        parallel_pipeline(std::move(rhs))
-        {}
-
         /// use only one thread to read/write data
-        inline
-        io_pipeline() noexcept:
-        io_pipeline(sys::io_concurrency()*2u)
-        {}
-
-        inline explicit
-        io_pipeline(unsigned concurrency) noexcept:
-        parallel_pipeline(concurrency)
-        {}
-
+        inline io_pipeline(): io_pipeline(sys::io_concurrency()*2u) {}
+        inline explicit io_pipeline(unsigned concurrency): parallel_pipeline(concurrency) {}
+        ~io_pipeline() = default;
+        io_pipeline(io_pipeline&&) = delete;
+        io_pipeline& operator=(io_pipeline&&) = delete;
         io_pipeline(const io_pipeline&) = delete;
         io_pipeline& operator=(const io_pipeline&) = delete;
-        io_pipeline& operator=(io_pipeline&&) = delete;
-        ~io_pipeline() = default;
 
     };
 

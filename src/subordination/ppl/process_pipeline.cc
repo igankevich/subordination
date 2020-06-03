@@ -19,7 +19,7 @@ sbn::process_pipeline
         &process_pipeline::wait_for_all_processes_to_finish,
         this
     };
-    base_pipeline::do_run();
+    basic_socket_pipeline::do_run();
     #ifndef NDEBUG
     this->log(
         "waiting for all processes to finish: pid=_",
@@ -121,22 +121,15 @@ sbn::process_pipeline
     this->poller().notify_one();
 }
 
-void
-sbn::process_pipeline
-::process_kernels() {
-    std::for_each(
-        queue_popper(this->_kernels),
-        queue_popper(),
-        [this] (kernel* rhs) {
-            this->process_kernel(rhs);
-        }
-    );
+void sbn::process_pipeline::process_kernels() {
+    while (!this->_kernels.empty()) {
+        this->process_kernel(this->_kernels.front());
+        this->_kernels.pop();
+    }
 }
 
-void
-sbn::process_pipeline
-::process_kernel(kernel* k) {
-    typedef typename map_type::value_type value_type;
+void sbn::process_pipeline::process_kernel(kernel* k) {
+    typedef typename application_table::value_type value_type;
     if (k->moves_everywhere()) {
         std::for_each(
             this->_apps.begin(),
@@ -160,7 +153,7 @@ sbn::process_pipeline
     using std::this_thread::sleep_for;
     using std::chrono::milliseconds;
     lock_type lock(this->_mutex);
-    while (!this->has_stopped()) {
+    while (!this->stopped()) {
         if (this->_procs.size() == 0) {
             sys::unlock_guard<lock_type> g(lock);
             sleep_for(milliseconds(777));
@@ -196,7 +189,7 @@ sbn::process_pipeline
 typename sbn::process_pipeline::app_iterator
 sbn::process_pipeline
 ::find_by_process_id(sys::pid_type pid) {
-    typedef typename map_type::value_type value_type;
+    typedef typename application_table::value_type value_type;
     return std::find_if(
         this->_apps.begin(),
         this->_apps.end(),

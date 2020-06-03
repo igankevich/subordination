@@ -1,8 +1,6 @@
 #ifndef SUBORDINATION_KERNEL_KERNEL_HH
 #define SUBORDINATION_KERNEL_KERNEL_HH
 
-#include <memory>
-
 #include <unistdx/net/pstream>
 
 #include <subordination/kernel/mobile_kernel.hh>
@@ -167,17 +165,12 @@ namespace sbn {
             this->principal(this);
         }
 
-        template<class It>
-        void
-        mark_as_deleted(It result) noexcept {
-            if (!this->isset(kernel_flag::deleted)) {
-                this->setf(kernel_flag::deleted);
-                if (this->_parent) {
-                    this->_parent->mark_as_deleted(result);
-                }
-                *result = std::unique_ptr<kernel>(this);
-                ++result;
-            }
+        template <class Container> void
+        mark_as_deleted(Container& result) noexcept {
+            if (this->isset(kernel_flag::deleted)) { return; }
+            this->setf(kernel_flag::deleted);
+            if (this->_parent) { this->_parent->mark_as_deleted(result); }
+            result.emplace_back(this);
         }
 
     private:

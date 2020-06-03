@@ -19,11 +19,6 @@ namespace sbn {
         using event_handler_type = process_handler;
         using event_handler_ptr = std::shared_ptr<event_handler_type>;
 
-    public:
-        using typename base_pipeline::lock_type;
-        using typename base_pipeline::queue_popper;
-        using typename base_pipeline::traits_type;
-
     private:
         event_handler_ptr _parent;
 

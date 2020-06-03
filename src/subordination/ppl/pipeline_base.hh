@@ -72,7 +72,7 @@ namespace sbn {
         }
 
         inline bool
-        has_stopped() const noexcept {
+        stopped() const noexcept {
             return this->_state == pipeline_state::stopped;
         }
 

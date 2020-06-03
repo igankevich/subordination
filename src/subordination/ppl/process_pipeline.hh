@@ -18,17 +18,13 @@ namespace sbn {
     class process_pipeline: public basic_socket_pipeline {
 
     private:
-        using base_pipeline = basic_socket_pipeline;
-        using typename base_pipeline::queue_popper;
-        using typename base_pipeline::lock_type;
-        using typename base_pipeline::mutex_type;
         using event_handler_type = process_handler;
         using event_handler_ptr = std::shared_ptr<event_handler_type>;
-        using map_type = std::unordered_map<application_type,event_handler_ptr>;
-        using app_iterator = typename map_type::iterator;
+        using application_table = std::unordered_map<application_type,event_handler_ptr>;
+        using app_iterator = typename application_table::iterator;
 
     private:
-        map_type _apps;
+        application_table _apps;
         sys::process_group _procs;
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = false;

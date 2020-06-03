@@ -17,10 +17,10 @@ namespace sbn {
     class kernel_base {
 
     public:
-        typedef std::chrono::system_clock clock_type;
-        typedef clock_type::time_point time_point;
-        typedef clock_type::duration duration;
-        typedef std::bitset<6> flags_type;
+        using clock_type = std::chrono::system_clock;
+        using time_point = clock_type::time_point;
+        using duration = clock_type::duration;
+        using flags_type = std::bitset<6>;
 
     protected:
         exit_code _result = exit_code::undefined;

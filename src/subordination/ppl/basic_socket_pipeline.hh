@@ -27,17 +27,7 @@
 
 namespace sbn {
 
-    template<class Kernels=std::queue<kernel*>,
-             class Traits=queue_traits<Kernels>,
-             class Threads=std::vector<std::thread>>
-    using Proxy_pipeline_base = basic_pipeline<Kernels, Traits, Threads,
-                                               std::recursive_mutex,
-                                               std::unique_lock<std::
-                                                                recursive_mutex>,
-//		sys::recursive_spin_mutex, sys::simple_lock<sys::recursive_spin_mutex>,
-                                               sys::event_poller>;
-
-    class basic_socket_pipeline: public Proxy_pipeline_base<> {
+    class basic_socket_pipeline: public basic_pipeline {
 
     public:
         typedef basic_handler handler_type;
@@ -50,11 +40,10 @@ namespace sbn {
         typedef typename handler_type::time_point time_point;
         typedef typename handler_type::duration duration;
 
-        using base_pipeline = Proxy_pipeline_base<>;
-        using typename base_pipeline::mutex_type;
-        using typename base_pipeline::lock_type;
-        using typename base_pipeline::sem_type;
-        using typename base_pipeline::kernel_pool;
+        using kernel_queue = std::queue<kernel*>;
+        using mutex_type = std::recursive_mutex;
+        using lock_type = std::unique_lock<mutex_type>;
+        using semaphore_type = sys::event_poller;
 
     private:
         typedef static_lock<mutex_type, mutex_type> static_lock_type;
@@ -63,27 +52,40 @@ namespace sbn {
         mutex_type* _othermutex = nullptr;
 
     protected:
+        kernel_queue _kernels;
+        mutex_type _mutex;
+        semaphore_type _semaphore;
         handler_container_type _handlers;
         kernel_protocol _protocol;
         duration _start_timeout = duration::zero();
 
     public:
 
-        basic_socket_pipeline(basic_socket_pipeline&& rhs) noexcept:
-        base_pipeline(std::move(rhs)),
-        _start_timeout(rhs._start_timeout) { }
-
-        basic_socket_pipeline():
-        base_pipeline(1u) {
+        inline
+        basic_socket_pipeline(): basic_pipeline(1u) {
             this->emplace_notify_handler(std::make_shared<basic_handler>());
         }
 
         ~basic_socket_pipeline() = default;
-
+        basic_socket_pipeline(basic_socket_pipeline&&) = delete;
+        basic_socket_pipeline& operator=(basic_socket_pipeline&&) = delete;
         basic_socket_pipeline(const basic_socket_pipeline&) = delete;
+        basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
 
-        basic_socket_pipeline&
-        operator=(const basic_socket_pipeline&) = delete;
+        inline void send(kernel* k) override {
+            #ifndef NDEBUG
+            this->log("send _", *k);
+            #endif
+            lock_type lock(this->_mutex);
+            this->_kernels.emplace(k);
+            this->_semaphore.notify_one();
+        }
+
+        inline void send(kernel** kernels, size_t n) {
+            lock_type lock(this->_mutex);
+            for (size_t i=0; i<n; ++i) { this->_kernels.emplace(kernels[i]); }
+            this->_semaphore.notify_all();
+        }
 
         inline void
         set_other_mutex(mutex_type* rhs) noexcept {
@@ -114,15 +116,10 @@ namespace sbn {
 
     protected:
 
-        inline sem_type&
-        poller() noexcept {
-            return this->_semaphore;
-        }
+        void collect_kernels(kernel_sack& sack) override;
 
-        inline const sem_type&
-        poller() const noexcept {
-            return this->_semaphore;
-        }
+        inline semaphore_type& poller() noexcept { return this->_semaphore; }
+        inline const semaphore_type& poller() const noexcept { return this->_semaphore; }
 
         void
         emplace_handler(const sys::epoll_event& ev, const event_handler_ptr& ptr) {
@@ -156,7 +153,7 @@ namespace sbn {
         void
         do_run() override {
             static_lock_type lock(&this->_mutex, this->_othermutex);
-            while (!this->has_stopped()) {
+            while (!this->stopped()) {
                 bool timeout = false;
                 if (this->_start_timeout > duration::zero()) {
                     handler_const_iterator result =
@@ -172,7 +169,7 @@ namespace sbn {
                     this->process_kernels();
                     this->handle_events();
                     this->flush_buffers(timeout);
-                    return this->has_stopped();
+                    return this->stopped();
                 };
                 if (timeout) {
                     process();
@@ -181,7 +178,7 @@ namespace sbn {
                     /*
                     this->poller().wait(
                         lock,
-                        [this] () { return this->has_stopped(); }
+                        [this] () { return this->stopped(); }
                     );*/
                 }
             }
@@ -215,11 +212,11 @@ namespace sbn {
             handler_const_iterator last = this->_handlers.end();
             while (first != last) {
                 handler_type& h = *first->second;
-                if (h.has_stopped() || (timeout && this->is_timed_out(
+                if (h.stopped() || (timeout && this->is_timed_out(
                                             h,
                                             now
                                         ))) {
-                    this->log("remove _ (_)", h, h.has_stopped() ? "stop" : "timeout");
+                    this->log("remove _ (_)", h, h.stopped() ? "stop" : "timeout");
                     h.remove(this->poller());
                     first = this->_handlers.erase(first);
                 } else {

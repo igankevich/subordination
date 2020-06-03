@@ -1,18 +1,20 @@
 subordination_core_src += files([
     'application.cc',
     'application_kernel.cc',
+    'basic_factory.cc',
     'basic_pipeline.cc',
+    'basic_pipeline.cc',
+    'basic_socket_pipeline.cc',
+    'child_process_pipeline.cc',
     'kernel_protocol.cc',
     'multi_pipeline.cc',
     'parallel_pipeline.cc',
     'pipeline_base.cc',
-    'thread_context.cc',
-    'timer_pipeline.cc',
-    'basic_factory.cc',
-    'child_process_pipeline.cc',
     'process_handler.cc',
     'process_pipeline.cc',
     'socket_pipeline.cc',
+    'thread_context.cc',
+    'timer_pipeline.cc',
 ])
 
 install_headers(
@@ -23,7 +25,6 @@ install_headers(
     'basic_pipeline.hh',
     'basic_socket_pipeline.hh',
     'child_process_pipeline.hh',
-    'compare_time.hh',
     'io_pipeline.hh',
     'kernel_header_flag.hh',
     'kernel_proto_flag.hh',
