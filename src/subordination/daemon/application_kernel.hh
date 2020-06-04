@@ -9,7 +9,7 @@
 #include <unistdx/fs/canonical_path>
 #include <unistdx/net/socket>
 
-#include <subordination/kernel/kernel.hh>
+#include <subordination/core/kernel.hh>
 
 namespace sbnd {
 

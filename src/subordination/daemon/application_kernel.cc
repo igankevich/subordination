@@ -1,6 +1,6 @@
+#include <subordination/core/application.hh>
 #include <subordination/daemon/application_kernel.hh>
 #include <subordination/daemon/factory.hh>
-#include <subordination/ppl/application.hh>
 
 namespace {
 

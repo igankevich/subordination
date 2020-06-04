@@ -4,8 +4,8 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/base/error_handler.hh>
 #include <subordination/config.hh>
+#include <subordination/core/error_handler.hh>
 #include <subordination/daemon/application_kernel.hh>
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/network_master.hh>

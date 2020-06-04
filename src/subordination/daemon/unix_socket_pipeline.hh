@@ -10,11 +10,11 @@
 #include <unistdx/net/socket>
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/basic_socket_pipeline.hh>
+#include <subordination/core/kernel_protocol.hh>
+#include <subordination/core/kstream.hh>
+#include <subordination/core/types.hh>
 #include <subordination/daemon/application_kernel.hh>
-#include <subordination/kernel/kstream.hh>
-#include <subordination/ppl/basic_socket_pipeline.hh>
-#include <subordination/ppl/kernel_protocol.hh>
-#include <subordination/ppl/types.hh>
 
 namespace sbnd {
 

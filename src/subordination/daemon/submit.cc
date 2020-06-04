@@ -2,10 +2,10 @@
 #include <string>
 #include <vector>
 
-#include <subordination/base/error_handler.hh>
 #include <subordination/config.hh>
+#include <subordination/core/application_kernel.hh>
+#include <subordination/core/error_handler.hh>
 #include <subordination/daemon/small_factory.hh>
-#include <subordination/ppl/application_kernel.hh>
 
 using sbn::application_kernel;
 using namespace sbn;

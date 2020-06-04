@@ -3,8 +3,8 @@
 
 #include <vector>
 
+#include <subordination/core/kernel.hh>
 #include <subordination/daemon/hierarchy.hh>
-#include <subordination/kernel/kernel.hh>
 
 namespace sbnd {
 

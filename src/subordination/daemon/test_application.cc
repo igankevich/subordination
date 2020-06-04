@@ -1,7 +1,7 @@
 #include <subordination/api.hh>
-#include <subordination/base/error_handler.hh>
+#include <subordination/core/error_handler.hh>
 #include <subordination/daemon/test_application.hh>
-#include <test/config.hh>
+#include <subordination/test/config.hh>
 
 template <class ... Args>
 inline void

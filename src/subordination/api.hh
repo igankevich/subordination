@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_API_HH
 #define SUBORDINATION_API_HH
 
-#include <subordination/ppl/basic_factory.hh>
+#include <subordination/core/basic_factory.hh>
 
 namespace sbn {
 

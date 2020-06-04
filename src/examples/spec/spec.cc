@@ -1,5 +1,5 @@
 #include <subordination/api.hh>
-#include <subordination/base/error_handler.hh>
+#include <subordination/core/error_handler.hh>
 
 #include "spec_app.hh"
 

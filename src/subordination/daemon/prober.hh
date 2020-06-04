@@ -5,8 +5,8 @@
 #include <unistdx/net/ipv4_address>
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/kernel.hh>
 #include <subordination/daemon/probe.hh>
-#include <subordination/kernel/kernel.hh>
 
 namespace sbnd {
 

@@ -1,10 +1,10 @@
 #ifndef SUBORDINATION_DAEMON_FACTORY_HH
 #define SUBORDINATION_DAEMON_FACTORY_HH
 
+#include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/process_pipeline.hh>
+#include <subordination/core/socket_pipeline.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
-#include <subordination/ppl/parallel_pipeline.hh>
-#include <subordination/ppl/process_pipeline.hh>
-#include <subordination/ppl/socket_pipeline.hh>
 
 namespace sbnd {
 

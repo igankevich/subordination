@@ -8,7 +8,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/ppl/socket_pipeline_event.hh>
+#include <subordination/core/socket_pipeline_event.hh>
 
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>

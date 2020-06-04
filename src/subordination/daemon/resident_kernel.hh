@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_DAEMON_RESIDENT_KERNEL_HH
 #define SUBORDINATION_DAEMON_RESIDENT_KERNEL_HH
 
-#include <subordination/kernel/kernel.hh>
+#include <subordination/core/kernel.hh>
 
 namespace sbnd {
 

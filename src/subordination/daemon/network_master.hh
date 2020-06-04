@@ -7,8 +7,8 @@
 
 #include <unistdx/net/interface_addresses>
 
+#include <subordination/core/socket_pipeline_event.hh>
 #include <subordination/daemon/master_discoverer.hh>
-#include <subordination/ppl/socket_pipeline_event.hh>
 
 namespace sbnd {
 

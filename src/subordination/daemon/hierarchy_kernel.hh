@@ -4,7 +4,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/kernel/kernel.hh>
+#include <subordination/core/kernel.hh>
 
 namespace sbnd {
 
