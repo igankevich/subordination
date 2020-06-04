@@ -1,6 +1,3 @@
-#ifndef MESON_BUILD
-#define MESON_BUILD
-
 project(
     'subordination',
     'cpp',
@@ -73,5 +70,3 @@ if cppcheck.found()
     )
 endif
 # }}}
-
-#endif // vim:filetype=cpp
