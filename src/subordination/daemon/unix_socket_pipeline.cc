@@ -8,7 +8,6 @@ namespace sbnd {
 
     private:
         sys::socket _socket;
-        sys::socket_address _socket_address;
         unix_socket_pipeline* _parent = nullptr;
 
     public:
@@ -25,21 +24,13 @@ namespace sbnd {
             }
         };
 
-        void
-        write(std::ostream& out) const override {
-            out << "server " << this->_socket_address;
-        }
-
         inline sys::fd_type
         fd() const noexcept {
             return this->_socket.fd();
         }
 
-        inline void socket_address(const sys::socket_address& rhs) noexcept {
-            this->_socket_address = rhs;
-        }
-
         inline void parent(unix_socket_pipeline* rhs) noexcept {
+            basic_handler::parent(rhs);
             this->_parent = rhs;
         }
 
@@ -47,26 +38,13 @@ namespace sbnd {
 
 }
 
-sbnd::unix_socket_client::unix_socket_client(sys::socket&& sock):
-_buffer(new kernelbuf_type),
-_stream(_buffer.get()) {
-    this->_buffer->setfd(std::move(sock));
-    this->setstate(sbn::pipeline_state::starting);
-}
-
-sbnd::unix_socket_pipeline::unix_socket_pipeline() {
-    this->_protocol.setf(
-        sbn::kernel_proto_flag::prepend_application |
-        sbn::kernel_proto_flag::save_upstream_kernels |
-        sbn::kernel_proto_flag::save_downstream_kernels
-    );
-}
-
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
                                            sys::socket&& sock) {
+    using f = sbn::kernel_proto_flag;
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
+    ptr->parent(this);
     ptr->socket_address(addr);
-    ptr->protocol(&this->_protocol);
+    ptr->setf(f::prepend_application | f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
     this->_clients.emplace(addr, ptr);
     #if defined(SBN_DEBUG)
@@ -75,12 +53,13 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
 }
 
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
+    using f = sbn::kernel_proto_flag;
     sys::socket s(sys::family_type::unix);
     s.setopt(sys::socket::pass_credentials);
     s.connect(addr);
     auto ptr = std::make_shared<unix_socket_client>(std::move(s));
     ptr->socket_address(addr);
-    ptr->protocol(&this->_protocol);
+    ptr->setf(f::prepend_application | f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
     this->_clients.emplace(addr, ptr);
 }
@@ -114,5 +93,34 @@ sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
         if (client != this->_clients.end()) {
             client->second->send(k);
         }
+    }
+}
+
+sbnd::unix_socket_client::unix_socket_client(sys::socket&& sock):
+basic_handler(&this->_stream),
+_buffer(new kernelbuf_type), _stream(this->_buffer.get()) {
+    this->_buffer->setfd(std::move(sock));
+    this->setstate(sbn::pipeline_state::starting);
+}
+
+void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
+    this->log("_ _", __func__, event);
+    if (this->is_starting()) { this->setstate(sbn::pipeline_state::started); }
+    if (event.in()) {
+        if (this->_buffer->is_safe_to_compact()) { this->_buffer->compact(); }
+        this->_buffer->pubfill();
+        receive_kernels(
+            nullptr,
+            [this] (sbn::kernel* k) {
+                if (auto* app = dynamic_cast<application_kernel*>(k)) {
+                    app->credentials(socket().credentials());
+                }
+            });
+    }
+};
+
+void sbnd::unix_socket_client::flush() {
+    if (this->_buffer->dirty()) {
+        this->_buffer->pubflush();
     }
 }

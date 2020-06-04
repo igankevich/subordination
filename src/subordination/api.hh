@@ -76,6 +76,7 @@ namespace sbn {
         ~factory_guard() {
             ::sbn::factory.stop();
             ::sbn::factory.wait();
+            ::sbn::factory.clear();
         }
 
     };

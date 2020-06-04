@@ -17,7 +17,6 @@
 
 #include <subordination/core/basic_handler.hh>
 #include <subordination/core/basic_pipeline.hh>
-#include <subordination/core/kernel_protocol.hh>
 #include <subordination/core/kstream.hh>
 #include <subordination/core/static_lock.hh>
 
@@ -52,8 +51,10 @@ namespace sbn {
         mutex_type _mutex;
         semaphore_type _semaphore;
         event_handler_table _handlers;
-        kernel_protocol _protocol;
         duration _start_timeout = duration::zero();
+        pipeline* _foreign_pipeline = nullptr;
+        pipeline* _native_pipeline = nullptr;
+        pipeline* _remote_pipeline = nullptr;
 
     public:
 
@@ -103,17 +104,15 @@ namespace sbn {
             return &this->_mutex;
         }
 
-        inline void foreign_pipeline(pipeline* rhs) noexcept {
-            this->_protocol.foreign_pipeline(rhs);
-        }
-
-        inline void native_pipeline(pipeline* rhs) noexcept {
-            this->_protocol.native_pipeline(rhs);
-        }
-
-        inline void remote_pipeline(pipeline* rhs) noexcept {
-            this->_protocol.remote_pipeline(rhs);
-        }
+        inline const pipeline* foreign_pipeline() const noexcept { return this->_foreign_pipeline; }
+        inline pipeline* foreign_pipeline() noexcept { return this->_foreign_pipeline; }
+        inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
+        inline const pipeline* native_pipeline() const noexcept { return this->_native_pipeline; }
+        inline pipeline* native_pipeline() noexcept { return this->_native_pipeline; }
+        inline void native_pipeline(pipeline* rhs) noexcept { this->_native_pipeline = rhs; }
+        inline const pipeline* remote_pipeline() const noexcept { return this->_remote_pipeline; }
+        inline pipeline* remote_pipeline() noexcept { return this->_remote_pipeline; }
+        inline void remote_pipeline(pipeline* rhs) noexcept { this->_remote_pipeline = rhs; }
 
     protected:
 
@@ -124,7 +123,7 @@ namespace sbn {
         emplace_handler(const sys::epoll_event& ev, const event_handler_ptr& ptr) {
             // N.B. we have two file descriptors (for the pipe)
             // in the process handler, so do not use emplace here
-            this->log("add _, ev=_", *ptr, ev);
+            this->log("add _", ptr->socket_address());
             this->_handlers[ev.fd()] = ptr;
             this->poller().insert(ev);
         }
@@ -172,7 +171,8 @@ namespace sbn {
                                             h,
                                             now
                                         ))) {
-                    this->log("remove _ (_)", h, h.stopped() ? "stop" : "timeout");
+                    this->log("remove _ (_)", h.socket_address(),
+                              h.stopped() ? "stop" : "timeout");
                     h.remove(this->poller());
                     first = this->_handlers.erase(first);
                 } else {
@@ -202,9 +202,11 @@ namespace sbn {
                 }
                 ++first;
             }
+            #if defined(SBN_DEBUG)
             if (result != last) {
-                this->log("min _", *result->second);
+                this->log("min _", result->second->socket_address());
             }
+            #endif
             return result;
         }
 
@@ -223,7 +225,7 @@ namespace sbn {
                         this->log("failed to process fd _: _", ev.fd(), err.what());
                     }
                     if (!ev) {
-                        this->log("remove _ (bad event _)", h, ev);
+                        this->log("remove _ (bad event _)", h.socket_address(), ev);
                         h.remove(this->poller());
                         this->_handlers.erase(result);
                     }

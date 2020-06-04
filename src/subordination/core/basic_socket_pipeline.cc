@@ -69,5 +69,5 @@ void sbn::basic_socket_pipeline::clear() {
         this->_kernels.front()->mark_as_deleted(sack);
         this->_kernels.pop();
     }
-    this->_protocol.clear();
+    for (auto& pair : this->_handlers) { pair.second->clear(); }
 }

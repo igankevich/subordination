@@ -26,4 +26,4 @@ daemon_exe = executable(
     implicit_include_directories: false,
 )
 
-test('process-pipeline', daemon_exe)
+test('core/process-pipeline', daemon_exe)

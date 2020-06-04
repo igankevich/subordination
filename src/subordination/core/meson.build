@@ -1,4 +1,5 @@
 subordination_core_src = files([
+    'basic_handler.cc',
     'exit_code.cc',
     'foreign_kernel.cc',
     'kernel.cc',
@@ -15,7 +16,6 @@ subordination_core_src = files([
     'basic_pipeline.cc',
     'basic_socket_pipeline.cc',
     'child_process_pipeline.cc',
-    'kernel_protocol.cc',
     'parallel_pipeline.cc',
     'pipeline_base.cc',
     'process_handler.cc',
@@ -50,7 +50,6 @@ install_headers(
     'child_process_pipeline.hh',
     'kernel_header_flag.hh',
     'kernel_proto_flag.hh',
-    'kernel_protocol.hh',
     'local_server.hh',
     'parallel_pipeline.hh',
     'pipeline_base.hh',

@@ -9,7 +9,6 @@
 
 #include <subordination/core/basic_factory.hh>
 #include <subordination/core/kernel_instance_registry.hh>
-#include <subordination/core/kernel_protocol.hh>
 #include <subordination/core/socket_pipeline_event.hh>
 
 namespace {
@@ -44,7 +43,6 @@ namespace sbn {
 
     private:
         interface_address_type _ifaddr;
-        sys::socket_address _endpoint;
         id_type _pos0 = 0;
         id_type _pos1 = 0;
         counter_type _counter {0};
@@ -52,14 +50,12 @@ namespace sbn {
         socket_pipeline* _parent;
 
     public:
+
         inline explicit
-        local_server(const interface_address_type& ifaddr,
-                     sys::port_type port,
-                     socket_pipeline* ppl):
+        local_server(const interface_address_type& ifaddr, sys::port_type port):
         _ifaddr(ifaddr),
-        _endpoint(ifaddr.address(), port),
-        _socket(sys::socket_address(ifaddr.address(), port)),
-        _parent(ppl) {
+        _socket(sys::socket_address(ifaddr.address(), port)) {
+            socket_address(sys::socket_address(ifaddr.address(), port));
             this->init();
         }
 
@@ -73,25 +69,9 @@ namespace sbn {
             return this->_ifaddr;
         }
 
-        inline const sys::socket_address&
-        socket_address() const noexcept {
-            return this->_endpoint;
-        }
-
-        inline sys::fd_type
-        fd() const noexcept {
-            return this->_socket.fd();
-        }
-
-        inline const sys::socket&
-        socket() const noexcept {
-            return this->_socket;
-        }
-
-        inline sys::socket&
-        socket() noexcept {
-            return this->_socket;
-        }
+        inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
+        inline const sys::socket& socket() const noexcept { return this->_socket; }
+        inline sys::socket& socket() noexcept { return this->_socket; }
 
         inline id_type
         generate_id() noexcept {
@@ -105,34 +85,17 @@ namespace sbn {
             return id;
         }
 
-        void
-        handle(const sys::epoll_event& ev) override {
-            sys::socket_address addr;
-            sys::socket sock;
-            while (this->_socket.accept(sock, addr)) {
-                sys::socket_address vaddr = this->_parent->virtual_addr(addr);
-                auto res = this->_parent->_clients.find(vaddr);
-                if (res == this->_parent->_clients.end()) {
-                    #if defined(SBN_DEBUG)
-                    auto ptr =
-                    #endif
-                    this->_parent->do_add_client(std::move(sock), vaddr);
-                    #if defined(SBN_DEBUG)
-                    this->log("accept _", *ptr);
-                    #endif
-                }
-            }
-        }
-
-        void
-        write(std::ostream& out) const override {
-            out << "server " << this->_ifaddr;
-        }
+        void handle(const sys::epoll_event& ev) override;
 
         void
         remove(sys::event_poller& poller) override {
             poller.erase(this->fd());
             this->_parent->remove_server(this->_ifaddr);
+        }
+
+        inline void parent(socket_pipeline* rhs) noexcept {
+            basic_handler::parent(rhs);
+            this->_parent = rhs;
         }
 
     private:
@@ -148,32 +111,23 @@ namespace sbn {
     class remote_client: public basic_handler {
 
     public:
-        typedef pipeline_base base_pipeline;
-        typedef char Ch;
-        typedef sys::basic_fildesbuf<Ch, std::char_traits<Ch>, sys::socket>
-            fildesbuf_type;
-        typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
-        typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
-        typedef kstream stream_type;
-        typedef sys::pid_type app_type;
-        typedef typename socket_pipeline::weight_type weight_type;
-
-        static_assert(std::is_move_constructible<stream_type>::value, "bad stream_type");
+        using fildesbuf_type = sys::basic_fildesbuf<char, std::char_traits<char>, sys::socket>;
+        using kernelbuf_type = basic_kernelbuf<fildesbuf_type>;
+        using kernelbuf_ptr = std::unique_ptr<kernelbuf_type>;
+        using weight_type = typename socket_pipeline::weight_type;
 
     private:
-        sys::socket_address _socket_address;
         kernelbuf_ptr _buffer;
-        stream_type _stream;
+        kstream _stream;
         /// The number of nodes "behind" this one in the hierarchy.
         weight_type _weight = 1;
         socket_pipeline* _parent = nullptr;
-        kernel_protocol* _protocol = nullptr;
 
     public:
 
-        inline explicit
-        remote_client(sys::socket&& sock):
-        _buffer(new kernelbuf_type), _stream(_buffer.get()) {
+        inline explicit remote_client(sys::socket&& sock):
+        basic_handler(&this->_stream), _buffer(new kernelbuf_type),
+        _stream(this->_buffer.get()) {
             this->_buffer->setfd(std::move(sock));
         }
         virtual ~remote_client() { recover(); }
@@ -190,17 +144,7 @@ namespace sbn {
             sys::epoll_event ev {socket().fd(), sys::event::in};
             this->handle(ev);
             // recover kernels from upstream and downstream buffer
-            this->_protocol->recover_kernels(true);
-        }
-
-        void
-        send(kernel* k) {
-            this->_protocol->send(k, this->_stream, this->_socket_address);
-        }
-
-        void
-        forward(foreign_kernel* hdr) {
-            this->_protocol->forward(hdr, this->_stream);
+            recover_kernels(true);
         }
 
         void
@@ -213,7 +157,7 @@ namespace sbn {
                     this->_buffer->compact();
                 }
                 this->_buffer->pubfill();
-                this->_protocol->receive_kernels(this->_stream, this->_socket_address);
+                receive_kernels();
             }
         }
 
@@ -243,38 +187,14 @@ namespace sbn {
             this->_weight = rhs;
         }
 
-        inline const sys::socket_address&
-        socket_address() const noexcept {
-            return this->_socket_address;
-        }
-
         inline void
         name(const char* rhs) noexcept {
             this->pipeline_base::name(rhs);
-            this->_protocol->name(rhs);
             #if defined(SBN_DEBUG)
             if (this->_buffer) {
                 this->_buffer->set_name(rhs);
             }
             #endif
-        }
-
-        void
-        write(std::ostream& out) const override {
-            out << "client " << sys::make_object(
-                "vaddr",
-                this->socket_address(),
-                "socket",
-                this->socket(),
-                "state",
-                int(this->state()),
-                "weight",
-                this->weight(),
-                "remaining",
-                this->_buffer->remaining(),
-                "available",
-                this->_buffer->available()
-                );
         }
 
         void
@@ -284,29 +204,38 @@ namespace sbn {
         }
 
         inline void parent(socket_pipeline* rhs) noexcept {
+            basic_handler::parent(rhs);
             this->_parent = rhs;
         }
 
-        inline void protocol(kernel_protocol* rhs) noexcept {
-            this->_protocol = rhs;
-        }
-
-        inline void socket_address(const sys::socket_address& rhs) noexcept {
-            this->_socket_address = rhs;
-        }
+        inline socket_pipeline* parent() const noexcept { return this->_parent; }
 
     };
 
+}
+
+void sbn::local_server::handle(const sys::epoll_event& ev) {
+    sys::socket_address addr;
+    sys::socket sock;
+    while (this->_socket.accept(sock, addr)) {
+        sys::socket_address vaddr = this->_parent->virtual_addr(addr);
+        auto res = this->_parent->_clients.find(vaddr);
+        if (res == this->_parent->_clients.end()) {
+            #if defined(SBN_DEBUG)
+            auto ptr =
+            #endif
+            this->_parent->do_add_client(std::move(sock), vaddr);
+            #if defined(SBN_DEBUG)
+            this->log("accept _", ptr->socket_address());
+            #endif
+        }
+    }
 }
 
 sbn::socket_pipeline
 ::socket_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
-    using f = kernel_proto_flag;
-    this->_protocol.setf(f::prepend_application |
-                         f::save_upstream_kernels |
-                         f::save_downstream_kernels);
 }
 
 void
@@ -365,12 +294,8 @@ sbn::socket_pipeline
     lock_type lock(this->_mutex);
     interface_address interface_address(traits_type::address(rhs), netmask);
     if (this->find_server(interface_address) == this->_servers.end()) {
-        auto ptr =
-            std::make_shared<local_server>(
-                interface_address,
-                traits_type::port(rhs),
-                this
-            );
+        auto ptr = std::make_shared<local_server>(interface_address, traits_type::port(rhs));
+        ptr->parent(this);
         this->_servers.emplace_back(ptr);
         #if defined(SBN_DEBUG)
         this->log("add server _", rhs);
@@ -405,7 +330,7 @@ void sbn::socket_pipeline::forward(foreign_kernel* hdr) {
             #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *hdr, "localhost");
             #endif
-            this->_protocol.foreign_pipeline()->forward(hdr);
+            foreign_pipeline()->forward(hdr);
         } else {
             #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *hdr, this->current_client().socket_address());
@@ -537,7 +462,7 @@ sbn::socket_pipeline
             this->log_error(err);
             k->from(k->to());
             k->return_to_parent(exit_code::no_upstream_servers_available);
-            this->_protocol.native_pipeline()->send(k);
+            native_pipeline()->send(k);
         }
     }
 }
@@ -552,7 +477,7 @@ sbn::socket_pipeline
         if (result != this->_servers.end()) {
             k->from(k->to());
             k->return_to_parent(exit_code::no_upstream_servers_available);
-            this->_protocol.native_pipeline()->send(k);
+            native_pipeline()->send(k);
             return;
         }
        }
@@ -570,14 +495,14 @@ sbn::socket_pipeline
                 // include localhost in round-robin
                 // (short-circuit kernels when no upstream servers
                 // are available)
-                this->_protocol.native_pipeline()->send(k);
+                native_pipeline()->send(k);
             } else {
                 success = true;
             }
         } else {
             if (this->_clients.empty()) {
                 k->return_to_parent(exit_code::no_upstream_servers_available);
-                this->_protocol.native_pipeline()->send(k);
+                native_pipeline()->send(k);
             } else {
                 success = true;
             }
@@ -591,7 +516,7 @@ sbn::socket_pipeline
         // kernel @k was sent to local node
         // because no upstream servers had
         // been available
-        this->_protocol.native_pipeline()->send(k);
+        native_pipeline()->send(k);
     } else {
         // create socket_address if necessary, and send kernel
         if (not k->to()) {
@@ -651,10 +576,11 @@ sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vadd
     }
     auto s = std::make_shared<remote_client>(std::move(sock));
     s->socket_address(vaddr);
-    s->protocol(&this->_protocol);
     s->parent(this);
     s->setstate(pipeline_state::starting);
     s->name(this->_name);
+    using f = kernel_proto_flag;
+    s->setf(f::prepend_application | f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_client(vaddr, s);
     this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
     fire_event_kernels(new socket_pipeline_kernel(socket_pipeline_event::add_client, vaddr));
@@ -692,7 +618,7 @@ sbn::socket_pipeline
         this->log("server _", val);
     }
     for (const auto& val : this->_clients) {
-        this->log("client _, handler _", val.first, *val.second);
+        this->log("client _, handler _", val.first, val.second->socket_address());
     }
 }
 
@@ -701,6 +627,6 @@ void sbn::socket_pipeline::fire_event_kernels(socket_pipeline_kernel* ev) {
     for (const auto& pair : instances) {
         ev->parent(ev);
         ev->principal(pair.second);
-        this->_protocol.native_pipeline()->send(ev);
+        native_pipeline()->send(ev);
     }
 }

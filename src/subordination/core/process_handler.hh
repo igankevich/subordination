@@ -11,7 +11,6 @@
 
 #include <subordination/core/application.hh>
 #include <subordination/core/basic_handler.hh>
-#include <subordination/core/kernel_protocol.hh>
 #include <subordination/core/kstream.hh>
 #include <subordination/core/pipeline_base.hh>
 
@@ -20,19 +19,16 @@ namespace sbn {
     class process_handler: public basic_handler {
 
     private:
-        typedef sys::basic_fildesbuf<char, std::char_traits<char>, sys::fildes_pair>
-            fildesbuf_type;
-        typedef basic_kernelbuf<fildesbuf_type> kernelbuf_type;
-        typedef std::unique_ptr<kernelbuf_type> kernelbuf_ptr;
-        typedef kstream stream_type;
+        using fildesbuf_type = sys::basic_fildesbuf<char, std::char_traits<char>, sys::fildes_pair>;
+        using kernelbuf_type = basic_kernelbuf<fildesbuf_type>;
+        using kernelbuf_ptr = std::unique_ptr<kernelbuf_type>;
 
         enum class role_type {child, parent};
 
     private:
         sys::pid_type _childpid;
         kernelbuf_ptr _buffer;
-        stream_type _stream;
-        kernel_protocol* _protocol = nullptr;
+        kstream _stream;
         application _application;
         role_type _role;
 
@@ -49,7 +45,7 @@ namespace sbn {
         virtual
         ~process_handler() {
             // recover kernels from upstream and downstream buffer
-            this->_protocol->recover_kernels(true);
+            recover_kernels(true);
         }
 
         const sys::pid_type&
@@ -67,13 +63,7 @@ namespace sbn {
             this->_buffer->fd().close();
         }
 
-        void
-        send(kernel* k) {
-            this->_protocol->send(k, this->_stream, sys::socket_address{});
-        }
-
-        void
-        handle(const sys::epoll_event& event) override;
+        void handle(const sys::epoll_event& event) override;
 
         void
         flush() override {
@@ -83,9 +73,6 @@ namespace sbn {
         }
 
         void
-        write(std::ostream& out) const override;
-
-        void
         remove(sys::event_poller& poller) override;
 
         void
@@ -93,13 +80,12 @@ namespace sbn {
             // remove application before forwarding
             // to child process
             k->aptr(nullptr);
-            this->_protocol->forward(k, this->_stream);
+            basic_handler::forward(k);
         }
 
         inline void
         name(const char* rhs) noexcept {
             this->pipeline_base::name(rhs);
-            this->_protocol->name(rhs);
             #if defined(SBN_DEBUG)
             if (this->_buffer) {
                 this->_buffer->set_name(rhs);
@@ -116,8 +102,6 @@ namespace sbn {
         out() const noexcept {
             return this->_buffer->fd().out().fd();
         }
-
-        inline void protocol(kernel_protocol* rhs) noexcept { this->_protocol = rhs; }
 
     };
 

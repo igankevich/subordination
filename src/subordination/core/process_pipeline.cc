@@ -7,11 +7,6 @@
 #include <subordination/core/kstream.hh>
 #include <subordination/core/process_pipeline.hh>
 
-sbn::process_pipeline::process_pipeline() {
-    using f = kernel_proto_flag;
-    this->_protocol.setf(f::prepend_source_and_destination);
-}
-
 void sbn::process_pipeline::loop() {
     std::thread waiting_thread([this] () { this->wait_loop(); });
     basic_socket_pipeline::loop();
@@ -68,7 +63,8 @@ sbn::process_pipeline
     sys::fd_type parent_in = data_pipe.parent_in().fd();
     sys::fd_type parent_out = data_pipe.parent_out().fd();
     auto child = std::make_shared<event_handler_type>(p.id(), std::move(data_pipe), app);
-    child->protocol(&this->_protocol);
+    child->parent(this);
+    child->setf(kernel_proto_flag::prepend_source_and_destination);
     child->name(this->_name);
     this->log(
         "executing app=_,credentials=_:_,role=_,pid=_",

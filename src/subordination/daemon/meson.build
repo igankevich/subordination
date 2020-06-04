@@ -104,7 +104,7 @@ if get_option('b_sanitize') != 'address'
                 # test executable is a wrapper for dtest
                 # (all arguments are forwarded to dtest)
                 test(
-                    'discovery-test' + suffix,
+                    'daemon/discovery' + suffix,
                     discovery_test_exe,
                     args: [
                         # run daemon on each cluster node

@@ -1,11 +1,7 @@
 #ifndef SUBORDINATION_CORE_CHILD_PROCESS_PIPELINE_HH
 #define SUBORDINATION_CORE_CHILD_PROCESS_PIPELINE_HH
 
-#include <algorithm>
-#include <iosfwd>
 #include <memory>
-
-#include <unistdx/io/pipe>
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/process_handler.hh>
