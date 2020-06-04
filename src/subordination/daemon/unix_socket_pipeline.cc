@@ -2,7 +2,7 @@
 
 namespace sbnd {
 
-    class unix_socket_server: public sbn::basic_handler {
+    class unix_socket_server: public sbn::connection {
 
     private:
 
@@ -30,7 +30,7 @@ namespace sbnd {
         }
 
         inline void parent(unix_socket_pipeline* rhs) noexcept {
-            basic_handler::parent(rhs);
+            connection::parent(rhs);
             this->_parent = rhs;
         }
 
@@ -97,7 +97,7 @@ sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
 }
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& sock):
-basic_handler(&this->_stream),
+connection(&this->_stream),
 _buffer(new kernelbuf_type), _stream(this->_buffer.get()) {
     this->_buffer->setfd(std::move(sock));
     this->setstate(sbn::pipeline_state::starting);

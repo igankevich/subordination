@@ -17,7 +17,7 @@
 
 namespace sbnd {
 
-    class unix_socket_client: public sbn::basic_handler {
+    class unix_socket_client: public sbn::connection {
 
     private:
         using kernelbuf_type =

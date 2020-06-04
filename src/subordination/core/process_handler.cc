@@ -9,7 +9,7 @@
 sbn::process_handler::process_handler(sys::pid_type&& child,
                                       sys::two_way_pipe&& pipe,
                                       const application& app):
-basic_handler(&this->_stream),
+connection(&this->_stream),
 _childpid(child),
 _buffer(new kernelbuf_type),
 _stream(this->_buffer.get()),
@@ -22,7 +22,7 @@ _role(role_type::parent) {
 
 /// Called from child process.
 sbn::process_handler::process_handler(sys::pipe&& pipe):
-basic_handler(&this->_stream),
+connection(&this->_stream),
 _childpid(sys::this_process::id()),
 _buffer(new kernelbuf_type),
 _stream(this->_buffer.get()),

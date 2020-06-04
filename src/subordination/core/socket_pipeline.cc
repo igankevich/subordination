@@ -33,7 +33,7 @@ namespace {
 
 namespace sbn {
 
-    class local_server: public basic_handler {
+    class local_server: public connection {
 
     public:
         using ip_address = sys::ipv4_address;
@@ -94,7 +94,7 @@ namespace sbn {
         }
 
         inline void parent(socket_pipeline* rhs) noexcept {
-            basic_handler::parent(rhs);
+            connection::parent(rhs);
             this->_parent = rhs;
         }
 
@@ -108,7 +108,7 @@ namespace sbn {
 
     };
 
-    class remote_client: public basic_handler {
+    class remote_client: public connection {
 
     public:
         using fildesbuf_type = sys::basic_fildesbuf<char, std::char_traits<char>, sys::socket>;
@@ -126,7 +126,7 @@ namespace sbn {
     public:
 
         inline explicit remote_client(sys::socket&& sock):
-        basic_handler(&this->_stream), _buffer(new kernelbuf_type),
+        connection(&this->_stream), _buffer(new kernelbuf_type),
         _stream(this->_buffer.get()) {
             this->_buffer->setfd(std::move(sock));
         }
@@ -204,7 +204,7 @@ namespace sbn {
         }
 
         inline void parent(socket_pipeline* rhs) noexcept {
-            basic_handler::parent(rhs);
+            connection::parent(rhs);
             this->_parent = rhs;
         }
 

@@ -12,7 +12,7 @@ void sbn::basic_socket_pipeline::loop() {
         if (this->_start_timeout > duration::zero()) {
             handler_const_iterator result =
                 this->handler_with_min_start_time_point();
-            if (result != this->_handlers.end()) {
+            if (result != this->_connections.end()) {
                 timeout = true;
                 const time_point tp = result->second->start_time_point()
                                       + this->_start_timeout;
@@ -69,5 +69,5 @@ void sbn::basic_socket_pipeline::clear() {
         this->_kernels.front()->mark_as_deleted(sack);
         this->_kernels.pop();
     }
-    for (auto& pair : this->_handlers) { pair.second->clear(); }
+    for (auto& pair : this->_connections) { pair.second->clear(); }
 }

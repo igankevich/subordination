@@ -1,6 +1,6 @@
 #include <subordination/core/application.hh>
-#include <subordination/core/basic_handler.hh>
 #include <subordination/core/basic_socket_pipeline.hh>
+#include <subordination/core/connection.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_instance_registry.hh>
@@ -31,17 +31,17 @@ namespace  {
 
 }
 
-void sbn::basic_handler::handle(const sys::epoll_event& event) {
+void sbn::connection::handle(const sys::epoll_event& event) {
     constexpr const size_t n = 20;
     char tmp[n];
     ssize_t c;
     while ((c = ::read(event.fd(), tmp, n)) != -1) ;
 }
 
-void sbn::basic_handler::remove(sys::event_poller& poller) {}
-void sbn::basic_handler::flush() {}
+void sbn::connection::remove(sys::event_poller& poller) {}
+void sbn::connection::flush() {}
 
-void sbn::basic_handler::send(kernel* k) {
+void sbn::connection::send(kernel* k) {
     // return local downstream kernels immediately
     // TODO we need to move some kernel flags to
     // kernel header in order to use them in routing
@@ -73,7 +73,7 @@ void sbn::basic_handler::send(kernel* k) {
     }
 }
 
-void sbn::basic_handler::forward(foreign_kernel* k) {
+void sbn::connection::forward(foreign_kernel* k) {
     bool delete_kernel = this->save_kernel(k);
     (*this->_stream).begin_packet();
     (*this->_stream) << k->header();
@@ -84,7 +84,7 @@ void sbn::basic_handler::forward(foreign_kernel* k) {
     }
 }
 
-void sbn::basic_handler::write_kernel(kernel* k) noexcept {
+void sbn::connection::write_kernel(kernel* k) noexcept {
     using opacket_guard = sys::opacket_guard<kstream>;
     try {
         auto& s = (*this->_stream);
@@ -109,7 +109,7 @@ void sbn::basic_handler::write_kernel(kernel* k) noexcept {
     }
 }
 
-void sbn::basic_handler::receive_kernels(const application* from_application,
+void sbn::connection::receive_kernels(const application* from_application,
                                          std::function<void(kernel*)> func) {
     while ((*this->_stream).read_packet()) {
         try {
@@ -139,7 +139,7 @@ void sbn::basic_handler::receive_kernels(const application* from_application,
 }
 
 sbn::kernel*
-sbn::basic_handler::read_kernel(const application* from_application) {
+sbn::connection::read_kernel(const application* from_application) {
     using ipacket_guard = typename kstream::ipacket_guard;
     // eats remaining bytes on exception
     ipacket_guard g((*this->_stream).rdbuf());
@@ -179,7 +179,7 @@ sbn::basic_handler::read_kernel(const application* from_application) {
     return k;
 }
 
-bool sbn::basic_handler::receive_kernel(kernel* k) {
+bool sbn::connection::receive_kernel(kernel* k) {
     bool ok = true;
     if (k->moves_downstream()) {
         this->plug_parent(k);
@@ -198,7 +198,7 @@ bool sbn::basic_handler::receive_kernel(kernel* k) {
     return ok;
 }
 
-void sbn::basic_handler::plug_parent(kernel* k) {
+void sbn::connection::plug_parent(kernel* k) {
     if (!k->has_id()) {
         throw std::invalid_argument("downstream kernel without an id");
     }
@@ -232,7 +232,7 @@ void sbn::basic_handler::plug_parent(kernel* k) {
     }
 }
 
-bool sbn::basic_handler::save_kernel(kernel* k) {
+bool sbn::connection::save_kernel(kernel* k) {
     bool delete_kernel = false;
     if ((this->_flags & kernel_proto_flag::save_upstream_kernels) &&
         (k->moves_upstream() || k->moves_somewhere())) {
@@ -256,7 +256,7 @@ bool sbn::basic_handler::save_kernel(kernel* k) {
     return delete_kernel;
 }
 
-void sbn::basic_handler::recover_kernels(bool down) {
+void sbn::connection::recover_kernels(bool down) {
     #if defined(SBN_DEBUG)
     this->log("recover kernels upstream _ downstream _",
               this->_upstream.size(), this->_downstream.size());
@@ -278,7 +278,7 @@ void sbn::basic_handler::recover_kernels(bool down) {
     }
 }
 
-void sbn::basic_handler::recover_kernel(kernel* k) {
+void sbn::connection::recover_kernel(kernel* k) {
     bool remove = false;
     #if defined(SBN_DEBUG)
     this->log("try to recover _", k->id());
@@ -323,7 +323,7 @@ void sbn::basic_handler::recover_kernel(kernel* k) {
     }
 }
 
-void sbn::basic_handler::clear() {
+void sbn::connection::clear() {
     std::vector<std::unique_ptr<kernel>> sack;
     for (auto* k : this->_upstream) { k->mark_as_deleted(sack); }
     this->_upstream.clear();

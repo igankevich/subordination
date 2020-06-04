@@ -24,7 +24,7 @@ namespace sbn {
     class Factory;
     class application;
     class application_kernel;
-    class basic_handler;
+    class connection;
     class basic_pipeline;
     class basic_socket_pipeline;
     class child_process_pipeline;

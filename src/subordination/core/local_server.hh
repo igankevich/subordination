@@ -6,7 +6,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/socket_address>
 
-#include <subordination/core/basic_handler.hh>
+#include <subordination/core/connection.hh>
 
 namespace sbn {
 

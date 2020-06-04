@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_CORE_BASIC_HANDLER_HH
-#define SUBORDINATION_CORE_BASIC_HANDLER_HH
+#ifndef SUBORDINATION_CORE_CONNECTION_HH
+#define SUBORDINATION_CORE_CONNECTION_HH
 
 #include <chrono>
 #include <deque>
@@ -17,8 +17,7 @@
 
 namespace sbn {
 
-    /// pipeline joint
-    class basic_handler: public pipeline_base {
+    class connection: public pipeline_base {
 
     private:
         using kernel_queue = std::deque<kernel*>;
@@ -42,14 +41,14 @@ namespace sbn {
 
     public:
 
-        inline explicit basic_handler(kstream* stream): _stream(stream) {}
+        inline explicit connection(kstream* stream): _stream(stream) {}
 
-        basic_handler() = default;
-        ~basic_handler() = default;
-        basic_handler(const basic_handler&) = delete;
-        basic_handler& operator=(const basic_handler&) = delete;
-        basic_handler(basic_handler&&) = delete;
-        basic_handler& operator=(basic_handler&&) = delete;
+        connection() = default;
+        ~connection() = default;
+        connection(const connection&) = delete;
+        connection& operator=(const connection&) = delete;
+        connection(connection&&) = delete;
+        connection& operator=(connection&&) = delete;
 
         void send(kernel* k);
         void forward(foreign_kernel* k);

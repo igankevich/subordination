@@ -15,8 +15,8 @@
 #include <unistdx/io/poller>
 #include <unistdx/net/pstream>
 
-#include <subordination/core/basic_handler.hh>
 #include <subordination/core/basic_pipeline.hh>
+#include <subordination/core/connection.hh>
 #include <subordination/core/kstream.hh>
 #include <subordination/core/static_lock.hh>
 
@@ -25,12 +25,12 @@ namespace sbn {
     class basic_socket_pipeline: public pipeline {
 
     public:
-        using event_handler_ptr = std::shared_ptr<basic_handler>;
+        using event_handler_ptr = std::shared_ptr<connection>;
         using event_handler_table = std::unordered_map<sys::fd_type,event_handler_ptr>;
         typedef typename event_handler_table::const_iterator handler_const_iterator;
-        typedef typename basic_handler::clock_type clock_type;
-        typedef typename basic_handler::time_point time_point;
-        typedef typename basic_handler::duration duration;
+        typedef typename connection::clock_type clock_type;
+        typedef typename connection::time_point time_point;
+        typedef typename connection::duration duration;
 
         using kernel_queue = std::queue<kernel*>;
         using mutex_type = std::recursive_mutex;
@@ -50,7 +50,7 @@ namespace sbn {
         thread_type _thread;
         mutex_type _mutex;
         semaphore_type _semaphore;
-        event_handler_table _handlers;
+        event_handler_table _connections;
         duration _start_timeout = duration::zero();
         pipeline* _foreign_pipeline = nullptr;
         pipeline* _native_pipeline = nullptr;
@@ -60,7 +60,7 @@ namespace sbn {
 
         inline
         basic_socket_pipeline() {
-            this->emplace_notify_handler(std::make_shared<basic_handler>());
+            this->emplace_notify_handler(std::make_shared<connection>());
         }
 
         ~basic_socket_pipeline() = default;
@@ -124,27 +124,27 @@ namespace sbn {
             // N.B. we have two file descriptors (for the pipe)
             // in the process handler, so do not use emplace here
             this->log("add _", ptr->socket_address());
-            this->_handlers[ev.fd()] = ptr;
+            this->_connections[ev.fd()] = ptr;
             this->poller().insert(ev);
         }
 
         template <class X>
         void
         emplace_handler(const sys::epoll_event& ev, const std::shared_ptr<X>& ptr) {
-            this->emplace_handler(ev, std::static_pointer_cast<basic_handler>(ptr));
+            this->emplace_handler(ev, std::static_pointer_cast<connection>(ptr));
         }
 
         void
         emplace_notify_handler(const event_handler_ptr& ptr) {
             sys::fd_type fd = this->poller().pipe_in();
-            this->_handlers.emplace(fd, ptr);
+            this->_connections.emplace(fd, ptr);
         }
 
         template <class X>
         void
         emplace_notify_handler(const std::shared_ptr<X>& ptr) {
             this->emplace_notify_handler(
-                std::static_pointer_cast<basic_handler>(ptr)
+                std::static_pointer_cast<connection>(ptr)
             );
         }
 
@@ -163,10 +163,10 @@ namespace sbn {
             const time_point now = timeout
                                    ? clock_type::now()
                                    : time_point(duration::zero());
-            handler_const_iterator first = this->_handlers.begin();
-            handler_const_iterator last = this->_handlers.end();
+            handler_const_iterator first = this->_connections.begin();
+            handler_const_iterator last = this->_connections.end();
             while (first != last) {
-                basic_handler& h = *first->second;
+                connection& h = *first->second;
                 if (h.stopped() || (timeout && this->is_timed_out(
                                             h,
                                             now
@@ -174,7 +174,7 @@ namespace sbn {
                     this->log("remove _ (_)", h.socket_address(),
                               h.stopped() ? "stop" : "timeout");
                     h.remove(this->poller());
-                    first = this->_handlers.erase(first);
+                    first = this->_connections.erase(first);
                 } else {
                     first->second->flush();
                     ++first;
@@ -184,11 +184,11 @@ namespace sbn {
 
         handler_const_iterator
         handler_with_min_start_time_point() const noexcept {
-            handler_const_iterator first = this->_handlers.begin();
-            handler_const_iterator last = this->_handlers.end();
+            handler_const_iterator first = this->_connections.begin();
+            handler_const_iterator last = this->_connections.end();
             handler_const_iterator result = last;
             while (first != last) {
-                basic_handler& h = *first->second;
+                connection& h = *first->second;
                 if (h.is_starting() && h.has_start_time_point()) {
                     if (result == last) {
                         result = first;
@@ -213,11 +213,11 @@ namespace sbn {
         void
         handle_events() {
             for (const auto& ev : this->poller()) {
-                auto result = this->_handlers.find(ev.fd());
-                if (result == this->_handlers.end()) {
+                auto result = this->_connections.find(ev.fd());
+                if (result == this->_connections.end()) {
                     this->log("unable to process fd _", ev.fd());
                 } else {
-                    basic_handler& h = *result->second;
+                    connection& h = *result->second;
                     // process event by calling event handler function
                     try {
                         h.handle(ev);
@@ -227,14 +227,14 @@ namespace sbn {
                     if (!ev) {
                         this->log("remove _ (bad event _)", h.socket_address(), ev);
                         h.remove(this->poller());
-                        this->_handlers.erase(result);
+                        this->_connections.erase(result);
                     }
                 }
             }
         }
 
         bool
-        is_timed_out(const basic_handler& rhs, const time_point& now) {
+        is_timed_out(const connection& rhs, const time_point& now) {
             return rhs.is_starting() &&
                    rhs.start_time_point() + this->_start_timeout <= now;
         }

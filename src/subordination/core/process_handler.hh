@@ -10,13 +10,13 @@
 #include <unistdx/ipc/process>
 
 #include <subordination/core/application.hh>
-#include <subordination/core/basic_handler.hh>
+#include <subordination/core/connection.hh>
 #include <subordination/core/kstream.hh>
 #include <subordination/core/pipeline_base.hh>
 
 namespace sbn {
 
-    class process_handler: public basic_handler {
+    class process_handler: public connection {
 
     private:
         using fildesbuf_type = sys::basic_fildesbuf<char, std::char_traits<char>, sys::fildes_pair>;
@@ -80,7 +80,7 @@ namespace sbn {
             // remove application before forwarding
             // to child process
             k->aptr(nullptr);
-            basic_handler::forward(k);
+            connection::forward(k);
         }
 
         inline void

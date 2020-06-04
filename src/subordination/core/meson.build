@@ -1,5 +1,5 @@
 subordination_core_src = files([
-    'basic_handler.cc',
+    'connection.cc',
     'exit_code.cc',
     'foreign_kernel.cc',
     'kernel.cc',
@@ -44,7 +44,7 @@ install_headers(
     'application.hh',
     'application_kernel.hh',
     'basic_factory.hh',
-    'basic_handler.hh',
+    'connection.hh',
     'basic_pipeline.hh',
     'basic_socket_pipeline.hh',
     'child_process_pipeline.hh',
