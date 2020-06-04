@@ -74,10 +74,10 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto* k = kernels[i];
-                #if defined(SBN_DEBUG)
-                this->log("send _", *k);
-                #endif
                 if (k->moves_downstream()) {
+                    #if defined(SBN_DEBUG)
+                    this->log("downstream _", *k);
+                    #endif
                     const auto n = k->hash() % this->_downstream_kernels.size();
                     this->_downstream_kernels[n].emplace(k);
                     if (this->_downstream_threads.empty()) {
@@ -86,8 +86,14 @@ namespace sbn {
                         this->_downstream_semaphores[n].notify_one();
                     }
                 } else if (k->scheduled()) {
+                    #if defined(SBN_DEBUG)
+                    this->log("schedule _", *k);
+                    #endif
                     this->_timer_kernels.emplace(k), notify_timer = true;
                 } else {
+                    #if defined(SBN_DEBUG)
+                    this->log("upstream _", *k);
+                    #endif
                     this->_upstream_kernels.emplace(k), notify_upstream = true;
                 }
             }
@@ -97,7 +103,7 @@ namespace sbn {
 
         inline void send_upstream(kernel* k) {
             #if defined(SBN_DEBUG)
-            this->log("send _", *k);
+            this->log("upstream _", *k);
             #endif
             lock_type lock(this->_mutex);
             this->_upstream_kernels.emplace(k);
@@ -106,7 +112,7 @@ namespace sbn {
 
         inline void send_downstream(kernel* k) {
             #if defined(SBN_DEBUG)
-            this->log("send _", *k);
+            this->log("downstream _", *k);
             #endif
             lock_type lock(this->_mutex);
             const auto i = k->hash() % this->_downstream_kernels.size();
@@ -120,7 +126,7 @@ namespace sbn {
 
         inline void send_timer(kernel* k) {
             #if defined(SBN_DEBUG)
-            this->log("send _", *k);
+            this->log("schedule _", *k);
             #endif
             this->_timer_kernels.emplace(k);
             this->_timer_semaphore.notify_one();

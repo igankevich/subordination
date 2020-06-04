@@ -13,13 +13,17 @@ cpp = meson.get_compiler('cpp')
 
 if get_option('buildtype').contains('debug')
     add_global_arguments('-DSBN_DEBUG', language: 'cpp')
+else
+    arg = '-fvisibility-inlines-hidden'
+    if cpp.has_argument(arg)
+        add_global_arguments(arg, language: 'cpp')
+    endif
 endif
 #add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
 #add_global_arguments('-DUNISTDX_DEBUG_EVENT_POLLER', language: 'cpp')
 
-foreach arg : ['-Werror=return-type', '-Werror=return-local-addr',
-    '-Werror=cast-align', '-fvisibility-inlines-hidden']
+foreach arg : ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
     if cpp.has_argument(arg)
         add_global_arguments(arg, language: 'cpp')
     endif

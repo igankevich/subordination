@@ -19,7 +19,7 @@ void sbn::print_backtrace(int sig) noexcept {
     #if defined(UNISTDX_HAVE_PRCTL)
     ::prctl(PR_GET_NAME, name);
     #endif
-    sys::log_message("error", "process _ caught _", name, sys::signal(sig));
+    sys::log_message("error", "process \"_\" caught _", name, sys::signal(sig));
     sys::backtrace(STDERR_FILENO);
     std::exit(sig);
 }
@@ -44,10 +44,8 @@ void sbn::print_error() noexcept {
         } catch (...) {
             sys::log_message("error", "error=_, process=_", "<unknown>", name);
         }
-    } else {
-        sys::log_message("error", "error=_, process=_", "<none>", name);
+        sys::backtrace(STDERR_FILENO);
     }
-    sys::backtrace(STDERR_FILENO);
     std::exit(1);
 }
 
@@ -58,5 +56,4 @@ sbn::install_error_handler() {
     std::set_unexpected(print_error);
     ignore_signal(sys::signal::broken_pipe);
     bind_signal(sys::signal::segmentation_fault, print_backtrace);
-    bind_signal(sys::signal::abort, print_backtrace);
 }

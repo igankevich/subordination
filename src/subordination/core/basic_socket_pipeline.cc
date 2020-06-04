@@ -7,7 +7,7 @@
 
 void sbn::basic_socket_pipeline::loop() {
     static_lock_type lock(&this->_mutex, this->_othermutex);
-    while (!this->stopped()) {
+    while (!this->stopping()) {
         bool timeout = false;
         if (this->_start_timeout > duration::zero()) {
             handler_const_iterator result =
@@ -23,7 +23,7 @@ void sbn::basic_socket_pipeline::loop() {
             this->process_kernels();
             this->handle_events();
             this->flush_buffers(timeout);
-            return this->stopped();
+            return this->stopping();
         };
         if (timeout) {
             process();
@@ -32,7 +32,7 @@ void sbn::basic_socket_pipeline::loop() {
             /*
             this->poller().wait(
                 lock,
-                [this] () { return this->stopped(); }
+                [this] () { return this->stopping(); }
             );*/
         }
     }
@@ -64,12 +64,10 @@ void sbn::basic_socket_pipeline::wait() {
 }
 
 void sbn::basic_socket_pipeline::clear() {
-    // TODO handle foreign kernels
-    /*
     std::vector<std::unique_ptr<kernel>> sack;
     while (!this->_kernels.empty()) {
         this->_kernels.front()->mark_as_deleted(sack);
         this->_kernels.pop();
     }
-    */
+    this->_protocol.clear();
 }

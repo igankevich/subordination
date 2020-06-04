@@ -1,15 +1,14 @@
-#include <subordination/core/error_handler.hh>
-#include <subordination/core/parallel_pipeline.hh>
-#include <subordination/core/socket_pipeline.hh>
+#include <gtest/gtest.h>
 
 #include <unistdx/base/command_line>
 #include <unistdx/ipc/process>
 #include <unistdx/net/interface_address>
 
+#include <subordination/core/error_handler.hh>
+#include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/socket_pipeline.hh>
 #include <subordination/test/datum.hh>
 #include <subordination/test/role.hh>
-
-#include <gtest/gtest.h>
 
 using test::Role;
 using sys::this_process::hostname;
@@ -142,7 +141,7 @@ struct Sender: public sbn::kernel {
         std::vector<Datum> output = test_kernel->data();
         EXPECT_EQ(this->_input.size(), output.size());
         EXPECT_EQ(this->_input, output);
-        message("returned _/_ _", _num_returned+1, NUM_KERNELS, sys::this_process::hostname());
+        message("returned _/_", _num_returned+1, NUM_KERNELS);
         if (++_num_returned == NUM_KERNELS) {
             this->return_to_parent(sbn::exit_code::success);
             local.send(this);
@@ -172,7 +171,8 @@ struct Main: public sbn::kernel {
     void
     react(sbn::kernel*) override {
         if (++_num_returned == POWERS.size()) {
-            sbn::graceful_shutdown(0);
+            return_code(sbn::exit_code::success);
+            sbn::graceful_shutdown(this);
         }
     }
 
@@ -183,6 +183,14 @@ private:
 };
 
 TEST(NICServerTest, All) {
+
+    local.name("local");
+    local.start();
+    remote.name("remote");
+    remote.native_pipeline(&local);
+    remote.remote_pipeline(&remote);
+    remote.start();
+
     sbn::register_type<Test_socket>(1);
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     ipv4_interface_address network{{127,0,0,1},8};
@@ -215,6 +223,13 @@ TEST(NICServerTest, All) {
             " or were deleted multiple times";
     }
     EXPECT_EQ(0, retval);
+    local.stop();
+    remote.stop();
+    local.wait();
+    message("finished");
+    remote.wait();
+    local.clear();
+    remote.clear();
 }
 
 int

@@ -43,14 +43,12 @@ namespace sbn {
 
     public:
 
-        // TODO attach protocol to the pipeline not client/server handlers
-
         kernel_protocol() = default;
         kernel_protocol(kernel_protocol&&) = default;
         kernel_protocol(const kernel_protocol&) = delete;
         kernel_protocol& operator=(const kernel_protocol&) = delete;
         kernel_protocol& operator=(kernel_protocol&&) = delete;
-        ~kernel_protocol();
+        ~kernel_protocol() = default;
 
         void
         send(kernel* k, stream_type& stream, const sys::socket_address& to) {
@@ -333,47 +331,7 @@ namespace sbn {
             }
         }
 
-        void
-        recover_kernel(kernel* k) {
-            #if defined(SBN_DEBUG)
-            this->log("try to recover _", k->id());
-            #endif
-            const bool native = k->is_native();
-            if (k->moves_upstream() && !k->to()) {
-                #if defined(SBN_DEBUG)
-                this->log("recover _", *k);
-                #endif
-                if (native) {
-                    this->_remote_pipeline->send(k);
-                } else {
-                    this->_remote_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
-                }
-            } else if (k->moves_somewhere() || (k->moves_upstream() && k->to())) {
-                #if defined(SBN_DEBUG)
-                this->log("destination is unreachable for _", *k);
-                #endif
-                k->from(k->to());
-                k->return_code(exit_code::endpoint_not_connected);
-                k->principal(k->parent());
-                if (native) {
-                    this->_native_pipeline->send(k);
-                } else {
-                    this->_foreign_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
-                }
-            } else if (k->moves_downstream() && k->carries_parent()) {
-                #if defined(SBN_DEBUG)
-                this->log("restore parent _", *k);
-                #endif
-                if (native) {
-                    this->_native_pipeline->send(k);
-                } else {
-                    this->_foreign_pipeline->forward(dynamic_cast<foreign_kernel*>(k));
-                }
-            } else {
-                this->log("bad kernel in sent buffer: _", *k);
-                delete k;
-            }
-        }
+        void recover_kernel(kernel* k);
 
         void
         ensure_has_id(kernel* k) {
@@ -406,6 +364,8 @@ namespace sbn {
         }
 
     public:
+
+        void clear();
 
         inline void
         name(const char* rhs) noexcept {

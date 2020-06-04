@@ -43,38 +43,37 @@ namespace {
 
 }
 
-void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream_queue) {
+void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream) {
     lock_type lock(this->_mutex);
-    this->_upstream_semaphore.wait(lock, [this,&lock,&downstream_queue] () {
-        if (this->_downstream_threads.empty()) {
-            while (!downstream_queue.empty()) {
-                auto* k = downstream_queue.front();
-                downstream_queue.pop();
-                sys::unlock_guard<lock_type> g(lock);
-                process_kernel(k, this->_error_pipeline);
-            }
-        }
-        auto& queue = this->_upstream_kernels;
-        while (!queue.empty()) {
+    this->_upstream_semaphore.wait(lock, [this,&lock,&downstream] () {
+        auto& upstream = this->_upstream_kernels;
+        bool downstream_not_empty, upstream_not_empty;
+        while ((downstream_not_empty = this->_downstream_threads.empty() &&
+                                       !downstream.empty()) ||
+               (upstream_not_empty = !upstream.empty())) {
+            auto& queue = (downstream_not_empty ? downstream : upstream);
             auto* k = queue.front();
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
             process_kernel(k, this->_error_pipeline);
         }
-        return this->stopped();
+        return this->stopping();
     });
 }
 
 void sbn::parallel_pipeline::timer_loop() {
+    using clock_type = kernel::clock_type;
     using duration = kernel::duration;
     using time_point = kernel::time_point;
+    using namespace std::chrono;
     lock_type lock(this->_mutex);
     auto& queue = this->_timer_kernels;
-    while (!stopped()) {
-        const auto timeout = queue.empty() ? time_point(duration::max()) : queue.top()->at();
-        this->_timer_semaphore.wait_until(lock, timeout,
-            [&] () { return stopped() || !queue.empty(); });
-        if (!queue.empty()) {
+    while (!stopping()) {
+        while (!(stopping() || (!queue.empty() && queue.top()->at() <= clock_type::now()))) {
+            const auto t = queue.empty() ? time_point(duration::max()) : queue.top()->at();
+            this->_timer_semaphore.wait_until(lock, t);
+        }
+        if (!queue.empty() && queue.top()->at() <= clock_type::now()) {
             auto* k = queue.top();
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
@@ -92,7 +91,7 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
             sys::unlock_guard<lock_type> g(lock);
             process_kernel(k, this->_error_pipeline);
         }
-        return this->stopped();
+        return this->stopping();
     });
 }
 
@@ -100,6 +99,10 @@ void sbn::parallel_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(pipeline_state::starting);
     const auto num_upstream_threads = this->_upstream_threads.size();
+    const auto num_downstream_threads = this->_downstream_threads.size();
+    if (num_downstream_threads == 0) {
+        this->_downstream_kernels.resize(num_upstream_threads);
+    }
     for (size_t i=0; i<num_upstream_threads; ++i) {
         this->_upstream_threads[i] = std::thread([this,i] () {
             #if defined(UNISTDX_HAVE_PRCTL)
@@ -114,7 +117,6 @@ void sbn::parallel_pipeline::start() {
         #endif
         this->timer_loop();
     });
-    const auto num_downstream_threads = this->_upstream_threads.size();
     for (size_t i=0; i<num_downstream_threads; ++i) {
         this->_downstream_threads[i] = std::thread([this,i] () {
             #if defined(UNISTDX_HAVE_PRCTL)

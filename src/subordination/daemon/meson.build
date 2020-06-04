@@ -67,7 +67,7 @@ test_app_exe = executable(
 )
 
 test(
-    'tree-hierarchy-iterator-test',
+    'daemon/tree-hierarchy-iterator',
     executable(
         'tree-hierarchy-iterator-test',
         sources: [

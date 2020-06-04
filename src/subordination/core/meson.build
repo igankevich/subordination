@@ -88,13 +88,49 @@ pkgconfig.generate(
     description: project_description,
 )
 
-test(
-    'kstream-test',
-    executable(
-        'kstream-test',
-        sources: 'kstream_test.cc',
+foreach name : ['kstream', 'local_server', 'timer_pipeline']
+    test_name = '-'.join(name.split('_'))
+    exe_name = test_name + '-test'
+    exe = executable(
+        exe_name,
+        sources: name + '_test.cc',
         include_directories: src,
-        dependencies: [unistdx, gtest, subordination_core],
+        dependencies: [unistdx, subordination_core, gtest],
         implicit_include_directories: false,
     )
+    test('core/' + test_name, exe)
+endforeach
+
+socket_pipeline_test = executable(
+    'socket-pipeline-test',
+    sources: 'socket_pipeline_test.cc',
+    dependencies: [unistdx, gtest, subordination_core],
+    include_directories: src,
+    implicit_include_directories: false,
+)
+
+test(
+    'core/socket-pipeline-no-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'master',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
+)
+
+test(
+    'core/socket-pipeline-slave-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'master',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
 )

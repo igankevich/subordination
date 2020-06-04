@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include <subordination/core/local_server.hh>
 #include <subordination/test/make_types.hh>
 

@@ -171,7 +171,7 @@ namespace sbn {
         mark_as_deleted(Container& result) noexcept {
             if (this->isset(kernel_flag::deleted)) { return; }
             this->setf(kernel_flag::deleted);
-            if (this->_parent) { this->_parent->mark_as_deleted(result); }
+            if (is_native() && this->_parent) { this->_parent->mark_as_deleted(result); }
             result.emplace_back(this);
         }
 

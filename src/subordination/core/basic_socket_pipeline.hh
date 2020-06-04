@@ -26,9 +26,9 @@ namespace sbn {
     class basic_socket_pipeline: public pipeline {
 
     public:
-        typedef std::shared_ptr<basic_handler> event_handler_ptr;
-        typedef std::unordered_map<sys::fd_type,event_handler_ptr> handler_container_type;
-        typedef typename handler_container_type::const_iterator handler_const_iterator;
+        using event_handler_ptr = std::shared_ptr<basic_handler>;
+        using event_handler_table = std::unordered_map<sys::fd_type,event_handler_ptr>;
+        typedef typename event_handler_table::const_iterator handler_const_iterator;
         typedef typename basic_handler::clock_type clock_type;
         typedef typename basic_handler::time_point time_point;
         typedef typename basic_handler::duration duration;
@@ -51,7 +51,7 @@ namespace sbn {
         thread_type _thread;
         mutex_type _mutex;
         semaphore_type _semaphore;
-        handler_container_type _handlers;
+        event_handler_table _handlers;
         kernel_protocol _protocol;
         duration _start_timeout = duration::zero();
 
@@ -210,7 +210,7 @@ namespace sbn {
 
         void
         handle_events() {
-            for (const sys::epoll_event& ev : this->poller()) {
+            for (const auto& ev : this->poller()) {
                 auto result = this->_handlers.find(ev.fd());
                 if (result == this->_handlers.end()) {
                     this->log("unable to process fd _", ev.fd());
