@@ -7,26 +7,18 @@
 
 sbn::kernel_type_registry::const_iterator
 sbn::kernel_type_registry::find(id_type id) const noexcept {
-    return std::find_if(
-        this->begin(), this->end(),
-        [&id] (const kernel_type& rhs) {
-            return rhs.id() == id;
-        }
-    );
+    return std::find_if(this->begin(), this->end(),
+                        [&id] (const kernel_type& rhs) { return rhs.id() == id; });
 }
 
 sbn::kernel_type_registry::const_iterator
 sbn::kernel_type_registry::find(std::type_index idx) const noexcept {
-    return std::find_if(
-        this->begin(), this->end(),
-        [&idx] (const kernel_type& rhs) {
-            return rhs.index() == idx;
-        }
-    );
+    return std::find_if(this->begin(), this->end(),
+                        [&idx] (const kernel_type& rhs) { return rhs.index() == idx; });
 }
 
 void
-sbn::kernel_type_registry::register_type(kernel_type type) {
+sbn::kernel_type_registry::add(kernel_type type) {
     const_iterator result;
     result = this->find(type.index());
     if (result != this->end()) {
@@ -42,10 +34,9 @@ sbn::kernel_type_registry::register_type(kernel_type type) {
 
 std::ostream&
 sbn::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
-    for (const auto& type : rhs._types) {
+    auto g = rhs.guard();
+    for (const auto& type : rhs) {
         out << "/type/" << type.id() << '/' << type;
     }
     return out;
 }
-
-sbn::kernel_type_registry sbn::types;

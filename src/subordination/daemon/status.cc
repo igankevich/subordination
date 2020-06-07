@@ -62,7 +62,7 @@ public:
 
 int main(int argc, char* argv[]) {
     //sbn::install_error_handler();
-    sbn::types.register_type<Status_kernel>(4);
+    sbnc::factory.types().add<Status_kernel>(4);
     try {
         sbnc::factory.start();
         sbnc::factory.remote().use_localhost(false);

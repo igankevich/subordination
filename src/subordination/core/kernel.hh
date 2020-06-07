@@ -1,17 +1,135 @@
 #ifndef SUBORDINATION_CORE_KERNEL_HH
 #define SUBORDINATION_CORE_KERNEL_HH
 
-#include <subordination/core/mobile_kernel.hh>
+#include <unistdx/net/socket_address>
+
+#include <subordination/core/application.hh>
+#include <subordination/core/kernel_base.hh>
+#include <subordination/core/kernel_header_flag.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
 
-    class kernel: public mobile_kernel {
+    class kernel: public kernel_base {
+
+    public:
+        using id_type = uint64_t;
+
+    private:
+        id_type _id = no_id();
+        kernel_field _fields{};
+        sys::socket_address _source{};
+        sys::socket_address _destination{};
+        union {
+            ::sbn::application::id_type  _application_id = this_application::get_id();
+            // TODO application registry
+            ::sbn::application* _application;
+        };
+        union {
+            kernel* _parent = nullptr;
+            id_type _parent_id;
+        };
+        union {
+            kernel* _principal = nullptr;
+            id_type _principal_id;
+        };
 
     public:
 
-        typedef mobile_kernel base_kernel;
-        using mobile_kernel::id_type;
+        kernel() = default;
+        virtual ~kernel();
+        kernel(const kernel&) = delete;
+        kernel& operator=(const kernel&) = delete;
+        kernel(kernel&&) = delete;
+        kernel& operator=(kernel&&) = delete;
+
+        inline id_type id() const noexcept { return this->_id; }
+        inline void id(id_type rhs) noexcept { this->_id = rhs; }
+        inline bool has_id() const noexcept { return this->_id != no_id(); }
+        inline void set_id(id_type rhs) noexcept { this->_id = rhs; }
+
+        inline bool
+        operator==(const kernel& rhs) const noexcept {
+            return this == &rhs || (this->id() == rhs.id() && this->has_id() && rhs.has_id());
+        }
+
+        inline bool
+        operator!=(const kernel& rhs) const noexcept {
+            return !this->operator==(rhs);
+        }
+
+        static constexpr id_type no_id() noexcept { return 0; }
+
+        inline uint64_t
+        unique_id() const noexcept {
+            return this->has_id() ? this->id() : uint64_t(this);
+        }
+
+        inline const kernel_field& fields() const noexcept {
+            return this->_fields;
+        }
+
+        inline const sys::socket_address& source() const noexcept {
+            return this->_source;
+        }
+
+        inline const sys::socket_address& destination() const noexcept {
+            return this->_destination;
+        }
+
+        inline void source(const sys::socket_address& rhs) noexcept {
+            this->_source = rhs;
+        }
+
+        inline void destination(const sys::socket_address& rhs) noexcept {
+            this->_destination = rhs;
+        }
+
+        inline ::sbn::application::id_type
+        application_id() const noexcept {
+            return bool(fields() & kernel_field::application)
+                ? this->_application->id() : this->_application_id;
+        }
+
+        inline void
+        application_id(::sbn::application::id_type rhs) noexcept {
+            if (bool(fields() & kernel_field::application)) {
+                delete this->_application;
+                this->_fields &= ~kernel_field::application;
+            }
+            this->_application_id = rhs;
+        }
+
+        inline bool is_foreign() const noexcept { return !this->is_native(); }
+
+        inline bool
+        is_native() const noexcept {
+            return application_id() == this_application::get_id();
+        }
+
+        inline const ::sbn::application*
+        application() const {
+            if (!bool(fields() & kernel_field::application)) {
+                return nullptr;
+            }
+            return this->_application;
+        }
+
+        inline void
+        application(::sbn::application* rhs) noexcept {
+            if (bool(fields() & kernel_field::application)) {
+                delete this->_application;
+            }
+            this->_application = rhs;
+            if (this->_application) {
+                this->_fields |= kernel_field::application;
+            } else {
+                this->_fields &= ~kernel_field::application;
+            }
+        }
+
+        void write_header(kernel_buffer& out) const;
+        void read_header(kernel_buffer& in);
 
         inline const kernel*
         principal() const {
@@ -19,10 +137,7 @@ namespace sbn {
                 ? nullptr : this->_principal;
         }
 
-        inline kernel*
-        principal() {
-            return this->_principal;
-        }
+        inline kernel* principal() noexcept { return this->_principal; }
 
         inline id_type
         principal_id() const {
@@ -102,8 +217,8 @@ namespace sbn {
             return !this->_principal && !this->_parent;
         }
 
-        void read(kernel_buffer& in) override;
-        void write(kernel_buffer& out) const override;
+        virtual void read(kernel_buffer& in);
+        virtual void write(kernel_buffer& out) const;
 
         /// \brief Performs the task or launches subordinate kernels to do so.
         virtual void act();
@@ -116,16 +231,6 @@ namespace sbn {
 
         friend std::ostream&
         operator<<(std::ostream& out, const kernel& rhs);
-
-        inline const kernel_header&
-        header() const noexcept {
-            return static_cast<const kernel_header&>(*this);
-        }
-
-        inline kernel_header&
-        header() noexcept {
-            return static_cast<kernel_header&>(*this);
-        }
 
     public:
 
@@ -170,17 +275,6 @@ namespace sbn {
             if (is_native() && this->_parent) { this->_parent->mark_as_deleted(result); }
             result.emplace_back(this);
         }
-
-    private:
-
-        union {
-            kernel* _parent = nullptr;
-            id_type _parent_id;
-        };
-        union {
-            kernel* _principal = nullptr;
-            id_type _principal_id;
-        };
 
     };
 

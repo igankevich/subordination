@@ -20,7 +20,6 @@ namespace sbn {
         id_type _type = 0;
 
     public:
-
         foreign_kernel() = default;
         foreign_kernel(foreign_kernel&&) = delete;
         foreign_kernel& operator=(foreign_kernel&&) = delete;

@@ -183,14 +183,16 @@ private:
 
 TEST(NICServerTest, All) {
 
+    sbn::kernel_type_registry types;
+    types.add<Test_socket>(1);
     local.name("local");
     local.start();
     remote.name("remote");
     remote.native_pipeline(&local);
     remote.remote_pipeline(&remote);
+    remote.types(&types);
     remote.start();
 
-    sbn::register_type<Test_socket>(1);
     sys::port_type port = 10000 + 2*sys::port_type(failure);
     ipv4_interface_address network{{127,0,0,1},8};
     if (const char* text = std::getenv("DTEST_INTERFACE_ADDRESS")) {

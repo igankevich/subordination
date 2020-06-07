@@ -12,13 +12,11 @@ namespace sbn {
     class kernel_buffer;
     class kernel_error;
     class kernel_frame;
-    class kernel_header;
     class kernel_instance_registry;
     class kernel_read_guard;
     class kernel_type;
     class kernel_type_registry;
     class kernel_write_guard;
-    class mobile_kernel;
     enum class exit_code: sys::u16;
     enum class kernel_flag: sys::u32;
 

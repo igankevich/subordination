@@ -39,31 +39,13 @@ namespace sbn {
             this->setf(kernel_flag::deleted);
         }
 
-        inline exit_code
-        return_code() const noexcept {
-            return _result;
-        }
-
-        inline void
-        return_code(exit_code rhs) noexcept {
-            this->_result = rhs;
-        }
+        inline exit_code return_code() const noexcept { return this->_result; }
+        inline void return_code(exit_code rhs) noexcept { this->_result = rhs; }
 
         // scheduled kernels
-        inline time_point
-        at() const noexcept {
-            return this->_at;
-        }
-
-        inline void
-        at(time_point t) noexcept {
-            this->_at = t;
-        }
-
-        inline void
-        after(duration delay) noexcept {
-            this->_at = clock_type::now() + delay;
-        }
+        inline time_point at() const noexcept { return this->_at; }
+        inline void at(time_point t) noexcept { this->_at = t; }
+        inline void after(duration delay) noexcept { this->_at = clock_type::now() + delay; }
 
         inline bool
         scheduled() const noexcept {
@@ -72,6 +54,7 @@ namespace sbn {
 
         // flags
         inline kernel_flag flags() const noexcept { return this->_flags; }
+        inline void flags(kernel_flag rhs) noexcept { this->_flags = rhs; }
         inline void setf(kernel_flag f) noexcept { this->_flags = this->_flags | f; }
         inline void unsetf(kernel_flag f) noexcept { this->_flags = this->_flags & ~f; }
         inline bool isset(kernel_flag f) const noexcept { return bool(this->_flags & f); }

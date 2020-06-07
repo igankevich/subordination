@@ -9,7 +9,6 @@
 
 #include <subordination/core/application.hh>
 #include <subordination/core/basic_socket_pipeline.hh>
-#include <subordination/core/kernel_header.hh>
 #include <subordination/core/process_handler.hh>
 
 namespace sbn {

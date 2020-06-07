@@ -9,8 +9,11 @@
 namespace  {
 
     inline void write_native(sbn::kernel_buffer* out, const sbn::kernel* k) {
-        auto type = sbn::types.find(typeid(*k));
-        if (type == sbn::types.end()) { throw std::invalid_argument("kernel type is null"); }
+        if (!out->types()) { throw std::invalid_argument("no types"); }
+        const auto& types = *out->types();
+        auto g = types.guard();
+        auto type = types.find(typeid(*k));
+        if (type == types.end()) { throw std::invalid_argument("kernel type is null"); }
         out->write(type->id());
         k->write(*out);
     }
@@ -18,8 +21,11 @@ namespace  {
     inline sbn::kernel* read_native(sbn::kernel_buffer* in) {
         sbn::kernel_type::id_type id = 0;
         in->read(id);
-        auto type = sbn::types.find(id);
-        if (type == sbn::types.end()) { throw sbn::kernel_error("unknown kernel type", id); }
+        if (!in->types()) { throw std::invalid_argument("no types"); }
+        const auto& types = *in->types();
+        auto g = types.guard();
+        auto type = types.find(id);
+        if (type == types.end()) { throw sbn::kernel_error("unknown kernel type", id); }
         auto k = type->construct();
         k->read(*in);
         return k;

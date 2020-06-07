@@ -6,9 +6,12 @@ int
 main(int argc, char** argv) {
     using namespace sbn;
     install_error_handler();
-    types.register_type<autoreg::Autoreg_model<Real>>(1);
-    types.register_type<autoreg::Generator1<Real,autoreg::Uniform_grid>>(2);
-    types.register_type<autoreg::Wave_surface_generator<Real,autoreg::Uniform_grid>>(3);
+    {
+        auto g = factory.types().guard();
+        factory.types().add<autoreg::Autoreg_model<Real>>(1);
+        factory.types().add<autoreg::Generator1<Real,autoreg::Uniform_grid>>(2);
+        factory.types().add<autoreg::Wave_surface_generator<Real,autoreg::Uniform_grid>>(3);
+    }
     factory_guard g;
     if (this_application::is_master()) {
         send(new Autoreg_app);

@@ -25,6 +25,7 @@ namespace sbn {
         child_process_pipeline(child_process_pipeline&& rhs) = default;
 
         void send(kernel* k) override;
+        void add_connection();
 
     protected:
 

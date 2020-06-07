@@ -153,11 +153,13 @@ TEST(kernel, bare) {
 }
 
 TEST(kernel, with_type) {
-    sbn::types.register_type<Test_kernel>(333);
+    sbn::kernel_type_registry types;
+    types.add<Test_kernel>(333);
     sbn::foreign_kernel f;
     Test_kernel a;
     a.number(123);
     sbn::kernel_buffer buf;
+    buf.types(&types);
     {
         sbn::kernel_frame frame;
         sbn::kernel_write_guard g(frame, buf);

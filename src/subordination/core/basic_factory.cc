@@ -14,6 +14,9 @@ _local(sys::thread_concurrency()) {
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);
     this->_remote.remote_pipeline(&this->_remote);
+    this->_remote.types(&this->_types);
+    this->_remote.instances(&this->_instances);
+    this->_remote.add_connection();
 }
 
 void sbn::Factory::start() {

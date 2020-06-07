@@ -48,10 +48,10 @@ main(int argc, char* argv[]) {
     sys::parse_arguments(argc, argv, options);
     sbn::install_error_handler();
     install_debug_handler();
-    sbn::types.register_type<application_kernel>(1);
-    sbn::types.register_type<probe>(2);
-    sbn::types.register_type<Hierarchy_kernel>(3);
-    sbn::types.register_type<Status_kernel>(4);
+    factory.types().add<application_kernel>(1);
+    factory.types().add<probe>(2);
+    factory.types().add<Hierarchy_kernel>(3);
+    factory.types().add<Status_kernel>(4);
     try {
         factory.start();
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
@@ -63,8 +63,8 @@ main(int argc, char* argv[]) {
         m->allow(servers);
         m->fanout(fanout);
         {
-            sbn::instances_guard g(sbn::instances);
-            sbn::instances.add(m);
+            auto g = factory.instances().guard();
+            factory.instances().add(m);
         }
         factory.local().send(m);
     } catch (const std::exception& err) {

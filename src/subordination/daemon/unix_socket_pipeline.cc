@@ -41,6 +41,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
     ptr->name(name());
     ptr->parent(this);
+    ptr->types(types());
     ptr->socket_address(addr);
     ptr->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);
@@ -55,6 +56,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     auto ptr = std::make_shared<unix_socket_client>(std::move(s));
     ptr->name(name());
     ptr->parent(this);
+    ptr->types(types());
     ptr->socket_address(addr);
     ptr->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::inout), ptr);

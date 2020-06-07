@@ -98,6 +98,10 @@ namespace sbn {
         inline void flags(kernel_proto_flag rhs) noexcept { this->_flags = rhs; }
         inline kernel_proto_flag flags() const noexcept { return this->_flags; }
 
+        inline void types(kernel_type_registry* rhs) noexcept {
+            this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);
+        }
+
     protected:
 
         void recover_kernels(bool downstream);

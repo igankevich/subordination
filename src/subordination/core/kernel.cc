@@ -8,13 +8,19 @@ namespace {
 
     inline sbn::kernel::id_type
     get_id(const sbn::kernel* rhs) {
-        return !rhs ? sbn::mobile_kernel::no_id() : rhs->id();
+        return !rhs ? sbn::kernel::no_id() : rhs->id();
     }
 
 }
 
+sbn::kernel::~kernel() {
+    if (bool(fields() & kernel_field::application)) {
+        delete this->_application;
+    }
+}
+
 void sbn::kernel::read(kernel_buffer& in) {
-    base_kernel::read(in);
+    in >> this->_result >> this->_id;
     bool b = false;
     in >> b;
     if (b) { this->setf(kernel_flag::carries_parent); }
@@ -27,7 +33,7 @@ void sbn::kernel::read(kernel_buffer& in) {
 }
 
 void sbn::kernel::write(kernel_buffer& out) const {
-    base_kernel::write(out);
+    out << this->_result << this->_id;
     out << carries_parent();
     if (this->moves_downstream()) {
         out << this->_parent_id << this->_principal_id;
@@ -43,6 +49,29 @@ void sbn::kernel::write(kernel_buffer& out) const {
             out << get_id(this->_principal);
         }
     }
+}
+
+void sbn::kernel::write_header(kernel_buffer& out) const {
+    auto f = fields();
+    if (source()) { f |= kernel_field::source; }
+    if (destination()) { f |= kernel_field::destination; }
+    out << f;
+    if (bool(f & kernel_field::application)) { out << *application(); }
+    else { out << application_id(); }
+    if (bool(f & kernel_field::source)) { out << source(); }
+    if (bool(f & kernel_field::destination)) { out << destination(); }
+}
+
+void sbn::kernel::read_header(kernel_buffer& in) {
+    in >> this->_fields;
+    if (bool(fields() & kernel_field::application)) {
+        this->_application = new ::sbn::application;
+        in >> *this->_application;
+    } else {
+        in >> this->_application_id;
+    }
+    if (bool(fields() & kernel_field::source)) { in >> this->_source; }
+    if (bool(fields() & kernel_field::destination)) { in >> this->_destination; }
 }
 
 void

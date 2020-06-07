@@ -92,8 +92,9 @@ void sbn::connection::write_kernel(kernel* k) noexcept {
     try {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
-        log("write _ _", k->is_native() ? "native" : "foreign", k->header());
-        k->header().write_header(this->_output_buffer);
+        log("write _ src _ dst _ app _", k->is_native() ? "native" : "foreign",
+            k->source(), k->destination(), k->application_id());
+        k->write_header(this->_output_buffer);
         this->_output_buffer.write(k);
     } catch (const kernel_error& err) {
         log_write_error(err);
@@ -143,7 +144,7 @@ sbn::kernel*
 sbn::connection::read_kernel(const application* from_application) {
     std::unique_ptr<foreign_kernel> hdr(new foreign_kernel);
     kernel* k = nullptr;
-    hdr->header().read_header(this->_input_buffer);
+    hdr->read_header(this->_input_buffer);
     if (from_application) {
         hdr->application(new application(*from_application));
     }
@@ -153,13 +154,15 @@ sbn::connection::read_kernel(const application* from_application) {
     bool remove = false;
     if (hdr->application_id() != this_application::get_id()) {
         #if defined(SBN_DEBUG)
-        this->log("read foreign _", hdr->header());
+        this->log("read foreign src _ dst _ app _", hdr->source(),
+                  hdr->destination(), hdr->application_id());
         #endif
         hdr->read(this->_input_buffer);
         forward_or_delete(this->parent()->foreign_pipeline(), hdr.get(), remove);
     } else {
         #if defined(SBN_DEBUG)
-        this->log("read native _", hdr->header());
+        this->log("read native src _ dst _ app _", hdr->source(),
+                  hdr->destination(), hdr->application_id());
         #endif
         this->_input_buffer.read(k);
         k->application_id(hdr->application_id());
@@ -179,13 +182,16 @@ bool sbn::connection::receive_kernel(kernel* k) {
     if (k->moves_downstream()) {
         this->plug_parent(k);
     } else if (k->principal_id()) {
-        instances_guard g(instances);
-        auto result = instances.find(k->principal_id());
-        if (result == instances.end()) {
-            k->return_code(exit_code::no_principal_found);
-            ok = false;
+        if (parent() && parent()->instances()) {
+            auto& instances = *parent()->instances();
+            kernel_instance_registry::sentry s(instances);
+            auto result = instances.find(k->principal_id());
+            if (result == instances.end()) {
+                k->return_code(exit_code::no_principal_found);
+                ok = false;
+            }
+            k->principal(result->second);
         }
-        k->principal(result->second);
     }
     #if defined(SBN_DEBUG)
     this->log("recv _", *k);

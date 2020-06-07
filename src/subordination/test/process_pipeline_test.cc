@@ -108,7 +108,9 @@ public:
 int
 main(int argc, char* argv[]) {
     sbn::install_error_handler();
-    sbn::types.register_type<Test_socket>(1);
+    sbn::kernel_type_registry types;
+    types.add<Test_socket>(1);
+    remote.types(&types);
     #if defined(SUBORDINATION_TEST_SERVER)
     sbn::application app({SBN_TEST_APP_EXE_PATH}, {});
     process.name("process");

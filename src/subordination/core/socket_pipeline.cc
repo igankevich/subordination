@@ -529,6 +529,7 @@ sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vadd
     auto s = std::make_shared<remote_client>(std::move(sock));
     s->socket_address(vaddr);
     s->parent(this);
+    s->types(types());
     s->setstate(pipeline_state::starting);
     s->name(this->_name);
     using f = kernel_proto_flag;
@@ -575,10 +576,12 @@ sbn::socket_pipeline
 }
 
 void sbn::socket_pipeline::fire_event_kernels(socket_pipeline_kernel* ev) {
-    instances_guard g(instances);
-    for (const auto& pair : instances) {
-        ev->parent(ev);
-        ev->principal(pair.second);
-        native_pipeline()->send(ev);
+    if (instances()) {
+        kernel_instance_registry::sentry s(*instances());
+        for (const auto& pair : *instances()) {
+            ev->parent(ev);
+            ev->principal(pair.second);
+            native_pipeline()->send(ev);
+        }
     }
 }

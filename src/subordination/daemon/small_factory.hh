@@ -1,6 +1,7 @@
 #ifndef SUBORDINATION_DAEMON_SMALL_FACTORY_HH
 #define SUBORDINATION_DAEMON_SMALL_FACTORY_HH
 
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/socket_pipeline.hh>
 
@@ -14,6 +15,7 @@ namespace sbnc {
         // there is only one thread
         sbn::parallel_pipeline _local{1};
         sbn::socket_pipeline _remote;
+        sbn::kernel_type_registry _types;
 
     public:
         Factory();
@@ -25,6 +27,7 @@ namespace sbnc {
 
         inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
         inline sbn::socket_pipeline& remote() noexcept { return this->_remote; }
+        inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
 
         void start();
         void stop();

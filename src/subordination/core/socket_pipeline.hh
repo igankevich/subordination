@@ -31,7 +31,7 @@ namespace sbn {
         using client_ptr = std::shared_ptr<remote_client>;
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
-        using id_type = mobile_kernel::id_type;
+        using id_type = kernel::id_type;
         using weight_type = uint32_t;
 
     private:

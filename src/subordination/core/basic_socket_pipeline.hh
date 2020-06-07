@@ -15,6 +15,8 @@
 
 #include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/connection.hh>
+#include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/static_lock.hh>
 
 namespace sbn {
@@ -37,7 +39,7 @@ namespace sbn {
 
     private:
         // TODO probably we do not need this
-        typedef static_lock<mutex_type, mutex_type> static_lock_type;
+        using static_lock_type = static_lock<mutex_type, mutex_type>;
 
     private:
         mutex_type* _othermutex = nullptr;
@@ -52,6 +54,8 @@ namespace sbn {
         pipeline* _foreign_pipeline = nullptr;
         pipeline* _native_pipeline = nullptr;
         pipeline* _remote_pipeline = nullptr;
+        kernel_type_registry* _types = nullptr;
+        kernel_instance_registry* _instances = nullptr;
 
     public:
 
@@ -101,15 +105,22 @@ namespace sbn {
             return &this->_mutex;
         }
 
+        inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
+        inline void native_pipeline(pipeline* rhs) noexcept { this->_native_pipeline = rhs; }
+        inline void remote_pipeline(pipeline* rhs) noexcept { this->_remote_pipeline = rhs; }
+        inline void types(kernel_type_registry* rhs) noexcept { this->_types = rhs; }
+        inline void instances(kernel_instance_registry* rhs) noexcept { this->_instances = rhs; }
         inline const pipeline* foreign_pipeline() const noexcept { return this->_foreign_pipeline; }
         inline pipeline* foreign_pipeline() noexcept { return this->_foreign_pipeline; }
-        inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
         inline const pipeline* native_pipeline() const noexcept { return this->_native_pipeline; }
         inline pipeline* native_pipeline() noexcept { return this->_native_pipeline; }
-        inline void native_pipeline(pipeline* rhs) noexcept { this->_native_pipeline = rhs; }
         inline const pipeline* remote_pipeline() const noexcept { return this->_remote_pipeline; }
         inline pipeline* remote_pipeline() noexcept { return this->_remote_pipeline; }
-        inline void remote_pipeline(pipeline* rhs) noexcept { this->_remote_pipeline = rhs; }
+        inline const kernel_type_registry* types() const noexcept { return this->_types; }
+        inline kernel_type_registry* types() noexcept { return this->_types; }
+        inline const kernel_instance_registry* instances() const noexcept { return this->_instances; }
+        inline kernel_instance_registry* instances() noexcept { return this->_instances; }
+
 
     protected:
 

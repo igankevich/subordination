@@ -8,11 +8,15 @@
 #include <unistdx/net/ipv6_address>
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
 
     class kernel_buffer: public sys::byte_buffer {
+
+    private:
+        kernel_type_registry* _types = nullptr;
 
     public:
         using sys::byte_buffer::byte_buffer;
@@ -51,6 +55,10 @@ namespace sbn {
 
         template <class T> inline kernel_buffer&
         operator>>(T& rhs) { this->read(rhs); return *this; }
+
+        inline void types(kernel_type_registry* rhs) noexcept { this->_types = rhs; }
+        inline const kernel_type_registry* types() const noexcept { return this->_types; }
+        inline kernel_type_registry* types() noexcept { return this->_types; }
 
     };
 

@@ -1,6 +1,8 @@
 #ifndef SUBORDINATION_DAEMON_FACTORY_HH
 #define SUBORDINATION_DAEMON_FACTORY_HH
 
+#include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/process_pipeline.hh>
 #include <subordination/core/socket_pipeline.hh>
@@ -17,6 +19,8 @@ namespace sbnd {
         sbn::process_pipeline _process;
         unix_socket_pipeline _external;
         #endif
+        sbn::kernel_type_registry _types;
+        sbn::kernel_instance_registry _instances;
 
     public:
 
@@ -38,6 +42,8 @@ namespace sbnd {
 
         inline void schedule(sbn::kernel* k) { this->_local.send(k); }
         inline void schedule(sbn::kernel** k, size_t n) { this->_local.send(k, n); }
+        inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
+        inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 
         inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
         inline sbn::socket_pipeline& remote() noexcept { return this->_remote; }

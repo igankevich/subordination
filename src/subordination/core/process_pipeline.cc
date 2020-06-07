@@ -68,6 +68,7 @@ sbn::process_pipeline::do_add(const application& app) {
     sys::fd_type parent_out = data_pipe.parent_out().fd();
     auto child = std::make_shared<event_handler_type>(p.id(), std::move(data_pipe), app);
     child->parent(this);
+    child->types(types());
     child->name(this->_name);
     this->log(
         "executing app=_,credentials=_:_,role=_,pid=_",
@@ -87,7 +88,7 @@ void
 sbn::process_pipeline
 ::forward(foreign_kernel* hdr) {
     #if defined(SBN_DEBUG)
-    this->log("forward _", hdr->header());
+    this->log("forward src _ dst _ app _", hdr->source(), hdr->destination(), hdr->application_id());
     #endif
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
