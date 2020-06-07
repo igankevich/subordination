@@ -5,7 +5,7 @@ if zlib.found()
         'spec',
         sources: 'spec.cc',
         include_directories: [src],
-        dependencies: [threads, zlib, unistdx, subordination_core],
+        dependencies: [threads, zlib, unistdx, sbn],
         implicit_include_directories: false,
     )
 endif

@@ -1,4 +1,4 @@
-subordination_core_src = files([
+sbn_src = files([
     'application.cc',
     'application_kernel.cc',
     'basic_factory.cc',
@@ -53,9 +53,9 @@ install_headers(
     subdir: join_paths(meson.project_name(), 'kernel')
 )
 
-subordination_core_lib = library(
-    'subordination-core',
-    sources: subordination_core_src,
+sbn_lib = library(
+    'sbn',
+    sources: sbn_src,
     dependencies: [threads,unistdx],
     version: meson.project_version(),
     include_directories: src,
@@ -63,18 +63,18 @@ subordination_core_lib = library(
     implicit_include_directories: false,
 )
 
-subordination_core = declare_dependency(
-    link_with: subordination_core_lib,
+sbn = declare_dependency(
+    link_with: sbn_lib,
     include_directories: src,
     dependencies: [unistdx,threads]
 )
 
 pkgconfig.generate(
-    subordination_core_lib,
+    sbn_lib,
     requires: [unistdx],
     version: meson.project_version(),
-    name: 'subordination-core',
-    filebase: 'subordination-core',
+    name: 'sbn',
+    filebase: 'sbn',
     description: project_description,
 )
 
@@ -85,7 +85,7 @@ foreach name : ['kernel_buffer', 'timer_pipeline']
         exe_name,
         sources: name + '_test.cc',
         include_directories: src,
-        dependencies: [subordination_core, gtest],
+        dependencies: [sbn, gtest],
         implicit_include_directories: false,
     )
     test('core/' + test_name, exe)

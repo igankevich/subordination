@@ -4,7 +4,7 @@ benchmark(
         'autoreg',
         sources: 'autoreg.cc',
         include_directories: [src],
-        dependencies: [threads, unistdx, subordination_core],
+        dependencies: [threads, unistdx, sbn],
         implicit_include_directories: false,
     )
 )

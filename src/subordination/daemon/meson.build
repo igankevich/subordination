@@ -1,4 +1,4 @@
-subordination_daemon_core_src = files([
+sbnd_src = files([
     'application_kernel.cc',
     'factory.cc',
     'hierarchy.cc',
@@ -17,57 +17,38 @@ subordination_daemon_core_src = files([
     'unix_socket_pipeline.cc',
 ])
 
-subordination_daemon_core_lib = library(
-    'subordination-daemon-core',
-    sources: subordination_daemon_core_src,
-    dependencies: [subordination_core],
+sbnd_lib = library(
+    'sbnd',
+    sources: sbnd_src,
+    dependencies: [sbn],
     version: meson.project_version(),
     include_directories: src,
     install: true,
     implicit_include_directories: false,
 )
 
-subordination_daemon_core = declare_dependency(
-    link_with: subordination_daemon_core_lib,
+sbnd = declare_dependency(
+    link_with: sbnd_lib,
     include_directories: src,
-    dependencies: [subordination_core],
+    dependencies: [sbn],
 )
 
-subordination_exe = executable(
-    'subordination',
-    sources: ['subordination.cc'],
+sbnd_exe = executable(
+    'sbnd',
+    sources: ['sbnd.cc'],
     include_directories: src,
-    dependencies: [subordination_daemon_core],
+    dependencies: [sbnd],
     cpp_args: profiling_args,
     install: true,
     install_dir: get_option('sbindir'),
     implicit_include_directories: false,
 )
 
-submit_src = files([
-    'small_factory.cc',
-    'submit.cc',
-])
-
-submit_exe = executable(
-    'submit',
-    sources: submit_src,
+sbnc_exe = executable(
+    'sbnc',
+    sources: ['small_factory.cc', 'sbnc.cc'],
     include_directories: [src],
-    dependencies: [subordination_daemon_core],
-    install: true,
-    implicit_include_directories: false,
-)
-
-status_src = files([
-    'status.cc',
-    'small_factory.cc',
-])
-
-status_exe = executable(
-    'status',
-    sources: status_src,
-    include_directories: [src],
-    dependencies: [subordination_daemon_core],
+    dependencies: [sbnd],
     install: true,
     implicit_include_directories: false,
 )
@@ -76,7 +57,7 @@ test_app_exe = executable(
     'test-application',
     sources: 'test_application.cc',
     include_directories: [src],
-    dependencies: [subordination_core],
+    dependencies: [sbn],
     implicit_include_directories: false,
 )
 
@@ -87,7 +68,7 @@ foreach name : ['local_server', 'tree_hierarchy_iterator']
         exe_name,
         sources: name + '_test.cc',
         include_directories: src,
-        dependencies: [subordination_daemon_core, gtest],
+        dependencies: [sbnd, gtest],
         implicit_include_directories: false,
     )
     test('daemon/' + test_name, exe)
@@ -96,7 +77,7 @@ endforeach
 socket_pipeline_test = executable(
     'socket-pipeline-test',
     sources: 'socket_pipeline_test.cc',
-    dependencies: [gtest, subordination_daemon_core],
+    dependencies: [gtest, sbnd],
     include_directories: src,
     implicit_include_directories: false,
 )
@@ -130,7 +111,7 @@ test(
 app_exe = executable(
     'process-pipeline-test-app',
     sources: 'process_pipeline_test.cc',
-    dependencies: [subordination_core],
+    dependencies: [sbn],
     include_directories: src,
     cpp_args: ['-DSUBORDINATION_TEST_APP'],
     implicit_include_directories: false,
@@ -147,7 +128,7 @@ configure_file(
 daemon_exe = executable(
     'process-pipeline-test',
     sources: 'process_pipeline_test.cc',
-    dependencies: [subordination_daemon_core],
+    dependencies: [sbnd],
     include_directories: src,
     cpp_args: ['-DSUBORDINATION_TEST_SERVER'],
     implicit_include_directories: false,
@@ -159,7 +140,7 @@ discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
     include_directories: [src],
-    dependencies: [subordination_core,gtest],
+    dependencies: [sbn,gtest],
     implicit_include_directories: false,
 )
 
@@ -182,10 +163,10 @@ if get_option('b_sanitize') != 'address'
                     args: [
                         # run daemon on each cluster node
                         '--exec', '*',
-                        subordination_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
+                        sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
                         # submit test application from the first node
                         '--exec', '1',
-                        submit_exe.full_path(), test_app_exe.full_path(), failure
+                        sbnc_exe.full_path(), test_app_exe.full_path(), failure
                     ],
                     env: env,
                     workdir: meson.build_root(),
