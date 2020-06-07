@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <subordination/core/local_server.hh>
+#include <subordination/daemon/local_server.hh>
 #include <subordination/test/make_types.hh>
 
 template<class Pair>
@@ -22,7 +22,7 @@ TYPED_TEST(LocalServerTest, DetermineIdRange) {
     ifaddr_type interface_address(traits_type::localhost(), traits_type::loopback_mask());
     id_type id0 = 0;
     id_type id1 = 0;
-    sbn::determine_id_range(interface_address, id0, id1);
+    sbnd::determine_id_range(interface_address, id0, id1);
 }
 
 template <class Addr, class Id>
@@ -31,7 +31,7 @@ test_id_count(const Id& expected, const sys::interface_address<Addr>& interface_
     typedef Id id_type;
     id_type id0 = 0;
     id_type id1 = 0;
-    sbn::determine_id_range(interface_address, id0, id1);
+    sbnd::determine_id_range(interface_address, id0, id1);
     EXPECT_EQ(expected, id1-id0) << "id0=" << id0 << ",id1=" << id1;
 }
 
@@ -61,7 +61,7 @@ TEST(LocalServer, IntersectIpV4) {
         EXPECT_LE(i+1, std::numeric_limits<unsigned char>::max());
         unsigned char uc = i + 1;
         ifaddr_type new_ifaddr{{127,0,0,uc}, 24};
-        sbn::determine_id_range(new_ifaddr, id2, id3);
+        sbnd::determine_id_range(new_ifaddr, id2, id3);
         EXPECT_LE(id0, id1);
         EXPECT_EQ(id1, id2);
         EXPECT_LE(id2, id3);

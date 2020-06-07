@@ -4,9 +4,9 @@
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
-#include <subordination/core/process_pipeline.hh>
+#include <subordination/daemon/process_pipeline.hh>
+#include <subordination/daemon/process_pipeline_test.hh>
 #include <subordination/test/config.hh>
-
 #include <subordination/test/datum.hh>
 
 const uint32_t NUM_SIZES = 10;
@@ -16,8 +16,12 @@ const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * NUM_SIZES;
 std::atomic<int> kernel_count(0);
 
 sbn::parallel_pipeline local{1};
-sbn::process_pipeline process;
+#if defined(SUBORDINATION_TEST_SERVER)
+sbnd::process_pipeline process;
+#endif
+#if defined(SUBORDINATION_TEST_APP)
 sbn::child_process_pipeline remote;
+#endif
 
 template <class ... Args>
 inline void
@@ -47,7 +51,9 @@ public:
     act() override {
         message("Test_socket::act(): It works!");
         return_to_parent(sbn::exit_code::success);
+        #if defined(SUBORDINATION_TEST_APP)
         remote.send(this);
+        #endif
     }
 
     void
@@ -90,7 +96,9 @@ public:
             auto* k = new Test_socket;
 //			k->setapp(sys::this_process::id());
             k->parent(this);
+            #if defined(SUBORDINATION_TEST_APP)
             remote.send(k);
+            #endif
         }
     }
 
@@ -108,9 +116,6 @@ public:
 int
 main(int argc, char* argv[]) {
     sbn::install_error_handler();
-    sbn::kernel_type_registry types;
-    types.add<Test_socket>(1);
-    remote.types(&types);
     #if defined(SUBORDINATION_TEST_SERVER)
     sbn::application app({SBN_TEST_APP_EXE_PATH}, {});
     process.name("process");
@@ -120,7 +125,11 @@ main(int argc, char* argv[]) {
     process.add(app);
     std::this_thread::sleep_for(std::chrono::seconds(5));
     sbn::graceful_shutdown(0);
-    #else
+    #endif
+    #if defined(SUBORDINATION_TEST_APP)
+    sbn::kernel_type_registry types;
+    types.add<Test_socket>(1);
+    remote.types(&types);
     auto in = sbn::this_application::get_input_fd();
     auto out = sbn::this_application::get_output_fd();
     message("tst", "in = _, out = _", in, out);

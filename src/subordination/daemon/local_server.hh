@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_CORE_LOCAL_SERVER_HH
-#define SUBORDINATION_CORE_LOCAL_SERVER_HH
+#ifndef SUBORDINATION_DAEMON_LOCAL_SERVER_HH
+#define SUBORDINATION_DAEMON_LOCAL_SERVER_HH
 
 #include <limits>
 
@@ -8,7 +8,7 @@
 
 #include <subordination/core/connection.hh>
 
-namespace sbn {
+namespace sbnd {
 
     template <class Addr>
     inline void

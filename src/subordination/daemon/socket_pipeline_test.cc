@@ -7,7 +7,7 @@
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
-#include <subordination/core/socket_pipeline.hh>
+#include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/test/datum.hh>
 #include <subordination/test/role.hh>
 
@@ -49,7 +49,7 @@ using ipv4_interface_address = sys::interface_address<sys::ipv4_address>;
 
 
 sbn::parallel_pipeline local{1};
-sbn::socket_pipeline remote;
+sbnd::socket_pipeline remote;
 
 template <class ... Args>
 inline void

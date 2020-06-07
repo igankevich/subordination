@@ -49,7 +49,7 @@ void sbnd::application_kernel::act() {
     app.make_master();
     try {
         application(app.id());
-        factory.child().add(app);
+        factory.process().add(app);
         this->return_to_parent(sbn::exit_code::success);
         factory.external().send(this);
     } catch (const sys::bad_call& err) {

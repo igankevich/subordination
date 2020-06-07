@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_CORE_SOCKET_PIPELINE_HH
-#define SUBORDINATION_CORE_SOCKET_PIPELINE_HH
+#ifndef SUBORDINATION_DAEMON_SOCKET_PIPELINE_HH
+#define SUBORDINATION_DAEMON_SOCKET_PIPELINE_HH
 
 #include <iosfwd>
 #include <unordered_map>
@@ -12,12 +12,13 @@
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
-#include <subordination/core/local_server.hh>
 #include <subordination/core/types.hh>
+#include <subordination/daemon/local_server.hh>
+#include <subordination/daemon/types.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class socket_pipeline: public basic_socket_pipeline {
+    class socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:
         using ip_address = sys::ipv4_address;
@@ -31,7 +32,7 @@ namespace sbn {
         using client_ptr = std::shared_ptr<remote_client>;
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
-        using id_type = kernel::id_type;
+        using id_type = sbn::kernel::id_type;
         using weight_type = uint32_t;
 
     private:
@@ -80,7 +81,7 @@ namespace sbn {
         void
         add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void forward(foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel* hdr) override;
 
         inline void
         set_port(sys::port_type rhs) noexcept {
@@ -133,8 +134,7 @@ namespace sbn {
         server_iterator
         find_server(const sys::socket_address& dest);
 
-        void
-        ensure_identity(kernel* k, const sys::socket_address& dest);
+        void ensure_identity(sbn::kernel* k, const sys::socket_address& dest);
 
         /// round robin over upstream hosts
         void
@@ -177,11 +177,9 @@ namespace sbn {
                    : sys::socket_address(addr, this->_port);
         }
 
-        void
-        process_kernels() override;
+        void process_kernels() override;
 
-        void
-        process_kernel(kernel* k);
+        void process_kernel(sbn::kernel* k);
 
         client_ptr
         find_or_create_client(const sys::socket_address& addr);

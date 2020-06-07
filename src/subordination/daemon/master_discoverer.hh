@@ -8,13 +8,12 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/core/socket_pipeline_event.hh>
-
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
 #include <subordination/daemon/prober.hh>
 #include <subordination/daemon/resident_kernel.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/tree_hierarchy_iterator.hh>
 #include <subordination/daemon/types.hh>
 
@@ -119,7 +118,7 @@ namespace sbnd {
         }
 
         void
-        on_event(sbn::socket_pipeline_kernel* k);
+        on_event(socket_pipeline_kernel* k);
 
         void
         on_client_add(const sys::socket_address& endp);

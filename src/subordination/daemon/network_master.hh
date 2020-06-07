@@ -7,8 +7,8 @@
 
 #include <unistdx/net/interface_addresses>
 
-#include <subordination/core/socket_pipeline_event.hh>
 #include <subordination/daemon/master_discoverer.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 
 namespace sbnd {
 
@@ -78,7 +78,7 @@ namespace sbnd {
         /// forward the probe to an appropriate discoverer
         void forward_probe(probe* p);
         void forward_hierarchy_kernel(Hierarchy_kernel* p);
-        void on_event(sbn::socket_pipeline_kernel* k);
+        void on_event(socket_pipeline_kernel* k);
         void report_status(Status_kernel* status);
 
         map_iterator find_discoverer(const addr_type& a);

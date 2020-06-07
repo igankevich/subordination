@@ -1,10 +1,8 @@
-#include <subordination/daemon/tree_hierarchy_iterator.hh>
-
 #include <stdexcept>
+
 #include <unistdx/net/ipv4_address>
-#if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-#include <unistdx/base/log_message>
-#endif
+
+#include <subordination/daemon/tree_hierarchy_iterator.hh>
 
 template <class Addr>
 sbnd::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
@@ -50,17 +48,6 @@ sbnd::tree_hierarchy_iterator<Addr>::next() {
             break;
         }
     } while (old_addr == this->_address && this->_state != state_type::end);
-    #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-    sys::log_message(
-        "thi",
-        "base=_,parent=_,current=_,address=_,state=_",
-        _basepos,
-        _parentpos,
-        _currentpos,
-        _address,
-        int(_state)
-    );
-    #endif
 }
 
 template <class Addr>
@@ -110,14 +97,8 @@ void
 sbnd::tree_hierarchy_iterator<Addr>::advance_upper() {
     if (this->_currentpos.is_last()) {
         this->_currentpos.decrement_layer();
-        #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-        sys::log_message("thi", "decrement _", _currentpos);
-        #endif
     } else {
         ++this->_currentpos;
-        #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-        sys::log_message("thi", "increment");
-        #endif
     }
 }
 

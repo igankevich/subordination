@@ -3,7 +3,7 @@
 
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
-#include <subordination/core/socket_pipeline.hh>
+#include <subordination/daemon/socket_pipeline.hh>
 
 namespace sbnc {
 
@@ -14,7 +14,7 @@ namespace sbnc {
         // we do not need downstream pipeline here since
         // there is only one thread
         sbn::parallel_pipeline _local{1};
-        sbn::socket_pipeline _remote;
+        sbnd::socket_pipeline _remote;
         sbn::kernel_type_registry _types;
 
     public:
@@ -26,7 +26,7 @@ namespace sbnc {
         Factory& operator=(Factory&&) = delete;
 
         inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
-        inline sbn::socket_pipeline& remote() noexcept { return this->_remote; }
+        inline sbnd::socket_pipeline& remote() noexcept { return this->_remote; }
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
 
         void start();

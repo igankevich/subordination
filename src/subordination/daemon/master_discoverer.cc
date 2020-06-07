@@ -38,8 +38,8 @@ sbnd::master_discoverer
         this->update_subordinates(dynamic_cast<probe*>(k));
     } else if (typeid(*k) == typeid(prober)) {
         this->update_principal(dynamic_cast<prober*>(k));
-    } else if (typeid(*k) == typeid(sbn::socket_pipeline_kernel)) {
-        this->on_event(dynamic_cast<sbn::socket_pipeline_kernel*>(k));
+    } else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
+        this->on_event(dynamic_cast<socket_pipeline_kernel*>(k));
     } else if (typeid(*k) == typeid(Hierarchy_kernel)) {
         this->update_weights(dynamic_cast<Hierarchy_kernel*>(k));
     }
@@ -148,17 +148,16 @@ sbnd::master_discoverer
 }
 
 void
-sbnd::master_discoverer
-::on_event(sbn::socket_pipeline_kernel* ev) {
+sbnd::master_discoverer::on_event(socket_pipeline_kernel* ev) {
     switch (ev->event()) {
-        case sbn::socket_pipeline_event::add_client:
+        case socket_pipeline_event::add_client:
             this->on_client_add(ev->socket_address());
             break;
-        case sbn::socket_pipeline_event::remove_client:
+        case socket_pipeline_event::remove_client:
             this->on_client_remove(ev->socket_address());
             break;
-        case sbn::socket_pipeline_event::add_server:
-        case sbn::socket_pipeline_event::remove_server:
+        case socket_pipeline_event::add_server:
+        case socket_pipeline_event::remove_server:
         default:
             // ignore server events
             break;

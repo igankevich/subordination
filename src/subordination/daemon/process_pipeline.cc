@@ -5,9 +5,9 @@
 
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
-#include <subordination/core/process_pipeline.hh>
+#include <subordination/daemon/process_pipeline.hh>
 
-void sbn::process_pipeline::loop() {
+void sbnd::process_pipeline::loop() {
     std::thread waiting_thread([this] () { this->wait_loop(); });
     basic_socket_pipeline::loop();
     #if defined(SBN_DEBUG)
@@ -16,8 +16,8 @@ void sbn::process_pipeline::loop() {
     if (waiting_thread.joinable()) { waiting_thread.join(); }
 }
 
-typename sbn::process_pipeline::app_iterator
-sbn::process_pipeline::do_add(const application& app) {
+typename sbnd::process_pipeline::app_iterator
+sbnd::process_pipeline::do_add(const sbn::application& app) {
     // disallow running as superuser/supergroup
     if (!this->_allowroot) {
         if (app.uid() == sys::superuser() || app.gid() == sys::supergroup()) {
@@ -66,7 +66,7 @@ sbn::process_pipeline::do_add(const application& app) {
     data_pipe.validate();
     sys::fd_type parent_in = data_pipe.parent_in().fd();
     sys::fd_type parent_out = data_pipe.parent_out().fd();
-    auto child = std::make_shared<event_handler_type>(p.id(), std::move(data_pipe), app);
+    auto child = std::make_shared<connection_type>(p.id(), std::move(data_pipe), app);
     child->parent(this);
     child->types(types());
     child->name(this->_name);
@@ -85,8 +85,7 @@ sbn::process_pipeline::do_add(const application& app) {
 }
 
 void
-sbn::process_pipeline
-::forward(foreign_kernel* hdr) {
+sbnd::process_pipeline::forward(sbn::foreign_kernel* hdr) {
     #if defined(SBN_DEBUG)
     this->log("forward src _ dst _ app _", hdr->source(), hdr->destination(), hdr->application_id());
     #endif
@@ -94,7 +93,7 @@ sbn::process_pipeline
     assert(this->other_mutex());
     app_iterator result = this->find_by_app_id(hdr->application_id());
     if (result == this->_apps.end()) {
-        if (const application* a = hdr->application()) {
+        if (const auto* a = hdr->application()) {
             a->make_slave();
             #if defined(SBN_DEBUG)
             this->log("fwd: add app _ ", *a);
@@ -111,14 +110,14 @@ sbn::process_pipeline
     this->poller().notify_one();
 }
 
-void sbn::process_pipeline::process_kernels() {
+void sbnd::process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         this->process_kernel(this->_kernels.front());
         this->_kernels.pop();
     }
 }
 
-void sbn::process_pipeline::process_kernel(kernel* k) {
+void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
     typedef typename application_table::value_type value_type;
     if (k->moves_everywhere()) {
         std::for_each(
@@ -137,7 +136,7 @@ void sbn::process_pipeline::process_kernel(kernel* k) {
     }
 }
 
-void sbn::process_pipeline::wait_loop() {
+void sbnd::process_pipeline::wait_loop() {
     using std::this_thread::sleep_for;
     using std::chrono::milliseconds;
     lock_type lock(this->_mutex);
@@ -166,9 +165,8 @@ void sbn::process_pipeline::wait_loop() {
     }
 }
 
-typename sbn::process_pipeline::app_iterator
-sbn::process_pipeline
-::find_by_process_id(sys::pid_type pid) {
+typename sbnd::process_pipeline::app_iterator
+sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
     typedef typename application_table::value_type value_type;
     return std::find_if(
         this->_apps.begin(),

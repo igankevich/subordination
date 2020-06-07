@@ -4,8 +4,8 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
-#include <subordination/core/process_pipeline.hh>
-#include <subordination/core/socket_pipeline.hh>
+#include <subordination/daemon/process_pipeline.hh>
+#include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
 
 namespace sbnd {
@@ -14,9 +14,9 @@ namespace sbnd {
 
     private:
         sbn::parallel_pipeline _local;
-        sbn::socket_pipeline _remote;
+        socket_pipeline _remote;
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        sbn::process_pipeline _process;
+        process_pipeline _process;
         unix_socket_pipeline _external;
         #endif
         sbn::kernel_type_registry _types;
@@ -46,7 +46,7 @@ namespace sbnd {
         inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 
         inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
-        inline sbn::socket_pipeline& remote() noexcept { return this->_remote; }
+        inline socket_pipeline& remote() noexcept { return this->_remote; }
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         inline unix_socket_pipeline& external() noexcept { return this->_external; }
         #endif
@@ -57,15 +57,8 @@ namespace sbnd {
             this->_process.send(k);
         }
 
-        inline sbn::process_pipeline&
-        child() noexcept {
-            return this->_process;
-        }
-
-        inline const sbn::process_pipeline&
-        child() const noexcept {
-            return this->_process;
-        }
+        inline process_pipeline& process() noexcept { return this->_process; }
+        inline const process_pipeline& process() const noexcept { return this->_process; }
 
         #endif
 

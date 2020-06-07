@@ -1,12 +1,12 @@
-#ifndef SUBORDINATION_CORE_SOCKET_PIPELINE_EVENT_HH
-#define SUBORDINATION_CORE_SOCKET_PIPELINE_EVENT_HH
+#ifndef SUBORDINATION_DAEMON_SOCKET_PIPELINE_EVENT_HH
+#define SUBORDINATION_DAEMON_SOCKET_PIPELINE_EVENT_HH
 
 #include <cassert>
 
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-namespace sbn {
+namespace sbnd {
 
     enum class socket_pipeline_event {
         add_client,
@@ -15,7 +15,7 @@ namespace sbn {
         remove_server,
     };
 
-    class socket_pipeline_kernel: public kernel {
+    class socket_pipeline_kernel: public sbn::kernel {
 
     public:
         typedef sys::ipv4_address addr_type;

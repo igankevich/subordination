@@ -56,7 +56,7 @@ main(int argc, char* argv[]) {
         factory.start();
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         factory.external().add_server(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
-        factory.child().allow_root(allow_root);
+        factory.process().allow_root(allow_root);
         #endif
         network_master* m = new network_master;
         m->id(1);

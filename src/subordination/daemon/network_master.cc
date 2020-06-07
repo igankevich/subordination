@@ -115,8 +115,8 @@ sbnd::network_master::react(sbn::kernel* child) {
         this->forward_probe(dynamic_cast<probe*>(child));
     } else if (typeid(*child) == typeid(Hierarchy_kernel)) {
         this->forward_hierarchy_kernel(dynamic_cast<Hierarchy_kernel*>(child));
-    } else if (typeid(*child) == typeid(sbn::socket_pipeline_kernel)) {
-        this->on_event(dynamic_cast<sbn::socket_pipeline_kernel*>(child));
+    } else if (typeid(*child) == typeid(socket_pipeline_kernel)) {
+        this->on_event(dynamic_cast<socket_pipeline_kernel*>(child));
     } else if (typeid(*child) == typeid(Status_kernel)) {
         report_status(dynamic_cast<Status_kernel*>(child));
     }
@@ -200,9 +200,9 @@ sbnd::network_master::find_discoverer(const addr_type& a) -> map_iterator {
 }
 
 void
-sbnd::network_master::on_event(sbn::socket_pipeline_kernel* ev) {
-    if (ev->event() == sbn::socket_pipeline_event::remove_client ||
-        ev->event() == sbn::socket_pipeline_event::add_client) {
+sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
+    if (ev->event() == socket_pipeline_event::remove_client ||
+        ev->event() == socket_pipeline_event::add_client) {
         const addr_type& a = traits_type::address(ev->socket_address());
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {

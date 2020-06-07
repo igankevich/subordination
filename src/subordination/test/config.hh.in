@@ -2,6 +2,5 @@
 #define SUBORDINATION_TEST_CONFIG_HH_IN
 
 #define SBN_TEST_EMPTY_EXE_PATH "@empty_exe_path@"
-#define SBN_TEST_APP_EXE_PATH "@app_exe_path@"
 
 #endif // vim:filetype=cpp

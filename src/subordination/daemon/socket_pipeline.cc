@@ -1,5 +1,3 @@
-#include <subordination/core/socket_pipeline.hh>
-
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
@@ -9,7 +7,8 @@
 
 #include <subordination/core/basic_factory.hh>
 #include <subordination/core/kernel_instance_registry.hh>
-#include <subordination/core/socket_pipeline_event.hh>
+#include <subordination/daemon/socket_pipeline.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 
 namespace {
 
@@ -31,9 +30,9 @@ namespace {
 
 }
 
-namespace sbn {
+namespace sbnd {
 
-    class local_server: public connection {
+    class local_server: public sbn::connection {
 
     public:
         using ip_address = sys::ipv4_address;
@@ -105,7 +104,7 @@ namespace sbn {
 
     };
 
-    class remote_client: public connection {
+    class remote_client: public sbn::connection {
 
     public:
         using weight_type = typename socket_pipeline::weight_type;
@@ -137,7 +136,7 @@ namespace sbn {
 
         void handle(const sys::epoll_event& event) override {
             if (this->is_starting() && !event.err()) {
-                this->setstate(pipeline_state::started);
+                this->setstate(sbn::pipeline_state::started);
             }
             if (event.in()) {
                 fill(socket());
@@ -166,7 +165,7 @@ namespace sbn {
 
 }
 
-void sbn::local_server::handle(const sys::epoll_event& ev) {
+void sbnd::local_server::handle(const sys::epoll_event& ev) {
     sys::socket_address addr;
     sys::socket sock;
     while (this->_socket.accept(sock, addr)) {
@@ -184,15 +183,13 @@ void sbn::local_server::handle(const sys::epoll_event& ev) {
     }
 }
 
-sbn::socket_pipeline
-::socket_pipeline() {
+sbnd::socket_pipeline::socket_pipeline() {
     using namespace std::chrono;
     this->set_start_timeout(seconds(7));
 }
 
 void
-sbn::socket_pipeline
-::remove_server(const interface_address& interface_address) {
+sbnd::socket_pipeline::remove_server(const interface_address& interface_address) {
     lock_type lock(this->_mutex);
     server_iterator result = this->find_server(interface_address);
     if (result != this->_servers.end()) {
@@ -201,8 +198,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
-::remove_server(server_iterator result) {
+sbnd::socket_pipeline::remove_server(server_iterator result) {
     // copy interface_address
     interface_address interface_address = (*result)->interface_address();
     this->_servers.erase(result);
@@ -211,7 +207,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
+sbnd::socket_pipeline
 ::remove_client(const sys::socket_address& vaddr) {
     this->log("remove client _", vaddr);
     client_iterator result = this->_clients.find(vaddr);
@@ -221,7 +217,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
+sbnd::socket_pipeline
 ::remove_client(client_iterator result) {
     // copy socket_address
     sys::socket_address socket_address = result->first;
@@ -233,14 +229,14 @@ sbn::socket_pipeline
     if (result == this->_iterator) {
         this->advance_client_iterator();
     }
-    result->second->setstate(pipeline_state::stopped);
+    result->second->setstate(sbn::pipeline_state::stopped);
     this->_clients.erase(result);
     fire_event_kernels(
         new socket_pipeline_kernel(socket_pipeline_event::remove_client, socket_address));
 }
 
 void
-sbn::socket_pipeline
+sbnd::socket_pipeline
 ::add_server(const sys::socket_address& rhs, ip_address netmask) {
     using traits_type = sys::ipaddr_traits<ip_address>;
     lock_type lock(this->_mutex);
@@ -259,7 +255,7 @@ sbn::socket_pipeline
     }
 }
 
-void sbn::socket_pipeline::forward(foreign_kernel* hdr) {
+void sbnd::socket_pipeline::forward(sbn::foreign_kernel* hdr) {
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
     assert(hdr->is_foreign());
@@ -294,8 +290,8 @@ void sbn::socket_pipeline::forward(foreign_kernel* hdr) {
     }
 }
 
-typename sbn::socket_pipeline::server_iterator
-sbn::socket_pipeline
+typename sbnd::socket_pipeline::server_iterator
+sbnd::socket_pipeline
 ::find_server(const interface_address& interface_address) {
     typedef typename server_array::value_type value_type;
     return std::find_if(
@@ -307,8 +303,8 @@ sbn::socket_pipeline
     );
 }
 
-typename sbn::socket_pipeline::server_iterator
-sbn::socket_pipeline
+typename sbnd::socket_pipeline::server_iterator
+sbnd::socket_pipeline
 ::find_server(sys::fd_type fd) {
     typedef typename server_array::value_type value_type;
     return std::find_if(
@@ -320,8 +316,8 @@ sbn::socket_pipeline
     );
 }
 
-typename sbn::socket_pipeline::server_iterator
-sbn::socket_pipeline
+typename sbnd::socket_pipeline::server_iterator
+sbnd::socket_pipeline
 ::find_server(const sys::socket_address& dest) {
     typedef typename server_array::value_type value_type;
     return std::find_if(
@@ -334,16 +330,14 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
-::ensure_identity(kernel* k, const sys::socket_address& dest) {
+sbnd::socket_pipeline
+::ensure_identity(sbn::kernel* k, const sys::socket_address& dest) {
     if (dest.family() == sys::family_type::unix) {
         set_kernel_id_2(k, this->_counter);
         set_kernel_id_2(k->parent(), this->_counter);
     } else {
         if (this->_servers.empty()) {
-            k->return_to_parent(
-                exit_code::no_upstream_servers_available
-            );
+            k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
         } else {
             server_iterator result = this->find_server(dest);
             if (result == this->_servers.end()) {
@@ -356,7 +350,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
+sbnd::socket_pipeline
 ::find_next_client() {
     if (this->_clients.empty()) {
         return;
@@ -387,7 +381,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const client_ptr& s) {
+sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const client_ptr& s) {
     const bool save = !this->end_reached();
     sys::socket_address e;
     if (save) {
@@ -402,7 +396,7 @@ sbn::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const cli
 }
 
 void
-sbn::socket_pipeline
+sbnd::socket_pipeline
 ::process_kernels() {
 //	lock_type lock(this->_mutex);
     while (!this->_kernels.empty()) {
@@ -413,15 +407,15 @@ sbn::socket_pipeline
         } catch (const std::exception& err) {
             this->log_error(err);
             k->source(k->destination());
-            k->return_to_parent(exit_code::no_upstream_servers_available);
+            k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
             native_pipeline()->send(k);
         }
     }
 }
 
 void
-sbn::socket_pipeline
-::process_kernel(kernel* k) {
+sbnd::socket_pipeline
+::process_kernel(sbn::kernel* k) {
     // short circuit local server
     /*
        if (k->destination()) {
@@ -453,7 +447,7 @@ sbn::socket_pipeline
             }
         } else {
             if (this->_clients.empty()) {
-                k->return_to_parent(exit_code::no_upstream_servers_available);
+                k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
                 native_pipeline()->send(k);
             } else {
                 success = true;
@@ -482,7 +476,7 @@ sbn::socket_pipeline
 }
 
 auto
-sbn::socket_pipeline::find_or_create_client(const sys::socket_address& addr) -> client_ptr {
+sbnd::socket_pipeline::find_or_create_client(const sys::socket_address& addr) -> client_ptr {
     client_ptr ret;
     auto result = _clients.find(addr);
     if (result == _clients.end()) {
@@ -494,7 +488,7 @@ sbn::socket_pipeline::find_or_create_client(const sys::socket_address& addr) -> 
 }
 
 auto
-sbn::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_ptr {
+sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_ptr {
     if (addr.family() == sys::family_type::unix) {
         sys::socket s(sys::family_type::unix);
         s.setopt(sys::socket::pass_credentials);
@@ -521,7 +515,7 @@ sbn::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_p
 }
 
 auto
-sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vaddr) -> client_ptr {
+sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vaddr) -> client_ptr {
     sys::fd_type fd = sock.fd();
     if (vaddr.family() != sys::family_type::unix) {
         sock.set_user_timeout(this->_socket_timeout);
@@ -530,9 +524,9 @@ sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vadd
     s->socket_address(vaddr);
     s->parent(this);
     s->types(types());
-    s->setstate(pipeline_state::starting);
+    s->setstate(sbn::pipeline_state::starting);
     s->name(this->_name);
-    using f = kernel_proto_flag;
+    using f = sbn::kernel_proto_flag;
     s->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_client(vaddr, s);
     this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
@@ -541,21 +535,17 @@ sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vadd
 }
 
 void
-sbn::socket_pipeline
-::stop_client(const sys::socket_address& addr) {
+sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     lock_type lock(this->_mutex);
     auto result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
-        result->second->setstate(pipeline_state::stopped);
+        result->second->setstate(sbn::pipeline_state::stopped);
     }
 }
 
 void
-sbn::socket_pipeline
-::set_client_weight(
-    const sys::socket_address& addr,
-    weight_type new_weight
-) {
+sbnd::socket_pipeline::set_client_weight(const sys::socket_address& addr,
+                                         weight_type new_weight) {
     lock_type lock(this->_mutex);
     client_iterator result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
@@ -564,8 +554,7 @@ sbn::socket_pipeline
 }
 
 void
-sbn::socket_pipeline
-::print_state(std::ostream& out) {
+sbnd::socket_pipeline::print_state(std::ostream& out) {
     lock_type lock(this->_mutex);
     for (const auto& val : this->_servers) {
         this->log("server _", val);
@@ -575,9 +564,9 @@ sbn::socket_pipeline
     }
 }
 
-void sbn::socket_pipeline::fire_event_kernels(socket_pipeline_kernel* ev) {
+void sbnd::socket_pipeline::fire_event_kernels(socket_pipeline_kernel* ev) {
     if (instances()) {
-        kernel_instance_registry::sentry s(*instances());
+        auto g = instances()->guard();
         for (const auto& pair : *instances()) {
             ev->parent(ev);
             ev->principal(pair.second);

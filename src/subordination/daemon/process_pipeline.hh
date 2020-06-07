@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_CORE_PROCESS_PIPELINE_HH
-#define SUBORDINATION_CORE_PROCESS_PIPELINE_HH
+#ifndef SUBORDINATION_DAEMON_PROCESS_PIPELINE_HH
+#define SUBORDINATION_DAEMON_PROCESS_PIPELINE_HH
 
 #include <memory>
 #include <unordered_map>
@@ -11,15 +11,15 @@
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/process_handler.hh>
 
-namespace sbn {
+namespace sbnd {
 
-    class process_pipeline: public basic_socket_pipeline {
+    class process_pipeline: public sbn::basic_socket_pipeline {
 
     private:
-        using event_handler_type = process_handler;
-        using event_handler_ptr = std::shared_ptr<event_handler_type>;
-        using application_id_type = application::id_type;
-        using application_table = std::unordered_map<application_id_type,event_handler_ptr>;
+        using connection_type = sbn::process_handler;
+        using connection_ptr = std::shared_ptr<connection_type>;
+        using application_id_type = sbn::application::id_type;
+        using application_table = std::unordered_map<application_id_type,connection_ptr>;
         using app_iterator = typename application_table::iterator;
 
     private:
@@ -38,13 +38,13 @@ namespace sbn {
         process_pipeline& operator=(process_pipeline&) = default;
 
         inline void
-        add(const application& app) {
+        add(const sbn::application& app) {
             lock_type lock(this->_mutex);
             this->do_add(app);
         }
 
         void loop() override;
-        void forward(foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel* hdr) override;
 
         inline void
         allow_root(bool rhs) noexcept {
@@ -53,17 +53,12 @@ namespace sbn {
 
     protected:
 
-        void
-        process_kernels() override;
+        void process_kernels() override;
 
     private:
 
-        app_iterator
-        do_add(const application& app);
-
-        void
-        process_kernel(kernel* k);
-
+        app_iterator do_add(const sbn::application& app);
+        void process_kernel(sbn::kernel* k);
         void wait_loop();
 
         inline app_iterator
