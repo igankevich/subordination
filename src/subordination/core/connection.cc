@@ -4,7 +4,6 @@
 #include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
-#include <subordination/core/kernel_error.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 
 namespace  {
@@ -96,9 +95,7 @@ void sbn::connection::write_kernel(kernel* k) noexcept {
             k->source(), k->destination(), k->application_id());
         k->write_header(this->_output_buffer);
         this->_output_buffer.write(k);
-    } catch (const kernel_error& err) {
-        log_write_error(err);
-    } catch (const error& err) {
+    } catch (const sbn::error& err) {
         log_write_error(err);
     } catch (const std::exception& err) {
         log_write_error(err.what());
@@ -127,9 +124,7 @@ void sbn::connection::receive_kernels(const application* from_application,
                     this->_parent->native_pipeline()->send(k);
                 }
             }
-        } catch (const kernel_error& err) {
-            log_read_error(err);
-        } catch (const error& err) {
+        } catch (const sbn::error& err) {
             log_read_error(err);
         } catch (const std::exception& err) {
             log_read_error(err.what());

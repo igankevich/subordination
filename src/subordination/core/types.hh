@@ -5,30 +5,28 @@
 
 namespace sbn {
 
+    class error;
     class foreign_kernel;
-    class kenel_type_error;
     class kernel;
     class kernel_base;
     class kernel_buffer;
-    class kernel_error;
     class kernel_frame;
     class kernel_instance_registry;
     class kernel_read_guard;
     class kernel_type;
     class kernel_type_registry;
     class kernel_write_guard;
+    class type_error;
     enum class exit_code: sys::u16;
     enum class kernel_flag: sys::u32;
 
     class Factory;
     class application;
     class application_kernel;
-    class basic_pipeline;
     class basic_socket_pipeline;
     class child_process_pipeline;
     class connection;
     class kernel_proto_flag;
-    class kernel_protocol;
     class parallel_pipeline;
     class pipeline;
     class pipeline_base;

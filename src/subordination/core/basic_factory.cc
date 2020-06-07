@@ -20,17 +20,13 @@ _local(sys::thread_concurrency()) {
 }
 
 void sbn::Factory::start() {
-    this->setstate(pipeline_state::starting);
     this->_local.start();
     this->_remote.start();
-    this->setstate(pipeline_state::started);
 }
 
 void sbn::Factory::stop() {
-    this->setstate(pipeline_state::stopping);
     this->_local.stop();
     this->_remote.stop();
-    this->setstate(pipeline_state::stopped);
 }
 
 void sbn::Factory::wait() {

@@ -12,14 +12,19 @@
 
 #include <subordination/core/error.hh>
 #include <subordination/core/error_handler.hh>
-#include <subordination/core/kernel_error.hh>
+
+template <class ... Args>
+inline void
+message(const Args& ... args) {
+    sys::log_message("error", args ...);
+}
 
 void sbn::print_backtrace(int sig) noexcept {
     char name[16] {'\0'};
     #if defined(UNISTDX_HAVE_PRCTL)
     ::prctl(PR_GET_NAME, name);
     #endif
-    sys::log_message("error", "process \"_\" caught _", name, sys::signal(sig));
+    message("process \"_\" caught _", name, sys::signal(sig));
     sys::backtrace(STDERR_FILENO);
     std::exit(sig);
 }
@@ -33,16 +38,12 @@ void sbn::print_error() noexcept {
     if (std::exception_ptr ptr = std::current_exception()) {
         try {
             std::rethrow_exception(ptr);
-        } catch (const kernel_error& err) {
-            sys::log_message("error", "error=_, process=_", err, name);
         } catch (const error& err) {
-            sys::log_message("error", "error=_, process=_", err, name);
-        } catch (const sys::bad_call& err) {
-            sys::log_message("error", "error=_, process=_", err, name);
+            message("error=_, process=_", err, name);
         } catch (const std::exception& err) {
-            sys::log_message("error", "error=_, process=_", err.what(), name);
+            message("error=_, process=_", err.what(), name);
         } catch (...) {
-            sys::log_message("error", "error=_, process=_", "<unknown>", name);
+            message("error=_, process=_", "<unknown>", name);
         }
         sys::backtrace(STDERR_FILENO);
     }

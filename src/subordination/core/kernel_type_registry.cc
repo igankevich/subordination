@@ -1,9 +1,8 @@
+#include <subordination/core/error.hh>
 #include <subordination/core/kernel_type_registry.hh>
 
 #include <algorithm>
 #include <ostream>
-
-#include <subordination/core/kernel_error.hh>
 
 sbn::kernel_type_registry::const_iterator
 sbn::kernel_type_registry::find(id_type id) const noexcept {
@@ -22,12 +21,12 @@ sbn::kernel_type_registry::add(kernel_type type) {
     const_iterator result;
     result = this->find(type.index());
     if (result != this->end()) {
-        SUBORDINATION_THROW(kenel_type_error, type, *result);
+        throw type_error("kernel type index ", type.index().name(), " already exists");
     }
     if (!type.has_id()) { throw std::invalid_argument("bad id"); }
     result = this->find(type.id());
     if (result != this->end()) {
-        SUBORDINATION_THROW(kenel_type_error, type, *result);
+        throw type_error("kernel type id ", type.id(), " already exists");
     }
     this->_types.emplace_back(type);
 }

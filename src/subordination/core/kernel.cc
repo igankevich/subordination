@@ -79,7 +79,7 @@ sbn::kernel::act() {}
 
 void
 sbn::kernel::react(kernel*) {
-    SUBORDINATION_THROW(error, "empty react");
+    throw ::sbn::error("empty react");
 }
 
 void

@@ -1,19 +1,21 @@
 #include <cstring>
 
+#include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
-#include <subordination/core/kernel_error.hh>
 #include <subordination/core/kernel_type_registry.hh>
 
 namespace  {
 
     inline void write_native(sbn::kernel_buffer* out, const sbn::kernel* k) {
-        if (!out->types()) { throw std::invalid_argument("no types"); }
+        if (!out->types()) { throw sbn::error("no kernel types"); }
         const auto& types = *out->types();
         auto g = types.guard();
         auto type = types.find(typeid(*k));
-        if (type == types.end()) { throw std::invalid_argument("kernel type is null"); }
+        if (type == types.end()) {
+            throw sbn::type_error("no kernel type for ", typeid(*k).name());
+        }
         out->write(type->id());
         k->write(*out);
     }
@@ -21,11 +23,11 @@ namespace  {
     inline sbn::kernel* read_native(sbn::kernel_buffer* in) {
         sbn::kernel_type::id_type id = 0;
         in->read(id);
-        if (!in->types()) { throw std::invalid_argument("no types"); }
+        if (!in->types()) { throw sbn::error("no kernel types"); }
         const auto& types = *in->types();
         auto g = types.guard();
         auto type = types.find(id);
-        if (type == types.end()) { throw sbn::kernel_error("unknown kernel type", id); }
+        if (type == types.end()) { throw sbn::type_error("no kernel type for ", id); }
         auto k = type->construct();
         k->read(*in);
         return k;

@@ -12,7 +12,7 @@
 
 namespace sbn {
 
-    class Factory: public pipeline_base {
+    class Factory {
 
     private:
         parallel_pipeline _local;

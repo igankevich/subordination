@@ -323,7 +323,7 @@ struct Station_kernel: public sbn::kernel {
                 "error while reading file \"_\"",
                 filename
             );
-            SUBORDINATION_THROW(error, "error while reading file");
+            throw sbn::error("error while reading file");
         }
         return ret;
     }
@@ -370,7 +370,7 @@ struct Station_kernel: public sbn::kernel {
                         "unable to open file \"_\" for reading",
                         ob.filename()
                     );
-                    SUBORDINATION_THROW(error, "error opening a file for reading");
+                    throw sbn::error("error opening a file for reading");
                 }
                 char buf[64];
                 int count = 0;

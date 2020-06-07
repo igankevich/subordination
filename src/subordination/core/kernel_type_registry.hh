@@ -6,7 +6,6 @@
 
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_type.hh>
-#include <subordination/core/kernel_type_error.hh>
 
 namespace sbn {
 

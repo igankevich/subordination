@@ -21,7 +21,7 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
     // disallow running as superuser/supergroup
     if (!this->_allowroot) {
         if (app.uid() == sys::superuser() || app.gid() == sys::supergroup()) {
-            throw std::runtime_error("executing as superuser/supergroup is disallowed");
+            throw sbn::error("executing as superuser/supergroup is disallowed");
         }
     }
     sys::two_way_pipe data_pipe;
@@ -100,7 +100,7 @@ sbnd::process_pipeline::forward(sbn::foreign_kernel* hdr) {
             #endif
             result = this->do_add(*a);
         } else {
-            SUBORDINATION_THROW(error, "bad application id");
+            throw sbn::type_error("bad application id ", hdr->application_id());
         }
     }
     //#if defined(SBN_DEBUG)
@@ -130,7 +130,7 @@ void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
     } else {
         app_iterator result = this->find_by_app_id(k->application_id());
         if (result == this->_apps.end()) {
-            SUBORDINATION_THROW(error, "bad application id");
+            throw sbn::type_error("bad application id ", k->application_id());
         }
         result->second->send(k);
     }
