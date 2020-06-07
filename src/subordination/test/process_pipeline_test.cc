@@ -2,6 +2,7 @@
 
 #include <subordination/core/child_process_pipeline.hh>
 #include <subordination/core/error_handler.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/process_pipeline.hh>
 #include <subordination/test/config.hh>
@@ -50,7 +51,7 @@ public:
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         message("Test_socket::write()");
         kernel::write(out);
         out << uint32_t(_data.size());
@@ -59,7 +60,7 @@ public:
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         message("Test_socket::read()");
         kernel::read(in);
         uint32_t sz;

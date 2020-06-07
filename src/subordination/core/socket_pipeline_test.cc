@@ -5,6 +5,7 @@
 #include <unistdx/net/interface_address>
 
 #include <subordination/core/error_handler.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/socket_pipeline.hh>
 #include <subordination/test/datum.hh>
@@ -94,16 +95,14 @@ struct Test_socket: public sbn::kernel {
         }
     }
 
-    void
-    write(sys::pstream& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << uint32_t(_data.size());
         for (size_t i=0; i<_data.size(); ++i)
             out << _data[i];
     }
 
-    void
-    read(sys::pstream& in) override {
+    void read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         uint32_t sz;
         in >> sz;

@@ -1,4 +1,5 @@
-#include <subordination/core/application.hh>
+#include <grp.h>
+#include <stdlib.h>
 
 #include <algorithm>
 #include <limits>
@@ -6,9 +7,6 @@
 #include <random>
 #include <sstream>
 #include <utility>
-
-#include <grp.h>
-#include <stdlib.h>
 
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
@@ -19,6 +17,9 @@
 #include <unistdx/io/fildes>
 #include <unistdx/it/intersperse_iterator>
 
+#include <subordination/core/application.hh>
+#include <subordination/core/kernel_buffer.hh>
+
 #define SUBORDINATION_ENV_APPLICATION_ID "SUBORDINATION_APPLICATION_ID"
 #define SUBORDINATION_ENV_PIPE_IN "SUBORDINATION_PIPE_IN"
 #define SUBORDINATION_ENV_PIPE_OUT "SUBORDINATION_PIPE_OUT"
@@ -28,20 +29,20 @@ namespace {
 
     std::independent_bits_engine<
         std::random_device,
-        std::numeric_limits<char>::digits * sizeof(sbn::application_type),
-        sbn::application_type> rng;
+        std::numeric_limits<char>::digits * sizeof(sbn::application::id_type),
+        sbn::application::id_type> rng;
 
     sys::spin_mutex rng_mutex;
 
-    inline sbn::application_type
+    inline sbn::application::id_type
     generate_application_id() noexcept {
         sys::simple_lock<sys::spin_mutex> lock(rng_mutex);
         return rng();
     }
 
-    inline sbn::application_type
+    inline sbn::application::id_type
     get_appliction_id() noexcept {
-        sbn::application_type id = 0;
+        sbn::application::id_type id = 0;
         if (const char* s = ::getenv(SUBORDINATION_ENV_APPLICATION_ID)) {
             std::stringstream str(s);
             str >> id;
@@ -64,7 +65,7 @@ namespace {
         return !std::getenv(SUBORDINATION_ENV_SLAVE);
     }
 
-    sbn::application_type this_app = get_appliction_id();
+    sbn::application::id_type this_app = get_appliction_id();
     sys::fd_type this_pipe_in = get_pipe_fd(SUBORDINATION_ENV_PIPE_IN);
     sys::fd_type this_pipe_out = get_pipe_fd(SUBORDINATION_ENV_PIPE_OUT);
     bool this_is_master = get_master();
@@ -95,8 +96,8 @@ namespace {
     }
     */
 
-    void
-    write_vector(sys::pstream& out, const std::vector<std::string>& rhs) {
+    template <class Stream> void
+    write_vector(Stream& out, const std::vector<std::string>& rhs) {
         const uint32_t n = rhs.size();
         out << n;
         for (uint32_t i=0; i<n; ++i) {
@@ -104,8 +105,8 @@ namespace {
         }
     }
 
-    void
-    read_vector(sys::pstream& in, std::vector<std::string>& rhs) {
+    template <class Stream> void
+    read_vector(Stream& in, std::vector<std::string>& rhs) {
         rhs.clear();
         uint32_t n = 0;
         in >> n;
@@ -145,47 +146,20 @@ sbn::operator<<(std::ostream& out, const application& rhs) {
         "env",
         rhs._env,
         "wd",
-        rhs._workdir,
+        rhs._working_directory,
         "role",
         rhs.role()
         );
 }
 
-sbn::application_type
-sbn::this_application
-::get_id() noexcept {
-    return this_app;
-}
-
-sys::fd_type
-sbn::this_application
-::get_input_fd() noexcept {
-    return this_pipe_in;
-}
-
-sys::fd_type
-sbn::this_application
-::get_output_fd() noexcept {
-    return this_pipe_out;
-}
-
-bool
-sbn::this_application
-::is_master() noexcept {
-    return this_is_master;
-}
-
-bool
-sbn::this_application
-::is_slave() noexcept {
-    return !this_is_master;
-}
+sbn::application::id_type sbn::this_application::get_id() noexcept { return this_app; }
+sys::fd_type sbn::this_application::get_input_fd() noexcept { return this_pipe_in; }
+sys::fd_type sbn::this_application::get_output_fd() noexcept { return this_pipe_out; }
+bool sbn::this_application::is_master() noexcept { return this_is_master; }
+bool sbn::this_application::is_slave() noexcept { return !this_is_master; }
 
 sbn::application
-::application(
-    const container_type& args,
-    const container_type& env
-):
+::application(const string_array& args, const string_array& env):
 _id(generate_application_id()),
 _uid(sys::this_process::user()),
 _gid(sys::this_process::group()),
@@ -196,9 +170,7 @@ _env(env) {
     }
 }
 
-int
-sbn::application
-::execute(const sys::two_way_pipe& pipe) const {
+int sbn::application::execute(const sys::two_way_pipe& pipe) const {
     sys::argstream args, env;
     for (const std::string& a : this->_args) {
         args.append(a);
@@ -210,12 +182,7 @@ sbn::application
     env.append(generate_env(SUBORDINATION_ENV_APPLICATION_ID, this->_id));
     // pass in/out file descriptors
     env.append(generate_env(SUBORDINATION_ENV_PIPE_IN, pipe.child_in().fd()));
-    env.append(
-        generate_env(
-            SUBORDINATION_ENV_PIPE_OUT,
-            pipe.child_out().fd()
-        )
-    );
+    env.append(generate_env(SUBORDINATION_ENV_PIPE_OUT, pipe.child_out().fd()));
     // pass role
     if (this->is_slave()) {
         env.append(generate_env(SUBORDINATION_ENV_SLAVE, 1));
@@ -234,12 +201,6 @@ sbn::application
     } else {
         UNISTDX_CHECK(::putenv(const_cast<char*>(result->data())));
     }
-    // disallow running as superuser/supergroup
-    if (!this->_allowroot) {
-        if (this->_uid == sys::superuser() || this->_gid == sys::supergroup()) {
-            throw std::runtime_error("executing as superuser/supergroup is disallowed");
-        }
-    }
     sys::log_message("app", "execute");
     /*
     // redirect stdout/stderr
@@ -256,45 +217,35 @@ sbn::application
     }*/
     //sys::log_message("app", "execute _", env);
     // switch user and group IDs
-    if (sys::this_process::user() != this->_uid ||
-        sys::this_process::group() != this->_gid) {
-        sys::this_process::set_identity(this->_uid, this->_gid);
-    }
+    sys::this_process::set_identity(this->_uid, this->_gid);
     // change working directory
-    if (!this->_workdir.empty()) {
-        sys::this_process::workdir(this->_workdir);
+    if (!this->_working_directory.empty()) {
+        sys::this_process::workdir(this->_working_directory);
     }
     sys::this_process::execute_command(args.argv(), env.argv());
     return 0;
 }
 
-void
-sbn::swap(application& lhs, application& rhs) {
-    std::swap(lhs._id, rhs._id);
-    std::swap(lhs._uid, rhs._uid);
-    std::swap(lhs._gid, rhs._gid);
-    std::swap(lhs._args, rhs._args);
-    std::swap(lhs._env, rhs._env);
-    std::swap(lhs._workdir, rhs._workdir);
-    std::swap(lhs._allowroot, rhs._allowroot);
-}
-
-void
-sbn::application
-::write(sys::pstream& out) const {
+void sbn::application::write(kernel_buffer& out) const {
     out << this->_id << this->_uid << this->_gid;
     write_vector(out, this->_args);
     write_vector(out, this->_env);
-    out << this->_workdir;
+    out << this->_working_directory;
 }
 
-void
-sbn::application
-::read(sys::pstream& in) {
+void sbn::application::read(kernel_buffer& in) {
     in >> this->_id >> this->_uid >> this->_gid;
     read_vector(in, this->_args);
     read_vector(in, this->_env);
-    in >> this->_workdir;
+    in >> this->_working_directory;
+}
+
+sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const application& rhs) {
+    rhs.write(out); return out;
+}
+
+sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, application& rhs) {
+    rhs.read(in); return in;
 }
 
 std::ostream&

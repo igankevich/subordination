@@ -5,9 +5,9 @@
 #include <unordered_set>
 
 #include <unistdx/net/interface_address>
-#include <unistdx/net/pstream>
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/types.hh>
 #include <subordination/daemon/hierarchy_node.hh>
 
 namespace sbnd {
@@ -158,8 +158,8 @@ namespace sbnd {
         friend std::ostream&
         operator<<(std::ostream& out, const Hierarchy<X>& rhs);
 
-        void write(sys::pstream& out) const;
-        void read(sys::pstream& in);
+        void write(sbn::kernel_buffer& out) const;
+        void read(sbn::kernel_buffer& in);
 
     };
 
@@ -167,13 +167,13 @@ namespace sbnd {
     std::ostream&
     operator<<(std::ostream& out, const Hierarchy<X>& rhs);
 
-    template <class T> inline sys::pstream&
-    operator<<(sys::pstream& out, const Hierarchy<T>& rhs) {
+    template <class T> inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const Hierarchy<T>& rhs) {
         rhs.write(out); return out;
     }
 
-    template <class T> inline sys::pstream&
-    operator>>(sys::pstream& in, Hierarchy<T>& rhs) {
+    template <class T> inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, Hierarchy<T>& rhs) {
         rhs.read(in); return in;
     }
 

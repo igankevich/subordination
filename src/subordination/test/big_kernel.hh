@@ -18,7 +18,7 @@ struct Big_kernel: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << uint32_t(_data.size());
         for (size_t i=0; i<_data.size(); ++i)
@@ -26,7 +26,7 @@ struct Big_kernel: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         uint32_t sz;
         in >> sz;

@@ -8,10 +8,11 @@
 #include <unistdx/io/epoll_event>
 #include <unistdx/io/poller>
 #include <unistdx/net/socket_address>
+#include <unistdx/util/system>
 
 #include <subordination/core/kernel.hh>
+#include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/kernel_proto_flag.hh>
-#include <subordination/core/kstream.hh>
 #include <subordination/core/pipeline_base.hh>
 #include <subordination/core/types.hh>
 
@@ -36,13 +37,11 @@ namespace sbn {
         id_type _counter = 0;
 
     protected:
-        kstream* _stream = nullptr;
+        kernel_buffer _output_buffer{sys::page_size()};
+        kernel_buffer _input_buffer{sys::page_size()};
         sys::socket_address _socket_address;
 
     public:
-
-        inline explicit connection(kstream* stream): _stream(stream) {}
-
         connection() = default;
         ~connection() = default;
         connection(const connection&) = delete;
@@ -102,6 +101,20 @@ namespace sbn {
     protected:
 
         void recover_kernels(bool downstream);
+
+        template <class Sink>
+        inline void flush(Sink& sink) {
+            this->_output_buffer.flip();
+            this->_output_buffer.flush(sink);
+            this->_output_buffer.compact();
+        }
+
+        template <class Source>
+        inline void fill(Source& source) {
+            this->_input_buffer.fill(source);
+            this->_input_buffer.flip();
+            log("remaining _", this->_input_buffer.remaining());
+        }
 
     private:
 

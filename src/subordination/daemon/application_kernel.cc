@@ -5,7 +5,7 @@
 namespace {
 
     void
-    write_vector(sys::pstream& out, const std::vector<std::string>& rhs) {
+    write_vector(sbn::kernel_buffer& out, const std::vector<std::string>& rhs) {
         const uint32_t n = rhs.size();
         out << n;
         for (uint32_t i=0; i<n; ++i) {
@@ -14,7 +14,7 @@ namespace {
     }
 
     void
-    read_vector(sys::pstream& in, std::vector<std::string>& rhs) {
+    read_vector(sbn::kernel_buffer& in, std::vector<std::string>& rhs) {
         rhs.clear();
         uint32_t n = 0;
         in >> n;
@@ -27,24 +27,24 @@ namespace {
 }
 
 void
-sbnd::application_kernel::write(sys::pstream& out) const {
+sbnd::application_kernel::write(sbn::kernel_buffer& out) const {
     kernel::write(out);
     write_vector(out, this->_args);
     write_vector(out, this->_env);
-    out << this->_workdir << this->_error << this->_application;
+    out << this->_working_directory << this->_error << this->_application;
 }
 
 void
-sbnd::application_kernel::read(sys::pstream& in) {
+sbnd::application_kernel::read(sbn::kernel_buffer& in) {
     kernel::read(in);
     read_vector(in, this->_args);
     read_vector(in, this->_env);
-    in >> this->_workdir >> this->_error >> this->_application;
+    in >> this->_working_directory >> this->_error >> this->_application;
 }
 
 void sbnd::application_kernel::act() {
     ::sbn::application app(arguments(), environment());
-    app.workdir(workdir());
+    app.working_directory(working_directory());
     app.set_credentials(credentials().uid, credentials().gid);
     app.make_master();
     try {

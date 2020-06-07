@@ -9,7 +9,7 @@ sbnd::prober::act() {
 void
 sbnd::prober::react(sbn::kernel* k) {
     probe* p = dynamic_cast<probe*>(k);
-    if (p->from() == this->_newprinc) {
+    if (p->source() == this->_newprinc) {
         this->return_code(p->return_code());
         if (this->return_code() == sbn::exit_code::success && this->_oldprinc) {
             this->send_probe(this->_oldprinc);
@@ -25,7 +25,7 @@ void
 sbnd::prober::send_probe(const sys::socket_address& dest) {
     ++this->_nprobes;
     probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
-    p->to(dest);
+    p->destination(dest);
     p->set_principal_id(1); // TODO
     p->parent(this);
     factory.remote().send(p);

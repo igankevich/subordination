@@ -5,6 +5,7 @@
 #include <subordination/config.hh>
 #include <subordination/core/application_kernel.hh>
 #include <subordination/core/error_handler.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/small_factory.hh>
 
 using sbn::application_kernel;
@@ -21,7 +22,7 @@ new_application_kernel(int argc, char* argv[]) {
         env.emplace_back(*first);
     }
     application_kernel* k = new application_kernel(args, env);
-    k->to(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+    k->destination(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
     return k;
 }
 

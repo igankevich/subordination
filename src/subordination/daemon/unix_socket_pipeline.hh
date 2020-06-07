@@ -6,12 +6,10 @@
 #include <stdexcept>
 #include <utility>
 
-#include <unistdx/io/fildesbuf>
 #include <unistdx/net/socket>
 #include <unistdx/net/socket_address>
 
 #include <subordination/core/basic_socket_pipeline.hh>
-#include <subordination/core/kstream.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/application_kernel.hh>
 
@@ -20,33 +18,17 @@ namespace sbnd {
     class unix_socket_client: public sbn::connection {
 
     private:
-        using kernelbuf_type =
-            sbn::basic_kernelbuf<sys::basic_fildesbuf<char,std::char_traits<char>,sys::socket>>;
-        using kernelbuf_ptr = std::unique_ptr<kernelbuf_type>;
-
-    private:
-        kernelbuf_ptr _buffer;
-        sbn::kstream _stream;
+        sys::socket _socket;
 
     public:
 
-        explicit unix_socket_client(sys::socket&& sock);
+        explicit unix_socket_client(sys::socket&& socket);
 
         void handle(const sys::epoll_event& event) override;
         void flush() override;
 
-        inline sys::fd_type fd() const noexcept { return this->_buffer->fd().fd(); }
-        inline const sys::socket& socket() const noexcept { return this->_buffer->fd(); }
-
-        inline void
-        name(const char* rhs) noexcept {
-            this->pipeline_base::name(rhs);
-            #if defined(SBN_DEBUG)
-            if (this->_buffer) {
-                this->_buffer->set_name(rhs);
-            }
-            #endif
-        }
+        inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
+        inline const sys::socket& socket() const noexcept { return this->_socket; }
 
     };
 

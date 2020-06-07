@@ -1,34 +1,34 @@
 #ifndef SUBORDINATION_CORE_TYPES_HH
 #define SUBORDINATION_CORE_TYPES_HH
 
-#include <cstdint>
+#include <unistdx/base/types>
 
 namespace sbn {
 
-    template<class Base>
-    class basic_kernelbuf;
     class foreign_kernel;
     class kenel_type_error;
     class kernel;
     class kernel_base;
+    class kernel_buffer;
     class kernel_error;
+    class kernel_frame;
     class kernel_header;
     class kernel_instance_registry;
+    class kernel_read_guard;
     class kernel_type;
     class kernel_type_registry;
-    class kstream;
+    class kernel_write_guard;
     class mobile_kernel;
-    enum class exit_code: std::uint16_t;
-    enum class kernel_flag;
+    enum class exit_code: sys::u16;
+    enum class kernel_flag: sys::u32;
 
     class Factory;
     class application;
     class application_kernel;
-    class connection;
     class basic_pipeline;
     class basic_socket_pipeline;
     class child_process_pipeline;
-    class kernel_header_flag;
+    class connection;
     class kernel_proto_flag;
     class kernel_protocol;
     class local_server;
@@ -40,6 +40,7 @@ namespace sbn {
     class remote_client;
     class socket_pipeline;
     class socket_pipeline_kernel;
+    enum class kernel_header_flag: sys::u8;
     enum class process_role_type;
     enum class role_type;
     enum class socket_pipeline_event;

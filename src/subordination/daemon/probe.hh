@@ -35,11 +35,8 @@ namespace sbnd {
         _newprinc(newprinc)
         {}
 
-        void
-        write(sys::pstream& out) const override;
-
-        void
-        read(sys::pstream& in) override;
+        void write(sbn::kernel_buffer& out) const override;
+        void read(sbn::kernel_buffer& in) override;
 
         inline const sys::socket_address&
         new_principal() const noexcept {

@@ -12,7 +12,6 @@
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
-#include <subordination/core/kstream.hh>
 #include <subordination/core/local_server.hh>
 #include <subordination/core/types.hh>
 

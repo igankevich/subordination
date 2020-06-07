@@ -4,19 +4,19 @@
 #include <unordered_set>
 #include <vector>
 
-#include <unistdx/net/pstream>
+#include <subordination/core/kernel_buffer.hh>
 
 namespace sbnd {
 
     template <class T> inline void
-    write_set(sys::pstream& out, const std::unordered_set<T>& rhs) {
+    write_set(sbn::kernel_buffer& out, const std::unordered_set<T>& rhs) {
         const uint32_t n = rhs.size();
         out << n;
         for (const auto& v : rhs) { out << v; }
     }
 
     template <class T> inline void
-    read_set(sys::pstream& in, std::unordered_set<T>& rhs) {
+    read_set(sbn::kernel_buffer& in, std::unordered_set<T>& rhs) {
         rhs.clear();
         uint32_t n = 0;
         in >> n;
@@ -28,16 +28,16 @@ namespace sbnd {
         }
     }
 
-    template <class T> inline sys::pstream&
-    operator<<(sys::pstream& out, const std::vector<T>& rhs) {
+    template <class T> inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::vector<T>& rhs) {
         const uint32_t n = rhs.size();
         out << n;
         for (const auto& v : rhs) { out << v; }
         return out;
     }
 
-    template <class T> inline sys::pstream&
-    operator>>(sys::pstream& in, std::vector<T>& rhs) {
+    template <class T> inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::vector<T>& rhs) {
         rhs.clear();
         uint32_t n = 0;
         in >> n;

@@ -48,15 +48,4 @@ sbn::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
     return out;
 }
 
-sbn::kernel*
-sbn::kernel_type_registry::read_object(sys::pstream& packet) {
-    id_type id;
-    packet >> id;
-    const_iterator result = this->find(id);
-    if (result == this->end()) {
-        throw kernel_error("unknown kernel type", id);
-    }
-    return result->read(packet);
-}
-
 sbn::kernel_type_registry sbn::types;

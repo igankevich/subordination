@@ -4,7 +4,7 @@
 #include <unistdx/io/two_way_pipe>
 
 #include <subordination/core/application.hh>
-#include <subordination/core/kstream.hh>
+#include <subordination/core/error.hh>
 #include <subordination/core/process_pipeline.hh>
 
 void sbn::process_pipeline::loop() {
@@ -17,9 +17,13 @@ void sbn::process_pipeline::loop() {
 }
 
 typename sbn::process_pipeline::app_iterator
-sbn::process_pipeline
-::do_add(const application& app) {
-    app.allow_root(this->_allowroot);
+sbn::process_pipeline::do_add(const application& app) {
+    // disallow running as superuser/supergroup
+    if (!this->_allowroot) {
+        if (app.uid() == sys::superuser() || app.gid() == sys::supergroup()) {
+            throw std::runtime_error("executing as superuser/supergroup is disallowed");
+        }
+    }
     sys::two_way_pipe data_pipe;
     const sys::process& p = _procs.emplace(
         [&app,this,&data_pipe] () {
@@ -64,7 +68,6 @@ sbn::process_pipeline
     sys::fd_type parent_out = data_pipe.parent_out().fd();
     auto child = std::make_shared<event_handler_type>(p.id(), std::move(data_pipe), app);
     child->parent(this);
-    child->setf(kernel_proto_flag::prepend_source_and_destination);
     child->name(this->_name);
     this->log(
         "executing app=_,credentials=_:_,role=_,pid=_",
@@ -88,9 +91,9 @@ sbn::process_pipeline
     #endif
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
-    app_iterator result = this->find_by_app_id(hdr->app());
+    app_iterator result = this->find_by_app_id(hdr->application_id());
     if (result == this->_apps.end()) {
-        if (const application* a = hdr->aptr()) {
+        if (const application* a = hdr->application()) {
             a->make_slave();
             #if defined(SBN_DEBUG)
             this->log("fwd: add app _ ", *a);
@@ -125,7 +128,7 @@ void sbn::process_pipeline::process_kernel(kernel* k) {
             }
         );
     } else {
-        app_iterator result = this->find_by_app_id(k->app());
+        app_iterator result = this->find_by_app_id(k->application_id());
         if (result == this->_apps.end()) {
             SUBORDINATION_THROW(error, "bad application id");
         }
@@ -170,7 +173,7 @@ sbn::process_pipeline
         this->_apps.begin(),
         this->_apps.end(),
         [pid] (const value_type& rhs) {
-            return rhs.second->childpid() == pid;
+            return rhs.second->child_process_id() == pid;
         }
     );
 }

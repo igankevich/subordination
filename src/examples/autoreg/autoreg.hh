@@ -16,8 +16,8 @@
 namespace std {
 
     template<class T>
-    sys::pstream&
-    operator<<(sys::pstream& out, const std::valarray<T>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::valarray<T>& rhs) {
         out << uint32_t(rhs.size());
         for (size_t i=0; i<rhs.size(); ++i) {
             out << rhs[i];
@@ -26,8 +26,8 @@ namespace std {
     }
 
     template<class T>
-    sys::pstream&
-    operator>>(sys::pstream& in, std::valarray<T>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::valarray<T>& rhs) {
         uint32_t n = 0;
         in >> n;
         rhs.resize(n);
@@ -643,7 +643,7 @@ struct Generator1: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << part << part2;
         out << phi << fsize;
@@ -655,7 +655,7 @@ struct Generator1: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> part >> part2;
         in >> phi >> fsize;
@@ -738,7 +738,7 @@ struct Wave_surface_generator: public sbn::kernel {
         sys::log_message(
             "autoreg",
             "generator returned from _, completed _ of _",
-            child->from(), count+1, grid.num_parts()
+            child->source(), count+1, grid.num_parts()
         );
         #endif
         if (++count == grid.num_parts()) {
@@ -747,7 +747,7 @@ struct Wave_surface_generator: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << phi;
         out << fsize;
@@ -761,7 +761,7 @@ struct Wave_surface_generator: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> phi;
         in >> fsize;

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <unistdx/base/log_message>
-#include <unistdx/fs/canonical_path>
+#include <unistdx/fs/path>
 #include <unistdx/net/socket>
 
 #include <subordination/core/kernel.hh>
@@ -21,8 +21,8 @@ namespace sbnd {
     private:
         container_type _args, _env;
         std::string _error;
-        sbn::application_type _application = 0;
-        sys::canonical_path _workdir;
+        sbn::application::id_type _application = 0;
+        sys::path _working_directory;
         sys::user_credentials _credentials;
 
     public:
@@ -34,7 +34,7 @@ namespace sbnd {
         ):
         _args(args),
         _env(env),
-        _workdir(".")
+        _working_directory(".")
         {}
 
         application_kernel() = default;
@@ -62,24 +62,24 @@ namespace sbnd {
             return this->_error;
         }
 
-        sbn::application_type
+        sbn::application::id_type
         application() const noexcept {
             return this->_application;
         }
 
         inline void
-        application(sbn::application_type rhs) noexcept {
+        application(sbn::application::id_type rhs) noexcept {
             this->_application = rhs;
         }
 
-        const sys::canonical_path&
-        workdir() const noexcept {
-            return this->_workdir;
+        const sys::path&
+        working_directory() const noexcept {
+            return this->_working_directory;
         }
 
         inline void
-        workdir(const sys::canonical_path& rhs) {
-            this->_workdir = rhs;
+        working_directory(const sys::path& rhs) {
+            this->_working_directory = rhs;
         }
 
         inline const sys::user_credentials& credentials() const noexcept {
@@ -90,11 +90,8 @@ namespace sbnd {
             this->_credentials = rhs;
         }
 
-        void
-        write(sys::pstream& out) const override;
-
-        void
-        read(sys::pstream& in) override;
+        void write(sbn::kernel_buffer& out) const override;
+        void read(sbn::kernel_buffer& in) override;
 
         template <class ... Args>
         inline void

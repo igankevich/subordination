@@ -1,9 +1,8 @@
 #ifndef SUBORDINATION_CORE_KERNEL_HH
 #define SUBORDINATION_CORE_KERNEL_HH
 
-#include <unistdx/net/pstream>
-
 #include <subordination/core/mobile_kernel.hh>
+#include <subordination/core/types.hh>
 
 namespace sbn {
 
@@ -103,11 +102,8 @@ namespace sbn {
             return !this->_principal && !this->_parent;
         }
 
-        void
-        read(sys::pstream& in) override;
-
-        void
-        write(sys::pstream& out) const override;
+        void read(kernel_buffer& in) override;
+        void write(kernel_buffer& out) const override;
 
         /// \brief Performs the task or launches subordinate kernels to do so.
         virtual void act();
@@ -151,8 +147,8 @@ namespace sbn {
         inline void
         return_to_parent(exit_code ret = exit_code::success) noexcept {
             return_to(_parent, ret);
-            if (this->from()) {
-                this->to(this->from());
+            if (source()) {
+                this->destination(source());
             }
         }
 
@@ -191,14 +187,14 @@ namespace sbn {
     std::ostream&
     operator<<(std::ostream& out, const kernel& rhs);
 
-    inline sys::pstream&
-    operator<<(sys::pstream& out, const kernel& rhs) {
+    inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const kernel& rhs) {
         rhs.write(out);
         return out;
     }
 
-    inline sys::pstream&
-    operator>>(sys::pstream& in, kernel& rhs) {
+    inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, kernel& rhs) {
         rhs.read(in);
         return in;
     }

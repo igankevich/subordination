@@ -83,7 +83,7 @@ sbnd::master_discoverer
 void
 sbnd::master_discoverer
 ::update_subordinates(probe* p) {
-    const sys::socket_address src = p->from();
+    const sys::socket_address src = p->source();
     probe_result result = this->process_probe(p);
     this->log("_: _ subordinate _", this->interface_address(), result, src);
     bool changed = true;
@@ -106,7 +106,7 @@ sbnd::probe_result
 sbnd::master_discoverer
 ::process_probe(probe* p) {
     probe_result result = probe_result::retain;
-    if (p->from() == this->_hierarchy.principal()) {
+    if (p->source() == this->_hierarchy.principal()) {
         // principal tries to become subordinate
         // which is prohibited
         p->return_code(sbn::exit_code::error);
@@ -210,7 +210,7 @@ sbnd::master_discoverer
     auto* h = new Hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
     h->set_principal_id(1);
-    h->to(dest);
+    h->destination(dest);
     factory.remote().send(h);
 }
 
@@ -221,10 +221,10 @@ sbnd::master_discoverer
         this->log(
             "_: failed to send hierarchy to _",
             this->interface_address(),
-            k->from()
+            k->source()
         );
     } else {
-        const sys::socket_address& src = k->from();
+        const sys::socket_address& src = k->source();
         bool changed = false;
         if (this->_hierarchy.has_principal(src)) {
             changed = this->_hierarchy.set_principal_weight(k->weight());
@@ -234,7 +234,7 @@ sbnd::master_discoverer
         this->log(
             "_: set _ weight to _",
             this->interface_address(),
-            k->from(),
+            k->source(),
             k->weight()
         );
         if (changed) {

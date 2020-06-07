@@ -16,13 +16,12 @@ namespace sbn {
     class application_kernel: public kernel {
 
     public:
-        typedef kernel kernel_type;
-        typedef std::vector<std::string> container_type;
+        using container_type = std::vector<std::string>;
 
     private:
         container_type _args, _env;
         std::string _error;
-        application_type _application = 0;
+        application::id_type _application = 0;
         sys::canonical_path _workdir;
         sys::user_credentials _credentials;
 
@@ -63,13 +62,13 @@ namespace sbn {
             return this->_error;
         }
 
-        application_type
+        ::sbn::application::id_type
         application() const noexcept {
             return this->_application;
         }
 
         inline void
-        application(application_type rhs) noexcept {
+        application(::sbn::application::id_type rhs) noexcept {
             this->_application = rhs;
         }
 
@@ -87,11 +86,8 @@ namespace sbn {
             this->_credentials = rhs;
         }
 
-        void
-        write(sys::pstream& out) const override;
-
-        void
-        read(sys::pstream& in) override;
+        void write(sbn::kernel_buffer& out) const override;
+        void read(sbn::kernel_buffer& in) override;
 
         template <class ... Args>
         inline void

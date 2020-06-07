@@ -1,8 +1,10 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/connection.hh>
+#include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
+#include <subordination/core/kernel_error.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 
 namespace  {
@@ -39,13 +41,14 @@ void sbn::connection::handle(const sys::epoll_event& event) {
 }
 
 void sbn::connection::remove(sys::event_poller& poller) {}
+
 void sbn::connection::flush() {}
 
 void sbn::connection::send(kernel* k) {
     // return local downstream kernels immediately
     // TODO we need to move some kernel flags to
     // kernel header in order to use them in routing
-    if (k->moves_downstream() && !k->to()) {
+    if (k->moves_downstream() && !k->destination()) {
         if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
             if (k->carries_parent()) {
                 delete k->parent();
@@ -75,29 +78,23 @@ void sbn::connection::send(kernel* k) {
 
 void sbn::connection::forward(foreign_kernel* k) {
     bool delete_kernel = this->save_kernel(k);
-    (*this->_stream).begin_packet();
-    (*this->_stream) << k->header();
-    (*this->_stream) << *k;
-    (*this->_stream).end_packet();
-    if (delete_kernel) {
-        delete k;
+    {
+        kernel_frame frame;
+        kernel_write_guard g(frame, this->_output_buffer);
+        log("application _", k->application());
+        k->write_header(this->_output_buffer);
+        k->write(this->_output_buffer);
     }
+    if (delete_kernel) { delete k; }
 }
 
 void sbn::connection::write_kernel(kernel* k) noexcept {
-    using opacket_guard = sys::opacket_guard<kstream>;
     try {
-        auto& s = (*this->_stream);
-        opacket_guard g(s);
-        log("xxx _", typeid(*this).name());
-        assert((*this->_stream).rdbuf());
-        s.begin_packet();
-        if (this->_flags & kernel_proto_flag::prepend_source_and_destination) {
-            k->header().prepend_source_and_destination();
-        }
-        s << k->header();
-        s << *k;
-        s.end_packet();
+        kernel_frame frame;
+        kernel_write_guard g(frame, this->_output_buffer);
+        log("write _ _", k->is_native() ? "native" : "foreign", k->header());
+        k->header().write_header(this->_output_buffer);
+        this->_output_buffer.write(k);
     } catch (const kernel_error& err) {
         log_write_error(err);
     } catch (const error& err) {
@@ -110,9 +107,12 @@ void sbn::connection::write_kernel(kernel* k) noexcept {
 }
 
 void sbn::connection::receive_kernels(const application* from_application,
-                                         std::function<void(kernel*)> func) {
-    while ((*this->_stream).read_packet()) {
+                                      std::function<void(kernel*)> func) {
+    kernel_frame frame;
+    while (this->_input_buffer.remaining() >= sizeof(kernel_frame)) {
         try {
+            kernel_read_guard g(frame, this->_input_buffer);
+            if (!g) { break; }
             if (auto* k = this->read_kernel(from_application)) {
                 bool ok = this->receive_kernel(k);
                 func(k);
@@ -136,46 +136,41 @@ void sbn::connection::receive_kernels(const application* from_application,
             log_read_error("<unknown>");
         }
     }
+    this->_input_buffer.compact();
 }
 
 sbn::kernel*
 sbn::connection::read_kernel(const application* from_application) {
-    using ipacket_guard = typename kstream::ipacket_guard;
-    // eats remaining bytes on exception
-    ipacket_guard g((*this->_stream).rdbuf());
-    foreign_kernel* hdr = new foreign_kernel;
+    std::unique_ptr<foreign_kernel> hdr(new foreign_kernel);
     kernel* k = nullptr;
-    (*this->_stream) >> hdr->header();
+    hdr->header().read_header(this->_input_buffer);
     if (from_application) {
-        hdr->setapp(from_application->id());
-        hdr->aptr(from_application);
+        hdr->application(new application(*from_application));
     }
     if (this->_socket_address) {
-        hdr->from(this->_socket_address);
-        hdr->prepend_source_and_destination();
+        hdr->source(this->_socket_address);
     }
-    #if defined(SBN_DEBUG)
-    this->log("recv _", hdr->header());
-    #endif
     bool remove = false;
-    if (hdr->app() != this_application::get_id()) {
-        (*this->_stream) >> *hdr;
-        forward_or_delete(this->parent()->foreign_pipeline(), hdr, remove);
+    if (hdr->application_id() != this_application::get_id()) {
+        #if defined(SBN_DEBUG)
+        this->log("read foreign _", hdr->header());
+        #endif
+        hdr->read(this->_input_buffer);
+        forward_or_delete(this->parent()->foreign_pipeline(), hdr.get(), remove);
     } else {
-        (*this->_stream) >> k;
-        k->setapp(hdr->app());
-        if (hdr->has_source_and_destination()) {
-            k->from(hdr->from());
-            k->to(hdr->to());
-        } else {
-            k->from(this->_socket_address);
-        }
+        #if defined(SBN_DEBUG)
+        this->log("read native _", hdr->header());
+        #endif
+        this->_input_buffer.read(k);
+        k->application_id(hdr->application_id());
+        k->source(hdr->source() ? hdr->source() : this->_socket_address);
+        k->destination(hdr->destination());
         if (k->carries_parent()) {
-            k->parent()->setapp(hdr->app());
+            k->parent()->application_id(hdr->application_id());
         }
         remove = true;
     }
-    if (remove) { delete hdr; }
+    if (!remove) { hdr.release(); }
     return k;
 }
 
@@ -284,7 +279,7 @@ void sbn::connection::recover_kernel(kernel* k) {
     this->log("try to recover _", k->id());
     #endif
     const bool native = k->is_native();
-    if (k->moves_upstream() && !k->to()) {
+    if (k->moves_upstream() && !k->destination()) {
         #if defined(SBN_DEBUG)
         this->log("recover _", *k);
         #endif
@@ -293,11 +288,11 @@ void sbn::connection::recover_kernel(kernel* k) {
         } else {
             forward_or_delete(this->parent()->remote_pipeline(), k, remove);
         }
-    } else if (k->moves_somewhere() || (k->moves_upstream() && k->to())) {
+    } else if (k->moves_somewhere() || (k->moves_upstream() && k->destination())) {
         #if defined(SBN_DEBUG)
         this->log("destination is unreachable for _", *k);
         #endif
-        k->from(k->to());
+        k->source(k->destination());
         k->return_code(exit_code::endpoint_not_connected);
         k->principal(k->parent());
         if (native) {

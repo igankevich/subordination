@@ -1,5 +1,6 @@
 #include <subordination/api.hh>
 #include <subordination/core/error_handler.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/test_application.hh>
 #include <subordination/test/config.hh>
 
@@ -62,14 +63,12 @@ public:
         sbn::commit<sbn::Remote>(this);
     }
 
-    void
-    write(sys::pstream& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << this->_number << this->_nslaves;
     }
 
-    void
-    read(sys::pstream& in) override {
+    void read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> this->_number >> this->_nslaves;
     }
@@ -105,8 +104,8 @@ public:
     void
     react(sbn::kernel* child) {
         slave_kernel* k = dynamic_cast<slave_kernel*>(child);
-        if (k->from()) {
-            log("master react [_/_] from _", k->number(), this->_nkernels, k->from());
+        if (k->source()) {
+            log("master react [_/_] from _", k->number(), this->_nkernels, k->source());
         } else {
             log("master react [_/_]", k->number(), this->_nkernels);
         }
@@ -120,13 +119,11 @@ public:
         }
     }
 
-    void
-    write(sys::pstream& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
     }
 
-    void
-    read(sys::pstream& in) override {
+    void read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
     }
 
@@ -154,13 +151,11 @@ public:
         sbn::commit(this);
     }
 
-    void
-    write(sys::pstream& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
     }
 
-    void
-    read(sys::pstream& in) override {
+    void read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
     }
 

@@ -44,22 +44,15 @@ namespace sbn {
 
         template <class Type> void
         register_type(id_type id) {
-            this->register_type({
+            this->register_type(kernel_type{
                 id,
-                [] (sys::pstream& in) -> kernel* {
-                    Type* k = new Type;
-                    k->read(in);
-                    return k;
-                },
+                [] () -> kernel* { return new Type; },
                 typeid(Type)
             });
         }
 
         friend std::ostream&
         operator<<(std::ostream& out, const kernel_type_registry& rhs);
-
-        kernel*
-        read_object(sys::pstream& packet);
 
     };
 

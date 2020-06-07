@@ -6,9 +6,8 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include <unistdx/net/pstream>
-
 #include <subordination/core/kernel.hh>
+#include <subordination/core/types.hh>
 
 namespace sbn {
 
@@ -16,33 +15,25 @@ namespace sbn {
 
     public:
         /// A portable type id
-        typedef uint16_t id_type;
-        typedef std::function<kernel* (sys::pstream&)> read_type;
+        using id_type = uint16_t;
+        using constructor_type = kernel* (*)();
 
     private:
         id_type _id;
-        read_type _read;
+        constructor_type _construct;
         std::type_index _index;
 
     public:
-        inline
-        kernel_type(id_type id, const read_type& f, std::type_index idx) noexcept:
-        _id(id),
-        _read(f),
-        _index(idx)
-        {}
 
-        inline
-        kernel_type(const read_type& f, std::type_index idx) noexcept:
-        _id(0),
-        _read(f),
-        _index(idx)
-        {}
+        inline explicit
+        kernel_type(id_type id, constructor_type ctr, std::type_index idx) noexcept:
+        _id(id), _construct(ctr), _index(idx) {}
 
-        inline kernel*
-        read(sys::pstream& in) const {
-            return this->_read(in);
-        }
+        inline explicit
+        kernel_type(constructor_type ctr, std::type_index idx) noexcept:
+        _id(0), _construct(ctr), _index(idx) {}
+
+        inline kernel* construct() const { return this->_construct(); }
 
         inline std::type_index
         index() const noexcept {

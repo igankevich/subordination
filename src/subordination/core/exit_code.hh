@@ -1,13 +1,13 @@
 #ifndef SUBORDINATION_CORE_EXIT_CODE_HH
 #define SUBORDINATION_CORE_EXIT_CODE_HH
 
-#include <unistdx/net/bstream>
+#include <iosfwd>
+
+#include <unistdx/base/types>
 
 namespace sbn {
 
-    typedef uint16_t exit_code_type;
-
-    enum class exit_code: uint16_t {
+    enum class exit_code: sys::u16 {
         success = 0,
         undefined = 1,
         error = 2,
@@ -16,26 +16,8 @@ namespace sbn {
         no_upstream_servers_available = 5
     };
 
-    const char*
-    to_string(exit_code rhs) noexcept;
-
-    inline std::ostream&
-    operator<<(std::ostream& out, exit_code rhs) {
-        return out << to_string(rhs);
-    }
-
-    inline sys::bstream&
-    operator<<(sys::bstream& out, exit_code rhs) {
-        return out << exit_code_type(rhs);
-    }
-
-    inline sys::bstream&
-    operator>>(sys::bstream& in, exit_code& rhs) {
-        exit_code_type tmp;
-        in >> tmp;
-        rhs = exit_code(tmp);
-        return in;
-    }
+    const char* to_string(exit_code rhs) noexcept;
+    std::ostream& operator<<(std::ostream& out, exit_code rhs);
 
 }
 

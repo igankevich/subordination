@@ -56,7 +56,7 @@ sbnd::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
 }
 
 template <class T> void
-sbnd::Hierarchy<T>::write(sys::pstream& out) const {
+sbnd::Hierarchy<T>::write(sbn::kernel_buffer& out) const {
     out << this->_ifaddr;
     out << this->_endpoint;
     out << this->_principal;
@@ -64,7 +64,7 @@ sbnd::Hierarchy<T>::write(sys::pstream& out) const {
 }
 
 template <class T> void
-sbnd::Hierarchy<T>::read(sys::pstream& in) {
+sbnd::Hierarchy<T>::read(sbn::kernel_buffer& in) {
     in >> this->_ifaddr;
     in >> this->_endpoint;
     in >> this->_principal;

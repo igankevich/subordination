@@ -8,38 +8,27 @@
 /// Called from parent process.
 sbn::process_handler::process_handler(sys::pid_type&& child,
                                       sys::two_way_pipe&& pipe,
-                                      const application& app):
-connection(&this->_stream),
-_childpid(child),
-_buffer(new kernelbuf_type),
-_stream(this->_buffer.get()),
+                                      const ::sbn::application& app):
+_child_process_id(child),
+_file_descriptors(std::move(pipe)),
 _application(app),
 _role(role_type::parent) {
-    this->_buffer->setfd(sys::fildes_pair(std::move(pipe)));
-    this->_buffer->fd().in().validate();
-    this->_buffer->fd().out().validate();
+    this->_file_descriptors.in().validate();
+    this->_file_descriptors.out().validate();
 }
 
 /// Called from child process.
 sbn::process_handler::process_handler(sys::pipe&& pipe):
-connection(&this->_stream),
-_childpid(sys::this_process::id()),
-_buffer(new kernelbuf_type),
-_stream(this->_buffer.get()),
-_application(),
-_role(role_type::child) {
-    this->_buffer->setfd(sys::fildes_pair(std::move(pipe)));
-}
+_child_process_id(sys::this_process::id()),
+_file_descriptors(std::move(pipe)),
+_role(role_type::child) {}
 
 void sbn::process_handler::handle(const sys::epoll_event& event) {
     if (this->is_starting()) {
         this->setstate(pipeline_state::started);
     }
     if (event.in()) {
-        this->_buffer->pubfill();
-        if (this->_buffer->is_safe_to_compact()) {
-            this->_buffer->compact();
-        }
+        fill(this->_file_descriptors.in());
         receive_kernels(this->_role == role_type::parent ?  &this->_application : nullptr);
     }
 }
@@ -60,4 +49,8 @@ void sbn::process_handler::remove(sys::event_poller& poller) {
         }
     }
     this->setstate(pipeline_state::stopped);
+}
+
+void sbn::process_handler::flush() {
+    connection::flush(this->_file_descriptors.out());
 }

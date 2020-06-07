@@ -1,5 +1,6 @@
 #include <subordination/config.hh>
 #include <subordination/core/error_handler.hh>
+#include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
 
@@ -38,7 +39,7 @@ public:
 
     void act() override {
         auto* status = new Status_kernel;
-        status->to(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+        status->destination(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
         status->set_principal_id(1); // TODO
         status->parent(this);
         sbnc::factory.remote().send(status);

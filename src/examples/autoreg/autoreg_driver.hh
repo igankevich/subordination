@@ -68,7 +68,7 @@ namespace autoreg {
         }
 
         void
-        write(sys::pstream& out) const override {
+        write(sbn::kernel_buffer& out) const override {
             kernel::write(out);
             out << zsize;
             out << zdelta;
@@ -88,7 +88,7 @@ namespace autoreg {
         }
 
         void
-        read(sys::pstream& in) override {
+        read(sbn::kernel_buffer& in) override {
             kernel::read(in);
             in >> zsize;
             in >> zdelta;

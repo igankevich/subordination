@@ -1,7 +1,8 @@
-#include <subordination/core/kernel.hh>
+#include <unistdx/base/make_object>
 
 #include <subordination/core/error.hh>
-#include <unistdx/base/make_object>
+#include <subordination/core/kernel.hh>
+#include <subordination/core/kernel_buffer.hh>
 
 namespace {
 
@@ -12,14 +13,11 @@ namespace {
 
 }
 
-void
-sbn::kernel::read(sys::pstream& in) {
+void sbn::kernel::read(kernel_buffer& in) {
     base_kernel::read(in);
     bool b = false;
     in >> b;
-    if (b) {
-        this->setf(kernel_flag::carries_parent);
-    }
+    if (b) { this->setf(kernel_flag::carries_parent); }
     assert(not this->_parent);
     in >> this->_parent_id;
     assert(not this->_principal);
@@ -28,8 +26,7 @@ sbn::kernel::read(sys::pstream& in) {
     this->setf(kernel_flag::principal_is_id);
 }
 
-void
-sbn::kernel::write(sys::pstream& out) const {
+void sbn::kernel::write(kernel_buffer& out) const {
     base_kernel::write(out);
     out << carries_parent();
     if (this->moves_downstream()) {
@@ -75,10 +72,10 @@ sbn::operator<<(std::ostream& out, const kernel& rhs) {
         "state", state,
         "type", typeid(rhs).name(),
         "id", rhs.id(),
-        "src", rhs.from(),
-        "dst", rhs.to(),
+        "src", rhs.source(),
+        "dst", rhs.destination(),
         "ret", rhs.return_code(),
-        "app", rhs.app(),
+        "app", rhs.application_id(),
         "parent", rhs._parent,
         "principal", rhs._principal
     );

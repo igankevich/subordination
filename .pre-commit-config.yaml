@@ -17,6 +17,7 @@ repos:
     hooks:
     -   id: normalise
         files: \.(h|hh|cc|cpp|cl|py|hh\.in|h\.in|build)$
+        additional_dependencies: ['chardet']
     -   id: normalise-cpp
         files: (subordination|test)/.*\.(h|hh|cc|cpp)$
     -   id: header-guard

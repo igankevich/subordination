@@ -38,6 +38,33 @@ void sbn::basic_socket_pipeline::loop() {
     }
 }
 
+void sbn::basic_socket_pipeline::flush_buffers(bool timeout) {
+    const time_point now = timeout
+                           ? clock_type::now()
+                           : time_point(duration::zero());
+    handler_const_iterator first = this->_connections.begin();
+    handler_const_iterator last = this->_connections.end();
+    while (first != last) {
+        connection& h = *first->second;
+        if (h.stopped() || (timeout && this->is_timed_out(h, now))) {
+            this->log("remove _ (_)", h.socket_address(),
+                      h.stopped() ? "stop" : "timeout");
+            h.remove(this->poller());
+            first = this->_connections.erase(first);
+        } else {
+            try {
+                first->second->flush();
+                ++first;
+            } catch (const std::exception& err) {
+                this->log("remove _ (_)", h.socket_address(), err.what());
+                h.remove(poller());
+                first = this->_connections.erase(first);
+            }
+        }
+    }
+}
+
+
 void sbn::basic_socket_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(pipeline_state::starting);

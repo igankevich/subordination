@@ -3,7 +3,8 @@
 
 #include <chrono>
 #include <random>
-#include <unistdx/net/bstream>
+
+#include <subordination/core/kernel_buffer.hh>
 
 typedef std::chrono::nanoseconds::rep Time;
 
@@ -55,15 +56,15 @@ struct Datum {
             u != rhs.u || v != rhs.v || w != rhs.w;
     }
 
-    friend sys::bstream&
-    operator<<(sys::bstream& out, const Datum& rhs) {
+    friend sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const Datum& rhs) {
         return out
             << rhs.x << rhs.y << rhs.z
             << rhs.u << rhs.v << rhs.w;
     }
 
-    friend sys::bstream&
-    operator>>(sys::bstream& in, Datum& rhs) {
+    friend sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, Datum& rhs) {
         return in
             >> rhs.x >> rhs.y >> rhs.z
             >> rhs.u >> rhs.v >> rhs.w;
@@ -116,8 +117,8 @@ private:
 
     int64_t x;
     int32_t y;
-    sys::bytes<float> z;
-    sys::bytes<double> u;
+    float z;
+    double u;
     int16_t v;
     int8_t w;
     char padding[5] = {};

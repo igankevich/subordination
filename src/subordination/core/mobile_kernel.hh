@@ -3,6 +3,7 @@
 
 #include <subordination/core/kernel_base.hh>
 #include <subordination/core/kernel_header.hh>
+#include <subordination/core/types.hh>
 
 namespace sbn {
 
@@ -15,11 +16,8 @@ namespace sbn {
         id_type _id = no_id();
 
     public:
-        virtual void
-        read(sys::pstream& in);
-
-        virtual void
-        write(sys::pstream& out) const;
+        virtual void read(kernel_buffer& in);
+        virtual void write(kernel_buffer& out) const;
 
         inline id_type
         id() const noexcept {

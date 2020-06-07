@@ -32,8 +32,8 @@ namespace sbnd {
         inline void weight(uint32_t rhs) noexcept { this->_weight = rhs; }
         inline uint32_t weight() const noexcept { return this->_weight; }
 
-        void write(sys::pstream& out) const override;
-        void read(sys::pstream& in) override;
+        void write(sbn::kernel_buffer& out) const override;
+        void read(sbn::kernel_buffer& in) override;
 
     };
 

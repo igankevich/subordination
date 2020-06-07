@@ -320,6 +320,7 @@ int main(int argc, char* argv[]) {
                     std::cerr << " FAIL\n" << errors[i] << '\n';
                 }
             }
+            std::cerr << "========================================\n";
         }
         std::swap(errors0, errors);
         return success;

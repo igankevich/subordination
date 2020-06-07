@@ -1,5 +1,5 @@
-#include <ostream>
 #include <istream>
+#include <ostream>
 
 #include <dtest/exit_code.hh>
 

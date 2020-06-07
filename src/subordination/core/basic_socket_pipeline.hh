@@ -11,13 +11,10 @@
 #include <vector>
 
 #include <unistdx/base/log_message>
-#include <unistdx/io/fildesbuf>
 #include <unistdx/io/poller>
-#include <unistdx/net/pstream>
 
 #include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/connection.hh>
-#include <subordination/core/kstream.hh>
 #include <subordination/core/static_lock.hh>
 
 namespace sbn {
@@ -158,29 +155,7 @@ namespace sbn {
 
     private:
 
-        void
-        flush_buffers(bool timeout) {
-            const time_point now = timeout
-                                   ? clock_type::now()
-                                   : time_point(duration::zero());
-            handler_const_iterator first = this->_connections.begin();
-            handler_const_iterator last = this->_connections.end();
-            while (first != last) {
-                connection& h = *first->second;
-                if (h.stopped() || (timeout && this->is_timed_out(
-                                            h,
-                                            now
-                                        ))) {
-                    this->log("remove _ (_)", h.socket_address(),
-                              h.stopped() ? "stop" : "timeout");
-                    h.remove(this->poller());
-                    first = this->_connections.erase(first);
-                } else {
-                    first->second->flush();
-                    ++first;
-                }
-            }
-        }
+        void flush_buffers(bool timeout);
 
         handler_const_iterator
         handler_with_min_start_time_point() const noexcept {

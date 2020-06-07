@@ -13,8 +13,6 @@ namespace sbn {
 
     public:
         enum flag_enum: flag_type {
-            prepend_source_and_destination = 1,
-            prepend_application = 2,
             save_upstream_kernels = 4,
             save_downstream_kernels = 8,
         };

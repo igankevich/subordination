@@ -20,12 +20,12 @@ namespace sbn {
         using clock_type = std::chrono::system_clock;
         using time_point = clock_type::time_point;
         using duration = clock_type::duration;
-        using flags_type = std::bitset<6>;
+        using flags_type = kernel_flag;
 
     protected:
         exit_code _result = exit_code::undefined;
         time_point _at = time_point(duration::zero());
-        flags_type _flags = 0;
+        kernel_flag _flags{};
 
     public:
         virtual
@@ -71,25 +71,10 @@ namespace sbn {
         }
 
         // flags
-        inline flags_type
-        flags() const noexcept {
-            return this->_flags;
-        }
-
-        inline void
-        setf(kernel_flag f) noexcept {
-            this->_flags.set(static_cast<size_t>(f));
-        }
-
-        inline void
-        unsetf(kernel_flag f) noexcept {
-            this->_flags.reset(static_cast<size_t>(f));
-        }
-
-        inline bool
-        isset(kernel_flag f) const noexcept {
-            return this->_flags.test(static_cast<size_t>(f));
-        }
+        inline kernel_flag flags() const noexcept { return this->_flags; }
+        inline void setf(kernel_flag f) noexcept { this->_flags = this->_flags | f; }
+        inline void unsetf(kernel_flag f) noexcept { this->_flags = this->_flags & ~f; }
+        inline bool isset(kernel_flag f) const noexcept { return bool(this->_flags & f); }
 
         inline bool
         carries_parent() const noexcept {

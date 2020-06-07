@@ -2,6 +2,8 @@
 #define SUBORDINATION_API_HH
 
 #include <subordination/core/basic_factory.hh>
+#include <subordination/core/kernel_buffer.hh>
+#include <subordination/core/kernel_type_registry.hh>
 
 namespace sbn {
 

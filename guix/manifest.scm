@@ -17,7 +17,6 @@
    (@ (gnu packages check) googletest)
    (@ (gnu packages unistdx) unistdx)
    (@ (gnu packages pre-commit) python-pre-commit)
-   (@ (gnu packages python-xyz) python-chardet)
    (@ (gnu packages compression) zlib))
   (if-enabled "site"
               (list

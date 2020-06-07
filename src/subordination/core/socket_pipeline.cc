@@ -47,7 +47,6 @@ namespace sbn {
         id_type _pos1 = 0;
         counter_type _counter {0};
         sys::socket _socket;
-        socket_pipeline* _parent;
 
     public:
 
@@ -73,8 +72,7 @@ namespace sbn {
         inline const sys::socket& socket() const noexcept { return this->_socket; }
         inline sys::socket& socket() noexcept { return this->_socket; }
 
-        inline id_type
-        generate_id() noexcept {
+        inline id_type generate_id() noexcept {
             id_type id;
             if (this->_counter == this->_pos1) {
                 id = this->_pos0;
@@ -87,15 +85,14 @@ namespace sbn {
 
         void handle(const sys::epoll_event& ev) override;
 
-        void
-        remove(sys::event_poller& poller) override {
+        void remove(sys::event_poller& poller) override {
             poller.erase(this->fd());
-            this->_parent->remove_server(this->_ifaddr);
+            parent()->remove_server(this->_ifaddr);
         }
 
-        inline void parent(socket_pipeline* rhs) noexcept {
-            connection::parent(rhs);
-            this->_parent = rhs;
+        using connection::parent;
+        inline socket_pipeline* parent() const noexcept {
+            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
         }
 
     private:
@@ -111,25 +108,16 @@ namespace sbn {
     class remote_client: public connection {
 
     public:
-        using fildesbuf_type = sys::basic_fildesbuf<char, std::char_traits<char>, sys::socket>;
-        using kernelbuf_type = basic_kernelbuf<fildesbuf_type>;
-        using kernelbuf_ptr = std::unique_ptr<kernelbuf_type>;
         using weight_type = typename socket_pipeline::weight_type;
 
     private:
-        kernelbuf_ptr _buffer;
-        kstream _stream;
+        sys::socket _socket;
         /// The number of nodes "behind" this one in the hierarchy.
         weight_type _weight = 1;
-        socket_pipeline* _parent = nullptr;
 
     public:
 
-        inline explicit remote_client(sys::socket&& sock):
-        connection(&this->_stream), _buffer(new kernelbuf_type),
-        _stream(this->_buffer.get()) {
-            this->_buffer->setfd(std::move(sock));
-        }
+        inline explicit remote_client(sys::socket&& socket): _socket(std::move(socket)) {}
         virtual ~remote_client() { recover(); }
 
         remote_client() = default;
@@ -147,68 +135,32 @@ namespace sbn {
             recover_kernels(true);
         }
 
-        void
-        handle(const sys::epoll_event& event) override {
+        void handle(const sys::epoll_event& event) override {
             if (this->is_starting() && !event.err()) {
                 this->setstate(pipeline_state::started);
             }
             if (event.in()) {
-                if (this->_buffer->is_safe_to_compact()) {
-                    this->_buffer->compact();
-                }
-                this->_buffer->pubfill();
+                fill(socket());
                 receive_kernels();
             }
         }
 
-        void
-        flush() override {
-            if (this->_buffer->dirty()) {
-                this->_buffer->pubflush();
-            }
+        inline void flush() override { connection::flush(this->_socket); }
+
+        inline const sys::socket& socket() const noexcept { return this->_socket; }
+        inline sys::socket& socket() noexcept { return this->_socket; }
+        inline weight_type weight() const noexcept { return this->_weight; }
+        inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+
+        void remove(sys::event_poller& poller) override {
+            poller.erase(this->_socket.fd());
+            parent()->remove_client(socket_address());
         }
 
-        inline const sys::socket& socket() const noexcept { return this->_buffer->fd(); }
-        inline sys::socket& socket() noexcept { return this->_buffer->fd(); }
-
-        void
-        socket(sys::socket&& rhs) {
-            this->_buffer->pubsync();
-            this->_buffer->setfd(sys::socket(std::move(rhs)));
+        using connection::parent;
+        inline socket_pipeline* parent() const noexcept {
+            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
         }
-
-        inline weight_type
-        weight() const noexcept {
-            return this->_weight;
-        }
-
-        inline void
-        weight(weight_type rhs) noexcept {
-            this->_weight = rhs;
-        }
-
-        inline void
-        name(const char* rhs) noexcept {
-            this->pipeline_base::name(rhs);
-            #if defined(SBN_DEBUG)
-            if (this->_buffer) {
-                this->_buffer->set_name(rhs);
-            }
-            #endif
-        }
-
-        void
-        remove(sys::event_poller& poller) override {
-            poller.erase(this->_buffer->fd().fd());
-            this->_parent->remove_client(this->socket_address());
-        }
-
-        inline void parent(socket_pipeline* rhs) noexcept {
-            connection::parent(rhs);
-            this->_parent = rhs;
-        }
-
-        inline socket_pipeline* parent() const noexcept { return this->_parent; }
 
     };
 
@@ -218,13 +170,13 @@ void sbn::local_server::handle(const sys::epoll_event& ev) {
     sys::socket_address addr;
     sys::socket sock;
     while (this->_socket.accept(sock, addr)) {
-        sys::socket_address vaddr = this->_parent->virtual_addr(addr);
-        auto res = this->_parent->_clients.find(vaddr);
-        if (res == this->_parent->_clients.end()) {
+        sys::socket_address vaddr = parent()->virtual_addr(addr);
+        auto res = parent()->_clients.find(vaddr);
+        if (res == parent()->_clients.end()) {
             #if defined(SBN_DEBUG)
             auto ptr =
             #endif
-            this->_parent->do_add_client(std::move(sock), vaddr);
+            parent()->do_add_client(std::move(sock), vaddr);
             #if defined(SBN_DEBUG)
             this->log("accept _", ptr->socket_address());
             #endif
@@ -311,10 +263,10 @@ void sbn::socket_pipeline::forward(foreign_kernel* hdr) {
     // do not lock here as static_lock locks both mutexes
     assert(this->other_mutex());
     assert(hdr->is_foreign());
-    if (hdr->to()) {
-        auto ptr = this->find_or_create_client(hdr->to());
+    if (hdr->destination()) {
+        auto ptr = this->find_or_create_client(hdr->destination());
         #if defined(SBN_DEBUG)
-        this->log("fwd _ to _", *hdr, hdr->to());
+        this->log("fwd _ to _", *hdr, hdr->destination());
         #endif
         ptr->forward(hdr);
         this->_semaphore.notify_one();
@@ -460,7 +412,7 @@ sbn::socket_pipeline
             this->process_kernel(k);
         } catch (const std::exception& err) {
             this->log_error(err);
-            k->from(k->to());
+            k->source(k->destination());
             k->return_to_parent(exit_code::no_upstream_servers_available);
             native_pipeline()->send(k);
         }
@@ -472,10 +424,10 @@ sbn::socket_pipeline
 ::process_kernel(kernel* k) {
     // short circuit local server
     /*
-       if (k->to()) {
-        server_iterator result = this->find_server(k->to());
+       if (k->destination()) {
+        server_iterator result = this->find_server(k->destination());
         if (result != this->_servers.end()) {
-            k->from(k->to());
+            k->source(k->destination());
             k->return_to_parent(exit_code::no_upstream_servers_available);
             native_pipeline()->send(k);
             return;
@@ -488,7 +440,7 @@ sbn::socket_pipeline
         }
         // delete broadcast kernel
         delete k;
-    } else if (k->moves_upstream() && k->to() == sys::socket_address()) {
+    } else if (k->moves_upstream() && k->destination() == sys::socket_address()) {
         bool success = false;
         if (this->_uselocalhost && !k->carries_parent()) {
             if (this->end_reached()) {
@@ -512,20 +464,20 @@ sbn::socket_pipeline
             this->_iterator->second->send(k);
         }
         this->find_next_client();
-    } else if (k->moves_downstream() and not k->from()) {
+    } else if (k->moves_downstream() and not k->source()) {
         // kernel @k was sent to local node
         // because no upstream servers had
         // been available
         native_pipeline()->send(k);
     } else {
         // create socket_address if necessary, and send kernel
-        if (not k->to()) {
-            k->to(k->from());
+        if (not k->destination()) {
+            k->destination(k->source());
         }
         if (k->moves_somewhere()) {
-            ensure_identity(k, k->to());
+            ensure_identity(k, k->destination());
         }
-        this->find_or_create_client(k->to())->send(k);
+        this->find_or_create_client(k->destination())->send(k);
     }
 }
 
@@ -580,7 +532,7 @@ sbn::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vadd
     s->setstate(pipeline_state::starting);
     s->name(this->_name);
     using f = kernel_proto_flag;
-    s->setf(f::prepend_application | f::save_upstream_kernels | f::save_downstream_kernels);
+    s->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_client(vaddr, s);
     this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
     fire_event_kernels(new socket_pipeline_kernel(socket_pipeline_event::add_client, vaddr));

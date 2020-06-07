@@ -5,6 +5,8 @@
 
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/types.hh>
+
 namespace sbnd {
 
     class hierarchy_node {
@@ -70,21 +72,21 @@ namespace sbnd {
         friend std::ostream&
         operator<<(std::ostream& out, const hierarchy_node& rhs);
 
-        void write(sys::pstream& out) const;
-        void read(sys::pstream& in);
+        void write(sbn::kernel_buffer& out) const;
+        void read(sbn::kernel_buffer& in);
 
     };
 
     std::ostream&
     operator<<(std::ostream& out, const hierarchy_node& rhs);
 
-    inline sys::pstream&
-    operator<<(sys::pstream& out, const hierarchy_node& rhs) {
+    inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const hierarchy_node& rhs) {
         rhs.write(out); return out;
     }
 
-    inline sys::pstream&
-    operator>>(sys::pstream& in, hierarchy_node& rhs) {
+    inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, hierarchy_node& rhs) {
         rhs.read(in); return in;
     }
 
