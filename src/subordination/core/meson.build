@@ -43,7 +43,6 @@ install_headers(
     'parallel_pipeline.hh',
     'pipeline_base.hh',
     'process_handler.hh',
-    'static_lock.hh',
     'transaction_log.hh',
     subdir: join_paths(meson.project_name(), 'kernel')
 )

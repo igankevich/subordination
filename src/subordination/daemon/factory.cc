@@ -9,13 +9,11 @@ sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_process);
     this->_remote.remote_pipeline(&this->_remote);
-    this->_remote.set_other_mutex(this->_process.mutex());
     this->_remote.types(&this->_types);
     this->_remote.instances(&this->_instances);
     this->_remote.transactions(&this->_transactions);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     this->_process.name("proc");
-    this->_process.set_other_mutex(this->_remote.mutex());
     this->_process.native_pipeline(&this->_local);
     this->_process.foreign_pipeline(&this->_remote);
     this->_process.remote_pipeline(&this->_remote);

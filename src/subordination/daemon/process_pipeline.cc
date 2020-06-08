@@ -89,8 +89,7 @@ sbnd::process_pipeline::forward(sbn::foreign_kernel* hdr) {
     #if defined(SBN_DEBUG)
     this->log("forward src _ dst _ app _", hdr->source(), hdr->destination(), hdr->application_id());
     #endif
-    // do not lock here as static_lock locks both mutexes
-    assert(this->other_mutex());
+    lock_type lock(this->_mutex);
     app_iterator result = this->find_by_app_id(hdr->application_id());
     if (result == this->_apps.end()) {
         if (const auto* a = hdr->application()) {

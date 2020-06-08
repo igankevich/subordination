@@ -256,9 +256,7 @@ sbnd::socket_pipeline
 }
 
 void sbnd::socket_pipeline::forward(sbn::foreign_kernel* hdr) {
-    // do not lock here as static_lock locks both mutexes
-    assert(this->other_mutex());
-    assert(hdr->is_foreign());
+    lock_type lock(this->_mutex);
     if (hdr->destination()) {
         auto ptr = this->find_or_create_client(hdr->destination());
         #if defined(SBN_DEBUG)

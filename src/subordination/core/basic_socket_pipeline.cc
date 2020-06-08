@@ -6,7 +6,7 @@
 #include <subordination/core/basic_socket_pipeline.hh>
 
 void sbn::basic_socket_pipeline::loop() {
-    static_lock_type lock(&this->_mutex, this->_othermutex);
+    lock_type lock(this->_mutex);
     while (!this->stopping()) {
         bool timeout = false;
         if (this->_start_timeout > duration::zero()) {

@@ -17,7 +17,6 @@
 #include <subordination/core/connection.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
-#include <subordination/core/static_lock.hh>
 #include <subordination/core/transaction_log.hh>
 
 namespace sbn {
@@ -37,13 +36,6 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = sys::event_poller;
         using thread_type = std::thread;
-
-    private:
-        // TODO probably we do not need this
-        using static_lock_type = static_lock<mutex_type, mutex_type>;
-
-    private:
-        mutex_type* _othermutex = nullptr;
 
     protected:
         kernel_queue _kernels;
@@ -94,21 +86,6 @@ namespace sbn {
 
         inline void write_transaction(transaction_status status, kernel* k) {
             transactions()->write(status, index(), k);
-        }
-
-        inline void
-        set_other_mutex(mutex_type* rhs) noexcept {
-            this->_othermutex = rhs;
-        }
-
-        inline mutex_type*
-        other_mutex() noexcept {
-            return this->_othermutex;
-        }
-
-        inline mutex_type*
-        mutex() noexcept {
-            return &this->_mutex;
         }
 
         inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
