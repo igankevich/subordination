@@ -16,7 +16,7 @@ namespace sbn {
     public:
         /// A portable type id
         using id_type = uint16_t;
-        using constructor_type = kernel* (*)();
+        using constructor_type = kernel* (*)(void*);
 
     private:
         id_type _id;
@@ -33,7 +33,7 @@ namespace sbn {
         kernel_type(constructor_type ctr, std::type_index idx) noexcept:
         _id(0), _construct(ctr), _index(idx) {}
 
-        inline kernel* construct() const { return this->_construct(); }
+        inline kernel* construct(void* ptr) const { return this->_construct(ptr); }
 
         inline std::type_index
         index() const noexcept {

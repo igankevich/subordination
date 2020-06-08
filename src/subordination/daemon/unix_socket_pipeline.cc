@@ -37,7 +37,7 @@ namespace sbnd {
 
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
                                            sys::socket&& sock) {
-    using f = sbn::kernel_proto_flag;
+    using f = sbn::connection_flags;
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
     ptr->name(name());
     ptr->parent(this);
@@ -49,7 +49,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
 }
 
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
-    using f = sbn::kernel_proto_flag;
+    using f = sbn::connection_flags;
     sys::socket s(sys::family_type::unix);
     s.setopt(sys::socket::pass_credentials);
     s.connect(addr);

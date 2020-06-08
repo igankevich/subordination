@@ -24,7 +24,7 @@ sbn::child_process_pipeline::child_process_pipeline() {
 
 void
 sbn::child_process_pipeline::add_connection() {
-    using f = kernel_proto_flag;
+    using f = connection_flags;
     sys::fd_type in = this_application::get_input_fd();
     sys::fd_type out = this_application::get_output_fd();
     if (in != -1 && out != -1) {

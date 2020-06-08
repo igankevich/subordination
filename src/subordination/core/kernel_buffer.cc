@@ -9,50 +9,67 @@
 namespace  {
 
     inline void write_native(sbn::kernel_buffer* out, const sbn::kernel* k) {
-        if (!out->types()) { throw sbn::error("no kernel types"); }
+        if (!out->types()) { sbn::throw_error("no kernel types"); }
         const auto& types = *out->types();
         auto g = types.guard();
         auto type = types.find(typeid(*k));
         if (type == types.end()) {
-            throw sbn::type_error("no kernel type for ", typeid(*k).name());
+            sbn::throw_error("no kernel type for ", typeid(*k).name());
         }
         out->write(type->id());
         k->write(*out);
     }
 
-    inline sbn::kernel* read_native(sbn::kernel_buffer* in) {
+    inline sbn::kernel* read_native(sbn::kernel_buffer* in, sbn::foreign_kernel* ptr) {
         sbn::kernel_type::id_type id = 0;
         in->read(id);
-        if (!in->types()) { throw sbn::error("no kernel types"); }
+        if (!in->types()) { sbn::throw_error("no kernel types"); }
         const auto& types = *in->types();
         auto g = types.guard();
         auto type = types.find(id);
-        if (type == types.end()) { throw sbn::type_error("no kernel type for ", id); }
-        auto k = type->construct();
+        if (type == types.end()) { sbn::throw_error("no kernel type for ", id); }
+        static_assert(sizeof(sbn::kernel) <= sizeof(sbn::foreign_kernel), "bad size");
+        auto k = type->construct(ptr);
         k->read(*in);
         return k;
     }
 
 }
 
-void sbn::kernel_buffer::write(foreign_kernel* k) { k->write(*this); }
-void sbn::kernel_buffer::read(foreign_kernel* k) { k->read(*this); }
-
 void sbn::kernel_buffer::write(kernel* k) {
-    write_native(this, k);
-    if (k->carries_parent()) {
-        // embed parent into the packet
-        auto* parent = k->parent();
-        if (!parent) { throw std::invalid_argument("parent is null"); }
-        write_native(this, parent);
+    k->write_header(*this);
+    if (k->is_foreign()) {
+        k->write(*this);
+    } else {
+        write_native(this, k);
+        if (k->carries_parent()) {
+            // embed parent into the packet
+            auto* parent = k->parent();
+            if (!parent) { throw std::invalid_argument("parent is null"); }
+            write_native(this, parent);
+        }
     }
 }
 
 void sbn::kernel_buffer::read(kernel*& k) {
+    /*
     k = read_native(this);
     if (k->carries_parent()) {
         auto* parent = read_native(this);
         k->parent(parent);
+    }
+    */
+    auto* fk = new foreign_kernel;
+    fk->read_header(*this);
+    if (fk->is_foreign()) {
+        fk->read(*this);
+        k = fk;
+    } else {
+        k = read_native(this, fk);
+        if (k->carries_parent()) {
+            auto* parent = read_native(this, nullptr);
+            k->parent(parent);
+        }
     }
 }
 

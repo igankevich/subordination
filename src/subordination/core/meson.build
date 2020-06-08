@@ -10,14 +10,15 @@ sbn_src = files([
     'error_handler.cc',
     'exit_code.cc',
     'foreign_kernel.cc',
-    'kernel.cc',
     'kernel_buffer.cc',
+    'kernel.cc',
     'kernel_instance_registry.cc',
     'kernel_type.cc',
     'kernel_type_registry.cc',
     'parallel_pipeline.cc',
     'pipeline_base.cc',
     'process_handler.cc',
+    'transaction_log.cc',
 ])
 
 install_headers(
@@ -39,13 +40,13 @@ install_headers(
     'kernel_header_flag.hh',
     'kernel.hh',
     'kernel_instance_registry.hh',
-    'kernel_proto_flag.hh',
     'kernel_type.hh',
     'kernel_type_registry.hh',
     'parallel_pipeline.hh',
     'pipeline_base.hh',
     'process_handler.hh',
     'static_lock.hh',
+    'transaction_log.hh',
     subdir: join_paths(meson.project_name(), 'kernel')
 )
 

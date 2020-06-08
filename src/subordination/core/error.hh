@@ -96,6 +96,13 @@ namespace sbn {
 
     };
 
+    inline void throw_error(const char* what) { throw error(what); }
+
+    template <class ... Arguments>
+    inline void throw_error(const char* what, Arguments ... args) {
+        throw type_error(what, args...);
+    }
+
 }
 
 #endif // vim:filetype=cpp

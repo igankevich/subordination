@@ -21,12 +21,12 @@ sbn::kernel_type_registry::add(kernel_type type) {
     const_iterator result;
     result = this->find(type.index());
     if (result != this->end()) {
-        throw type_error("kernel type index ", type.index().name(), " already exists");
+        throw_error("kernel type index ", type.index().name(), " already exists");
     }
     if (!type.has_id()) { throw std::invalid_argument("bad id"); }
     result = this->find(type.id());
     if (result != this->end()) {
-        throw type_error("kernel type id ", type.id(), " already exists");
+        throw_error("kernel type id ", type.id(), " already exists");
     }
     this->_types.emplace_back(type);
 }

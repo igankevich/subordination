@@ -1,8 +1,9 @@
+config = configuration_data()
+config.set('sharedstatedir', get_option('sharedstatedir'))
 configure_file(
     input: 'config.hh.in',
     output: 'config.hh',
-    #configuration: configuration_data(),
-    copy: true,
+    configuration: config,
     install_dir: join_paths(
         get_option('prefix'),
         get_option('includedir'),

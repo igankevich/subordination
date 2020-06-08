@@ -12,11 +12,19 @@
 
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
-#include <subordination/core/kernel_proto_flag.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/transaction_log.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
+
+    enum class connection_flags: int {
+        save_upstream_kernels = 1<<0,
+        save_downstream_kernels = 1<<1,
+        write_transaction_log = 1<<2,
+    };
+
+    SBN_FLAGS(connection_flags)
 
     class connection: public pipeline_base {
 
@@ -32,7 +40,7 @@ namespace sbn {
     private:
         time_point _start{duration::zero()};
         basic_socket_pipeline* _parent = nullptr;
-        kernel_proto_flag _flags{};
+        connection_flags _flags{};
         kernel_queue _upstream, _downstream;
         id_type _counter = 0;
 
@@ -40,6 +48,7 @@ namespace sbn {
         kernel_buffer _output_buffer{sys::page_size()};
         kernel_buffer _input_buffer{sys::page_size()};
         sys::socket_address _socket_address;
+        transaction_log _transactions;
 
     public:
         connection() = default;
@@ -58,6 +67,7 @@ namespace sbn {
             this->receive_kernels(from_application, [] (kernel*) {});
         }
 
+        // TODO std::function is slow
         void receive_kernels(const application* from_application,
                              std::function<void(kernel*)> func);
 
@@ -66,7 +76,6 @@ namespace sbn {
         /// Called when the handler is removed from the poller.
         virtual void remove(sys::event_poller& poller);
 
-        /// Flush dirty buffers (if needed).
         virtual void flush();
 
         inline time_point start_time_point() const noexcept { return this->_start; }
@@ -93,10 +102,10 @@ namespace sbn {
             this->_socket_address = rhs;
         }
 
-        inline void setf(kernel_proto_flag rhs) noexcept { this->_flags |= rhs; }
-        inline void unsetf(kernel_proto_flag rhs) noexcept { this->_flags &= ~rhs; }
-        inline void flags(kernel_proto_flag rhs) noexcept { this->_flags = rhs; }
-        inline kernel_proto_flag flags() const noexcept { return this->_flags; }
+        inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
+        inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
+        inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
+        inline connection_flags flags() const noexcept { return this->_flags; }
 
         inline void types(kernel_type_registry* rhs) noexcept {
             this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);

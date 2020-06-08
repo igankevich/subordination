@@ -2,5 +2,6 @@
 #define SUBORDINATION_CONFIG_HH_IN
 
 #define SUBORDINATION_UNIX_DOMAIN_SOCKET "\0/tmp/.SUBORDINATION"
+#define SUBORDINATION_SHARED_STATE_DIR "@sharedstatedir@"
 
-#endif // SUBORDINATION_CONFIG_HH_IN vim:filetype=cpp
+#endif // vim:filetype=cpp

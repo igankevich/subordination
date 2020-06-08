@@ -45,8 +45,6 @@ namespace sbn {
         void write(const sys::interface_address<T>& rhs);
         template <class T>
         void read(sys::interface_address<T>& rhs);
-        void write(foreign_kernel* k);
-        void read(foreign_kernel* k);
         void write(kernel* k);
         void read(kernel*& k);
 

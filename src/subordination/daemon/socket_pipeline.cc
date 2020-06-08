@@ -526,7 +526,7 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->types(types());
     s->setstate(sbn::pipeline_state::starting);
     s->name(this->_name);
-    using f = sbn::kernel_proto_flag;
+    using f = sbn::connection_flags;
     s->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     this->emplace_client(vaddr, s);
     this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
