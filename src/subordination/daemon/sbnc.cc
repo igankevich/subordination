@@ -124,8 +124,8 @@ void usage(char* argv[0]) {
 int main(int argc, char* argv[]) {
     Command command = Command::Submit;
     using traits_type = std::char_traits<char>;
-    if (argc <= 1 || argv[1][0] != '-') { usage(argv); return 1; }
-    if (traits_type::compare(argv[1], "-s", 2) == 0) {
+    if (argc <= 1) { usage(argv); return 1; }
+    if (argc >= 2 && traits_type::compare(argv[1], "-s", 2) == 0) {
         command = Command::Status;
     }
     sbn::install_error_handler();

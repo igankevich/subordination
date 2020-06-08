@@ -46,7 +46,7 @@ test_flags() {
         d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
         meson '$flags' . $d
         cd $d
-        meson test --verbose
+        meson test --verbose --timeout-multiplier 2
         rm -rf $d'
 }
 
