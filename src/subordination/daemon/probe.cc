@@ -1,13 +1,14 @@
+#include <subordination/core/kernel_buffer.hh>
 #include <subordination/daemon/probe.hh>
 
 void
-sbn::probe::write(sys::pstream& out) const {
+sbnd::probe::write(sbn::kernel_buffer& out) const {
     sbn::kernel::write(out);
     out << this->_ifaddr << this->_oldprinc << this->_newprinc;
 }
 
 void
-sbn::probe::read(sys::pstream& in) {
+sbnd::probe::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
     in >> this->_ifaddr >> this->_oldprinc >> this->_newprinc;
 }

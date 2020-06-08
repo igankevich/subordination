@@ -16,8 +16,8 @@
 namespace std {
 
     template<class T>
-    sys::pstream&
-    operator<<(sys::pstream& out, const std::valarray<T>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::valarray<T>& rhs) {
         out << uint32_t(rhs.size());
         for (size_t i=0; i<rhs.size(); ++i) {
             out << rhs[i];
@@ -26,8 +26,8 @@ namespace std {
     }
 
     template<class T>
-    sys::pstream&
-    operator>>(sys::pstream& in, std::valarray<T>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::valarray<T>& rhs) {
         uint32_t n = 0;
         in >> n;
         rhs.resize(n);
@@ -315,7 +315,7 @@ struct Solve_Yule_Walker: public sbn::kernel {
     }
     */
 
-    void act() {
+    void act() override {
 
         int m = ar_coefs.size()-1;
 //		solve_linear_system(a, b);
@@ -571,7 +571,7 @@ struct Generator1: public sbn::kernel {
             write_part_to_file(zeta);
             sbn::commit<sbn::Remote>(this);
         } else {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message(
                 "autoreg",
                 "generating part _, tid=_",
@@ -588,7 +588,7 @@ struct Generator1: public sbn::kernel {
                 zeta.resize(zsize);
                 zeta2.resize(zsize2);
             } catch (std::exception& x) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 sys::log_message("autoreg", "resize failed _", sys::make_object(
                     "zsize", zsize,
                     "zsize2", zsize2,
@@ -643,7 +643,7 @@ struct Generator1: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << part << part2;
         out << phi << fsize;
@@ -655,7 +655,7 @@ struct Generator1: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> part >> part2;
         in >> phi >> fsize;
@@ -710,7 +710,7 @@ struct Wave_surface_generator: public sbn::kernel {
     void
     act() override {
         std::size_t num_parts = grid.num_parts();
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "no. of parts = _", num_parts);
         #endif
         std::vector<Generator1<T, Grid>*> generators(num_parts);
@@ -718,7 +718,7 @@ struct Wave_surface_generator: public sbn::kernel {
         for (std::size_t i=0; i<num_parts; ++i) {
             Surface_part part = grid.part(i);
             Surface_part part2 = grid_2.part(i);
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message("autoreg", "part #_ = _", i, part);
             #endif
             generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
@@ -734,11 +734,11 @@ struct Wave_surface_generator: public sbn::kernel {
     }
 
     void react(sbn::kernel* child) override {
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message(
             "autoreg",
             "generator returned from _, completed _ of _",
-            child->from(), count+1, grid.num_parts()
+            child->source(), count+1, grid.num_parts()
         );
         #endif
         if (++count == grid.num_parts()) {
@@ -747,7 +747,7 @@ struct Wave_surface_generator: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         sbn::kernel::write(out);
         out << phi;
         out << fsize;
@@ -761,7 +761,7 @@ struct Wave_surface_generator: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> phi;
         in >> fsize;

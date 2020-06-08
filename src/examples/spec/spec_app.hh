@@ -11,7 +11,9 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/fs/path>
+
 #include <subordination/api.hh>
+#include <subordination/core/error.hh>
 
 typedef int32_t Year;
 typedef int32_t Month;
@@ -63,13 +65,13 @@ struct Date {
             << std::setw(2) << rhs._minutes;
     }
 
-    friend sys::bstream&
-    operator>>(sys::bstream& in, Date& rhs) {
+    friend sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, Date& rhs) {
         return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
     }
 
-    friend sys::bstream&
-    operator<<(sys::bstream& out, const Date& rhs) {
+    friend sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const Date& rhs) {
         return out << rhs._year << rhs._month << rhs._day << rhs._hours << rhs._minutes;
     }
 
@@ -129,11 +131,11 @@ struct Observation {
         return out << rhs._year << ',' << rhs._station<< ',' << rhs._var;
     }
 
-    friend sys::bstream& operator>>(sys::bstream& in, Observation& rhs) {
+    friend sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Observation& rhs) {
         return in >> rhs._year >> rhs._station >> rhs._var;
     }
 
-    friend sys::bstream& operator<<(sys::bstream& out, const Observation& rhs) {
+    friend sbn::kernel_buffer& operator<<(sbn::kernel_buffer& out, const Observation& rhs) {
         return out << rhs._year << rhs._station << rhs._var;
     }
 
@@ -148,8 +150,8 @@ namespace sys {
     namespace bits {
 
         template<class Container>
-        sys::bstream&
-        write_container(sys::bstream& out, const Container& rhs) {
+        sbn::kernel_buffer&
+        write_container(sbn::kernel_buffer& out, const Container& rhs) {
             typedef typename Container::value_type value_type;
             out << uint64_t(rhs.size());
             std::for_each(
@@ -163,8 +165,8 @@ namespace sys {
         }
 
         template<class Container>
-        sys::bstream&
-        read_container(sys::bstream& in, Container& rhs) {
+        sbn::kernel_buffer&
+        read_container(sbn::kernel_buffer& in, Container& rhs) {
             typedef typename Container::value_type value_type;
             uint64_t n = 0;
             in >> n;
@@ -180,8 +182,8 @@ namespace sys {
         }
 
         template<class Container>
-        sys::bstream&
-        read_map(sys::bstream& in, Container& rhs) {
+        sbn::kernel_buffer&
+        read_map(sbn::kernel_buffer& in, Container& rhs) {
             typedef typename Container::key_type key_type;
             typedef typename Container::mapped_type mapped_type;
             uint64_t n = 0;
@@ -199,50 +201,50 @@ namespace sys {
     }
 
     template<class T>
-    sys::bstream&
-    operator<<(sys::bstream& out, const std::vector<T>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::vector<T>& rhs) {
         return bits::write_container(out, rhs);
     }
 
     template<class T>
-    sys::bstream&
-    operator>>(sys::bstream& in, std::vector<T>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::vector<T>& rhs) {
         return bits::read_container(in, rhs);
     }
 
     template<class K, class V>
-    sys::bstream&
-    operator<<(sys::bstream& out, const std::unordered_map<K,V>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::unordered_map<K,V>& rhs) {
         return bits::write_container(out, rhs);
     }
 
     template<class K, class V>
-    sys::bstream&
-    operator>>(sys::bstream& in, std::unordered_map<K,V>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::unordered_map<K,V>& rhs) {
         return bits::read_map(in, rhs);
     }
 
     template<class K, class V>
-    sys::bstream&
-    operator<<(sys::bstream& out, const std::map<K,V>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::map<K,V>& rhs) {
         return bits::write_container(out, rhs);
     }
 
     template<class K, class V>
-    sys::bstream&
-    operator>>(sys::bstream& in, std::map<K,V>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::map<K,V>& rhs) {
         return bits::read_map(in, rhs);
     }
 
     template<class X, class Y>
-    sys::bstream&
-    operator<<(sys::bstream& out, const std::pair<X,Y>& rhs) {
+    sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const std::pair<X,Y>& rhs) {
         return out << rhs.first << rhs.second;
     }
 
     template<class X, class Y>
-    sys::bstream&
-    operator>>(sys::bstream& in, std::pair<X,Y>& rhs) {
+    sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, std::pair<X,Y>& rhs) {
         return in >> rhs.first >> rhs.second;
     }
 
@@ -321,7 +323,7 @@ struct Station_kernel: public sbn::kernel {
                 "error while reading file \"_\"",
                 filename
             );
-            SUBORDINATION_THROW(error, "error while reading file");
+            throw sbn::error("error while reading file");
         }
         return ret;
     }
@@ -339,7 +341,7 @@ struct Station_kernel: public sbn::kernel {
         Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(child);
         _out_matrix[k->date()] = k->variance();
         if (--_count == 0) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message(
                 "spec",
                 "finished station _, year _, total no. of spectra _",
@@ -368,7 +370,7 @@ struct Station_kernel: public sbn::kernel {
                         "unable to open file \"_\" for reading",
                         ob.filename()
                     );
-                    SUBORDINATION_THROW(error, "error opening a file for reading");
+                    throw sbn::error("error opening a file for reading");
                 }
                 char buf[64];
                 int count = 0;
@@ -414,7 +416,7 @@ struct Station_kernel: public sbn::kernel {
         }
         const size_t new_size = _spectra.size();
         if (new_size < old_size) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message(
                 "spec",
                 "removed _ incomplete records from station _, year _",
@@ -438,7 +440,7 @@ struct Station_kernel: public sbn::kernel {
     int32_t num_processed_spectra() const { return _out_matrix.size(); }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _observations;
         in >> _station;
@@ -449,7 +451,7 @@ struct Station_kernel: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _observations;
         out << _station;
@@ -502,12 +504,12 @@ struct Year_kernel: public sbn::kernel {
             _output_file.open(output_filename());
         }
         k->write_output_to(_output_file, _year);
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message(
             "spec",
             "finished station _, year _, [_/_], total no. of spectra _, from _",
             k->station(), _year, 1+_count, _observations.size(),
-            k->num_processed_spectra(), k->from()
+            k->num_processed_spectra(), k->source()
         );
         #endif
         _num_spectra += k->num_processed_spectra();
@@ -528,7 +530,7 @@ struct Year_kernel: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _year;
         int32_t num_stations;
@@ -536,7 +538,7 @@ struct Year_kernel: public sbn::kernel {
         for (int32_t i=0; i<num_stations; ++i) {
             int32_t num_observations;
             in >> num_observations;
-            for (int32_t i=0; i<num_observations; ++i) {
+            for (int32_t j=0; j<num_observations; ++j) {
                 Observation ob;
                 in >> ob;
                 _observations[ob.station()][ob.variable()] = ob;
@@ -546,7 +548,7 @@ struct Year_kernel: public sbn::kernel {
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _year;
         out << int32_t(_observations.size());
@@ -591,7 +593,7 @@ struct Launcher: public sbn::kernel {
     }
 
     void act() override {
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message("spec", "launcher start");
         #endif
         _time0 = current_time_nano();
@@ -622,14 +624,14 @@ struct Launcher: public sbn::kernel {
         Year_kernel* k = _yearkernels[k1->year()];
         k->react(k1);
         if (k->finished()) {
-            #ifndef NDEBUG
+            #if defined(SBN_DEBUG)
             sys::log_message("spec", "finished year _", k->year());
             #endif
             _count_spectra += k->num_processed_spectra();
             _yearkernels.erase(k1->year());
             delete k;
             if (++_count == 0) {
-                #ifndef NDEBUG
+                #if defined(SBN_DEBUG)
                 sys::log_message("spec", "total number of processed spectra _", _count_spectra);
                 #endif
                 {
@@ -651,13 +653,13 @@ struct Launcher: public sbn::kernel {
     }
 
     void
-    read(sys::pstream& in) override {
+    read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _count >> _count_spectra;
     }
 
     void
-    write(sys::pstream& out) const override {
+    write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _count << _count_spectra;
     }
@@ -686,7 +688,7 @@ struct Spec_app: public sbn::kernel {
 
     void
     act() override {
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
         sys::log_message("spec", "program start");
         #endif
         #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)

@@ -1,8 +1,6 @@
 #ifndef SUBORDINATION_CONFIG_HH_IN
 #define SUBORDINATION_CONFIG_HH_IN
 
-#include "@kernel_header@"
-
-#define SUBORDINATION_KERNEL_TYPE @kernel_type@
+#define SUBORDINATION_UNIX_DOMAIN_SOCKET "\0/tmp/.SUBORDINATION"
 
 #endif // SUBORDINATION_CONFIG_HH_IN vim:filetype=cpp

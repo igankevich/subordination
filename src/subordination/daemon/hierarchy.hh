@@ -4,15 +4,16 @@
 #include <iosfwd>
 #include <unordered_set>
 
-#include <unistdx/net/socket_address>
 #include <unistdx/net/interface_address>
+#include <unistdx/net/socket_address>
 
+#include <subordination/core/types.hh>
 #include <subordination/daemon/hierarchy_node.hh>
 
-namespace sbn {
+namespace sbnd {
 
     template<class Addr>
-    class hierarchy {
+    class Hierarchy {
 
     public:
         typedef Addr addr_type;
@@ -31,92 +32,100 @@ namespace sbn {
 
     public:
 
-        hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
+        inline explicit
+        Hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
         _ifaddr(interface_address),
         _endpoint(interface_address.address(), port),
         _principal(),
         _subordinates()
         {}
 
-        hierarchy(const hierarchy&) = default;
+        Hierarchy() = default;
+        ~Hierarchy() = default;
+        Hierarchy(const Hierarchy&) = default;
+        Hierarchy& operator=(const Hierarchy&) = default;
+        Hierarchy(Hierarchy&&) = default;
+        Hierarchy& operator=(Hierarchy&&) = default;
 
-        hierarchy(hierarchy&&) = default;
-
-        const ifaddr_type&
+        inline const ifaddr_type&
         interface_address() const noexcept {
             return this->_ifaddr;
         }
 
-        const sys::socket_address&
+        inline const sys::socket_address&
         socket_address() const noexcept {
             return this->_endpoint;
         }
 
-        const node_type&
+        inline const node_type&
         principal() const noexcept {
             return this->_principal;
         }
 
-        void
+        inline void
         unset_principal() noexcept {
             this->_principal.reset();
         }
 
-        void
+        inline void
         set_principal(const sys::socket_address& new_princ) {
             this->_principal.socket_address(new_princ);
             this->_subordinates.erase(this->_principal);
         }
 
-        void
+        inline void
         add_subordinate(const sys::socket_address& addr) {
             this->_subordinates.emplace(addr);
         }
 
-        bool
+        inline bool
         remove_subordinate(const sys::socket_address& addr) {
             return this->_subordinates.erase(node_type(addr)) > 0;
         }
 
-        size_type
+        inline size_type
         num_subordinates() const noexcept {
             return this->_subordinates.size();
         }
 
-        bool
+        inline bool
         has_principal() const noexcept {
             return static_cast<bool>(this->_principal.socket_address());
         }
 
-        bool
+        inline bool
         has_principal(const sys::socket_address& rhs) const noexcept {
             return this->_principal.socket_address() == rhs;
         }
 
-        bool
+        inline bool
         has_subordinate(const sys::socket_address& rhs) const noexcept {
             return this->_subordinates.find(node_type(rhs)) !=
                    this->_subordinates.end();
         }
 
-        size_type
+        inline size_type
         num_neighbours() const noexcept {
             return this->num_subordinates() + (this->has_principal() ? 1 : 0);
         }
 
-        sys::port_type
+        inline sys::port_type
         port() const noexcept {
             return sys::ipaddr_traits<addr_type>::port(this->_endpoint);
         }
 
-        const_iterator
+        inline const_iterator
         begin() const noexcept {
             return this->_subordinates.begin();
         }
 
-        const_iterator
+        inline const_iterator
         end() const noexcept {
             return this->_subordinates.end();
+        }
+
+        inline const container_type& subordinates() const noexcept {
+            return this->_subordinates;
         }
 
         inline bool
@@ -147,13 +156,26 @@ namespace sbn {
 
         template <class X>
         friend std::ostream&
-        operator<<(std::ostream& out, const hierarchy<X>& rhs);
+        operator<<(std::ostream& out, const Hierarchy<X>& rhs);
+
+        void write(sbn::kernel_buffer& out) const;
+        void read(sbn::kernel_buffer& in);
 
     };
 
     template <class X>
     std::ostream&
-    operator<<(std::ostream& out, const hierarchy<X>& rhs);
+    operator<<(std::ostream& out, const Hierarchy<X>& rhs);
+
+    template <class T> inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const Hierarchy<T>& rhs) {
+        rhs.write(out); return out;
+    }
+
+    template <class T> inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, Hierarchy<T>& rhs) {
+        rhs.read(in); return in;
+    }
 
 }
 

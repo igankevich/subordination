@@ -1,18 +1,4 @@
 option(
-	'kernel_type',
-	type: 'string',
-	value: '::sbn::kernel',
-	description: 'base type for all kernels'
-)
-
-option(
-	'kernel_header',
-	type: 'string',
-	value: 'subordination/kernel/kernel.hh',
-	description: 'header file containing definition of kernel_type'
-)
-
-option(
 	'profile_node_discovery',
 	type: 'boolean',
 	value: false,

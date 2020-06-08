@@ -29,8 +29,7 @@ processes results they return.
 The first step is to decide which pipelines your programme needs. Most probably
 these are standard
 - \link sbn::parallel_pipeline CPU pipeline\endlink,
-- \link sbn::io_pipeline I/O pipeline\endlink,
-- \link sbn::socket_pipeline NIC pipeline\endlink and
+- \link sbnd::socket_pipeline NIC pipeline\endlink and
 - \link sbn::timer_pipeline Timer pipeline\endlink (for periodic and
   schedule-based execution of kernels).
 

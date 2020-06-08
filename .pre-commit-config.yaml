@@ -13,10 +13,11 @@ repos:
         args: [--branch, dev, --branch, master]
         name: 'Do not commit to dev/master'
 -   repo: https://github.com/igankevich/pre-commit-cpp
-    rev: 0.6.3
+    rev: 0.6.5
     hooks:
     -   id: normalise
         files: \.(h|hh|cc|cpp|cl|py|hh\.in|h\.in|build)$
+        additional_dependencies: ['chardet']
     -   id: normalise-cpp
         files: (subordination|test)/.*\.(h|hh|cc|cpp)$
     -   id: header-guard

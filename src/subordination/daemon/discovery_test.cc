@@ -16,8 +16,6 @@
 #include <unistdx/ipc/process>
 #include <unistdx/net/veth_interface>
 
-#include <subordination/config.hh>
-
 #include <gtest/gtest.h>
 
 #include <subordination/daemon/test_application.hh>
@@ -44,7 +42,6 @@ expect_event_sequence(
     auto last = expressions.end();
     auto first2 = lines.begin();
     auto last2 = lines.end();
-    std::string line;
     while (first != last && first2 != last2) {
         if (std::regex_match(*first2, *first)) { ++first; }
         ++first2;
@@ -74,7 +71,6 @@ expect_event_count(
     size_t expected_count
 ) {
     std::regex expr(regex_string);
-    std::string line;
     size_t count = 0;
     for (const auto& line : lines) {
         if (std::regex_match(line, expr)) { ++count; }
@@ -202,7 +198,7 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
     if (node_no == 0) {
         expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
     } else {
-        int node_no = (expected_failure == "master-failure") ? 2 : 1;
+        node_no = (expected_failure == "master-failure") ? 2 : 1;
         std::stringstream re;
         re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
         expect_event(lines, re.str());
@@ -324,6 +320,7 @@ int main(int argc, char* argv[]) {
                     std::cerr << " FAIL\n" << errors[i] << '\n';
                 }
             }
+            std::cerr << "========================================\n";
         }
         std::swap(errors0, errors);
         return success;

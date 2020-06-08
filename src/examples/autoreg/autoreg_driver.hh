@@ -68,7 +68,7 @@ namespace autoreg {
         }
 
         void
-        write(sys::pstream& out) const override {
+        write(sbn::kernel_buffer& out) const override {
             kernel::write(out);
             out << zsize;
             out << zdelta;
@@ -88,7 +88,7 @@ namespace autoreg {
         }
 
         void
-        read(sys::pstream& in) override {
+        read(sbn::kernel_buffer& in) override {
             kernel::read(in);
             in >> zsize;
             in >> zdelta;
@@ -231,7 +231,7 @@ namespace autoreg {
     void
     Autoreg_model<T>
     ::react(kernel* child) {
-    #ifndef NDEBUG
+    #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "finished _", typeid(*child).name());
     #endif
         if (typeid(*child) == typeid(ACF_generator<T>)) {
@@ -244,7 +244,7 @@ namespace autoreg {
         }
         if (typeid(*child) == typeid(Variance_WN<T>)) {
             T var_wn = dynamic_cast<Variance_WN<T>*>(child)->get_sum();
-        #ifndef NDEBUG
+        #if defined(SBN_DEBUG)
             sys::log_message("autoreg", "var(acf) = _", var_acf(acf_model));
             sys::log_message("autoreg", "var(eps) = _", var_wn);
         #endif
@@ -290,7 +290,6 @@ namespace autoreg {
         std::string name;
         int interval = 0;
         T size_factor = 1.2;
-        std::string input_filename;
         while (!getline(in, name, '=').eof()) {
             if (name.size() > 0 && name[0] == '#') in.ignore(1024*1024, '\n');
             else if (name == "zsize") in >> m.zsize;

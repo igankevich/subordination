@@ -1,17 +1,15 @@
 #ifndef SUBORDINATION_API_HH
 #define SUBORDINATION_API_HH
 
-#include <subordination/config.hh>
-#include <subordination/ppl/basic_factory.hh>
+#include <subordination/core/basic_factory.hh>
+#include <subordination/core/kernel_buffer.hh>
+#include <subordination/core/kernel_type_registry.hh>
 
 namespace sbn {
-
-    typedef SUBORDINATION_KERNEL_TYPE kernel;
 
     enum Target {
         Local,
         Remote,
-        Child
     };
 
     template <Target t=Target::Local>
@@ -80,6 +78,7 @@ namespace sbn {
         ~factory_guard() {
             ::sbn::factory.stop();
             ::sbn::factory.wait();
+            ::sbn::factory.clear();
         }
 
     };

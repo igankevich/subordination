@@ -5,7 +5,9 @@
 
 #include <unistdx/net/socket_address>
 
-namespace sbn {
+#include <subordination/core/types.hh>
+
+namespace sbnd {
 
     class hierarchy_node {
 
@@ -70,10 +72,23 @@ namespace sbn {
         friend std::ostream&
         operator<<(std::ostream& out, const hierarchy_node& rhs);
 
+        void write(sbn::kernel_buffer& out) const;
+        void read(sbn::kernel_buffer& in);
+
     };
 
     std::ostream&
     operator<<(std::ostream& out, const hierarchy_node& rhs);
+
+    inline sbn::kernel_buffer&
+    operator<<(sbn::kernel_buffer& out, const hierarchy_node& rhs) {
+        rhs.write(out); return out;
+    }
+
+    inline sbn::kernel_buffer&
+    operator>>(sbn::kernel_buffer& in, hierarchy_node& rhs) {
+        rhs.read(in); return in;
+    }
 
     inline bool
     operator==(const hierarchy_node& lhs, const sys::socket_address& rhs) noexcept {
@@ -90,10 +105,10 @@ namespace sbn {
 namespace std {
 
     template<>
-    struct hash<sbn::hierarchy_node>: public hash<sys::socket_address> {
+    struct hash<sbnd::hierarchy_node>: public hash<sys::socket_address> {
 
         typedef size_t result_type;
-        typedef sbn::hierarchy_node argument_type;
+        typedef sbnd::hierarchy_node argument_type;
 
         inline size_t
         operator()(const argument_type& rhs) const noexcept {

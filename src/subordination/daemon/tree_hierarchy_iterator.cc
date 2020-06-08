@@ -1,13 +1,11 @@
+#include <stdexcept>
+
+#include <unistdx/net/ipv4_address>
+
 #include <subordination/daemon/tree_hierarchy_iterator.hh>
 
-#include <stdexcept>
-#include <unistdx/net/ipv4_address>
-#if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-#include <unistdx/base/log_message>
-#endif
-
 template <class Addr>
-sbn::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
+sbnd::tree_hierarchy_iterator<Addr>::tree_hierarchy_iterator(
     const ifaddr_type& interface_address,
     pos_type fanout,
     pos_type offset,
@@ -31,7 +29,7 @@ _currentpos(this->_basepos) {
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::next() {
+sbnd::tree_hierarchy_iterator<Addr>::next() {
     addr_type old_addr;
     do {
         old_addr = this->_address;
@@ -50,22 +48,11 @@ sbn::tree_hierarchy_iterator<Addr>::next() {
             break;
         }
     } while (old_addr == this->_address && this->_state != state_type::end);
-    #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-    sys::log_message(
-        "thi",
-        "base=_,parent=_,current=_,address=_,state=_",
-        _basepos,
-        _parentpos,
-        _currentpos,
-        _address,
-        int(_state)
-    );
-    #endif
 }
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::init() {
+sbnd::tree_hierarchy_iterator<Addr>::init() {
     state_type new_state = state_type::traversing_parent_node;
     if (this->_basepos.layer() == 0) {
         new_state = state_type::end;
@@ -75,14 +62,14 @@ sbn::tree_hierarchy_iterator<Addr>::init() {
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::traverse_parent_node() {
+sbnd::tree_hierarchy_iterator<Addr>::traverse_parent_node() {
     this->set_current_position(this->_parentpos);
     this->setstate(state_type::traversing_upper_layers);
 }
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
+sbnd::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
     if (this->_state != this->_oldstate) {
         // initialise current position to be the position of the first node
         // in the parent's layer
@@ -107,23 +94,17 @@ sbn::tree_hierarchy_iterator<Addr>::traverse_upper_layers() {
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::advance_upper() {
+sbnd::tree_hierarchy_iterator<Addr>::advance_upper() {
     if (this->_currentpos.is_last()) {
         this->_currentpos.decrement_layer();
-        #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-        sys::log_message("thi", "decrement _", _currentpos);
-        #endif
     } else {
         ++this->_currentpos;
-        #if !defined(NDEBUG) && defined(SUBORDINATION_DEBUG_TREE_HIERARCHY_ITERATOR)
-        sys::log_message("thi", "increment");
-        #endif
     }
 }
 
 template <class Addr>
 void
-sbn::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
+sbnd::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
     if (this->_state != this->_oldstate) {
         // initialise current position to be the position of the first node
         // in the base node's layer
@@ -141,4 +122,4 @@ sbn::tree_hierarchy_iterator<Addr>::traverse_base_layer() {
     }
 }
 
-template class sbn::tree_hierarchy_iterator<sys::ipv4_address>;
+template class sbnd::tree_hierarchy_iterator<sys::ipv4_address>;

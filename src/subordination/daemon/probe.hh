@@ -1,13 +1,13 @@
 #ifndef SUBORDINATION_DAEMON_PROBE_HH
 #define SUBORDINATION_DAEMON_PROBE_HH
 
-#include <unistdx/net/socket_address>
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
+#include <unistdx/net/socket_address>
 
-#include <subordination/api.hh>
+#include <subordination/core/kernel.hh>
 
-namespace sbn {
+namespace sbnd {
 
     class probe: public sbn::kernel {
 
@@ -35,11 +35,8 @@ namespace sbn {
         _newprinc(newprinc)
         {}
 
-        void
-        write(sys::pstream& out) const override;
-
-        void
-        read(sys::pstream& in) override;
+        void write(sbn::kernel_buffer& out) const override;
+        void read(sbn::kernel_buffer& in) override;
 
         inline const sys::socket_address&
         new_principal() const noexcept {

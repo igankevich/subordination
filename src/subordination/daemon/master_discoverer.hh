@@ -8,18 +8,17 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/api.hh>
-#include <subordination/ppl/socket_pipeline_event.hh>
-
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
 #include <subordination/daemon/prober.hh>
 #include <subordination/daemon/resident_kernel.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/tree_hierarchy_iterator.hh>
+#include <subordination/daemon/types.hh>
 
 
-namespace sbn {
+namespace sbnd {
 
     /// Timer which is used to periodically scan nodes
     /// to find the best principal node.
@@ -38,14 +37,14 @@ namespace sbn {
     class master_discoverer: public resident_kernel {
 
     public:
-        typedef sys::ipv4_address addr_type;
-        typedef addr_type::rep_type uint_type;
-        typedef sys::interface_address<addr_type> ifaddr_type;
-        typedef tree_hierarchy_iterator<addr_type> iterator;
-        typedef hierarchy<addr_type> hierarchy_type;
-        typedef std::chrono::system_clock clock_type;
-        typedef clock_type::duration duration;
-        typedef typename hierarchy_type::weight_type weight_type;
+        using addr_type = sys::ipv4_address;
+        using uint_type = addr_type::rep_type;
+        using ifaddr_type = sys::interface_address<addr_type>;
+        using iterator = tree_hierarchy_iterator<addr_type>;
+        using hierarchy_type = Hierarchy<addr_type>;
+        using clock_type = std::chrono::system_clock;
+        using duration = clock_type::duration;
+        using weight_type = typename hierarchy_type::weight_type;
 
         enum class state_type {
             initial,
@@ -78,6 +77,8 @@ namespace sbn {
 
         void
         on_kernel(sbn::kernel* k) override;
+
+        inline const hierarchy_type& hierarchy() const noexcept { return this->_hierarchy; }
 
     private:
 
@@ -131,8 +132,7 @@ namespace sbn {
         void
         send_weight(const sys::socket_address& dest, weight_type w);
 
-        void
-        update_weights(hierarchy_kernel* k);
+        void update_weights(Hierarchy_kernel* k);
 
         template <class ... Args>
         inline void

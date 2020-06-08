@@ -154,14 +154,14 @@ namespace autoreg {
         friend std::istream&
         operator>>(std::istream& in, Vector<A, m>& v);
 
-        friend sys::pstream&
-        operator<<(sys::pstream& out, const Vector& rhs) {
+        friend sbn::kernel_buffer&
+        operator<<(sbn::kernel_buffer& out, const Vector& rhs) {
             for (size_t i=0; i<n; ++i) out << rhs.coord[i];
             return out;
         }
 
-        friend sys::pstream&
-        operator>>(sys::pstream& in, Vector& rhs) {
+        friend sbn::kernel_buffer&
+        operator>>(sbn::kernel_buffer& in, Vector& rhs) {
             for (size_t i=0; i<n; ++i) in >> rhs.coord[i];
             return in;
         }

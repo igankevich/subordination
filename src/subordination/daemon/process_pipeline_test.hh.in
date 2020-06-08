@@ -1,0 +1,6 @@
+#ifndef SUBORDINATION_DAEMON_PROCESS_PIPELINE_TEST_HH_IN
+#define SUBORDINATION_DAEMON_PROCESS_PIPELINE_TEST_HH_IN
+
+#define SBN_TEST_APP_EXE_PATH "@app_exe_path@"
+
+#endif // vim:filetype=cpp
