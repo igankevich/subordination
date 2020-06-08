@@ -1,0 +1,7 @@
+#ifndef SUBORDINATION_DAEMON_CONFIG_HH_IN
+#define SUBORDINATION_DAEMON_CONFIG_HH_IN
+
+#define SBND_SHARED_STATE_DIR "@sharedstatedir@"
+#define SBND_SOCKET "\0/tmp/.sbnd"
+
+#endif // vim:filetype=cpp

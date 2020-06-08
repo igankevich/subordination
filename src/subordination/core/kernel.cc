@@ -74,6 +74,13 @@ void sbn::kernel::read_header(kernel_buffer& in) {
     if (bool(fields() & kernel_field::destination)) { in >> this->_destination; }
 }
 
+void sbn::kernel::swap_header(kernel* k) {
+    std::swap(this->_fields, k->_fields);
+    std::swap(this->_application, k->_application);
+    std::swap(this->_source, k->_source);
+    std::swap(this->_destination, k->_destination);
+}
+
 void
 sbn::kernel::act() {}
 

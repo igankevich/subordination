@@ -18,6 +18,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/static_lock.hh>
+#include <subordination/core/transaction_log.hh>
 
 namespace sbn {
 
@@ -56,6 +57,7 @@ namespace sbn {
         pipeline* _remote_pipeline = nullptr;
         kernel_type_registry* _types = nullptr;
         kernel_instance_registry* _instances = nullptr;
+        transaction_log* _transactions = nullptr;
 
     public:
 
@@ -90,6 +92,10 @@ namespace sbn {
         void wait();
         void clear();
 
+        inline void write_transaction(transaction_status status, kernel* k) {
+            transactions()->write(status, index(), k);
+        }
+
         inline void
         set_other_mutex(mutex_type* rhs) noexcept {
             this->_othermutex = rhs;
@@ -120,6 +126,12 @@ namespace sbn {
         inline kernel_type_registry* types() noexcept { return this->_types; }
         inline const kernel_instance_registry* instances() const noexcept { return this->_instances; }
         inline kernel_instance_registry* instances() noexcept { return this->_instances; }
+
+        inline transaction_log* transactions() noexcept { return this->_transactions; }
+
+        inline const transaction_log* transactions() const noexcept { return this->_transactions; }
+
+        inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
 
 
     protected:

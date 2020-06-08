@@ -2,10 +2,10 @@
 #include <string>
 #include <vector>
 
-#include <subordination/config.hh>
 #include <subordination/core/application_kernel.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
 
@@ -50,7 +50,7 @@ new_application_kernel(int argc, char* argv[]) {
         env.emplace_back(*first);
     }
     sbn::application_kernel* k = new sbn::application_kernel(args, env);
-    k->destination(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+    k->destination(sys::socket_address(SBND_SOCKET));
     return k;
 }
 
@@ -96,7 +96,7 @@ class Status: public sbn::kernel {
 
     void act() override {
         auto* status = new sbnd::Status_kernel;
-        status->destination(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+        status->destination(sys::socket_address(SBND_SOCKET));
         status->set_principal_id(1); // TODO
         status->parent(this);
         sbnc::factory.remote().send(status);

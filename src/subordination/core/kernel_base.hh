@@ -4,15 +4,47 @@
 #include <bitset>
 #include <cassert>
 #include <chrono>
+#include <iosfwd>
 
 #if defined(SBN_DEBUG)
 #include <unistdx/util/backtrace>
 #endif
 
-#include <subordination/core/exit_code.hh>
-#include <subordination/core/kernel_flag.hh>
+#include <unistdx/base/types>
+
+#include <subordination/core/macros.hh>
 
 namespace sbn {
+
+    enum class exit_code: sys::u16 {
+        success = 0,
+        undefined = 1,
+        error = 2,
+        endpoint_not_connected = 3,
+        no_principal_found = 4,
+        no_upstream_servers_available = 5
+    };
+
+    const char* to_string(exit_code rhs) noexcept;
+    std::ostream& operator<<(std::ostream& out, exit_code rhs);
+
+    /// Various kernel flags.
+    enum class kernel_flag: sys::u32 {
+        deleted = 1<<0,
+        /**
+           Setting the flag tells \link sbn::kernel_buffer \endlink that
+           the kernel carries a backup copy of its parent to the subordinate
+           node. This is the main mechanism of providing fault tolerance for
+           principal kernels, it works only when <em>principal kernel have
+           only one subordinate at a time</em>.
+         */
+        carries_parent = 1<<1,
+        parent_is_id = 1<<2,
+        principal_is_id = 1<<3,
+        do_not_delete = 1<<4,
+    };
+
+    SBN_FLAGS(kernel_flag)
 
     class kernel_base {
 

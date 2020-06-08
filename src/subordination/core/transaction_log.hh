@@ -1,11 +1,14 @@
 #ifndef SUBORDINATION_CORE_TRANSACTION_LOG_HH
 #define SUBORDINATION_CORE_TRANSACTION_LOG_HH
 
+#include <mutex>
+
 #include <unistdx/base/types>
 #include <unistdx/io/fildes>
 
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
+#include <subordination/core/pipeline_base.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
@@ -18,27 +21,44 @@ namespace sbn {
     class transaction_log {
 
     public:
-        using kernel_array = std::vector<kernel*>;
+        using pipeline_array = std::vector<pipeline*>;
+
+    private:
+        using mutex_type = std::mutex;
+        using lock_type = std::lock_guard<mutex_type>;
 
     private:
         kernel_buffer _buffer{4096};
         sys::fildes _file_descriptor;
+        pipeline_array _pipelines;
+        mutex_type _mutex;
 
     public:
         transaction_log() = default;
-        ~transaction_log() = default;
+        ~transaction_log();
         transaction_log(const transaction_log&) = delete;
         transaction_log& operator=(const transaction_log&) = delete;
         transaction_log(transaction_log&&) = default;
         transaction_log& operator=(transaction_log&&) = default;
 
-        void write(transaction_status status, kernel* k);
-        auto open(const char* filename) -> kernel_array;
+        void write(transaction_status status, pipeline::index_type pipeline_index, kernel* k);
+        void open(const char* filename);
         void flush();
         void close();
 
+        inline void pipelines(const pipeline_array& rhs) {
+            this->_pipelines = rhs;
+            update_pipeline_indices();
+        }
+
+        inline void pipelines(pipeline_array&& rhs) {
+            this->_pipelines = std::move(rhs);
+            update_pipeline_indices();
+        }
+
     private:
-        auto recover(const char* filename, sys::offset_type max_offset) -> kernel_array;
+        void recover(const char* filename, sys::offset_type max_offset);
+        void update_pipeline_indices();
 
     };
 

@@ -4,6 +4,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
@@ -17,10 +18,11 @@ namespace sbnd {
         socket_pipeline _remote;
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         process_pipeline _process;
-        unix_socket_pipeline _external;
+        unix_socket_pipeline _unix;
         #endif
         sbn::kernel_type_registry _types;
         sbn::kernel_instance_registry _instances;
+        sbn::transaction_log _transactions;
 
     public:
 
@@ -34,9 +36,9 @@ namespace sbnd {
         inline void send_remote(sbn::kernel* k) { this->_remote.send(k); }
 
         inline void
-        send_external(sbn::kernel* k) {
+        send_unix(sbn::kernel* k) {
             #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-            this->_external.send(k);
+            this->_unix.send(k);
             #endif
         }
 
@@ -48,7 +50,7 @@ namespace sbnd {
         inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
         inline socket_pipeline& remote() noexcept { return this->_remote; }
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        inline unix_socket_pipeline& external() noexcept { return this->_external; }
+        inline unix_socket_pipeline& unix() noexcept { return this->_unix; }
         #endif
 
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
@@ -67,7 +69,7 @@ namespace sbnd {
             this->_remote.start();
             #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
             this->_process.start();
-            this->_external.start();
+            this->_unix.start();
             #endif
         }
 
@@ -76,7 +78,7 @@ namespace sbnd {
             this->_remote.stop();
             #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
             this->_process.stop();
-            this->_external.stop();
+            this->_unix.stop();
             #endif
         }
 
@@ -85,7 +87,7 @@ namespace sbnd {
             this->_remote.wait();
             #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
             this->_process.wait();
-            this->_external.wait();
+            this->_unix.wait();
             #endif
         }
 

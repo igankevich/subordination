@@ -13,7 +13,6 @@
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/pipeline_base.hh>
-#include <subordination/core/transaction_log.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
@@ -48,7 +47,6 @@ namespace sbn {
         kernel_buffer _output_buffer{sys::page_size()};
         kernel_buffer _input_buffer{sys::page_size()};
         sys::socket_address _socket_address;
-        transaction_log _transactions;
 
     public:
         connection() = default;
@@ -126,7 +124,6 @@ namespace sbn {
         inline void fill(Source& source) {
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
-            log("remaining _", this->_input_buffer.remaining());
         }
 
     private:

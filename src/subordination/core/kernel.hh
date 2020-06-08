@@ -130,6 +130,7 @@ namespace sbn {
 
         void write_header(kernel_buffer& out) const;
         void read_header(kernel_buffer& in);
+        void swap_header(kernel* k);
 
         inline const kernel*
         principal() const {

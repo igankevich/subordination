@@ -8,8 +8,8 @@ sbn_src = files([
     'connection.cc',
     'error.cc',
     'error_handler.cc',
-    'exit_code.cc',
     'foreign_kernel.cc',
+    'kernel_base.cc',
     'kernel_buffer.cc',
     'kernel.cc',
     'kernel_instance_registry.cc',
@@ -32,11 +32,9 @@ install_headers(
     'connection.hh',
     'error_handler.hh',
     'error.hh',
-    'exit_code.hh',
     'foreign_kernel.hh',
     'kernel_base.hh',
     'kernel_buffer.hh',
-    'kernel_flag.hh',
     'kernel_header_flag.hh',
     'kernel.hh',
     'kernel_instance_registry.hh',
@@ -53,7 +51,7 @@ install_headers(
 sbn_lib = library(
     'sbn',
     sources: sbn_src,
-    dependencies: [threads,unistdx],
+    dependencies: [threads,unistdx] + libunwind + libdw,
     version: meson.project_version(),
     include_directories: src,
     install: true,
@@ -63,12 +61,12 @@ sbn_lib = library(
 sbn = declare_dependency(
     link_with: sbn_lib,
     include_directories: src,
-    dependencies: [unistdx,threads]
+    dependencies: [unistdx,threads] + libunwind + libdw
 )
 
 pkgconfig.generate(
     sbn_lib,
-    requires: [unistdx],
+    requires: [unistdx] + libunwind + libdw,
     version: meson.project_version(),
     name: 'sbn',
     filebase: 'sbn',

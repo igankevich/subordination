@@ -1,4 +1,5 @@
 #include <subordination/core/application.hh>
+#include <subordination/core/error.hh>
 #include <subordination/daemon/application_kernel.hh>
 #include <subordination/daemon/factory.hh>
 
@@ -51,21 +52,26 @@ void sbnd::application_kernel::act() {
         application(app.id());
         factory.process().add(app);
         this->return_to_parent(sbn::exit_code::success);
-        factory.external().send(this);
+        factory.unix().send(this);
     } catch (const sys::bad_call& err) {
         set_error(err.what());
         this->return_to_parent(sbn::exit_code::error);
-        factory.external().send(this);
+        factory.unix().send(this);
+        this->log("execute error _,app=_", err, app.id());
+    } catch (const sbn::error& err) {
+        set_error(err.what());
+        this->return_to_parent(sbn::exit_code::error);
+        factory.unix().send(this);
         this->log("execute error _,app=_", err, app.id());
     } catch (const std::exception& err) {
         set_error(err.what());
         this->return_to_parent(sbn::exit_code::error);
-        factory.external().send(this);
+        factory.unix().send(this);
         this->log("execute error _,app=_", err.what(), app.id());
     } catch (...) {
         set_error("unknown error");
         this->return_to_parent(sbn::exit_code::error);
-        factory.external().send(this);
+        factory.unix().send(this);
         this->log("execute error _", "<unknown>");
     }
 }

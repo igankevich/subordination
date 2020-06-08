@@ -132,7 +132,7 @@ void sbnd::network_master::report_status(Status_kernel* status) {
     status->setf(sbn::kernel_flag::do_not_delete);
     status->return_to_parent(sbn::exit_code::success);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    factory.external().send(status);
+    factory.unix().send(status);
     #endif
 }
 

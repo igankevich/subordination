@@ -4,10 +4,10 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
-#include <subordination/config.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/application_kernel.hh>
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/network_master.hh>
 #include <subordination/daemon/status_kernel.hh>
@@ -55,7 +55,7 @@ main(int argc, char* argv[]) {
     try {
         factory.start();
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-        factory.external().add_server(sys::socket_address(SUBORDINATION_UNIX_DOMAIN_SOCKET));
+        factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         factory.process().allow_root(allow_root);
         #endif
         network_master* m = new network_master;

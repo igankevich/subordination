@@ -52,20 +52,15 @@ void sbn::kernel_buffer::write(kernel* k) {
 }
 
 void sbn::kernel_buffer::read(kernel*& k) {
-    /*
-    k = read_native(this);
-    if (k->carries_parent()) {
-        auto* parent = read_native(this);
-        k->parent(parent);
-    }
-    */
-    auto* fk = new foreign_kernel;
+    std::unique_ptr<foreign_kernel> fk(new foreign_kernel);
     fk->read_header(*this);
     if (fk->is_foreign()) {
         fk->read(*this);
-        k = fk;
+        k = fk.release();
     } else {
-        k = read_native(this, fk);
+        k = read_native(this, nullptr);
+        k->swap_header(fk.get());
+        fk.reset();
         if (k->carries_parent()) {
             auto* parent = read_native(this, nullptr);
             k->parent(parent);
@@ -128,13 +123,11 @@ _frame(frame), _buffer(buffer), _old_position(buffer.position()) {
     this->_buffer.bump(sizeof(kernel_frame));
 }
 
-#include <unistdx/base/log_message>
 sbn::kernel_write_guard::~kernel_write_guard() {
     auto new_position = this->_buffer.position();
     this->_frame.size(new_position - this->_old_position);
     this->_buffer.position(this->_old_position);
     if (this->_frame.size() > sizeof(kernel_frame)) {
-        sys::log_message("WRITE", "frame size _", this->_frame.size());
         this->_buffer.write(&this->_frame, sizeof(kernel_frame));
         this->_buffer.position(new_position);
     }
@@ -144,7 +137,6 @@ sbn::kernel_read_guard::kernel_read_guard(kernel_frame& f, kernel_buffer& buffer
 frame(f), in(buffer), _old_limit(buffer.limit()) {
     if (in.remaining() < sizeof(kernel_frame)) { return; }
     std::memcpy(&frame, in.data()+in.position(), sizeof(kernel_frame));
-    sys::log_message("READ", "frame size _", frame.size());
     if (in.remaining() >= frame.size()) {
         this->_good = true;
         in.limit(in.position() + frame.size());

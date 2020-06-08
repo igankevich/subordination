@@ -145,6 +145,7 @@ sbn::connection::read_kernel(const application* from_application) {
                   k->destination(), k->application_id());
         #endif
         forward_or_delete(this->parent()->foreign_pipeline(), k);
+        k = nullptr;
     } else {
         #if defined(SBN_DEBUG)
         this->log("read native src _ dst _ app _", k->source(),
@@ -212,6 +213,7 @@ void sbn::connection::plug_parent(kernel* k) {
 
 bool sbn::connection::save_kernel(kernel* k) {
     bool delete_kernel = false;
+    transaction_status status{};
     if (bool(this->_flags & connection_flags::save_upstream_kernels) &&
         (k->moves_upstream() || k->moves_somewhere())) {
         if (k->is_native()) {
@@ -222,16 +224,20 @@ bool sbn::connection::save_kernel(kernel* k) {
         this->log("save parent for _", *k);
         #endif
         this->_upstream.push_back(k);
-        this->_transactions.write(transaction_status::start, k);
+        status = transaction_status::start;
     } else if (bool(this->_flags & connection_flags::save_downstream_kernels) &&
                k->moves_downstream() && k->carries_parent()) {
         #if defined(SBN_DEBUG)
         this->log("save parent for _", *k);
         #endif
         this->_downstream.push_back(k);
-        this->_transactions.write(transaction_status::end, k);
+        status = transaction_status::end;
     } else if (!k->moves_everywhere()) {
         delete_kernel = true;
+    }
+    if (bool(this->_flags & connection_flags::write_transaction_log) &&
+        status != transaction_status{} && parent()->transactions()) {
+        parent()->write_transaction(status, k);
     }
     return delete_kernel;
 }

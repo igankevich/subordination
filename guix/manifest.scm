@@ -16,6 +16,9 @@
    (list (@ (gnu packages gcc) gcc) "lib")
    (@ (gnu packages check) googletest)
    (@ (gnu packages unistdx) unistdx)
+   (@ (gnu packages libunwind) libunwind)
+   (@ (gnu packages elf) elfutils)
+   (@ (gnu packages compression) xz)
    (@ (gnu packages pre-commit) python-pre-commit)
    (@ (gnu packages compression) zlib))
   (if-enabled "site"

@@ -78,6 +78,9 @@ namespace sbn {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
                     #endif
+                    // TODO Save the index of the pipeline that executed upstream phase
+                    // of this kernel and then execute downstream phase by the same
+                    // pipeline.
                     const auto n = k->hash() % this->_downstream_kernels.size();
                     this->_downstream_kernels[n].emplace(k);
                     if (this->_downstream_threads.empty()) {

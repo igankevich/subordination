@@ -1,3 +1,7 @@
+config = configuration_data()
+config.set('sharedstatedir', get_option('sharedstatedir'))
+configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
+
 sbnd_src = files([
     'application_kernel.cc',
     'factory.cc',
