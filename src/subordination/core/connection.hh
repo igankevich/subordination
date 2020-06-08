@@ -5,6 +5,7 @@
 #include <deque>
 #include <functional>
 
+#include <unistdx/base/flag>
 #include <unistdx/io/epoll_event>
 #include <unistdx/io/poller>
 #include <unistdx/net/socket_address>
@@ -23,7 +24,7 @@ namespace sbn {
         write_transaction_log = 1<<2,
     };
 
-    SBN_FLAGS(connection_flags)
+    UNISTDX_FLAGS(connection_flags)
 
     class connection: public pipeline_base {
 

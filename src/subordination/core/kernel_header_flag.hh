@@ -1,9 +1,8 @@
 #ifndef SUBORDINATION_CORE_KERNEL_HEADER_FLAG_HH
 #define SUBORDINATION_CORE_KERNEL_HEADER_FLAG_HH
 
+#include <unistdx/base/flag>
 #include <unistdx/base/types>
-
-#include <subordination/core/macros.hh>
 
 namespace sbn {
 
@@ -13,7 +12,7 @@ namespace sbn {
         application = 1<<2,
     };
 
-    SBN_FLAGS(kernel_field)
+    UNISTDX_FLAGS(kernel_field)
 
 }
 

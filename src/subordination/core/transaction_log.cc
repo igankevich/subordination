@@ -48,8 +48,7 @@ void sbn::transaction_log::open(const char* filename) {
     using f = sys::open_flag;
     this->_file_descriptor.open(filename, f::append | f::close_on_exec | f::create |
                                 f::write_only | f::dsync | f::direct, 0700);
-    auto offset = ::lseek(this->_file_descriptor.fd(), 0, SEEK_CUR);
-    UNISTDX_CHECK(offset);
+    const auto offset = this->_file_descriptor.offset();
     if (offset != 0) { return recover(filename, offset); }
 }
 

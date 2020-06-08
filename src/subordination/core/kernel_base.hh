@@ -10,9 +10,8 @@
 #include <unistdx/util/backtrace>
 #endif
 
+#include <unistdx/base/flag>
 #include <unistdx/base/types>
-
-#include <subordination/core/macros.hh>
 
 namespace sbn {
 
@@ -44,7 +43,7 @@ namespace sbn {
         do_not_delete = 1<<4,
     };
 
-    SBN_FLAGS(kernel_flag)
+    UNISTDX_FLAGS(kernel_flag)
 
     class kernel_base {
 
