@@ -445,13 +445,17 @@ sbnd::socket_pipeline
             }
         } else {
             if (this->_clients.empty()) {
-                k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
+                if (k->carries_parent()) {
+                    log("warning, sending a kernel carrying parent to local pipeline _", k);
+                }
+                //k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
                 native_pipeline()->send(k);
             } else {
                 success = true;
             }
         }
         if (success) {
+            if (end_reached()) { find_next_client(); }
             ensure_identity(k, this->_iterator->second->socket_address());
             this->_iterator->second->send(k);
         }

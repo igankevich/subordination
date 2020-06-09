@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <unistdx/base/command_line>
+#include <unistdx/base/log_message>
 #include <unistdx/ipc/process>
 #include <unistdx/net/interface_address>
 
@@ -15,35 +16,31 @@ using test::Role;
 using sys::this_process::hostname;
 
 enum struct Failure: sys::port_type {
-    No = 0,
-    Slave = 1
+    None = 0,
+    Slave = 1,
+    Master = 2,
+    Power = 3,
 };
 
 std::istream&
 operator>>(std::istream& in, Failure& rhs) {
     std::string s;
     in >> s;
-    if (s == "slave") {
-        rhs = Failure::Slave;
-    } else if (s == "no") {
-        rhs = Failure::No;
-    } else {
-        throw std::invalid_argument("bad test case");
-    }
+    if (s == "none") { rhs = Failure::None; }
+    else if (s == "slave") { rhs = Failure::Slave; }
+    else if (s == "master") { rhs = Failure::Master; }
+    else if (s == "power") { rhs = Failure::Power; }
+    else { throw std::invalid_argument("bad test case"); }
     return in;
 }
 
-//const std::vector<size_t> POWERS = {1,2,3,4,16,17};
-//const std::vector<size_t> POWERS = {1,2,3,4};
-const std::vector<size_t> POWERS = {1};
-//const std::vector<size_t> POWERS = {16,17};
-const uint32_t NUM_KERNELS = 7;
+const uint32_t NUM_KERNELS = 9;
 
 std::atomic<int> kernel_count(0);
 std::atomic<uint32_t> shutdown_counter(0);
 
 Role role = Role::Master;
-Failure failure = Failure::No;
+Failure failure = Failure::None;
 
 using ipv4_interface_address = sys::interface_address<sys::ipv4_address>;
 
@@ -54,7 +51,7 @@ sbnd::socket_pipeline remote;
 template <class ... Args>
 inline void
 message(const Args& ... args) {
-    sys::log_message("test", args ...);
+    sys::log_message("test", args ...).out().flush();
 }
 
 struct Test_socket: public sbn::kernel {
@@ -80,14 +77,32 @@ struct Test_socket: public sbn::kernel {
             if (role == Role::Slave) {
                 // Delete kernel for Valgrind memory checker.
                 delete this;
-                const uint32_t TOTAL_NUM_KERNELS = NUM_KERNELS * POWERS.size();
-                if (++shutdown_counter == TOTAL_NUM_KERNELS/3) {
-                    std::clog << "go offline" << std::endl;
-                    sbn::graceful_shutdown(0);
+                if (++shutdown_counter == NUM_KERNELS/3) {
+                    message("slave failure!");
+                    //sbn::graceful_shutdown(0);
+                    send(sys::signal::kill, sys::this_process::id());
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
-                local.send(this);
+                remote.send(this);
+            }
+        } else if (failure == Failure::Master) {
+            if (role == Role::Master) {
+                delete this;
+                if (++shutdown_counter == NUM_KERNELS/3) {
+                    message("master failure!");
+                    send(sys::signal::kill, sys::this_process::id());
+                    //sbn::graceful_shutdown(0);
+                }
+            } else {
+                return_to_parent(sbn::exit_code::success);
+                remote.send(this);
+            }
+        } else if (failure == Failure::Power) {
+            delete this;
+            if (++shutdown_counter == NUM_KERNELS/3) {
+                message("power failure!");
+                send(sys::signal::kill, sys::this_process::id());
             }
         } else {
             return_to_parent(sbn::exit_code::success);
@@ -121,11 +136,9 @@ private:
 
 struct Sender: public sbn::kernel {
 
-    explicit
-    Sender(uint32_t n):
-    _vector_size(n),
-    _input(_vector_size)
-    {}
+    Sender() = default;
+
+    explicit Sender(uint32_t n): _input(n) {}
 
     void act() override {
         for (uint32_t i=0; i<NUM_KERNELS; ++i) {
@@ -143,48 +156,58 @@ struct Sender: public sbn::kernel {
         message("returned _/_", _num_returned+1, NUM_KERNELS);
         if (++_num_returned == NUM_KERNELS) {
             this->return_to_parent(sbn::exit_code::success);
-            local.send(this);
+            remote.send(this);
         }
+    }
+
+    void write(sbn::kernel_buffer& out) const override {
+        sbn::kernel::write(out);
+        out << this->_num_returned;
+        out << sys::u32(this->_input.size());
+        for (const auto& i : this->_input) { out << i; }
+    }
+
+    void read(sbn::kernel_buffer& in) override {
+        sbn::kernel::read(in);
+        in >> this->_num_returned;
+        sys::u32 input_size = 0;
+        in >> input_size;
+        this->_input.resize(input_size);
+        for (auto& i : this->_input) { in >> i; }
     }
 
 private:
 
     uint32_t _num_returned = 0;
-    uint32_t _vector_size;
 
     std::vector<Datum> _input;
 };
 
 struct Main: public sbn::kernel {
 
-    void
-    act() override {
-        for (uint32_t i=0; i<POWERS.size(); ++i) {
-            size_t sz = 1 << POWERS[i];
-            auto* sender = new Sender(sz);
-            sender->parent(this);
-            local.send(sender);
-        }
+    Main() = default;
+
+    void act() override {
+        size_t sz = 1 << 1;
+        auto* sender = new Sender(sz);
+        sender->parent(this);
+        sender->setf(sbn::kernel_flag::carries_parent);
+        remote.send(sender);
     }
 
-    void
-    react(sbn::kernel*) override {
-        if (++_num_returned == POWERS.size()) {
-            return_code(sbn::exit_code::success);
-            sbn::graceful_shutdown(this);
-        }
+    void react(sbn::kernel*) override {
+        return_code(sbn::exit_code::success);
+        sbn::graceful_shutdown(this);
     }
-
-private:
-
-    uint32_t _num_returned = 0;
 
 };
 
-TEST(NICServerTest, All) {
+TEST(socket_pipeline, _) {
 
     sbn::kernel_type_registry types;
     types.add<Test_socket>(1);
+    types.add<Sender>(2);
+    types.add<Main>(3);
     local.name("local");
     local.start();
     remote.name("remote");
@@ -193,7 +216,7 @@ TEST(NICServerTest, All) {
     remote.types(&types);
     remote.start();
 
-    sys::port_type port = 10000 + 2*sys::port_type(failure);
+    sys::port_type port = 10000;
     ipv4_interface_address network{{127,0,0,1},8};
     if (const char* text = std::getenv("DTEST_INTERFACE_ADDRESS")) {
         std::stringstream tmp(text);
@@ -245,5 +268,6 @@ main(int argc, char* argv[]) {
         nullptr
     };
     sys::parse_arguments(argc, argv, options);
+    if (std::getenv("DTEST_NO_RESTART")) { failure = Failure::None; }
     return RUN_ALL_TESTS();
 }

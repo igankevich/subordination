@@ -1,17 +1,19 @@
 #include <iostream>
 #include <vector>
 
+#include <unistdx/base/log_message>
 #include <unistdx/io/pipe>
+#include <unistdx/ipc/execute>
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/signal>
 
 #include <dtest/application.hh>
 
 using s = sys::signal;
-dts::application app;
+dts::application* aptr;
 
-void on_terminate(int sig) { app.send(s::terminate); ::alarm(3); }
-void on_alarm(int) { app.send(s::kill); }
+void on_terminate(int sig) { if (aptr) { aptr->send(s::terminate); ::alarm(3); } }
+void on_alarm(int) { if (aptr) { aptr->send(s::kill); } }
 
 void
 init_signal_handlers() {
@@ -22,16 +24,19 @@ init_signal_handlers() {
     bind_signal(s::alarm, on_alarm);
 }
 
-int main(int argc, char* argv[]) {
+int nested_main(int argc, char* argv[], bool& will_restart) {
     int ret = EXIT_FAILURE;
+    dts::application app;
+    aptr = &app;
     try {
         init_signal_handlers();
         app.init(argc, argv);
+        will_restart = app.will_restart();
         sys::pipe pipe;
         pipe.in().unsetf(sys::open_flag::non_blocking);
         pipe.out().unsetf(sys::open_flag::non_blocking);
         using pf = sys::process_flag;
-        sys::process child([&pipe] () {
+        sys::process child([&pipe,&app] () {
             try {
                 pipe.out().close();
                 char ch;
@@ -53,6 +58,17 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         app.terminate();
+    }
+    return ret;
+}
+
+int main(int argc, char* argv[]) {
+    bool restart = false;
+    int ret = nested_main(argc, argv, restart);
+    if (restart && !std::getenv("DTEST_NO_RESTART")) {
+        ::setenv("DTEST_NO_RESTART", "", 1);
+        sys::log_message("dtest", "restart after power failure");
+        sys::this_process::execute(argv);
     }
     return ret;
 }

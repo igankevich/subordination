@@ -172,7 +172,7 @@ bool sbn::connection::receive_kernel(kernel* k) {
         }
     }
     #if defined(SBN_DEBUG)
-    this->log("recv _", *k);
+    this->log("recv _", k);
     #endif
     return ok;
 }

@@ -279,8 +279,7 @@ namespace sbn {
 
     };
 
-    std::ostream&
-    operator<<(std::ostream& out, const kernel& rhs);
+    std::ostream& operator<<(std::ostream& out, const kernel& rhs);
 
     inline sbn::kernel_buffer&
     operator<<(sbn::kernel_buffer& out, const kernel& rhs) {

@@ -24,9 +24,6 @@ else
         add_global_arguments(arg, language: 'cpp')
     endif
 endif
-#add_global_arguments('-DUNISTDX_DEBUG_PACKETBUF', language: 'cpp')
-#add_global_arguments('-DUNISTDX_DEBUG_FILDESBUF', language: 'cpp')
-#add_global_arguments('-DUNISTDX_DEBUG_EVENT_POLLER', language: 'cpp')
 
 foreach arg : ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
     if cpp.has_argument(arg)

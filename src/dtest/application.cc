@@ -13,11 +13,12 @@
 
 void dts::application::usage() {
     std::cout <<
-        "dtest [-h] [--help] [--exit-code code] [--name name] [--size n]\n"
+        "dtest [-h] [--help] [--exit-code code] [--restart] [--name name] [--size n]\n"
         "      [--network ip/prefix] [--peer-network ip/prefix]\n"
         "      [--exec where command argument1...]\n"
         "--exit-code code      how exit code of child processes is accumulated,\n"
-        "                      possible values: all, master\n"
+        "                      possible values: all, master, process no. starting from 1\n"
+        "--restart             restart test when it finishes (useful when testing power outage)\n"
         "--name name           cluster name\n"
         "--size n              the number of nodes in he cluster\n"
         "--network ip/n        subnetwork veth (default is 10.1.0.0/16)\n"
@@ -31,6 +32,7 @@ void dts::application::usage() {
 }
 
 void dts::application::init(int argc, char* argv[]) {
+    this->_argv = argv;
     size_t cluster_size = 1;
     cluster_node::address_type cluster_network{{10,1,0,1},16};
     cluster_node::address_type cluster_peer_network{{10,0,0,1},16};
@@ -82,6 +84,8 @@ void dts::application::init(int argc, char* argv[]) {
             tmp >> ms;
             if (!tmp || ms < 0) { throw std::invalid_argument("bad --exec-delay"); }
             this->_execution_delay = std::chrono::milliseconds(ms);
+        } else if (arg == "--restart") {
+            this->_restart = true;
         } else {
             std::stringstream tmp;
             tmp << "unknown argument: " << arg;
@@ -115,6 +119,21 @@ int dts::application::wait() {
                 this->log("slave process terminated: _", stat);
             }
         }
+    } else {
+        size_t proc_no = static_cast<size_t>(this->_exitcode);
+        auto nprocs = this->_procs.size();
+        if (proc_no < nprocs) {
+            auto status = this->_procs[proc_no].wait();
+            this->log("process #_ terminated: _", proc_no, status);
+            retval = status.exit_code() | sys::signal_type(status.term_signal());
+        }
+        for (size_t i=0; i<nprocs; ++i) {
+            if (i == proc_no) { continue; }
+            auto& proc = this->_procs[i];
+            if (proc) { proc.terminate(); }
+            auto stat = proc.wait();
+            this->log("process #_ terminated: _", i, stat);
+        }
     }
     this->_stopped = true;
     this->_poller.notify_one();
@@ -131,7 +150,6 @@ int dts::application::accumulate_return_value() {
     }
     return ret;
 }
-
 
 void dts::application::run() {
     if (this->_cluster.size() == 1) {

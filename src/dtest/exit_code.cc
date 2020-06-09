@@ -3,11 +3,11 @@
 
 #include <dtest/exit_code.hh>
 
-auto dts::to_string(exit_code rhs) -> const char* {
+auto dts::to_string(exit_code rhs) -> std::string {
     switch (rhs) {
         case exit_code::master: return "master";
         case exit_code::all: return "all";
-        default: return "unknown";
+        default: return std::to_string(int(rhs)+1);
     }
 }
 
@@ -19,6 +19,7 @@ auto dts::to_exit_code(const std::string& s) -> exit_code {
     exit_code ret{};
     if (s == "master") { ret = exit_code::master; }
     else if (s == "all") { ret = exit_code::all; }
+    else { ret = exit_code(std::stoi(s)-1); }
     return ret;
 }
 

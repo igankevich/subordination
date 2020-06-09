@@ -29,6 +29,7 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = std::condition_variable;
         using semaphore_array = std::vector<semaphore_type>;
+        // TODO replace with sys::process
         using thread_type = std::thread;
         using thread_array = std::vector<thread_type>;
 

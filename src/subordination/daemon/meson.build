@@ -92,8 +92,8 @@ test(
     args: [
         '--exit-code', 'master',
         '--size', '2',
-        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
-        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=none',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=none',
     ],
     workdir: meson.current_build_dir(),
     is_parallel: false
@@ -107,6 +107,33 @@ test(
         '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
+)
+
+test(
+    'daemon/socket-pipeline-master-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', '2',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=master',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=master',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
+)
+
+test(
+    'daemon/socket-pipeline-power-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'all',
+        '--restart',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=power',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=power',
     ],
     workdir: meson.current_build_dir(),
     is_parallel: false
@@ -149,34 +176,32 @@ discovery_test_exe = executable(
 )
 
 if get_option('b_sanitize') != 'address'
-    foreach nodes : ['2', '4']
-        foreach fanout : ['2', '1000']
-            foreach failure : ['no-failure', 'slave-failure', 'master-failure']
-                suffix = '-' + nodes + '-' + fanout + '-' + failure
-                env = environment()
-                env.set('DTEST_EXE', dtest_exe.full_path())
-                env.set('DTEST_NAME', 'x')
-                env.set('DTEST_SIZE', nodes)
-                env.set('SBN_FANOUT', fanout)
-                env.set('SBN_FAILURE', failure)
-                # test executable is a wrapper for dtest
-                # (all arguments are forwarded to dtest)
-                test(
-                    'daemon/discovery' + suffix,
-                    discovery_test_exe,
-                    args: [
-                        # run daemon on each cluster node
-                        '--exec', '*',
-                        sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
-                        # submit test application from the first node
-                        '--exec', '1',
-                        sbnc_exe.full_path(), test_app_exe.full_path(), failure
-                    ],
-                    env: env,
-                    workdir: meson.build_root(),
-                    is_parallel: false
-                )
-            endforeach
-        endforeach
+    nodes = '2'
+    fanout = '2'
+    foreach failure : ['no-failure', 'slave-failure', 'master-failure', 'total-failure']
+        suffix = '-' + nodes + '-' + fanout + '-' + failure
+        env = environment()
+        env.set('DTEST_EXE', dtest_exe.full_path())
+        env.set('DTEST_NAME', 'x')
+        env.set('DTEST_SIZE', nodes)
+        env.set('SBN_FANOUT', fanout)
+        env.set('SBN_FAILURE', failure)
+        # test executable is a wrapper for dtest
+        # (all arguments are forwarded to dtest)
+        test(
+            'daemon/discovery' + suffix,
+            discovery_test_exe,
+            args: [
+                # run daemon on each cluster node
+                '--exec', '*',
+                sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
+                # submit test application from the first node
+                '--exec', '1',
+                sbnc_exe.full_path(), test_app_exe.full_path(), failure
+            ],
+            env: env,
+            workdir: meson.build_root(),
+            is_parallel: false
+        )
     endforeach
 endif

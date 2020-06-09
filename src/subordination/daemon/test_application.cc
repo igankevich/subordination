@@ -27,6 +27,11 @@ test_master_failure() {
     return failure == "master-failure";
 }
 
+inline bool
+test_total_failure() {
+    return failure == "total-failure";
+}
+
 class slave_kernel: public sbn::kernel {
 
 private:
@@ -48,13 +53,10 @@ public:
         if (!test_without_failures()) {
             using namespace sbn::this_application;
             if ((test_master_failure() && is_master()) ||
-                (test_slave_failure() && is_slave())) {
-                log(
-                    "kill _ at _ parent _",
-                    is_master() ? "master" : "slave",
-                    sys::this_process::hostname(),
-                    sys::this_process::parent_id()
-                );
+                (test_slave_failure() && is_slave()) ||
+                test_total_failure()) {
+                log("kill _ at _ parent _", is_master() ? "master" : "slave",
+                    sys::this_process::hostname(), sys::this_process::parent_id());
                 send(sys::signal::kill, sys::this_process::parent_id());
                 sys::this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
             }

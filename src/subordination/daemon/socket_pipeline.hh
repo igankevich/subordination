@@ -147,7 +147,7 @@ namespace sbnd {
 
         inline void
         reset_iterator() noexcept {
-            this->_iterator = this->_clients.end();
+            this->_iterator = this->_clients.begin();
             this->_weightcnt = 0;
         }
 

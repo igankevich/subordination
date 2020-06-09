@@ -94,8 +94,7 @@ sbn::kernel::error(kernel* rhs) {
     this->react(rhs);
 }
 
-std::ostream&
-sbn::operator<<(std::ostream& out, const kernel& rhs) {
+std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
     const char state[] = {
         (rhs.moves_upstream()   ? 'u' : '-'),
         (rhs.moves_downstream() ? 'd' : '-'),

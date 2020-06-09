@@ -15,8 +15,8 @@
 #include <unistdx/net/veth_interface>
 
 #include <dtest/cluster.hh>
-#include <dtest/cluster_node_bitmap.hh>
 #include <dtest/cluster_node.hh>
+#include <dtest/cluster_node_bitmap.hh>
 #include <dtest/exit_code.hh>
 
 namespace dts {
@@ -65,6 +65,8 @@ namespace dts {
         std::thread _output_thread;
         exit_code _exitcode = exit_code::all;
         duration _execution_delay = duration::zero();
+        char** _argv = nullptr;
+        bool _restart = false;
         std::atomic<bool> _stopped{false};
 
     public:
@@ -80,6 +82,7 @@ namespace dts {
         inline void send(sys::signal s) { log("received signal _", s); this->_procs.send(s); }
         inline void terminate() { this->send(sys::signal::terminate); }
         inline bool stopped() { return this->_stopped; }
+        inline bool will_restart() const noexcept { return this->_restart; }
 
         template <class ... Args>
         inline void
