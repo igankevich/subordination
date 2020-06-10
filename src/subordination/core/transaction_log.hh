@@ -13,13 +13,7 @@
 
 namespace sbn {
 
-    enum class transaction_status: sys::u8 {
-        start=1,
-        end=2,
-        recovery_start=3,
-        recovery_end=4,
-        replace=5,
-    };
+    enum class transaction_status: sys::u8 {start=1, end=2};
 
     kernel_buffer& operator<<(kernel_buffer& out, transaction_status rhs);
 

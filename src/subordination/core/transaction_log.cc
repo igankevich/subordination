@@ -99,8 +99,6 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
         }
     };
     fd_reader reader{fd,0,max_offset};
-    size_t recovery_start_index = 0;
-    new_buffer << transaction_status::recovery_start;
     while (reader.offset != reader.max_offset) {
         buf.fill(reader);
         buf.flip();
@@ -112,19 +110,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
             kernel* k = nullptr;
             buf.read(status);
             buf.read(pipeline_index);
-            if (status == transaction_status::recovery_start) {
-                recovery_start_index = records.size();
-            } else if (status == transaction_status::recovery_end) {
-                // delete kernels that has already been restored
-                for (size_t i=0; i<recovery_start_index; ++i) {
-                    delete records[i].k;
-                }
-                records.erase(records.begin(), records.begin()+recovery_start_index);
-            } else if (status == transaction_status::replace) {
-                buf.read(k);
-                erase_upstream(k->id());
-                records.emplace_back(status, pipeline_index, k);
-            } else if (status == transaction_status::end) {
+            if (status == transaction_status::end) {
                 kernel::id_type id = 0;
                 buf.read(id);
                 erase_upstream(id);
@@ -146,11 +132,9 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
             delete r.k;
             r.k = nullptr;
         } else {
-            r.status = transaction_status::replace;
             new_buffer << r;
         }
     }
-    new_buffer << transaction_status::recovery_end;
     std::string new_name;
     new_name += filename;
     new_name += ".new";
@@ -166,6 +150,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     this->_file_descriptor.offset(0, sys::seek_origin::end);
     // send recovered kernels to the respective pipelines
     for (auto& r : records) { if (r.k) { this->_pipelines[r.pipeline_index]->send(r.k); } }
+    // TODO clean log periodically
 }
 
 void sbn::transaction_log::update_pipeline_indices() {
