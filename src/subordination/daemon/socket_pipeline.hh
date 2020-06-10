@@ -84,7 +84,7 @@ namespace sbnd {
         void forward(sbn::foreign_kernel* hdr) override;
 
         inline void
-        set_port(sys::port_type rhs) noexcept {
+        port(sys::port_type rhs) noexcept {
             this->_port = rhs;
         }
 

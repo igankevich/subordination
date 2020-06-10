@@ -236,7 +236,7 @@ TEST(socket_pipeline, _) {
     sys::socket_address subordinate_endpoint(*address++, port+1);
     sys::socket_address principal_endpoint(*address++, port);
     if (role == Role::Slave) {
-        remote.set_port(port+1);
+        remote.port(port+1);
         remote.add_server(principal_endpoint, network.netmask());
         if (restore) {
             using namespace std::this_thread;
@@ -245,7 +245,7 @@ TEST(socket_pipeline, _) {
         }
     }
     if (role == Role::Master) {
-        remote.set_port(port);
+        remote.port(port);
         remote.add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start
         using namespace std::this_thread;

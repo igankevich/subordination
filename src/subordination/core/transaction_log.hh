@@ -15,8 +15,24 @@ namespace sbn {
 
     enum class transaction_status: sys::u8 {
         start=1,
-        end=2
+        end=2,
+        recovery_start=3,
+        recovery_end=4,
+        replace=5,
     };
+
+    kernel_buffer& operator<<(kernel_buffer& out, transaction_status rhs);
+
+    struct transaction_record {
+        transaction_status status;
+        pipeline::index_type pipeline_index;
+        kernel* k;
+        transaction_record() = default;
+        inline transaction_record(transaction_status s, pipeline::index_type i, kernel* kk):
+        status(s), pipeline_index(i), k(kk) {}
+    };
+
+    kernel_buffer& operator<<(kernel_buffer& out, const transaction_record& rhs);
 
     class transaction_log {
 
@@ -41,7 +57,8 @@ namespace sbn {
         transaction_log(transaction_log&&) = default;
         transaction_log& operator=(transaction_log&&) = default;
 
-        void write(transaction_status status, pipeline::index_type pipeline_index, kernel* k);
+        void write(const transaction_record& record);
+
         void open(const char* filename);
         void flush();
         void close();
