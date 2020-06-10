@@ -55,7 +55,6 @@ if with_rpm
     subdir('rpm')
 endif
 
-# cppcheck {{{
 cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()
     run_target(
@@ -74,4 +73,3 @@ if cppcheck.found()
         ]
     )
 endif
-# }}}

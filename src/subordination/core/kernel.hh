@@ -1,7 +1,9 @@
 #ifndef SUBORDINATION_CORE_KERNEL_HH
 #define SUBORDINATION_CORE_KERNEL_HH
 
+#include <unistdx/base/log_message>
 #include <unistdx/net/socket_address>
+#include <unistdx/test/print_flags>
 
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_base.hh>
@@ -133,61 +135,77 @@ namespace sbn {
         void swap_header(kernel* k);
 
         inline const kernel*
-        principal() const {
-            return this->isset(kernel_flag::principal_is_id)
-                ? nullptr : this->_principal;
+        principal() const noexcept {
+            if (bool(flags() & kernel_flag::principal_is_id)) { return nullptr; }
+            return this->_principal;
         }
 
-        inline kernel* principal() noexcept { return this->_principal; }
+        inline kernel* principal() noexcept {
+            if (bool(flags() & kernel_flag::principal_is_id)) { return nullptr; }
+            return this->_principal;
+        }
 
         inline id_type
-        principal_id() const {
-            return this->_principal_id;
+        principal_id() const noexcept {
+            return bool(flags() & kernel_flag::principal_is_id)
+                ?  this->_principal_id : this->_principal->id();
         }
 
         inline void
-        set_principal_id(id_type id) {
+        set_principal_id(id_type id) noexcept {
             this->_principal_id = id;
             this->setf(kernel_flag::principal_is_id);
         }
 
         inline void
-        principal(kernel* rhs) {
+        principal(kernel* rhs) noexcept {
             this->_principal = rhs;
             this->unsetf(kernel_flag::principal_is_id);
         }
 
         inline const kernel*
-        parent() const {
+        parent() const noexcept {
+            if (bool(flags() & kernel_flag::parent_is_id)) { return nullptr; }
             return this->_parent;
         }
 
         inline kernel*
-        parent() {
+        parent() noexcept {
+            if (bool(flags() & kernel_flag::parent_is_id)) { return nullptr; }
             return this->_parent;
         }
 
+        inline void
+        parent(kernel* rhs) {
+            this->_parent = rhs;
+            this->_flags &= ~kernel_flag::parent_is_id;
+        }
+
         inline id_type
-        parent_id() const {
-            return this->_parent_id;
+        parent_id() const noexcept {
+            return bool(flags() & kernel_flag::parent_is_id)
+                ?  this->_parent_id : this->_parent->id();
         }
 
         inline void
-        parent(kernel* p) {
-            this->_parent = p;
-            this->unsetf(kernel_flag::parent_is_id);
+        parent_id(id_type rhs) noexcept {
+            if (!bool(flags() & kernel_flag::parent_is_id)) {
+                //delete this->_parent;
+                this->_flags |= kernel_flag::parent_is_id;
+            }
+            this->_parent_id = rhs;
         }
 
         inline size_t
-        hash() const {
-            const bool b = this->isset(kernel_flag::principal_is_id);
+        hash() const noexcept{
             size_t ret;
-            if (b) {
+            if (bool(flags() & kernel_flag::principal_is_id)) {
                 ret = this->_principal_id;
+            } else if (!bool(flags() & kernel_flag::principal_is_id) &&
+                       this->_principal && this->_principal->has_id()) {
+                ret = principal()->id();
             } else {
-                ret = this->_principal && this->_principal->has_id()
-                    ? this->_principal->id()
-                    : size_t(this->_principal) / alignof(size_t);
+                ret = size_t(this->_principal) / alignof(size_t);
             }
             return ret;
         }
@@ -270,10 +288,14 @@ namespace sbn {
         }
 
         template <class Container> void
-        mark_as_deleted(Container& result) noexcept {
-            if (this->isset(kernel_flag::deleted)) { return; }
-            this->setf(kernel_flag::deleted);
-            if (is_native() && this->_parent) { this->_parent->mark_as_deleted(result); }
+        mark_as_deleted(Container& result) {
+            if (isset(kernel_flag::deleted)) { return; }
+            setf(kernel_flag::deleted);
+            sys::log_message("TEST", "application-id _", this->_application_id);
+            //sys::test::print_flags(this->_fields);
+            if (is_native()) {
+                if (auto* p = parent()) { p->mark_as_deleted(result); }
+            }
             result.emplace_back(this);
         }
 

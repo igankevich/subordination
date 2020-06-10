@@ -56,9 +56,17 @@ namespace sbn {
             update_pipeline_indices();
         }
 
+        inline void types(kernel_type_registry* rhs) noexcept { this->_buffer.types(rhs); }
+
     private:
         void recover(const char* filename, sys::offset_type max_offset);
         void update_pipeline_indices();
+
+        template <class ... Args>
+        inline void
+        log(const Args& ... args) const {
+            sys::log_message("transactions", args ...);
+        }
 
     };
 

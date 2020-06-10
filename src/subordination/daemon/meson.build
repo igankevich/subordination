@@ -3,22 +3,14 @@ config.set('sharedstatedir', get_option('sharedstatedir'))
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([
-    'application_kernel.cc',
-    'factory.cc',
     'hierarchy.cc',
     'hierarchy_kernel.cc',
     'hierarchy_node.cc',
-    'master_discoverer.cc',
-    'network_master.cc',
     'position_in_tree.cc',
-    'probe.cc',
-    'prober.cc',
     'process_pipeline.cc',
-    'resident_kernel.cc',
     'socket_pipeline.cc',
     'status_kernel.cc',
     'tree_hierarchy_iterator.cc',
-    'unix_socket_pipeline.cc',
 ])
 
 sbnd_lib = library(
@@ -39,7 +31,17 @@ sbnd = declare_dependency(
 
 sbnd_exe = executable(
     'sbnd',
-    sources: ['sbnd.cc'],
+    sources: files([
+        'application_kernel.cc',
+        'factory.cc',
+        'master_discoverer.cc',
+        'network_master.cc',
+        'probe.cc',
+        'prober.cc',
+        'resident_kernel.cc',
+        'sbnd.cc',
+        'unix_socket_pipeline.cc',
+    ]),
     include_directories: src,
     dependencies: [sbnd],
     cpp_args: profiling_args,

@@ -34,25 +34,29 @@ void sbn::transaction_log::write(transaction_status status,
 }
 
 void sbn::transaction_log::flush() {
+    this->_buffer.flip();
     this->_buffer.flush(this->_file_descriptor);
     this->_buffer.compact();
 }
 
 void sbn::transaction_log::close() {
-    if (!this->_file_descriptor) { return; }
-    flush();
+    //if (!this->_file_descriptor) { return; }
+    //flush();
     this->_file_descriptor.close();
 }
 
 void sbn::transaction_log::open(const char* filename) {
     using f = sys::open_flag;
-    this->_file_descriptor.open(filename, f::append | f::close_on_exec | f::create |
-                                f::write_only | f::dsync | f::direct, 0700);
+    this->_file_descriptor.open(filename, f::close_on_exec | f::create |
+                                f::write_only | f::dsync, 0600);
+    this->_file_descriptor.offset(0, sys::seek_origin::end);
     const auto offset = this->_file_descriptor.offset();
+    log("file _ offset _", filename, offset);
     if (offset != 0) { return recover(filename, offset); }
 }
 
 void sbn::transaction_log::recover(const char* filename, sys::offset_type max_offset) {
+    log("recover");
     using f = sys::open_flag;
     auto& buf = this->_buffer;
     sys::fildes fd(filename, f::close_on_exec | f::read_only);
@@ -84,7 +88,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     };
     fd_reader reader{fd,0,max_offset};
     while (reader.offset != reader.max_offset) {
-        buf.fill(fd);
+        buf.fill(reader);
         buf.flip();
         while (buf.remaining() >= sizeof(kernel_frame)) {
             kernel_read_guard g(frame, buf);
@@ -97,7 +101,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
             if (status == transaction_status::end) {
                 kernel::id_type id = 0;
                 buf.read(id);
-                erase_upstream(k->id());
+                erase_upstream(id);
             } else {
                 // TODO add recursive flag to kernel buffer
                 // when enabled, the buffer saves all hierarchy of parent kernels,
@@ -109,6 +113,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
         buf.compact();
     }
     fd.close();
+    buf.clear();
     for (auto& r : records) {
         if (r.pipeline_index >= this->_pipelines.size()) {
             log("wrong pipeline index _, deleting _", r.pipeline_index, r.k);

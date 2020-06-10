@@ -237,7 +237,15 @@ bool sbn::connection::save_kernel(kernel* k) {
     }
     if (bool(this->_flags & connection_flags::write_transaction_log) &&
         status != transaction_status{} && parent()->transactions()) {
-        parent()->write_transaction(status, k);
+        try {
+            parent()->write_transaction(status, k);
+        } catch (const sbn::error& err) {
+            log_write_error(err);
+        } catch (const std::exception& err) {
+            log_write_error(err.what());
+        } catch (...) {
+            log_write_error("<unknown>");
+        }
     }
     return delete_kernel;
 }

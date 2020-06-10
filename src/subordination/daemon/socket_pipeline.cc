@@ -526,10 +526,11 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->socket_address(vaddr);
     s->parent(this);
     s->types(types());
+    log("types _", (void*)types());
     s->setstate(sbn::pipeline_state::starting);
     s->name(this->_name);
     using f = sbn::connection_flags;
-    s->setf(f::save_upstream_kernels | f::save_downstream_kernels);
+    s->setf(f::save_upstream_kernels | f::save_downstream_kernels | f::write_transaction_log);
     this->emplace_client(vaddr, s);
     this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
     fire_event_kernels(new socket_pipeline_kernel(socket_pipeline_event::add_client, vaddr));

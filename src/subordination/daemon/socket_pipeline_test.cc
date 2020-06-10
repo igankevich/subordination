@@ -5,9 +5,11 @@
 #include <unistdx/ipc/process>
 #include <unistdx/net/interface_address>
 
+#include <subordination/core/error.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/test/datum.hh>
 #include <subordination/test/role.hh>
@@ -47,6 +49,7 @@ using ipv4_interface_address = sys::interface_address<sys::ipv4_address>;
 
 sbn::parallel_pipeline local{1};
 sbnd::socket_pipeline remote;
+sbn::transaction_log transactions;
 
 template <class ... Args>
 inline void
@@ -204,6 +207,12 @@ struct Main: public sbn::kernel {
 
 TEST(socket_pipeline, _) {
 
+    bool restore = false;
+    if (std::getenv("DTEST_NO_RESTART")) {
+        failure = Failure::None;
+        restore = true;
+    }
+
     sbn::kernel_type_registry types;
     types.add<Test_socket>(1);
     types.add<Sender>(2);
@@ -214,6 +223,7 @@ TEST(socket_pipeline, _) {
     remote.native_pipeline(&local);
     remote.remote_pipeline(&remote);
     remote.types(&types);
+    remote.transactions(&transactions);
     remote.start();
 
     sys::port_type port = 10000;
@@ -228,6 +238,11 @@ TEST(socket_pipeline, _) {
     if (role == Role::Slave) {
         remote.set_port(port+1);
         remote.add_server(principal_endpoint, network.netmask());
+        if (restore) {
+            using namespace std::this_thread;
+            using namespace std::chrono;
+            sleep_for(milliseconds(1000));
+        }
     }
     if (role == Role::Master) {
         remote.set_port(port);
@@ -237,6 +252,19 @@ TEST(socket_pipeline, _) {
         using namespace std::chrono;
         sleep_for(milliseconds(1000));
         remote.add_client(principal_endpoint);
+    }
+
+    if (!restore) {
+        std::remove("socket-pipeline-test-transactions-slave");
+        std::remove("socket-pipeline-test-transactions-master");
+    }
+    transactions.types(&types);
+    transactions.pipelines({&remote});
+    transactions.open(role == Role::Slave
+                      ? "socket-pipeline-test-transactions-slave"
+                      : "socket-pipeline-test-transactions-master");
+
+    if (role == Role::Master && !restore) {
         local.send(new Main);
     }
 
@@ -268,6 +296,5 @@ main(int argc, char* argv[]) {
         nullptr
     };
     sys::parse_arguments(argc, argv, options);
-    if (std::getenv("DTEST_NO_RESTART")) { failure = Failure::None; }
     return RUN_ALL_TESTS();
 }
