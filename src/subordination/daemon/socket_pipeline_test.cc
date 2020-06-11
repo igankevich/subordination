@@ -105,6 +105,19 @@ struct Test_socket: public sbn::kernel {
             delete this;
             if (++shutdown_counter == NUM_KERNELS/3) {
                 message("power failure!");
+                transactions.close();
+                try {
+                    sys::file_status st("socket-pipeline-test-transactions-master");
+                    message("master size _", st.size());
+                } catch (const std::exception& err) {
+                    message("master size -1");
+                }
+                try {
+                    sys::file_status st("socket-pipeline-test-transactions-slave");
+                    message("slave size _", st.size());
+                } catch (const std::exception& err) {
+                    message("slave size -1");
+                }
                 send(sys::signal::kill, sys::this_process::id());
             }
         } else {
@@ -147,7 +160,6 @@ struct Sender: public sbn::kernel {
         for (uint32_t i=0; i<NUM_KERNELS; ++i) {
             auto* k = new Test_socket(_input);
             k->parent(this);
-            k->setf(sbn::kernel_flag::carries_parent);
             remote.send(k);
         }
     }
@@ -219,7 +231,6 @@ TEST(socket_pipeline, _) {
     types.add<Sender>(2);
     types.add<Main>(3);
     local.name("local");
-    local.start();
     remote.name("remote");
     remote.native_pipeline(&local);
     remote.remote_pipeline(&remote);
@@ -227,7 +238,6 @@ TEST(socket_pipeline, _) {
     remote.transactions(&transactions);
     remote.max_connection_attempts(10);
     remote.connection_timeout(std::chrono::seconds(1));
-    remote.start();
 
     sys::port_type port = 10000;
     ipv4_interface_address network{{127,0,0,1},8};
@@ -255,15 +265,15 @@ TEST(socket_pipeline, _) {
         remote.add_client(principal_endpoint);
     }
 
-    if (!restore) {
-        std::remove("socket-pipeline-test-transactions-slave");
-        std::remove("socket-pipeline-test-transactions-master");
-    }
+    const auto* filename = role == Role::Slave
+        ? "socket-pipeline-test-transactions-slave"
+        : "socket-pipeline-test-transactions-master";
+    if (!restore) { std::remove(filename); }
     transactions.types(&types);
     transactions.pipelines({&remote});
-    transactions.open(role == Role::Slave
-                      ? "socket-pipeline-test-transactions-slave"
-                      : "socket-pipeline-test-transactions-master");
+    transactions.open(filename);
+    local.start();
+    remote.start();
 
     if (role == Role::Master && !restore) {
         local.send(new Main);

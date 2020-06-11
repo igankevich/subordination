@@ -185,11 +185,6 @@ namespace sbn {
                 }
                 ++first;
             }
-            #if defined(SBN_DEBUG)
-            if (result != last) {
-                this->log("min _", (*result)->socket_address());
-            }
-            #endif
             return result;
         }
 

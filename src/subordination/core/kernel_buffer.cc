@@ -42,11 +42,17 @@ void sbn::kernel_buffer::write(kernel* k) {
         k->write(*this);
     } else {
         write_native(this, k);
-        if (k->carries_parent()) {
-            // embed parent into the packet
-            auto* parent = k->parent();
-            if (!parent) { throw std::invalid_argument("parent is null"); }
-            write_native(this, parent);
+        if (carry_all_parents()) {
+            for (auto* p = k->parent(); p; p = p->parent()) {
+                write_native(this, p);
+            }
+        } else {
+            if (k->carries_parent()) {
+                // embed parent into the packet
+                auto* parent = k->parent();
+                if (!parent) { throw std::invalid_argument("parent is null"); }
+                write_native(this, parent);
+            }
         }
     }
 }
@@ -61,9 +67,14 @@ void sbn::kernel_buffer::read(kernel*& k) {
         k = read_native(this, nullptr);
         k->swap_header(fk.get());
         fk.reset();
-        if (k->carries_parent()) {
-            auto* parent = read_native(this, nullptr);
-            k->parent(parent);
+        if (carry_all_parents()) {
+            for (auto* p = k; position() != limit(); p = p->parent()) {
+                p->parent(read_native(this, nullptr));
+            }
+        } else {
+            if (k->carries_parent()) {
+                k->parent(read_native(this, nullptr));
+            }
         }
     }
 }

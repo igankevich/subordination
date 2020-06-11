@@ -31,6 +31,7 @@ namespace {
         try {
             ::sbn::act(k);
         } catch (...) {
+            k->rollback();
             sys::backtrace(2);
             if (error_pipeline) {
                 k->return_to_parent(sbn::exit_code::error);

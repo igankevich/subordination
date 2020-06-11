@@ -81,18 +81,10 @@ void sbn::kernel::swap_header(kernel* k) {
     std::swap(this->_destination, k->_destination);
 }
 
-void
-sbn::kernel::act() {}
-
-void
-sbn::kernel::react(kernel*) {
-    throw ::sbn::error("empty react");
-}
-
-void
-sbn::kernel::error(kernel* rhs) {
-    this->react(rhs);
-}
+void sbn::kernel::act() {}
+void sbn::kernel::react(kernel*) { throw ::sbn::error("empty react"); }
+void sbn::kernel::rollback() {}
+void sbn::kernel::error(kernel* rhs) { this->react(rhs); }
 
 std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
     const char state[] = {

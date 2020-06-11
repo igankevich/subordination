@@ -3,7 +3,6 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/net/socket_address>
-#include <unistdx/test/print_flags>
 
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_base.hh>
@@ -245,8 +244,10 @@ namespace sbn {
         /// \brief Collects the output from the task from subordinate kernel \p child.
         virtual void react(kernel* child);
 
-        virtual void
-        error(kernel* rhs);
+        /// \brief Undo the side effects caused by failed execution of the kernel.
+        virtual void rollback();
+
+        virtual void error(kernel* rhs);
 
         friend std::ostream&
         operator<<(std::ostream& out, const kernel& rhs);
@@ -291,8 +292,6 @@ namespace sbn {
         mark_as_deleted(Container& result) {
             if (isset(kernel_flag::deleted)) { return; }
             setf(kernel_flag::deleted);
-            sys::log_message("TEST", "application-id _", this->_application_id);
-            //sys::test::print_flags(this->_fields);
             if (is_native()) {
                 if (auto* p = parent()) { p->mark_as_deleted(result); }
             }

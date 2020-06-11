@@ -44,7 +44,7 @@ namespace sbn {
         mutex_type _mutex;
 
     public:
-        transaction_log() = default;
+        transaction_log();
         ~transaction_log();
         transaction_log(const transaction_log&) = delete;
         transaction_log& operator=(const transaction_log&) = delete;

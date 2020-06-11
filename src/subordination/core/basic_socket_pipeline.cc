@@ -20,11 +20,7 @@ void sbn::basic_socket_pipeline::loop() {
                           duration::zero());
         }
         using namespace std::chrono;
-        log("wait for _", duration_cast<milliseconds>(dt).count());
-        auto t0 = clock_type::now();
         poller().wait_for(lock, dt);
-        auto t1 = clock_type::now();
-        log("waited for _", duration_cast<milliseconds>(t1-t0).count());
         process_kernels();
         handle_events();
         flush_buffers();
@@ -110,7 +106,6 @@ void sbn::basic_socket_pipeline::flush_buffers() {
             }
         } else {
             try {
-                log("flush _ _", conn->socket_address(), conn->state());
                 conn->flush();
             } catch (const std::exception& err) {
                 deactivate(i, conn, now, err.what());

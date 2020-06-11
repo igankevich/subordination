@@ -17,6 +17,7 @@ namespace sbn {
 
     private:
         kernel_type_registry* _types = nullptr;
+        bool _carry_all_parents = false;
 
     public:
         using sys::byte_buffer::byte_buffer;
@@ -57,6 +58,8 @@ namespace sbn {
         inline void types(kernel_type_registry* rhs) noexcept { this->_types = rhs; }
         inline const kernel_type_registry* types() const noexcept { return this->_types; }
         inline kernel_type_registry* types() noexcept { return this->_types; }
+        inline void carry_all_parents(bool rhs) noexcept { this->_carry_all_parents = rhs; }
+        inline bool carry_all_parents() const noexcept { return this->_carry_all_parents; }
 
     };
 
