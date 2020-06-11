@@ -98,12 +98,12 @@ sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
 _socket(std::move(socket)) {
-    this->setstate(sbn::pipeline_state::starting);
+    this->state(sbn::connection_state::starting);
 }
 
 void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
     this->log("_ _", __func__, event);
-    if (this->is_starting()) { this->setstate(sbn::pipeline_state::started); }
+    if (state() == sbn::connection_state::starting) { state(sbn::connection_state::started); }
     if (event.in()) {
         fill(this->_socket);
         receive_kernels(

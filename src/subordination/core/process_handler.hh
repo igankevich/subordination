@@ -42,7 +42,8 @@ namespace sbn {
         }
 
         void handle(const sys::epoll_event& event) override;
-        void remove(sys::event_poller& poller) override;
+        void add(const connection_ptr& self) override;
+        void remove(const connection_ptr& self) override;
         void flush() override;
 
         inline void forward(foreign_kernel* k) {

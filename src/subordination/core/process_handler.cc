@@ -24,8 +24,8 @@ _file_descriptors(std::move(pipe)),
 _role(role_type::child) {}
 
 void sbn::process_handler::handle(const sys::epoll_event& event) {
-    if (this->is_starting()) {
-        this->setstate(pipeline_state::started);
+    if (state() == connection_state::starting) {
+        state(connection_state::started);
     }
     if (event.in()) {
         fill(this->_file_descriptors.in());
@@ -33,22 +33,23 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
     }
 }
 
-void sbn::process_handler::remove(sys::event_poller& poller) {
+void sbn::process_handler::add(const connection_ptr& self) {
+    connection::parent()->emplace_handler(sys::epoll_event(in(), sys::event::in), self);
+    connection::parent()->emplace_handler(sys::epoll_event(out(), sys::event::out), self);
+}
+
+void sbn::process_handler::remove(const connection_ptr& self) {
     try {
-        poller.erase(this->in());
+        connection::parent()->erase(in());
     } catch (const sys::bad_call& err) {
-        if (err.errc() != std::errc::no_such_file_or_directory) {
-            throw;
-        }
+        if (err.errc() != std::errc::no_such_file_or_directory) { throw; }
     }
     try {
-        poller.erase(this->out());
+        connection::parent()->erase(out());
     } catch (const sys::bad_call& err) {
-        if (err.errc() != std::errc::no_such_file_or_directory) {
-            throw;
-        }
+        if (err.errc() != std::errc::no_such_file_or_directory) { throw; }
     }
-    this->setstate(pipeline_state::stopped);
+    state(connection_state::stopped);
 }
 
 void sbn::process_handler::flush() {

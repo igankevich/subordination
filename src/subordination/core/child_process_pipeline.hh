@@ -12,15 +12,14 @@ namespace sbn {
 
     private:
         using base_pipeline = basic_socket_pipeline;
-        using event_handler_type = process_handler;
-        using event_handler_ptr = std::shared_ptr<event_handler_type>;
+        using connection_ptr = std::shared_ptr<process_handler>;
 
     private:
-        event_handler_ptr _parent;
+        connection_ptr _parent;
 
     public:
 
-        child_process_pipeline();
+        child_process_pipeline() = default;
         virtual ~child_process_pipeline() = default;
         child_process_pipeline(child_process_pipeline&& rhs) = default;
 

@@ -17,25 +17,18 @@ void sbn::child_process_pipeline::send(kernel* k) {
     }
 }
 
-sbn::child_process_pipeline::child_process_pipeline() {
-    using namespace std::chrono;
-    this->set_start_timeout(seconds(7));
-}
-
-void
-sbn::child_process_pipeline::add_connection() {
+void sbn::child_process_pipeline::add_connection() {
     using f = connection_flags;
     sys::fd_type in = this_application::get_input_fd();
     sys::fd_type out = this_application::get_output_fd();
     if (in != -1 && out != -1) {
-        this->_parent = std::make_shared<event_handler_type>(sys::pipe(in, out));
+        this->_parent = std::make_shared<process_handler>(sys::pipe(in, out));
         this->_parent->parent(this);
         this->_parent->types(types());
         this->_parent->setf(f::save_upstream_kernels);
-        this->_parent->setstate(pipeline_state::starting);
+        this->_parent->state(connection_state::starting);
         this->_parent->name(name());
-        this->emplace_handler(sys::epoll_event(in, sys::event::in), this->_parent);
-        this->emplace_handler(sys::epoll_event(out, sys::event::out), this->_parent);
+        this->_parent->add(this->_parent);
     }
 }
 
@@ -43,7 +36,8 @@ void sbn::child_process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto* k = this->_kernels.front();
         this->_kernels.pop();
-        if (this->_parent && this->_parent->is_running()) {
+        if (this->_parent && (this->_parent->state() == connection_state::started ||
+                              this->_parent->state() == connection_state::starting)) {
             this->_parent->send(k);
         } else {
             native_pipeline()->send(k);

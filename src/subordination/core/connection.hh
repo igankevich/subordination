@@ -4,8 +4,10 @@
 #include <chrono>
 #include <deque>
 #include <functional>
+#include <memory>
 
 #include <unistdx/base/flag>
+#include <unistdx/base/log_message>
 #include <unistdx/io/epoll_event>
 #include <unistdx/io/poller>
 #include <unistdx/net/socket_address>
@@ -26,7 +28,19 @@ namespace sbn {
 
     UNISTDX_FLAGS(connection_flags)
 
-    class connection: public pipeline_base {
+    enum class connection_state {
+        initial,
+        starting,
+        started,
+        stopping,
+        stopped,
+        inactive,
+    };
+
+    const char* to_string(connection_state rhs);
+    std::ostream& operator<<(std::ostream& out, connection_state rhs);
+
+    class connection {
 
     private:
         using kernel_queue = std::deque<kernel*>;
@@ -36,6 +50,7 @@ namespace sbn {
         using clock_type = std::chrono::system_clock;
         using duration = clock_type::duration;
         using time_point = clock_type::time_point;
+        using connection_ptr = std::shared_ptr<connection>;
 
     private:
         time_point _start{duration::zero()};
@@ -43,6 +58,9 @@ namespace sbn {
         connection_flags _flags{};
         kernel_queue _upstream, _downstream;
         id_type _counter = 0;
+        sys::u32 _attempts = 1;
+        const char* _name = "ppl";
+        connection_state _state = connection_state::initial;
 
     protected:
         kernel_buffer _output_buffer{sys::page_size()};
@@ -51,7 +69,7 @@ namespace sbn {
 
     public:
         connection() = default;
-        ~connection() = default;
+        virtual ~connection() = default;
         connection(const connection&) = delete;
         connection& operator=(const connection&) = delete;
         connection(connection&&) = delete;
@@ -72,22 +90,20 @@ namespace sbn {
 
         virtual void handle(const sys::epoll_event& event);
 
-        /// Called when the handler is removed from the poller.
-        virtual void remove(sys::event_poller& poller);
-
+        virtual void add(const connection_ptr& self);
+        virtual void remove(const connection_ptr& self);
+        virtual void retry(const connection_ptr& self);
+        virtual void deactivate(const connection_ptr& self);
+        virtual void activate(const connection_ptr& self);
         virtual void flush();
 
         inline time_point start_time_point() const noexcept { return this->_start; }
+        inline void start_time_point(const time_point& rhs) noexcept { this->_start = rhs; }
+        inline void stop() { state(connection_state::stopped); }
 
         inline bool
         has_start_time_point() const noexcept {
             return this->_start != time_point(duration::zero());
-        }
-
-        inline void
-        setstate(pipeline_state rhs) noexcept {
-            this->pipeline_base::setstate(rhs);
-            if (rhs == pipeline_state::starting) { this->_start = clock_type::now(); }
         }
 
         inline basic_socket_pipeline* parent() const noexcept { return this->_parent; }
@@ -110,6 +126,15 @@ namespace sbn {
             this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);
         }
 
+        inline sys::u32 attempts() const noexcept { return this->_attempts; }
+        inline const char* name() const noexcept { return this->_name; }
+        inline void name(const char* rhs) noexcept { this->_name = rhs; }
+        inline connection_state state() const noexcept { return this->_state; }
+        inline void state(connection_state rhs) noexcept {
+            this->_state = rhs;
+            if (rhs == connection_state::starting) { this->_start = clock_type::now(); }
+        }
+
     protected:
 
         void recover_kernels(bool downstream);
@@ -125,6 +150,12 @@ namespace sbn {
         inline void fill(Source& source) {
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
+        }
+
+        template <class ... Args>
+        inline void
+        log(const Args& ... args) const {
+            sys::log_message(this->_name, args ...);
         }
 
     private:

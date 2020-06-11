@@ -51,7 +51,7 @@ namespace sbnd {
 
     public:
 
-        socket_pipeline();
+        socket_pipeline() = default;
         ~socket_pipeline() = default;
         socket_pipeline(const socket_pipeline&) = delete;
         socket_pipeline(socket_pipeline&&) = delete;

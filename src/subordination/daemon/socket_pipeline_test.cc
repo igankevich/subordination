@@ -147,6 +147,7 @@ struct Sender: public sbn::kernel {
         for (uint32_t i=0; i<NUM_KERNELS; ++i) {
             auto* k = new Test_socket(_input);
             k->parent(this);
+            k->setf(sbn::kernel_flag::carries_parent);
             remote.send(k);
         }
     }
@@ -224,6 +225,8 @@ TEST(socket_pipeline, _) {
     remote.remote_pipeline(&remote);
     remote.types(&types);
     remote.transactions(&transactions);
+    remote.max_connection_attempts(10);
+    remote.connection_timeout(std::chrono::seconds(1));
     remote.start();
 
     sys::port_type port = 10000;
@@ -237,20 +240,18 @@ TEST(socket_pipeline, _) {
     sys::socket_address principal_endpoint(*address++, port);
     if (role == Role::Slave) {
         remote.port(port+1);
+        using namespace std::this_thread;
+        using namespace std::chrono;
+        sleep_for(milliseconds(1000));
         remote.add_server(principal_endpoint, network.netmask());
-        if (restore) {
-            using namespace std::this_thread;
-            using namespace std::chrono;
-            sleep_for(milliseconds(1000));
-        }
     }
     if (role == Role::Master) {
         remote.port(port);
         remote.add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start
-        using namespace std::this_thread;
-        using namespace std::chrono;
-        sleep_for(milliseconds(1000));
+        //using namespace std::this_thread;
+        //using namespace std::chrono;
+        //sleep_for(milliseconds(1000));
         remote.add_client(principal_endpoint);
     }
 

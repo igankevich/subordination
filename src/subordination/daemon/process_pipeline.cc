@@ -64,8 +64,6 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
                             );
     data_pipe.close_in_parent();
     data_pipe.validate();
-    sys::fd_type parent_in = data_pipe.parent_in().fd();
-    sys::fd_type parent_out = data_pipe.parent_out().fd();
     auto child = std::make_shared<connection_type>(p.id(), std::move(data_pipe), app);
     child->parent(this);
     child->types(types());
@@ -79,8 +77,7 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
         p.id()
     );
     auto result = this->_apps.emplace(app.id(), child);
-    this->emplace_handler(sys::epoll_event(parent_in, sys::event::in), child);
-    this->emplace_handler(sys::epoll_event(parent_out, sys::event::out), child);
+    child->add(child);
     return result.first;
 }
 

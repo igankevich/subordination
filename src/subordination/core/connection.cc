@@ -32,6 +32,22 @@ namespace  {
 
 }
 
+const char* sbn::to_string(connection_state rhs) {
+    switch (rhs) {
+        case connection_state::initial: return "initial";
+        case connection_state::starting: return "starting";
+        case connection_state::started: return "started";
+        case connection_state::stopping: return "stopping";
+        case connection_state::stopped: return "stopped";
+        case connection_state::inactive: return "inactive";
+        default: return "unknown";
+    }
+}
+
+std::ostream& sbn::operator<<(std::ostream& out, connection_state rhs) {
+    return out << to_string(rhs);
+}
+
 void sbn::connection::handle(const sys::epoll_event& event) {
     constexpr const size_t n = 20;
     char tmp[n];
@@ -39,8 +55,11 @@ void sbn::connection::handle(const sys::epoll_event& event) {
     while ((c = ::read(event.fd(), tmp, n)) != -1) ;
 }
 
-void sbn::connection::remove(sys::event_poller& poller) {}
-
+void sbn::connection::add(const connection_ptr& self) {}
+void sbn::connection::remove(const connection_ptr& self) {}
+void sbn::connection::retry(const connection_ptr& self) { ++this->_attempts; }
+void sbn::connection::deactivate(const connection_ptr& self) { ++this->_attempts; }
+void sbn::connection::activate(const connection_ptr& self) {}
 void sbn::connection::flush() {}
 
 void sbn::connection::send(kernel* k) {

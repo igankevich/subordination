@@ -84,8 +84,13 @@ namespace sbnd {
 
         void handle(const sys::epoll_event& ev) override;
 
-        void remove(sys::event_poller& poller) override {
-            poller.erase(this->fd());
+        void add(const connection_ptr& self) override {
+            connection::parent()->emplace_handler(
+                sys::epoll_event{socket().fd(), sys::event::in}, self);
+        }
+
+        void remove(const connection_ptr& self) override {
+            connection::parent()->erase(socket().fd());
             parent()->remove_server(this->_ifaddr);
         }
 
@@ -113,6 +118,7 @@ namespace sbnd {
         sys::socket _socket;
         /// The number of nodes "behind" this one in the hierarchy.
         weight_type _weight = 1;
+        sys::socket_address _old_bind_address;
 
     public:
 
@@ -135,8 +141,8 @@ namespace sbnd {
         }
 
         void handle(const sys::epoll_event& event) override {
-            if (this->is_starting() && !event.err()) {
-                this->setstate(sbn::pipeline_state::started);
+            if (state() == sbn::connection_state::starting && !event.err()) {
+                state(sbn::connection_state::started);
             }
             if (event.in()) {
                 fill(socket());
@@ -151,9 +157,29 @@ namespace sbnd {
         inline weight_type weight() const noexcept { return this->_weight; }
         inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
 
-        void remove(sys::event_poller& poller) override {
-            poller.erase(this->_socket.fd());
+        void add(const connection_ptr& self) override {
+            connection::parent()->emplace_handler(
+                sys::epoll_event{socket().fd(), sys::event::inout}, self);
+        }
+
+        void remove(const connection_ptr& self) override {
+            connection::parent()->erase(socket().fd());
             parent()->remove_client(socket_address());
+        }
+
+        inline void deactivate(const connection_ptr& self) override {
+            connection::deactivate(self);
+            connection::parent()->erase(socket().fd());
+            this->_old_bind_address = this->_socket.name();
+            this->_socket = sys::socket();
+            state(sbn::connection_state::inactive);
+        }
+
+        inline void activate(const connection_ptr& self) override {
+            this->_socket.bind(this->_old_bind_address);
+            this->_socket.connect(socket_address());
+            add(self);
+            state(sbn::connection_state::starting);
         }
 
         using connection::parent;
@@ -181,11 +207,6 @@ void sbnd::local_server::handle(const sys::epoll_event& ev) {
             #endif
         }
     }
-}
-
-sbnd::socket_pipeline::socket_pipeline() {
-    using namespace std::chrono;
-    this->set_start_timeout(seconds(7));
 }
 
 void
@@ -223,21 +244,20 @@ sbnd::socket_pipeline
     sys::socket_address socket_address = result->first;
     #if defined(SBN_DEBUG)
     const char* reason =
-        result->second->is_starting() ? "timed out" : "connection closed";
+        result->second->state() == sbn::connection_state::starting
+        ? "timed out" : "connection closed";
     this->log("remove client _ (_)", socket_address, reason);
     #endif
     if (result == this->_iterator) {
         this->advance_client_iterator();
     }
-    result->second->setstate(sbn::pipeline_state::stopped);
+    result->second->state(sbn::connection_state::stopped);
     this->_clients.erase(result);
     fire_event_kernels(
         new socket_pipeline_kernel(socket_pipeline_event::remove_client, socket_address));
 }
 
-void
-sbnd::socket_pipeline
-::add_server(const sys::socket_address& rhs, ip_address netmask) {
+void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
     using traits_type = sys::ipaddr_traits<ip_address>;
     lock_type lock(this->_mutex);
     interface_address interface_address(traits_type::address(rhs), netmask);
@@ -249,7 +269,7 @@ sbnd::socket_pipeline
         this->log("add server _", rhs);
         #endif
         ptr->socket().set_user_timeout(this->_socket_timeout);
-        this->emplace_handler(sys::epoll_event(ptr->fd(), sys::event::in), ptr);
+        ptr->add(ptr);
         fire_event_kernels(
             new socket_pipeline_kernel(socket_pipeline_event::add_server, interface_address));
     }
@@ -372,7 +392,8 @@ sbnd::socket_pipeline
             break;
         }
         // skip stopped hosts
-        if (!this->end_reached() && this->current_client().has_started()) {
+        if (!this->end_reached() &&
+            this->current_client().state() == sbn::connection_state::started) {
             break;
         }
     } while (old_iterator != this->_iterator);
@@ -393,9 +414,7 @@ sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const cl
     }
 }
 
-void
-sbnd::socket_pipeline
-::process_kernels() {
+void sbnd::socket_pipeline::process_kernels() {
 //	lock_type lock(this->_mutex);
     while (!this->_kernels.empty()) {
         auto* k = this->_kernels.front();
@@ -411,9 +430,7 @@ sbnd::socket_pipeline
     }
 }
 
-void
-sbnd::socket_pipeline
-::process_kernel(sbn::kernel* k) {
+void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
     // short circuit local server
     /*
        if (k->destination()) {
@@ -518,7 +535,6 @@ sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_
 
 auto
 sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vaddr) -> client_ptr {
-    sys::fd_type fd = sock.fd();
     if (vaddr.family() != sys::family_type::unix) {
         sock.set_user_timeout(this->_socket_timeout);
     }
@@ -527,12 +543,12 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->parent(this);
     s->types(types());
     log("types _", (void*)types());
-    s->setstate(sbn::pipeline_state::starting);
+    s->state(sbn::connection_state::starting);
     s->name(this->_name);
     using f = sbn::connection_flags;
     s->setf(f::save_upstream_kernels | f::save_downstream_kernels | f::write_transaction_log);
-    this->emplace_client(vaddr, s);
-    this->emplace_handler(sys::epoll_event(fd, sys::event::inout), s);
+    emplace_client(vaddr, s);
+    s->add(s);
     fire_event_kernels(new socket_pipeline_kernel(socket_pipeline_event::add_client, vaddr));
     return s;
 }
@@ -542,7 +558,7 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     lock_type lock(this->_mutex);
     auto result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
-        result->second->setstate(sbn::pipeline_state::stopped);
+        result->second->state(sbn::connection_state::stopped);
     }
 }
 
