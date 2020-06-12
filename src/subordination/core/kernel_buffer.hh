@@ -1,6 +1,8 @@
 #ifndef SUBORDINATION_CORE_KERNEL_BUFFER_HH
 #define SUBORDINATION_CORE_KERNEL_BUFFER_HH
 
+#include <chrono>
+
 #include <unistdx/base/byte_buffer>
 
 #include <unistdx/net/interface_address>
@@ -34,6 +36,36 @@ namespace sbn {
         auto read(T& x) -> typename std::enable_if<std::is_enum<T>::value,void>::type {
             using type = typename std::underlying_type<T>::type;
             this->read(reinterpret_cast<type&>(x));
+        }
+
+        template <class Rep, class Period>
+        void write(std::chrono::duration<Rep,Period> dt) {
+            using std::chrono::duration_cast;
+            using std::chrono::nanoseconds;
+            this->write(sys::u64(duration_cast<nanoseconds>(dt).count()));
+        }
+
+        template <class Rep, class Period>
+        void read(std::chrono::duration<Rep,Period>& dt) {
+            using std::chrono::duration_cast;
+            using std::chrono::nanoseconds;
+            sys::u64 n = 0;
+            this->read(n);
+            dt = duration_cast<std::chrono::duration<Rep,Period>>(nanoseconds(n));
+        }
+
+        template <class Clock, class Duration>
+        void write(std::chrono::time_point<Clock,Duration> t) {
+            this->write(t.time_since_epoch());
+        }
+
+        template <class Clock, class Duration>
+        void read(std::chrono::time_point<Clock,Duration>& t) {
+            using time_point = std::chrono::time_point<Clock,Duration>;
+            using duration = typename time_point::duration;
+            duration dt{};
+            this->read(dt);
+            t = time_point(dt);
         }
 
         void write(const sys::socket_address& rhs);

@@ -1,6 +1,5 @@
 sbn_src = files([
     'application.cc',
-    'application_kernel.cc',
     'basic_factory.cc',
     'basic_pipeline.cc',
     'basic_socket_pipeline.cc',
@@ -22,9 +21,7 @@ sbn_src = files([
 ])
 
 install_headers(
-    'act.hh',
     'application.hh',
-    'application_kernel.hh',
     'basic_factory.hh',
     'basic_pipeline.hh',
     'basic_socket_pipeline.hh',
@@ -35,7 +32,6 @@ install_headers(
     'foreign_kernel.hh',
     'kernel_base.hh',
     'kernel_buffer.hh',
-    'kernel_header_flag.hh',
     'kernel.hh',
     'kernel_instance_registry.hh',
     'kernel_type.hh',

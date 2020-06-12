@@ -2,7 +2,8 @@
 #include <string>
 #include <vector>
 
-#include <subordination/core/application_kernel.hh>
+#include <unistdx/fs/canonical_path>
+
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/config.hh>
@@ -38,18 +39,24 @@ void write_rec(std::ostream& out, const sbnd::Status_kernel::hierarchy_type& h) 
     out << '\n';
 }
 
+class Main_kernel: public sbn::kernel {};
 
-sbn::application_kernel*
+
+sbn::kernel*
 new_application_kernel(int argc, char* argv[]) {
-    using container_type = sbn::application_kernel::container_type;
-    container_type args, env;
+    using string_array = sbn::application::string_array;
+    string_array args, env;
     for (int i=1; i<argc; ++i) {
         args.emplace_back(argv[i]);
     }
     for (char** first=environ; *first; ++first) {
         env.emplace_back(*first);
     }
-    sbn::application_kernel* k = new sbn::application_kernel(args, env);
+    auto* app = new sbn::application(args, env);
+    app->working_directory(sys::canonical_path("."));
+    auto* k = new Main_kernel;
+    k->target_application(app);
+    //k->source_application_id(app->id());
     k->destination(sys::socket_address(SBND_SOCKET));
     return k;
 }
@@ -73,21 +80,13 @@ public:
     }
 
     void react(kernel* child) override {
-        auto* app = dynamic_cast<sbn::application_kernel*>(child);
-        if (app->return_code() != sbn::exit_code::success) {
-            std::string text = app->error();
-            if (text.empty()) {
-                text = to_string(app->return_code());
-            }
-            std::string app_id =
-                app->application() == 0
-                ? "application"
-                : std::to_string(app->application());
-            message("failed to submit _: _", app_id, text);
+        auto* k = dynamic_cast<Main_kernel*>(child);
+        if (k->return_code() != sbn::exit_code::success) {
+            message("failed to submit _", k->target_application_id());
         } else {
-            message("submitted _", app->application());
+            message("submitted _", k->target_application_id());
         }
-        sbn::graceful_shutdown(int(app->return_code()));
+        sbn::graceful_shutdown(int(k->return_code()));
     }
 
 };
@@ -97,7 +96,7 @@ class Status: public sbn::kernel {
     void act() override {
         auto* status = new sbnd::Status_kernel;
         status->destination(sys::socket_address(SBND_SOCKET));
-        status->set_principal_id(1); // TODO
+        status->principal_id(1); // TODO
         status->parent(this);
         sbnc::factory.remote().send(status);
     }
@@ -129,7 +128,7 @@ int main(int argc, char* argv[]) {
         command = Command::Status;
     }
     sbn::install_error_handler();
-    sbnc::factory.types().add<sbn::application_kernel>(1);
+    sbnc::factory.types().add<Main_kernel>(1);
     sbnc::factory.types().add<sbnd::Status_kernel>(4);
     try {
         sbnc::factory.start();

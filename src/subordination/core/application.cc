@@ -23,7 +23,6 @@
 #define SUBORDINATION_ENV_APPLICATION_ID "SUBORDINATION_APPLICATION_ID"
 #define SUBORDINATION_ENV_PIPE_IN "SUBORDINATION_PIPE_IN"
 #define SUBORDINATION_ENV_PIPE_OUT "SUBORDINATION_PIPE_OUT"
-#define SUBORDINATION_ENV_SLAVE "SUBORDINATION_MASTER"
 
 namespace {
 
@@ -60,15 +59,9 @@ namespace {
         return fd;
     }
 
-    inline bool
-    get_master() {
-        return !std::getenv(SUBORDINATION_ENV_SLAVE);
-    }
-
     sbn::application::id_type this_app = get_appliction_id();
     sys::fd_type this_pipe_in = get_pipe_fd(SUBORDINATION_ENV_PIPE_IN);
     sys::fd_type this_pipe_out = get_pipe_fd(SUBORDINATION_ENV_PIPE_OUT);
-    bool this_is_master = get_master();
 
     template <class T>
     inline std::string
@@ -135,28 +128,17 @@ namespace std {
 std::ostream&
 sbn::operator<<(std::ostream& out, const application& rhs) {
     return out << sys::make_object(
-        "id",
-        rhs._id,
-        "uid",
-        rhs._uid,
-        "gid",
-        rhs._gid,
-        "args",
-        rhs._args,
-        "env",
-        rhs._env,
-        "wd",
-        rhs._working_directory,
-        "role",
-        rhs.role()
-        );
+        "id", rhs._id,
+        "uid", rhs._uid,
+        "gid", rhs._gid,
+        "args", rhs._args,
+        "env", rhs._env,
+        "wd", rhs._working_directory);
 }
 
 sbn::application::id_type sbn::this_application::get_id() noexcept { return this_app; }
 sys::fd_type sbn::this_application::get_input_fd() noexcept { return this_pipe_in; }
 sys::fd_type sbn::this_application::get_output_fd() noexcept { return this_pipe_out; }
-bool sbn::this_application::is_master() noexcept { return this_is_master; }
-bool sbn::this_application::is_slave() noexcept { return !this_is_master; }
 
 sbn::application
 ::application(const string_array& args, const string_array& env):
@@ -183,10 +165,6 @@ int sbn::application::execute(const sys::two_way_pipe& pipe) const {
     // pass in/out file descriptors
     env.append(generate_env(SUBORDINATION_ENV_PIPE_IN, pipe.child_in().fd()));
     env.append(generate_env(SUBORDINATION_ENV_PIPE_OUT, pipe.child_out().fd()));
-    // pass role
-    if (this->is_slave()) {
-        env.append(generate_env(SUBORDINATION_ENV_SLAVE, 1));
-    }
     // update path to find executable files from user's PATH
     auto result =
         std::find_if(
@@ -246,9 +224,4 @@ sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const application& rhs) 
 
 sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, application& rhs) {
     rhs.read(in); return in;
-}
-
-std::ostream&
-sbn::operator<<(std::ostream& out, process_role_type rhs) {
-    return out << (rhs == process_role_type::master ? "master" : "slave");
 }

@@ -109,8 +109,11 @@ void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
         receive_kernels(
             nullptr,
             [this] (sbn::kernel* k) {
-                if (auto* app = dynamic_cast<application_kernel*>(k)) {
-                    app->credentials(socket().credentials());
+                if (auto* a = k->source_application()) {
+                    a->credentials(socket().credentials());
+                }
+                if (auto* a = k->target_application()) {
+                    a->credentials(socket().credentials());
                 }
             });
     }

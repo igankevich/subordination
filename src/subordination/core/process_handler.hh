@@ -45,11 +45,17 @@ namespace sbn {
         void add(const connection_ptr& self) override;
         void remove(const connection_ptr& self) override;
         void flush() override;
+        void stop() override;
 
         inline void forward(foreign_kernel* k) {
-            // remove application before forwarding
-            // to child process
-            if (k->application()) { k->application_id(k->application()->id()); }
+            // remove target application before forwarding
+            // to child process to reduce the amount of data
+            // transferred to child process
+            if (auto* a = k->target_application()) {
+                if (k->source_application_id() == a->id()) {
+                    k->target_application_id(a->id());
+                }
+            }
             connection::forward(k);
         }
 

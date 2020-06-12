@@ -208,7 +208,7 @@ sbnd::master_discoverer
 ::send_weight(const sys::socket_address& dest, weight_type w) {
     auto* h = new Hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
-    h->set_principal_id(1);
+    h->principal_id(1);
     h->destination(dest);
     factory.remote().send(h);
 }

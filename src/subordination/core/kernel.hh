@@ -6,10 +6,19 @@
 
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_base.hh>
-#include <subordination/core/kernel_header_flag.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
+
+    enum class kernel_field: sys::u8 {
+        source = 1<<0,
+        destination = 1<<1,
+        source_application = 1<<2,
+        target_application = 1<<3,
+    };
+
+    UNISTDX_FLAGS(kernel_field)
+
 
     class kernel: public kernel_base {
 
@@ -17,14 +26,18 @@ namespace sbn {
         using id_type = uint64_t;
 
     private:
-        id_type _id = no_id();
+        id_type _id = 0;
         kernel_field _fields{};
         sys::socket_address _source{};
         sys::socket_address _destination{};
         union {
-            ::sbn::application::id_type  _application_id = this_application::get_id();
+            application::id_type _source_application_id = this_application::get_id();
             // TODO application registry
-            ::sbn::application* _application;
+            application* _source_application;
+        };
+        union {
+            application::id_type _target_application_id = this_application::get_id();
+            application* _target_application;
         };
         union {
             kernel* _parent = nullptr;
@@ -46,8 +59,7 @@ namespace sbn {
 
         inline id_type id() const noexcept { return this->_id; }
         inline void id(id_type rhs) noexcept { this->_id = rhs; }
-        inline bool has_id() const noexcept { return this->_id != no_id(); }
-        inline void set_id(id_type rhs) noexcept { this->_id = rhs; }
+        inline bool has_id() const noexcept { return this->_id != 0; }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {
@@ -59,16 +71,12 @@ namespace sbn {
             return !this->operator==(rhs);
         }
 
-        static constexpr id_type no_id() noexcept { return 0; }
-
         inline uint64_t
         unique_id() const noexcept {
             return this->has_id() ? this->id() : uint64_t(this);
         }
 
-        inline const kernel_field& fields() const noexcept {
-            return this->_fields;
-        }
+        inline kernel_field fields() const noexcept { return this->_fields; }
 
         inline const sys::socket_address& source() const noexcept {
             return this->_source;
@@ -86,46 +94,100 @@ namespace sbn {
             this->_destination = rhs;
         }
 
-        inline ::sbn::application::id_type
-        application_id() const noexcept {
-            return bool(fields() & kernel_field::application)
-                ? this->_application->id() : this->_application_id;
+        inline application::id_type
+        source_application_id() const noexcept {
+            return bool(fields() & kernel_field::source_application)
+                ? this->_source_application->id() : this->_source_application_id;
         }
 
         inline void
-        application_id(::sbn::application::id_type rhs) noexcept {
-            if (bool(fields() & kernel_field::application)) {
-                delete this->_application;
-                this->_fields &= ~kernel_field::application;
+        source_application_id(application::id_type rhs) noexcept {
+            if (bool(fields() & kernel_field::source_application)) {
+                delete this->_source_application;
+                this->_fields &= ~kernel_field::source_application;
             }
-            this->_application_id = rhs;
+            this->_source_application_id = rhs;
+        }
+
+        inline application::id_type
+        target_application_id() const noexcept {
+            return bool(fields() & kernel_field::target_application)
+                ? this->_target_application->id() : this->_target_application_id;
+        }
+
+        inline void
+        target_application_id(application::id_type rhs) noexcept {
+            if (bool(fields() & kernel_field::target_application)) {
+                delete this->_target_application;
+                this->_fields &= ~kernel_field::target_application;
+            }
+            this->_target_application_id = rhs;
         }
 
         inline bool is_foreign() const noexcept { return !this->is_native(); }
 
-        inline bool
+        virtual inline bool
         is_native() const noexcept {
-            return application_id() == this_application::get_id();
+            return true;
+            //const auto id = this_application::get_id();
+            //return source_application_id() == id || target_application_id() == id;
         }
 
-        inline const ::sbn::application*
-        application() const {
-            if (!bool(fields() & kernel_field::application)) {
+        inline const application*
+        source_application() const {
+            if (!bool(fields() & kernel_field::source_application)) {
                 return nullptr;
             }
-            return this->_application;
+            return this->_source_application;
+        }
+
+        inline application*
+        source_application() {
+            if (!bool(fields() & kernel_field::source_application)) {
+                return nullptr;
+            }
+            return this->_source_application;
         }
 
         inline void
-        application(::sbn::application* rhs) noexcept {
-            if (bool(fields() & kernel_field::application)) {
-                delete this->_application;
+        source_application(application* rhs) noexcept {
+            if (bool(fields() & kernel_field::source_application)) {
+                delete this->_source_application;
             }
-            this->_application = rhs;
-            if (this->_application) {
-                this->_fields |= kernel_field::application;
+            this->_source_application = rhs;
+            if (this->_source_application) {
+                this->_fields |= kernel_field::source_application;
             } else {
-                this->_fields &= ~kernel_field::application;
+                this->_fields &= ~kernel_field::source_application;
+            }
+        }
+
+        inline const application*
+        target_application() const {
+            if (!bool(fields() & kernel_field::target_application)) {
+                return nullptr;
+            }
+            return this->_target_application;
+        }
+
+        inline application*
+        target_application() {
+            if (!bool(fields() & kernel_field::target_application)) {
+                return nullptr;
+            }
+            return this->_target_application;
+        }
+
+        inline void
+        target_application(application* rhs) noexcept {
+            if (bool(fields() & kernel_field::target_application)) {
+                delete this->_target_application;
+            }
+            this->_target_application = rhs;
+            if (this->_target_application) {
+                this->_fields |= kernel_field::target_application;
+            } else {
+                this->_fields &= ~kernel_field::target_application;
             }
         }
 
@@ -144,22 +206,25 @@ namespace sbn {
             return this->_principal;
         }
 
-        inline id_type
-        principal_id() const noexcept {
-            return bool(flags() & kernel_flag::principal_is_id)
-                ?  this->_principal_id : this->_principal->id();
-        }
-
-        inline void
-        set_principal_id(id_type id) noexcept {
-            this->_principal_id = id;
-            this->setf(kernel_flag::principal_is_id);
-        }
-
         inline void
         principal(kernel* rhs) noexcept {
             this->_principal = rhs;
             this->unsetf(kernel_flag::principal_is_id);
+        }
+
+        inline id_type
+        principal_id() const noexcept {
+            if (bool(flags() & kernel_flag::principal_is_id)) {
+                return this->_principal_id;
+            }
+            if (this->_principal) { return this->_principal->id(); }
+            return 0;
+        }
+
+        inline void
+        principal_id(id_type id) noexcept {
+            this->_principal_id = id;
+            this->_flags |= kernel_flag::principal_is_id;
         }
 
         inline const kernel*
@@ -182,8 +247,11 @@ namespace sbn {
 
         inline id_type
         parent_id() const noexcept {
-            return bool(flags() & kernel_flag::parent_is_id)
-                ?  this->_parent_id : this->_parent->id();
+            if (bool(flags() & kernel_flag::parent_is_id)) {
+                return this->_parent_id;
+            }
+            if (this->_parent) { return this->_parent->id(); }
+            return 0;
         }
 
         inline void
@@ -256,46 +324,31 @@ namespace sbn {
 
         /// New API
 
-        inline kernel*
-        call(kernel* rhs) noexcept {
-            rhs->parent(this);
-            return rhs;
-        }
-
-        inline kernel*
-        carry_parent(kernel* rhs) noexcept {
-            rhs->parent(this);
-            rhs->setf(kernel_flag::carries_parent);
-            return rhs;
-        }
-
         inline void
         return_to_parent(exit_code ret = exit_code::success) noexcept {
-            return_to(_parent, ret);
-            if (source()) {
-                this->destination(source());
+            if (bool(flags() & kernel_flag::parent_is_id)) {
+                principal_id(this->_parent_id);
+            } else {
+                principal(this->_parent);
             }
+            return_code(ret);
+            destination(source());
         }
 
         inline void
         return_to(kernel* rhs, exit_code ret = exit_code::success) noexcept {
-            this->principal(rhs);
-            this->return_code(ret);
-        }
-
-        inline void
-        recurse() noexcept {
-            this->principal(this);
+            principal(rhs);
+            return_code(ret);
         }
 
         template <class Container> void
         mark_as_deleted(Container& result) {
             if (isset(kernel_flag::deleted)) { return; }
             setf(kernel_flag::deleted);
+            result.emplace_back(this);
             if (is_native()) {
                 if (auto* p = parent()) { p->mark_as_deleted(result); }
             }
-            result.emplace_back(this);
         }
 
     };

@@ -27,6 +27,7 @@ namespace sbn {
         foreign_kernel& operator=(const foreign_kernel&) = delete;
         virtual ~foreign_kernel() = default;
 
+        inline bool is_native() const noexcept override { return false; }
         inline id_type type() const noexcept { return this->_type; }
 
         void read(kernel_buffer& in) override;

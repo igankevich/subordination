@@ -61,6 +61,7 @@ void sbn::connection::retry(const connection_ptr& self) { ++this->_attempts; }
 void sbn::connection::deactivate(const connection_ptr& self) { ++this->_attempts; }
 void sbn::connection::activate(const connection_ptr& self) {}
 void sbn::connection::flush() {}
+void sbn::connection::stop() { state(connection_state::stopped); }
 
 void sbn::connection::send(kernel* k) {
     // return local downstream kernels immediately
@@ -99,7 +100,6 @@ void sbn::connection::forward(foreign_kernel* k) {
     {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
-        log("application _", k->application());
         this->_output_buffer.write(k);
     }
     if (delete_kernel) { delete k; }
@@ -109,8 +109,9 @@ void sbn::connection::write_kernel(kernel* k) noexcept {
     try {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
-        log("write _ src _ dst _ app _", k->is_native() ? "native" : "foreign",
-            k->source(), k->destination(), k->application_id());
+        log("write _ src _ dst _ src-app _ dst-app _", k->is_native() ? "native" : "foreign",
+            k->source(), k->destination(), k->source_application_id(),
+            k->target_application_id());
         this->_output_buffer.write(k);
     } catch (const sbn::error& err) {
         log_write_error(err);
@@ -156,19 +157,24 @@ sbn::kernel*
 sbn::connection::read_kernel(const application* from_application) {
     kernel* k = nullptr;
     this->_input_buffer.read(k);
-    if (from_application) { k->application(new application(*from_application)); }
+    if (from_application) {
+        k->source_application(new application(*from_application));
+        if (k->is_foreign() && !k->target_application()) {
+            k->target_application_id(from_application->id());
+        }
+    }
     if (this->_socket_address) { k->source(this->_socket_address); }
     if (k->is_foreign()) {
         #if defined(SBN_DEBUG)
         this->log("read foreign src _ dst _ app _", k->source(),
-                  k->destination(), k->application_id());
+                  k->destination(), k->source_application_id());
         #endif
         forward_or_delete(this->parent()->foreign_pipeline(), k);
         k = nullptr;
     } else {
         #if defined(SBN_DEBUG)
         this->log("read native src _ dst _ app _", k->source(),
-                  k->destination(), k->application_id());
+                  k->destination(), k->source_application_id());
         #endif
     }
     return k;
@@ -271,8 +277,12 @@ bool sbn::connection::save_kernel(kernel* k) {
 
 void sbn::connection::recover_kernels(bool down) {
     #if defined(SBN_DEBUG)
-    this->log("recover kernels upstream _ downstream _",
-              this->_upstream.size(), this->_downstream.size());
+    if (!this->_upstream.empty()) {
+        log("recover _ upstream kernels", this->_upstream.size());
+    }
+    if (!this->_downstream.empty()) {
+        log("recover _ downstream kernels", this->_downstream.size());
+    }
     #endif
     kernel_queue* queues[2] { &this->_upstream, &this->_downstream };
     const int n = down ? 2 : 1;

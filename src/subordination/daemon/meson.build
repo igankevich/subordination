@@ -32,7 +32,6 @@ sbnd = declare_dependency(
 sbnd_exe = executable(
     'sbnd',
     sources: files([
-        'application_kernel.cc',
         'factory.cc',
         'master_discoverer.cc',
         'network_master.cc',
@@ -146,7 +145,7 @@ app_exe = executable(
     sources: 'process_pipeline_test.cc',
     dependencies: [sbn],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_APP'],
+    cpp_args: ['-DSUBORDINATION_TEST_APPLICATION'],
     implicit_include_directories: false,
 )
 
@@ -159,11 +158,11 @@ configure_file(
 )
 
 daemon_exe = executable(
-    'process-pipeline-test',
+    'process-pipeline-test-daemon',
     sources: 'process_pipeline_test.cc',
     dependencies: [sbnd],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_SERVER'],
+    cpp_args: ['-DSUBORDINATION_TEST_DAEMON'],
     implicit_include_directories: false,
 )
 

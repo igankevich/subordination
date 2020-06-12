@@ -11,6 +11,7 @@ log(const Args& ... args) {
 }
 
 std::string failure = "no";
+bool is_master = false;
 
 inline bool
 test_without_failures() {
@@ -52,10 +53,10 @@ public:
     act() override {
         if (!test_without_failures()) {
             using namespace sbn::this_application;
-            if ((test_master_failure() && is_master()) ||
-                (test_slave_failure() && is_slave()) ||
+            if ((test_master_failure() && is_master) ||
+                (test_slave_failure() && !is_master) ||
                 test_total_failure()) {
-                log("kill _ at _ parent _", is_master() ? "master" : "slave",
+                log("kill _ at _ parent _", is_master ? "master" : "slave",
                     sys::this_process::hostname(), sys::this_process::parent_id());
                 send(sys::signal::kill, sys::this_process::parent_id());
                 sys::this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
@@ -97,6 +98,7 @@ public:
     void
     act() override {
         log("master start");
+        if (!test_master_failure()) { is_master = true; }
         for (uint32_t i=0; i<this->_nkernels; ++i) {
             slave_kernel* slave = new slave_kernel(i+1, this->_nkernels);
             sbn::upstream<sbn::Remote>(this, slave);
@@ -142,6 +144,7 @@ public:
     void
     act() override {
         log("grand start");
+        if (test_master_failure()) { is_master = true; }
         master_kernel* master = new master_kernel;
         master->setf(sbn::kernel_flag::carries_parent);
         sbn::upstream<sbn::Remote>(this, master);
@@ -170,10 +173,16 @@ main(int argc, char* argv[]) {
     }
     using namespace sbn;
     install_error_handler();
-    factory.types().add<slave_kernel>(1);
-    factory.types().add<master_kernel>(2);
-    factory.types().add<grand_master_kernel>(3);
+    if (test_master_failure()) {
+        factory.types().add<grand_master_kernel>(1);
+        factory.types().add<master_kernel>(2);
+    } else {
+        factory.types().add<grand_master_kernel>(2);
+        factory.types().add<master_kernel>(1);
+    }
+    factory.types().add<slave_kernel>(3);
     factory_guard g;
+    /*
     if (this_application::is_master()) {
         if (test_master_failure()) {
             send(new grand_master_kernel);
@@ -181,5 +190,6 @@ main(int argc, char* argv[]) {
             send(new master_kernel);
         }
     }
+    */
     return wait_and_return();
 }

@@ -1,5 +1,6 @@
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/prober.hh>
+#include <unistdx/base/log_message>
 
 void
 sbnd::prober::act() {
@@ -26,7 +27,8 @@ sbnd::prober::send_probe(const sys::socket_address& dest) {
     ++this->_nprobes;
     probe* p = new probe(this->_ifaddr, this->_oldprinc, this->_newprinc);
     p->destination(dest);
-    p->set_principal_id(1); // TODO
+    p->principal_id(1); // TODO
     p->parent(this);
+    sys::log_message("PROBE", "flags _", sys::u32(p->flags()));
     factory.remote().send(p);
 }

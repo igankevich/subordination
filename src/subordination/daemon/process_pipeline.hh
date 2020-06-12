@@ -23,7 +23,7 @@ namespace sbnd {
         using app_iterator = typename application_table::iterator;
 
     private:
-        application_table _apps;
+        application_table _applications;
         sys::process_group _procs;
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = true;
@@ -60,10 +60,11 @@ namespace sbnd {
         app_iterator do_add(const sbn::application& app);
         void process_kernel(sbn::kernel* k);
         void wait_loop();
+        void wait_for_processes(lock_type& lock);
 
         inline app_iterator
         find_by_app_id(application_id_type id) {
-            return this->_apps.find(id);
+            return this->_applications.find(id);
         }
 
         app_iterator

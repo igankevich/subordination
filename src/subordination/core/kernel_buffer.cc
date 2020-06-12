@@ -1,5 +1,8 @@
 #include <cstring>
 
+#include <unistdx/base/log_message>
+#include <unistdx/util/backtrace>
+
 #include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
@@ -59,8 +62,11 @@ void sbn::kernel_buffer::write(kernel* k) {
 
 void sbn::kernel_buffer::read(kernel*& k) {
     std::unique_ptr<foreign_kernel> fk(new foreign_kernel);
+    sys::log_message("TEST", "1 header _", *fk);
     fk->read_header(*this);
-    if (fk->is_foreign()) {
+    sys::log_message("TEST", "header _", *fk);
+    if (fk->target_application_id() != this_application::get_id()) {
+        sys::log_message("TEST", "1");
         fk->read(*this);
         k = fk.release();
     } else {
@@ -82,6 +88,7 @@ void sbn::kernel_buffer::read(kernel*& k) {
 void sbn::kernel_buffer::write(const sys::socket_address& rhs) {
     // TODO we need more portable solution
     sys::u16 n = rhs.sockaddrlen();
+    sys::log_message("TEST", "write n _", n);
     this->write(n);
     this->write(rhs.sockaddr(), rhs.sockaddrlen());
 }
@@ -90,6 +97,7 @@ void sbn::kernel_buffer::read(sys::socket_address& rhs) {
     // TODO we need more portable solution
     sys::u16 n = 0;
     this->read(n);
+    sys::log_message("TEST", "n _", n);
     this->read(rhs.sockaddr(), n);
 }
 
@@ -139,6 +147,7 @@ sbn::kernel_write_guard::~kernel_write_guard() {
     this->_frame.size(new_position - this->_old_position);
     this->_buffer.position(this->_old_position);
     if (this->_frame.size() > sizeof(kernel_frame)) {
+        sys::log_message("TEST", "write frame size _", this->_frame.size());
         this->_buffer.write(&this->_frame, sizeof(kernel_frame));
         this->_buffer.position(new_position);
     }
@@ -149,6 +158,7 @@ frame(f), in(buffer), _old_limit(buffer.limit()) {
     if (in.remaining() < sizeof(kernel_frame)) { return; }
     std::memcpy(&frame, in.data()+in.position(), sizeof(kernel_frame));
     if (in.remaining() >= frame.size()) {
+        sys::log_message("TEST", "read frame size _", frame.size());
         this->_good = true;
         in.limit(in.position() + frame.size());
         in.bump(sizeof(kernel_frame));

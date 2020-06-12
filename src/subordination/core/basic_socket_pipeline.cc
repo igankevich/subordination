@@ -39,9 +39,6 @@ void sbn::basic_socket_pipeline::handle_events() {
         // process event by calling event connection function
         try {
             conn->handle(ev);
-            if (conn->state() == connection_state::started) {
-                log("started _", conn->socket_address());
-            }
             if (!ev) {
                 remove(ev.fd(), conn, "bad event");
             }
@@ -129,6 +126,7 @@ void sbn::basic_socket_pipeline::start() {
 void sbn::basic_socket_pipeline::stop() {
     lock_type lock(this->_mutex);
     this->setstate(pipeline_state::stopping);
+    for (auto& conn : this->_connections) { if (conn) { conn->stop(); } }
     this->_semaphore.notify_all();
 }
 

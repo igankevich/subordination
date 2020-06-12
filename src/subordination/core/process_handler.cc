@@ -55,3 +55,6 @@ void sbn::process_handler::remove(const connection_ptr& self) {
 void sbn::process_handler::flush() {
     connection::flush(this->_file_descriptors.out());
 }
+
+void sbn::process_handler::stop() {
+}

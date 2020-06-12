@@ -11,7 +11,6 @@
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/types.hh>
-#include <subordination/daemon/application_kernel.hh>
 
 namespace sbnd {
 

@@ -6,7 +6,6 @@
 
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
-#include <subordination/daemon/application_kernel.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/network_master.hh>
@@ -48,7 +47,6 @@ main(int argc, char* argv[]) {
     sys::parse_arguments(argc, argv, options);
     sbn::install_error_handler();
     install_debug_handler();
-    factory.types().add<application_kernel>(1);
     factory.types().add<probe>(2);
     factory.types().add<Hierarchy_kernel>(3);
     factory.types().add<Status_kernel>(4);

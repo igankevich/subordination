@@ -105,7 +105,7 @@ struct Test_socket: public sbn::kernel {
             delete this;
             if (++shutdown_counter == NUM_KERNELS/3) {
                 message("power failure!");
-                transactions.close();
+                //transactions.close();
                 try {
                     sys::file_status st("socket-pipeline-test-transactions-master");
                     message("master size _", st.size());

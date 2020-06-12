@@ -1,7 +1,7 @@
 #include <unistdx/ipc/process>
 #include <unistdx/util/backtrace>
 
-#include <subordination/core/act.hh>
+#include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/parallel_pipeline.hh>
 
 namespace {
@@ -27,9 +27,38 @@ namespace {
         }
     }
 
+    inline void act(sbn::kernel* k) {
+        bool del = false;
+        if (k->return_code() == sbn::exit_code::undefined) {
+            if (k->principal()) {
+                k->principal()->react(k);
+                if (!k->isset(sbn::kernel_flag::do_not_delete)) {
+                    del = true;
+                } else {
+                    k->unsetf(sbn::kernel_flag::do_not_delete);
+                }
+            } else {
+                k->act();
+            }
+        } else {
+            if (!k->principal()) {
+                del = !k->parent();
+                sbn::graceful_shutdown(int(k->return_code()));
+            } else {
+                del = *k->principal() == *k->parent();
+                if (k->return_code() == sbn::exit_code::success) {
+                    k->principal()->react(k);
+                } else {
+                    k->principal()->error(k);
+                }
+            }
+        }
+        if (del) { delete k; }
+    }
+
     inline void process_kernel(sbn::kernel* k, sbn::pipeline* error_pipeline) {
         try {
-            ::sbn::act(k);
+            act(k);
         } catch (...) {
             k->rollback();
             sys::backtrace(2);

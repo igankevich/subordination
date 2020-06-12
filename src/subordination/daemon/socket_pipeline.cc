@@ -16,7 +16,7 @@ namespace {
     void
     set_kernel_id(kernel* k, Server& srv) {
         if (!k->has_id()) {
-            k->set_id(srv.generate_id());
+            k->id(srv.generate_id());
         }
     }
 
@@ -24,7 +24,7 @@ namespace {
     void
     set_kernel_id_2(kernel* k, Id& counter) {
         if (!k->has_id()) {
-            k->set_id(++counter);
+            k->id(++counter);
         }
     }
 
@@ -542,7 +542,6 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->socket_address(vaddr);
     s->parent(this);
     s->types(types());
-    log("types _", (void*)types());
     s->state(sbn::connection_state::starting);
     s->name(this->_name);
     using f = sbn::connection_flags;

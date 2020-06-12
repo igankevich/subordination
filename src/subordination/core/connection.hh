@@ -96,10 +96,10 @@ namespace sbn {
         virtual void deactivate(const connection_ptr& self);
         virtual void activate(const connection_ptr& self);
         virtual void flush();
+        virtual void stop();
 
         inline time_point start_time_point() const noexcept { return this->_start; }
-        inline void start_time_point(const time_point& rhs) noexcept { this->_start = rhs; }
-        inline void stop() { state(connection_state::stopped); }
+        inline void start_time_point(time_point rhs) noexcept { this->_start = rhs; }
 
         inline bool
         has_start_time_point() const noexcept {

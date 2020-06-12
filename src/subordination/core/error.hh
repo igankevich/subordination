@@ -1,6 +1,10 @@
 #ifndef SUBORDINATION_CORE_ERROR_HH
 #define SUBORDINATION_CORE_ERROR_HH
 
+#if defined(SBN_DEBUG)
+#include <unistdx/util/backtrace>
+#endif
+
 #include <array>
 #include <exception>
 #include <iosfwd>
@@ -13,7 +17,11 @@ namespace sbn {
         const char* _what = nullptr;
 
     public:
-        inline explicit error(const char* msg) noexcept: _what(msg) {}
+        inline explicit error(const char* msg) noexcept: _what(msg) {
+            #if defined(SBN_DEBUG)
+            sys::backtrace(2);
+            #endif
+        }
         error() = default;
         virtual ~error() = default;
         error(const error&) = default;

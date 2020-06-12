@@ -87,7 +87,7 @@ namespace sbn {
         void clear();
 
         inline void write_transaction(transaction_status status, kernel* k) {
-            transactions()->write({status, index(), k});
+            if (auto* tr = transactions()) { tr->write({status, index(), k}); }
         }
 
         inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
