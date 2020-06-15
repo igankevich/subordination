@@ -41,7 +41,7 @@ if get_option('profile_node_discovery')
 endif
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.21.0')
+unistdx = dependency('unistdx', version: '>=0.22.0')
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []

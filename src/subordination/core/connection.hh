@@ -135,6 +135,9 @@ namespace sbn {
             if (rhs == connection_state::starting) { this->_start = clock_type::now(); }
         }
 
+        inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
+        inline const kernel_queue& downstream() const noexcept { return this->_downstream; }
+
     protected:
 
         void recover_kernels(bool downstream);

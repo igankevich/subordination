@@ -45,7 +45,7 @@ namespace sbn {
     protected:
         kernel_queue _kernels;
         thread_type _thread;
-        mutex_type _mutex;
+        mutable mutex_type _mutex;
         semaphore_type _semaphore;
         connection_table _connections;
         duration _connection_timeout = std::chrono::seconds(7);
@@ -58,6 +58,20 @@ namespace sbn {
         transaction_log* _transactions = nullptr;
 
     public:
+        class sentry {
+        private:
+            const basic_socket_pipeline& _pipeline;
+        public:
+            inline explicit sentry(const basic_socket_pipeline& rhs): _pipeline(rhs) {
+                this->_pipeline._mutex.lock();
+            }
+            inline ~sentry() { this->_pipeline._mutex.unlock(); }
+        };
+
+    public:
+
+        inline sentry guard() noexcept { return sentry(*this); }
+        inline sentry guard() const noexcept { return sentry(*this); }
 
         basic_socket_pipeline();
         ~basic_socket_pipeline() = default;
@@ -142,6 +156,10 @@ namespace sbn {
 
         inline void max_connection_attempts(sys::u32 rhs) noexcept {
             this->_max_connection_attempts = rhs;
+        }
+
+        inline const connection_table& connections() const noexcept {
+            return this->_connections;
         }
 
     protected:

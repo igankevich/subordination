@@ -4,6 +4,8 @@
 namespace sbnd {
 
     class Hierarchy_kernel;
+    class Job_status_kernel;
+    class Pipeline_status_kernel;
     class Status_kernel;
     class local_server;
     class probe;

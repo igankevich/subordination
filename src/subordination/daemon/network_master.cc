@@ -7,7 +7,9 @@
 #include <unistdx/net/interface_addresses>
 
 #include <subordination/daemon/factory.hh>
+#include <subordination/daemon/job_status_kernel.hh>
 #include <subordination/daemon/network_master.hh>
+#include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/status_kernel.hh>
 
 namespace {
@@ -119,6 +121,8 @@ sbnd::network_master::react(sbn::kernel* child) {
         this->on_event(dynamic_cast<socket_pipeline_kernel*>(child));
     } else if (typeid(*child) == typeid(Status_kernel)) {
         report_status(dynamic_cast<Status_kernel*>(child));
+    } else if (typeid(*child) == typeid(Job_status_kernel)) {
+        report_job_status(dynamic_cast<Job_status_kernel*>(child));
     }
 }
 
@@ -133,6 +137,62 @@ void sbnd::network_master::report_status(Status_kernel* status) {
     status->return_to_parent(sbn::exit_code::success);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(status);
+    #endif
+}
+
+void sbnd::network_master::report_job_status(Job_status_kernel* k) {
+    auto g = factory.process().guard();
+    Job_status_kernel::application_array jobs;
+    jobs.reserve(factory.process().jobs().size());
+    for (const auto& pair : factory.process().jobs()) {
+        jobs.emplace_back(pair.second->application());
+    }
+    k->jobs(std::move(jobs));
+    k->setf(sbn::kernel_flag::do_not_delete);
+    k->return_to_parent(sbn::exit_code::success);
+    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+    factory.unix().send(k);
+    #endif
+}
+
+void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
+    Pipeline_status_kernel::pipeline_array pipelines;
+    const sbn::basic_socket_pipeline* pipelines_b[] {&factory.remote(),&factory.process(),&factory.unix()};
+    for (const auto* ppl_b : pipelines_b) {
+        pipelines.emplace_back();
+        auto& ppl = pipelines.back();
+        auto g = ppl_b->guard();
+        ppl.name = ppl_b->name();
+        for (const auto& conn : ppl_b->connections()) {
+            if (!conn) { continue; }
+            ppl.connections.emplace_back();
+            auto& c = ppl.connections.back();
+            c.address = conn->socket_address();
+            for (const auto* b : conn->upstream()) {
+                c.kernels.emplace_back();
+                auto& a = c.kernels.back();
+                a.id = b->id();
+                if (b->is_foreign()) {
+                    a.type_id = dynamic_cast<const sbn::foreign_kernel*>(b)->type();
+                } else {
+                    auto g = factory.types().guard();
+                    auto result = factory.types().find(typeid(*b));
+                    if (result != factory.types().end()) {
+                        a.type_id = result->id();
+                    }
+                }
+                a.source_application_id = b->source_application_id();
+                a.target_application_id = b->target_application_id();
+                a.source = b->source();
+                a.destination = b->destination();
+            }
+        }
+    }
+    k->pipelines(std::move(pipelines));
+    k->setf(sbn::kernel_flag::do_not_delete);
+    k->return_to_parent(sbn::exit_code::success);
+    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+    factory.unix().send(k);
     #endif
 }
 

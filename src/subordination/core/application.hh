@@ -59,6 +59,10 @@ namespace sbn {
         inline sys::gid_type group() const noexcept { return this->_gid; }
         const std::string& filename() const noexcept { return this->_args.front(); }
 
+        inline const string_array& arguments() const noexcept {
+            return this->_args;
+        }
+
         int execute(const sys::two_way_pipe& pipe) const;
 
         void write(kernel_buffer& out) const;

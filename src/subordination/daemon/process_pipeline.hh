@@ -51,6 +51,12 @@ namespace sbnd {
             this->_allowroot = rhs;
         }
 
+        inline const application_table& jobs() const noexcept {
+            return this->_applications;
+        }
+
+        inline sentry guard() noexcept { return sentry(*this); }
+
     protected:
 
         void process_kernels() override;

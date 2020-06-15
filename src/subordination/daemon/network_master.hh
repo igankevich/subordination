@@ -9,6 +9,7 @@
 
 #include <subordination/daemon/master_discoverer.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
+#include <subordination/daemon/types.hh>
 
 namespace sbnd {
 
@@ -79,7 +80,9 @@ namespace sbnd {
         void forward_probe(probe* p);
         void forward_hierarchy_kernel(Hierarchy_kernel* p);
         void on_event(socket_pipeline_kernel* k);
-        void report_status(Status_kernel* status);
+        void report_status(Status_kernel* k);
+        void report_job_status(Job_status_kernel* k);
+        void report_pipeline_status(Pipeline_status_kernel* k);
 
         map_iterator find_discoverer(const addr_type& a);
 

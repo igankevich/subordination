@@ -6,6 +6,8 @@ sbnd_src = files([
     'hierarchy.cc',
     'hierarchy_kernel.cc',
     'hierarchy_node.cc',
+    'job_status_kernel.cc',
+    'pipeline_status_kernel.cc',
     'position_in_tree.cc',
     'process_pipeline.cc',
     'socket_pipeline.cc',
@@ -91,7 +93,7 @@ test(
     'daemon/socket-pipeline-no-failure',
     dtest_exe,
     args: [
-        '--exit-code', 'master',
+        '--exit-code', '1',
         '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=none',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=none',
@@ -104,7 +106,7 @@ test(
     'daemon/socket-pipeline-slave-failure',
     dtest_exe,
     args: [
-        '--exit-code', 'master',
+        '--exit-code', '1',
         '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
@@ -176,33 +178,31 @@ discovery_test_exe = executable(
     implicit_include_directories: false,
 )
 
-if get_option('b_sanitize') != 'address'
-    nodes = '2'
-    fanout = '2'
-    foreach failure : ['no-failure', 'slave-failure', 'master-failure', 'total-failure']
-        suffix = '-' + nodes + '-' + fanout + '-' + failure
-        env = environment()
-        env.set('DTEST_EXE', dtest_exe.full_path())
-        env.set('DTEST_NAME', 'x')
-        env.set('DTEST_SIZE', nodes)
-        env.set('SBN_FANOUT', fanout)
-        env.set('SBN_FAILURE', failure)
-        # test executable is a wrapper for dtest
-        # (all arguments are forwarded to dtest)
-        test(
-            'daemon/discovery' + suffix,
-            discovery_test_exe,
-            args: [
-                # run daemon on each cluster node
-                '--exec', '*',
-                sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
-                # submit test application from the first node
-                '--exec', '1',
-                sbnc_exe.full_path(), test_app_exe.full_path(), failure
-            ],
-            env: env,
-            workdir: meson.build_root(),
-            is_parallel: false
-        )
-    endforeach
-endif
+nodes = '2'
+fanout = '2'
+foreach failure : ['no-failure', 'slave-failure', 'master-failure', 'total-failure']
+    suffix = '-' + nodes + '-' + fanout + '-' + failure
+    env = environment()
+    env.set('DTEST_EXE', dtest_exe.full_path())
+    env.set('DTEST_NAME', 'x')
+    env.set('DTEST_SIZE', nodes)
+    env.set('SBN_FANOUT', fanout)
+    env.set('SBN_FAILURE', failure)
+    # test executable is a wrapper for dtest
+    # (all arguments are forwarded to dtest)
+    test(
+        'daemon/discovery' + suffix,
+        discovery_test_exe,
+        args: [
+            # run daemon on each cluster node
+            '--exec', '*',
+            sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
+            # submit test application from the first node
+            '--exec', '1',
+            sbnc_exe.full_path(), test_app_exe.full_path(), failure
+        ],
+        env: env,
+        workdir: meson.build_root(),
+        is_parallel: false
+    )
+endforeach

@@ -2,6 +2,7 @@
 #define SUBORDINATION_CORE_KERNEL_BUFFER_HH
 
 #include <chrono>
+#include <vector>
 
 #include <unistdx/base/byte_buffer>
 
@@ -66,6 +67,25 @@ namespace sbn {
             duration dt{};
             this->read(dt);
             t = time_point(dt);
+        }
+
+        template <class T>
+        void write(const std::vector<T>& rhs) {
+            const sys::u32 n = rhs.size();
+            this->write(n);
+            for (sys::u32 i=0; i<n; ++i) { *this << rhs[i]; }
+        }
+
+        template <class T>
+        void read(std::vector<T>& rhs) {
+            rhs.clear();
+            sys::u32 n = 0;
+            this->read(n);
+            rhs.reserve(n);
+            for (sys::u32 i=0; i<n; ++i) {
+                rhs.emplace_back();
+                *this >> rhs.back();
+            }
         }
 
         void write(const sys::socket_address& rhs);
