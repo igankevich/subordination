@@ -92,10 +92,9 @@ void dts::application::init(int argc, char* argv[]) {
             throw std::invalid_argument(tmp.str());
         }
     }
-    this->_cluster.size(cluster_size);
     this->_cluster.network(cluster_network);
     this->_cluster.peer_network(cluster_peer_network);
-    this->_nodes = this->_cluster.nodes();
+    this->_cluster.generate_nodes(cluster_size);
 }
 
 int dts::application::wait() {
@@ -103,17 +102,17 @@ int dts::application::wait() {
     if (this->_exitcode == exit_code::all) {
         retval = accumulate_return_value();
     } else if (this->_exitcode == exit_code::master) {
-        auto nprocs = this->_procs.size();
+        auto nprocs = this->_child_processes.size();
         // wait for master process
-        if (nprocs > 0 && this->_procs.front()) {
-            auto stat = this->_procs.front().wait();
+        if (nprocs > 0 && this->_child_processes.front()) {
+            auto stat = this->_child_processes.front().wait();
             this->log("master process terminated: _", stat);
             retval = stat.exit_code() | sys::signal_type(stat.term_signal());
         }
         // terminate child processes
         if (nprocs > 1) {
             for (size_t i=1; i<nprocs; ++i) {
-                auto& proc = this->_procs[i];
+                auto& proc = this->_child_processes[i];
                 if (proc) { proc.terminate(); }
                 auto stat = proc.wait();
                 this->log("slave process terminated: _", stat);
@@ -121,15 +120,15 @@ int dts::application::wait() {
         }
     } else {
         size_t proc_no = static_cast<size_t>(this->_exitcode);
-        auto nprocs = this->_procs.size();
+        auto nprocs = this->_child_processes.size();
         if (proc_no < nprocs) {
-            auto status = this->_procs[proc_no].wait();
+            auto status = this->_child_processes[proc_no].wait();
             this->log("process #_ terminated: _", proc_no, status);
             retval = status.exit_code() | sys::signal_type(status.term_signal());
         }
         for (size_t i=0; i<nprocs; ++i) {
             if (i == proc_no) { continue; }
-            auto& proc = this->_procs[i];
+            auto& proc = this->_child_processes[i];
             if (proc) { proc.terminate(); }
             auto stat = proc.wait();
             this->log("process #_ terminated: _", i, stat);
@@ -138,12 +137,13 @@ int dts::application::wait() {
     this->_stopped = true;
     this->_poller.notify_one();
     if (this->_output_thread.joinable()) { this->_output_thread.join(); }
-    return retval;
+    if (this->_no_tests) { return retval; }
+    return this->_tests_succeeded ? 0 : 1;
 }
 
 int dts::application::accumulate_return_value() {
     int ret = 0;
-    for (auto& proc : this->_procs) {
+    for (auto& proc : this->_child_processes) {
         auto stat = proc.wait();
         this->log("child process terminated: _", stat);
         ret |= stat.exit_code() | sys::signal_type(stat.term_signal());
@@ -152,51 +152,27 @@ int dts::application::accumulate_return_value() {
 }
 
 void dts::application::run() {
+    this->_no_tests = this->_tests.empty();
     if (this->_cluster.size() == 1) {
         { sys::network_interface lo("lo"); lo.setf(sys::network_interface::flag::up); }
-        std::for_each(
-            _arguments.begin(), _arguments.end(),
-            [this] (const sys::argstream& rhs) {
-                _procs.emplace([&rhs] () {
-                    return sys::this_process::execute(rhs.argv());
-                });
-            }
-        );
+        for (const auto& a : this->_arguments) {
+            this->_child_processes.emplace([&a] () {
+                return sys::this_process::execute(a.argv());
+            });
+        }
     } else {
-        std::vector<sys::veth_interface> veths;
-        auto nodes = this->_cluster.nodes();
+        auto& nodes = this->_cluster.nodes();
         auto num_nodes = nodes.size();
         auto num_processes = this->_arguments.size();
-        /*
-        for (size_t i=0; i<num_nodes; ++i) {
-            const auto& node = nodes[i];
-            veths.emplace_back(node.name(), 'v'+node.name());
-            auto& veth = veths.back();
-            veth.address(node.interface_address());
-            veth.up();
-            br.add(veth);
-            for (size_t j=0; j<num_processes; ++j) {
-                const auto& where = this->_where[j];
-                if (!where.matches(i)) { continue; }
-                veth.peer().address(node.peer_interface_address());
-                veth.peer().up();
-            }
-        }
-        */
         using f = sys::network_interface::flag;
         using sys::this_process::execute;
         using sys::this_process::enter;
-        sys::fildes parent_netns = sys::this_process::get_namespace("net");
         std::vector<sys::two_way_pipe> pipes;
-        std::vector<sys::fildes> netns_fds;
         for (size_t i=0; i<num_nodes; ++i) {
-            const auto& node = nodes[i];
-            veths.emplace_back(node.name(), 'v'+node.name());
-            auto& veth = veths.back();
+            auto& node = nodes[i];
+            node.veth(sys::veth_interface(node.name(), 'v'+node.name()));
+            auto& veth = node.veth();
             bool first_process = true;
-            //veth.address(node.interface_address());
-            //veth.up();
-            //br.add(veth);
             for (size_t j=0; j<num_processes; ++j) {
                 const auto& where = this->_where[j];
                 const auto& args = this->_arguments[j];
@@ -216,7 +192,8 @@ void dts::application::run() {
                 sys::pipe stdout, stderr;
                 stdout.out().unsetf(sys::open_flag::non_blocking);
                 stderr.out().unsetf(sys::open_flag::non_blocking);
-                this->_procs.emplace([&] () {
+                using pf = sys::process_flag;
+                this->_child_processes.emplace([&] () {
                     try {
                         stdout.in().close();
                         stderr.in().close();
@@ -224,8 +201,10 @@ void dts::application::run() {
                         out = stdout.out();
                         sys::fildes err(STDERR_FILENO);
                         err = stderr.out();
-                        auto& netns = netns_fds.back();
-                        if (!first_process) { enter(netns.fd()); }
+                        if (!first_process) {
+                            enter(node.network_namespace().fd());
+                            enter(node.hostname_namespace().fd());
+                        }
                         pipe.close_in_child();
                         std::stringstream tmp;
                         tmp << node.peer_interface_address();
@@ -246,29 +225,28 @@ void dts::application::run() {
                         return 1;
                     }
                     return 0;
-                }, sys::process_flag(SIGCHLD | CLONE_NEWUTS | CLONE_NEWNET));
+                }, pf::signal_parent | pf::unshare_network | pf::unshare_hostname);
                 pipe.close_in_parent();
                 stdout.out().close();
                 stderr.out().close();
                 this->_output.emplace_back(veth.name()+": ", std::move(stdout.in()), 1);
                 this->_output.emplace_back(veth.name()+": ", std::move(stderr.in()), 2);
-                auto& proc = this->_procs.back();
+                auto& proc = this->_child_processes.back();
+                node.network_namespace(proc.get_namespace("net"));
+                node.hostname_namespace(proc.get_namespace("uts"));
                 if (first_process) {
-                    netns_fds.emplace_back(proc.get_namespace("net"));
-                    auto& netns = netns_fds.back();
-                    //auto index0 = veth.index();
                     auto index = veth.peer().index();
-                    veth.peer().set_namespace(netns.fd());
-                    enter(netns.fd());
-                    sys::network_interface peer(index);
-                    peer.address(node.peer_interface_address());
-                    peer.up();
-                    if (!sys::u16(peer.flags() & f::up)) {
-                        std::stringstream tmp;
-                        tmp << "veth " << peer.name() << " is down";
-                        throw std::runtime_error(tmp.str());
-                    }
-                    sys::this_process::enter(parent_netns.fd());
+                    veth.peer().set_namespace(node.network_namespace().fd());
+                    node.run([&] () {
+                        sys::network_interface peer(index);
+                        peer.address(node.peer_interface_address());
+                        peer.up();
+                        if (!sys::u16(peer.flags() & f::up)) {
+                            std::stringstream tmp;
+                            tmp << "veth " << peer.name() << " is down";
+                            throw std::runtime_error(tmp.str());
+                        }
+                    });
                     veth.address(node.interface_address());
                     veth.up();
                     first_process = false;
@@ -278,50 +256,62 @@ void dts::application::run() {
             }
         }
         sys::bridge_interface br(this->_cluster.name());
-        for (const auto& veth : veths) { br.add(veth); }
+        for (const auto& node : nodes) { br.add(node.veth()); }
         br.up();
-        for (const auto& veth : veths) {
+        for (const auto& node : nodes) {
             using f = sys::network_interface::flag;
-            if (!sys::u16(veth.flags() & f::up)) {
+            if (!sys::u16(node.veth().flags() & f::up)) {
                 std::stringstream tmp;
-                tmp << "veth " << veth.name() << " is down";
+                tmp << "veth " << node.veth().name() << " is down";
                 throw std::runtime_error(tmp.str());
             }
         }
         // launch all processes simultaneously
         for (auto& pipe : pipes) { pipe.parent_out().write("x", 1); }
-        this->_bridge = std::move(br);
-        this->_veths = std::move(veths);
+        this->_cluster.bridge(std::move(br));
         for (const auto& output : this->_output) {
             this->_poller.emplace(output.in().fd(), sys::event::in);
         }
-        this->_output_thread = std::thread(
-            [this] () {
-                try {
-                    using namespace sys::this_process;
-                    ignore_signal(sys::signal::broken_pipe);
-                    struct No_lock { void lock() {} void unlock() {} };
-                    No_lock lock;
-                    this->_poller.wait(lock, [this] () {
-                        auto pipe_fd = this->_poller.pipe_in();
-                        for (const auto& event : this->_poller) {
-                            if (event.fd() == pipe_fd) { this->_stopped = true; }
-                            for (auto& output : this->_output) {
-                                //if (event.fd() == output.in().fd()) { output.copy(); }
-                                output.copy();
-                            }
-                        }
-                        return stopped();
-                    });
-                } catch (const std::exception& err) {
-                    log("output _", err.what());
-                }
-            }
-        );
+        this->_output_thread = std::thread([this] () { process_events(); });
     }
 }
 
-void dts::process_output::copy() {
+void dts::application::process_events() {
+    try {
+        using namespace sys::this_process;
+        ignore_signal(sys::signal::broken_pipe);
+        struct No_lock { void lock() {} void unlock() {} };
+        No_lock lock;
+        this->_poller.wait(lock, [this] () {
+            auto pipe_fd = this->_poller.pipe_in();
+            for (const auto& event : this->_poller) {
+                if (event.fd() == pipe_fd) { this->_stopped = true; }
+                for (auto& output : this->_output) {
+                    //if (event.fd() == output.in().fd()) { output.copy(); }
+                    output.copy(this->_lines);
+                }
+            }
+            if (!this->_no_tests) {
+                if (run_tests()) {
+                    this->_tests_succeeded = true;
+                    this->send(sys::signal::terminate);
+                }
+            }
+            return stopped();
+        });
+    } catch (const std::exception& err) {
+        log("output _", err.what());
+    }
+}
+
+bool dts::application::run_tests() {
+    while (!this->_tests.empty() && this->_tests.front()(*this, this->_lines)) {
+        this->_tests.pop();
+    }
+    return this->_tests.empty();
+}
+
+void dts::process_output::copy(line_array& lines) {
     auto& buf = this->_buffer;
     buf.fill(this->_in);
     buf.flip();
@@ -334,6 +324,7 @@ void dts::process_output::copy() {
     while (first != last) {
         if (*first == '\n') {
             buf.limit(first-old_first+1);
+            lines.emplace_back(this->_prefix.data(), this->_prefix.size());
             this->_out.write(this->_prefix.data(), this->_prefix.size());
             buf.flush(this->_out);
         }

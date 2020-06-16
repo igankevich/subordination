@@ -41,6 +41,7 @@ namespace sbn {
         //using connection_table = std::unordered_map<sys::fd_type,connection_ptr>;
         using thread_type = std::thread;
         using connection_const_iterator = typename connection_table::const_iterator;
+        using kernel_array = std::vector<kernel*>;
 
     protected:
         kernel_queue _kernels;
@@ -56,6 +57,7 @@ namespace sbn {
         kernel_type_registry* _types = nullptr;
         kernel_instance_registry* _instances = nullptr;
         transaction_log* _transactions = nullptr;
+        kernel_array _listeners;
 
     public:
         class sentry {
@@ -161,6 +163,9 @@ namespace sbn {
         inline const connection_table& connections() const noexcept {
             return this->_connections;
         }
+
+        inline void add_listener(kernel* k) { this->_listeners.emplace_back(k); }
+        void remove_listener(kernel* k);
 
     protected:
 

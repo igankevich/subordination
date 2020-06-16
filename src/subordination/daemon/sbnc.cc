@@ -220,11 +220,12 @@ public:
     void react(kernel* child) override {
         auto* k = dynamic_cast<Main_kernel*>(child);
         if (k->return_code() != sbn::exit_code::success) {
-            message("failed to submit _", k->target_application_id());
+            message("failed to submit _", k->source_application_id());
         } else {
-            message("submitted _", k->target_application_id());
+            message("submitted _", k->source_application_id());
         }
-        sbn::graceful_shutdown(int(k->return_code()));
+        return_to_parent(k->return_code());
+        sbnc::factory.local().send(this);
     }
 
 };
@@ -381,7 +382,8 @@ public:
                     break;
             }
         }
-        sbn::graceful_shutdown(int(child->return_code()));
+        return_to_parent(child->return_code());
+        sbnc::factory.local().send(this);
     }
 
 };

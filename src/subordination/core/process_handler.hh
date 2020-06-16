@@ -27,6 +27,8 @@ namespace sbn {
         int _kernel_count = 0;
         int _kernel_count_last = 0;
         time_point _last{};
+        foreign_kernel* _main_kernel{};
+        pipeline* _unix{};
 
     public:
 
@@ -54,12 +56,32 @@ namespace sbn {
             // remove target application before forwarding
             // to child process to reduce the amount of data
             // transferred to child process
+            bool wait_for_completion = false;
             if (auto* a = k->target_application()) {
+                wait_for_completion = a->wait_for_completion();
                 if (k->source_application_id() == a->id()) {
                     k->target_application_id(a->id());
                 }
             }
-            connection::forward(k);
+            // save the main kernel
+            if (connection::do_forward(k)) {
+                if (k->type() == 1) {
+                    if (wait_for_completion) {
+                        log("save main kernel _", *k);
+                        this->_main_kernel = k;
+                    } else {
+                        log("return main kernel _", *k);
+                        k->return_to_parent();
+                        k->target_application_id(0);
+                        k->source_application_id(application().id());
+                        if (this->_unix) {
+                            this->_unix->forward(k);
+                        } else {
+                            delete k;
+                        }
+                    }
+                } else { delete k; }
+            }
             ++this->_kernel_count;
         }
 
@@ -81,6 +103,8 @@ namespace sbn {
 
         inline sys::fd_type in() const noexcept { return this->_file_descriptors.in().fd(); }
         inline sys::fd_type out() const noexcept { return this->_file_descriptors.out().fd(); }
+        inline pipeline* unix() const noexcept { return this->_unix; }
+        inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
 
     };
 

@@ -147,4 +147,13 @@ void sbn::basic_socket_pipeline::clear() {
         this->_kernels.pop();
     }
     for (auto& conn : this->_connections) { if (conn) { conn->clear(); } }
+    for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
+    this->_listeners.clear();
+}
+
+void sbn::basic_socket_pipeline::remove_listener(kernel* b) {
+    this->_listeners.erase(
+        std::remove_if(this->_listeners.begin(), this->_listeners.end(),
+                       [b] (kernel* a) { return a == b; }),
+        this->_listeners.end());
 }

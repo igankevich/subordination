@@ -239,6 +239,11 @@ namespace sbn {
             return this->_parent;
         }
 
+        inline bool has_parent() const noexcept {
+            if (bool(flags() & kernel_flag::parent_is_id)) { return this->_parent_id != 0; }
+            return this->_parent;
+        }
+
         inline void
         parent(kernel* rhs) {
             this->_parent = rhs;

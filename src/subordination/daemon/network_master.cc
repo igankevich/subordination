@@ -48,16 +48,16 @@ namespace {
 
 }
 
-void sbnd::network_master::send_timer() {
+void sbnd::network_master::send_timer(bool first_time) {
     using namespace std::chrono;
     this->_timer = new network_timer;
-    this->_timer->after(this->_interval);
+    this->_timer->after(first_time ? duration::zero() : this->_interval);
     this->_timer->principal(this);
     factory.local().send(this->_timer);
 }
 
 void sbnd::network_master::act() {
-    this->send_timer();
+    this->send_timer(true);
 }
 
 auto
@@ -124,6 +124,8 @@ sbnd::network_master::react(sbn::kernel* child) {
         report_status(dynamic_cast<Status_kernel*>(child));
     } else if (typeid(*child) == typeid(Job_status_kernel)) {
         report_job_status(dynamic_cast<Job_status_kernel*>(child));
+    } else if (typeid(*child) == typeid(process_pipeline_kernel)) {
+        on_event(dynamic_cast<process_pipeline_kernel*>(child));
     }
 }
 
@@ -208,7 +210,8 @@ sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
     factory.remote().add_server(ifa);
     if (this->_discoverers.find(ifa) == this->_discoverers.end()) {
         const auto port = factory.remote().port();
-        master_discoverer* d = new master_discoverer(ifa, port, this->_fanout);
+        auto* d = new master_discoverer(ifa, port, this->_fanout);
+        d->interval(network_scan_interval());
         this->_discoverers.emplace(ifa, d);
         d->parent(this);
         factory.local().send(d);
@@ -265,8 +268,7 @@ sbnd::network_master::find_discoverer(const addr_type& a) -> map_iterator {
     );
 }
 
-void
-sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
+void sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
         const addr_type& a = traits_type::address(ev->socket_address());
@@ -278,6 +280,16 @@ sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
             ev->setf(sbn::kernel_flag::do_not_delete);
             ev->principal(discoverer);
             factory.local().send(ev);
+        }
+    }
+}
+
+void sbnd::network_master::on_event(process_pipeline_kernel* k) {
+    if (k->event() == process_pipeline_event::child_process_terminated) {
+        sys::log_message("net", "job _ terminated with status _",
+                         k->application_id(), k->status());
+        if (k->status().exited()) {
+            factory.remote().send(new Terminate_kernel({k->application_id()}));
         }
     }
 }

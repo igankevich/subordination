@@ -181,7 +181,7 @@ discovery_test_exe = executable(
 
 nodes = '2'
 fanout = '2'
-foreach failure : ['no-failure', 'slave-failure', 'master-failure', 'total-failure']
+foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure']
     suffix = '-' + nodes + '-' + fanout + '-' + failure
     env = environment()
     env.set('DTEST_EXE', dtest_exe.full_path())
@@ -197,7 +197,13 @@ foreach failure : ['no-failure', 'slave-failure', 'master-failure', 'total-failu
         args: [
             # run daemon on each cluster node
             '--exec', '*',
-            sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
+            sbnd_exe.full_path(), 'fanout=' + fanout, 'allow-root=1',
+            # tolerate asynchronous start of daemons
+            'connection-timeout=1s',
+            'max-connection-attempts=10',
+            'network-scan-interval=5s',
+            # never update NICs
+            'network-interface-update-interval=1h',
             # submit test application from the first node
             '--exec', '1',
             sbnc_exe.full_path(), test_app_exe.full_path(), failure

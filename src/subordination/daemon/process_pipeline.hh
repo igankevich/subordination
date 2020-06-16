@@ -13,6 +13,34 @@
 
 namespace sbnd {
 
+    enum class process_pipeline_event: sys::u8 {
+        child_process_executed=1<<0,
+        child_process_terminated=1<<1,
+    };
+
+    UNISTDX_FLAGS(process_pipeline_event);
+
+    class process_pipeline_kernel: public sbn::kernel {
+
+    private:
+        sbn::application::id_type _application_id{};
+        sys::process_status _status;
+        process_pipeline_event _event{};
+
+    public:
+        inline sbn::application::id_type application_id() const noexcept {
+            return this->_application_id;
+        }
+        inline void application_id(sbn::application::id_type rhs) noexcept {
+            this->_application_id = rhs;
+        }
+        inline sys::process_status status() const noexcept { return this->_status; }
+        inline void status(sys::process_status rhs) noexcept { this->_status = rhs; }
+        inline process_pipeline_event event() const noexcept { return this->_event; }
+        inline void event(process_pipeline_event rhs) noexcept { this->_event = rhs; }
+
+    };
+
     class process_pipeline: public sbn::basic_socket_pipeline {
 
     private:
@@ -25,6 +53,7 @@ namespace sbnd {
     private:
         application_table _jobs;
         sys::process_group _child_processes;
+        pipeline* _unix{};
         /// How long a child process lives without receiving/sending kernels.
         duration _timeout;
         /// Allow process execution as superuser/supergroup.
@@ -58,6 +87,8 @@ namespace sbnd {
         }
 
         inline sentry guard() noexcept { return sentry(*this); }
+        inline pipeline* unix() const noexcept { return this->_unix; }
+        inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
 
     protected:
 

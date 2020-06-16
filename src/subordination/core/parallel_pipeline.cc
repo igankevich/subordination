@@ -43,6 +43,9 @@ namespace {
         } else {
             if (!k->principal()) {
                 del = !k->parent();
+                #if defined(SBN_DEBUG)
+                sys::log_message("act", "shutdown after _", *k);
+                #endif
                 sbn::graceful_shutdown(int(k->return_code()));
             } else {
                 del = *k->principal() == *k->parent();

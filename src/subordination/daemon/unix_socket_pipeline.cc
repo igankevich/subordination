@@ -96,6 +96,17 @@ sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
     }
 }
 
+
+void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel* fk) {
+    auto result = this->_clients.find(fk->destination());
+    if (result == this->_clients.end()) {
+        log("client _ not found, deleting _", fk->destination(), *fk);
+        delete fk;
+        return;
+    }
+    result->second->forward(fk);
+}
+
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
 _socket(std::move(socket)) {
     this->state(sbn::connection_state::starting);

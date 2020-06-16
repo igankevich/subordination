@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <iterator>
 #include <regex>
 #include <string>
+#include <thread>
 
 #include <unistdx/base/byte_buffer>
 #include <unistdx/base/log_message>
@@ -82,7 +84,7 @@ expect_event_count(
     }
 }
 
-void test_master(const std::vector<std::string>& lines, int fanout, int n) {
+void test_superior(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout >= n || n == 2) {
         if (n == 2) {
             expect_event_sequence(lines, {
@@ -106,7 +108,7 @@ void test_master(const std::vector<std::string>& lines, int fanout, int n) {
     }
 }
 
-void test_slaves(const std::vector<std::string>& lines, int fanout, int n) {
+void test_subordinates(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout >= n || n == 2) {
         if (n == 2) {
             expect_event_sequence(lines, {
@@ -192,15 +194,17 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
     int node_no = 0;
     if (expected_failure == "no-failure") {
         node_no = 1;
-    } else if (expected_failure == "master-failure" && n == 2) {
+    } else if (expected_failure == "superior-failure" && n == 2) {
         node_no = 2;
     }
     if (node_no == 0) {
-        expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
+        //expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
+        expect_event(lines, R"(^x.*job .* terminated with status .*status=exited,exit_code=0$)");
     } else {
-        node_no = (expected_failure == "master-failure") ? 2 : 1;
+        node_no = (expected_failure == "superior-failure") ? 2 : 1;
         std::stringstream re;
-        re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
+        //re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
+        re << "^x" << node_no << R"(.*job .* terminated with status .*status=exited,exit_code=0$)";
         expect_event(lines, re.str());
     }
 }
@@ -266,67 +270,75 @@ int main(int argc, char* argv[]) {
     sys::byte_buffer buf(4096);
     std::vector<std::string> all_lines;
     std::vector<std::function<void()>> tests{
-        [&] () { test_master(all_lines, _fanout, _num_nodes); },
-        [&] () { test_slaves(all_lines, _fanout, _num_nodes); },
+        [&] () { test_superior(all_lines, _fanout, _num_nodes); },
+        [&] () { test_subordinates(all_lines, _fanout, _num_nodes); },
         [&] () { test_hierarchy(all_lines, _fanout, _num_nodes); },
         [&] () { test_weights(all_lines, _fanout, _num_nodes); },
         [&] () { test_application(all_lines, _fanout, _num_nodes); },
     };
     auto ntests = tests.size();
     std::vector<std::string> errors(ntests), errors0(ntests);
-    bool success = false;
-    poller.wait(lock, [&] () {
-        auto pipe_fd = poller.pipe_in();
-        for (const auto& event : poller) {
-            if (event.fd() == pipe_fd) { continue; }
-            buf.fill(stderr.in());
-            buf.flip();
-            // limit to newline character
-            auto first = buf.data();
-            auto last = first + buf.limit();
-            auto old_limit = buf.limit();
-            // print evey line
-            auto old_first = first;
-            while (first != last) {
-                if (*first == '\n') {
-                    buf.limit(first-old_first+1);
-                    all_lines.emplace_back(buf.data()+buf.position(), buf.data()+buf.limit()-1);
-                    sys::fd_type out(2);
-                    buf.flush(out);
+    std::atomic<bool> stopped{false};
+    std::condition_variable_any cv;
+    std::thread t([&] () {
+        poller.wait(lock, [&] () -> bool {
+            auto pipe_fd = poller.pipe_in();
+            for (const auto& event : poller) {
+                if (event.fd() == pipe_fd) { continue; }
+                buf.fill(stderr.in());
+                buf.flip();
+                // limit to newline character
+                auto first = buf.data();
+                auto last = first + buf.limit();
+                auto old_limit = buf.limit();
+                // print evey line
+                auto old_first = first;
+                while (first != last) {
+                    if (*first == '\n') {
+                        buf.limit(first-old_first+1);
+                        all_lines.emplace_back(buf.data()+buf.position(), buf.data()+buf.limit()-1);
+                        sys::fd_type out(2);
+                        buf.flush(out);
+                    }
+                    ++first;
                 }
-                ++first;
+                buf.limit(old_limit);
+                buf.compact();
+                std::clog << std::flush;
             }
-            buf.limit(old_limit);
-            buf.compact();
-            std::clog << std::flush;
-        }
-        success = true;
-        for (size_t i=0; i<ntests; ++i) {
-            try {
-                errors[i].clear();
-                tests[i]();
-            } catch (const std::exception& err) {
-                success = false;
-                errors[i] = err.what();
-            }
-        }
-        if (errors != errors0) {
-            std::cerr << "========================================\n";
+            bool success = true;
             for (size_t i=0; i<ntests; ++i) {
-                std::cerr << "Test #" << (i+1);
-                if (errors[i].empty()) {
-                    std::cerr << " OK\n";
-                } else {
-                    std::cerr << " FAIL\n" << errors[i] << '\n';
+                try {
+                    errors[i].clear();
+                    tests[i]();
+                } catch (const std::exception& err) {
+                    success = false;
+                    errors[i] = err.what();
                 }
             }
-            std::cerr << "========================================\n";
-        }
-        std::swap(errors0, errors);
-        return success;
+            if (errors != errors0) {
+                std::cerr << "========================================\n";
+                for (size_t i=0; i<ntests; ++i) {
+                    std::cerr << "Test #" << (i+1);
+                    if (errors[i].empty()) {
+                        std::cerr << " OK\n";
+                    } else {
+                        std::cerr << " FAIL\n" << errors[i] << '\n';
+                    }
+                }
+                std::cerr << "========================================\n";
+            }
+            std::swap(errors0, errors);
+            if (success) { cv.notify_one(); }
+            return stopped;
+        });
     });
+    cv.wait(lock);
+    log("terminating dtest");
     child.terminate();
     auto status = child.wait();
     log("dtest status _ ", status);
+    stopped = true;
+    if (t.joinable()) { t.join(); }
     return 0;
 }

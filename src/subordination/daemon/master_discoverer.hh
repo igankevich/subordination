@@ -79,6 +79,8 @@ namespace sbnd {
         on_kernel(sbn::kernel* k) override;
 
         inline const hierarchy_type& hierarchy() const noexcept { return this->_hierarchy; }
+        inline void interval(duration rhs) noexcept { this->_interval = rhs; }
+        inline duration interval() const noexcept { return this->_interval; }
 
     private:
 

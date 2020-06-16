@@ -29,6 +29,5 @@ sbnd::prober::send_probe(const sys::socket_address& dest) {
     p->destination(dest);
     p->principal_id(1); // TODO
     p->parent(this);
-    sys::log_message("PROBE", "flags _", sys::u32(p->flags()));
     factory.remote().send(p);
 }

@@ -132,7 +132,7 @@ sbn::operator<<(std::ostream& out, const application& rhs) {
         "uid", rhs._uid,
         "gid", rhs._gid,
         "args", rhs._args,
-        "env", rhs._env,
+        //"env", rhs._env,
         "wd", rhs._working_directory);
 }
 

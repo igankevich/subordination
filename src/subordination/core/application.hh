@@ -26,6 +26,7 @@ namespace sbn {
         sys::gid_type _gid = -1;
         string_array _args, _env;
         sys::path _working_directory;
+        bool _wait_for_completion = false;
 
         static_assert(sizeof(_uid) <= sizeof(uint32_t), "bad uid_type");
         static_assert(sizeof(_gid) <= sizeof(uint32_t), "bad gid_type");
@@ -61,6 +62,14 @@ namespace sbn {
 
         inline const string_array& arguments() const noexcept {
             return this->_args;
+        }
+
+        inline bool wait_for_completion() const noexcept {
+            return this->_wait_for_completion;
+        }
+
+        inline void wait_for_completion(bool rhs) noexcept {
+            this->_wait_for_completion = rhs;
         }
 
         int execute(const sys::two_way_pipe& pipe) const;

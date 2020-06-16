@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <unistdx/net/bridge_interface>
+
 #include <dtest/cluster_node.hh>
 
 namespace dts {
@@ -17,17 +19,21 @@ namespace dts {
         std::string _name{"a"};
         address_type _network{{10,1,0,1},16};
         address_type _peer_network{{10,0,0,1},16};
-        size_t _size = 1;
         std::vector<cluster_node> _nodes;
+        sys::bridge_interface _bridge;
 
     public:
         inline const std::string& name() const { return this->_name; }
         inline void name(const std::string& name) { this->_name = name; }
-        inline void size(size_t n) { this->_size = n; }
-        inline size_t size() const { return this->_size; }
+        inline size_t size() const { return this->_nodes.size(); }
         inline void network(address_type rhs) { this->_network = rhs; }
         inline void peer_network(address_type rhs) { this->_peer_network = rhs; }
-        auto nodes() -> std::vector<cluster_node>;
+        inline const sys::bridge_interface& bridge() const noexcept { return this->_bridge; }
+        inline void bridge(sys::bridge_interface&& rhs) { this->_bridge = std::move(rhs); }
+        inline const std::vector<cluster_node>& nodes() const noexcept { return this->_nodes; }
+        inline std::vector<cluster_node>& nodes() noexcept { return this->_nodes; }
+        void generate_nodes(size_t n);
+        cluster_node& node(std::string name);
 
     };
 

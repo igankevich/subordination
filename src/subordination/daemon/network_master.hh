@@ -32,20 +32,12 @@ namespace sbnd {
         uint_type _fanout = 10000;
         network_timer* _timer = nullptr;
         /// Interface address list update interval.
-        std::chrono::milliseconds _interval = std::chrono::seconds(1);
+        duration _interval = std::chrono::minutes(1);
+        duration _network_scan_interval = std::chrono::minutes(1);
 
     public:
-
-        void
-        act() override;
-
-        void
-        react(sbn::kernel* child) override;
-
-        inline void
-        fanout(uint_type rhs) noexcept {
-            this->_fanout = rhs;
-        }
+        void act() override;
+        void react(sbn::kernel* child) override;
 
         inline void
         allow(const ifaddr_type& rhs) {
@@ -54,15 +46,20 @@ namespace sbnd {
             }
         }
 
-        inline void
-        interval(std::chrono::milliseconds rhs) noexcept {
-            this->_interval = rhs;
+        inline void fanout(uint_type rhs) noexcept { this->_fanout = rhs; }
+        inline void interval(duration rhs) noexcept { this->_interval = rhs; }
+
+        inline void network_scan_interval(duration rhs) noexcept {
+            this->_network_scan_interval = rhs;
+        }
+
+        inline duration network_scan_interval() const noexcept {
+            return this->_network_scan_interval;
         }
 
     private:
 
-        void
-        send_timer();
+        void send_timer(bool first_time=false);
 
         interface_address_set
         enumerate_ifaddrs();
@@ -80,6 +77,7 @@ namespace sbnd {
         void forward_probe(probe* p);
         void forward_hierarchy_kernel(Hierarchy_kernel* p);
         void on_event(socket_pipeline_kernel* k);
+        void on_event(process_pipeline_kernel* k);
         void report_status(Status_kernel* k);
         void report_job_status(Job_status_kernel* k);
         void report_pipeline_status(Pipeline_status_kernel* k);

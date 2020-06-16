@@ -19,6 +19,7 @@ sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
     this->_process.remote_pipeline(&this->_remote);
     this->_process.types(&this->_types);
     this->_process.instances(&this->_instances);
+    this->_process.unix(&this->_unix);
     //this->_process.transactions(&this->_transactions);
     this->_unix.name("unix");
     this->_unix.native_pipeline(&this->_local);

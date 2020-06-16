@@ -40,7 +40,7 @@ namespace sbn {
     template<Target target=Target::Local>
     void
     commit(kernel* rhs, exit_code ret) {
-        if (!rhs->parent()) {
+        if (!rhs->has_parent()) {
             delete rhs;
             sbn::graceful_shutdown(static_cast<int>(ret));
         } else {

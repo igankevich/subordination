@@ -76,7 +76,7 @@ namespace sbn {
         connection& operator=(connection&&) = delete;
 
         void send(kernel* k);
-        void forward(foreign_kernel* k);
+        inline void forward(foreign_kernel* k) { if (do_forward(k)) { delete k; } }
         void clear();
 
         /// \param[in] from socket address from which kernels are received
@@ -140,6 +140,7 @@ namespace sbn {
 
     protected:
 
+        bool do_forward(foreign_kernel* k);
         void recover_kernels(bool downstream);
 
         template <class Sink>

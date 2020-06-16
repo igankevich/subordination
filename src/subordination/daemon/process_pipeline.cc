@@ -6,6 +6,7 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
 #include <subordination/daemon/process_pipeline.hh>
+#include <subordination/daemon/terminate_kernel.hh>
 
 void sbnd::process_pipeline::loop() {
     std::thread waiting_thread([this] () { wait_loop(); });
@@ -69,6 +70,7 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
     child->parent(this);
     child->types(types());
     child->name(this->_name);
+    child->unix(unix());
     log("executing app=_,credentials=_:_,pid=_", app.id(), app.user(), app.group(), p.id());
     auto result = this->_jobs.emplace(app.id(), child);
     child->add(child);
@@ -114,7 +116,8 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
             sbn::throw_error("bad application id ", fk->target_application_id());
         }
     }
-    result->second->forward(fk);
+    auto& conn = result->second;
+    conn->forward(fk);
     poller().notify_one();
 }
 
@@ -139,6 +142,10 @@ void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
 
 void sbnd::process_pipeline::process_connections() {
     sbn::basic_socket_pipeline::process_connections();
+    // TODO we have to find a better solution since
+    // after reading transaction log we may mark running
+    // process that does everything locally as stale.
+    /*
     if (this->_timeout == duration::zero()) { return; }
     auto first = this->_jobs.begin(), last = this->_jobs.end();
     const auto now = clock_type::now();
@@ -149,6 +156,7 @@ void sbnd::process_pipeline::process_connections() {
             first = this->_jobs.erase(first);
         } else { ++first; }
     }
+    */
 }
 
 void sbnd::process_pipeline::wait_loop() {
@@ -170,10 +178,20 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
         this->_child_processes.wait(lock,
             [this] (const sys::process& p, sys::process_status status) {
                 auto result = this->find_by_process_id(p.id());
-                if (result != this->_jobs.end()) {
-                    this->log("app exited: app=_,_", result->first, status);
-                    //result->second->close();
-                    this->_jobs.erase(result);
+                if (result == this->_jobs.end()) { return; }
+                this->log("app exited: app=_,_", result->first, status);
+                log("listeners _", this->_listeners.size());
+                //result->second->close();
+                this->_jobs.erase(result);
+                if (!native_pipeline()) { return; }
+                for (auto* target : this->_listeners) {
+                    auto* k = new process_pipeline_kernel;
+                    k->application_id(result->first);
+                    k->event(process_pipeline_event::child_process_terminated);
+                    k->status(status);
+                    k->principal(target);
+                    log("notify listener _", *target);
+                    native_pipeline()->send(k);
                 }
             }
         );

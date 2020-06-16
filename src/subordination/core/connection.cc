@@ -95,14 +95,14 @@ void sbn::connection::send(kernel* k) {
     }
 }
 
-void sbn::connection::forward(foreign_kernel* k) {
+bool sbn::connection::do_forward(foreign_kernel* k) {
     bool delete_kernel = this->save_kernel(k);
     {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
         this->_output_buffer.write(k);
     }
-    if (delete_kernel) { delete k; }
+    return delete_kernel;
 }
 
 void sbn::connection::write_kernel(kernel* k) noexcept {
