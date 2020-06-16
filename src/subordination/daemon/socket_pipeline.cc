@@ -445,7 +445,9 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
      */
     if (k->moves_everywhere()) {
         for (auto& pair : _clients) {
-            pair.second->send(k);
+            auto& conn = pair.second;
+            if (k->source() == conn->socket_address()) { continue; }
+            conn->send(k);
         }
         // delete broadcast kernel
         delete k;

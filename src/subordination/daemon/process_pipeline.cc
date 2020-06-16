@@ -14,7 +14,7 @@ void sbnd::process_pipeline::loop() {
     log("waiting for all processes to finish: pid=_", sys::this_process::id());
     #endif
     try {
-        this->_procs.send(sys::signal::terminate);
+        this->_child_processes.terminate();
     } catch (const std::system_error& err) {
         if (std::errc(err.code().value()) != std::errc::no_such_process) {
             log_error(err);
@@ -34,7 +34,7 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
         }
     }
     sys::two_way_pipe data_pipe;
-    const auto& p = _procs.emplace(
+    const auto& p = _child_processes.emplace(
         [&app,this,&data_pipe] () {
             try {
                 data_pipe.close_in_child();
@@ -70,20 +70,37 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
     child->types(types());
     child->name(this->_name);
     log("executing app=_,credentials=_:_,pid=_", app.id(), app.user(), app.group(), p.id());
-    auto result = this->_applications.emplace(app.id(), child);
+    auto result = this->_jobs.emplace(app.id(), child);
     child->add(child);
     return result.first;
 }
 
-void
-sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
+void sbnd::process_pipeline::remove(application_id_type id) {
+    auto result = this->_jobs.find(id);
+    if (result == this->_jobs.end()) { return; }
+    terminate(result->second->child_process_id());
+    this->_jobs.erase(result);
+}
+
+void sbnd::process_pipeline::terminate(sys::pid_type id) {
+    auto first = this->_child_processes.begin(), last = this->_child_processes.end();
+    while (first != last) {
+        if (first->id() == id) {
+            first->terminate();
+            break;
+        }
+        ++first;
+    }
+}
+
+void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
     #if defined(SBN_DEBUG)
     log("forward src _ dst _ src-app _ dst-app _", fk->source(), fk->destination(),
         fk->source_application_id(), fk->target_application_id());
     #endif
     lock_type lock(this->_mutex);
-    auto result = find_by_app_id(fk->target_application_id());
-    if (result == this->_applications.end()) {
+    auto result = this->_jobs.find(fk->target_application_id());
+    if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
         if (!a && fk->target_application_id() == fk->source_application_id()) {
             a = fk->source_application();
@@ -110,13 +127,27 @@ void sbnd::process_pipeline::process_kernels() {
 
 void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
     if (k->moves_everywhere()) {
-        for (auto& pair : this->_applications) { pair.second->send(k); }
+        for (auto& pair : this->_jobs) { pair.second->send(k); }
     } else {
-        auto result = find_by_app_id(k->target_application_id());
-        if (result == this->_applications.end()) {
+        auto result = this->_jobs.find(k->target_application_id());
+        if (result == this->_jobs.end()) {
             sbn::throw_error("bad application id ", k->source_application_id());
         }
         result->second->send(k);
+    }
+}
+
+void sbnd::process_pipeline::process_connections() {
+    sbn::basic_socket_pipeline::process_connections();
+    if (this->_timeout == duration::zero()) { return; }
+    auto first = this->_jobs.begin(), last = this->_jobs.end();
+    const auto now = clock_type::now();
+    while (first != last) {
+        auto& conn = first->second;
+        if (conn->stale(now, this->_timeout)) {
+            terminate(conn->child_process_id());
+            first = this->_jobs.erase(first);
+        } else { ++first; }
     }
 }
 
@@ -125,7 +156,7 @@ void sbnd::process_pipeline::wait_loop() {
     using std::chrono::milliseconds;
     lock_type lock(this->_mutex);
     while (!stopping()) {
-        if (this->_procs.size() == 0) {
+        if (this->_child_processes.size() == 0) {
             sys::unlock_guard<lock_type> g(lock);
             sleep_for(milliseconds(99));
         } else {
@@ -136,13 +167,13 @@ void sbnd::process_pipeline::wait_loop() {
 
 void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
     try {
-        this->_procs.wait(lock,
+        this->_child_processes.wait(lock,
             [this] (const sys::process& p, sys::process_status status) {
                 auto result = this->find_by_process_id(p.id());
-                if (result != this->_applications.end()) {
+                if (result != this->_jobs.end()) {
                     this->log("app exited: app=_,_", result->first, status);
                     //result->second->close();
-                    this->_applications.erase(result);
+                    this->_jobs.erase(result);
                 }
             }
         );
@@ -157,8 +188,8 @@ typename sbnd::process_pipeline::app_iterator
 sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
     using value_type = typename application_table::value_type;
     return std::find_if(
-        this->_applications.begin(),
-        this->_applications.end(),
+        this->_jobs.begin(),
+        this->_jobs.end(),
         [pid] (const value_type& rhs) {
             return rhs.second->child_process_id() == pid;
         }

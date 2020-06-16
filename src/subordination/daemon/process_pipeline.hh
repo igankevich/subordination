@@ -23,8 +23,10 @@ namespace sbnd {
         using app_iterator = typename application_table::iterator;
 
     private:
-        application_table _applications;
-        sys::process_group _procs;
+        application_table _jobs;
+        sys::process_group _child_processes;
+        /// How long a child process lives without receiving/sending kernels.
+        duration _timeout;
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = true;
 
@@ -43,16 +45,16 @@ namespace sbnd {
             this->do_add(app);
         }
 
+        void remove(application_id_type id);
+
         void loop() override;
         void forward(sbn::foreign_kernel* hdr) override;
 
-        inline void
-        allow_root(bool rhs) noexcept {
-            this->_allowroot = rhs;
-        }
+        inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
+        inline void timeout(duration rhs) noexcept { this->_timeout = rhs; }
 
         inline const application_table& jobs() const noexcept {
-            return this->_applications;
+            return this->_jobs;
         }
 
         inline sentry guard() noexcept { return sentry(*this); }
@@ -60,6 +62,7 @@ namespace sbnd {
     protected:
 
         void process_kernels() override;
+        void process_connections() override;
 
     private:
 
@@ -67,14 +70,9 @@ namespace sbnd {
         void process_kernel(sbn::kernel* k);
         void wait_loop();
         void wait_for_processes(lock_type& lock);
+        void terminate(sys::pid_type id);
 
-        inline app_iterator
-        find_by_app_id(application_id_type id) {
-            return this->_applications.find(id);
-        }
-
-        app_iterator
-        find_by_process_id(sys::pid_type pid);
+        app_iterator find_by_process_id(sys::pid_type pid);
 
         friend class process_handler;
 

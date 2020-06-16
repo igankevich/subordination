@@ -7,6 +7,7 @@ namespace sbnd {
     class Job_status_kernel;
     class Pipeline_status_kernel;
     class Status_kernel;
+    class Terminate_kernel;
     class local_server;
     class probe;
     class prober;

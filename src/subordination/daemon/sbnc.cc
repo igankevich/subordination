@@ -14,7 +14,7 @@
 #include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
 
-enum class Command { Submit, Status };
+enum class Command { Submit, Status, Delete };
 
 template <class ... Args>
 inline void
@@ -298,21 +298,36 @@ class Status: public sbn::kernel {
 private:
     Entity_type _entity_type = Entity_type::Node;
     Format _output_format = Format::Human;
+    sbnd::Job_status_kernel::application_id_array _job_ids;
 
 public:
     Status(int argc, char** argv) {
+        bool inside_d = false;
         for (int i=1; i<argc; ++i) {
             std::string argument(argv[i]);
-            if (argument == "-t") {
-                if (i+1 == argc) { throw std::invalid_argument("bad argument \"-t\""); }
-                this->_entity_type = string_to_entity_type(argv[i+1]);
-            } else if (argument == "-o") {
-                if (i+1 == argc) { throw std::invalid_argument("bad argument \"-o\""); }
-                this->_output_format = string_to_format(argv[i+1]);
-            } else {
-                std::stringstream tmp;
-                tmp << "unknown argument \"" << argument << "\"";
-                throw std::invalid_argument(tmp.str());
+            if (inside_d) {
+                if (!argument.empty() && argument.front() == '-') {
+                    inside_d = false;
+                } else {
+                    this->_job_ids.emplace_back(std::stoul(argv[i]));
+                }
+            }
+            if (!inside_d) {
+                if (argument == "-t") {
+                    if (i+1 == argc) { throw std::invalid_argument("bad argument \"-t\""); }
+                    this->_entity_type = string_to_entity_type(argv[i+1]);
+                } else if (argument == "-o") {
+                    if (i+1 == argc) { throw std::invalid_argument("bad argument \"-o\""); }
+                    this->_output_format = string_to_format(argv[i+1]);
+                } else if (argument == "-d") {
+                    if (i+1 == argc) { throw std::invalid_argument("bad argument \"-d\""); }
+                    this->_job_ids.emplace_back(std::stoul(argv[i+1]));
+                    inside_d = true;
+                } else {
+                    std::stringstream tmp;
+                    tmp << "unknown argument \"" << argument << "\"";
+                    throw std::invalid_argument(tmp.str());
+                }
             }
         }
     }
@@ -321,7 +336,7 @@ public:
         sbn::kernel* k = nullptr;
         switch (this->_entity_type) {
             case Entity_type::Node: k = new sbnd::Status_kernel; break;
-            case Entity_type::Job: k = new sbnd::Job_status_kernel; break;
+            case Entity_type::Job: k = new sbnd::Job_status_kernel(this->_job_ids); break;
             case Entity_type::Kernel: k = new sbnd::Pipeline_status_kernel; break;
         }
         k->destination(sys::socket_address(SBND_SOCKET));
@@ -372,14 +387,19 @@ public:
 };
 
 void usage(char* argv[0]) {
-    std::cerr << "usage: " << argv[0] << " [-sp] [-d id] [command] [arguments...]\n"
-        "-t type      entity type (node, job, kernel)\n"
-        "-o format    output format (human, rec)\n";
+    std::cerr << "usage: " << argv[0] <<
+        " [-h] [-t entity-type] [-o output-format] [-d ids...] [command] [arguments...]\n"
+        "-t type            entity type (node, job, kernel)\n"
+        "-o format          output format (human, rec)\n"
+        "-d ids...          delete entity (job)\n"
+        "-h                 usage\n"
+        "command arguments  a command with arguments to run\n";
 }
 
 int main(int argc, char* argv[]) {
     auto command = Command::Submit;
     if (argc <= 1) { usage(argv); return 1; }
+    if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(argv); return 0; }
     if (argc >= 2 && argv[1][0] == '-') { command = Command::Status; }
     sbn::install_error_handler();
     sbnc::factory.types().add<Main_kernel>(1);

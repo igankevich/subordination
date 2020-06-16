@@ -3,10 +3,10 @@
 
 void sbnd::Job_status_kernel::write(sbn::kernel_buffer& out) const {
     kernel::write(out);
-    out << this->_jobs;
+    out << this->_jobs << this->_job_ids;
 }
 
 void sbnd::Job_status_kernel::read(sbn::kernel_buffer& in) {
     kernel::read(in);
-    in >> this->_jobs;
+    in >> this->_jobs >> this->_job_ids;
 }

@@ -11,6 +11,7 @@
 #include <subordination/daemon/network_master.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/status_kernel.hh>
+#include <subordination/daemon/terminate_kernel.hh>
 
 namespace {
 
@@ -141,12 +142,16 @@ void sbnd::network_master::report_status(Status_kernel* status) {
 }
 
 void sbnd::network_master::report_job_status(Job_status_kernel* k) {
-    auto g = factory.process().guard();
     Job_status_kernel::application_array jobs;
-    jobs.reserve(factory.process().jobs().size());
-    for (const auto& pair : factory.process().jobs()) {
-        jobs.emplace_back(pair.second->application());
+    {
+        auto g = factory.process().guard();
+        for (auto id : k->job_ids()) { factory.process().remove(id); }
+        jobs.reserve(factory.process().jobs().size());
+        for (const auto& pair : factory.process().jobs()) {
+            jobs.emplace_back(pair.second->application());
+        }
     }
+    factory.remote().send(new Terminate_kernel(k->job_ids()));
     k->jobs(std::move(jobs));
     k->setf(sbn::kernel_flag::do_not_delete);
     k->return_to_parent(sbn::exit_code::success);
@@ -157,7 +162,8 @@ void sbnd::network_master::report_job_status(Job_status_kernel* k) {
 
 void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
     Pipeline_status_kernel::pipeline_array pipelines;
-    const sbn::basic_socket_pipeline* pipelines_b[] {&factory.remote(),&factory.process(),&factory.unix()};
+    const sbn::basic_socket_pipeline* pipelines_b[] =
+        { &factory.remote(), &factory.process(), &factory.unix() };
     for (const auto* ppl_b : pipelines_b) {
         pipelines.emplace_back();
         auto& ppl = pipelines.back();

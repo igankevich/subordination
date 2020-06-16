@@ -174,6 +174,7 @@ namespace sbn {
         }
 
         virtual void process_kernels() = 0;
+        virtual void process_connections();
         virtual void loop();
 
     private:

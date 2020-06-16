@@ -29,7 +29,8 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
     }
     if (event.in()) {
         fill(this->_file_descriptors.in());
-        receive_kernels(this->_role == role_type::parent ?  &this->_application : nullptr);
+        receive_kernels(this->_role == role_type::parent ?  &this->_application : nullptr,
+                        [this] (kernel* k) { ++this->_kernel_count; });
     }
 }
 

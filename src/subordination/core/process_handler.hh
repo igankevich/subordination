@@ -24,6 +24,9 @@ namespace sbn {
         sys::fildes_pair _file_descriptors;
         ::sbn::application _application;
         role_type _role;
+        int _kernel_count = 0;
+        int _kernel_count_last = 0;
+        time_point _last{};
 
     public:
 
@@ -57,6 +60,7 @@ namespace sbn {
                 }
             }
             connection::forward(k);
+            ++this->_kernel_count;
         }
 
         inline const ::sbn::application& application() const noexcept {
@@ -65,6 +69,14 @@ namespace sbn {
 
         inline sys::pid_type child_process_id() const noexcept {
             return this->_child_process_id;
+        }
+
+        inline bool stale(time_point now, duration timeout) noexcept {
+            if (now-this->_last < timeout) { return false; }
+            bool changed = this->_kernel_count != this->_kernel_count_last;
+            this->_kernel_count_last = this->_kernel_count;
+            this->_last = now;
+            return !changed;
         }
 
         inline sys::fd_type in() const noexcept { return this->_file_descriptors.in().fd(); }

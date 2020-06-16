@@ -41,6 +41,7 @@ sbnd_exe = executable(
         'prober.cc',
         'resident_kernel.cc',
         'sbnd.cc',
+        'terminate_kernel.cc',
         'unix_socket_pipeline.cc',
     ]),
     include_directories: src,

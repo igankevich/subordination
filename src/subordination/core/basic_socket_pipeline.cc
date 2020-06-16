@@ -19,12 +19,15 @@ void sbn::basic_socket_pipeline::loop() {
                           connection_timeout() - clock_type::now(),
                           duration::zero());
         }
-        using namespace std::chrono;
         poller().wait_for(lock, dt);
         process_kernels();
-        handle_events();
-        flush_buffers();
+        process_connections();
     }
+}
+
+void sbn::basic_socket_pipeline::process_connections() {
+    handle_events();
+    flush_buffers();
 }
 
 void sbn::basic_socket_pipeline::handle_events() {
