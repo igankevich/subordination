@@ -429,34 +429,47 @@ namespace  {
         bind_signal(s::terminate, on_terminate);
     }
 
+    int nested_run(dts::application& app) {
+        using namespace dts;
+        sys::pipe pipe;
+        pipe.in().unsetf(sys::open_flag::non_blocking);
+        pipe.out().unsetf(sys::open_flag::non_blocking);
+        using pf = sys::process_flag;
+        sys::process child([&pipe,&app] () {
+            try {
+                child_signal_handlers();
+                pipe.out().close();
+                char ch;
+                pipe.in().read(&ch, 1);
+                app.run();
+                return app.wait();
+            } catch (const std::exception& err) {
+                app.terminate();
+                std::cerr << err.what() << std::endl;
+                return 1;
+            }
+        },
+        pf::unshare_users | pf::unshare_network | pf::unshare_hostname | pf::signal_parent,
+        4096*10);
+        child_process_id = child.id();
+        child.init_user_namespace();
+        pipe.in().close();
+        pipe.out().write("x", 1);
+        return child.wait().exit_code();
+    }
+
 }
 
 int dts::run(application& app) {
     ::aptr = &app;
     parent_signal_handlers();
-    sys::pipe pipe;
-    pipe.in().unsetf(sys::open_flag::non_blocking);
-    pipe.out().unsetf(sys::open_flag::non_blocking);
-    using pf = sys::process_flag;
-    sys::process child([&pipe,&app] () {
-        try {
-            child_signal_handlers();
-            pipe.out().close();
-            char ch;
-            pipe.in().read(&ch, 1);
-            app.run();
-            return app.wait();
-        } catch (const std::exception& err) {
-            app.terminate();
-            std::cerr << err.what() << std::endl;
-            return 1;
-        }
-    },
-    pf::unshare_users | pf::unshare_network | pf::unshare_hostname | pf::signal_parent,
-    4096*10);
-    child_process_id = child.id();
-    child.init_user_namespace();
-    pipe.in().close();
-    pipe.out().write("x", 1);
-    return child.wait().exit_code();
+    auto ret = nested_run(app);
+    if (app.will_restart()) {
+        ::setenv("DTEST_NO_RESTART", "", 1);
+        app.log("restart after power failure");
+        app.will_restart(false);
+        return nested_run(app);
+    }
+    app.log("terminated");
+    return ret;
 }
