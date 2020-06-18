@@ -35,7 +35,6 @@ namespace sbn {
         carries_parent = 1<<1,
         parent_is_id = 1<<2,
         principal_is_id = 1<<3,
-        do_not_delete = 1<<4,
     };
 
     UNISTDX_FLAGS(kernel_flag)

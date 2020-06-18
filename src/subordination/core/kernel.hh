@@ -299,6 +299,7 @@ namespace sbn {
             return ret;
         }
 
+        /*
         inline bool
         moves_upstream() const noexcept {
             return this->return_code() == exit_code::undefined &&
@@ -324,6 +325,7 @@ namespace sbn {
         moves_everywhere() const noexcept {
             return !this->_principal && !this->_parent;
         }
+        */
 
         virtual void read(kernel_buffer& in);
         virtual void write(kernel_buffer& out) const;
@@ -337,7 +339,8 @@ namespace sbn {
         /// \brief Undo the side effects caused by failed execution of the kernel.
         virtual void rollback();
 
-        virtual void error(kernel* rhs);
+        /// \brief Garbage-collect.
+        virtual void mark_as_deleted(kernel_sack& result);
 
         friend std::ostream&
         operator<<(std::ostream& out, const kernel& rhs);
@@ -355,6 +358,7 @@ namespace sbn {
             }
             return_code(ret);
             destination(source());
+            phase(phases::downstream);
             // swap fields
             using f = kernel_field;
             auto source_bit = fields() & f::source_application;
@@ -377,14 +381,14 @@ namespace sbn {
             return_code(ret);
         }
 
-        template <class Container> void
-        mark_as_deleted(Container& result) {
-            if (isset(kernel_flag::deleted)) { return; }
-            setf(kernel_flag::deleted);
-            result.emplace_back(this);
-            if (is_native()) {
-                if (auto* p = parent()) { p->mark_as_deleted(result); }
-            }
+        inline void point_to_point(kernel* k) {
+            principal(k);
+            phase(phases::point_to_point);
+        }
+
+        inline void point_to_point(kernel::id_type id) {
+            principal_id(id);
+            phase(phases::point_to_point);
         }
 
     };

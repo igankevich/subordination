@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
     cluster.peer_network({{10,0,0,1},16});
     cluster.generate_nodes(2);
     app.exit_code(dts::exit_code::all);
-    app.execution_delay(std::chrono::seconds(1));
+    //app.execution_delay(std::chrono::seconds(1));
     app.cluster(std::move(cluster));
     {
         sys::argstream args;
@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
         app.add_process(dts::cluster_node_bitmap(app.cluster().size(), true), std::move(args));
     }
     app.emplace_test(
-        "Wait for superior node to find subodinate nodes.",
+        "Wait for superior node to find subordinate nodes.",
         [] (dts::application& app, const dts::application::line_array& lines) {
             test_superior(lines, 2, 2);
         });

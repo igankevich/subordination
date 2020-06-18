@@ -3,17 +3,18 @@
 #include <future>
 
 #include <unistdx/base/log_message>
+#include <unistdx/ipc/process>
 #include <unistdx/util/backtrace>
 
-namespace {
+namespace { std::promise<int> return_value; }
 
-    std::promise<int> return_value;
-
-}
-
-void
-sbn::graceful_shutdown(int ret) {
+void sbn::exit(int ret) {
     try {
+        #if defined(UNISTDX_HAVE_PRCTL)
+        std::string nm(16, '\0');
+        ::prctl(PR_GET_NAME, nm.data());
+        #endif
+        sys::log_message(nm.data(), "exit _", ret);
         return_value.set_value(ret);
     } catch (const std::future_error& err) {
         sys::log_message(__func__, err.what());
@@ -21,7 +22,6 @@ sbn::graceful_shutdown(int ret) {
     }
 }
 
-int
-sbn::wait_and_return() {
+int sbn::wait_and_return() {
     return return_value.get_future().get();
 }

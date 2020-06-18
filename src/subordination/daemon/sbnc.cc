@@ -421,7 +421,7 @@ int main(int argc, char* argv[]) {
         sbnc::factory.local().send(k);
     } catch (const std::exception& err) {
         message("failed to connect to daemon process: _", err.what());
-        sbn::graceful_shutdown(1);
+        sbn::exit(1);
     }
     auto ret = sbn::wait_and_return();
     sbnc::factory.stop();

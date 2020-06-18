@@ -109,7 +109,7 @@ namespace dts {
         exit_code_type _exit_code = exit_code_type::all;
         duration _execution_delay = duration::zero();
         char** _argv = nullptr;
-        bool _restart = false;
+        bool _will_restart = false;
         std::atomic<bool> _stopped{false};
         test_queue _tests;
         line_array _lines;
@@ -130,7 +130,8 @@ namespace dts {
         inline void send(sys::signal s) { this->_child_processes.send(s); }
         inline void terminate() { this->send(sys::signal::terminate); }
         inline bool stopped() { return this->_stopped; }
-        inline bool will_restart() const noexcept { return this->_restart; }
+        inline bool will_restart() const noexcept { return this->_will_restart; }
+        inline void will_restart(bool rhs) noexcept { this->_will_restart = rhs; }
         inline void cluster(::dts::cluster&& rhs) { this->_cluster = std::move(rhs); }
         inline const ::dts::cluster& cluster() const noexcept { return this->_cluster; }
         inline void arguments(arguments_array&& rhs) { this->_arguments = std::move(rhs); }

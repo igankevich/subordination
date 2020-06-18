@@ -82,7 +82,7 @@ struct Test_socket: public sbn::kernel {
                 delete this;
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("slave failure!");
-                    //sbn::graceful_shutdown(0);
+                    //sbn::exit(0);
                     send(sys::signal::kill, sys::this_process::id());
                 }
             } else {
@@ -95,7 +95,7 @@ struct Test_socket: public sbn::kernel {
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("master failure!");
                     send(sys::signal::kill, sys::this_process::id());
-                    //sbn::graceful_shutdown(0);
+                    //sbn::exit(0);
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
@@ -212,8 +212,8 @@ struct Main: public sbn::kernel {
     }
 
     void react(sbn::kernel*) override {
-        return_code(sbn::exit_code::success);
-        sbn::graceful_shutdown(this);
+        return_to_parent(sbn::exit_code::success);
+        local.send(this);
     }
 
 };
@@ -227,9 +227,9 @@ TEST(socket_pipeline, _) {
     }
 
     sbn::kernel_type_registry types;
-    types.add<Test_socket>(1);
+    types.add<Main>(1);
     types.add<Sender>(2);
-    types.add<Main>(3);
+    types.add<Test_socket>(3);
     local.name("local");
     remote.name("remote");
     remote.native_pipeline(&local);
@@ -281,19 +281,21 @@ TEST(socket_pipeline, _) {
 
     int retval = sbn::wait_and_return();
 
-    if (!(failure == Failure::Slave && role == Role::Slave)) {
-        EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
-            " or were deleted multiple times";
-    }
     EXPECT_EQ(0, retval);
     local.stop();
     remote.stop();
     local.wait();
     message("finished");
     remote.wait();
-    sbn::kernel_sack sack;
-    local.clear(sack);
-    remote.clear(sack);
+    {
+        sbn::kernel_sack sack;
+        local.clear(sack);
+        remote.clear(sack);
+    }
+    if (!(failure == Failure::Slave && role == Role::Slave)) {
+        EXPECT_EQ(0, kernel_count) << "some kernels were not deleted"
+            " or were deleted multiple times";
+    }
 }
 
 int

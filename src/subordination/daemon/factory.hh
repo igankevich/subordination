@@ -28,7 +28,7 @@ namespace sbnd {
 
         explicit Factory(unsigned concurrency);
         explicit Factory();
-        virtual ~Factory() = default;
+        ~Factory() = default;
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;
 

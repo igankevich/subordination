@@ -7,7 +7,10 @@ void sbnd::Terminate_kernel::act() {
         auto g = factory.process().guard();
         for (auto id : job_ids()) { factory.process().remove(id); }
     }
-    factory.remote().send(this);
+    auto* tk = new Terminate_kernel(std::move(this->_job_ids));
+    tk->phase(phases::broadcast);
+    tk->source(source());
+    factory.remote().send(tk);
 }
 
 void sbnd::Terminate_kernel::write(sbn::kernel_buffer& out) const {

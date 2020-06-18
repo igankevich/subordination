@@ -58,6 +58,7 @@ namespace sbn {
         kernel_instance_registry* _instances = nullptr;
         transaction_log* _transactions = nullptr;
         kernel_array _listeners;
+        kernel_array _trash;
 
     public:
         class sentry {
@@ -127,6 +128,7 @@ namespace sbn {
         inline const transaction_log* transactions() const noexcept { return this->_transactions; }
 
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
+        inline void trash(kernel* k) { this->_trash.emplace_back(k); }
 
         void
         emplace_handler(const sys::epoll_event& ev, const connection_ptr& ptr) {

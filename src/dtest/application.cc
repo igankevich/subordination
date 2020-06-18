@@ -85,7 +85,7 @@ void dts::application::init(int argc, char* argv[]) {
             if (!tmp || ms < 0) { throw std::invalid_argument("bad --exec-delay"); }
             this->_execution_delay = std::chrono::milliseconds(ms);
         } else if (arg == "--restart") {
-            this->_restart = true;
+            this->_will_restart = true;
         } else {
             std::stringstream tmp;
             tmp << "unknown argument: " << arg;
@@ -240,7 +240,7 @@ void dts::application::run() {
                         pipe.child_in().read(&ch, 1);
                         auto delay = this->_execution_delay*((i+1)+(j+1)*num_nodes);
                         using namespace std::chrono;
-                        this->log("child delay _ _ms pid _", args.argv()[0],
+                        this->log("child _ delay _ms pid _", args.argv()[0],
                                   duration_cast<milliseconds>(delay).count(),
                                   sys::this_process::id());
                         std::this_thread::sleep_for(delay);

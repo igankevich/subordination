@@ -8,7 +8,6 @@
 #include <subordination/core/basic_factory.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/daemon/socket_pipeline.hh>
-#include <subordination/daemon/socket_pipeline_event.hh>
 
 namespace {
 
@@ -27,6 +26,7 @@ namespace {
             k->id(++counter);
         }
     }
+
 
 }
 
@@ -134,8 +134,12 @@ namespace sbnd {
         void recover() {
             // Here failed kernels are written to buffer,
             // from which they must be recovered with recover_kernels().
-            sys::epoll_event ev {socket().fd(), sys::event::in};
-            this->handle(ev);
+            try {
+                sys::epoll_event ev {socket().fd(), sys::event::in};
+                this->handle(ev);
+            } catch (const std::exception& err) {
+                log("error during recovery: _", err.what());
+            }
             // recover kernels from upstream and downstream buffer
             recover_kernels(true);
         }
@@ -223,8 +227,7 @@ sbnd::socket_pipeline::remove_server(server_iterator result) {
     // copy interface_address
     interface_address interface_address = (*result)->interface_address();
     this->_servers.erase(result);
-    fire_event_kernels(
-        new socket_pipeline_kernel(socket_pipeline_event::remove_server, interface_address));
+    fire_event_kernels(socket_pipeline_event::remove_server, interface_address);
 }
 
 void
@@ -253,8 +256,7 @@ sbnd::socket_pipeline
     }
     result->second->state(sbn::connection_state::stopped);
     this->_clients.erase(result);
-    fire_event_kernels(
-        new socket_pipeline_kernel(socket_pipeline_event::remove_client, socket_address));
+    fire_event_kernels(socket_pipeline_event::remove_client, socket_address);
 }
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
@@ -270,8 +272,7 @@ void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_addres
         #endif
         ptr->socket().set_user_timeout(this->_socket_timeout);
         ptr->add(ptr);
-        fire_event_kernels(
-            new socket_pipeline_kernel(socket_pipeline_event::add_server, interface_address));
+        fire_event_kernels(socket_pipeline_event::add_server, interface_address);
     }
 }
 
@@ -283,9 +284,16 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel* hdr) {
         this->log("fwd _ to _", *hdr, hdr->destination());
         #endif
         ptr->forward(hdr);
+        try {
+            ptr->flush();
+        } catch (const std::exception& err) {
+            log("_ error _", __func__, err.what());
+        }
         this->_semaphore.notify_one();
     } else {
-        if (this->end_reached() && hdr->moves_upstream() && hdr->carries_parent()) {
+        if (this->end_reached() &&
+            hdr->phase() == sbn::kernel::phases::upstream &&
+            hdr->carries_parent()) {
             this->find_next_client();
             if (this->end_reached()) {
                 this->log("forwarding kernel carrying parent to localhost _", *hdr);
@@ -352,7 +360,7 @@ sbnd::socket_pipeline
 ::ensure_identity(sbn::kernel* k, const sys::socket_address& dest) {
     if (dest.family() == sys::family_type::unix) {
         set_kernel_id_2(k, this->_counter);
-        set_kernel_id_2(k->parent(), this->_counter);
+        if (auto* p = k->parent()) { set_kernel_id_2(p, this->_counter); }
     } else {
         if (this->_servers.empty()) {
             k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
@@ -362,7 +370,7 @@ sbnd::socket_pipeline
                 result = this->_servers.begin();
             }
             set_kernel_id(k, **result);
-            set_kernel_id(k->parent(), **result);
+            if (auto* p = k->parent()) { set_kernel_id(p, **result); }
         }
     }
 }
@@ -443,7 +451,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
         }
        }
      */
-    if (k->moves_everywhere()) {
+    if (k->phase() == sbn::kernel::phases::broadcast) {
         for (auto& pair : _clients) {
             auto& conn = pair.second;
             if (k->source() == conn->socket_address()) { continue; }
@@ -451,7 +459,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
         }
         // delete broadcast kernel
         delete k;
-    } else if (k->moves_upstream() && k->destination() == sys::socket_address()) {
+    } else if (k->phase() == sbn::kernel::phases::upstream && k->destination() == sys::socket_address()) {
         bool success = false;
         if (this->_uselocalhost && !k->carries_parent()) {
             if (this->end_reached()) {
@@ -479,7 +487,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
             this->_iterator->second->send(k);
         }
         this->find_next_client();
-    } else if (k->moves_downstream() and not k->source()) {
+    } else if (k->phase() == sbn::kernel::phases::downstream and not k->source()) {
         // kernel @k was sent to local node
         // because no upstream servers had
         // been available
@@ -489,7 +497,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
         if (not k->destination()) {
             k->destination(k->source());
         }
-        if (k->moves_somewhere()) {
+        if (k->phase() == sbn::kernel::phases::point_to_point) {
             ensure_identity(k, k->destination());
         }
         this->find_or_create_client(k->destination())->send(k);
@@ -513,7 +521,13 @@ sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_
     if (addr.family() == sys::family_type::unix) {
         sys::socket s(sys::family_type::unix);
         s.setopt(sys::socket::pass_credentials);
-        s.connect(addr);
+        try {
+            s.connect(addr);
+        } catch (const sys::bad_call& err) {
+            if (err.errc() != std::errc::connection_refused) {
+                throw;
+            }
+        }
         return this->do_add_client(std::move(s), addr);
     } else {
         server_iterator result = this->find_server(addr);
@@ -550,7 +564,7 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->setf(f::save_upstream_kernels | f::save_downstream_kernels | f::write_transaction_log);
     emplace_client(vaddr, s);
     s->add(s);
-    fire_event_kernels(new socket_pipeline_kernel(socket_pipeline_event::add_client, vaddr));
+    fire_event_kernels(socket_pipeline_event::add_client, vaddr);
     return s;
 }
 
@@ -581,16 +595,5 @@ sbnd::socket_pipeline::print_state(std::ostream& out) {
     }
     for (const auto& val : this->_clients) {
         this->log("client _, handler _", val.first, val.second->socket_address());
-    }
-}
-
-void sbnd::socket_pipeline::fire_event_kernels(socket_pipeline_kernel* ev) {
-    if (instances()) {
-        auto g = instances()->guard();
-        for (const auto& pair : *instances()) {
-            ev->parent(ev);
-            ev->principal(pair.second);
-            native_pipeline()->send(ev);
-        }
     }
 }

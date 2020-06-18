@@ -65,7 +65,7 @@ namespace sbn {
         parallel_pipeline& operator=(const parallel_pipeline&) = delete;
 
         inline void send(kernel* k) override {
-            if (k->moves_downstream()) { this->send_downstream(k); }
+            if (k->phase() == kernel::phases::downstream) { this->send_downstream(k); }
             else if (k->scheduled()) { this->send_timer(k); }
             else { this->send_upstream(k); }
         }
@@ -75,7 +75,7 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto* k = kernels[i];
-                if (k->moves_downstream()) {
+                if (k->phase() == kernel::phases::downstream) {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
                     #endif
@@ -132,6 +132,7 @@ namespace sbn {
             #if defined(SBN_DEBUG)
             this->log("schedule _", *k);
             #endif
+            lock_type lock(this->_mutex);
             this->_timer_kernels.emplace(k);
             this->_timer_semaphore.notify_one();
         }

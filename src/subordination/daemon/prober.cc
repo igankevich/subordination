@@ -29,5 +29,6 @@ sbnd::prober::send_probe(const sys::socket_address& dest) {
     p->destination(dest);
     p->principal_id(1); // TODO
     p->parent(this);
+    p->phase(sbn::kernel::phases::point_to_point);
     factory.remote().send(p);
 }

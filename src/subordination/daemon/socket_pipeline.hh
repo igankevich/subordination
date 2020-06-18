@@ -14,6 +14,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/local_server.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
 
 namespace sbnd {
@@ -190,7 +191,17 @@ namespace sbnd {
         client_ptr
         do_add_client(sys::socket&& sock, sys::socket_address vaddr);
 
-        void fire_event_kernels(socket_pipeline_kernel* event);
+        template <class ... Args>
+        inline void fire_event_kernels(Args&& ... args) {
+            if (!native_pipeline()) { return; }
+            for (auto* target : this->_listeners) {
+                auto* k = new socket_pipeline_kernel(std::forward<Args>(args)...);
+                k->parent(k);
+                k->principal(target);
+                k->phase(sbn::kernel::phases::point_to_point);
+                native_pipeline()->send(k);
+            }
+        }
 
         friend class local_server;
         friend class remote_client;

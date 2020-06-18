@@ -29,48 +29,37 @@ namespace {
 
     inline void act(sbn::kernel* k) {
         bool del = false;
-        /*
-        if (k->moves_upstream()) {
-            k->act();
-        } else if (k->moves_downstream()) {
-            if (k->principal()) {
-                k->principal()->react(k);
-            }
-        } else if (k->moves_somewhere()) {
-            if (k->principal()) {
-                k->principal()->react(k);
-            }
-        } else if (k->moves_everywhere()) {
-            k->act();
-            del = true;
-        }
-        */
-        if (k->return_code() == sbn::exit_code::undefined) {
-            if (k->principal()) {
-                k->principal()->react(k);
-                if (!k->isset(sbn::kernel_flag::do_not_delete)) {
-                    del = true;
-                } else {
-                    k->unsetf(sbn::kernel_flag::do_not_delete);
-                }
-            } else {
+        #if defined(SBN_DEBUG)
+        sys::log_message("act", "_", *k);
+        #endif
+        switch (k->phase()) {
+            case sbn::kernel::phases::upstream:
                 k->act();
-            }
-        } else {
-            if (!k->principal()) {
-                del = !k->parent();
-                #if defined(SBN_DEBUG)
-                sys::log_message("act", "shutdown after _", *k);
-                #endif
-                sbn::graceful_shutdown(int(k->return_code()));
-            } else {
-                del = *k->principal() == *k->parent();
-                if (k->return_code() == sbn::exit_code::success) {
-                    k->principal()->react(k);
+                break;
+            case sbn::kernel::phases::downstream:
+                if (auto* p = k->principal()) {
+                    p->react(k);
                 } else {
-                    k->principal()->error(k);
+                    #if defined(SBN_DEBUG)
+                    sys::log_message("act", "shutdown after _", *k);
+                    #endif
+                    sbn::exit(int(k->return_code()));
                 }
-            }
+                del = true;
+                break;
+            case sbn::kernel::phases::point_to_point:
+                if (auto* p = k->principal()) {
+                    p->react(k);
+                } else {
+                    throw std::invalid_argument("point-to-point kernel without target");
+                }
+                break;
+            case sbn::kernel::phases::broadcast:
+                k->act();
+                del = true;
+                break;
+            default:
+                throw std::invalid_argument("unknown phase");
         }
         if (del) { delete k; }
     }
@@ -118,7 +107,7 @@ void sbn::parallel_pipeline::timer_loop() {
     lock_type lock(this->_mutex);
     auto& queue = this->_timer_kernels;
     while (!stopping()) {
-        while (!(stopping() || (!queue.empty() && queue.top()->at() <= clock_type::now()))) {
+        while (!stopping() && (queue.empty() || queue.top()->at() > clock_type::now())) {
             const auto t = queue.empty() ? time_point(duration::max()) : queue.top()->at();
             this->_timer_semaphore.wait_until(lock, t);
         }

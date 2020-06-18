@@ -1,3 +1,5 @@
+#include <unistdx/base/log_message>
+
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
 

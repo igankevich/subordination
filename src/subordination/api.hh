@@ -42,7 +42,7 @@ namespace sbn {
     commit(kernel* rhs, exit_code ret) {
         if (!rhs->has_parent()) {
             delete rhs;
-            sbn::graceful_shutdown(static_cast<int>(ret));
+            sbn::exit(static_cast<int>(ret));
         } else {
             rhs->return_to_parent(ret);
             send<target>(rhs);

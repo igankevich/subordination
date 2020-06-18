@@ -30,17 +30,14 @@ namespace sbnd {
         discoverer_table _discoverers;
         interface_address_set _allowedifaddrs;
         uint_type _fanout = 10000;
-        network_timer* _timer = nullptr;
         /// Interface address list update interval.
         duration _interval = std::chrono::minutes(1);
         duration _network_scan_interval = std::chrono::minutes(1);
 
     public:
-        network_master() = default;
-        ~network_master();
-
         void act() override;
         void react(sbn::kernel* child) override;
+        void mark_as_deleted(sbn::kernel_sack& result) override;
 
         inline void
         allow(const ifaddr_type& rhs) {

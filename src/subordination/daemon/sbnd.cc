@@ -66,10 +66,7 @@ install_debug_handler() {
     bind_signal(sys::signal::quit, print_state);
 }
 
-void on_terminate(int s) {
-    sys::log_message("sbnd", "received signal _", sys::signal(s));
-    sbn::graceful_shutdown(1);
-}
+void on_terminate(int s) { sbn::exit(0); }
 
 int main(int argc, char* argv[]) {
     #if defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
@@ -124,11 +121,12 @@ int main(int argc, char* argv[]) {
         factory.process().add_listener(m);
         factory.remote().connection_timeout(connection_timeout);
         factory.remote().max_connection_attempts(max_connection_attempts);
+        factory.remote().add_listener(m);
         factory.start();
         factory.local().send(m);
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
-        sbn::graceful_shutdown(1);
+        sbn::exit(1);
     }
     auto ret = sbn::wait_and_return();
     factory.stop();

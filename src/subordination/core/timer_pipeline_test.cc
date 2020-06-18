@@ -66,7 +66,7 @@ public:
         --this->_nkernels;
         if (this->_nkernels == 0) {
             return_code(sbn::exit_code::success);
-            sbn::graceful_shutdown(this);
+            sbn::exit(this);
         }
     }
 

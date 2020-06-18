@@ -113,7 +113,7 @@ public:
 
 };
 
-void terminate_test(int) { sbn::graceful_shutdown(0); }
+void terminate_test(int) { sbn::exit(0); }
 
 #if defined(SUBORDINATION_TEST_DAEMON)
 int main(int argc, char* argv[]) {

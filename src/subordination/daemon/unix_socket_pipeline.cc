@@ -52,7 +52,13 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     using f = sbn::connection_flags;
     sys::socket s(sys::family_type::unix);
     s.setopt(sys::socket::pass_credentials);
-    s.connect(addr);
+    try {
+        s.connect(addr);
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::connection_refused) {
+            throw;
+        }
+    }
     auto ptr = std::make_shared<unix_socket_client>(std::move(s));
     ptr->name(name());
     ptr->parent(this);
@@ -83,9 +89,8 @@ void sbnd::unix_socket_pipeline::process_kernels() {
     }
 }
 
-void
-sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
-    if (k->moves_downstream()) {
+void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
+    if (k->phase() == sbn::kernel::phases::downstream) {
         if (!k->destination()) {
             k->destination(k->source());
         }

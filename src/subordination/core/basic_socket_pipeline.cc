@@ -96,12 +96,16 @@ void sbn::basic_socket_pipeline::flush_buffers() {
                     duration_cast<milliseconds>(conn->start_time_point()-clock_type::now()).count());
                 connection_ptr tmp = conn;
                 this->_connections.erase(i);
-                tmp->activate(tmp);
-                tmp->flush();
-                for (const auto& conn : this->_connections) {
-                    if (conn) {
-                        log("status _ _", conn->socket_address(), conn->state());
+                try {
+                    tmp->activate(tmp);
+                    tmp->flush();
+                } catch (const std::exception& err) {
+                    size_type j = 0;
+                    for (auto& c : this->_connections) {
+                        if (c.get() == tmp.get()) { break; }
+                        ++j;
                     }
+                    deactivate(j, tmp, now, err.what());
                 }
             }
         } else {
@@ -148,6 +152,8 @@ void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
     this->_listeners.clear();
+    for (auto* k : this->_trash) { k->mark_as_deleted(sack); }
+    this->_trash.clear();
 }
 
 void sbn::basic_socket_pipeline::remove_listener(kernel* b) {

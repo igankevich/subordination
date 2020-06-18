@@ -71,7 +71,11 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
     child->types(types());
     child->name(this->_name);
     child->unix(unix());
-    log("executing app=_,credentials=_:_,pid=_", app.id(), app.user(), app.group(), p.id());
+    #if defined(UNISTDX_HAVE_LINUX_NETLINK_H)
+    //child->socket_address(sys::netlink_socket_address(p.id()));
+    #endif
+    log("executing app=_,credentials=_:_,pid=_ command _",
+        app.id(), app.user(), app.group(), p.id(), app.arguments().front());
     auto result = this->_jobs.emplace(app.id(), child);
     child->add(child);
     return result.first;
@@ -102,6 +106,7 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
         fk->source_application_id(), fk->target_application_id());
     #endif
     lock_type lock(this->_mutex);
+    if (stopping() || stopped()) { delete fk; return; }
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
@@ -119,6 +124,11 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
     }
     auto& conn = result->second;
     conn->forward(fk);
+    try {
+        conn->flush();
+    } catch (const std::exception& err) {
+        log("_ error _", __func__, err.what());
+    }
     poller().notify_one();
 }
 
@@ -130,7 +140,7 @@ void sbnd::process_pipeline::process_kernels() {
 }
 
 void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
-    if (k->moves_everywhere()) {
+    if (k->phase() == sbn::kernel::phases::broadcast) {
         for (auto& pair : this->_jobs) { pair.second->send(k); }
     } else {
         auto result = this->_jobs.find(k->target_application_id());
@@ -192,6 +202,7 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                     k->event(process_pipeline_event::child_process_terminated);
                     k->status(status);
                     k->principal(target);
+                    k->phase(sbn::kernel::phases::point_to_point);
                     log("notify listener _", *target);
                     native_pipeline()->send(k);
                 }

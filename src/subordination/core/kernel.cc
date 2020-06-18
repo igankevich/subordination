@@ -84,20 +84,29 @@ void sbn::kernel::swap_header(kernel* k) {
 void sbn::kernel::act() {}
 void sbn::kernel::react(kernel*) { throw ::sbn::error("empty react"); }
 void sbn::kernel::rollback() {}
-void sbn::kernel::error(kernel* rhs) { this->react(rhs); }
+
+void sbn::kernel::mark_as_deleted(kernel_sack& result) {
+    if (isset(kernel_flag::deleted)) { return; }
+    setf(kernel_flag::deleted);
+    result.emplace_back(this);
+    if (is_native()) {
+        if (auto* p = parent()) { p->mark_as_deleted(result); }
+    }
+}
 
 std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
     const char state[] = {
-        (rhs.moves_upstream()   ? 'u' : '-'),
-        (rhs.moves_downstream() ? 'd' : '-'),
-        (rhs.moves_somewhere()  ? 's' : '-'),
-        (rhs.moves_everywhere() ? 'b' : '-'),
-        (rhs.carries_parent()   ? 'p' : '-'),
+        (rhs.phase() == kernel::phases::upstream ? 'u' : '-'),
+        (rhs.phase() == kernel::phases::downstream ? 'd' : '-'),
+        (rhs.phase() == kernel::phases::point_to_point ? 'p' : '-'),
+        (rhs.phase() == kernel::phases::broadcast ? 'b' : '-'),
+        (rhs.carries_parent() ? 'c' : '-'),
         0
     };
     return out << sys::make_object(
         "state", state,
         "type", typeid(rhs).name(),
+        "type-id", rhs.type_id(),
         "id", rhs.id(),
         "src", rhs.source(),
         "dst", rhs.destination(),
