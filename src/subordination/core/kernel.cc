@@ -28,6 +28,7 @@ void sbn::kernel::read(kernel_buffer& in) {
     in >> this->_flags;
     in >> this->_parent_id;
     in >> this->_principal_id;
+    in >> this->_phase;
     this->_flags |= kernel_flag::parent_is_id;
     this->_flags |= kernel_flag::principal_is_id;
 }
@@ -38,6 +39,7 @@ void sbn::kernel::write(kernel_buffer& out) const {
     out << this->_flags;
     out << parent_id();
     out << principal_id();
+    out << this->_phase;
 }
 
 void sbn::kernel::write_header(kernel_buffer& out) const {
@@ -100,8 +102,8 @@ std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
         "src", rhs.source(),
         "dst", rhs.destination(),
         "ret", rhs.return_code(),
-        "src-app", rhs.source_application_id(),
-        "dst-app", rhs.target_application_id(),
+        "src-app", rhs._source_application_id,
+        "dst-app", rhs._target_application_id,
         "parent", rhs._parent,
         "principal", rhs._principal
     );

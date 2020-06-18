@@ -29,6 +29,22 @@ namespace {
 
     inline void act(sbn::kernel* k) {
         bool del = false;
+        /*
+        if (k->moves_upstream()) {
+            k->act();
+        } else if (k->moves_downstream()) {
+            if (k->principal()) {
+                k->principal()->react(k);
+            }
+        } else if (k->moves_somewhere()) {
+            if (k->principal()) {
+                k->principal()->react(k);
+            }
+        } else if (k->moves_everywhere()) {
+            k->act();
+            del = true;
+        }
+        */
         if (k->return_code() == sbn::exit_code::undefined) {
             if (k->principal()) {
                 k->principal()->react(k);
@@ -178,8 +194,7 @@ void sbn::parallel_pipeline::wait() {
     this->setstate(pipeline_state::stopped);
 }
 
-void sbn::parallel_pipeline::clear() {
-    std::vector<std::unique_ptr<kernel>> sack;
+void sbn::parallel_pipeline::clear(kernel_sack& sack) {
     clear_queue(this->_upstream_kernels, sack);
     clear_queue(this->_timer_kernels, sack);
     for (auto& queue : this->_downstream_kernels) {

@@ -291,8 +291,9 @@ TEST(socket_pipeline, _) {
     local.wait();
     message("finished");
     remote.wait();
-    local.clear();
-    remote.clear();
+    sbn::kernel_sack sack;
+    local.clear(sack);
+    remote.clear(sack);
 }
 
 int

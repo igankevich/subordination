@@ -1,6 +1,5 @@
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/prober.hh>
-#include <unistdx/base/log_message>
 
 void
 sbnd::prober::act() {
@@ -12,7 +11,8 @@ sbnd::prober::react(sbn::kernel* k) {
     probe* p = dynamic_cast<probe*>(k);
     if (p->source() == this->_newprinc) {
         this->return_code(p->return_code());
-        if (this->return_code() == sbn::exit_code::success && this->_oldprinc) {
+        if (this->return_code() == sbn::exit_code::success &&
+            this->_oldprinc && this->_oldprinc != this->_newprinc) {
             this->send_probe(this->_oldprinc);
         }
     }

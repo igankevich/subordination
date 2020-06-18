@@ -35,4 +35,16 @@ sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
     //this->_transactions.open("transactions");
 }
 
+void sbnd::Factory::clear() {
+    sbn::kernel_sack sack;
+    this->_local.clear(sack);
+    this->_remote.clear(sack);
+    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+    this->_process.clear(sack);
+    this->_unix.clear(sack);
+    #endif
+    this->_instances.clear(sack);
+}
+
+
 sbnd::Factory sbnd::factory{};

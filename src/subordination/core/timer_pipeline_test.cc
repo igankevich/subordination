@@ -90,5 +90,6 @@ TEST(TimerServerTest, All) {
     EXPECT_EQ(0, sbn::wait_and_return());
     local.stop();
     local.wait();
-    local.clear();
+    sbn::kernel_sack sack;
+    local.clear(sack);
 }

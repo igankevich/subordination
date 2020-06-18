@@ -139,7 +139,7 @@ namespace sbn {
         void start();
         void stop();
         void wait();
-        void clear();
+        void clear(kernel_sack& sack);
 
         void num_downstream_threads(size_t n);
 

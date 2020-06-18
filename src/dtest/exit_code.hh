@@ -6,7 +6,7 @@
 
 namespace dts {
 
-    enum struct exit_code: int {master=-1, all=-2};
+    enum struct exit_code: int {master=-1, all=-2, none=-3};
 
     auto to_string(exit_code rhs) -> std::string;
     auto to_exit_code(const std::string& s) -> exit_code;

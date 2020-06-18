@@ -3,15 +3,29 @@ dtest_src = files([
     'cluster.cc',
     'cluster_node_bitmap.cc',
     'exit_code.cc',
-    'main.cc',
 ])
 
-dtest_deps = [unistdx,threads]
+dtest_lib_deps = [unistdx,threads]
 
-dtest_exe = executable(
+dtest_lib = library(
     'dtest',
     sources: dtest_src,
     include_directories: src,
-    dependencies: dtest_deps,
+    dependencies: dtest_lib_deps,
+    implicit_include_directories: false,
+    version: meson.project_version(),
+)
+
+dtest = declare_dependency(
+    link_with: dtest_lib,
+    include_directories: src,
+    dependencies: dtest_lib_deps,
+)
+
+dtest_exe = executable(
+    'dtest',
+    sources: dtest_src + ['main.cc'],
+    include_directories: src,
+    dependencies: dtest,
     implicit_include_directories: false,
 )

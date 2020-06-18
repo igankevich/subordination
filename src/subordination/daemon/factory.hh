@@ -91,6 +91,8 @@ namespace sbnd {
             #endif
         }
 
+        void clear();
+
     };
 
     extern Factory factory;

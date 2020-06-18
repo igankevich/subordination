@@ -1,6 +1,9 @@
 #ifndef SUBORDINATION_CORE_TYPES_HH
 #define SUBORDINATION_CORE_TYPES_HH
 
+#include <memory>
+#include <vector>
+
 #include <unistdx/base/types>
 
 namespace sbn {
@@ -35,6 +38,7 @@ namespace sbn {
     enum class process_role_type;
     enum class role_type;
 
+    using kernel_sack = std::vector<std::unique_ptr<kernel>>;
 }
 
 #endif // vim:filetype=cpp

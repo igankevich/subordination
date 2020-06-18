@@ -20,9 +20,7 @@ sbnd::operator<<(std::ostream& out, probe_result rhs) {
     return out << s;
 }
 
-void
-sbnd::master_discoverer
-::on_start() {
+void sbnd::master_discoverer::on_start() {
     this->probe_next_node();
 }
 
@@ -45,9 +43,7 @@ sbnd::master_discoverer
     }
 }
 
-void
-sbnd::master_discoverer
-::probe_next_node() {
+void sbnd::master_discoverer::probe_next_node() {
     this->setstate(state_type::probing);
     if (this->_iterator == this->_end) {
         this->_iterator = iterator(this->interface_address(), this->_fanout);
@@ -56,22 +52,18 @@ sbnd::master_discoverer
     } else {
         addr_type addr = *this->_iterator;
         sys::socket_address new_principal(addr, this->port());
-        this->log("_: probe _", this->interface_address(), addr);
-        prober* p =
-            new prober(
-                this->interface_address(),
-                this->_hierarchy.principal().socket_address(),
-                new_principal
-            );
-        p->parent(this);
-        factory.local().send(p);
+        const auto& old_principal = this->_hierarchy.principal().socket_address();
+        if (new_principal != old_principal) {
+            this->log("_: probe _", this->interface_address(), addr);
+            auto* p = new prober(this->interface_address(), old_principal, new_principal);
+            p->parent(this);
+            factory.local().send(p);
+        }
         ++this->_iterator;
     }
 }
 
-void
-sbnd::master_discoverer
-::send_timer() {
+void sbnd::master_discoverer::send_timer() {
     this->setstate(state_type::waiting);
     using namespace std::chrono;
     discovery_timer* k = new discovery_timer;
@@ -181,12 +173,7 @@ sbnd::master_discoverer
     }
 }
 
-void
-sbnd::master_discoverer
-::broadcast_hierarchy(
-    sys::socket_address
-    ignored_endpoint
-) {
+void sbnd::master_discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
     const weight_type total = this->_hierarchy.total_weight();
     for (const hierarchy_node& sub : this->_hierarchy) {
         if (sub.socket_address() != ignored_endpoint) {
@@ -203,9 +190,7 @@ sbnd::master_discoverer
     }
 }
 
-void
-sbnd::master_discoverer
-::send_weight(const sys::socket_address& dest, weight_type w) {
+void sbnd::master_discoverer::send_weight(const sys::socket_address& dest, weight_type w) {
     auto* h = new Hierarchy_kernel(this->interface_address(), w);
     h->parent(this);
     h->principal_id(1);

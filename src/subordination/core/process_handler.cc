@@ -34,6 +34,18 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
     }
 }
 
+void sbn::process_handler::receive_foreign_kernel(foreign_kernel* fk) {
+    if (fk->type_id() == 1) {
+        log("RECV _", *fk);
+        fk->return_to_parent();
+        fk->principal_id(0);
+        fk->parent_id(0);
+        connection::forward(fk);
+    } else {
+        connection::receive_foreign_kernel(fk);
+    }
+}
+
 void sbn::process_handler::add(const connection_ptr& self) {
     connection::parent()->emplace_handler(sys::epoll_event(in(), sys::event::in), self);
     connection::parent()->emplace_handler(sys::epoll_event(out(), sys::event::out), self);

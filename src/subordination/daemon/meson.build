@@ -171,44 +171,29 @@ daemon_exe = executable(
 
 test('daemon/process-pipeline', daemon_exe)
 
+test_config = configuration_data()
+test_config.set('sbnd_exe_path', sbnd_exe.full_path())
+test_config.set('sbnc_exe_path', sbnc_exe.full_path())
+test_config.set('app_exe_path', test_app_exe.full_path())
+configure_file(
+    input: 'discovery_test.hh.in',
+    output: 'discovery_test.hh',
+    configuration: test_config
+)
+
 discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
     include_directories: [src],
-    dependencies: [sbn,gtest],
+    dependencies: [sbn,gtest,dtest],
     implicit_include_directories: false,
 )
 
-nodes = '2'
-fanout = '2'
 foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure']
-    suffix = '-' + nodes + '-' + fanout + '-' + failure
-    env = environment()
-    env.set('DTEST_EXE', dtest_exe.full_path())
-    env.set('DTEST_NAME', 'x')
-    env.set('DTEST_SIZE', nodes)
-    env.set('SBN_FANOUT', fanout)
-    env.set('SBN_FAILURE', failure)
-    # test executable is a wrapper for dtest
-    # (all arguments are forwarded to dtest)
     test(
-        'daemon/discovery' + suffix,
+        'daemon/discovery-' + failure,
         discovery_test_exe,
-        args: [
-            # run daemon on each cluster node
-            '--exec', '*',
-            sbnd_exe.full_path(), 'fanout=' + fanout, 'allow-root=1',
-            # tolerate asynchronous start of daemons
-            'connection-timeout=1s',
-            'max-connection-attempts=10',
-            'network-scan-interval=5s',
-            # never update NICs
-            'network-interface-update-interval=1h',
-            # submit test application from the first node
-            '--exec', '1',
-            sbnc_exe.full_path(), test_app_exe.full_path(), failure
-        ],
-        env: env,
+        args: [failure],
         workdir: meson.build_root(),
         is_parallel: false
     )

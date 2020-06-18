@@ -48,6 +48,13 @@ namespace {
 
 }
 
+sbnd::network_master::~network_master() {
+    delete this->_timer;
+    for (auto& pair : this->_discoverers) {
+        delete pair.second;
+    }
+}
+
 void sbnd::network_master::send_timer(bool first_time) {
     using namespace std::chrono;
     this->_timer = new network_timer;
@@ -181,7 +188,7 @@ void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
                 auto& a = c.kernels.back();
                 a.id = b->id();
                 if (b->is_foreign()) {
-                    a.type_id = dynamic_cast<const sbn::foreign_kernel*>(b)->type();
+                    a.type_id = b->type_id();
                 } else {
                     auto g = factory.types().guard();
                     auto result = factory.types().find(typeid(*b));

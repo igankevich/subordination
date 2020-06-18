@@ -78,6 +78,7 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
 }
 
 void sbnd::process_pipeline::remove(application_id_type id) {
+    lock_type lock(this->_mutex);
     auto result = this->_jobs.find(id);
     if (result == this->_jobs.end()) { return; }
     terminate(result->second->child_process_id());
@@ -182,11 +183,12 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                 this->log("app exited: app=_,_", result->first, status);
                 log("listeners _", this->_listeners.size());
                 //result->second->close();
+                auto application_id = result->first;
                 this->_jobs.erase(result);
                 if (!native_pipeline()) { return; }
                 for (auto* target : this->_listeners) {
                     auto* k = new process_pipeline_kernel;
-                    k->application_id(result->first);
+                    k->application_id(application_id);
                     k->event(process_pipeline_event::child_process_terminated);
                     k->status(status);
                     k->principal(target);

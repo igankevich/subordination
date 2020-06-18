@@ -133,5 +133,6 @@ int main(int argc, char* argv[]) {
     auto ret = sbn::wait_and_return();
     factory.stop();
     factory.wait();
+    factory.clear();
     return ret;
 }

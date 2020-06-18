@@ -100,7 +100,7 @@ namespace sbn {
         void start();
         void stop();
         void wait();
-        void clear();
+        void clear(kernel_sack& sack);
 
         inline void write_transaction(transaction_status status, kernel* k) {
             if (auto* tr = transactions()) { tr->write({status, index(), k}); }

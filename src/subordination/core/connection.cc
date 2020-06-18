@@ -30,6 +30,10 @@ namespace  {
         else { delete k; }
     };
 
+    inline void forward_or_delete(sbn::pipeline* ppl, sbn::foreign_kernel* k) {
+        if (ppl) { ppl->forward(k); } else { delete k; }
+    };
+
 }
 
 const char* sbn::to_string(connection_state rhs) {
@@ -129,18 +133,19 @@ void sbn::connection::receive_kernels(const application* from_application,
         try {
             kernel_read_guard g(frame, this->_input_buffer);
             if (!g) { break; }
-            if (auto* k = this->read_kernel(from_application)) {
-                bool ok = this->receive_kernel(k);
-                func(k);
-                if (!ok) {
-                    #if defined(SBN_DEBUG)
-                    this->log("no principal found for _", *k);
-                    #endif
-                    k->principal(k->parent());
-                    this->send(k);
-                } else {
-                    this->_parent->native_pipeline()->send(k);
-                }
+            auto* k = read_kernel(from_application);
+            if (k->is_foreign()) {
+                #if defined(SBN_DEBUG)
+                log("read foreign src _ dst _ app _", k->source(),
+                    k->destination(), k->source_application_id());
+                #endif
+                receive_foreign_kernel(dynamic_cast<foreign_kernel*>(k));
+            } else {
+                #if defined(SBN_DEBUG)
+                log("read native src _ dst _ app _", k->source(),
+                    k->destination(), k->source_application_id());
+                #endif
+                receive_kernel(k, func);
             }
         } catch (const sbn::error& err) {
             log_read_error(err);
@@ -151,6 +156,10 @@ void sbn::connection::receive_kernels(const application* from_application,
         }
     }
     this->_input_buffer.compact();
+}
+
+void sbn::connection::receive_foreign_kernel(foreign_kernel* fk) {
+    forward_or_delete(this->parent()->foreign_pipeline(), fk);
 }
 
 sbn::kernel*
@@ -164,23 +173,10 @@ sbn::connection::read_kernel(const application* from_application) {
         }
     }
     if (this->_socket_address) { k->source(this->_socket_address); }
-    if (k->is_foreign()) {
-        #if defined(SBN_DEBUG)
-        this->log("read foreign src _ dst _ app _", k->source(),
-                  k->destination(), k->source_application_id());
-        #endif
-        forward_or_delete(this->parent()->foreign_pipeline(), k);
-        k = nullptr;
-    } else {
-        #if defined(SBN_DEBUG)
-        this->log("read native src _ dst _ app _", k->source(),
-                  k->destination(), k->source_application_id());
-        #endif
-    }
     return k;
 }
 
-bool sbn::connection::receive_kernel(kernel* k) {
+void sbn::connection::receive_kernel(kernel* k, std::function<void(kernel*)> func) {
     bool ok = true;
     if (k->moves_downstream()) {
         this->plug_parent(k);
@@ -197,14 +193,27 @@ bool sbn::connection::receive_kernel(kernel* k) {
         }
     }
     #if defined(SBN_DEBUG)
-    this->log("recv _", k);
+    this->log("recv _", *k);
     #endif
-    return ok;
+    func(k);
+    if (!ok) {
+        #if defined(SBN_DEBUG)
+        this->log("no principal found for _", *k);
+        #endif
+        //k->principal(k->parent());
+        k->return_to_parent();
+        this->send(k);
+    } else {
+        this->_parent->native_pipeline()->send(k);
+    }
 }
 
 void sbn::connection::plug_parent(kernel* k) {
-    if (!k->has_id()) {
+    if (!k->has_id() && k->type_id() != 1) {
         throw std::invalid_argument("downstream kernel without an id");
+    }
+    if (k->type_id() == 1) {
+        log("RECV main kernel _", *k);
     }
     auto pos = find_kernel(k, this->_upstream);
     if (pos == this->_upstream.end()) {
@@ -346,8 +355,7 @@ void sbn::connection::recover_kernel(kernel* k) {
     }
 }
 
-void sbn::connection::clear() {
-    std::vector<std::unique_ptr<kernel>> sack;
+void sbn::connection::clear(kernel_sack& sack) {
     for (auto* k : this->_upstream) { k->mark_as_deleted(sack); }
     this->_upstream.clear();
     for (auto* k : this->_downstream) { k->mark_as_deleted(sack); }

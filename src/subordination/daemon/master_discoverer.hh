@@ -94,20 +94,11 @@ namespace sbnd {
             return this->_hierarchy.port();
         }
 
-        void
-        probe_next_node();
-
-        void
-        send_timer();
-
-        void
-        update_subordinates(probe* p);
-
-        probe_result
-        process_probe(probe* p);
-
-        void
-        update_principal(prober* p);
+        void probe_next_node();
+        void send_timer();
+        void update_subordinates(probe* p);
+        probe_result process_probe(probe* p);
+        void update_principal(prober* p);
 
         inline void
         setstate(state_type rhs) noexcept {

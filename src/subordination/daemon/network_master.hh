@@ -36,6 +36,9 @@ namespace sbnd {
         duration _network_scan_interval = std::chrono::minutes(1);
 
     public:
+        network_master() = default;
+        ~network_master();
+
         void act() override;
         void react(sbn::kernel* child) override;
 

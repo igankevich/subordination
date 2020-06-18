@@ -88,10 +88,13 @@ namespace sbn {
     kernel_buffer& operator<<(kernel_buffer& out, const application& rhs);
     kernel_buffer& operator>>(kernel_buffer& in, application& rhs);
 
+    application::id_type generate_application_id() noexcept;
+
     namespace this_application {
 
         /// Cluster-wide application ID.
-        application::id_type get_id() noexcept;
+        application::id_type id() noexcept;
+        void id(application::id_type rhs) noexcept;
         sys::fd_type get_input_fd() noexcept;
         sys::fd_type get_output_fd() noexcept;
 

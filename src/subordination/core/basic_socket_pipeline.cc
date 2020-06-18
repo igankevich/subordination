@@ -140,13 +140,12 @@ void sbn::basic_socket_pipeline::wait() {
     this->setstate(pipeline_state::stopped);
 }
 
-void sbn::basic_socket_pipeline::clear() {
-    std::vector<std::unique_ptr<kernel>> sack;
+void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     while (!this->_kernels.empty()) {
         this->_kernels.front()->mark_as_deleted(sack);
         this->_kernels.pop();
     }
-    for (auto& conn : this->_connections) { if (conn) { conn->clear(); } }
+    for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
     this->_listeners.clear();
 }

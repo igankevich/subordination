@@ -34,12 +34,6 @@ namespace {
     sys::spin_mutex rng_mutex;
 
     inline sbn::application::id_type
-    generate_application_id() noexcept {
-        sys::simple_lock<sys::spin_mutex> lock(rng_mutex);
-        return rng();
-    }
-
-    inline sbn::application::id_type
     get_appliction_id() noexcept {
         sbn::application::id_type id = 0;
         if (const char* s = ::getenv(SUBORDINATION_ENV_APPLICATION_ID)) {
@@ -136,9 +130,16 @@ sbn::operator<<(std::ostream& out, const application& rhs) {
         "wd", rhs._working_directory);
 }
 
-sbn::application::id_type sbn::this_application::get_id() noexcept { return this_app; }
+sbn::application::id_type sbn::this_application::id() noexcept { return this_app; }
+void sbn::this_application::id(application::id_type rhs) noexcept { this_app = rhs; }
 sys::fd_type sbn::this_application::get_input_fd() noexcept { return this_pipe_in; }
 sys::fd_type sbn::this_application::get_output_fd() noexcept { return this_pipe_out; }
+
+sbn::application::id_type
+sbn::generate_application_id() noexcept {
+    sys::simple_lock<sys::spin_mutex> lock(rng_mutex);
+    return rng();
+}
 
 sbn::application
 ::application(const string_array& args, const string_array& env):

@@ -58,7 +58,7 @@ void dts::application::init(int argc, char* argv[]) {
              usage(); std::exit(0);
         } else if (arg == "--exit-code") {
             if (i+1 == argc) { throw std::invalid_argument("bad --exit-code"); }
-            this->_exitcode = to_exit_code(argv[++i]);
+            this->_exit_code = to_exit_code(argv[++i]);
         } else if (arg == "--name") {
             if (i+1 == argc) { throw std::invalid_argument("bad --name"); }
             this->_cluster.name(argv[++i]);
@@ -97,11 +97,36 @@ void dts::application::init(int argc, char* argv[]) {
     this->_cluster.generate_nodes(cluster_size);
 }
 
+void dts::application::add_process(cluster_node_bitmap nodes, sys::argstream args) {
+    this->_where.emplace_back(std::move(nodes));
+    this->_arguments.emplace_back(std::move(args));
+}
+
+void dts::application::run_process(cluster_node_bitmap where, sys::argstream args) {
+    const auto num_nodes = this->_cluster.size();
+    for (size_t i=0; i<num_nodes; ++i) {
+        if (!where.matches(i)) { continue; }
+        auto& node = this->_cluster.nodes()[i];
+        this->_child_processes.emplace([&] () {
+            sys::this_process::enter(node.network_namespace().fd());
+            sys::this_process::enter(node.hostname_namespace().fd());
+            return sys::this_process::execute(args.argv());
+        });
+    }
+}
+
 int dts::application::wait() {
     int retval = 0;
-    if (this->_exitcode == exit_code::all) {
+    if (!this->_no_tests) {
+        this->_tests_completed.get_future().get();
+    }
+    if (this->_exit_code == exit_code_type::all ||
+        this->_exit_code == exit_code_type::none) {
         retval = accumulate_return_value();
-    } else if (this->_exitcode == exit_code::master) {
+        if (this->_exit_code == exit_code_type::none) {
+            retval = 0;
+        }
+    } else if (this->_exit_code == exit_code_type::master) {
         auto nprocs = this->_child_processes.size();
         // wait for master process
         if (nprocs > 0 && this->_child_processes.front()) {
@@ -119,7 +144,7 @@ int dts::application::wait() {
             }
         }
     } else {
-        size_t proc_no = static_cast<size_t>(this->_exitcode);
+        size_t proc_no = static_cast<size_t>(this->_exit_code);
         auto nprocs = this->_child_processes.size();
         if (proc_no < nprocs) {
             auto status = this->_child_processes[proc_no].wait();
@@ -292,8 +317,9 @@ void dts::application::process_events() {
                 }
             }
             if (!this->_no_tests) {
-                if (run_tests()) {
+                if (!this->_tests_succeeded && run_tests()) {
                     this->_tests_succeeded = true;
+                    this->_tests_completed.set_value();
                     this->send(sys::signal::terminate);
                 }
             }
@@ -305,8 +331,27 @@ void dts::application::process_events() {
 }
 
 bool dts::application::run_tests() {
-    while (!this->_tests.empty() && this->_tests.front()(*this, this->_lines)) {
+    while (!this->_tests.empty()) {
+        auto& test = this->_tests.front();
+        try {
+            test(*this, this->_lines);
+            std::cerr << "========================================\n";
+            std::cerr << test.description() << '\n';
+            std::cerr << "Completed successfully.\n";
+            std::cerr << "========================================\n";
+        } catch (const std::exception& err) {
+            std::cerr << "========================================\n";
+            std::cerr << test.description() << '\n';
+            std::cerr << err.what();
+            std::cerr << "========================================\n";
+            break;
+        }
         this->_tests.pop();
+    }
+    if (this->_tests.empty()) {
+        std::cerr << "========================================\n";
+        std::cerr << "All tests completed successfully.\n";
+        std::cerr << "========================================\n";
     }
     return this->_tests.empty();
 }
@@ -321,16 +366,97 @@ void dts::process_output::copy(line_array& lines) {
     auto old_limit = buf.limit();
     // print evey line
     auto old_first = first;
+    auto prev = first;
     while (first != last) {
         if (*first == '\n') {
             buf.limit(first-old_first+1);
-            lines.emplace_back(this->_prefix.data(), this->_prefix.size());
+            lines.emplace_back();
+            lines.back().reserve(this->_prefix.size() + first-prev);
+            lines.back().append(this->_prefix);
+            lines.back().append(prev, first);
             this->_out.write(this->_prefix.data(), this->_prefix.size());
             buf.flush(this->_out);
+            prev = first+1;
         }
         ++first;
     }
     buf.limit(old_limit);
     buf.compact();
     std::clog << std::flush;
+}
+
+namespace  {
+
+    dts::application* aptr{};
+    sys::pid_type child_process_id = 0;
+
+    void child_signal_handlers() {
+        using namespace sys::this_process;
+        auto on_terminate = sys::signal_action([](int sig) {
+            const auto is_alarm = sys::signal(sig) == sys::signal::alarm;
+            if (aptr) {
+                try {
+                    aptr->send(is_alarm ? sys::signal::kill : sys::signal::terminate);
+                } catch (const std::exception& err) {
+                    ::write(2, err.what(), std::string::traits_type::length(err.what()));
+                }
+            }
+            if (!is_alarm) { ::alarm(3); }
+        });
+        using s = sys::signal;
+        ignore_signal(s::broken_pipe);
+        bind_signal(s::terminate, on_terminate);
+        bind_signal(s::keyboard_interrupt, on_terminate);
+        bind_signal(s::alarm, on_terminate);
+    }
+
+    void parent_signal_handlers() {
+        using namespace sys::this_process;
+        using s = sys::signal;
+        auto on_terminate = sys::signal_action([](int sig) {
+            if (child_process_id) {
+                try {
+                    sys::send(s::terminate, child_process_id);
+                } catch (const std::exception& err) {
+                    const char* msg = "error in parent signal handler";
+                    ::write(2, msg, std::string::traits_type::length(msg));
+                    ::write(2, err.what(), std::string::traits_type::length(err.what()));
+                }
+            }
+        });
+        ignore_signal(s::broken_pipe);
+        bind_signal(s::keyboard_interrupt, on_terminate);
+        bind_signal(s::terminate, on_terminate);
+    }
+
+}
+
+int dts::run(application& app) {
+    ::aptr = &app;
+    parent_signal_handlers();
+    sys::pipe pipe;
+    pipe.in().unsetf(sys::open_flag::non_blocking);
+    pipe.out().unsetf(sys::open_flag::non_blocking);
+    using pf = sys::process_flag;
+    sys::process child([&pipe,&app] () {
+        try {
+            child_signal_handlers();
+            pipe.out().close();
+            char ch;
+            pipe.in().read(&ch, 1);
+            app.run();
+            return app.wait();
+        } catch (const std::exception& err) {
+            app.terminate();
+            std::cerr << err.what() << std::endl;
+            return 1;
+        }
+    },
+    pf::unshare_users | pf::unshare_network | pf::unshare_hostname | pf::signal_parent,
+    4096*10);
+    child_process_id = child.id();
+    child.init_user_namespace();
+    pipe.in().close();
+    pipe.out().write("x", 1);
+    return child.wait().exit_code();
 }

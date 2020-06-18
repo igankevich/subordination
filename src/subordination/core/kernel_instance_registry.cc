@@ -5,8 +5,7 @@
 
 #include <subordination/core/kernel_instance_registry.hh>
 
-void sbn::kernel_instance_registry::clear() {
-    std::vector<std::unique_ptr<kernel>> sack;
+void sbn::kernel_instance_registry::clear(kernel_sack& sack) {
     for (const auto& pair : *this) { pair.second->mark_as_deleted(sack); }
 }
 

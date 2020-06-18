@@ -35,8 +35,9 @@ void sbn::Factory::wait() {
 }
 
 void sbn::Factory::clear() {
-    this->_local.clear();
-    this->_remote.clear();
+    kernel_sack sack;
+    this->_local.clear(sack);
+    this->_remote.clear(sack);
 }
 
 sbn::Factory sbn::factory;

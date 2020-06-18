@@ -4,6 +4,18 @@
 
 #include <dtest/cluster_node_bitmap.hh>
 
+dts::cluster_node_bitmap::cluster_node_bitmap(size_t n, index_array indices):
+_nodes(n, false) {
+    for (auto i : indices) {
+        if (i >= n) {
+            std::stringstream tmp;
+            tmp << "invalid node index \"" << i << "\"";
+            throw std::invalid_argument(tmp.str());
+        }
+        this->_nodes[i] = true;
+    }
+}
+
 void dts::cluster_node_bitmap::read(std::string arg) {
     if (arg == "*") {
         std::fill(this->_nodes.begin(), this->_nodes.end(), true);

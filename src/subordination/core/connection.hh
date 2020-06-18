@@ -77,7 +77,7 @@ namespace sbn {
 
         void send(kernel* k);
         inline void forward(foreign_kernel* k) { if (do_forward(k)) { delete k; } }
-        void clear();
+        void clear(kernel_sack& sack);
 
         /// \param[in] from socket address from which kernels are received
         void receive_kernels(const application* from_application=nullptr) {
@@ -142,6 +142,7 @@ namespace sbn {
 
         bool do_forward(foreign_kernel* k);
         void recover_kernels(bool downstream);
+        virtual void receive_foreign_kernel(foreign_kernel* fk);
 
         template <class Sink>
         inline void flush(Sink& sink) {
@@ -166,7 +167,7 @@ namespace sbn {
 
         void write_kernel(kernel* k) noexcept;
         kernel* read_kernel(const application* from_application);
-        bool receive_kernel(kernel* k);
+        void receive_kernel(kernel* k, std::function<void(kernel*)> func);
         void plug_parent(kernel* k);
         bool save_kernel(kernel* k);
         void recover_kernel(kernel* k);

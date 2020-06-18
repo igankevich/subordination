@@ -49,8 +49,7 @@ public:
     _nsubordinates(nsubordinates)
     {}
 
-    void
-    act() override {
+    void act() override {
         if (!test_without_failures()) {
             using namespace sbn::this_application;
             if ((test_superior_failure() && is_superior) ||
@@ -92,11 +91,9 @@ private:
 public:
 
     superior_kernel() = default;
-
     ~superior_kernel() = default;
 
-    void
-    act() override {
+    void act() override {
         log("superior start");
         if (!test_superior_failure()) { is_superior = true; }
         for (uint32_t i=0; i<this->_nkernels; ++i) {
@@ -105,8 +102,7 @@ public:
         }
     }
 
-    void
-    react(sbn::kernel* child) {
+    void react(sbn::kernel* child) {
         subordinate_kernel* k = dynamic_cast<subordinate_kernel*>(child);
         if (k->source()) {
             log("superior react [_/_] from _", k->number(), this->_nkernels, k->source());
@@ -177,19 +173,10 @@ main(int argc, char* argv[]) {
         factory.types().add<grand_superior_kernel>(1);
         factory.types().add<superior_kernel>(2);
     } else {
-        factory.types().add<grand_superior_kernel>(2);
+        //factory.types().add<grand_superior_kernel>(2);
         factory.types().add<superior_kernel>(1);
     }
     factory.types().add<subordinate_kernel>(3);
     factory_guard g;
-    /*
-    if (this_application::is_superior()) {
-        if (test_superior_failure()) {
-            send(new grand_superior_kernel);
-        } else {
-            send(new superior_kernel);
-        }
-    }
-    */
     return wait_and_return();
 }

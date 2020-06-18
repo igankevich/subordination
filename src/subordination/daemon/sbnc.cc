@@ -403,6 +403,9 @@ int main(int argc, char* argv[]) {
     if (argc <= 1) { usage(argv); return 1; }
     if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(argv); return 0; }
     if (argc >= 2 && argv[1][0] == '-') { command = Command::Status; }
+    if (sbn::this_application::id() == 0) {
+        sbn::this_application::id(1);
+    }
     sbn::install_error_handler();
     sbnc::factory.types().add<Main_kernel>(1);
     sbnc::factory.types().add<sbnd::Status_kernel>(4);

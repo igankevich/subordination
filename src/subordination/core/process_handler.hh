@@ -65,7 +65,7 @@ namespace sbn {
             }
             // save the main kernel
             if (connection::do_forward(k)) {
-                if (k->type() == 1) {
+                if (k->type_id() == 1) {
                     if (wait_for_completion) {
                         log("save main kernel _", *k);
                         this->_main_kernel = k;
@@ -105,6 +105,9 @@ namespace sbn {
         inline sys::fd_type out() const noexcept { return this->_file_descriptors.out().fd(); }
         inline pipeline* unix() const noexcept { return this->_unix; }
         inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
+
+    protected:
+        void receive_foreign_kernel(foreign_kernel* fk) override;
 
     };
 

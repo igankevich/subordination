@@ -30,6 +30,7 @@ namespace  {
         if (type == types.end()) { sbn::throw_error("no kernel type for ", id); }
         static_assert(sizeof(sbn::kernel) <= sizeof(sbn::foreign_kernel), "bad size");
         auto k = type->construct(ptr);
+        k->type_id(type->id());
         k->read(*in);
         return k;
     }
@@ -60,7 +61,7 @@ void sbn::kernel_buffer::write(kernel* k) {
 void sbn::kernel_buffer::read(kernel*& k) {
     std::unique_ptr<foreign_kernel> fk(new foreign_kernel);
     fk->read_header(*this);
-    if (fk->target_application_id() != this_application::get_id()) {
+    if (fk->target_application_id() != this_application::id()) {
         fk->read(*this);
         k = fk.release();
     } else {

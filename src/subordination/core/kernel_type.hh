@@ -6,7 +6,6 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include <subordination/core/kernel.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {

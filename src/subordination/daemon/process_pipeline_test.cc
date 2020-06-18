@@ -132,8 +132,9 @@ int main(int argc, char* argv[]) {
     process.wait();
     local.stop();
     local.wait();
-    process.clear();
-    local.clear();
+    sbn::kernel_sack sack;
+    process.clear(sack);
+    local.clear(sack);
     return ret;
 }
 #endif
@@ -157,8 +158,9 @@ int main(int argc, char* argv[]) {
     remote.wait();
     local.stop();
     local.wait();
-    remote.clear();
-    local.clear();
+    sbn::kernel_sack sack;
+    remote.clear(sack);
+    local.clear(sack);
     sys::send(sys::signal::user_defined_1, sys::this_process::parent_id());
     return ret;
 }
