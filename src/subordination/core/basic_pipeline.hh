@@ -21,7 +21,6 @@ namespace sbn {
 
     inline void exit(kernel* k) {
         const auto ret = static_cast<int>(k->return_code());
-        delete k;
         exit(ret);
     }
 

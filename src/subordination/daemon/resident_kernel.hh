@@ -15,12 +15,12 @@ namespace sbnd {
         void start();
         void stop();
         void act() override;
-        void react(sbn::kernel* k) override;
+        void react(sbn::kernel_ptr&& k) override;
 
     protected:
         virtual void on_start();
         virtual void on_stop();
-        virtual void on_kernel(sbn::kernel* k);
+        virtual void on_kernel(sbn::kernel_ptr&& k);
 
     };
 

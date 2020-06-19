@@ -77,7 +77,7 @@ namespace sbnd {
         void remove(application_id_type id);
 
         void loop() override;
-        void forward(sbn::foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
         inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
         inline void timeout(duration rhs) noexcept { this->_timeout = rhs; }
@@ -98,7 +98,7 @@ namespace sbnd {
     private:
 
         app_iterator do_add(const sbn::application& app);
-        void process_kernel(sbn::kernel* k);
+        void process_kernel(sbn::kernel_ptr&& k);
         void wait_loop();
         void wait_for_processes(lock_type& lock);
         void terminate(sys::pid_type id);

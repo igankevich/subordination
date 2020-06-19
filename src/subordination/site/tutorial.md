@@ -56,7 +56,7 @@ struct My_app: public kernel {
     }
 
     void
-    react(kernel*) {
+    react(kernel_ptr&&) {
         // not needed for such a simple programme
     }
 

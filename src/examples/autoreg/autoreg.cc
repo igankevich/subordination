@@ -2,8 +2,7 @@
 #include <subordination/core/error_handler.hh>
 #include "autoreg_app.hh"
 
-int
-main(int argc, char** argv) {
+int main(int argc, char** argv) {
     using namespace sbn;
     install_error_handler();
     {

@@ -13,7 +13,7 @@ std::ostream&
 sbn::operator<<(std::ostream& out, const kernel_instance_registry& rhs) {
     auto g = rhs.guard();
     for (const auto& pair : rhs) {
-        auto* kernel = pair.second;
+        const auto& kernel = pair.second;
         out << "/instance/" << kernel->id() << '=' << typeid(*kernel).name();
     }
     return out;

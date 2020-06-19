@@ -20,7 +20,7 @@ namespace  {
         k->write(*out);
     }
 
-    inline sbn::kernel* read_native(sbn::kernel_buffer* in, sbn::foreign_kernel* ptr) {
+    inline sbn::kernel_ptr read_native(sbn::kernel_buffer* in) {
         sbn::kernel_type::id_type id = 0;
         in->read(id);
         if (!in->types()) { sbn::throw_error("no kernel types"); }
@@ -29,7 +29,7 @@ namespace  {
         auto type = types.find(id);
         if (type == types.end()) { sbn::throw_error("no kernel type for ", id); }
         static_assert(sizeof(sbn::kernel) <= sizeof(sbn::foreign_kernel), "bad size");
-        auto k = type->construct(ptr);
+        auto k = type->construct();
         k->type_id(type->id());
         k->read(*in);
         return k;
@@ -37,7 +37,7 @@ namespace  {
 
 }
 
-void sbn::kernel_buffer::write(kernel* k) {
+void sbn::kernel_buffer::write(const kernel* k) {
     k->write_header(*this);
     if (k->is_foreign()) {
         k->write(*this);
@@ -58,23 +58,23 @@ void sbn::kernel_buffer::write(kernel* k) {
     }
 }
 
-void sbn::kernel_buffer::read(kernel*& k) {
-    std::unique_ptr<foreign_kernel> fk(new foreign_kernel);
+void sbn::kernel_buffer::read(kernel_ptr& k) {
+    foreign_kernel_ptr fk(new foreign_kernel);
     fk->read_header(*this);
     if (fk->target_application_id() != this_application::id()) {
         fk->read(*this);
-        k = fk.release();
+        k = std::move(fk);
     } else {
-        k = read_native(this, nullptr);
+        k = read_native(this);
         k->swap_header(fk.get());
         fk.reset();
         if (carry_all_parents()) {
-            for (auto* p = k; position() != limit(); p = p->parent()) {
-                p->parent(read_native(this, nullptr));
+            for (auto* p = k.get(); position() != limit(); p = p->parent()) {
+                p->parent(read_native(this).release());
             }
         } else {
             if (k->carries_parent()) {
-                k->parent(read_native(this, nullptr));
+                k->parent(read_native(this).release());
             }
         }
     }

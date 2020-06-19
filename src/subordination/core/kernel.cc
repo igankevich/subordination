@@ -7,7 +7,7 @@
 namespace {
 
     inline sbn::kernel::id_type
-    get_id(const sbn::kernel* rhs) {
+    get_id(const sbn::kernel_ptr&& rhs) {
         return !rhs ? 0 : rhs->id();
     }
 
@@ -82,7 +82,7 @@ void sbn::kernel::swap_header(kernel* k) {
 }
 
 void sbn::kernel::act() {}
-void sbn::kernel::react(kernel*) { throw ::sbn::error("empty react"); }
+void sbn::kernel::react(kernel_ptr&&) { throw ::sbn::error("empty react"); }
 void sbn::kernel::rollback() {}
 
 void sbn::kernel::mark_as_deleted(kernel_sack& result) {

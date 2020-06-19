@@ -57,10 +57,10 @@ void sbnd::network_master::mark_as_deleted(sbn::kernel_sack& result) {
 
 void sbnd::network_master::send_timer(bool first_time) {
     using namespace std::chrono;
-    auto* k = new network_timer;
+    auto k = sbn::make_pointer<network_timer>();
     k->after(first_time ? duration::zero() : this->_interval);
     k->point_to_point(this);
-    factory.local().send(k);
+    factory.local().send(std::move(k));
 }
 
 void sbnd::network_master::act() {
@@ -116,29 +116,27 @@ sbnd::network_master::update_ifaddrs() {
     this->send_timer();
 }
 
-void sbnd::network_master::react(sbn::kernel* child) {
+void sbnd::network_master::react(sbn::kernel_ptr&& child) {
     if (typeid(*child) == typeid(network_timer)) {
-        this->update_ifaddrs();
-        delete child;
+        update_ifaddrs();
     } else if (typeid(*child) == typeid(probe)) {
-        this->forward_probe(dynamic_cast<probe*>(child));
+        forward_probe(sbn::pointer_dynamic_cast<probe>(std::move(child)));
     } else if (typeid(*child) == typeid(Hierarchy_kernel)) {
-        this->forward_hierarchy_kernel(dynamic_cast<Hierarchy_kernel*>(child));
+        forward_hierarchy_kernel(sbn::pointer_dynamic_cast<Hierarchy_kernel>(std::move(child)));
     } else if (typeid(*child) == typeid(socket_pipeline_kernel)) {
-        on_event(dynamic_cast<socket_pipeline_kernel*>(child));
+        on_event(sbn::pointer_dynamic_cast<socket_pipeline_kernel>(std::move(child)));
     } else if (typeid(*child) == typeid(Status_kernel)) {
-        report_status(dynamic_cast<Status_kernel*>(child));
+        report_status(sbn::pointer_dynamic_cast<Status_kernel>(std::move(child)));
     } else if (typeid(*child) == typeid(Job_status_kernel)) {
-        report_job_status(dynamic_cast<Job_status_kernel*>(child));
+        report_job_status(sbn::pointer_dynamic_cast<Job_status_kernel>(std::move(child)));
     } else if (typeid(*child) == typeid(Pipeline_status_kernel)) {
-        report_pipeline_status(dynamic_cast<Pipeline_status_kernel*>(child));
+        report_pipeline_status(sbn::pointer_dynamic_cast<Pipeline_status_kernel>(std::move(child)));
     } else if (typeid(*child) == typeid(process_pipeline_kernel)) {
-        on_event(dynamic_cast<process_pipeline_kernel*>(child));
-        delete child;
+        on_event(sbn::pointer_dynamic_cast<process_pipeline_kernel>(std::move(child)));
     }
 }
 
-void sbnd::network_master::report_status(Status_kernel* status) {
+void sbnd::network_master::report_status(pointer<Status_kernel> status) {
     Status_kernel::hierarchy_array hierarchies;
     hierarchies.reserve(this->_discoverers.size());
     for (const auto& pair : this->_discoverers) {
@@ -147,11 +145,11 @@ void sbnd::network_master::report_status(Status_kernel* status) {
     status->hierarchies(std::move(hierarchies));
     status->return_to_parent(sbn::exit_code::success);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    factory.unix().send(status);
+    factory.unix().send(std::move(status));
     #endif
 }
 
-void sbnd::network_master::report_job_status(Job_status_kernel* k) {
+void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
     Job_status_kernel::application_array jobs;
     {
         auto g = factory.process().guard();
@@ -161,17 +159,17 @@ void sbnd::network_master::report_job_status(Job_status_kernel* k) {
             jobs.emplace_back(pair.second->application());
         }
     }
-    auto* tk = new Terminate_kernel(k->job_ids());
+    auto tk = sbn::make_pointer<Terminate_kernel>(k->job_ids());
     tk->phase(sbn::kernel::phases::broadcast);
-    factory.remote().send(tk);
+    factory.remote().send(std::move(tk));
     k->jobs(std::move(jobs));
     k->return_to_parent(sbn::exit_code::success);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    factory.unix().send(k);
+    factory.unix().send(std::move(k));
     #endif
 }
 
-void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
+void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
     Pipeline_status_kernel::pipeline_array pipelines;
     const sbn::basic_socket_pipeline* pipelines_b[] =
         { &factory.remote(), &factory.process(), &factory.unix() };
@@ -185,7 +183,7 @@ void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
             ppl.connections.emplace_back();
             auto& c = ppl.connections.back();
             c.address = conn->socket_address();
-            for (const auto* b : conn->upstream()) {
+            for (const auto& b : conn->upstream()) {
                 c.kernels.emplace_back();
                 auto& a = c.kernels.back();
                 a.id = b->id();
@@ -208,7 +206,7 @@ void sbnd::network_master::report_pipeline_status(Pipeline_status_kernel* k) {
     k->pipelines(std::move(pipelines));
     k->return_to_parent(sbn::exit_code::success);
     #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    factory.unix().send(k);
+    factory.unix().send(std::move(k));
     #endif
 }
 
@@ -217,11 +215,11 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
     factory.remote().add_server(ifa);
     if (this->_discoverers.find(ifa) == this->_discoverers.end()) {
         const auto port = factory.remote().port();
-        auto* d = new master_discoverer(ifa, port, this->_fanout);
+        auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_fanout);
         d->interval(network_scan_interval());
-        this->_discoverers.emplace(ifa, d);
+        this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
-        factory.local().send(d);
+        factory.local().send(std::move(d));
     }
 }
 
@@ -238,26 +236,26 @@ sbnd::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-sbnd::network_master::forward_probe(probe* p) {
+sbnd::network_master::forward_probe(pointer<probe> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         sys::log_message("net", "bad probe _", p->interface_address());
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);
-        factory.local().send(p);
+        factory.local().send(std::move(p));
     }
 }
 
 void
-sbnd::network_master::forward_hierarchy_kernel(Hierarchy_kernel* p) {
+sbnd::network_master::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         sys::log_message("net", "bad hierarchy kernel _", p->interface_address());
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);
-        factory.local().send(p);
+        factory.local().send(std::move(p));
     }
 }
 
@@ -273,8 +271,7 @@ sbnd::network_master::find_discoverer(const addr_type& a) -> map_iterator {
     );
 }
 
-void sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
-    bool del = true;
+void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
         const addr_type& a = traits_type::address(ev->socket_address());
@@ -282,23 +279,22 @@ void sbnd::network_master::on_event(socket_pipeline_kernel* ev) {
         if (result == this->_discoverers.end()) {
             sys::log_message("net", "bad event socket_address _", a);
         } else {
-            del = false;
             auto* discoverer = result->second;
             ev->principal(discoverer);
-            factory.local().send(ev);
+            factory.local().send(std::move(ev));
         }
     }
-    if (del) { delete ev; }
 }
 
-void sbnd::network_master::on_event(process_pipeline_kernel* k) {
+void sbnd::network_master::on_event(pointer<process_pipeline_kernel> k) {
     if (k->event() == process_pipeline_event::child_process_terminated) {
         sys::log_message("net", "job _ terminated with status _",
                          k->application_id(), k->status());
         if (k->status().exited()) {
-            auto* tk = new Terminate_kernel({k->application_id()});
+            auto tk = sbn::make_pointer<Terminate_kernel>(
+                Terminate_kernel::application_id_array{k->application_id()});
             tk->phase(sbn::kernel::phases::broadcast);
-            factory.remote().send(tk);
+            factory.remote().send(std::move(tk));
         }
     }
 }

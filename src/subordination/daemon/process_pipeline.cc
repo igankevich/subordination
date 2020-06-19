@@ -100,13 +100,13 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
     }
 }
 
-void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
+void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     #if defined(SBN_DEBUG)
     log("forward src _ dst _ src-app _ dst-app _", fk->source(), fk->destination(),
         fk->source_application_id(), fk->target_application_id());
     #endif
     lock_type lock(this->_mutex);
-    if (stopping() || stopped()) { delete fk; return; }
+    if (stopping() || stopped()) { return; }
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
@@ -123,7 +123,7 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
         }
     }
     auto& conn = result->second;
-    conn->forward(fk);
+    conn->forward(std::move(fk));
     try {
         conn->flush();
     } catch (const std::exception& err) {
@@ -134,12 +134,12 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel* fk) {
 
 void sbnd::process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
-        process_kernel(this->_kernels.front());
+        process_kernel(std::move(this->_kernels.front()));
         this->_kernels.pop();
     }
 }
 
-void sbnd::process_pipeline::process_kernel(sbn::kernel* k) {
+void sbnd::process_pipeline::process_kernel(sbn::kernel_ptr&& k) {
     if (k->phase() == sbn::kernel::phases::broadcast) {
         for (auto& pair : this->_jobs) { pair.second->send(k); }
     } else {
@@ -197,14 +197,14 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                 this->_jobs.erase(result);
                 if (!native_pipeline()) { return; }
                 for (auto* target : this->_listeners) {
-                    auto* k = new process_pipeline_kernel;
+                    auto k = sbn::make_pointer<process_pipeline_kernel>();
                     k->application_id(application_id);
                     k->event(process_pipeline_event::child_process_terminated);
                     k->status(status);
                     k->principal(target);
                     k->phase(sbn::kernel::phases::point_to_point);
                     log("notify listener _", *target);
-                    native_pipeline()->send(k);
+                    native_pipeline()->send(std::move(k));
                 }
             }
         );

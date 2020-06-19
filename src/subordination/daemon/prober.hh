@@ -39,7 +39,7 @@ namespace sbnd {
         act() override;
 
         void
-        react(sbn::kernel* k) override;
+        react(sbn::kernel_ptr&& k) override;
 
         inline const sys::socket_address&
         new_principal() const noexcept {

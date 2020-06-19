@@ -146,13 +146,15 @@ void sbn::basic_socket_pipeline::wait() {
 
 void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     while (!this->_kernels.empty()) {
-        this->_kernels.front()->mark_as_deleted(sack);
+        auto& k = this->_kernels.front();
+        k->mark_as_deleted(sack);
+        k.release();
         this->_kernels.pop();
     }
     for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
     this->_listeners.clear();
-    for (auto* k : this->_trash) { k->mark_as_deleted(sack); }
+    for (auto& k : this->_trash) { k->mark_as_deleted(sack); k.release(); }
     this->_trash.clear();
 }
 

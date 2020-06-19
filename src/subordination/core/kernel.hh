@@ -11,6 +11,18 @@
 
 namespace sbn {
 
+    template <class T> using pointer = std::unique_ptr<T>;
+
+    template <class B, class A> inline pointer<B>
+    pointer_dynamic_cast(pointer<A>&& ptr) {
+        return pointer<B>(dynamic_cast<B*>(ptr.release()));
+    }
+
+    template <class T, class ... Args> inline pointer<T>
+    make_pointer(Args&& ... args) {
+        return pointer<T>(new T(std::forward<Args>(args)...));
+    }
+
     enum class kernel_field: sys::u8 {
         source = 1<<0,
         destination = 1<<1,
@@ -24,6 +36,7 @@ namespace sbn {
 
     public:
         using id_type = uint64_t;
+        template <class T> using pointer = ::sbn::pointer<T>;
 
     public:
         enum class phases: sys::u8 {
@@ -60,6 +73,7 @@ namespace sbn {
     protected:
         // node-local type id
         kernel_type::id_type _type_id = 0;
+        kernel_ptr* _this_ptr{};
 
     public:
 
@@ -334,7 +348,7 @@ namespace sbn {
         virtual void act();
 
         /// \brief Collects the output from the task from subordinate kernel \p child.
-        virtual void react(kernel* child);
+        virtual void react(kernel_ptr&& child);
 
         /// \brief Undo the side effects caused by failed execution of the kernel.
         virtual void rollback();
@@ -375,12 +389,6 @@ namespace sbn {
                              ? exit_code::success : return_code());
         }
 
-        inline void
-        return_to(kernel* rhs, exit_code ret = exit_code::success) noexcept {
-            principal(rhs);
-            return_code(ret);
-        }
-
         inline void point_to_point(kernel* k) {
             principal(k);
             phase(phases::point_to_point);
@@ -390,6 +398,13 @@ namespace sbn {
             principal_id(id);
             phase(phases::point_to_point);
         }
+
+        inline void this_ptr(kernel_ptr* rhs) noexcept { this->_this_ptr = rhs; }
+
+    protected:
+
+        inline kernel_ptr& this_ptr() noexcept { return *this->_this_ptr; }
+        inline const kernel_ptr& this_ptr() const noexcept { return *this->_this_ptr; }
 
     };
 

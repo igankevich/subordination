@@ -15,16 +15,16 @@ namespace sbn {
 
     private:
         struct compare_time {
-            inline bool operator()(const kernel* lhs, const kernel* rhs) const noexcept {
+            inline bool operator()(const kernel_ptr& lhs, const kernel_ptr& rhs) const noexcept {
                 return lhs->at() > rhs->at();
             }
         };
 
     private:
-        using kernel_queue = std::queue<kernel*>;
+        using kernel_queue = std::queue<kernel_ptr>;
         using kernel_queue_array = std::vector<kernel_queue>;
         using kernel_priority_queue =
-            std::priority_queue<kernel*,std::vector<kernel*>,compare_time>;
+            std::priority_queue<kernel_ptr,std::vector<kernel_ptr>,compare_time>;
         using mutex_type = std::mutex;
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = std::condition_variable;
@@ -64,17 +64,19 @@ namespace sbn {
         parallel_pipeline(const parallel_pipeline&) = delete;
         parallel_pipeline& operator=(const parallel_pipeline&) = delete;
 
-        inline void send(kernel* k) override {
-            if (k->phase() == kernel::phases::downstream) { this->send_downstream(k); }
-            else if (k->scheduled()) { this->send_timer(k); }
-            else { this->send_upstream(k); }
+        inline void send(kernel_ptr&& k) override {
+            if (k->phase() == kernel::phases::downstream) {
+                this->send_downstream(std::move(k));
+            } else if (k->scheduled()) { this->send_timer(std::move(k)); }
+            else { this->send_upstream(std::move(k)); }
         }
 
-        inline void send(kernel** kernels, size_t n) {
+        inline void send(kernel_ptr_array&& kernels) {
             bool notify_upstream = false, notify_timer = false;
+            const auto n = kernels.size();
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
-                auto* k = kernels[i];
+                auto& k = kernels[i];
                 if (k->phase() == kernel::phases::downstream) {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
@@ -82,8 +84,11 @@ namespace sbn {
                     // TODO Save the index of the pipeline that executed upstream phase
                     // of this kernel and then execute downstream phase by the same
                     // pipeline.
-                    const auto n = k->hash() % this->_downstream_kernels.size();
-                    this->_downstream_kernels[n].emplace(k);
+                    const auto num_upstream_threads = this->_upstream_threads.size();
+                    const auto num_downstream_threads = this->_downstream_threads.size();
+                    const auto size = std::max(num_upstream_threads,num_downstream_threads);
+                    const auto n = k->hash() % size;
+                    this->_downstream_kernels[n].emplace(std::move(k));
                     if (this->_downstream_threads.empty()) {
                         notify_upstream = true;
                     } else {
@@ -93,34 +98,37 @@ namespace sbn {
                     #if defined(SBN_DEBUG)
                     this->log("schedule _", *k);
                     #endif
-                    this->_timer_kernels.emplace(k), notify_timer = true;
+                    this->_timer_kernels.emplace(std::move(k)), notify_timer = true;
                 } else {
                     #if defined(SBN_DEBUG)
                     this->log("upstream _", *k);
                     #endif
-                    this->_upstream_kernels.emplace(k), notify_upstream = true;
+                    this->_upstream_kernels.emplace(std::move(k)), notify_upstream = true;
                 }
             }
             if (notify_upstream) { this->_upstream_semaphore.notify_all(); }
             if (notify_timer) { this->_timer_semaphore.notify_one(); }
         }
 
-        inline void send_upstream(kernel* k) {
+        inline void send_upstream(kernel_ptr&& k) {
             #if defined(SBN_DEBUG)
             this->log("upstream _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_upstream_kernels.emplace(k);
+            this->_upstream_kernels.emplace(std::move(k));
             this->_upstream_semaphore.notify_one();
         }
 
-        inline void send_downstream(kernel* k) {
+        inline void send_downstream(kernel_ptr&& k) {
             #if defined(SBN_DEBUG)
             this->log("downstream _", *k);
             #endif
             lock_type lock(this->_mutex);
-            const auto i = k->hash() % this->_downstream_kernels.size();
-            this->_downstream_kernels[i].emplace(k);
+            const auto num_upstream_threads = this->_upstream_threads.size();
+            const auto num_downstream_threads = this->_downstream_threads.size();
+            const auto size = std::max(num_upstream_threads,num_downstream_threads);
+            const auto i = k->hash() % size;
+            this->_downstream_kernels[i].emplace(std::move(k));
             if (this->_downstream_threads.empty()) {
                 this->_upstream_semaphore.notify_all();
             } else {
@@ -128,12 +136,12 @@ namespace sbn {
             }
         }
 
-        inline void send_timer(kernel* k) {
+        inline void send_timer(kernel_ptr&& k) {
             #if defined(SBN_DEBUG)
             this->log("schedule _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_timer_kernels.emplace(k);
+            this->_timer_kernels.emplace(std::move(k));
             this->_timer_semaphore.notify_one();
         }
 

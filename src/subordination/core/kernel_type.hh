@@ -15,7 +15,7 @@ namespace sbn {
     public:
         /// A portable type id
         using id_type = uint16_t;
-        using constructor_type = kernel* (*)(void*);
+        using constructor_type = kernel_ptr (*)();
 
     private:
         id_type _id;
@@ -32,39 +32,15 @@ namespace sbn {
         kernel_type(constructor_type ctr, std::type_index idx) noexcept:
         _id(0), _construct(ctr), _index(idx) {}
 
-        inline kernel* construct(void* ptr) const { return this->_construct(ptr); }
-
-        inline std::type_index
-        index() const noexcept {
-            return this->_index;
-        }
-
-        inline id_type
-        id() const noexcept {
-            return this->_id;
-        }
-
-        inline void
-        setid(id_type rhs) noexcept {
-            this->_id = rhs;
-        }
-
-        inline const char*
-        name() const noexcept {
-            return this->_index.name();
-        }
-
+        kernel_ptr construct() const;
+        inline std::type_index index() const noexcept { return this->_index; }
+        inline id_type id() const noexcept { return this->_id; }
+        inline void setid(id_type rhs) noexcept { this->_id = rhs; }
+        inline const char* name() const noexcept { return this->_index.name(); }
         inline bool has_id() const noexcept { return this->_id != 0; }
 
-        inline explicit
-        operator bool() const noexcept {
-            return this->_id != 0;
-        }
-
-        inline bool
-        operator !() const noexcept {
-            return this->_id == 0;
-        }
+        inline explicit operator bool() const noexcept { return this->_id != 0; }
+        inline bool operator !() const noexcept { return this->_id == 0; }
 
         inline bool
         operator==(const kernel_type& rhs) const noexcept {

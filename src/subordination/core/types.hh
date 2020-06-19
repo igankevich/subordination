@@ -38,7 +38,11 @@ namespace sbn {
     enum class process_role_type;
     enum class role_type;
 
-    using kernel_sack = std::vector<std::unique_ptr<kernel>>;
+    using kernel_ptr = std::unique_ptr<kernel>;
+    using kernel_ptr_array = std::vector<kernel_ptr>;
+    using foreign_kernel_ptr = std::unique_ptr<foreign_kernel>;
+    using kernel_sack = std::vector<kernel_ptr>;
+
 }
 
 #endif // vim:filetype=cpp

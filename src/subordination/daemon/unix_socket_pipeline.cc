@@ -83,13 +83,13 @@ void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
 
 void sbnd::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
-        auto* kernel = this->_kernels.front();
+        auto kernel = std::move(this->_kernels.front());
         this->_kernels.pop();
-        this->process_kernel(kernel);
+        this->process_kernel(std::move(kernel));
     }
 }
 
-void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
+void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel_ptr&& k) {
     if (k->phase() == sbn::kernel::phases::downstream) {
         if (!k->destination()) {
             k->destination(k->source());
@@ -102,14 +102,13 @@ void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
 }
 
 
-void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel* fk) {
+void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     auto result = this->_clients.find(fk->destination());
     if (result == this->_clients.end()) {
         log("client _ not found, deleting _", fk->destination(), *fk);
-        delete fk;
         return;
     }
-    result->second->forward(fk);
+    result->second->forward(std::move(fk));
 }
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
@@ -124,7 +123,7 @@ void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
         fill(this->_socket);
         receive_kernels(
             nullptr,
-            [this] (sbn::kernel* k) {
+            [this] (sbn::kernel_ptr& k) {
                 if (auto* a = k->source_application()) {
                     a->credentials(socket().credentials());
                 }

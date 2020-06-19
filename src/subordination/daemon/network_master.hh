@@ -36,7 +36,7 @@ namespace sbnd {
 
     public:
         void act() override;
-        void react(sbn::kernel* child) override;
+        void react(sbn::kernel_ptr&& child) override;
         void mark_as_deleted(sbn::kernel_sack& result) override;
 
         inline void
@@ -74,13 +74,13 @@ namespace sbnd {
         remove_ifaddr(const ifaddr_type& rhs);
 
         /// forward the probe to an appropriate discoverer
-        void forward_probe(probe* p);
-        void forward_hierarchy_kernel(Hierarchy_kernel* p);
-        void on_event(socket_pipeline_kernel* k);
-        void on_event(process_pipeline_kernel* k);
-        void report_status(Status_kernel* k);
-        void report_job_status(Job_status_kernel* k);
-        void report_pipeline_status(Pipeline_status_kernel* k);
+        void forward_probe(pointer<probe> p);
+        void forward_hierarchy_kernel(pointer<Hierarchy_kernel> p);
+        void on_event(pointer<socket_pipeline_kernel> k);
+        void on_event(pointer<process_pipeline_kernel> k);
+        void report_status(pointer<Status_kernel> k);
+        void report_job_status(pointer<Job_status_kernel> k);
+        void report_pipeline_status(pointer<Pipeline_status_kernel> k);
 
         map_iterator find_discoverer(const addr_type& a);
 

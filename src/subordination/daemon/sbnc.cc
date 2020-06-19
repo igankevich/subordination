@@ -183,8 +183,7 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Pipeline_status_ke
 
 class Main_kernel: public sbn::kernel {};
 
-sbn::kernel*
-new_application_kernel(int argc, char* argv[]) {
+sbn::kernel_ptr new_application_kernel(int argc, char* argv[]) {
     using string_array = sbn::application::string_array;
     string_array args, env;
     for (int i=1; i<argc; ++i) {
@@ -195,7 +194,7 @@ new_application_kernel(int argc, char* argv[]) {
     }
     auto* app = new sbn::application(args, env);
     app->working_directory(sys::canonical_path("."));
-    auto* k = new Main_kernel;
+    auto k = sbn::make_pointer<Main_kernel>();
     k->target_application(app);
     //k->source_application_id(app->id());
     k->destination(sys::socket_address(SBND_SOCKET));
@@ -212,20 +211,20 @@ public:
     Submit(int argc, char** argv): _argc(argc), _argv(argv) {}
 
     void act() override {
-        auto* k = new_application_kernel(this->_argc, this->_argv);
+        auto k = new_application_kernel(this->_argc, this->_argv);
         k->parent(this);
-        sbnc::factory.remote().send(k);
+        sbnc::factory.remote().send(std::move(k));
     }
 
-    void react(kernel* child) override {
-        auto* k = dynamic_cast<Main_kernel*>(child);
+    void react(sbn::kernel_ptr&& child) override {
+        auto k = sbn::pointer_dynamic_cast<Main_kernel>(std::move(child));
         if (k->return_code() != sbn::exit_code::success) {
             message("failed to submit _", k->source_application_id());
         } else {
             message("submitted _", k->source_application_id());
         }
         return_to_parent(k->return_code());
-        sbnc::factory.local().send(this);
+        sbnc::factory.local().send(std::move(this_ptr()));
     }
 
 };
@@ -334,25 +333,25 @@ public:
     }
 
     void act() override {
-        sbn::kernel* k = nullptr;
+        sbn::kernel_ptr k;
         switch (this->_entity_type) {
-            case Entity_type::Node: k = new sbnd::Status_kernel; break;
-            case Entity_type::Job: k = new sbnd::Job_status_kernel(this->_job_ids); break;
-            case Entity_type::Kernel: k = new sbnd::Pipeline_status_kernel; break;
+            case Entity_type::Node: k = sbn::make_pointer<sbnd::Status_kernel>(); break;
+            case Entity_type::Job: k = sbn::make_pointer<sbnd::Job_status_kernel>(this->_job_ids); break;
+            case Entity_type::Kernel: k = sbn::make_pointer<sbnd::Pipeline_status_kernel>(); break;
         }
         k->destination(sys::socket_address(SBND_SOCKET));
         k->principal_id(1); // TODO
         k->parent(this);
-        sbnc::factory.remote().send(k);
+        sbnc::factory.remote().send(std::move(k));
     }
 
-    void react(sbn::kernel* child) override {
+    void react(sbn::kernel_ptr&& child) override {
         if (child->return_code() != sbn::exit_code::success) {
             message("error: _", child->return_code());
             return;
         }
         if (typeid(*child) == typeid(sbnd::Status_kernel)) {
-            auto* k = dynamic_cast<sbnd::Status_kernel*>(child);
+            auto k = sbn::pointer_dynamic_cast<sbnd::Status_kernel>(std::move(child));
             switch (this->_output_format) {
                 case Format::Human:
                     std::cout << k->hierarchies();
@@ -362,7 +361,7 @@ public:
                     break;
             }
         } else if (typeid(*child) == typeid(sbnd::Job_status_kernel)) {
-            auto* k = dynamic_cast<sbnd::Job_status_kernel*>(child);
+            auto k = sbn::pointer_dynamic_cast<sbnd::Job_status_kernel>(std::move(child));
             switch (this->_output_format) {
                 case Format::Human:
                     std::cout << k->jobs();
@@ -372,7 +371,7 @@ public:
                     break;
             }
         } else if (typeid(*child) == typeid(sbnd::Pipeline_status_kernel)) {
-            auto* k = dynamic_cast<sbnd::Pipeline_status_kernel*>(child);
+            auto k = sbn::pointer_dynamic_cast<sbnd::Pipeline_status_kernel>(std::move(child));
             switch (this->_output_format) {
                 case Format::Human:
                     for (const auto& j : k->pipelines()) { std::cout << make_human(j); }
@@ -383,7 +382,7 @@ public:
             }
         }
         return_to_parent(child->return_code());
-        sbnc::factory.local().send(this);
+        sbnc::factory.local().send(std::move(this_ptr()));
     }
 
 };
@@ -412,13 +411,13 @@ int main(int argc, char* argv[]) {
     try {
         sbnc::factory.start();
         sbnc::factory.remote().use_localhost(false);
-        sbn::kernel* k = nullptr;
+        sbn::kernel_ptr k;
         switch (command) {
-            case Command::Submit: k = new Submit(argc, argv); break;
-            case Command::Status: k = new Status(argc, argv); break;
+            case Command::Submit: k = sbn::make_pointer<Submit>(argc, argv); break;
+            case Command::Status: k = sbn::make_pointer<Status>(argc, argv); break;
             default: break;
         }
-        sbnc::factory.local().send(k);
+        sbnc::factory.local().send(std::move(k));
     } catch (const std::exception& err) {
         message("failed to connect to daemon process: _", err.what());
         sbn::exit(1);
@@ -426,5 +425,6 @@ int main(int argc, char* argv[]) {
     auto ret = sbn::wait_and_return();
     sbnc::factory.stop();
     sbnc::factory.wait();
+    sbnc::factory.clear();
     return ret;
 }

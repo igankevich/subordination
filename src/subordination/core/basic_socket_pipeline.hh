@@ -36,7 +36,7 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
 
     private:
-        using kernel_queue = std::queue<kernel*>;
+        using kernel_queue = std::queue<kernel_ptr>;
         using size_type = connection_table::size_type;
         //using connection_table = std::unordered_map<sys::fd_type,connection_ptr>;
         using thread_type = std::thread;
@@ -58,7 +58,7 @@ namespace sbn {
         kernel_instance_registry* _instances = nullptr;
         transaction_log* _transactions = nullptr;
         kernel_array _listeners;
-        kernel_array _trash;
+        kernel_ptr_array _trash;
 
     public:
         class sentry {
@@ -83,18 +83,18 @@ namespace sbn {
         basic_socket_pipeline(const basic_socket_pipeline&) = delete;
         basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
 
-        inline void send(kernel* k) override {
+        inline void send(kernel_ptr&& k) override {
             #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_kernels.emplace(k);
+            this->_kernels.emplace(std::move(k));
             this->_semaphore.notify_one();
         }
 
-        inline void send(kernel** kernels, size_t n) {
+        inline void send(kernel_ptr_array&& kernels, size_t n) {
             lock_type lock(this->_mutex);
-            for (size_t i=0; i<n; ++i) { this->_kernels.emplace(kernels[i]); }
+            for (size_t i=0; i<n; ++i) { this->_kernels.emplace(std::move(kernels[i])); }
             this->_semaphore.notify_all();
         }
 
@@ -103,8 +103,11 @@ namespace sbn {
         void wait();
         void clear(kernel_sack& sack);
 
-        inline void write_transaction(transaction_status status, kernel* k) {
-            if (auto* tr = transactions()) { tr->write({status, index(), k}); }
+        inline kernel_ptr write_transaction(transaction_status status, kernel_ptr k) {
+            if (auto* tr = transactions()) {
+                return tr->write({status, index(), std::move(k)});
+            }
+            return k;
         }
 
         inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }
@@ -128,7 +131,7 @@ namespace sbn {
         inline const transaction_log* transactions() const noexcept { return this->_transactions; }
 
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
-        inline void trash(kernel* k) { this->_trash.emplace_back(k); }
+        inline void trash(kernel_ptr&& k) { this->_trash.emplace_back(std::move(k)); }
 
         void
         emplace_handler(const sys::epoll_event& ev, const connection_ptr& ptr) {

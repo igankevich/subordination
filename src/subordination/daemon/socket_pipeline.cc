@@ -276,14 +276,14 @@ void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_addres
     }
 }
 
-void sbnd::socket_pipeline::forward(sbn::foreign_kernel* hdr) {
+void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     lock_type lock(this->_mutex);
-    if (hdr->destination()) {
-        auto ptr = this->find_or_create_client(hdr->destination());
+    if (fk->destination()) {
+        auto ptr = this->find_or_create_client(fk->destination());
         #if defined(SBN_DEBUG)
-        this->log("fwd _ to _", *hdr, hdr->destination());
+        this->log("fwd _ to _", *fk, fk->destination());
         #endif
-        ptr->forward(hdr);
+        ptr->forward(std::move(fk));
         try {
             ptr->flush();
         } catch (const std::exception& err) {
@@ -292,24 +292,24 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel* hdr) {
         this->_semaphore.notify_one();
     } else {
         if (this->end_reached() &&
-            hdr->phase() == sbn::kernel::phases::upstream &&
-            hdr->carries_parent()) {
+            fk->phase() == sbn::kernel::phases::upstream &&
+            fk->carries_parent()) {
             this->find_next_client();
             if (this->end_reached()) {
-                this->log("forwarding kernel carrying parent to localhost _", *hdr);
+                this->log("forwarding kernel carrying parent to localhost _", *fk);
             }
         }
         if (this->end_reached()) {
             this->find_next_client();
             #if defined(SBN_DEBUG)
-            this->log("fwd _ to _", *hdr, "localhost");
+            this->log("fwd _ to _", *fk, "localhost");
             #endif
-            foreign_pipeline()->forward(hdr);
+            foreign_pipeline()->forward(std::move(fk));
         } else {
             #if defined(SBN_DEBUG)
-            this->log("fwd _ to _", *hdr, this->current_client().socket_address());
+            this->log("fwd _ to _", *fk, this->current_client().socket_address());
             #endif
-            this->current_client().forward(hdr);
+            this->current_client().forward(std::move(fk));
             this->find_next_client();
             this->_semaphore.notify_one();
         }
@@ -355,9 +355,7 @@ sbnd::socket_pipeline
     );
 }
 
-void
-sbnd::socket_pipeline
-::ensure_identity(sbn::kernel* k, const sys::socket_address& dest) {
+void sbnd::socket_pipeline::ensure_identity(sbn::kernel* k, const sys::socket_address& dest) {
     if (dest.family() == sys::family_type::unix) {
         set_kernel_id_2(k, this->_counter);
         if (auto* p = k->parent()) { set_kernel_id_2(p, this->_counter); }
@@ -425,20 +423,22 @@ sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const cl
 void sbnd::socket_pipeline::process_kernels() {
 //	lock_type lock(this->_mutex);
     while (!this->_kernels.empty()) {
-        auto* k = this->_kernels.front();
+        auto k = std::move(this->_kernels.front());
         this->_kernels.pop();
         try {
             this->process_kernel(k);
         } catch (const std::exception& err) {
             this->log_error(err);
-            k->source(k->destination());
-            k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
-            native_pipeline()->send(k);
+            if (k) {
+                k->source(k->destination());
+                k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
+                native_pipeline()->send(std::move(k));
+            }
         }
     }
 }
 
-void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
+void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
     // short circuit local server
     /*
        if (k->destination()) {
@@ -457,33 +457,32 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
             if (k->source() == conn->socket_address()) { continue; }
             conn->send(k);
         }
-        // delete broadcast kernel
-        delete k;
-    } else if (k->phase() == sbn::kernel::phases::upstream && k->destination() == sys::socket_address()) {
+    } else if (k->phase() == sbn::kernel::phases::upstream &&
+               k->destination() == sys::socket_address()) {
         bool success = false;
         if (this->_uselocalhost && !k->carries_parent()) {
             if (this->end_reached()) {
                 // include localhost in round-robin
                 // (short-circuit kernels when no upstream servers
                 // are available)
-                native_pipeline()->send(k);
+                native_pipeline()->send(std::move(k));
             } else {
                 success = true;
             }
         } else {
             if (this->_clients.empty()) {
                 if (k->carries_parent()) {
-                    log("warning, sending a kernel carrying parent to local pipeline _", k);
+                    log("warning, sending a kernel carrying parent to local pipeline _", *k);
                 }
                 //k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
-                native_pipeline()->send(k);
+                native_pipeline()->send(std::move(k));
             } else {
                 success = true;
             }
         }
         if (success) {
             if (end_reached()) { find_next_client(); }
-            ensure_identity(k, this->_iterator->second->socket_address());
+            ensure_identity(k.get(), this->_iterator->second->socket_address());
             this->_iterator->second->send(k);
         }
         this->find_next_client();
@@ -491,14 +490,14 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel* k) {
         // kernel @k was sent to local node
         // because no upstream servers had
         // been available
-        native_pipeline()->send(k);
+        native_pipeline()->send(std::move(k));
     } else {
         // create socket_address if necessary, and send kernel
         if (not k->destination()) {
             k->destination(k->source());
         }
         if (k->phase() == sbn::kernel::phases::point_to_point) {
-            ensure_identity(k, k->destination());
+            ensure_identity(k.get(), k->destination());
         }
         this->find_or_create_client(k->destination())->send(k);
     }

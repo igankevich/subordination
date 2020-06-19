@@ -49,14 +49,14 @@ namespace sbnd {
 
         void add_server(const sys::socket_address& rhs);
         void add_client(const sys::socket_address& addr);
-        void forward(sbn::foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
     private:
 
         void add_client(const sys::socket_address& addr, sys::socket&& sock);
 
         void process_kernels() override;
-        void process_kernel(sbn::kernel* k);
+        void process_kernel(sbn::kernel_ptr&& k);
 
         friend class unix_socket_server;
         friend class unix_socket_client;

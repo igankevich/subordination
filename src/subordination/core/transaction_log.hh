@@ -20,10 +20,10 @@ namespace sbn {
     struct transaction_record {
         transaction_status status;
         pipeline::index_type pipeline_index;
-        kernel* k;
+        kernel_ptr k;
         transaction_record() = default;
-        inline transaction_record(transaction_status s, pipeline::index_type i, kernel* kk):
-        status(s), pipeline_index(i), k(kk) {}
+        inline transaction_record(transaction_status s, pipeline::index_type i, kernel_ptr&& kk):
+        status(s), pipeline_index(i), k(std::move(kk)) {}
     };
 
     kernel_buffer& operator<<(kernel_buffer& out, const transaction_record& rhs);
@@ -51,7 +51,7 @@ namespace sbn {
         transaction_log(transaction_log&&) = default;
         transaction_log& operator=(transaction_log&&) = default;
 
-        void write(const transaction_record& record);
+        kernel_ptr write(transaction_record record);
 
         void open(const char* filename);
         void flush();

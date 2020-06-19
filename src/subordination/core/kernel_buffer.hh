@@ -98,8 +98,9 @@ namespace sbn {
         void write(const sys::interface_address<T>& rhs);
         template <class T>
         void read(sys::interface_address<T>& rhs);
-        void write(kernel* k);
-        void read(kernel*& k);
+        void write(const kernel* k);
+        inline void write(const kernel_ptr& k) { this->write(k.get()); }
+        void read(kernel_ptr& k);
 
         template <class T> inline kernel_buffer&
         operator<<(const T& rhs) { this->write(rhs); return *this; }

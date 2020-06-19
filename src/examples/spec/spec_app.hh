@@ -270,7 +270,7 @@ struct Spectrum_kernel: public sbn::kernel {
     void act() override {
         // TODO Filter 999 values.
         _variance = compute_variance();
-        sbn::commit(this);
+        sbn::commit(std::move(this_ptr()));
     }
 
     float spectrum(int32_t i, float angle) {
@@ -337,8 +337,8 @@ struct Station_kernel: public sbn::kernel {
         out << std::flush;
     }
 
-    void react(kernel* child) override {
-        Spectrum_kernel* k = dynamic_cast<Spectrum_kernel*>(child);
+    void react(sbn::kernel_ptr&& child) override {
+        auto k = sbn::pointer_dynamic_cast<Spectrum_kernel>(std::move(child));
         _out_matrix[k->date()] = k->variance();
         if (--_count == 0) {
             #if defined(SBN_DEBUG)
@@ -350,14 +350,14 @@ struct Station_kernel: public sbn::kernel {
             #endif
             _observations.clear();
             _spectra.clear();
-            sbn::commit<sbn::Remote>(this);
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
     }
 
     void act() override {
         // skip records when some variables are missing
         if (_observations.size() != NUM_VARIABLES) {
-            sbn::commit<sbn::Remote>(this);
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
             return;
         }
         std::for_each(_observations.cbegin(), _observations.cend(),
@@ -428,9 +428,10 @@ struct Station_kernel: public sbn::kernel {
         _count = _spectra.size();
         std::for_each(_spectra.begin(), _spectra.end(),
             [this] (decltype(_spectra)::value_type& pair) {
-                Spectrum_kernel* k = new Spectrum_kernel(pair.second, pair.first, _frequencies);
+                auto k =
+                    sbn::make_pointer<Spectrum_kernel>(pair.second, pair.first, _frequencies);
 //				k->setf(kernel_flag::priority_service);
-                sbn::upstream(this, k);
+                sbn::upstream(this, std::move(k));
             }
         );
     }
@@ -498,8 +499,8 @@ struct Year_kernel: public sbn::kernel {
         return _count == _observations.size();
     }
 
-    void react(sbn::kernel* child) override {
-        Station_kernel* k = dynamic_cast<Station_kernel*>(child);
+    void react(sbn::kernel_ptr&& child) override {
+        auto k = sbn::pointer_dynamic_cast<Station_kernel>(std::move(child));
         if (!_output_file.is_open()) {
             _output_file.open(output_filename());
         }
@@ -514,7 +515,7 @@ struct Year_kernel: public sbn::kernel {
         #endif
         _num_spectra += k->num_processed_spectra();
         if (++_count == _observations.size()) {
-            sbn::commit(this);
+            sbn::commit(std::move(this_ptr()));
         }
     }
 
@@ -523,7 +524,7 @@ struct Year_kernel: public sbn::kernel {
             [this] (const decltype(_observations)::value_type& pair) {
                 sbn::upstream<sbn::Remote>(
                     this,
-                    new Station_kernel(pair.second, pair.first, _year)
+                    sbn::make_pointer<Station_kernel>(pair.second, pair.first, _year)
                 );
             }
         );
@@ -611,25 +612,25 @@ struct Launcher: public sbn::kernel {
         std::for_each(observations.cbegin(), observations.cend(),
             [this] (const decltype(observations)::value_type& pair) {
                 Year year = pair.first;
-                _yearkernels[year] = new Year_kernel(pair.second, year);
+                _yearkernels[year] = sbn::make_pointer<Year_kernel>(pair.second, year);
                 submit_station_kernels(pair.second, year);
                 // upstream<Remote>(new Year_kernel(pair.second, year));
             }
         );
     }
 
-    void react(kernel* child) override {
-        // Year_kernel* k = dynamic_cast<Year_kernel*>(k);
-        Station_kernel* k1 = dynamic_cast<Station_kernel*>(child);
-        Year_kernel* k = _yearkernels[k1->year()];
-        k->react(k1);
+    void react(sbn::kernel_ptr&& child) override {
+        // auto k = sbn::pointer_dynamic_cast<Year_kernel>(std::move(k));
+        auto k1 = sbn::pointer_dynamic_cast<Station_kernel>(std::move(child));
+        auto year = k1->year();
+        auto& k = _yearkernels[year];
+        k->react(std::move(k1));
         if (k->finished()) {
             #if defined(SBN_DEBUG)
             sys::log_message("spec", "finished year _", k->year());
             #endif
             _count_spectra += k->num_processed_spectra();
-            _yearkernels.erase(k1->year());
-            delete k;
+            _yearkernels.erase(year);
             if (++_count == 0) {
                 #if defined(SBN_DEBUG)
                 sys::log_message("spec", "total number of processed spectra _", _count_spectra);
@@ -644,9 +645,9 @@ struct Launcher: public sbn::kernel {
                     log << _count_spectra << std::endl;
                 }
                 #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-                sbn::commit<sbn::Local>(this);
+                sbn::commit<sbn::Local>(std::move(this_ptr()));
                 #else
-                sbn::commit<sbn::Remote>(this);
+                sbn::commit<sbn::Remote>(std::move(this_ptr()));
                 #endif
             }
         }
@@ -670,7 +671,7 @@ struct Launcher: public sbn::kernel {
             [this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
                 sbn::upstream<sbn::Remote>(
                     this,
-                    new Station_kernel(pair.second, pair.first, _year)
+                    sbn::make_pointer<Station_kernel>(pair.second, pair.first, _year)
                 );
             }
         );
@@ -681,28 +682,26 @@ private:
     int32_t _count_spectra;
     Time _time0;
 
-    std::unordered_map<Year, Year_kernel*> _yearkernels;
+    std::unordered_map<Year,pointer<Year_kernel>> _yearkernels;
 };
 
 struct Spec_app: public sbn::kernel {
 
-    void
-    act() override {
+    void act() override {
         #if defined(SBN_DEBUG)
         sys::log_message("spec", "program start");
         #endif
         #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-        sbn::upstream<sbn::Local>(this, new Launcher);
+        sbn::upstream<sbn::Local>(this, sbn::make_pointer<Launcher>());
         #else
-        Launcher* launcher = new Launcher;
+        auto launcher = sbn::make_pointer<Launcher>();
         launcher->setf(sbn::kernel_flag::carries_parent);
-        sbn::upstream<sbn::Remote>(this, launcher);
+        sbn::upstream<sbn::Remote>(this, std::move(launcher));
         #endif
     }
 
-    void
-    react(kernel*) override {
-        sbn::commit<sbn::Local>(this);
+    void react(sbn::kernel_ptr&&) override {
+        sbn::commit<sbn::Local>(std::move(this_ptr()));
     }
 
 };

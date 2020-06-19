@@ -65,7 +65,7 @@ public:
         }
         log("subordinate act id _ number _ count _", id(), this->_number,
             this->_nsubordinates);
-        sbn::commit<sbn::Remote>(this);
+        sbn::commit<sbn::Remote>(std::move(this_ptr()));
     }
 
     void write(sbn::kernel_buffer& out) const override {
@@ -100,13 +100,13 @@ public:
         log("superior start");
         if (!test_superior_failure()) { is_superior = true; }
         for (uint32_t i=0; i<this->_nkernels; ++i) {
-            subordinate_kernel* subordinate = new subordinate_kernel(i+1, this->_nkernels);
-            sbn::upstream<sbn::Remote>(this, subordinate);
+            auto subordinate = sbn::make_pointer<subordinate_kernel>(i+1, this->_nkernels);
+            sbn::upstream<sbn::Remote>(this, std::move(subordinate));
         }
     }
 
-    void react(sbn::kernel* child) {
-        subordinate_kernel* k = dynamic_cast<subordinate_kernel*>(child);
+    void react(sbn::kernel_ptr&& child) {
+        auto k = sbn::pointer_dynamic_cast<subordinate_kernel>(std::move(child));
         ++this->_nreturned;
         if (k->source()) {
             log("superior react _ [_/_] from _", k->number(),
@@ -117,9 +117,9 @@ public:
         if (this->_nreturned == this->_nkernels) {
             log("superior finish");
             if (test_without_failures()) {
-                sbn::commit(this);
+                sbn::commit(std::move(this_ptr()));
             } else {
-                sbn::commit<sbn::Remote>(this);
+                sbn::commit<sbn::Remote>(std::move(this_ptr()));
             }
         }
     }
@@ -146,15 +146,15 @@ public:
     act() override {
         log("grand start");
         if (test_superior_failure()) { is_superior = true; }
-        superior_kernel* superior = new superior_kernel;
+        auto superior = sbn::make_pointer<superior_kernel>();
         superior->setf(sbn::kernel_flag::carries_parent);
-        sbn::upstream<sbn::Remote>(this, superior);
+        sbn::upstream<sbn::Remote>(this, std::move(superior));
     }
 
     void
-    react(sbn::kernel* child) {
+    react(sbn::kernel_ptr&& child) {
         log("grand finish");
-        sbn::commit(this);
+        sbn::commit(std::move(this_ptr()));
     }
 
     void write(sbn::kernel_buffer& out) const override {

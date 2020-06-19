@@ -87,7 +87,7 @@ struct Test_socket: public sbn::kernel {
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
-                remote.send(this);
+                remote.send(std::move(this_ptr()));
             }
         } else if (failure == Failure::Master) {
             if (role == Role::Master) {
@@ -99,7 +99,7 @@ struct Test_socket: public sbn::kernel {
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
-                remote.send(this);
+                remote.send(std::move(this_ptr()));
             }
         } else if (failure == Failure::Power) {
             delete this;
@@ -122,7 +122,7 @@ struct Test_socket: public sbn::kernel {
             }
         } else {
             return_to_parent(sbn::exit_code::success);
-            remote.send(this);
+            remote.send(std::move(this_ptr()));
         }
     }
 
@@ -158,21 +158,21 @@ struct Sender: public sbn::kernel {
 
     void act() override {
         for (uint32_t i=0; i<NUM_KERNELS; ++i) {
-            auto* k = new Test_socket(_input);
+            auto k = sbn::make_pointer<Test_socket>(_input);
             k->parent(this);
-            remote.send(k);
+            remote.send(std::move(k));
         }
     }
 
-    void react(sbn::kernel* child) override {
-        auto* test_kernel = dynamic_cast<Test_socket*>(child);
+    void react(sbn::kernel_ptr&& child) override {
+        auto test_kernel = sbn::pointer_dynamic_cast<Test_socket>(std::move(child));
         std::vector<Datum> output = test_kernel->data();
         EXPECT_EQ(this->_input.size(), output.size());
         EXPECT_EQ(this->_input, output);
         message("returned _/_", _num_returned+1, NUM_KERNELS);
         if (++_num_returned == NUM_KERNELS) {
             this->return_to_parent(sbn::exit_code::success);
-            remote.send(this);
+            remote.send(std::move(this_ptr()));
         }
     }
 
@@ -205,15 +205,15 @@ struct Main: public sbn::kernel {
 
     void act() override {
         size_t sz = 1 << 1;
-        auto* sender = new Sender(sz);
+        auto sender = sbn::make_pointer<Sender>(sz);
         sender->parent(this);
         sender->setf(sbn::kernel_flag::carries_parent);
-        remote.send(sender);
+        remote.send(std::move(sender));
     }
 
-    void react(sbn::kernel*) override {
+    void react(sbn::kernel_ptr&&) override {
         return_to_parent(sbn::exit_code::success);
-        local.send(this);
+        local.send(std::move(this_ptr()));
     }
 
 };
@@ -276,7 +276,7 @@ TEST(socket_pipeline, _) {
     remote.start();
 
     if (role == Role::Master && !restore) {
-        local.send(new Main);
+        local.send(sbn::make_pointer<Main>());
     }
 
     int retval = sbn::wait_and_return();

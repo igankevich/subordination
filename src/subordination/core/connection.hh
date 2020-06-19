@@ -43,7 +43,7 @@ namespace sbn {
     class connection {
 
     private:
-        using kernel_queue = std::deque<kernel*>;
+        using kernel_queue = std::deque<kernel_ptr>;
         using id_type = typename kernel::id_type;
 
     public:
@@ -75,18 +75,22 @@ namespace sbn {
         connection(connection&&) = delete;
         connection& operator=(connection&&) = delete;
 
-        void send(kernel* k);
-        inline void forward(foreign_kernel* k) { if (do_forward(k)) { delete k; } }
+        void send(kernel_ptr& k);
+
+        inline void forward(foreign_kernel_ptr&& k) {
+            do_forward(std::move(k));
+        }
+
         void clear(kernel_sack& sack);
 
         /// \param[in] from socket address from which kernels are received
         void receive_kernels(const application* from_application=nullptr) {
-            this->receive_kernels(from_application, [] (kernel*) {});
+            this->receive_kernels(from_application, [] (kernel_ptr&) {});
         }
 
         // TODO std::function is slow
         void receive_kernels(const application* from_application,
-                             std::function<void(kernel*)> func);
+                             std::function<void(kernel_ptr&)> func);
 
         virtual void handle(const sys::epoll_event& event);
 
@@ -140,9 +144,9 @@ namespace sbn {
 
     protected:
 
-        bool do_forward(foreign_kernel* k);
+        foreign_kernel_ptr do_forward(foreign_kernel_ptr&& k);
         void recover_kernels(bool downstream);
-        virtual void receive_foreign_kernel(foreign_kernel* fk);
+        virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
 
         template <class Sink>
         inline void flush(Sink& sink) {
@@ -165,12 +169,12 @@ namespace sbn {
 
     private:
 
-        void write_kernel(kernel* k) noexcept;
-        kernel* read_kernel(const application* from_application);
-        void receive_kernel(kernel* k, std::function<void(kernel*)> func);
-        void plug_parent(kernel* k);
-        bool save_kernel(kernel* k);
-        void recover_kernel(kernel* k);
+        void write_kernel(const kernel_ptr& k) noexcept;
+        kernel_ptr read_kernel(const application* from_application);
+        void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
+        void plug_parent(kernel_ptr& k);
+        kernel_ptr save_kernel(kernel_ptr&& k);
+        void recover_kernel(kernel_ptr& k);
 
         template <class E> inline void
         log_write_error(const E& err) { this->log("write error _", err); }

@@ -23,7 +23,7 @@ namespace sbn {
         virtual ~child_process_pipeline() = default;
         child_process_pipeline(child_process_pipeline&& rhs) = default;
 
-        void send(kernel* k) override;
+        void send(kernel_ptr&& k) override;
         void add_connection();
 
     protected:

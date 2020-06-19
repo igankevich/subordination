@@ -37,13 +37,14 @@ sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const transaction_record
 sbn::transaction_log::transaction_log() { this->_buffer.carry_all_parents(false); }
 sbn::transaction_log::~transaction_log() { close(); }
 
-void sbn::transaction_log::write(const transaction_record& record) {
+sbn::kernel_ptr sbn::transaction_log::write(transaction_record record) {
     lock_type lock(this->_mutex);
     this->_buffer << record;
     this->_buffer.flip();
     this->_buffer.flush(this->_file_descriptor);
     this->_buffer.compact();
     log("store _ _", *record.k, _file_descriptor.offset());
+    return std::move(record.k);
 }
 
 void sbn::transaction_log::flush() {
@@ -86,7 +87,6 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
         auto first = records.begin(), last = records.end();
         while (first != last) {
             if (first->k->id() == id) {
-                delete first->k;
                 first = records.erase(first);
             } else { ++first; }
         }
@@ -113,7 +113,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
             if (!g) { break; }
             transaction_status status{};
             pipeline::index_type pipeline_index{};
-            kernel* k = nullptr;
+            kernel_ptr k;
             buf.read(status);
             buf.read(pipeline_index);
             if (status == transaction_status::end) {
@@ -125,12 +125,12 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
                 // when enabled, the buffer saves all hierarchy of parent kernels,
                 // not just the closest one
                 buf.read(k);
-                records.emplace_back(status, pipeline_index, k);
-                auto* p = k;
+                auto* p = k.get();
                 while (p) {
                     parents[p->id()] = p;
                     p = p->parent();
                 }
+                records.emplace_back(status, pipeline_index, std::move(k));
             }
         }
         buf.compact();
@@ -139,12 +139,10 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     buf.clear();
     for (auto& r : records) {
         if (r.pipeline_index >= this->_pipelines.size()) {
-            log("wrong pipeline index _, deleting _", r.pipeline_index, r.k);
-            delete r.k;
+            log("wrong pipeline index _, deleting _", r.pipeline_index, r.k.get());
             r.k = nullptr;
         } else if (!r.k->carries_parent()) {
-            log("does not carry parent, deleting _", r.k);
-            delete r.k;
+            log("does not carry parent, deleting _", r.k.get());
             r.k = nullptr;
         } else {
             new_buffer << r;
@@ -176,7 +174,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
             if (result != parents.end()) {
                 r.k->parent(result->second);
             }
-            this->_pipelines[r.pipeline_index]->send(r.k);
+            this->_pipelines[r.pipeline_index]->send(std::move(r.k));
         }
     }
     // TODO clean log periodically

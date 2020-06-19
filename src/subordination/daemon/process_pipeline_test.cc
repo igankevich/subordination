@@ -52,7 +52,7 @@ public:
         message("Test_socket::act(): It works!");
         return_to_parent(sbn::exit_code::success);
         #if defined(SUBORDINATION_TEST_APPLICATION)
-        remote.send(this);
+        remote.send(std::move(this_ptr()));
         #endif
     }
 
@@ -93,21 +93,21 @@ public:
     void act() override {
         for (uint32_t i=1; i<=NUM_SIZES; ++i) {
             message("sent _/_", i, NUM_SIZES);
-            auto* k = new Test_socket;
+            auto k = sbn::make_pointer<Test_socket>();
 //			k->setapp(sys::this_process::id());
             k->parent(this);
             #if defined(SUBORDINATION_TEST_APPLICATION)
-            remote.send(k);
+            remote.send(std::move(k));
             #endif
         }
     }
 
-    void react(kernel*) override {
+    void react(sbn::kernel_ptr&&) override {
         message("returned _/_", _num_returned+1, NUM_SIZES);
         if (++_num_returned == NUM_SIZES) {
             message("finished");
             return_to_parent(sbn::exit_code::success);
-            local.send(this);
+            local.send(std::move(this_ptr()));
         }
     }
 
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
     remote.start();
     local.name("local");
     local.start();
-    local.send(new Main);
+    local.send(sbn::make_pointer<Main>());
     auto ret = sbn::wait_and_return();
     message("application returned _", ret);
     remote.stop();

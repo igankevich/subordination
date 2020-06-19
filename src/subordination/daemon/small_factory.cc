@@ -25,4 +25,10 @@ void sbnc::Factory::wait() {
     this->_remote.wait();
 }
 
+void sbnc::Factory::clear() {
+    sbn::kernel_sack sack;
+    this->_local.clear(sack),
+    this->_remote.clear(sack);
+}
+
 sbnc::Factory sbnc::factory;

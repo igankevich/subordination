@@ -82,7 +82,7 @@ namespace sbnd {
         void
         add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void forward(sbn::foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
         inline void
         port(sys::port_type rhs) noexcept {
@@ -179,8 +179,7 @@ namespace sbnd {
         }
 
         void process_kernels() override;
-
-        void process_kernel(sbn::kernel* k);
+        void process_kernel(sbn::kernel_ptr& k);
 
         client_ptr
         find_or_create_client(const sys::socket_address& addr);
@@ -195,11 +194,11 @@ namespace sbnd {
         inline void fire_event_kernels(Args&& ... args) {
             if (!native_pipeline()) { return; }
             for (auto* target : this->_listeners) {
-                auto* k = new socket_pipeline_kernel(std::forward<Args>(args)...);
-                k->parent(k);
+                sbn::kernel_ptr k(new socket_pipeline_kernel(std::forward<Args>(args)...));
+                k->parent(k.get());
                 k->principal(target);
                 k->phase(sbn::kernel::phases::point_to_point);
-                native_pipeline()->send(k);
+                native_pipeline()->send(std::move(k));
             }
         }
 

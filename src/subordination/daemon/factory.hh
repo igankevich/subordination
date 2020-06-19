@@ -32,18 +32,18 @@ namespace sbnd {
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;
 
-        inline void send(sbn::kernel* k) { this->_local.send(k); }
-        inline void send_remote(sbn::kernel* k) { this->_remote.send(k); }
+        inline void send(sbn::kernel_ptr&& k) { this->_local.send(std::move(k)); }
+        inline void send_remote(sbn::kernel_ptr&& k) { this->_remote.send(std::move(k)); }
 
         inline void
-        send_unix(sbn::kernel* k) {
+        send_unix(sbn::kernel_ptr&& k) {
             #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-            this->_unix.send(k);
+            this->_unix.send(std::move(k));
             #endif
         }
 
-        inline void schedule(sbn::kernel* k) { this->_local.send(k); }
-        inline void schedule(sbn::kernel** k, size_t n) { this->_local.send(k, n); }
+        inline void schedule(sbn::kernel_ptr&& k) { this->_local.send(std::move(k)); }
+        inline void schedule(sbn::kernel_ptr_array&& k) { this->_local.send(std::move(k)); }
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
         inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 
@@ -55,8 +55,8 @@ namespace sbnd {
 
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         inline void
-        send_child(sbn::kernel* k) {
-            this->_process.send(k);
+        send_child(sbn::kernel_ptr&& k) {
+            this->_process.send(std::move(k));
         }
 
         inline process_pipeline& process() noexcept { return this->_process; }

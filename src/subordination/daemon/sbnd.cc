@@ -111,19 +111,19 @@ int main(int argc, char* argv[]) {
         factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         factory.process().allow_root(allow_root);
         #endif
-        auto* m = new network_master;
+        auto m = sbn::make_pointer<network_master>();
         m->id(1);
         m->allow(servers);
         m->fanout(fanout);
         m->interval(network_interface_update_interval);
         m->network_scan_interval(network_scan_interval);
-        factory.instances().add(m);
-        factory.process().add_listener(m);
+        factory.instances().add(m.get());
+        factory.process().add_listener(m.get());
         factory.remote().connection_timeout(connection_timeout);
         factory.remote().max_connection_attempts(max_connection_attempts);
-        factory.remote().add_listener(m);
+        factory.remote().add_listener(m.get());
         factory.start();
-        factory.local().send(m);
+        factory.local().send(std::move(m));
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         sbn::exit(1);

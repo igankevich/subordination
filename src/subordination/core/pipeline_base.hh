@@ -85,9 +85,9 @@ namespace sbn {
         index_type _index{};
 
     public:
-        virtual void send(kernel* k) = 0;
-        virtual void forward(foreign_kernel* k);
-        virtual void recover(kernel* k);
+        virtual void send(kernel_ptr&& k) = 0;
+        virtual void forward(foreign_kernel_ptr&& k);
+        virtual void recover(kernel_ptr&& k);
 
         inline index_type index() const noexcept { return this->_index; }
         inline void index(index_type rhs) noexcept { this->_index = rhs; }
