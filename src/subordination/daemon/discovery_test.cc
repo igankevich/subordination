@@ -209,6 +209,20 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
     }
 }
 
+sys::argstream sbnd_args() {
+    sys::argstream args;
+    args.append(SBND_PATH);
+    args.append("fanout=2");
+    args.append("allow-root=1");
+    // tolerate asynchronous start of daemons
+    args.append("connection-timeout=1s");
+    args.append("max-connection-attempts=10");
+    args.append("network-scan-interval=5s");
+    // never update NICs
+    args.append("network-interface-update-interval=1h");
+    return args;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         throw std::invalid_argument("usage: discovery-test <failure>");
@@ -225,18 +239,17 @@ int main(int argc, char* argv[]) {
     //app.execution_delay(std::chrono::seconds(1));
     app.cluster(std::move(cluster));
     {
-        sys::argstream args;
-        args.append(SBND_PATH);
-        args.append("fanout=2");
-        args.append("allow-root=1");
-        // tolerate asynchronous start of daemons
-        args.append("connection-timeout=1s");
-        args.append("max-connection-attempts=10");
-        args.append("network-scan-interval=5s");
-        // never update NICs
-        args.append("network-interface-update-interval=1h");
-        // run daemon on each cluster node
-        app.add_process(dts::cluster_node_bitmap(app.cluster().size(), true), std::move(args));
+        // run sbnd on each cluster node
+        const auto num_nodes = app.cluster().size();
+        for (size_t i=0; i<num_nodes; ++i) {
+            auto args = sbnd_args();
+            std::stringstream tmp;
+            tmp << app.cluster().name() << (i+1);
+            const auto& transactions_directory = tmp.str();
+            std::remove(sys::path(transactions_directory, "transactions").data());
+            args << "transactions-directory=" << transactions_directory << '\0';
+            app.add_process(i, std::move(args));
+        }
     }
     app.emplace_test(
         "Wait for superior node to find subordinate nodes.",
@@ -257,6 +270,10 @@ int main(int argc, char* argv[]) {
         "Check node weights.",
         [&] (dts::application& app, const dts::application::line_array& lines) {
             test_weights(lines, 2, 2);
+        });
+    app.emplace_test(
+        "Run test application.",
+        [&] (dts::application& app, const dts::application::line_array& lines) {
             sys::argstream args;
             args.append(SBNC_PATH);
             args.append(APP_PATH);
@@ -265,6 +282,40 @@ int main(int argc, char* argv[]) {
             app.run_process(dts::cluster_node_bitmap(app.cluster().size(), {0}),
                             std::move(args));
         });
+    app.emplace_test(
+        "Check that at least one subordinate kernel is executed on each node.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            expect_event(lines, R"(^x1.*app.*subordinate act.*$)");
+            expect_event(lines, R"(^x2.*app.*subordinate act.*$)");
+        });
+    if (expected_failure != "no-failure") {
+        app.emplace_test(
+            "Simulate failure",
+            [] (dts::application& app, const dts::application::line_array& lines) {
+                if (expected_failure == "superior-failure") {
+                    app.kill_process(0, sys::signal::kill);
+                }
+                if (expected_failure == "subordinate-failure") {
+                    app.kill_process(1, sys::signal::kill);
+                }
+                if (expected_failure == "power-failure") {
+                    app.kill_process(0, sys::signal::kill);
+                    app.kill_process(1, sys::signal::kill);
+                }
+            });
+    }
+    if (expected_failure == "power-failure") {
+        app.emplace_test(
+            "Restart sbnd.",
+            [] (dts::application& app, const dts::application::line_array& lines) {
+                const auto num_nodes = app.cluster().size();
+                for (size_t i=0; i<num_nodes; ++i) {
+                    auto args = sbnd_args();
+                    args << "transactions-directory=" << app.cluster().name() << (i+1) << '\0';
+                    app.run_process(i, std::move(args));
+                }
+            });
+    }
     app.emplace_test(
         "Check that test application finished successfully.",
         [] (dts::application& app, const dts::application::line_array& lines) {

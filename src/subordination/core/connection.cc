@@ -96,14 +96,13 @@ void sbn::connection::send(kernel_ptr& k) {
     }
 }
 
-sbn::foreign_kernel_ptr sbn::connection::do_forward(foreign_kernel_ptr&& k) {
+sbn::foreign_kernel_ptr sbn::connection::do_forward(foreign_kernel_ptr k) {
     {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
         this->_output_buffer.write(k.get());
     }
-    auto returned_kernel = save_kernel(std::move(k));
-    return pointer_dynamic_cast<foreign_kernel>(std::move(returned_kernel));
+    return pointer_dynamic_cast<foreign_kernel>(save_kernel(std::move(k)));
 }
 
 void sbn::connection::write_kernel(const kernel_ptr& k) noexcept {
@@ -244,7 +243,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
     }
 }
 
-sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr&& k) {
+sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
     //if (k->type_id() == 1) {
     //    log("delete main kernel _", *k);
     //    return true;
@@ -263,7 +262,7 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr&& k) {
     if (bool(this->_flags & connection_flags::write_transaction_log) &&
         status != transaction_status{} && parent()->transactions()) {
         try {
-            k = parent()->write_transaction(status, std::move(k));
+            parent()->write_transaction(status, k);
         } catch (const sbn::error& err) {
             log_write_error(err);
         } catch (const std::exception& err) {

@@ -77,7 +77,7 @@ namespace sbn {
 
         void send(kernel_ptr& k);
 
-        inline void forward(foreign_kernel_ptr&& k) {
+        inline void forward(foreign_kernel_ptr k) {
             do_forward(std::move(k));
         }
 
@@ -144,7 +144,7 @@ namespace sbn {
 
     protected:
 
-        foreign_kernel_ptr do_forward(foreign_kernel_ptr&& k);
+        foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
         void recover_kernels(bool downstream);
         virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
 
@@ -173,7 +173,7 @@ namespace sbn {
         kernel_ptr read_kernel(const application* from_application);
         void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
         void plug_parent(kernel_ptr& k);
-        kernel_ptr save_kernel(kernel_ptr&& k);
+        kernel_ptr save_kernel(kernel_ptr k);
         void recover_kernel(kernel_ptr& k);
 
         template <class E> inline void

@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include <unistdx/base/command_line>
+#include <unistdx/fs/canonical_path>
+#include <unistdx/fs/mkdirs>
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
@@ -85,6 +87,7 @@ int main(int argc, char* argv[]) {
     sys::u32 max_connection_attempts = 1;
     Duration network_interface_update_interval = std::chrono::minutes(1);
     Duration network_scan_interval = std::chrono::minutes(1);
+    sys::path transactions_directory(SBND_SHARED_STATE_DIR);
     sys::input_operator_type options[] = {
         sys::ignore_first_argument(),
         sys::make_key_value("fanout", fanout),
@@ -95,6 +98,7 @@ int main(int argc, char* argv[]) {
         sys::make_key_value("network-interface-update-interval",
                             network_interface_update_interval),
         sys::make_key_value("network-scan-interval", network_scan_interval),
+        sys::make_key_value("transactions-directory", transactions_directory),
         nullptr
     };
     sys::parse_arguments(argc, argv, options);
@@ -107,6 +111,9 @@ int main(int argc, char* argv[]) {
     factory.types().add<Status_kernel>(4);
     factory.types().add<Terminate_kernel>(5);
     try {
+        sys::mkdirs(transactions_directory);
+        transactions_directory = sys::canonical_path(transactions_directory);
+        factory.transactions(sys::path(transactions_directory, "transactions").data());
         #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
         factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         factory.process().allow_root(allow_root);

@@ -64,6 +64,8 @@ namespace sbnd {
 
         #endif
 
+        void transactions(const char* filename);
+
         inline void start() {
             this->_local.start();
             this->_remote.start();

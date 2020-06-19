@@ -103,6 +103,7 @@ namespace dts {
         arguments_array _arguments;
         std::vector<cluster_node_bitmap> _where;
         sys::process_group _child_processes;
+        std::vector<size_t> _child_process_nodes;
         std::vector<process_output> _output;
         sys::event_poller _poller;
         std::thread _output_thread;
@@ -142,6 +143,19 @@ namespace dts {
         inline duration execution_delay() const noexcept { return this->_execution_delay; }
         void add_process(cluster_node_bitmap nodes, sys::argstream args);
         void run_process(cluster_node_bitmap where, sys::argstream args);
+        void kill_process(cluster_node_bitmap where, sys::signal signal);
+
+        inline void add_process(size_t node_no, sys::argstream args) {
+            add_process(cluster_node_bitmap(cluster().size(), {node_no}), std::move(args));
+        }
+
+        inline void run_process(size_t node_no, sys::argstream args) {
+            run_process(cluster_node_bitmap(cluster().size(), {node_no}), std::move(args));
+        }
+
+        inline void kill_process(size_t node_no, sys::signal signal) {
+            kill_process(cluster_node_bitmap(cluster().size(), {node_no}), signal);
+        }
 
         inline void add_test(test t) { this->_tests.emplace(std::move(t)); }
         template <class ... Args>

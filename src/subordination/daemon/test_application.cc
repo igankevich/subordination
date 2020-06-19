@@ -50,21 +50,17 @@ public:
     {}
 
     void act() override {
+        log("subordinate act id _ number _ count _", id(), this->_number,
+            this->_nsubordinates);
         if (!test_without_failures()) {
             using namespace sbn::this_application;
             if ((test_superior_failure() && is_superior) ||
                 (test_subordinate_failure() && !is_superior) ||
                 test_power_failure()) {
-                // TODO move this logic to dtest
-                log("kill _ at _ parent _", is_superior ? "superior" : "subordinate",
-                    sys::this_process::hostname(), sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
-                sys::this_process::execute({SBN_TEST_EMPTY_EXE_PATH,0});
+                log("waiting until failure is simulated");
+                return;
             }
         }
-        log("subordinate act id _ number _ count _", id(), this->_number,
-            this->_nsubordinates);
         sbn::commit<sbn::Remote>(std::move(this_ptr()));
     }
 

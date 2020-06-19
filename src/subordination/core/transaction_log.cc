@@ -29,7 +29,7 @@ sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const transaction_record
     if (rhs.status == transaction_status::end) {
         out.write(rhs.k->id());
     } else {
-        out.write(rhs.k);
+        out.write(rhs.k.get());
     }
     return out;
 }
@@ -41,6 +41,7 @@ sbn::kernel_ptr sbn::transaction_log::write(transaction_record record) {
     lock_type lock(this->_mutex);
     this->_buffer << record;
     this->_buffer.flip();
+    log("flush _", this->_buffer.remaining());
     this->_buffer.flush(this->_file_descriptor);
     this->_buffer.compact();
     log("store _ _", *record.k, _file_descriptor.offset());
@@ -62,7 +63,7 @@ void sbn::transaction_log::close() {
 void sbn::transaction_log::open(const char* filename) {
     using f = sys::open_flag;
     this->_file_descriptor.open(filename,
-                                f::close_on_exec | f::create | f::write_only | f::dsync,
+                                f::close_on_exec | f::create | f::write_only /*| f::dsync*/,
                                 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
     const auto offset = this->_file_descriptor.offset();
@@ -152,7 +153,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     new_name += filename;
     new_name += ".new";
     sys::fildes new_fd(new_name.data(),
-                       f::close_on_exec | f::create | f::write_only | f::dsync | f::truncate,
+                       f::close_on_exec | f::create | f::write_only /*| f::dsync*/ | f::truncate,
                        0600);
     new_buffer.flip();
     new_buffer.flush(new_fd);
@@ -160,7 +161,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     new_fd.close();
     std::rename(new_name.data(), filename);
     this->_file_descriptor.open(filename, f::close_on_exec | f::create |
-                                f::write_only | f::dsync, 0600);
+                                f::write_only /*| f::dsync*/, 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
     // send recovered kernels to the respective pipelines
     for (auto& r : records) {

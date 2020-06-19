@@ -1,5 +1,5 @@
 config = configuration_data()
-config.set('sharedstatedir', get_option('sharedstatedir'))
+config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([
@@ -189,7 +189,7 @@ discovery_test_exe = executable(
     implicit_include_directories: false,
 )
 
-foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure']
+foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure', 'power-failure']
     test(
         'daemon/discovery-' + failure,
         discovery_test_exe,

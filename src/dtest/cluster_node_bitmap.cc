@@ -38,3 +38,25 @@ void dts::cluster_node_bitmap::read(std::string arg) {
         }
     }
 }
+
+bool dts::cluster_node_bitmap::intersects(const cluster_node_bitmap& rhs) const {
+    const auto n = size();
+    if (n != rhs.size()) { throw std::invalid_argument("bad bitmap size"); }
+    for (size_t i=0; i<n; ++i) {
+        if (this->_nodes[i] && rhs._nodes[i]) { return true; }
+    }
+    return false;
+}
+
+std::ostream& dts::operator<<(std::ostream& out, const cluster_node_bitmap& rhs) {
+    const auto n = rhs.size();
+    bool first = true;
+    for (size_t i=0; i<n; ++i) {
+        if (rhs._nodes[i]) {
+            if (!first) { out << ','; }
+            out << i+1;
+            if (first) { first = false; }
+        }
+    }
+    return out;
+}

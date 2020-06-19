@@ -103,11 +103,10 @@ namespace sbn {
         void wait();
         void clear(kernel_sack& sack);
 
-        inline kernel_ptr write_transaction(transaction_status status, kernel_ptr k) {
+        inline void write_transaction(transaction_status status, kernel_ptr& k) {
             if (auto* tr = transactions()) {
-                return tr->write({status, index(), std::move(k)});
+                k = tr->write({status, index(), std::move(k)});
             }
-            return k;
         }
 
         inline void foreign_pipeline(pipeline* rhs) noexcept { this->_foreign_pipeline = rhs; }

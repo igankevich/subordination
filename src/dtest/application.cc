@@ -112,6 +112,21 @@ void dts::application::run_process(cluster_node_bitmap where, sys::argstream arg
             sys::this_process::enter(node.hostname_namespace().fd());
             return sys::this_process::execute(args.argv());
         });
+        this->_child_process_nodes.emplace_back(i);
+    }
+    this->_where.emplace_back(std::move(where));
+    this->_arguments.emplace_back(std::move(args));
+}
+
+void dts::application::kill_process(cluster_node_bitmap where, sys::signal signal) {
+    const auto num_processes = this->_arguments.size();
+    for (size_t i=0; i<num_processes; ++i) {
+        if (i >= this->_child_process_nodes.size()) { continue; }
+        auto node = this->_child_process_nodes[i];
+        if (!where.matches(node)) { continue; }
+        auto& process = this->_child_processes[i];
+        log("send _ to child process _ running on node _", signal, process.id(), node);
+        process.send(signal);
     }
 }
 
@@ -251,6 +266,7 @@ void dts::application::run() {
                     }
                     return 0;
                 }, pf::signal_parent | pf::unshare_network | pf::unshare_hostname);
+                this->_child_process_nodes.emplace_back(i);
                 pipe.close_in_parent();
                 stdout.out().close();
                 stderr.out().close();
