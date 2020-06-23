@@ -8,15 +8,11 @@
 #include <unistdx/io/two_way_pipe>
 #include <unistdx/ipc/execute>
 #include <unistdx/ipc/identity>
+#include <unistdx/net/socket>
 
 #include <subordination/core/types.hh>
 
 namespace sbn {
-
-    enum class process_role_type {master, slave};
-
-    std::ostream&
-    operator<<(std::ostream& out, process_role_type rhs);
 
     class application {
 
@@ -30,7 +26,7 @@ namespace sbn {
         sys::gid_type _gid = -1;
         string_array _args, _env;
         sys::path _working_directory;
-        mutable process_role_type _processrole = process_role_type::master;
+        bool _wait_for_completion = false;
 
         static_assert(sizeof(_uid) <= sizeof(uint32_t), "bad uid_type");
         static_assert(sizeof(_gid) <= sizeof(uint32_t), "bad gid_type");
@@ -51,40 +47,29 @@ namespace sbn {
             return this->_working_directory;
         }
 
-        inline void
-        set_credentials(sys::uid_type uid, sys::gid_type gid) noexcept {
-            this->_uid = uid;
-            this->_gid = gid;
+        inline void credentials(sys::uid_type uid, sys::gid_type gid) noexcept {
+            this->_uid = uid, this->_gid = gid;
+        }
+
+        inline void credentials(const sys::user_credentials& rhs) noexcept {
+            this->_uid = rhs.uid, this->_gid = rhs.gid;
         }
 
         inline id_type id() const noexcept { return this->_id; }
-        inline sys::uid_type uid() const noexcept { return this->_uid; }
-        inline sys::gid_type gid() const noexcept { return this->_gid; }
+        inline sys::uid_type user() const noexcept { return this->_uid; }
+        inline sys::gid_type group() const noexcept { return this->_gid; }
         const std::string& filename() const noexcept { return this->_args.front(); }
 
-        inline void
-        make_master() const noexcept {
-            this->_processrole = process_role_type::master;
+        inline const string_array& arguments() const noexcept {
+            return this->_args;
         }
 
-        inline void
-        make_slave() const noexcept {
-            this->_processrole = process_role_type::slave;
+        inline bool wait_for_completion() const noexcept {
+            return this->_wait_for_completion;
         }
 
-        inline bool
-        is_master() const noexcept {
-            return this->_processrole == process_role_type::master;
-        }
-
-        inline bool
-        is_slave() const noexcept {
-            return this->_processrole == process_role_type::slave;
-        }
-
-        inline process_role_type
-        role() const noexcept {
-            return this->_processrole;
+        inline void wait_for_completion(bool rhs) noexcept {
+            this->_wait_for_completion = rhs;
         }
 
         int execute(const sys::two_way_pipe& pipe) const;
@@ -103,14 +88,15 @@ namespace sbn {
     kernel_buffer& operator<<(kernel_buffer& out, const application& rhs);
     kernel_buffer& operator>>(kernel_buffer& in, application& rhs);
 
+    application::id_type generate_application_id() noexcept;
+
     namespace this_application {
 
         /// Cluster-wide application ID.
-        application::id_type get_id() noexcept;
+        application::id_type id() noexcept;
+        void id(application::id_type rhs) noexcept;
         sys::fd_type get_input_fd() noexcept;
         sys::fd_type get_output_fd() noexcept;
-        bool is_master() noexcept;
-        bool is_slave() noexcept;
 
     }
 

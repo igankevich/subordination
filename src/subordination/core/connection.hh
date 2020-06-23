@@ -4,7 +4,10 @@
 #include <chrono>
 #include <deque>
 #include <functional>
+#include <memory>
 
+#include <unistdx/base/flag>
+#include <unistdx/base/log_message>
 #include <unistdx/io/epoll_event>
 #include <unistdx/io/poller>
 #include <unistdx/net/socket_address>
@@ -12,29 +15,52 @@
 
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
-#include <subordination/core/kernel_proto_flag.hh>
 #include <subordination/core/pipeline_base.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
 
-    class connection: public pipeline_base {
+    enum class connection_flags: int {
+        save_upstream_kernels = 1<<0,
+        save_downstream_kernels = 1<<1,
+        write_transaction_log = 1<<2,
+    };
+
+    UNISTDX_FLAGS(connection_flags)
+
+    enum class connection_state {
+        initial,
+        starting,
+        started,
+        stopping,
+        stopped,
+        inactive,
+    };
+
+    const char* to_string(connection_state rhs);
+    std::ostream& operator<<(std::ostream& out, connection_state rhs);
+
+    class connection {
 
     private:
-        using kernel_queue = std::deque<kernel*>;
+        using kernel_queue = std::deque<kernel_ptr>;
         using id_type = typename kernel::id_type;
 
     public:
         using clock_type = std::chrono::system_clock;
         using duration = clock_type::duration;
         using time_point = clock_type::time_point;
+        using connection_ptr = std::shared_ptr<connection>;
 
     private:
         time_point _start{duration::zero()};
         basic_socket_pipeline* _parent = nullptr;
-        kernel_proto_flag _flags{};
+        connection_flags _flags{};
         kernel_queue _upstream, _downstream;
         id_type _counter = 0;
+        sys::u32 _attempts = 1;
+        const char* _name = "ppl";
+        connection_state _state = connection_state::initial;
 
     protected:
         kernel_buffer _output_buffer{sys::page_size()};
@@ -43,43 +69,45 @@ namespace sbn {
 
     public:
         connection() = default;
-        ~connection() = default;
+        virtual ~connection() = default;
         connection(const connection&) = delete;
         connection& operator=(const connection&) = delete;
         connection(connection&&) = delete;
         connection& operator=(connection&&) = delete;
 
-        void send(kernel* k);
-        void forward(foreign_kernel* k);
-        void clear();
+        void send(kernel_ptr& k);
+
+        inline void forward(foreign_kernel_ptr k) {
+            do_forward(std::move(k));
+        }
+
+        void clear(kernel_sack& sack);
 
         /// \param[in] from socket address from which kernels are received
         void receive_kernels(const application* from_application=nullptr) {
-            this->receive_kernels(from_application, [] (kernel*) {});
+            this->receive_kernels(from_application, [] (kernel_ptr&) {});
         }
 
+        // TODO std::function is slow
         void receive_kernels(const application* from_application,
-                             std::function<void(kernel*)> func);
+                             std::function<void(kernel_ptr&)> func);
 
         virtual void handle(const sys::epoll_event& event);
 
-        /// Called when the handler is removed from the poller.
-        virtual void remove(sys::event_poller& poller);
-
-        /// Flush dirty buffers (if needed).
+        virtual void add(const connection_ptr& self);
+        virtual void remove(const connection_ptr& self);
+        virtual void retry(const connection_ptr& self);
+        virtual void deactivate(const connection_ptr& self);
+        virtual void activate(const connection_ptr& self);
         virtual void flush();
+        virtual void stop();
 
         inline time_point start_time_point() const noexcept { return this->_start; }
+        inline void start_time_point(time_point rhs) noexcept { this->_start = rhs; }
 
         inline bool
         has_start_time_point() const noexcept {
             return this->_start != time_point(duration::zero());
-        }
-
-        inline void
-        setstate(pipeline_state rhs) noexcept {
-            this->pipeline_base::setstate(rhs);
-            if (rhs == pipeline_state::starting) { this->_start = clock_type::now(); }
         }
 
         inline basic_socket_pipeline* parent() const noexcept { return this->_parent; }
@@ -93,18 +121,32 @@ namespace sbn {
             this->_socket_address = rhs;
         }
 
-        inline void setf(kernel_proto_flag rhs) noexcept { this->_flags |= rhs; }
-        inline void unsetf(kernel_proto_flag rhs) noexcept { this->_flags &= ~rhs; }
-        inline void flags(kernel_proto_flag rhs) noexcept { this->_flags = rhs; }
-        inline kernel_proto_flag flags() const noexcept { return this->_flags; }
+        inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
+        inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
+        inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
+        inline connection_flags flags() const noexcept { return this->_flags; }
 
         inline void types(kernel_type_registry* rhs) noexcept {
             this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);
         }
 
+        inline sys::u32 attempts() const noexcept { return this->_attempts; }
+        inline const char* name() const noexcept { return this->_name; }
+        inline void name(const char* rhs) noexcept { this->_name = rhs; }
+        inline connection_state state() const noexcept { return this->_state; }
+        inline void state(connection_state rhs) noexcept {
+            this->_state = rhs;
+            if (rhs == connection_state::starting) { this->_start = clock_type::now(); }
+        }
+
+        inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
+        inline const kernel_queue& downstream() const noexcept { return this->_downstream; }
+
     protected:
 
+        foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
         void recover_kernels(bool downstream);
+        virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
 
         template <class Sink>
         inline void flush(Sink& sink) {
@@ -117,17 +159,22 @@ namespace sbn {
         inline void fill(Source& source) {
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
-            log("remaining _", this->_input_buffer.remaining());
+        }
+
+        template <class ... Args>
+        inline void
+        log(const Args& ... args) const {
+            sys::log_message(this->_name, args ...);
         }
 
     private:
 
-        void write_kernel(kernel* k) noexcept;
-        kernel* read_kernel(const application* from_application);
-        bool receive_kernel(kernel* k);
-        void plug_parent(kernel* k);
-        bool save_kernel(kernel* k);
-        void recover_kernel(kernel* k);
+        void write_kernel(const kernel_ptr& k) noexcept;
+        kernel_ptr read_kernel(const application* from_application);
+        void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
+        void plug_parent(kernel_ptr& k);
+        kernel_ptr save_kernel(kernel_ptr k);
+        void recover_kernel(kernel_ptr& k);
 
         template <class E> inline void
         log_write_error(const E& err) { this->log("write error _", err); }

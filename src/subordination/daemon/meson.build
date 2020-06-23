@@ -1,20 +1,18 @@
+config = configuration_data()
+config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
+configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
+
 sbnd_src = files([
-    'application_kernel.cc',
-    'factory.cc',
     'hierarchy.cc',
     'hierarchy_kernel.cc',
     'hierarchy_node.cc',
-    'master_discoverer.cc',
-    'network_master.cc',
+    'job_status_kernel.cc',
+    'pipeline_status_kernel.cc',
     'position_in_tree.cc',
-    'probe.cc',
-    'prober.cc',
     'process_pipeline.cc',
-    'resident_kernel.cc',
     'socket_pipeline.cc',
     'status_kernel.cc',
     'tree_hierarchy_iterator.cc',
-    'unix_socket_pipeline.cc',
 ])
 
 sbnd_lib = library(
@@ -35,7 +33,17 @@ sbnd = declare_dependency(
 
 sbnd_exe = executable(
     'sbnd',
-    sources: ['sbnd.cc'],
+    sources: files([
+        'factory.cc',
+        'master_discoverer.cc',
+        'network_master.cc',
+        'probe.cc',
+        'prober.cc',
+        'resident_kernel.cc',
+        'sbnd.cc',
+        'terminate_kernel.cc',
+        'unix_socket_pipeline.cc',
+    ]),
     include_directories: src,
     dependencies: [sbnd],
     cpp_args: profiling_args,
@@ -86,10 +94,10 @@ test(
     'daemon/socket-pipeline-no-failure',
     dtest_exe,
     args: [
-        '--exit-code', 'master',
+        '--exit-code', '1',
         '--size', '2',
-        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=no',
-        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=no',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=none',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=none',
     ],
     workdir: meson.current_build_dir(),
     is_parallel: false
@@ -99,10 +107,37 @@ test(
     'daemon/socket-pipeline-slave-failure',
     dtest_exe,
     args: [
-        '--exit-code', 'master',
+        '--exit-code', '1',
         '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=slave',
         '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=slave',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
+)
+
+test(
+    'daemon/socket-pipeline-master-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', '2',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=master',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=master',
+    ],
+    workdir: meson.current_build_dir(),
+    is_parallel: false
+)
+
+test(
+    'daemon/socket-pipeline-power-failure',
+    dtest_exe,
+    args: [
+        '--exit-code', 'all',
+        '--restart',
+        '--size', '2',
+        '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=power',
+        '--exec', '2', socket_pipeline_test.full_path(), 'role=slave', 'failure=power',
     ],
     workdir: meson.current_build_dir(),
     is_parallel: false
@@ -113,7 +148,7 @@ app_exe = executable(
     sources: 'process_pipeline_test.cc',
     dependencies: [sbn],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_APP'],
+    cpp_args: ['-DSUBORDINATION_TEST_APPLICATION'],
     implicit_include_directories: false,
 )
 
@@ -126,53 +161,40 @@ configure_file(
 )
 
 daemon_exe = executable(
-    'process-pipeline-test',
+    'process-pipeline-test-daemon',
     sources: 'process_pipeline_test.cc',
     dependencies: [sbnd],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_SERVER'],
+    cpp_args: ['-DSUBORDINATION_TEST_DAEMON'],
     implicit_include_directories: false,
 )
 
 test('daemon/process-pipeline', daemon_exe)
 
+test_config = configuration_data()
+test_config.set('sbnd_exe_path', sbnd_exe.full_path())
+test_config.set('sbnc_exe_path', sbnc_exe.full_path())
+test_config.set('app_exe_path', test_app_exe.full_path())
+configure_file(
+    input: 'discovery_test.hh.in',
+    output: 'discovery_test.hh',
+    configuration: test_config
+)
+
 discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
     include_directories: [src],
-    dependencies: [sbn,gtest],
+    dependencies: [sbn,gtest,dtest],
     implicit_include_directories: false,
 )
 
-if get_option('b_sanitize') != 'address'
-    foreach nodes : ['2', '4']
-        foreach fanout : ['2', '1000']
-            foreach failure : ['no-failure', 'slave-failure', 'master-failure']
-                suffix = '-' + nodes + '-' + fanout + '-' + failure
-                env = environment()
-                env.set('DTEST_EXE', dtest_exe.full_path())
-                env.set('DTEST_NAME', 'x')
-                env.set('DTEST_SIZE', nodes)
-                env.set('SBN_FANOUT', fanout)
-                env.set('SBN_FAILURE', failure)
-                # test executable is a wrapper for dtest
-                # (all arguments are forwarded to dtest)
-                test(
-                    'daemon/discovery' + suffix,
-                    discovery_test_exe,
-                    args: [
-                        # run daemon on each cluster node
-                        '--exec', '*',
-                        sbnd_exe.full_path(), 'fanout=' + fanout, 'allow_root=1',
-                        # submit test application from the first node
-                        '--exec', '1',
-                        sbnc_exe.full_path(), test_app_exe.full_path(), failure
-                    ],
-                    env: env,
-                    workdir: meson.build_root(),
-                    is_parallel: false
-                )
-            endforeach
-        endforeach
-    endforeach
-endif
+foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure', 'power-failure']
+    test(
+        'daemon/discovery-' + failure,
+        discovery_test_exe,
+        args: [failure],
+        workdir: meson.build_root(),
+        is_parallel: false
+    )
+endforeach

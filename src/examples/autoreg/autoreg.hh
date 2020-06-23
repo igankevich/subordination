@@ -103,9 +103,9 @@ struct Variance_WN: public sbn::kernel {
         }, 0, n, bs));
     }
 
-    void react(sbn::kernel*) override {
+    void react(sbn::kernel_ptr&&) override {
         _sum = acf[0] - _sum;
-        sbn::commit(this);
+        sbn::commit(std::move(this_ptr()));
     }
 
     T
@@ -161,9 +161,9 @@ struct Yule_walker: public sbn::kernel {
         }, identity, 0, m, block_size));
     }
 
-    void react(sbn::kernel*) override {
+    void react(sbn::kernel_ptr&&) override {
         if (++count == 2) {
-            sbn::commit(this);
+            sbn::commit(std::move(this_ptr()));
         }
     }
 
@@ -248,8 +248,8 @@ struct ACF_generator: public sbn::kernel {
         }, identity, 0, n, bs));
     }
 
-    void react(sbn::kernel*) override {
-        sbn::commit<sbn::Local>(this);
+    void react(sbn::kernel_ptr&&) override {
+        sbn::commit<sbn::Local>(std::move(this_ptr()));
     }
 
 private:
@@ -349,7 +349,7 @@ struct Solve_Yule_Walker: public sbn::kernel {
 //				throw std::runtime_error("Process is not stationary: |f[i]| >= 1.");
 //			}
         }
-        sbn::commit<sbn::Local>(this);
+        sbn::commit<sbn::Local>(std::move(this_ptr()));
     }
 
 private:
@@ -370,15 +370,15 @@ struct Autoreg_coefs: public sbn::kernel {
     {}
 
     void act() override {
-        sbn::upstream<sbn::Local>(this, new Yule_walker<T>(acf_model, acf_size, a, b));
+        sbn::upstream<sbn::Local>(this, sbn::make_pointer<Yule_walker<T>>(acf_model, acf_size, a, b));
     }
 
-    void react(kernel*) override {
+    void react(sbn::kernel_ptr&&) override {
         state++;
         if (state == 1) {
-            sbn::upstream<sbn::Local>(this, new Solve_Yule_Walker<T>(ar_coefs, a, b, acf_size));
+            sbn::upstream<sbn::Local>(this, sbn::make_pointer<Solve_Yule_Walker<T>>(ar_coefs, a, b, acf_size));
         } else {
-            sbn::commit<sbn::Local>(this);
+            sbn::commit<sbn::Local>(std::move(this_ptr()));
         }
     }
 
@@ -555,21 +555,16 @@ struct Generator1: public sbn::kernel {
     ): part(part_), part2(part2_),
     phi(phi_), fsize(fsize_), var_eps(var_eps_),
     zsize2(zsize2_), interval(interval_), zsize(zsize_),
-    grid_2(grid_2_), left_neighbour(nullptr), count(0)
-    {}
+    grid_2(grid_2_) {}
 
     ~Generator1() {}
-
-    void set_neighbour(Generator1<T, Grid>* neighbour) {
-        left_neighbour = neighbour;
-    }
 
     const Surface_part& get_part() const { return part; }
 
     void act() override {
         if (_writefile) {
             write_part_to_file(zeta);
-            sbn::commit<sbn::Remote>(this);
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
         } else {
             #if defined(SBN_DEBUG)
             sys::log_message(
@@ -601,34 +596,10 @@ struct Generator1: public sbn::kernel {
 //			cout << "compute part = " << part.part() << endl;
             generate_white_noise(zeta2, var_eps, part2);
             generate_zeta(phi, fsize, part2, interval, zsize2, zeta2);
-            // TODO 2016-02-26 weaving is disabled for benchmarks
-            if (not _noweave) {
-                if (left_neighbour != nullptr) {
-//					cout << "combine part = " << left_neighbour->part.part() << " and "  << part.part() << endl;
-                    Note* note = new Note;
-                    note->return_to(left_neighbour);
-                    sbn::send(note);
-//					downstream(local_pipeline(), new Note(), left_neighbour);
-                }
-                sbn::send(this, this);
-//				downstream(local_pipeline(), this, this);
-            } else {
-                trim_zeta(zeta2, zsize2, zsize, zeta);
-                _writefile = true;
-                sbn::send(this);
-            }
+            trim_zeta(zeta2, zsize2, zsize, zeta);
+            _writefile = true;
+            sbn::send(std::move(this_ptr()));
         }
-    }
-
-    void react(sbn::kernel*) override {
-        count++;
-        // received two kernels or last part
-//		if (count == 2 || (count == 1 && part.part() == grid_2.num_parts() - 1)) {
-////			cout << "release part = " << part.part() << endl;
-//			weave(phi, fsize, zeta2, zsize2, part2, interval);
-//			trim_zeta(zeta2, zsize2, part, part2, zsize, zeta);
-//			commit<Remote>(this);
-//		}
     }
 
     void
@@ -678,8 +649,6 @@ private:
     uint32_t interval;
     size3 zsize;
     Grid grid_2;
-    Generator1<T, Grid>* left_neighbour;
-    uint32_t count;
     std::valarray<T> zeta;
     bool _writefile = false;
     static const bool _noweave = true;
@@ -713,7 +682,7 @@ struct Wave_surface_generator: public sbn::kernel {
         #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "no. of parts = _", num_parts);
         #endif
-        std::vector<Generator1<T, Grid>*> generators(num_parts);
+        std::vector<pointer<Generator1<T,Grid>>> generators(num_parts);
         std::size_t sum = 0;
         for (std::size_t i=0; i<num_parts; ++i) {
             Surface_part part = grid.part(i);
@@ -721,19 +690,16 @@ struct Wave_surface_generator: public sbn::kernel {
             #if defined(SBN_DEBUG)
             sys::log_message("autoreg", "part #_ = _", i, part);
             #endif
-            generators[i] = new Generator1<T, Grid>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
+            generators[i] = sbn::make_pointer<Generator1<T, Grid>>(part, part2, phi, fsize, var_eps, zsize2, interval, zsize, grid_2);
             sum += part.part_size();
         }
         assert(sum - zsize[0] == 0);
-        for (std::size_t i=1; i<num_parts; ++i) {
-            generators[i]->set_neighbour(generators[i-1]);
-        }
         for (std::size_t i=0; i<num_parts; ++i) {
-            sbn::upstream<sbn::Remote>(this, generators[i]);
+            sbn::upstream<sbn::Remote>(this, std::move(generators[i]));
         }
     }
 
-    void react(sbn::kernel* child) override {
+    void react(sbn::kernel_ptr&& child) override {
         #if defined(SBN_DEBUG)
         sys::log_message(
             "autoreg",
@@ -742,7 +708,7 @@ struct Wave_surface_generator: public sbn::kernel {
         );
         #endif
         if (++count == grid.num_parts()) {
-            sbn::commit<sbn::Remote>(this);
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
     }
 

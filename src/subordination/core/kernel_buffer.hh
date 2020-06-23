@@ -1,6 +1,9 @@
 #ifndef SUBORDINATION_CORE_KERNEL_BUFFER_HH
 #define SUBORDINATION_CORE_KERNEL_BUFFER_HH
 
+#include <chrono>
+#include <vector>
+
 #include <unistdx/base/byte_buffer>
 
 #include <unistdx/net/interface_address>
@@ -17,6 +20,7 @@ namespace sbn {
 
     private:
         kernel_type_registry* _types = nullptr;
+        bool _carry_all_parents = false;
 
     public:
         using sys::byte_buffer::byte_buffer;
@@ -35,6 +39,55 @@ namespace sbn {
             this->read(reinterpret_cast<type&>(x));
         }
 
+        template <class Rep, class Period>
+        void write(std::chrono::duration<Rep,Period> dt) {
+            using std::chrono::duration_cast;
+            using std::chrono::nanoseconds;
+            this->write(sys::u64(duration_cast<nanoseconds>(dt).count()));
+        }
+
+        template <class Rep, class Period>
+        void read(std::chrono::duration<Rep,Period>& dt) {
+            using std::chrono::duration_cast;
+            using std::chrono::nanoseconds;
+            sys::u64 n = 0;
+            this->read(n);
+            dt = duration_cast<std::chrono::duration<Rep,Period>>(nanoseconds(n));
+        }
+
+        template <class Clock, class Duration>
+        void write(std::chrono::time_point<Clock,Duration> t) {
+            this->write(t.time_since_epoch());
+        }
+
+        template <class Clock, class Duration>
+        void read(std::chrono::time_point<Clock,Duration>& t) {
+            using time_point = std::chrono::time_point<Clock,Duration>;
+            using duration = typename time_point::duration;
+            duration dt{};
+            this->read(dt);
+            t = time_point(dt);
+        }
+
+        template <class T>
+        void write(const std::vector<T>& rhs) {
+            const sys::u32 n = rhs.size();
+            this->write(n);
+            for (sys::u32 i=0; i<n; ++i) { *this << rhs[i]; }
+        }
+
+        template <class T>
+        void read(std::vector<T>& rhs) {
+            rhs.clear();
+            sys::u32 n = 0;
+            this->read(n);
+            rhs.reserve(n);
+            for (sys::u32 i=0; i<n; ++i) {
+                rhs.emplace_back();
+                *this >> rhs.back();
+            }
+        }
+
         void write(const sys::socket_address& rhs);
         void read(sys::socket_address& rhs);
         void write(const sys::ipv4_address& rhs);
@@ -45,10 +98,9 @@ namespace sbn {
         void write(const sys::interface_address<T>& rhs);
         template <class T>
         void read(sys::interface_address<T>& rhs);
-        void write(foreign_kernel* k);
-        void read(foreign_kernel* k);
-        void write(kernel* k);
-        void read(kernel*& k);
+        void write(const kernel* k);
+        inline void write(const kernel_ptr& k) { this->write(k.get()); }
+        void read(kernel_ptr& k);
 
         template <class T> inline kernel_buffer&
         operator<<(const T& rhs) { this->write(rhs); return *this; }
@@ -59,6 +111,8 @@ namespace sbn {
         inline void types(kernel_type_registry* rhs) noexcept { this->_types = rhs; }
         inline const kernel_type_registry* types() const noexcept { return this->_types; }
         inline kernel_type_registry* types() noexcept { return this->_types; }
+        inline void carry_all_parents(bool rhs) noexcept { this->_carry_all_parents = rhs; }
+        inline bool carry_all_parents() const noexcept { return this->_carry_all_parents; }
 
     };
 

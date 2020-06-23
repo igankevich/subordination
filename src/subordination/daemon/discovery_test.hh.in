@@ -1,0 +1,8 @@
+#ifndef SUBORDINATION_DAEMON_DISCOVERY_TEST_HH_IN
+#define SUBORDINATION_DAEMON_DISCOVERY_TEST_HH_IN
+
+#define SBND_PATH "@sbnd_exe_path@"
+#define SBNC_PATH "@sbnc_exe_path@"
+#define APP_PATH "@app_exe_path@"
+
+#endif // vim:filetype=cpp

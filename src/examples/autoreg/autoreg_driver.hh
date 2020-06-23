@@ -55,7 +55,7 @@ namespace autoreg {
 
             sbn::upstream(
                 this,
-                new ACF_generator<T>(
+                sbn::make_pointer<ACF_generator<T>>(
                     alpha,
                     beta,
                     gamm,
@@ -108,7 +108,7 @@ namespace autoreg {
         }
 
         void
-        react(sbn::kernel* child) override;
+        react(sbn::kernel_ptr&& child) override;
 
         inline const Domain<T, 3>
         domain() const noexcept {
@@ -193,11 +193,7 @@ namespace autoreg {
             acf_pure = acf_model;
             sbn::upstream(
                 this,
-                new Autoreg_coefs<T>(
-                    acf_model,
-                    acf_size,
-                    ar_coefs
-                )
+                sbn::make_pointer<Autoreg_coefs<T>>(acf_model, acf_size, ar_coefs)
             );
         }
 
@@ -229,21 +225,22 @@ namespace autoreg {
 
     template<class T>
     void
-    Autoreg_model<T>
-    ::react(kernel* child) {
+    Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
     #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "finished _", typeid(*child).name());
     #endif
-        if (typeid(*child) == typeid(ACF_generator<T>)) {
+        const auto& tid = typeid(*child);
+        if (tid == typeid(ACF_generator<T>)) {
             do_it();
         }
-        if (typeid(*child) == typeid(Autoreg_coefs<T>)) {
+        if (tid == typeid(Autoreg_coefs<T>)) {
 //		write<T>("1.ar_coefs", ar_coefs);
             { std::ofstream out("ar_coefs"); out << ar_coefs; }
-            sbn::upstream(this, new Variance_WN<T>(ar_coefs, acf_model));
+            sbn::upstream(this, sbn::make_pointer<Variance_WN<T>>(ar_coefs, acf_model));
         }
-        if (typeid(*child) == typeid(Variance_WN<T>)) {
-            T var_wn = dynamic_cast<Variance_WN<T>*>(child)->get_sum();
+        if (tid == typeid(Variance_WN<T>)) {
+            auto tmp = sbn::pointer_dynamic_cast<Variance_WN<T>>(std::move(child));
+            T var_wn = tmp->get_sum();
         #if defined(SBN_DEBUG)
             sys::log_message("autoreg", "var(acf) = _", var_acf(acf_model));
             sys::log_message("autoreg", "var(eps) = _", var_wn);
@@ -252,8 +249,8 @@ namespace autoreg {
 //		std::size_t modulo = homogeneous ? 1 : 2;
             grid_type grid_2(zsize2[0], max_num_parts);
             grid_type grid(zsize[0], max_num_parts);
-            generator_type* k =
-                new generator_type(
+            auto k =
+                sbn::make_pointer<generator_type>(
                     ar_coefs,
                     fsize,
                     var_wn,
@@ -265,21 +262,20 @@ namespace autoreg {
                     grid_2
                 );
         #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-            sbn::upstream(this, k);
+            sbn::upstream(this, std::move(k));
         #else
             //k->setf(sbn::kernel_flag::carries_parent);
-            sbn::upstream<sbn::Remote>(this, k);
+            sbn::upstream<sbn::Remote>(this, std::move(k));
         #endif
         }
-        if (typeid(*child) == typeid(generator_type)) {
+        if (tid == typeid(generator_type)) {
             //this->parent(nullptr);
             _time1 = current_time_nano();
             {
                 std::ofstream timerun_log("time.log");
-                timerun_log << float(_time1 - _time0)/1000/1000/1000 <<
-                    std::endl;
+                timerun_log << float(_time1 - _time0)/1000/1000/1000 << std::endl;
             }
-            sbn::commit(this);
+            sbn::commit(std::move(this_ptr()));
         }
 
     }

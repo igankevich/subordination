@@ -37,7 +37,7 @@ namespace sbnd {
 
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
                                            sys::socket&& sock) {
-    using f = sbn::kernel_proto_flag;
+    using f = sbn::connection_flags;
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
     ptr->name(name());
     ptr->parent(this);
@@ -49,10 +49,16 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
 }
 
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
-    using f = sbn::kernel_proto_flag;
+    using f = sbn::connection_flags;
     sys::socket s(sys::family_type::unix);
     s.setopt(sys::socket::pass_credentials);
-    s.connect(addr);
+    try {
+        s.connect(addr);
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::connection_refused) {
+            throw;
+        }
+    }
     auto ptr = std::make_shared<unix_socket_client>(std::move(s));
     ptr->name(name());
     ptr->parent(this);
@@ -77,15 +83,14 @@ void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
 
 void sbnd::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
-        auto* kernel = this->_kernels.front();
+        auto kernel = std::move(this->_kernels.front());
         this->_kernels.pop();
-        this->process_kernel(kernel);
+        this->process_kernel(std::move(kernel));
     }
 }
 
-void
-sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
-    if (k->moves_downstream()) {
+void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel_ptr&& k) {
+    if (k->phase() == sbn::kernel::phases::downstream) {
         if (!k->destination()) {
             k->destination(k->source());
         }
@@ -96,21 +101,34 @@ sbnd::unix_socket_pipeline::process_kernel(sbn::kernel* k) {
     }
 }
 
+
+void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+    auto result = this->_clients.find(fk->destination());
+    if (result == this->_clients.end()) {
+        log("client _ not found, deleting _", fk->destination(), *fk);
+        return;
+    }
+    result->second->forward(std::move(fk));
+}
+
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
 _socket(std::move(socket)) {
-    this->setstate(sbn::pipeline_state::starting);
+    this->state(sbn::connection_state::starting);
 }
 
 void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
     this->log("_ _", __func__, event);
-    if (this->is_starting()) { this->setstate(sbn::pipeline_state::started); }
+    if (state() == sbn::connection_state::starting) { state(sbn::connection_state::started); }
     if (event.in()) {
         fill(this->_socket);
         receive_kernels(
             nullptr,
-            [this] (sbn::kernel* k) {
-                if (auto* app = dynamic_cast<application_kernel*>(k)) {
-                    app->credentials(socket().credentials());
+            [this] (sbn::kernel_ptr& k) {
+                if (auto* a = k->source_application()) {
+                    a->credentials(socket().credentials());
+                }
+                if (auto* a = k->target_application()) {
+                    a->credentials(socket().credentials());
                 }
             });
     }

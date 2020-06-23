@@ -27,10 +27,10 @@ namespace sbn {
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;
 
-        inline void send(kernel* k) { this->_local.send(k); }
-        inline void send_remote(kernel* k) { this->_remote.send(k); }
-        inline void schedule(kernel* k) { this->_local.send_timer(k); }
-        inline void schedule(kernel** k, size_t n) { this->_local.send(k, n); }
+        inline void send(kernel_ptr&& k) { this->_local.send(std::move(k)); }
+        inline void send_remote(kernel_ptr&& k) { this->_remote.send(std::move(k)); }
+        inline void schedule(kernel_ptr&& k) { this->_local.send_timer(std::move(k)); }
+        inline void schedule(kernel_ptr_array&& k) { this->_local.send(std::move(k)); }
 
         inline child_process_pipeline& remote() noexcept { return this->_remote; }
         inline const child_process_pipeline& remote() const noexcept { return this->_remote; }

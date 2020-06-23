@@ -17,12 +17,11 @@
 
 namespace sbn {
 
-    void graceful_shutdown(int ret);
+    void exit(int ret);
 
-    inline void graceful_shutdown(kernel* k) {
+    inline void exit(kernel* k) {
         const auto ret = static_cast<int>(k->return_code());
-        delete k;
-        graceful_shutdown(ret);
+        exit(ret);
     }
 
     int wait_and_return();

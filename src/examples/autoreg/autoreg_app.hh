@@ -40,7 +40,7 @@ struct Autoreg_app: public sbn::kernel {
 
     void
     act() override {
-        Autoreg_model<Real>* model = new Autoreg_model<Real>(true);
+        auto model = sbn::make_pointer<Autoreg_model<Real>>(true);
         try {
             std::ifstream cfg(model_filename.c_str());
             if (cfg.is_open()) {
@@ -54,15 +54,15 @@ struct Autoreg_app: public sbn::kernel {
             std::cerr << e.what();
             exit(1);
         }
-        sbn::upstream(this, model);
+        sbn::upstream(this, std::move(model));
     }
 
     void
-    react(sbn::kernel*) override {
+    react(sbn::kernel_ptr&&) override {
         #if defined(SBN_DEBUG)
         sys::log_message("autoreg", "finished all");
         #endif
-        sbn::commit(this);
+        sbn::commit(std::move(this_ptr()));
     }
 
 private:

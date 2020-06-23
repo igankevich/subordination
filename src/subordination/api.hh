@@ -14,47 +14,46 @@ namespace sbn {
 
     template <Target t=Target::Local>
     inline void
-    send(kernel* k) {
-        factory.send(k);
+    send(kernel_ptr&& k) {
+        factory.send(std::move(k));
     }
 
     template <>
     inline void
-    send<Local>(kernel* k) {
-        factory.send(k);
+    send<Local>(kernel_ptr&& k) {
+        factory.send(std::move(k));
     }
 
     template <>
     inline void
-    send<Remote>(kernel* k) {
-        factory.send_remote(k);
+    send<Remote>(kernel_ptr&& k) {
+        factory.send_remote(std::move(k));
     }
 
     template<Target target=Target::Local>
     void
-    upstream(kernel* lhs, kernel* rhs) {
+    upstream(kernel* lhs, kernel_ptr&& rhs) {
         rhs->parent(lhs);
-        send<target>(rhs);
+        send<target>(std::move(rhs));
     }
 
     template<Target target=Target::Local>
     void
-    commit(kernel* rhs, exit_code ret) {
-        if (!rhs->parent()) {
-            delete rhs;
-            sbn::graceful_shutdown(static_cast<int>(ret));
+    commit(kernel_ptr&& rhs, exit_code ret) {
+        if (!rhs->has_parent()) {
+            sbn::exit(static_cast<int>(ret));
         } else {
             rhs->return_to_parent(ret);
-            send<target>(rhs);
+            send<target>(std::move(rhs));
         }
     }
 
     template<Target target=Target::Local>
     void
-    commit(kernel* rhs) {
+    commit(kernel_ptr&& rhs) {
         exit_code ret = rhs->return_code();
         commit<target>(
-            rhs,
+            std::move(rhs),
             ret == exit_code::undefined ? exit_code::success :
             ret
         );
@@ -62,9 +61,9 @@ namespace sbn {
 
     template<Target target=Target::Local>
     void
-    send(kernel* lhs, kernel* rhs) {
+    send(kernel_ptr&& lhs, kernel* rhs) {
         lhs->principal(rhs);
-        send<target>(lhs);
+        send<target>(std::move(lhs));
     }
 
     struct factory_guard {
@@ -85,9 +84,9 @@ namespace sbn {
 
     template<class Pipeline>
     void
-    upstream(Pipeline& ppl, kernel* lhs, kernel* rhs) {
+    upstream(Pipeline& ppl, kernel* lhs, kernel_ptr&& rhs) {
         rhs->parent(lhs);
-        ppl.send(rhs);
+        ppl.send(std::move(rhs));
     }
 
 }

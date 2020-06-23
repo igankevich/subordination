@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <fstream>
 #include <functional>
 #include <iterator>
 #include <regex>
 #include <string>
+#include <thread>
 
 #include <unistdx/base/byte_buffer>
 #include <unistdx/base/log_message>
@@ -18,7 +20,10 @@
 
 #include <gtest/gtest.h>
 
+#include <subordination/daemon/discovery_test.hh>
 #include <subordination/daemon/test_application.hh>
+
+#include <dtest/application.hh>
 
 template <class ... Args>
 inline void
@@ -26,10 +31,7 @@ log(const Args& ... args) {
     sys::log_message("tst", args...);
 }
 
-int _num_nodes = 0;
-int _fanout = 1000;
 std::string expected_failure;
-std::string cluster_name;
 
 void
 expect_event_sequence(
@@ -82,7 +84,7 @@ expect_event_count(
     }
 }
 
-void test_master(const std::vector<std::string>& lines, int fanout, int n) {
+void test_superior(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout >= n || n == 2) {
         if (n == 2) {
             expect_event_sequence(lines, {
@@ -106,7 +108,7 @@ void test_master(const std::vector<std::string>& lines, int fanout, int n) {
     }
 }
 
-void test_slaves(const std::vector<std::string>& lines, int fanout, int n) {
+void test_subordinates(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout >= n || n == 2) {
         if (n == 2) {
             expect_event_sequence(lines, {
@@ -192,141 +194,132 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
     int node_no = 0;
     if (expected_failure == "no-failure") {
         node_no = 1;
-    } else if (expected_failure == "master-failure" && n == 2) {
+    } else if (expected_failure == "superior-failure" && n == 2) {
         node_no = 2;
     }
     if (node_no == 0) {
-        expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
+        //expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
+        expect_event(lines, R"(^x.*job .* terminated with status .*status=exited,exit_code=0$)");
     } else {
-        node_no = (expected_failure == "master-failure") ? 2 : 1;
+        node_no = (expected_failure == "superior-failure") ? 2 : 1;
         std::stringstream re;
-        re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
+        //re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
+        re << "^x" << node_no << R"(.*job .* terminated with status .*status=exited,exit_code=0$)";
         expect_event(lines, re.str());
     }
 }
 
-using s = sys::signal;
-sys::process child;
-
-void on_terminate(int sig) { child.terminate(); ::alarm(3); }
-void on_alarm(int) { child.kill(); }
-
-void
-init_signal_handlers() {
-    using namespace sys::this_process;
-    ignore_signal(s::broken_pipe);
-    bind_signal(s::keyboard_interrupt, on_terminate);
-    bind_signal(s::terminate, on_terminate);
-    bind_signal(s::alarm, on_alarm);
+sys::argstream sbnd_args() {
+    sys::argstream args;
+    args.append(SBND_PATH);
+    args.append("fanout=2");
+    args.append("allow-root=1");
+    // tolerate asynchronous start of daemons
+    args.append("connection-timeout=1s");
+    args.append("max-connection-attempts=10");
+    args.append("network-scan-interval=5s");
+    // never update NICs
+    args.append("network-interface-update-interval=1h");
+    return args;
 }
 
 int main(int argc, char* argv[]) {
-    auto dtest_exe = std::getenv("DTEST_EXE");
-    auto dtest_name = std::getenv("DTEST_NAME");
-    auto dtest_size = std::getenv("DTEST_SIZE");
-    auto sbn_fanout = std::getenv("SBN_FANOUT");
-    auto sbn_failure = std::getenv("SBN_FAILURE");
-    if (!dtest_exe) { throw std::invalid_argument("DTEST_EXE is undefined"); }
-    if (!dtest_name) { throw std::invalid_argument("DTEST_NAME is undefined"); }
-    if (!dtest_size) { throw std::invalid_argument("DTEST_SIZE is undefined"); }
-    if (!sbn_fanout) { throw std::invalid_argument("SBN_FANOUT is undefined"); }
-    if (!sbn_failure) { throw std::invalid_argument("SBN_FAILURE is undefined"); }
-    _num_nodes = std::atoi(dtest_size);
-    _fanout = std::atoi(sbn_fanout);
+    if (argc < 2) {
+        throw std::invalid_argument("usage: discovery-test <failure>");
+    }
+    auto sbn_failure = argv[1];
     expected_failure = sbn_failure;
-    cluster_name = dtest_name;
-    sys::argstream args;
-    args.append(dtest_exe);
-    args.append("--name", dtest_name);
-    args.append("--size", dtest_size);
-    args.append("--network", "10.1.0.0/16");
-    args.append("--peer-network", "10.0.0.0/16");
-    args.append("--exec-delay", "1000");
-    for (int i=1; i<argc; ++i) { args.append(argv[i]); }
-    log("executing _", args);
-    init_signal_handlers();
-    sys::pipe stderr;
-    stderr.out().unsetf(sys::open_flag::non_blocking);
-    child = sys::process{[&args,&stderr] () {
-        try {
-            stderr.in().close();
-            sys::fildes err(STDERR_FILENO);
-            err = stderr.out();
-            sys::this_process::execute(args);
-        } catch (const std::exception& err) {
-            log("failed to execute _: _", args, err.what());
+    dts::application app;
+    dts::cluster cluster;
+    cluster.name("x");
+    cluster.network({{10,1,0,1},16});
+    cluster.peer_network({{10,0,0,1},16});
+    cluster.generate_nodes(2);
+    app.exit_code(dts::exit_code::all);
+    //app.execution_delay(std::chrono::seconds(1));
+    app.cluster(std::move(cluster));
+    {
+        // run sbnd on each cluster node
+        const auto num_nodes = app.cluster().size();
+        for (size_t i=0; i<num_nodes; ++i) {
+            auto args = sbnd_args();
+            std::stringstream tmp;
+            tmp << app.cluster().name() << (i+1);
+            const auto& transactions_directory = tmp.str();
+            std::remove(sys::path(transactions_directory, "transactions").data());
+            args << "transactions-directory=" << transactions_directory << '\0';
+            app.add_process(i, std::move(args));
         }
-        return 1;
-    }, sys::process_flag::fork, 4096*10};
-    stderr.out().close();
-    sys::event_poller poller;
-    poller.emplace(stderr.in().fd(), sys::event::in);
-    struct No_lock { void lock() {} void unlock() {} };
-    No_lock lock;
-    sys::byte_buffer buf(4096);
-    std::vector<std::string> all_lines;
-    std::vector<std::function<void()>> tests{
-        [&] () { test_master(all_lines, _fanout, _num_nodes); },
-        [&] () { test_slaves(all_lines, _fanout, _num_nodes); },
-        [&] () { test_hierarchy(all_lines, _fanout, _num_nodes); },
-        [&] () { test_weights(all_lines, _fanout, _num_nodes); },
-        [&] () { test_application(all_lines, _fanout, _num_nodes); },
-    };
-    auto ntests = tests.size();
-    std::vector<std::string> errors(ntests), errors0(ntests);
-    bool success = false;
-    poller.wait(lock, [&] () {
-        auto pipe_fd = poller.pipe_in();
-        for (const auto& event : poller) {
-            if (event.fd() == pipe_fd) { continue; }
-            buf.fill(stderr.in());
-            buf.flip();
-            // limit to newline character
-            auto first = buf.data();
-            auto last = first + buf.limit();
-            auto old_limit = buf.limit();
-            // print evey line
-            auto old_first = first;
-            while (first != last) {
-                if (*first == '\n') {
-                    buf.limit(first-old_first+1);
-                    all_lines.emplace_back(buf.data()+buf.position(), buf.data()+buf.limit()-1);
-                    sys::fd_type out(2);
-                    buf.flush(out);
+    }
+    app.emplace_test(
+        "Wait for superior node to find subordinate nodes.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            test_superior(lines, 2, 2);
+        });
+    app.emplace_test(
+        "Wait for subordinate nodes to find superior node.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            test_subordinates(lines, 2, 2);
+        });
+    app.emplace_test(
+        "Check node hierarchy.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            test_hierarchy(lines, 2, 2);
+        });
+    app.emplace_test(
+        "Check node weights.",
+        [&] (dts::application& app, const dts::application::line_array& lines) {
+            test_weights(lines, 2, 2);
+        });
+    app.emplace_test(
+        "Run test application.",
+        [&] (dts::application& app, const dts::application::line_array& lines) {
+            sys::argstream args;
+            args.append(SBNC_PATH);
+            args.append(APP_PATH);
+            args.append(sbn_failure);
+            // submit test application from the first node
+            app.run_process(dts::cluster_node_bitmap(app.cluster().size(), {0}),
+                            std::move(args));
+        });
+    app.emplace_test(
+        "Check that at least one subordinate kernel is executed on each node.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            expect_event(lines, R"(^x1.*app.*subordinate act.*$)");
+            expect_event(lines, R"(^x2.*app.*subordinate act.*$)");
+        });
+    if (expected_failure != "no-failure") {
+        app.emplace_test(
+            "Simulate failure",
+            [] (dts::application& app, const dts::application::line_array& lines) {
+                if (expected_failure == "superior-failure") {
+                    app.kill_process(0, sys::signal::kill);
                 }
-                ++first;
-            }
-            buf.limit(old_limit);
-            buf.compact();
-            std::clog << std::flush;
-        }
-        success = true;
-        for (size_t i=0; i<ntests; ++i) {
-            try {
-                errors[i].clear();
-                tests[i]();
-            } catch (const std::exception& err) {
-                success = false;
-                errors[i] = err.what();
-            }
-        }
-        if (errors != errors0) {
-            std::cerr << "========================================\n";
-            for (size_t i=0; i<ntests; ++i) {
-                std::cerr << "Test #" << (i+1);
-                if (errors[i].empty()) {
-                    std::cerr << " OK\n";
-                } else {
-                    std::cerr << " FAIL\n" << errors[i] << '\n';
+                if (expected_failure == "subordinate-failure") {
+                    app.kill_process(1, sys::signal::kill);
                 }
-            }
-            std::cerr << "========================================\n";
-        }
-        std::swap(errors0, errors);
-        return success;
-    });
-    child.terminate();
-    auto status = child.wait();
-    log("dtest status _ ", status);
-    return 0;
+                if (expected_failure == "power-failure") {
+                    app.kill_process(0, sys::signal::kill);
+                    app.kill_process(1, sys::signal::kill);
+                }
+            });
+    }
+    if (expected_failure == "power-failure") {
+        app.emplace_test(
+            "Restart sbnd.",
+            [] (dts::application& app, const dts::application::line_array& lines) {
+                const auto num_nodes = app.cluster().size();
+                for (size_t i=0; i<num_nodes; ++i) {
+                    auto args = sbnd_args();
+                    args << "transactions-directory=" << app.cluster().name() << (i+1) << '\0';
+                    app.run_process(i, std::move(args));
+                }
+            });
+    }
+    app.emplace_test(
+        "Check that test application finished successfully.",
+        [] (dts::application& app, const dts::application::line_array& lines) {
+            test_application(lines, 2, 2);
+        });
+    return dts::run(app);
 }

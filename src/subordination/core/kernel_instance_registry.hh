@@ -51,7 +51,7 @@ namespace sbn {
             this->_instances[k->id()] = k;
         }
 
-        void clear();
+        void clear(kernel_sack& sack);
 
     };
 

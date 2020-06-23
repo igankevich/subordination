@@ -8,6 +8,6 @@ main(int argc, char** argv) {
     using namespace sbn;
     install_error_handler();
     factory_guard g;
-    send(new Spec_app);
+    send(sbn::make_pointer<Spec_app>());
     return wait_and_return();
 }

@@ -1,6 +1,9 @@
 #ifndef SUBORDINATION_CORE_TYPES_HH
 #define SUBORDINATION_CORE_TYPES_HH
 
+#include <memory>
+#include <vector>
+
 #include <unistdx/base/types>
 
 namespace sbn {
@@ -22,18 +25,23 @@ namespace sbn {
 
     class Factory;
     class application;
-    class application_kernel;
     class basic_socket_pipeline;
     class child_process_pipeline;
     class connection;
-    class kernel_proto_flag;
     class parallel_pipeline;
     class pipeline;
     class pipeline_base;
     class process_handler;
+    class transaction_log;
+    enum class connection_flags: int;
     enum class kernel_header_flag: sys::u8;
     enum class process_role_type;
     enum class role_type;
+
+    using kernel_ptr = std::unique_ptr<kernel>;
+    using kernel_ptr_array = std::vector<kernel_ptr>;
+    using foreign_kernel_ptr = std::unique_ptr<foreign_kernel>;
+    using kernel_sack = std::vector<kernel_ptr>;
 
 }
 

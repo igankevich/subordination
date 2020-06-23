@@ -72,13 +72,12 @@ namespace sbnd {
         _iterator(interface_address, fanout)
         {}
 
-        void
-        on_start() override;
-
-        void
-        on_kernel(sbn::kernel* k) override;
+        void on_start() override;
+        void on_kernel(sbn::kernel_ptr&& k) override;
 
         inline const hierarchy_type& hierarchy() const noexcept { return this->_hierarchy; }
+        inline void interval(duration rhs) noexcept { this->_interval = rhs; }
+        inline duration interval() const noexcept { return this->_interval; }
 
     private:
 
@@ -92,20 +91,11 @@ namespace sbnd {
             return this->_hierarchy.port();
         }
 
-        void
-        probe_next_node();
-
-        void
-        send_timer();
-
-        void
-        update_subordinates(probe* p);
-
-        probe_result
-        process_probe(probe* p);
-
-        void
-        update_principal(prober* p);
+        void probe_next_node();
+        void send_timer();
+        void update_subordinates(pointer<probe> p);
+        probe_result process_probe(pointer<probe>& p);
+        void update_principal(pointer<prober> p);
 
         inline void
         setstate(state_type rhs) noexcept {
@@ -117,22 +107,12 @@ namespace sbnd {
             return this->_state;
         }
 
-        void
-        on_event(socket_pipeline_kernel* k);
-
-        void
-        on_client_add(const sys::socket_address& endp);
-
-        void
-        on_client_remove(const sys::socket_address& endp);
-
-        void
-        broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
-
-        void
-        send_weight(const sys::socket_address& dest, weight_type w);
-
-        void update_weights(Hierarchy_kernel* k);
+        void on_event(pointer<socket_pipeline_kernel> k);
+        void on_client_add(const sys::socket_address& endp);
+        void on_client_remove(const sys::socket_address& endp);
+        void broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
+        void send_weight(const sys::socket_address& dest, weight_type w);
+        void update_weights(pointer<Hierarchy_kernel> k);
 
         template <class ... Args>
         inline void

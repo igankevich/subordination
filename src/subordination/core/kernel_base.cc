@@ -1,8 +1,8 @@
-#include <subordination/core/exit_code.hh>
-
 #include <array>
 #include <ostream>
 #include <type_traits>
+
+#include <subordination/core/kernel_base.hh>
 
 namespace {
     std::array<const char*,6> all_exit_codes{

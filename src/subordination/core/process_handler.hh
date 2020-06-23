@@ -24,6 +24,11 @@ namespace sbn {
         sys::fildes_pair _file_descriptors;
         ::sbn::application _application;
         role_type _role;
+        int _kernel_count = 0;
+        int _kernel_count_last = 0;
+        time_point _last{};
+        foreign_kernel_ptr _main_kernel{};
+        pipeline* _unix{};
 
     public:
 
@@ -42,14 +47,41 @@ namespace sbn {
         }
 
         void handle(const sys::epoll_event& event) override;
-        void remove(sys::event_poller& poller) override;
+        void add(const connection_ptr& self) override;
+        void remove(const connection_ptr& self) override;
         void flush() override;
+        void stop() override;
 
-        inline void forward(foreign_kernel* k) {
-            // remove application before forwarding
-            // to child process
-            if (k->application()) { k->application_id(k->application()->id()); }
-            connection::forward(k);
+        inline void forward(foreign_kernel_ptr&& k) {
+            // remove target application before forwarding
+            // to child process to reduce the amount of data
+            // transferred to child process
+            bool wait_for_completion = false;
+            if (auto* a = k->target_application()) {
+                wait_for_completion = a->wait_for_completion();
+                if (k->source_application_id() == a->id()) {
+                    k->target_application_id(a->id());
+                }
+            }
+            // save the main kernel
+            k = connection::do_forward(std::move(k));
+            if (k) {
+                if (k->type_id() == 1) {
+                    if (wait_for_completion) {
+                        log("save main kernel _", *k);
+                        this->_main_kernel = std::move(k);
+                    } else {
+                        log("return main kernel _", *k);
+                        k->return_to_parent();
+                        k->target_application_id(0);
+                        k->source_application_id(application().id());
+                        if (this->_unix) {
+                            this->_unix->forward(std::move(k));
+                        }
+                    }
+                }
+            }
+            ++this->_kernel_count;
         }
 
         inline const ::sbn::application& application() const noexcept {
@@ -60,8 +92,21 @@ namespace sbn {
             return this->_child_process_id;
         }
 
+        inline bool stale(time_point now, duration timeout) noexcept {
+            if (now-this->_last < timeout) { return false; }
+            bool changed = this->_kernel_count != this->_kernel_count_last;
+            this->_kernel_count_last = this->_kernel_count;
+            this->_last = now;
+            return !changed;
+        }
+
         inline sys::fd_type in() const noexcept { return this->_file_descriptors.in().fd(); }
         inline sys::fd_type out() const noexcept { return this->_file_descriptors.out().fd(); }
+        inline pipeline* unix() const noexcept { return this->_unix; }
+        inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
+
+    protected:
+        void receive_foreign_kernel(foreign_kernel_ptr&& fk) override;
 
     };
 

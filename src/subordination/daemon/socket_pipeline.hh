@@ -14,6 +14,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/local_server.hh>
+#include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
 
 namespace sbnd {
@@ -51,7 +52,7 @@ namespace sbnd {
 
     public:
 
-        socket_pipeline();
+        socket_pipeline() = default;
         ~socket_pipeline() = default;
         socket_pipeline(const socket_pipeline&) = delete;
         socket_pipeline(socket_pipeline&&) = delete;
@@ -81,10 +82,10 @@ namespace sbnd {
         void
         add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void forward(sbn::foreign_kernel* hdr) override;
+        void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
         inline void
-        set_port(sys::port_type rhs) noexcept {
+        port(sys::port_type rhs) noexcept {
             this->_port = rhs;
         }
 
@@ -147,7 +148,7 @@ namespace sbnd {
 
         inline void
         reset_iterator() noexcept {
-            this->_iterator = this->_clients.end();
+            this->_iterator = this->_clients.begin();
             this->_weightcnt = 0;
         }
 
@@ -178,8 +179,7 @@ namespace sbnd {
         }
 
         void process_kernels() override;
-
-        void process_kernel(sbn::kernel* k);
+        void process_kernel(sbn::kernel_ptr& k);
 
         client_ptr
         find_or_create_client(const sys::socket_address& addr);
@@ -190,7 +190,17 @@ namespace sbnd {
         client_ptr
         do_add_client(sys::socket&& sock, sys::socket_address vaddr);
 
-        void fire_event_kernels(socket_pipeline_kernel* event);
+        template <class ... Args>
+        inline void fire_event_kernels(Args&& ... args) {
+            if (!native_pipeline()) { return; }
+            for (auto* target : this->_listeners) {
+                sbn::kernel_ptr k(new socket_pipeline_kernel(std::forward<Args>(args)...));
+                k->parent(k.get());
+                k->principal(target);
+                k->phase(sbn::kernel::phases::point_to_point);
+                native_pipeline()->send(std::move(k));
+            }
+        }
 
         friend class local_server;
         friend class remote_client;

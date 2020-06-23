@@ -1,12 +1,12 @@
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
 
 #include <dtest/cluster.hh>
 
-auto dts::cluster::nodes() -> std::vector<cluster_node> {
+void dts::cluster::generate_nodes(size_t num_nodes) {
     std::vector<cluster_node> result;
-    auto num_nodes = this->_size;
     auto num_addresses = this->_network.count()-2;
     if (num_addresses < num_nodes) {
         throw std::invalid_argument("insufficient network size");
@@ -23,5 +23,16 @@ auto dts::cluster::nodes() -> std::vector<cluster_node> {
         node.interface_address({*address++,this->_network.netmask()});
         node.peer_interface_address({*peer_address++,this->_peer_network.netmask()});
     }
-    return result;
+    this->_nodes = std::move(result);
+}
+
+dts::cluster_node& dts::cluster::node(std::string name) {
+    auto result = std::find_if(this->_nodes.begin(), this->_nodes.end(),
+                               [&] (const cluster_node& node) { return node.name() == name; });
+    if (result == this->_nodes.end()) {
+        std::stringstream tmp;
+        tmp << "node \"" << name << "\" not found";
+        throw std::invalid_argument(tmp.str());
+    }
+    return *result;
 }

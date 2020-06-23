@@ -32,6 +32,7 @@ namespace sbnc {
         void start();
         void stop();
         void wait();
+        void clear();
 
     };
 

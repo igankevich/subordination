@@ -11,13 +11,9 @@ namespace sbn {
 
     class foreign_kernel: public kernel {
 
-    public:
-        using id_type = kernel_type::id_type;
-
     private:
         sys::u32 _size = 0;
         std::unique_ptr<char[]> _payload{};
-        id_type _type = 0;
 
     public:
         foreign_kernel() = default;
@@ -27,7 +23,7 @@ namespace sbn {
         foreign_kernel& operator=(const foreign_kernel&) = delete;
         virtual ~foreign_kernel() = default;
 
-        inline id_type type() const noexcept { return this->_type; }
+        inline bool is_native() const noexcept override { return false; }
 
         void read(kernel_buffer& in) override;
         void write(kernel_buffer& out) const override;

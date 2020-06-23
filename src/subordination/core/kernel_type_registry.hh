@@ -50,7 +50,7 @@ namespace sbn {
         template <class Type> void add(id_type id) {
             this->add(kernel_type{
                 id,
-                [] () -> kernel* { return new Type; },
+                [] () -> kernel_ptr { return kernel_ptr(new Type); },
                 typeid(Type)
             });
         }

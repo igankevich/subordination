@@ -19,7 +19,7 @@ namespace sbn {
             void
             act() {
                 for (I i=a; i<b; ++i) f(i);
-                commit<Local>(this);
+                commit<Local>(std::move(this_ptr()));
             }
 
             F& f;
@@ -29,16 +29,16 @@ namespace sbn {
         void
         act() override {
             for (I i=a; i<b; i+=bs) {
-                upstream<Local>(this, new Worker(f, i, std::min(i+bs, b)));
+                upstream<Local>(this, sbn::make_pointer<Worker>(f, i, std::min(i+bs, b)));
             }
         }
 
         void
-        react(kernel* k) override {
-            Worker* w = dynamic_cast<Worker*>(k);
+        react(kernel_ptr&& k) override {
+            auto w = sbn::pointer_dynamic_cast<Worker>(std::move(k));
             I x1 = w->a, x2 = w->b;
             for (I i=x1; i<x2; ++i) g(i);
-            if (++n == m) commit<Local>(this);
+            if (++n == m) { commit<Local>(std::move(this_ptr())); }
         }
 
     private:
@@ -55,9 +55,9 @@ namespace sbn {
     };
 
     template<class F, class G, class I>
-    Map<F, G, I>*
+    sbn::pointer<Map<F, G, I>>
     mapreduce(F f, G g, I a, I b, I bs=1) {
-        return new Map<F, G, I>(f, g, a, b, bs);
+        return sbn::make_pointer<Map<F, G, I>>(f, g, a, b, bs);
     }
 
 }

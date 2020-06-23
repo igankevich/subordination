@@ -29,7 +29,7 @@ public:
         const auto delta = duration_cast<milliseconds>(now-at()).count();
         message("#_ wakes up _ms later than scheduled", this->_serial_number, delta);
         return_to_parent(sbn::exit_code::success);
-        local.send_downstream(this);
+        local.send_downstream(std::move(this_ptr()));
     }
 
 };
@@ -50,31 +50,31 @@ public:
     {}
 
     void act() override {
-        std::vector<sbn::kernel*> kernels(_nkernels);
+        std::vector<sbn::kernel_ptr> kernels(_nkernels);
         // send kernels in inverse chronological order
         for (size_t i=0; i<this->_nkernels; ++i) {
             kernels[i] = new_sleepy_kernel(this->_nkernels - i, this->_nkernels - i);
         }
-        local.send(kernels.data(), kernels.size());
+        local.send(std::move(kernels));
     }
 
-    void react(sbn::kernel* child) override {
-        Sleepy_kernel* k = dynamic_cast<Sleepy_kernel*>(child);
+    void react(sbn::kernel_ptr&& child) override {
+        auto k = sbn::pointer_dynamic_cast<Sleepy_kernel>(std::move(child));
         EXPECT_EQ(k->serial_number(), _last_serial_number+1)
             << "Invalid order of scheduled kernels";
         ++_last_serial_number;
         --this->_nkernels;
         if (this->_nkernels == 0) {
             return_code(sbn::exit_code::success);
-            sbn::graceful_shutdown(this);
+            sbn::exit(this);
         }
     }
 
 private:
 
-    inline sbn::kernel*
+    inline sbn::kernel_ptr
     new_sleepy_kernel(int delay, int serial_number) {
-        auto* k = new Sleepy_kernel;
+        auto k = sbn::make_pointer<Sleepy_kernel>();
         k->after(delay * this->_period);
         k->parent(this);
         k->serial_number(serial_number);
@@ -86,9 +86,10 @@ private:
 TEST(TimerServerTest, All) {
     sbn::install_error_handler();
     local.start();
-    local.send(new Main(10, std::chrono::milliseconds(500)));
+    local.send(sbn::make_pointer<Main>(10, std::chrono::milliseconds(500)));
     EXPECT_EQ(0, sbn::wait_and_return());
     local.stop();
     local.wait();
-    local.clear();
+    sbn::kernel_sack sack;
+    local.clear(sack);
 }
