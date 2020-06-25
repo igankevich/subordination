@@ -213,8 +213,7 @@ void sbnd::local_server::handle(const sys::epoll_event& ev) {
     }
 }
 
-void
-sbnd::socket_pipeline::remove_server(const interface_address& interface_address) {
+void sbnd::socket_pipeline::remove_server(const interface_address& interface_address) {
     lock_type lock(this->_mutex);
     server_iterator result = this->find_server(interface_address);
     if (result != this->_servers.end()) {
@@ -222,17 +221,14 @@ sbnd::socket_pipeline::remove_server(const interface_address& interface_address)
     }
 }
 
-void
-sbnd::socket_pipeline::remove_server(server_iterator result) {
+void sbnd::socket_pipeline::remove_server(server_iterator result) {
     // copy interface_address
     interface_address interface_address = (*result)->interface_address();
     this->_servers.erase(result);
     fire_event_kernels(socket_pipeline_event::remove_server, interface_address);
 }
 
-void
-sbnd::socket_pipeline
-::remove_client(const sys::socket_address& vaddr) {
+void sbnd::socket_pipeline::remove_client(const sys::socket_address& vaddr) {
     this->log("remove client _", vaddr);
     client_iterator result = this->_clients.find(vaddr);
     if (result != this->_clients.end()) {
@@ -240,9 +236,7 @@ sbnd::socket_pipeline
     }
 }
 
-void
-sbnd::socket_pipeline
-::remove_client(client_iterator result) {
+void sbnd::socket_pipeline::remove_client(client_iterator result) {
     // copy socket_address
     sys::socket_address socket_address = result->first;
     #if defined(SBN_DEBUG)
@@ -284,11 +278,6 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
         this->log("fwd _ to _", *fk, fk->destination());
         #endif
         ptr->forward(std::move(fk));
-        try {
-            ptr->flush();
-        } catch (const std::exception& err) {
-            log("_ error _", __func__, err.what());
-        }
         this->_semaphore.notify_one();
     } else {
         if (this->end_reached() &&
@@ -304,12 +293,13 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
             #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *fk, "localhost");
             #endif
-            foreign_pipeline()->forward(std::move(fk));
+            forward_foreign(std::move(fk));
         } else {
             #if defined(SBN_DEBUG)
             this->log("fwd _ to _", *fk, this->current_client().socket_address());
             #endif
-            this->current_client().forward(std::move(fk));
+            auto& ptr = current_client();
+            ptr.forward(std::move(fk));
             this->find_next_client();
             this->_semaphore.notify_one();
         }
@@ -421,7 +411,6 @@ sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const cl
 }
 
 void sbnd::socket_pipeline::process_kernels() {
-//	lock_type lock(this->_mutex);
     while (!this->_kernels.empty()) {
         auto k = std::move(this->_kernels.front());
         this->_kernels.pop();
@@ -432,7 +421,7 @@ void sbnd::socket_pipeline::process_kernels() {
             if (k) {
                 k->source(k->destination());
                 k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
-                native_pipeline()->send(std::move(k));
+                send_native(std::move(k));
             }
         }
     }
@@ -446,7 +435,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
         if (result != this->_servers.end()) {
             k->source(k->destination());
             k->return_to_parent(exit_code::no_upstream_servers_available);
-            native_pipeline()->send(k);
+            send_native(std::move(k));
             return;
         }
        }
@@ -465,17 +454,15 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
                 // include localhost in round-robin
                 // (short-circuit kernels when no upstream servers
                 // are available)
-                native_pipeline()->send(std::move(k));
-            } else {
-                success = true;
-            }
+                send_native(std::move(k));
+            } else { success = true; }
         } else {
             if (this->_clients.empty()) {
                 if (k->carries_parent()) {
                     log("warning, sending a kernel carrying parent to local pipeline _", *k);
                 }
                 //k->return_to_parent(sbn::exit_code::no_upstream_servers_available);
-                native_pipeline()->send(std::move(k));
+                send_native(std::move(k));
             } else {
                 success = true;
             }
@@ -490,7 +477,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
         // kernel @k was sent to local node
         // because no upstream servers had
         // been available
-        native_pipeline()->send(std::move(k));
+        send_native(std::move(k));
     } else {
         // create socket_address if necessary, and send kernel
         if (not k->destination()) {
@@ -583,16 +570,5 @@ sbnd::socket_pipeline::set_client_weight(const sys::socket_address& addr,
     client_iterator result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
         result->second->weight(new_weight);
-    }
-}
-
-void
-sbnd::socket_pipeline::print_state(std::ostream& out) {
-    lock_type lock(this->_mutex);
-    for (const auto& val : this->_servers) {
-        this->log("server _", val);
-    }
-    for (const auto& val : this->_clients) {
-        this->log("client _, handler _", val.first, val.second->socket_address());
     }
 }

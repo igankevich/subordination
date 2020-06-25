@@ -10,9 +10,17 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
+#include <subordination/daemon/main_kernel.hh>
 #include <subordination/daemon/network_master.hh>
 #include <subordination/daemon/status_kernel.hh>
 #include <subordination/daemon/terminate_kernel.hh>
+#include <subordination/daemon/transaction_test_kernel.hh>
+
+template <class ... Args>
+inline void
+log(const Args& ... args) {
+    sys::log_message("sbnd", args...);
+}
 
 class Duration: public std::chrono::system_clock::duration {
 public:
@@ -37,13 +45,13 @@ Duration string_to_duration(std::string s) {
     using days = std::chrono::duration<Duration::rep,std::ratio<60*60*24>>;
     trim_right(s);
     std::size_t i = 0, n = s.size();
-    if (i == n) { throw std::invalid_argument("duration without suffix"); }
     Duration::rep value = std::stoul(s, &i);
-    auto suffix = s.substr(i);
+    std::string suffix;
+    if (i != n) { suffix = s.substr(i); }
     if (suffix == "ns") { return duration_cast<d>(nanoseconds(value)); }
     if (suffix == "us") { return duration_cast<d>(microseconds(value)); }
     if (suffix == "ms") { return duration_cast<d>(milliseconds(value)); }
-    if (suffix == "s") { return duration_cast<d>(seconds(value)); }
+    if (suffix == "s" || suffix.empty()) { return duration_cast<d>(seconds(value)); }
     if (suffix == "m") { return duration_cast<d>(minutes(value)); }
     if (suffix == "h") { return duration_cast<d>(hours(value)); }
     if (suffix == "d") { return duration_cast<d>(days(value)); }
@@ -79,6 +87,8 @@ int main(int argc, char* argv[]) {
         sys::log_message("discovery", "time since epoch _ms", t.count());
     }
     #endif
+    log("kernel size _", sizeof(sbn::kernel));
+    log("foreign kernel size _", sizeof(sbn::foreign_kernel));
     using namespace sbnd;
     sys::ipv4_address::rep_type fanout = 10000;
     sys::interface_address<sys::ipv4_address> servers;
@@ -106,10 +116,13 @@ int main(int argc, char* argv[]) {
     install_debug_handler();
     sys::this_process::bind_signal(sys::signal::terminate, on_terminate);
     sys::this_process::bind_signal(sys::signal::keyboard_interrupt, on_terminate);
+    factory.types().add<Main_kernel>(1);
     factory.types().add<probe>(2);
     factory.types().add<Hierarchy_kernel>(3);
     factory.types().add<Status_kernel>(4);
     factory.types().add<Terminate_kernel>(5);
+    factory.types().add<Transaction_test_kernel>(6);
+    factory.types().add<Transaction_gather_subordinate>(7);
     try {
         sys::mkdirs(transactions_directory);
         transactions_directory = sys::canonical_path(transactions_directory);

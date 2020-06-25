@@ -71,9 +71,8 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
     child->types(types());
     child->name(this->_name);
     child->unix(unix());
-    #if defined(UNISTDX_HAVE_LINUX_NETLINK_H)
-    //child->socket_address(sys::netlink_socket_address(p.id()));
-    #endif
+    using f = sbn::connection_flags;
+    child->setf(f::save_upstream_kernels | f::save_downstream_kernels);
     log("executing app=_,credentials=_:_,pid=_ command _",
         app.id(), app.user(), app.group(), p.id(), app.arguments().front());
     auto result = this->_jobs.emplace(app.id(), child);
@@ -86,6 +85,7 @@ void sbnd::process_pipeline::remove(application_id_type id) {
     auto result = this->_jobs.find(id);
     if (result == this->_jobs.end()) { return; }
     terminate(result->second->child_process_id());
+    { sbn::kernel_sack sack; result->second->clear(sack); }
     this->_jobs.erase(result);
 }
 
@@ -102,10 +102,14 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
 
 void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     #if defined(SBN_DEBUG)
-    log("forward src _ dst _ src-app _ dst-app _", fk->source(), fk->destination(),
-        fk->source_application_id(), fk->target_application_id());
+    log("forward src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
+        fk->source_application_id(), fk->target_application_id(), fk->id());
     #endif
     lock_type lock(this->_mutex);
+    #if defined(SBN_DEBUG)
+    log("forward2 src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
+        fk->source_application_id(), fk->target_application_id(), fk->id());
+    #endif
     if (stopping() || stopped()) { return; }
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
@@ -124,11 +128,6 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     }
     auto& conn = result->second;
     conn->forward(std::move(fk));
-    try {
-        conn->flush();
-    } catch (const std::exception& err) {
-        log("_ error _", __func__, err.what());
-    }
     poller().notify_one();
 }
 
@@ -143,9 +142,12 @@ void sbnd::process_pipeline::process_kernel(sbn::kernel_ptr&& k) {
     if (k->phase() == sbn::kernel::phases::broadcast) {
         for (auto& pair : this->_jobs) { pair.second->send(k); }
     } else {
-        auto result = this->_jobs.find(k->target_application_id());
+        const auto application_id = k->target_application_id();
+        auto result = this->_jobs.find(application_id);
         if (result == this->_jobs.end()) {
-            sbn::throw_error("bad application id ", k->source_application_id());
+            auto* a = k->target_application();
+            if (!a) { sbn::throw_error("bad application id ", application_id); }
+            result = do_add(*a);
         }
         result->second->send(k);
     }
@@ -191,9 +193,9 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                 auto result = this->find_by_process_id(p.id());
                 if (result == this->_jobs.end()) { return; }
                 this->log("app exited: app=_,_", result->first, status);
-                log("listeners _", this->_listeners.size());
                 //result->second->close();
                 auto application_id = result->first;
+                { sbn::kernel_sack sack; result->second->clear(sack); }
                 this->_jobs.erase(result);
                 if (!native_pipeline()) { return; }
                 for (auto* target : this->_listeners) {
@@ -203,8 +205,7 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                     k->status(status);
                     k->principal(target);
                     k->phase(sbn::kernel::phases::point_to_point);
-                    log("notify listener _", *target);
-                    native_pipeline()->send(std::move(k));
+                    send_native(std::move(k));
                 }
             }
         );

@@ -65,6 +65,7 @@ namespace sbnd {
         #endif
 
         void transactions(const char* filename);
+        inline sbn::transaction_log& transactions() noexcept { return this->_transactions; }
 
         inline void start() {
             this->_local.start();
@@ -84,15 +85,7 @@ namespace sbnd {
             #endif
         }
 
-        inline void wait() {
-            this->_local.wait();
-            this->_remote.wait();
-            #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-            this->_process.wait();
-            this->_unix.wait();
-            #endif
-        }
-
+        void wait();
         void clear();
 
     };

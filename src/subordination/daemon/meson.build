@@ -42,6 +42,7 @@ sbnd_exe = executable(
         'resident_kernel.cc',
         'sbnd.cc',
         'terminate_kernel.cc',
+        'transaction_test_kernel.cc',
         'unix_socket_pipeline.cc',
     ]),
     include_directories: src,
@@ -54,7 +55,7 @@ sbnd_exe = executable(
 
 sbnc_exe = executable(
     'sbnc',
-    sources: ['small_factory.cc', 'sbnc.cc'],
+    sources: ['small_factory.cc', 'sbnc.cc', 'sbnc_transaction_test_kernel.cc'],
     include_directories: [src],
     dependencies: [sbnd],
     install: true,
@@ -185,7 +186,7 @@ discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
     include_directories: [src],
-    dependencies: [sbn,gtest,dtest],
+    dependencies: [sbn,dtest],
     implicit_include_directories: false,
 )
 
@@ -198,3 +199,16 @@ foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure', 'pow
         is_parallel: false
     )
 endforeach
+
+test(
+    'daemon/transaction',
+    executable(
+        'transaction-test',
+        sources: 'transaction_test.cc',
+        include_directories: [src],
+        dependencies: [sbn,dtest],
+        implicit_include_directories: false,
+    ),
+    workdir: meson.build_root(),
+    is_parallel: false
+)

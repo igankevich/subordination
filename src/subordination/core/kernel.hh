@@ -313,34 +313,6 @@ namespace sbn {
             return ret;
         }
 
-        /*
-        inline bool
-        moves_upstream() const noexcept {
-            return this->return_code() == exit_code::undefined &&
-                !this->_principal &&
-                this->_parent;
-        }
-
-        inline bool
-        moves_downstream() const noexcept {
-            return this->return_code() != exit_code::undefined &&
-                this->_principal &&
-                this->_parent;
-        }
-
-        inline bool
-        moves_somewhere() const noexcept {
-            return this->return_code() == exit_code::undefined &&
-                this->_principal &&
-                this->_parent;
-        }
-
-        inline bool
-        moves_everywhere() const noexcept {
-            return !this->_principal && !this->_parent;
-        }
-        */
-
         virtual void read(kernel_buffer& in);
         virtual void write(kernel_buffer& out) const;
 

@@ -15,10 +15,13 @@ namespace sbn {
         stopped
     };
 
+    const char* to_string(pipeline_state rhs);
+    std::ostream& operator<<(std::ostream& out, pipeline_state rhs);
+
     class pipeline_base {
 
     protected:
-        volatile pipeline_state _state = pipeline_state::initial;
+        volatile pipeline_state _state{pipeline_state::initial};
         const char* _name = "ppl";
 
     public:

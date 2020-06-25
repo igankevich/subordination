@@ -38,6 +38,15 @@ void sbnd::Factory::transactions(const char* filename) {
     this->_unix.transactions(&this->_transactions);
 }
 
+void sbnd::Factory::wait() {
+    this->_local.wait();
+    this->_remote.wait();
+    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
+    this->_process.wait();
+    this->_unix.wait();
+    #endif
+}
+
 void sbnd::Factory::clear() {
     sbn::kernel_sack sack;
     this->_local.clear(sack);

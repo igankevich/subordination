@@ -5,12 +5,12 @@
 
 void sbn::child_process_pipeline::send(kernel_ptr&& k) {
     #if defined(SBN_DEBUG)
-    this->log("send _", *k);
+    log("send _", *k);
     #endif
     lock_type lock(this->_mutex);
     if (!this->_parent) {
         lock.unlock();
-        native_pipeline()->send(std::move(k));
+        send_native(std::move(k));
     } else {
         this->_kernels.emplace(std::move(k));
         this->poller().notify_one();
@@ -40,7 +40,7 @@ void sbn::child_process_pipeline::process_kernels() {
                               this->_parent->state() == connection_state::starting)) {
             this->_parent->send(k);
         } else {
-            native_pipeline()->send(std::move(k));
+            send_native(std::move(k));
         }
     }
 }

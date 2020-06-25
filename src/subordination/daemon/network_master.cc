@@ -86,15 +86,9 @@ void
 sbnd::network_master::update_ifaddrs() {
     interface_address_set new_ifaddrs = this->enumerate_ifaddrs();
     interface_address_set ifaddrs_to_add =
-        set_difference_copy(
-            new_ifaddrs,
-            this->_discoverers
-        );
+        set_difference_copy(new_ifaddrs, this->_discoverers);
     interface_address_set ifaddrs_to_rm =
-        set_difference_copy(
-            this->_discoverers,
-            new_ifaddrs
-        );
+        set_difference_copy(this->_discoverers, new_ifaddrs);
     // filter allowed interface addresses
     if (!this->_allowedifaddrs.empty()) {
         auto first = ifaddrs_to_add.begin();
@@ -277,7 +271,7 @@ void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
         const addr_type& a = traits_type::address(ev->socket_address());
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {
-            sys::log_message("net", "bad event socket_address _", a);
+            sys::log_message("net", "bad event socket address _", a);
         } else {
             auto* discoverer = result->second;
             ev->principal(discoverer);

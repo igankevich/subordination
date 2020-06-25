@@ -10,9 +10,11 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/job_status_kernel.hh>
+#include <subordination/daemon/main_kernel.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
+#include <subordination/daemon/transaction_test_kernel.hh>
 
 enum class Command { Submit, Status, Delete };
 
@@ -41,7 +43,7 @@ template <class T> inline Rec<T> make_rec(const T& rhs) { return Rec<T>(rhs); }
 std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hierarchy_type>& rhs) {
     const auto& h = rhs.object();
     rec(out, "interface-address", h.interface_address());
-    rec(out, "principal", h.principal());
+    rec(out, "superior", h.principal());
     out << "subordinates: ";
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
@@ -137,8 +139,10 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hie
     const auto& hierarchies = rhs.object();
     if (!hierarchies.empty()) {
         const auto& h = hierarchies.front();
-        out << std::left << std::setw(std::max(column_width(h.interface_address()), 18)) << "Interface address";
-        out << std::left << std::setw(std::max(column_width(h.principal()), 10)) << "Principal";
+        out << std::left << std::setw(std::max(column_width(h.interface_address()), 18))
+            << "Interface address";
+        out << std::left << std::setw(std::max(column_width(h.principal()), 10))
+            << "Superior";
         out << "Subordinates";
         out << '\n';
     }
@@ -181,50 +185,84 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Pipeline_status_ke
     return out << make_rec(rhs.object());
 }
 
-class Main_kernel: public sbn::kernel {};
-
-sbn::kernel_ptr new_application_kernel(int argc, char* argv[]) {
-    using string_array = sbn::application::string_array;
-    string_array args, env;
-    for (int i=1; i<argc; ++i) {
-        args.emplace_back(argv[i]);
-    }
-    for (char** first=environ; *first; ++first) {
-        env.emplace_back(*first);
-    }
-    auto* app = new sbn::application(args, env);
-    app->working_directory(sys::canonical_path("."));
-    auto k = sbn::make_pointer<Main_kernel>();
-    k->target_application(app);
-    //k->source_application_id(app->id());
-    k->destination(sys::socket_address(SBND_SOCKET));
-    return k;
-}
-
 class Submit: public sbn::kernel {
 
+public:
+    using string_array = sbn::application::string_array;
+
 private:
-    int _argc;
-    char** _argv;
+    string_array _arguments;
+    bool _test_recovery = false;
 
 public:
-    Submit(int argc, char** argv): _argc(argc), _argv(argv) {}
+    Submit(int argc, char** argv) {
+        int i0 = 1;
+        if (argc >= 2 && std::string(argv[1]) == "-T") {
+            this->_test_recovery = true;
+            i0 = 2;
+        }
+        for (int i=i0; i<argc; ++i) {
+            this->_arguments.emplace_back(argv[i]);
+        }
+    }
 
     void act() override {
-        auto k = new_application_kernel(this->_argc, this->_argv);
+        sbn::kernel_ptr k;
+        if (this->_test_recovery) {
+            k = make_transaction_test_kernel();
+        } else {
+            k = make_application_kernel();
+        }
         k->parent(this);
         sbnc::factory.remote().send(std::move(k));
     }
 
     void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Main_kernel>(std::move(child));
-        if (k->return_code() != sbn::exit_code::success) {
-            message("failed to submit _", k->source_application_id());
+        const auto& t = typeid(*child);
+        return_to_parent(child->return_code());
+        if (t == typeid(sbnd::Main_kernel)) {
+            auto k = sbn::pointer_dynamic_cast<sbnd::Main_kernel>(std::move(child));
+            if (k->return_code() != sbn::exit_code::success) {
+                message("failed to submit _", k->source_application_id());
+            } else {
+                message("submitted _", k->source_application_id());
+            }
         } else {
-            message("submitted _", k->source_application_id());
+            auto k =
+                sbn::pointer_dynamic_cast<sbnd::Transaction_test_kernel>(std::move(child));
+            int i = 0;
+            for (auto ret : k->exit_codes()) {
+                message("exit code #_: _", ++i, ret);
+            }
         }
-        return_to_parent(k->return_code());
         sbnc::factory.local().send(std::move(this_ptr()));
+    }
+
+private:
+
+    static string_array make_environment() {
+        string_array env;
+        for (char** first=environ; *first; ++first) { env.emplace_back(*first); }
+        return env;
+    }
+
+    sbn::kernel_ptr make_application_kernel() {
+        auto* app = new sbn::application(std::move(this->_arguments), make_environment());
+        app->working_directory(sys::canonical_path("."));
+        auto k = sbn::make_pointer<sbnd::Main_kernel>();
+        k->target_application(app);
+        //k->source_application_id(app->id());
+        k->destination(sys::socket_address(SBND_SOCKET));
+        return k;
+    }
+
+    sbn::kernel_ptr make_transaction_test_kernel() {
+        sbn::application app(std::move(this->_arguments), make_environment());
+        app.working_directory(sys::canonical_path("."));
+        auto k = sbn::make_pointer<sbnd::Transaction_test_kernel>(std::move(app));
+        k->target_application(0);
+        k->destination(sys::socket_address(SBND_SOCKET));
+        return k;
     }
 
 };
@@ -388,12 +426,14 @@ public:
 };
 
 void usage(char* argv[0]) {
-    std::cerr << "usage: " << argv[0] <<
-        " [-h] [-t entity-type] [-o output-format] [-d ids...] [command] [arguments...]\n"
+    std::cerr << "usage: "
+        "sbnc [-h] [-t entity-type] [-o output-format] [-d ids...]\n"
+        "sbnc [-T] [command] [arguments...]\n"
         "-t type            entity type (node, job, kernel)\n"
         "-o format          output format (human, rec)\n"
         "-d ids...          delete entity (job)\n"
         "-h                 usage\n"
+        "-T                 test an ability to recover from power failure\n"
         "command arguments  a command with arguments to run\n";
 }
 
@@ -401,13 +441,14 @@ int main(int argc, char* argv[]) {
     auto command = Command::Submit;
     if (argc <= 1) { usage(argv); return 1; }
     if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(argv); return 0; }
-    if (argc >= 2 && argv[1][0] == '-') { command = Command::Status; }
-    if (sbn::this_application::id() == 0) {
-        sbn::this_application::id(1);
+    if (argc >= 2 && argv[1][0] == '-' && std::string(argv[1]) != "-T") {
+        command = Command::Status;
     }
+    if (sbn::this_application::id() == 0) { sbn::this_application::id(1); }
     sbn::install_error_handler();
-    sbnc::factory.types().add<Main_kernel>(1);
+    sbnc::factory.types().add<sbnd::Main_kernel>(1);
     sbnc::factory.types().add<sbnd::Status_kernel>(4);
+    sbnc::factory.types().add<sbnd::Transaction_test_kernel>(6);
     try {
         sbnc::factory.start();
         sbnc::factory.remote().use_localhost(false);

@@ -72,9 +72,22 @@ namespace sbn {
         };
 
     public:
+        class unsentry {
+        private:
+            const basic_socket_pipeline& _pipeline;
+        public:
+            inline explicit unsentry(const basic_socket_pipeline& rhs): _pipeline(rhs) {
+                this->_pipeline._mutex.unlock();
+            }
+            inline ~unsentry() { this->_pipeline._mutex.lock(); }
+        };
+
+    public:
 
         inline sentry guard() noexcept { return sentry(*this); }
         inline sentry guard() const noexcept { return sentry(*this); }
+        inline unsentry unguard() noexcept { return unsentry(*this); }
+        inline unsentry unguard() const noexcept { return unsentry(*this); }
 
         basic_socket_pipeline();
         ~basic_socket_pipeline() = default;
@@ -173,6 +186,32 @@ namespace sbn {
 
     protected:
 
+        /// \brief This wrapper method prevents deadlock between socket and process pipelines.
+        inline void send_to(pipeline* ppl, kernel_ptr&& k) {
+            if (ppl) { auto g = unguard(); ppl->send(std::move(k)); }
+        }
+
+        inline void send_remote(kernel_ptr&& k) { send_to(remote_pipeline(), std::move(k)); }
+        inline void send_native(kernel_ptr&& k) { send_to(native_pipeline(), std::move(k)); }
+        inline void send_foreign(kernel_ptr&& k) { send_to(foreign_pipeline(), std::move(k)); }
+
+        /// \brief This wrapper method prevents deadlock between socket and process pipelines.
+        inline void forward_to(pipeline* ppl, foreign_kernel_ptr&& k) {
+            if (ppl) { auto g = unguard(); ppl->forward(std::move(k)); }
+        }
+
+        inline void forward_remote(foreign_kernel_ptr&& k) {
+            forward_to(remote_pipeline(), std::move(k));
+        }
+
+        inline void forward_native(foreign_kernel_ptr&& k) {
+            forward_to(native_pipeline(), std::move(k));
+        }
+
+        inline void forward_foreign(foreign_kernel_ptr&& k) {
+            forward_to(foreign_pipeline(), std::move(k));
+        }
+
         inline semaphore_type& poller() noexcept { return this->_semaphore; }
         inline const semaphore_type& poller() const noexcept { return this->_semaphore; }
 
@@ -220,6 +259,8 @@ namespace sbn {
         void deactivate(sys::fd_type fd, connection_ptr conn, time_point now,
                         const char* reason);
         void remove(sys::fd_type fd, connection_ptr& conn, const char* reason);
+
+        friend class connection;
 
     };
 

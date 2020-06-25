@@ -298,8 +298,7 @@ TEST(socket_pipeline, _) {
     }
 }
 
-int
-main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
     sbn::install_error_handler();
     ::testing::InitGoogleTest(&argc, argv);
     sys::this_process::ignore_signal(sys::signal::broken_pipe);

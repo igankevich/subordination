@@ -84,47 +84,18 @@ namespace sbnd {
 
         void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
-        inline void
-        port(sys::port_type rhs) noexcept {
-            this->_port = rhs;
-        }
-
-        inline sys::port_type
-        port() const noexcept {
-            return this->_port;
-        }
-
-        inline server_const_iterator
-        servers_begin() const noexcept {
-            return this->_servers.begin();
-        }
-
-        inline server_const_iterator
-        servers_end() const noexcept {
-            return this->_servers.end();
-        }
-
-        inline void
-        use_localhost(bool b) noexcept {
-            this->_uselocalhost = b;
-        }
-
-        void
-        remove_server(const interface_address& interface_address);
-
-        void
-        print_state(std::ostream& out);
+        inline void port(sys::port_type rhs) noexcept { this->_port = rhs; }
+        inline sys::port_type port() const noexcept { return this->_port; }
+        inline const server_array& servers() const noexcept { return this->_servers; }
+        inline const client_table& clients() const noexcept { return this->_clients; }
+        inline void use_localhost(bool b) noexcept { this->_uselocalhost = b; }
+        void remove_server(const interface_address& interface_address);
 
     private:
 
-        void
-        remove_client(const sys::socket_address& vaddr);
-
-        void
-        remove_client(client_iterator result);
-
-        void
-        remove_server(server_iterator result);
+        void remove_client(const sys::socket_address& vaddr);
+        void remove_client(client_iterator result);
+        void remove_server(server_iterator result);
 
         server_iterator
         find_server(const interface_address& interface_address);
@@ -138,8 +109,7 @@ namespace sbnd {
         void ensure_identity(sbn::kernel* k, const sys::socket_address& dest);
 
         /// round robin over upstream hosts
-        void
-        find_next_client();
+        void find_next_client();
 
         inline bool
         end_reached() const noexcept {

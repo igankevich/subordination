@@ -83,6 +83,15 @@ void sbn::basic_socket_pipeline::flush_buffers() {
     for (size_type i=0; i<nconnections; ++i) {
         auto& conn = this->_connections[i];
         if (!conn) { continue; }
+        try {
+            conn->flush();
+        } catch (const std::exception& err) {
+            log("flush _", err.what());
+            if (conn->state() == connection_state::started) {
+                deactivate(i, conn, now, err.what());
+                continue;
+            }
+        }
         if (conn->state() == connection_state::stopped) {
             remove(i, conn, "stopped");
         } else if (conn->state() == connection_state::starting) {
@@ -107,12 +116,6 @@ void sbn::basic_socket_pipeline::flush_buffers() {
                     }
                     deactivate(j, tmp, now, err.what());
                 }
-            }
-        } else {
-            try {
-                conn->flush();
-            } catch (const std::exception& err) {
-                deactivate(i, conn, now, err.what());
             }
         }
     }

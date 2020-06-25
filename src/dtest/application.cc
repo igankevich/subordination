@@ -1,4 +1,6 @@
 #include <iostream>
+#include <regex>
+#include <sstream>
 #include <string>
 
 #include <unistdx/base/command_line>
@@ -107,12 +109,36 @@ void dts::application::run_process(cluster_node_bitmap where, sys::argstream arg
     for (size_t i=0; i<num_nodes; ++i) {
         if (!where.matches(i)) { continue; }
         auto& node = this->_cluster.nodes()[i];
+        sys::pipe stdout, stderr;
+        stdout.out().unsetf(sys::open_flag::non_blocking);
+        stderr.out().unsetf(sys::open_flag::non_blocking);
+        {
+            std::stringstream tmp;
+            tmp << node.name() << ": ";
+            std::copy(args.argv(), args.argv() + args.argc(),
+                      sys::intersperse_iterator<char*,char>(tmp, ' '));
+            this->log("_", tmp.str());
+        }
         this->_child_processes.emplace([&] () {
+            stdout.in().close();
+            stderr.in().close();
+            sys::fildes out(STDOUT_FILENO);
+            out = stdout.out();
+            sys::fildes err(STDERR_FILENO);
+            err = stderr.out();
             sys::this_process::enter(node.network_namespace().fd());
             sys::this_process::enter(node.hostname_namespace().fd());
             return sys::this_process::execute(args.argv());
         });
         this->_child_process_nodes.emplace_back(i);
+        stdout.out().close();
+        stderr.out().close();
+        lock_type lock(this->_mutex);
+        this->_output.emplace_back(node.veth().name()+": ", std::move(stdout.in()), 1);
+        this->_poller.emplace(this->_output.back().in().fd(), sys::event::in);
+        this->_output.emplace_back(node.veth().name()+": ", std::move(stderr.in()), 2);
+        this->_poller.emplace(this->_output.back().in().fd(), sys::event::in);
+        this->_poller.notify_one();
     }
     this->_where.emplace_back(std::move(where));
     this->_arguments.emplace_back(std::move(args));
@@ -321,12 +347,11 @@ void dts::application::process_events() {
     try {
         using namespace sys::this_process;
         ignore_signal(sys::signal::broken_pipe);
-        struct No_lock { void lock() {} void unlock() {} };
-        No_lock lock;
-        this->_poller.wait(lock, [this] () {
+        lock_type lock(this->_mutex);
+        this->_poller.wait(lock, [this,&lock] () {
             auto pipe_fd = this->_poller.pipe_in();
             for (const auto& event : this->_poller) {
-                if (event.fd() == pipe_fd) { this->_stopped = true; }
+                if (event.fd() == pipe_fd) { continue; }
                 for (auto& output : this->_output) {
                     //if (event.fd() == output.in().fd()) { output.copy(); }
                     output.copy(this->_lines);
@@ -372,7 +397,7 @@ bool dts::application::run_tests() {
     return this->_tests.empty();
 }
 
-void dts::process_output::copy(line_array& lines) {
+void dts::process_output::copy(string_array& lines) {
     auto& buf = this->_buffer;
     buf.fill(this->_in);
     buf.flip();
@@ -488,4 +513,43 @@ int dts::run(application& app) {
     }
     app.log("terminated");
     return ret;
+}
+
+void dts::expect_event_sequence(const string_array& lines, const string_array& regex_strings) {
+    std::vector<std::regex> expressions;
+    for (const auto& s : regex_strings) { expressions.emplace_back(s); }
+    auto first = expressions.begin();
+    auto last = expressions.end();
+    auto first2 = lines.begin();
+    auto last2 = lines.end();
+    while (first != last && first2 != last2) {
+        if (std::regex_match(*first2, *first)) { ++first; }
+        ++first2;
+    }
+    if (first != last) {
+        std::stringstream msg;
+        msg << "unmatched expressions: \n";
+        size_t offset = first - expressions.begin();
+        std::copy(
+            regex_strings.begin() + offset,
+            regex_strings.end(),
+            std::ostream_iterator<std::string>(msg, "\n")
+        );
+        throw std::runtime_error(msg.str());
+    }
+}
+
+void dts::expect_event_count(const string_array& lines,
+                             std::string regex_string,
+                             size_t expected_count) {
+    std::regex expr(regex_string);
+    size_t count = 0;
+    for (const auto& line : lines) {
+        if (std::regex_match(line, expr)) { ++count; }
+    }
+    if (count != expected_count) {
+        std::stringstream msg;
+        msg << "bad event count: expected=" << expected_count << ",actual=" << count;
+        throw std::runtime_error(msg.str());
+    }
 }

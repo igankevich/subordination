@@ -151,6 +151,7 @@ namespace sbn {
         template <class Sink>
         inline void flush(Sink& sink) {
             this->_output_buffer.flip();
+            log("flush _", this->_output_buffer.remaining());
             this->_output_buffer.flush(sink);
             this->_output_buffer.compact();
         }
