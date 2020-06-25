@@ -148,12 +148,19 @@ namespace sbn {
         void recover_kernels(bool downstream);
         virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
 
+        struct flush_guard {
+            kernel_buffer& _buffer;
+            inline explicit flush_guard(kernel_buffer& buffer): _buffer(buffer) {
+                this->_buffer.flip();
+            }
+            inline ~flush_guard() { this->_buffer.compact(); }
+        };
+
         template <class Sink>
         inline void flush(Sink& sink) {
-            this->_output_buffer.flip();
-            log("flush _", this->_output_buffer.remaining());
+            flush_guard g(this->_output_buffer);
+            log("flush _ _", this->_output_buffer.remaining(), socket_address());
             this->_output_buffer.flush(sink);
-            this->_output_buffer.compact();
         }
 
         template <class Source>
