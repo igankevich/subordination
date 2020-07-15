@@ -9,8 +9,9 @@ namespace autoreg {
     /// Solve linear system of equations A*x=b with Cholesky decomposition.
     template<class T>
     void
-    cholesky(T* A, T* b, int n) {
-        Index<2> idx(size2(n, n));
+    cholesky(T* A, T* b, uint32_t N) {
+        Index<2> idx(size2(N, N));
+        const int n = N;
         // A=L*T (T - transposed L)
         for (int j=0; j<n; j++) {
             T sum = 0;

@@ -138,10 +138,10 @@ struct Yule_walker: public sbn::kernel {
         int m = b.size();
         auto identity = [](int){};
         sbn::upstream(this, sbn::mapreduce([this](int i) {
-            const int n = acf.size()-1;
+            const uint32_t n = acf.size()-1;
             const Index<3> id(acf_size);
             const Index<2> ida(size2(n, n));
-            for (int j=0; j<n; j++) {
+            for (uint32_t j=0; j<n; j++) {
                 // casting to signed type ptrdiff_t
                 int i2 = id(abs(id.t(i+1), id.t(j+1)),
                             abs(id.x(i+1), id.x(j+1)),
@@ -580,8 +580,8 @@ struct Generator1: public sbn::kernel {
             zsize2 = part_size2;
             std::valarray<T> zeta2;
             try {
-                zeta.resize(zsize);
-                zeta2.resize(zsize2);
+                zeta.resize(zsize.product());
+                zeta2.resize(zsize2.product());
             } catch (std::exception& x) {
                 #if defined(SBN_DEBUG)
                 sys::log_message("autoreg", "resize failed _", sys::make_object(
@@ -695,6 +695,9 @@ struct Wave_surface_generator: public sbn::kernel {
         }
         assert(sum - zsize[0] == 0);
         for (std::size_t i=0; i<num_parts; ++i) {
+            #if defined(SBN_DEBUG)
+            sys::log_message("autoreg", "part #_", i);
+            #endif
             sbn::upstream<sbn::Remote>(this, std::move(generators[i]));
         }
     }

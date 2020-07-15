@@ -9,7 +9,6 @@ void sbn::child_process_pipeline::send(kernel_ptr&& k) {
     #endif
     lock_type lock(this->_mutex);
     if (!this->_parent) {
-        lock.unlock();
         send_native(std::move(k));
     } else {
         this->_kernels.emplace(std::move(k));

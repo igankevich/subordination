@@ -24,16 +24,16 @@ namespace autoreg {
 
         explicit
         Autoreg_model(bool b = true):
-        zsize(200, 32, 32),
-        zdelta(1, 1, 1),
-        acf_size(10, 10, 10),
+        zsize(200u, 32u, 32u),
+        zdelta(T{1}, T{1}, T{1}),
+        acf_size(10u, 10u, 10u),
         acf_delta(zdelta),
         fsize(acf_size),
         interval(0),
-        zsize2(zsize*1.4),
-        acf_model(acf_size),
-        acf_pure(acf_size),
-        ar_coefs(fsize),
+        zsize2(zsize*T{1.4}),
+        acf_model(acf_size.product()),
+        acf_pure(acf_size.product()),
+        ar_coefs(fsize.product()),
         homogeneous(b),
         alpha(0.05),
         beta(0.8),
@@ -175,7 +175,7 @@ namespace autoreg {
         template<class V>
         void
         validate_size(const Vector<V, 3>& sz, const char* var_name) {
-            if (sz.reduce(std::multiplies<T>()) == 0) {
+            if (sz.product() == 0) {
                 std::stringstream str;
                 str << "Invalid " << var_name << ": " << sz;
                 throw std::runtime_error(str.str().c_str());
@@ -315,9 +315,9 @@ namespace autoreg {
         m.interval = interval;
         m.acf_delta = m.zdelta;
         m.fsize = m.acf_size;
-        m.acf_model.resize(m.acf_size);
-        m.acf_pure.resize(m.acf_size);
-        m.ar_coefs.resize(m.fsize);
+        m.acf_model.resize(m.acf_size.product());
+        m.acf_pure.resize(m.acf_size.product());
+        m.ar_coefs.resize(m.fsize.product());
         m.validate_parameters();
         return in;
     }
