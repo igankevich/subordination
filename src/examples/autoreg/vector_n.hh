@@ -4,6 +4,12 @@
 #include <algorithm>
 #include <cstdint>
 
+#include <subordination/core/kernel_buffer.hh>
+
+#if defined(AUTOREG_DEBUG)
+#include <sstream>
+#endif
+
 namespace autoreg {
 
     template <class T, int N>
@@ -27,7 +33,7 @@ namespace autoreg {
         }
 
         template <class ... Args>
-        inline explicit Vector(Args ... args): _data{args...} {
+        inline explicit Vector(Args ... args): _data{static_cast<T>(args)...} {
             static_assert(sizeof...(args) == N, "bad no. of arguments");
         }
 
@@ -43,30 +49,6 @@ namespace autoreg {
 
         operator bool() = delete;
         bool operator !() = delete;
-
-        inline bool operator==(const Vector& v) const {
-            return std::equal(begin(), end(), v.begin());
-        }
-
-        inline bool operator!=(const Vector& rhs) const {
-            return !this->operator==(rhs);
-        }
-
-        inline bool operator<(const Vector& v) const {
-            return std::lexicographical_compare(begin(), end(), v.begin(), v.end());
-        }
-
-        inline bool operator<=(const Vector& rhs) const {
-            return this->operator<(rhs) || this->operator==(rhs);
-        }
-
-        inline bool operator>(const Vector& rhs) const {
-            return !this->operator<(rhs) && !this->operator==(rhs);
-        }
-
-        inline bool operator>=(const Vector& rhs) const {
-            return !this->operator<(rhs);
-        }
 
         inline void
         rot(int r) {
@@ -168,20 +150,86 @@ namespace autoreg {
 
     #undef AUTOREG_OPERATOR_BINARY
 
-    using float3 = Vector<float, 3>;
-    using float2 = Vector<float, 2>;
-    using float1 = Vector<float, 1>;
-    using double3 = Vector<double, 3>;
-    using double2 = Vector<double, 2>;
-    using double1 = Vector<double, 1>;
+    #define AUTOREG_OPERATOR_BINARY_BOOL(OP) \
+        template <class T, int N> \
+        inline Vector<bool,N> \
+        operator OP(const Vector<T,N>& a, const Vector<T,N>& b) { \
+            Vector<bool,N> v; \
+            for (int i=0; i<N; ++i) { v[i] = a[i] OP b[i]; } \
+            return v; \
+        } \
+        template <class T, int N, class T2> \
+        inline Vector<bool,N> \
+        operator OP(const Vector<T,N>& a, T2 b) { \
+            Vector<bool,N> v; \
+            for (int i=0; i<N; ++i) { v[i] = a[i] OP b; } \
+            return v; \
+        } \
+        template <class T, int N, class T2> \
+        inline Vector<bool,N> \
+        operator OP(T2 a, const Vector<T,N>& b) { \
+            Vector<bool,N> v; \
+            for (int i=0; i<N; ++i) { v[i] = a OP b[i]; } \
+            return v; \
+        }
+
+    AUTOREG_OPERATOR_BINARY_BOOL(==);
+    AUTOREG_OPERATOR_BINARY_BOOL(!=);
+    AUTOREG_OPERATOR_BINARY_BOOL(<);
+    AUTOREG_OPERATOR_BINARY_BOOL(>);
+    AUTOREG_OPERATOR_BINARY_BOOL(<=);
+    AUTOREG_OPERATOR_BINARY_BOOL(>=);
+
+    #undef AUTOREG_OPERATOR_BINARY_BOOL
+
+    template <class T, int N> inline Vector<T,N>
+    min(const Vector<T,N>& a, const Vector<T,N>& b) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = std::min(a[i], b[i]); }
+        return v;
+    }
+
+    template <class T, int N> inline Vector<T,N>
+    max(const Vector<T,N>& a, const Vector<T,N>& b) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = std::max(a[i], b[i]); }
+        return v;
+    }
+
+    template <class T, int N> inline Vector<T,N>
+    where(const Vector<bool,N>& a, const Vector<T,N>& b, const Vector<T,N>& c) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = a[i] ? b[i] : c[i]; }
+        return v;
+    }
+
+    template <class T, int N> inline Vector<T,N>
+    where(const Vector<bool,N>& a, T b, const Vector<T,N>& c) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = a[i] ? b : c[i]; }
+        return v;
+    }
+
+    template <class T, int N> inline Vector<T,N>
+    where(const Vector<bool,N>& a, const Vector<T,N>& b, T c) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = a[i] ? b[i] : c; }
+        return v;
+    }
+
+    template <class T, int N> inline Vector<T,N>
+    where(const Vector<bool,N>& a, T b, T c) {
+        Vector<T,N> v;
+        for (int i=0; i<N; ++i) { v[i] = a[i] ? b : c; }
+        return v;
+    }
+
     using size3 = Vector<uint32_t, 3>;
     using size2 = Vector<uint32_t, 2>;
     using size1 = Vector<uint32_t, 1>;
 
     template<int N=3>
     class Index;
-//template<int N=3> class Index_r;
-//template<int N=3> class Index_zyx;
 
     template<>
     class Index<3> {
@@ -194,8 +242,23 @@ namespace autoreg {
         inline int t(int i) const { return ((i/s[2])/s[1])%s[0]; }
         inline int x(int i) const { return (i/s[2])%s[1]; }
         inline int y(int i) const { return i%s[2]; }
-        inline int operator()(int i, int j=0, int k=0) const { return (i*s[1] + j)*s[2] + k; }
-        inline int operator()(const size3& v) const { return v[0]*s[1]*s[2] + v[1]*s[2] + v[2]; }
+
+        inline int operator()(int i, int j, int k) const noexcept {
+            #if defined(AUTOREG_DEBUG)
+            if (i < 0 || i >= int(s[0]) ||
+                j < 0 || j >= int(s[1]) ||
+                k < 0 || k >= int(s[2])) {
+                std::stringstream tmp;
+                tmp << "Out of bounds: index=" << size3(i,j,k) << ", size=" << s;
+                throw std::runtime_error(tmp.str());
+            }
+            #endif
+            return (i*s[1] + j)*s[2] + k;
+        }
+
+        inline int operator()(const size3& v) const noexcept {
+            return operator()(v[0], v[1], v[2]);
+        }
 
     };
 

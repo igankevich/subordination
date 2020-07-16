@@ -67,6 +67,16 @@ namespace autoreg {
         return out;
     }
 
+    template <class T> inline T
+    mean(const std::valarray<T>& x) {
+        return x.sum() / x.size();
+    }
+
+    template <class T> inline T
+    variance(const std::valarray<T>& x) {
+        return pow(x, T{2}).sum() / x.size();
+    }
+
 }
 
 #endif // vim:filetype=cpp
