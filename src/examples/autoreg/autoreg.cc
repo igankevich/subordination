@@ -1,6 +1,13 @@
 #include <random>
 
 #include <autoreg/autoreg.hh>
+#include <autoreg/mpi.hh>
+
+namespace  {
+    constexpr const auto tag_kernel = 1;
+    constexpr const auto tag_kernel_downstream = 2;
+    constexpr const auto tag_terminate = 3;
+}
 
 void autoreg::Part::write(sbn::kernel_buffer& out) const {
     out << this->_begin_index << this->_offset << this->_end_index
@@ -76,7 +83,7 @@ autoreg::Wave_surface_generator<T>::generate_parts() {
     }
 }
 
-template <class T> void
+template <class T> bool
 autoreg::Wave_surface_generator<T>::push_kernels() {
     size3 part_size = min(_phi_size*2, zsize2);
     size3 num_parts = zsize2 / part_size;
@@ -85,6 +92,9 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
     const auto n2 = num_parts[2];
     const Index<3> index(num_parts);
     uint32_t nfinished = 0;
+    #if defined(AUTOREG_MPI)
+    int nsubmitted = 0;
+    #endif
     for (uint32_t i=0; i<n0; ++i) {
         for (uint32_t j=0; j<n1; ++j) {
             for (uint32_t k=0; k<n2; ++k) {
@@ -110,21 +120,70 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
                     sys::log_message("autoreg", "submit _", part.begin_index());
                     #endif
                     part.state(Part::State::Submitted);
-                    sbn::upstream<sbn::Remote>(
-                        this, sbn::make_pointer<Part_generator<T>>(
-                            part, _phi_size, this->_phi, this->_zeta[part.slice_in(zsize2)]));
+                    auto k = sbn::make_pointer<Part_generator<T>>(
+                        part, _phi_size, this->_phi, this->_zeta[part.slice_in(zsize2)]);
+                    #if defined(AUTOREG_MPI)
+                    if (mpi::nranks != 1) {
+                        if (this->_subordinate == 0) {
+                            k->act();
+                            react(std::move(k));
+                        } else {
+                            this->_buffer.clear();
+                            k->write(this->_buffer);
+                            mpi::send(this->_buffer.data(), int(this->_buffer.position()),
+                                      this->_subordinate, tag_kernel);
+                        }
+                        if (++this->_subordinate == mpi::nranks) {
+                            this->_subordinate = 0;
+                        }
+                        if (++nsubmitted == mpi::nranks) {
+                            goto end;
+                        }
+                    } else {
+                        sbn::upstream<sbn::Remote>(this, std::move(k));
+                    }
+                    #else
+                    sbn::upstream<sbn::Remote>(this, std::move(k));
+                    #endif
                 }
             }
         }
     }
+    #if defined(AUTOREG_MPI)
+end:
+    #endif
     #if defined(AUTOREG_DEBUG)
     sys::log_message("autoreg", "completed _ of _", nfinished, this->_parts.size());
     #endif
     if (nfinished == this->_parts.size()) {
+        #if defined(AUTOREG_MPI)
+        for (int i=1; i<mpi::nranks; ++i) {
+            mpi::send<int>(nullptr, 0, i, tag_terminate);
+        }
+        #endif
         trim_surface(this->_zeta);
         this->_time_points[1] = clock_type::now();
         verify();
         sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        return true;
+    } else {
+        #if defined(AUTOREG_MPI)
+        auto status = mpi::probe();
+        size_t nbytes = status.num_elements<char>();
+        while (this->_buffer.size() < nbytes) {
+            this->_buffer.grow();
+        }
+        this->_buffer.clear();
+        mpi::receive(this->_buffer.data(), nbytes);
+        this->_buffer.limit(nbytes);
+        auto k = sbn::make_pointer<Part_generator<T>>();
+        k->read(this->_buffer);
+        if (status.tag() == tag_kernel) {
+            k->act();
+        }
+        react(std::move(k));
+        #endif
+        return false;
     }
 }
 
@@ -206,18 +265,24 @@ autoreg::Part_generator<T>::act() {
             }
         }
     }
+    #if !defined(AUTOREG_MPI)
     sbn::commit<sbn::Remote>(std::move(this_ptr()));
+    #endif
 }
 
 template <class T> void
 autoreg::Part_generator<T>::write(sbn::kernel_buffer& out) const {
+    #if !defined(AUTOREG_MPI)
     sbn::kernel::write(out);
+    #endif
     out << this->_part << this->_phi_size << this->_phi << this->_zeta;
 }
 
 template <class T> void
 autoreg::Part_generator<T>::read(sbn::kernel_buffer& in) {
+    #if !defined(AUTOREG_MPI)
     sbn::kernel::read(in);
+    #endif
     in >> this->_part >> this->_phi_size >> this->_phi >> this->_zeta;
 }
 
@@ -225,9 +290,46 @@ template <class T> void
 autoreg::Wave_surface_generator<T>::act() {
     this->_seed = std::chrono::system_clock::now().time_since_epoch().count();
     this->_time_points[0] = clock_type::now();
-    generate_white_noise(this->_zeta);
-    generate_parts();
-    push_kernels();
+    #if defined(AUTOREG_MPI)
+    mpi::broadcast(&this->_seed, 1);
+    mpi::broadcast(&this->_white_noise_variance, 1);
+    mpi::broadcast(this->_phi_size.data(), this->_phi_size.size());
+    mpi::broadcast(this->zsize2.data(), this->zsize2.size());
+    mpi::broadcast(this->zsize.data(), this->zsize.size());
+    AUTOREG_MPI_SUBORDINATE(this->_phi.resize(this->_phi_size.product()););
+    mpi::broadcast(&this->_phi[0], this->_phi.size());
+    #endif
+    AUTOREG_MPI_SUPERIOR(
+        generate_white_noise(this->_zeta);
+        generate_parts();
+        #if defined(AUTOREG_MPI)
+        while (!push_kernels()) {}
+        #else
+        push_kernels();
+        #endif
+    );
+    #if defined(AUTOREG_MPI)
+    AUTOREG_MPI_SUBORDINATE(
+        while (true) {
+            auto status = mpi::probe();
+            if (status.tag() == tag_terminate) { break; }
+            size_t nbytes = status.num_elements<char>();
+            while (this->_buffer.size() < nbytes) {
+                this->_buffer.grow();
+            }
+            this->_buffer.clear();
+            mpi::receive(this->_buffer.data(), nbytes);
+            this->_buffer.limit(nbytes);
+            auto k = sbn::make_pointer<Part_generator<T>>();
+            k->read(this->_buffer);
+            k->act();
+            this->_buffer.clear();
+            k->write(this->_buffer);
+            mpi::send(this->_buffer.data(), int(this->_buffer.position()), 0,
+                      tag_kernel_downstream);
+        }
+    );
+    #endif
 }
 
 template <class T> void
@@ -238,7 +340,9 @@ autoreg::Wave_surface_generator<T>::react(sbn::kernel_ptr&& child) {
         this->_parts[tmp->part().index()].state(Part::State::Completed);
         this->_zeta[tmp->part().slice_out(zsize2)] = tmp->zeta()[tmp->part().slice_out()];
     }
+    #if !defined(AUTOREG_MPI)
     push_kernels();
+    #endif
 }
 
 template <class T> void

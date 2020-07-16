@@ -84,8 +84,10 @@ namespace autoreg {
             return in;
         }
 
+        inline T* data() noexcept { return _data; }
         inline T* begin() noexcept { return _data; }
         inline T* end() noexcept { return _data + N; }
+        inline const T* data() const noexcept { return _data; }
         inline const T* begin() const noexcept { return _data; }
         inline const T* end() const noexcept { return _data + N; }
         inline constexpr int size() noexcept { return N; }

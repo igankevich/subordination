@@ -1,7 +1,7 @@
 #ifndef EXAMPLES_AUTOREG_MAPREDUCE_HH
 #define EXAMPLES_AUTOREG_MAPREDUCE_HH
 
-#include <subordination/api.hh>
+#include <autoreg/api.hh>
 
 namespace sbn {
 

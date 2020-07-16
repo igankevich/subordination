@@ -20,7 +20,8 @@
    (@ (gnu packages elf) elfutils)
    (@ (gnu packages compression) xz)
    (@ (gnu packages pre-commit) python-pre-commit)
-   (@ (gnu packages compression) zlib))
+   (@ (gnu packages compression) zlib)
+   (@ (stables packages mpi) openmpi-4.0.2))
   (if-enabled "site"
               (list
                (@ (gnu packages documentation) doxygen)

@@ -3,8 +3,7 @@
 
 #include <valarray>
 
-#include <subordination/api.hh>
-
+#include <autoreg/api.hh>
 #include <autoreg/vector_n.hh>
 
 namespace autoreg {

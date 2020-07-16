@@ -169,6 +169,10 @@ namespace autoreg {
         std::valarray<T> _zeta;
         uint64_t _seed = 0;
         time_point _time_points[4];
+        #if defined(AUTOREG_MPI)
+        sbn::kernel_buffer _buffer{4096};
+        int _subordinate = 0;
+        #endif
 
     public:
 
@@ -192,7 +196,7 @@ namespace autoreg {
         void generate_surface(std::valarray<T>& zeta) const;
         void trim_surface(std::valarray<T>& zeta) const;
         void generate_parts();
-        void push_kernels();
+        bool push_kernels();
         void verify();
         void write_zeta(const std::valarray<T>& zeta, int time_slice) const;
 

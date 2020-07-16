@@ -3,6 +3,7 @@
 
 #include <autoreg/acf_generator.hh>
 #include <autoreg/autoreg_driver.hh>
+#include <autoreg/mpi.hh>
 #include <autoreg/variance_wn.hh>
 
 namespace  {
@@ -33,68 +34,100 @@ namespace  {
 
 template <class T> void
 autoreg::Autoreg_model<T>::act() {
-    read_input_file();
-    std::clog << std::left << std::boolalpha;
-    write_log("ACF size:", acf_size);
-    write_log("Domain:", zsize);
-    write_log("Domain 2:", zsize2);
-    write_log("Delta:", zdelta);
-    write_log("Interval:", interval);
-    write_log("Size factor:", size_factor());
-    sbn::upstream(
-        this,
-        sbn::make_pointer<ACF_generator<T>>(
-            _alpha,
-            _beta,
-            _gamma,
-            acf_delta,
-            acf_size,
-            acf_model
-        )
-    );
-}
-
-template<class T> void
-autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
-    #if defined(AUTOREG_DEBUG)
-    sys::log_message("autoreg", "finished _", typeid(*child).name());
-    #endif
-    const auto& type = typeid(*child);
-    if (type == typeid(ACF_generator<T>)) {
+    AUTOREG_MPI_SUPERIOR(
+        read_input_file();
+        std::clog << std::left << std::boolalpha;
+        write_log("ACF size:", acf_size);
+        write_log("Domain:", zsize);
+        write_log("Domain 2:", zsize2);
+        write_log("Delta:", zdelta);
+        write_log("Interval:", interval);
+        write_log("Size factor:", size_factor());
+        /*
+        ACF_generator<T> acf_generator(_alpha, _beta, _gamma, acf_delta, acf_size, acf_model);
+        acf_generator.act();
         acf_pure = acf_model;
-        sbn::upstream(
-            this,
-            sbn::make_pointer<Autoreg_coefs<T>>(acf_model, acf_size, ar_coefs)
-        );
-    }
-    if (type == typeid(Autoreg_coefs<T>)) {
-//		write<T>("1.ar_coefs", ar_coefs);
-        //{ std::ofstream out("ar_coefs"); out << ar_coefs; }
-        sbn::upstream(this, sbn::make_pointer<Variance_WN<T>>(ar_coefs, acf_model));
-    }
-    if (type == typeid(Variance_WN<T>)) {
-        auto tmp = sbn::pointer_dynamic_cast<Variance_WN<T>>(std::move(child));
-        T var_wn = tmp->get_sum();
+        Autoreg_coefs<T> coefs(acf_model, acf_size, ar_coefs);
+        coefs.act();
+        Variance_WN<T> varwn(ar_coefs, acf_model);
+        varwn.act();
+        T var_wn = varwn.get_sum();
         #if defined(AUTOREG_DEBUG)
         sys::log_message("autoreg", "var(acf) = _", acf_model[0]);
         sys::log_message("autoreg", "var(eps) = _", var_wn);
         #endif
-        auto k = sbn::make_pointer<Wave_surface_generator<T>>(
-            ar_coefs, fsize, var_wn, zsize2, zsize);
-        //#if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-        //sbn::upstream(this, std::move(k));
-        //#else
-        //k->setf(sbn::kernel_flag::carries_parent);
-        sbn::upstream<sbn::Remote>(this, std::move(k));
-        //#endif
-    }
-    if (type == typeid(Wave_surface_generator<T>)) {
-        //this->parent(nullptr);
+        //Wave_surface_generator<T> generator(ar_coefs, fsize, var_wn, zsize2, zsize);
+        */
+        sbn::upstream(
+            this,
+            sbn::make_pointer<ACF_generator<T>>(
+                _alpha,
+                _beta,
+                _gamma,
+                acf_delta,
+                acf_size,
+                acf_model
+            )
+        );
+    );
+    #if defined(AUTOREG_MPI)
+    AUTOREG_MPI_SUBORDINATE(
+        react(std::move(this_ptr()));
+    );
+    #endif
+}
+
+template<class T> void
+autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
+    AUTOREG_MPI_SUPERIOR(
         #if defined(AUTOREG_DEBUG)
-        sys::log_message("autoreg", "finished all");
+        sys::log_message("autoreg", "finished _", typeid(*child).name());
         #endif
-        sbn::commit(std::move(this_ptr()));
-    }
+        const auto& type = typeid(*child);
+        if (type == typeid(ACF_generator<T>)) {
+            acf_pure = acf_model;
+            sbn::upstream(
+                this,
+                sbn::make_pointer<Autoreg_coefs<T>>(acf_model, acf_size, ar_coefs)
+            );
+        }
+        if (type == typeid(Autoreg_coefs<T>)) {
+    //		write<T>("1.ar_coefs", ar_coefs);
+            //{ std::ofstream out("ar_coefs"); out << ar_coefs; }
+            sbn::upstream(this, sbn::make_pointer<Variance_WN<T>>(ar_coefs, acf_model));
+        }
+        if (type == typeid(Variance_WN<T>)) {
+            auto tmp = sbn::pointer_dynamic_cast<Variance_WN<T>>(std::move(child));
+            T var_wn = tmp->get_sum();
+            #if defined(AUTOREG_DEBUG)
+            sys::log_message("autoreg", "var(acf) = _", acf_model[0]);
+            sys::log_message("autoreg", "var(eps) = _", var_wn);
+            #endif
+            auto k = sbn::make_pointer<Wave_surface_generator<T>>(
+                ar_coefs, fsize, var_wn, zsize2, zsize);
+            //#if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
+            //sbn::upstream(this, std::move(k));
+            //#else
+            //k->setf(sbn::kernel_flag::carries_parent);
+            sbn::upstream<sbn::Remote>(this, std::move(k));
+            //#endif
+        }
+        if (type == typeid(Wave_surface_generator<T>)) {
+            //this->parent(nullptr);
+            #if defined(AUTOREG_DEBUG)
+            sys::log_message("autoreg", "finished all");
+            #endif
+            sbn::commit(std::move(this_ptr()));
+        }
+    );
+    #if defined(AUTOREG_MPI)
+    AUTOREG_MPI_SUBORDINATE(
+        T var_wn = 0;
+        sbn::upstream<sbn::Remote>(
+            this, sbn::make_pointer<Wave_surface_generator<T>>(
+                ar_coefs, fsize, var_wn, zsize2, zsize));
+    );
+    #endif
 }
 
 

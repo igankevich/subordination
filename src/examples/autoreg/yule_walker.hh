@@ -4,9 +4,8 @@
 #include <valarray>
 #include <sstream>
 
+#include <autoreg/api.hh>
 #include <autoreg/vector_n.hh>
-
-#include <subordination/api.hh>
 
 namespace autoreg {
 
