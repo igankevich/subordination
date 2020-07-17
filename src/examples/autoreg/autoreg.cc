@@ -171,7 +171,7 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
             this->_buffer.grow();
         }
         this->_buffer.clear();
-        mpi::receive(this->_buffer.data(), nbytes);
+        mpi::receive(this->_buffer.data(), nbytes, status.source(), status.tag());
         this->_buffer.limit(nbytes);
         auto k = sbn::make_pointer<Part_generator<T>>();
         k->read(this->_buffer);
@@ -319,7 +319,7 @@ autoreg::Wave_surface_generator<T>::act() {
                 this->_buffer.grow();
             }
             this->_buffer.clear();
-            mpi::receive(this->_buffer.data(), nbytes);
+            mpi::receive(this->_buffer.data(), nbytes, status.source(), status.tag());
             this->_buffer.limit(nbytes);
             auto k = sbn::make_pointer<Part_generator<T>>();
             k->read(this->_buffer);

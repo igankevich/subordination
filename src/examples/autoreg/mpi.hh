@@ -46,6 +46,13 @@ namespace autoreg {
             inline int error() const noexcept { return this->MPI_ERROR; }
 
             template <class T> inline int
+            count() const {
+                int n = 0;
+                MPI_Get_count(this, type<T>::value, &n);
+                return n;
+            }
+
+            template <class T> inline int
             num_elements() const {
                 int n = 0;
                 MPI_Get_elements(this, type<T>::value, &n);
