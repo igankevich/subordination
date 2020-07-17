@@ -1,6 +1,8 @@
 #include <unistd.h>
 
+#if defined(SBN_DEBUG)
 #include <libunwind.h>
+#endif
 
 #include <exception>
 #include <iostream>
@@ -20,6 +22,7 @@ message(const Args& ... args) {
     sys::log_message("error", args ...);
 }
 
+#if defined(SBN_DEBUG)
 void unwind_backtrace(int fd) {
     char symbol[4096];
     unw_cursor_t cursor;
@@ -43,6 +46,7 @@ void unwind_backtrace(int fd) {
         }
     }
 }
+#endif
 
 void sbn::print_backtrace(int sig) noexcept {
     char name[16] {'\0'};
@@ -50,8 +54,11 @@ void sbn::print_backtrace(int sig) noexcept {
     ::prctl(PR_GET_NAME, name);
     #endif
     message("process \"_\" caught _", name, sys::signal(sig));
-    //sys::backtrace(STDERR_FILENO);
+    #if defined(SBN_DEBUG)
     unwind_backtrace(STDERR_FILENO);
+    #else
+    sys::backtrace(STDERR_FILENO);
+    #endif
     std::exit(sig);
 }
 

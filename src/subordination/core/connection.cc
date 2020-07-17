@@ -203,7 +203,6 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         //return;
     }
     if (!k->has_id()) {
-        sys::backtrace(2);
         throw std::invalid_argument("downstream kernel without an id");
     }
     auto result = find_kernel(k, this->_upstream);
@@ -246,16 +245,26 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
     //}
     transaction_status status{};
     kernel_queue* queue{};
-    if (bool(this->_flags & connection_flags::save_upstream_kernels) &&
-        (k->phase() == kernel::phases::upstream || k->phase() == kernel::phases::point_to_point)) {
-        queue = &this->_upstream;
-        status = transaction_status::start;
-    } else if (bool(this->_flags & connection_flags::save_downstream_kernels) &&
-               k->phase() == kernel::phases::downstream && k->carries_parent()) {
-        queue = &this->_downstream;
-        status = transaction_status::end;
+    switch (k->phase()) {
+        case kernel::phases::upstream:
+        case kernel::phases::point_to_point:
+            if (isset(connection_flags::save_upstream_kernels)) {
+                queue = &this->_upstream;
+                if (k->carries_parent() || k->isset(kernel_flag::transactional)) {
+                    status = transaction_status::start;
+                }
+            }
+            break;
+        case kernel::phases::downstream:
+            if (isset(connection_flags::save_downstream_kernels) && k->carries_parent()) {
+                queue = &this->_downstream;
+                status = transaction_status::end;
+            }
+            break;
+        case kernel::phases::broadcast:
+            break;
     }
-    if (bool(this->_flags & connection_flags::write_transaction_log) &&
+    if (isset(connection_flags::write_transaction_log) &&
         status != transaction_status{} && parent()->transactions()) {
         try {
             parent()->write_transaction(status, k);

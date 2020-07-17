@@ -190,7 +190,7 @@ discovery_test_exe = executable(
     implicit_include_directories: false,
 )
 
-foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure', 'power-failure']
+foreach failure : ['no-failure', 'subordinate-failure', 'superior-failure']
     test(
         'daemon/discovery-' + failure,
         discovery_test_exe,

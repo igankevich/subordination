@@ -16,6 +16,10 @@
 #include <autoreg/vector_n.hh>
 #include <autoreg/yule_walker.hh>
 
+#if defined(AUTOREG_MPI)
+#include <autoreg/mpi.hh>
+#endif
+
 namespace std {
 
     template<class T>
@@ -158,6 +162,29 @@ namespace autoreg {
         using clock_type = std::chrono::system_clock;
         using time_point = clock_type::time_point;
         using duration = clock_type::duration;
+        #if defined(AUTOREG_MPI)
+        class Request {
+        private:
+            mpi::request _request;
+            sbn::kernel_buffer _buffer;
+        public:
+            inline Request(mpi::request&& r, sbn::kernel_buffer&& b) noexcept:
+            _request(std::move(r)), _buffer(std::move(b)) {}
+            Request() = default;
+            ~Request() = default;
+            Request(const Request&) = delete;
+            Request& operator=(const Request&) = delete;
+            inline Request(Request&& rhs) noexcept:
+            _request(std::move(rhs._request)), _buffer(std::move(rhs._buffer)) {}
+            inline Request& operator=(Request&& rhs) noexcept {
+                swap(this->_request, rhs._request);
+                swap(this->_buffer, rhs._buffer);
+                return *this;
+            }
+            inline mpi::request& request() noexcept { return this->_request; }
+            inline sbn::kernel_buffer& buffer() noexcept { return this->_buffer; }
+        };
+        #endif
 
     private:
         std::valarray<T> _phi;
@@ -171,6 +198,7 @@ namespace autoreg {
         time_point _time_points[4];
         #if defined(AUTOREG_MPI)
         sbn::kernel_buffer _buffer{4096};
+        std::vector<Request> _requests;
         int _subordinate = 0;
         #endif
 
@@ -199,6 +227,9 @@ namespace autoreg {
         bool push_kernels();
         void verify();
         void write_zeta(const std::valarray<T>& zeta, int time_slice) const;
+        #if defined(AUTOREG_MPI)
+        void remove_completed_requests();
+        #endif
 
     };
 

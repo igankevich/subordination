@@ -52,6 +52,12 @@ namespace autoreg {
                 return n;
             }
 
+            inline bool cancelled() const {
+                int flag = 0;
+                MPI_Test_cancelled(this, &flag);
+                return flag;
+            }
+
         };
 
         template <class T> inline void
@@ -79,8 +85,81 @@ namespace autoreg {
             return s;
         }
 
+        class request {
+
+        private:
+            MPI_Request _request = MPI_REQUEST_NULL;
+
+        public:
+            request() = default;
+            request(const request&) = delete;
+            request& operator=(const request&) = delete;
+
+            inline request(request&& rhs) noexcept: _request(rhs._request) {
+                rhs._request = MPI_REQUEST_NULL;
+            }
+
+            inline request& operator=(request&& rhs) noexcept {
+                swap(rhs);
+                return *this;
+            }
+
+            inline void swap(request& rhs) {
+                std::swap(this->_request, rhs._request);
+            }
+
+            inline ~request() {
+                if (this->_request != MPI_REQUEST_NULL) {
+                    MPI_Request_free(&this->_request);
+                }
+            }
+
+            inline void cancel() { MPI_Cancel(&this->_request); }
+            inline operator MPI_Request*() { return &this->_request; }
+
+            inline status wait() {
+                status s;
+                MPI_Wait(&this->_request, &s);
+                return s;
+            }
+
+            inline std::pair<status,bool> test() {
+                status s;
+                int flag = 0;
+                MPI_Test(&this->_request, &flag, &s);
+                return std::make_pair(s,flag);
+            }
+
+            inline bool completed() {
+                int flag = 0;
+                MPI_Test(&this->_request, &flag, MPI_STATUS_IGNORE);
+                return flag;
+            }
+
+        };
+
+        inline void swap(request& a, request& b) { a.swap(b); }
+
+        template <class T> inline request
+        async_send(T* data, int size, int destination, int tag=MPI_ANY_TAG,
+                   MPI_Comm comm=MPI_COMM_WORLD) {
+            request r;
+            MPI_Isend(data, size, type<T>::value, destination, tag, comm, r);
+            return r;
+        }
+
+        template <class T> inline request
+        async_receive(T* data, int size, int source=MPI_ANY_SOURCE, int tag=MPI_ANY_TAG,
+                      MPI_Comm comm=MPI_COMM_WORLD,
+                      status* s=static_cast<status*>(MPI_STATUS_IGNORE)) {
+            request r;
+            MPI_Irecv(data, size, type<T>::value, source, tag, comm, s, r);
+            return r;
+        }
+
         inline std::pair<status,bool>
-        iprobe(int source=MPI_ANY_SOURCE, int tag=MPI_ANY_TAG, MPI_Comm comm=MPI_COMM_WORLD) {
+        async_probe(int source=MPI_ANY_SOURCE, int tag=MPI_ANY_TAG,
+                    MPI_Comm comm=MPI_COMM_WORLD) {
             status s;
             int success = 0;
             MPI_Iprobe(source, tag, comm, &success, &s);

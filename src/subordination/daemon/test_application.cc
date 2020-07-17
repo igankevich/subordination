@@ -30,12 +30,7 @@ test_superior_failure() {
 
 inline bool
 test_power_failure() {
-    return failure == "total-failure";
-}
-
-inline bool
-test_transactions() {
-    return failure == "transactions";
+    return failure == "power-failure";
 }
 
 class subordinate_kernel: public sbn::kernel {
@@ -155,7 +150,7 @@ public:
     void
     react(sbn::kernel_ptr&& child) {
         log("grand finish");
-        if (test_transactions()) {
+        if (test_power_failure()) {
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
         } else {
             sbn::commit(std::move(this_ptr()));
@@ -179,7 +174,7 @@ main(int argc, char* argv[]) {
     }
     using namespace sbn;
     install_error_handler();
-    if (test_superior_failure() || test_transactions()) {
+    if (test_superior_failure() || test_power_failure()) {
         factory.types().add<grand_superior_kernel>(1);
         factory.types().add<superior_kernel>(2);
     } else {

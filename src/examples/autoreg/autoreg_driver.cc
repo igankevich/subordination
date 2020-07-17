@@ -93,7 +93,7 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
         }
         if (type == typeid(Autoreg_coefs<T>)) {
     //		write<T>("1.ar_coefs", ar_coefs);
-            //{ std::ofstream out("ar_coefs"); out << ar_coefs; }
+            { std::ofstream out("ar_coefs"); out << ar_coefs; }
             sbn::upstream(this, sbn::make_pointer<Variance_WN<T>>(ar_coefs, acf_model));
         }
         if (type == typeid(Variance_WN<T>)) {

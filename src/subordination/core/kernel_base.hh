@@ -35,6 +35,10 @@ namespace sbn {
         carries_parent = 1<<1,
         parent_is_id = 1<<2,
         principal_is_id = 1<<3,
+        /** When a kernel is transactional, it is rolled back even if power
+        failure occures in the middle of its \link sbn::kernel::act \endlink
+        method. */
+        transactional = 1<<4,
     };
 
     UNISTDX_FLAGS(kernel_flag)

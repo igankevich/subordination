@@ -27,12 +27,14 @@ install_headers(
     'basic_socket_pipeline.hh',
     'child_process_pipeline.hh',
     'connection.hh',
-    'error_handler.hh',
+    'connection_table.hh',
     'error.hh',
+    'error_handler.hh',
     'foreign_kernel.hh',
+    'kernel.hh',
     'kernel_base.hh',
     'kernel_buffer.hh',
-    'kernel.hh',
+    'kernel_header_flag.hh',
     'kernel_instance_registry.hh',
     'kernel_type.hh',
     'kernel_type_registry.hh',
@@ -40,7 +42,8 @@ install_headers(
     'pipeline_base.hh',
     'process_handler.hh',
     'transaction_log.hh',
-    subdir: join_paths(meson.project_name(), 'kernel')
+    'types.hh',
+    subdir: join_paths(meson.project_name(), 'core')
 )
 
 sbn_lib = library(

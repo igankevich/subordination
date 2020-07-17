@@ -123,6 +123,7 @@ namespace sbn {
 
         inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
         inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
+        inline bool isset(connection_flags rhs) noexcept { return bool(this->_flags & rhs); }
         inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
         inline connection_flags flags() const noexcept { return this->_flags; }
 
@@ -159,7 +160,6 @@ namespace sbn {
         template <class Sink>
         inline void flush(Sink& sink) {
             flush_guard g(this->_output_buffer);
-            log("flush _ _", this->_output_buffer.remaining(), socket_address());
             this->_output_buffer.flush(sink);
         }
 

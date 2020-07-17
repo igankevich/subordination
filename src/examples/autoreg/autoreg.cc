@@ -25,11 +25,14 @@ autoreg::Wave_surface_generator<T>::generate_white_noise(std::valarray<T>& zeta)
     if (variance < T{}) {
         throw std::runtime_error("white noise variance is less than zero");
     }
+    if (std::isnan(variance)) { throw std::runtime_error("white noise variance is NaN"); }
     zeta.resize(zsize2.product());
     std::mt19937 generator;
     generator.seed(this->_seed);
     std::normal_distribution<T> normal(T{}, std::sqrt(variance));
-    for (auto& z : zeta) { z = normal(generator); }
+    for (auto& z : zeta) {
+        z = normal(generator);
+    }
     for (const auto& z : zeta) {
         if (std::isnan(z)) {
             throw std::runtime_error("white noise generator produced some NaNs");
@@ -92,9 +95,6 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
     const auto n2 = num_parts[2];
     const Index<3> index(num_parts);
     uint32_t nfinished = 0;
-    #if defined(AUTOREG_MPI)
-    int nsubmitted = 0;
-    #endif
     for (uint32_t i=0; i<n0; ++i) {
         for (uint32_t j=0; j<n1; ++j) {
             for (uint32_t k=0; k<n2; ++k) {
@@ -116,9 +116,9 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
                     }
                 }
                 if (ncompleted == ndependencies-1) {
-                    #if defined(AUTOREG_DEBUG)
+                    //#if defined(AUTOREG_DEBUG)
                     sys::log_message("autoreg", "submit _", part.begin_index());
-                    #endif
+                    //#endif
                     part.state(Part::State::Submitted);
                     auto k = sbn::make_pointer<Part_generator<T>>(
                         part, _phi_size, this->_phi, this->_zeta[part.slice_in(zsize2)]);
@@ -130,14 +130,14 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
                         } else {
                             this->_buffer.clear();
                             k->write(this->_buffer);
-                            mpi::send(this->_buffer.data(), int(this->_buffer.position()),
-                                      this->_subordinate, tag_kernel);
+                            auto req = mpi::async_send(
+                                this->_buffer.data(), int(this->_buffer.position()),
+                                this->_subordinate, tag_kernel);
+                            this->_requests.emplace_back(std::move(req),
+                                                         std::move(this->_buffer));
                         }
                         if (++this->_subordinate == mpi::nranks) {
                             this->_subordinate = 0;
-                        }
-                        if (++nsubmitted == mpi::nranks) {
-                            goto end;
                         }
                     } else {
                         sbn::upstream<sbn::Remote>(this, std::move(k));
@@ -149,12 +149,9 @@ autoreg::Wave_surface_generator<T>::push_kernels() {
             }
         }
     }
-    #if defined(AUTOREG_MPI)
-end:
-    #endif
-    #if defined(AUTOREG_DEBUG)
+    //#if defined(AUTOREG_DEBUG)
     sys::log_message("autoreg", "completed _ of _", nfinished, this->_parts.size());
-    #endif
+    //#endif
     if (nfinished == this->_parts.size()) {
         #if defined(AUTOREG_MPI)
         for (int i=1; i<mpi::nranks; ++i) {
@@ -182,6 +179,7 @@ end:
             k->act();
         }
         react(std::move(k));
+        remove_completed_requests();
         #endif
         return false;
     }
@@ -212,8 +210,11 @@ autoreg::Wave_surface_generator<T>::verify() {
         log << zsize[0] << ' ' << zsize[1] << ' ' << zsize[2] << ' ';
         const auto& t = this->_time_points;
         using namespace std::chrono;
-        log << duration_cast<microseconds>(t[1]-t[0]).count() << ' ';
-        log << duration_cast<microseconds>(t[3]-t[2]).count() << '\n';
+        const auto dt_parallel = duration_cast<microseconds>(t[1]-t[0]).count();
+        const auto dt_sequential = duration_cast<microseconds>(t[3]-t[2]).count();
+        log << dt_parallel << ' ';
+        log << dt_sequential << ' ';
+        log << T(dt_sequential)/T(dt_parallel) << '\n';
     }
     auto residual = abs(reference_zeta - this->_zeta).max();
     sys::log_message("autoreg", "mean = _", mean(this->_zeta));
@@ -325,8 +326,10 @@ autoreg::Wave_surface_generator<T>::act() {
             k->act();
             this->_buffer.clear();
             k->write(this->_buffer);
-            mpi::send(this->_buffer.data(), int(this->_buffer.position()), 0,
-                      tag_kernel_downstream);
+            remove_completed_requests();
+            auto req = mpi::async_send(this->_buffer.data(), int(this->_buffer.position()),
+                                       0, tag_kernel_downstream);
+            this->_requests.emplace_back(std::move(req), std::move(this->_buffer));
         }
     );
     #endif
@@ -344,6 +347,16 @@ autoreg::Wave_surface_generator<T>::react(sbn::kernel_ptr&& child) {
     push_kernels();
     #endif
 }
+
+#if defined(AUTOREG_MPI)
+template <class T> void
+autoreg::Wave_surface_generator<T>::remove_completed_requests() {
+    auto begin = std::remove_if(
+        this->_requests.begin(), this->_requests.end(),
+        [] (Request& r) { return r.request().completed(); });
+    this->_requests.erase(begin, this->_requests.end());
+}
+#endif
 
 template <class T> void
 autoreg::Wave_surface_generator<T>::write(sbn::kernel_buffer& out) const {

@@ -16,7 +16,7 @@ namespace autoreg {
     class Autoreg_model: public sbn::kernel {
 
     private:
-        size3 zsize{200, 32, 32};
+        size3 zsize{2000, 32, 32};
         Vector<T,3> zdelta{1,1,1};
         size3 acf_size{10, 10, 10};
         Vector<T,3> acf_delta;
