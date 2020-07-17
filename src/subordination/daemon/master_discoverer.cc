@@ -27,9 +27,7 @@ void sbnd::master_discoverer::on_start() {
 void sbnd::master_discoverer::on_kernel(sbn::kernel_ptr&& k) {
     if (typeid(*k) == typeid(discovery_timer)) {
         // start probing only if it has not been started already
-        if (this->state() == state_type::waiting) {
-            this->probe_next_node();
-        }
+        if (state() == states::waiting) { probe_next_node(); }
     } else if (typeid(*k) == typeid(probe)) {
         this->update_subordinates(sbn::pointer_dynamic_cast<probe>(std::move(k)));
     } else if (typeid(*k) == typeid(prober)) {
@@ -42,7 +40,7 @@ void sbnd::master_discoverer::on_kernel(sbn::kernel_ptr&& k) {
 }
 
 void sbnd::master_discoverer::probe_next_node() {
-    this->setstate(state_type::probing);
+    state(states::probing);
     if (this->_iterator == this->_end) {
         this->_iterator = iterator(this->interface_address(), this->_fanout);
         this->log("_: all addresses have been probed", this->interface_address());
@@ -63,7 +61,7 @@ void sbnd::master_discoverer::probe_next_node() {
 }
 
 void sbnd::master_discoverer::send_timer() {
-    this->setstate(state_type::waiting);
+    state(states::waiting);
     using namespace std::chrono;
     auto k = sbn::make_pointer<discovery_timer>();
     k->after(this->_interval);
@@ -203,8 +201,8 @@ void sbnd::master_discoverer::update_weights(pointer<Hierarchy_kernel> k) {
         } else if (this->_hierarchy.has_subordinate(src)) {
             changed = this->_hierarchy.set_subordinate_weight(src, k->weight());
         }
-        log("_: set _ weight to _", interface_address(), k->source(), k->weight());
         if (changed) {
+            log("_: set _ weight to _", interface_address(), k->source(), k->weight());
             factory.remote().set_client_weight(src, k->weight());
             this->broadcast_hierarchy(src);
         }

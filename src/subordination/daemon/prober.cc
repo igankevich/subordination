@@ -15,7 +15,7 @@ void sbnd::prober::react(sbn::kernel_ptr&& k) {
         }
     }
     if (--this->_nprobes == 0) {
-        this->return_to_parent(sbn::exit_code::success);
+        this->return_to_parent();
         factory.local().send(std::move(this_ptr()));
     }
 }

@@ -46,7 +46,7 @@ namespace sbnd {
         using duration = clock_type::duration;
         using weight_type = typename hierarchy_type::weight_type;
 
-        enum class state_type {
+        enum class states {
             initial,
             waiting,
             probing
@@ -58,7 +58,7 @@ namespace sbnd {
         uint_type _fanout = 10000;
         hierarchy_type _hierarchy;
         iterator _iterator, _end;
-        state_type _state = state_type::initial;
+        states _state = states::initial;
 
     public:
         inline
@@ -97,15 +97,8 @@ namespace sbnd {
         probe_result process_probe(pointer<probe>& p);
         void update_principal(pointer<prober> p);
 
-        inline void
-        setstate(state_type rhs) noexcept {
-            this->_state = rhs;
-        }
-
-        inline state_type
-        state() const noexcept {
-            return this->_state;
-        }
+        inline void state(states rhs) noexcept { this->_state = rhs; }
+        inline states state() const noexcept { return this->_state; }
 
         void on_event(pointer<socket_pipeline_kernel> k);
         void on_client_add(const sys::socket_address& endp);
