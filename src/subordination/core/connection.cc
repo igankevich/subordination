@@ -332,6 +332,7 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
         k->return_code(exit_code::endpoint_not_connected);
         k->principal(k->parent());
         */
+        k->source(k->destination());
         k->return_to_parent(exit_code::endpoint_not_connected);
         if (native) {
             parent()->send_native(std::move(k));

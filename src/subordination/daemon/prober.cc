@@ -7,6 +7,7 @@ void sbnd::prober::act() {
 
 void sbnd::prober::react(sbn::kernel_ptr&& k) {
     auto p = sbn::pointer_dynamic_cast<probe>(std::move(k));
+    log("probe returned from _: _", p->source(), p->return_code());
     if (p->source() == this->_newprinc) {
         this->return_code(p->return_code());
         if (this->return_code() == sbn::exit_code::success &&

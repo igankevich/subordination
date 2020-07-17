@@ -56,6 +56,12 @@ namespace sbnd {
         void
         send_probe(const sys::socket_address& dest);
 
+        template <class ... Args>
+        inline void
+        log(const char* fmt, const Args& ... args) {
+            sys::log_message("prober", fmt, args ...);
+        }
+
     };
 
 }

@@ -65,8 +65,8 @@ public:
         ++_last_serial_number;
         --this->_nkernels;
         if (this->_nkernels == 0) {
-            return_code(sbn::exit_code::success);
-            sbn::exit(this);
+            return_to_parent(sbn::exit_code::success);
+            local.send_downstream(std::move(this_ptr()));
         }
     }
 

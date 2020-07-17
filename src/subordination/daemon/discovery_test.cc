@@ -38,7 +38,7 @@ void test_superior(const std::vector<std::string>& lines, int fanout, int n) {
                 R"(^x1.*add interface address 10\.0\.0\.1.*$)",
                 R"(^x1.*add subordinate 10\.0\.0\.2.*$)",
             });
-            dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
+            //dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
         } else {
             dts::expect_event(lines, R"(^x1.*add interface address 10\.0\.0\.1.*$)");
             for (int i=2; i<=n; ++i) {
@@ -46,11 +46,13 @@ void test_superior(const std::vector<std::string>& lines, int fanout, int n) {
                 re << R"(^x1.*add subordinate 10\.0\.0\.)" << i << ".*$";
                 dts::expect_event(lines, re.str());
             }
+            /*
             for (int i=2; i<=n; ++i) {
                 std::stringstream re;
                 re << R"(^x1.*set 10\.0\.0\.)" << i << ".*weight to 1$";
                 dts::expect_event(lines, re.str());
             }
+            */
         }
     }
 }
@@ -62,7 +64,7 @@ void test_subordinates(const std::vector<std::string>& lines, int fanout, int n)
                 R"(^x2.*add interface address 10\.0\.0\.2.*$)",
                 R"(^x2.*set principal to 10\.0\.0\.1.*$)"
             });
-            dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
+            //dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
         } else {
             for (int i=2; i<=n; ++i) {
                 std::stringstream re;
@@ -71,9 +73,9 @@ void test_subordinates(const std::vector<std::string>& lines, int fanout, int n)
                 re.str("");
                 re << "^x" << i << R"(.*set principal to 10\.0\.0\.1.*$)";
                 dts::expect_event(lines,	re.str());
-                re.str("");
-                re << "^x" << i << R"(.*set 10\.0\.0\.1.*weight to )" << n-1 << "$";
-                dts::expect_event(lines, re.str());
+                //re.str("");
+                //re << "^x" << i << R"(.*set 10\.0\.0\.1.*weight to )" << n-1 << "$";
+                //dts::expect_event(lines, re.str());
             }
         }
     }
