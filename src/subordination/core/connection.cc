@@ -233,7 +233,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         k->principal(k->parent());
         this->_upstream.erase(result);
         #if defined(SBN_DEBUG)
-        this->log("plug parent for _", *k);
+        this->log("plug parent _ for _", typeid(*k->parent()).name(), *k);
         #endif
     }
 }

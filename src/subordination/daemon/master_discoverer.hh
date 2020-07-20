@@ -49,7 +49,7 @@ namespace sbnd {
         enum class states {
             initial,
             waiting,
-            probing
+            probing,
         };
 
     private:
@@ -91,11 +91,13 @@ namespace sbnd {
             return this->_hierarchy.port();
         }
 
-        void probe_next_node();
-        void send_timer();
+        void on_timer();
+        void discover();
+        void discover_later();
+        void reset_iterator();
         void update_subordinates(pointer<probe> p);
         probe_result process_probe(pointer<probe>& p);
-        void update_principal(pointer<prober> p);
+        void update_superior(pointer<prober> p);
 
         inline void state(states rhs) noexcept { this->_state = rhs; }
         inline states state() const noexcept { return this->_state; }

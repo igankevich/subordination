@@ -10,8 +10,10 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
+#include <subordination/daemon/job_status_kernel.hh>
 #include <subordination/daemon/main_kernel.hh>
 #include <subordination/daemon/network_master.hh>
+#include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/status_kernel.hh>
 #include <subordination/daemon/terminate_kernel.hh>
 #include <subordination/daemon/transaction_test_kernel.hh>
@@ -123,6 +125,8 @@ int main(int argc, char* argv[]) {
     factory.types().add<Terminate_kernel>(5);
     factory.types().add<Transaction_test_kernel>(6);
     factory.types().add<Transaction_gather_subordinate>(7);
+    factory.types().add<Job_status_kernel>(8);
+    factory.types().add<Pipeline_status_kernel>(9);
     try {
         sys::mkdirs(transactions_directory);
         transactions_directory = sys::canonical_path(transactions_directory);

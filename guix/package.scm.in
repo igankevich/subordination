@@ -8,7 +8,7 @@
   (version "@version@")
   (source "@source_root@")
   (build-system meson-build-system)
-  (arguments `(#:build-type "release"
+  (arguments `(#:build-type "debug"
                #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-O3")
                #:tests? #f))
   (inputs
