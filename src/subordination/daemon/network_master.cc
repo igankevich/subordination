@@ -138,9 +138,7 @@ void sbnd::network_master::report_status(pointer<Status_kernel> status) {
     }
     status->hierarchies(std::move(hierarchies));
     status->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(status));
-    #endif
 }
 
 void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
@@ -158,9 +156,7 @@ void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
     factory.remote().send(std::move(tk));
     k->jobs(std::move(jobs));
     k->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(k));
-    #endif
 }
 
 void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
@@ -199,9 +195,7 @@ void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel
     }
     k->pipelines(std::move(pipelines));
     k->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(k));
-    #endif
 }
 
 void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
@@ -211,6 +205,8 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
         const auto port = factory.remote().port();
         auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_fanout);
         d->interval(network_scan_interval());
+        d->profile(this->_profile_node_discovery);
+        d->max_attempts(this->_discoverer_max_attempts);
         this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
         factory.local().send(std::move(d));

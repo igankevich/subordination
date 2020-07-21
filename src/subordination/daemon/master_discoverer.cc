@@ -11,6 +11,13 @@ namespace {
         "add", "remove", "reject", "retain"
     };
 
+    inline uint64_t current_time_in_microseconds() {
+        using namespace std::chrono;
+        const auto now = system_clock::now().time_since_epoch();
+        const auto t = duration_cast<microseconds>(now);
+        return t.count();
+    }
+
 }
 
 std::ostream&
@@ -45,14 +52,23 @@ void sbnd::master_discoverer::discover() {
         discover_later();
     } else {
         auto addr = *this->_iterator;
-        ++this->_iterator;
         sys::socket_address new_superior(addr, port());
         const auto& old_superior = this->_hierarchy.superior().socket_address();
-        log("_: probe _", interface_address(), addr);
+        if (profile()) {
+            profile("`((time . _) (node . \"_\") (probe . \"_\") (attempts . _))",
+                    current_time_in_microseconds(), interface_address(), addr,
+                    this->_attempts);
+        } else {
+            log("_: probe _ attempts _", interface_address(), addr, this->_attempts);
+        }
         auto p = sbn::make_pointer<prober>(interface_address(), old_superior,
                                            new_superior);
         p->parent(this);
         factory.local().send(std::move(p));
+        if (++this->_attempts >= max_attempts()) {
+            this->_attempts = 0;
+            ++this->_iterator;
+        }
     }
 }
 
@@ -82,7 +98,12 @@ void sbnd::master_discoverer::discover_later() {
 void sbnd::master_discoverer::update_subordinates(pointer<probe> p) {
     const sys::socket_address src = p->source();
     probe_result result = this->process_probe(p);
-    this->log("_: _ subordinate _", this->interface_address(), result, src);
+    if (profile()) {
+        profile("`((time . _) (node . \"_\") (operation . _) (subordinate . \"_\"))",
+                current_time_in_microseconds(), interface_address(), result, src);
+    } else {
+        log("_: _ subordinate _", this->interface_address(), result, src);
+    }
     bool changed = true;
     if (result == probe_result::add_subordinate) {
         this->_hierarchy.add_subordinate(src);
@@ -127,7 +148,14 @@ void sbnd::master_discoverer::update_superior(pointer<prober> p) {
         const auto& old_superior = p->old_superior(), new_superior = p->new_superior();
         if (old_superior != new_superior) {
             if (old_superior) { factory.remote().stop_client(old_superior); }
-            log("_: set principal to _", interface_address(), new_superior);
+            if (profile()) {
+                profile("`((time . _) (node . \"_\") (superior . \"_\") (attempts . _))",
+                        current_time_in_microseconds(), interface_address(),
+                        new_superior, this->_attempts);
+            } else {
+                log("_: set principal to _ attempts _", interface_address(),
+                    new_superior, this->_attempts);
+            }
             this->_hierarchy.superior(new_superior);
             broadcast_hierarchy();
         }
@@ -138,18 +166,13 @@ void sbnd::master_discoverer::update_superior(pointer<prober> p) {
 
 void
 sbnd::master_discoverer::on_event(pointer<socket_pipeline_kernel> ev) {
+    using e = socket_pipeline_event;
     switch (ev->event()) {
-        case socket_pipeline_event::add_client:
-            this->on_client_add(ev->socket_address());
-            break;
-        case socket_pipeline_event::remove_client:
-            this->on_client_remove(ev->socket_address());
-            break;
-        case socket_pipeline_event::add_server:
-        case socket_pipeline_event::remove_server:
-        default:
-            // ignore server events
-            break;
+        case e::add_client: on_client_add(ev->socket_address()); break;
+        case e::remove_client: on_client_remove(ev->socket_address()); break;
+        case e::add_server: break;
+        case e::remove_server: break;
+        default: break;
     }
 }
 

@@ -200,16 +200,24 @@ void sbn::parallel_pipeline::clear(kernel_sack& sack) {
 }
 
 void sbn::parallel_pipeline::num_downstream_threads(size_t n) {
-    if (!this->_downstream_threads.empty()) {
-        throw std::invalid_argument("downstream threads must be empty");
+    switch (state()) {
+        case pipeline_state::initial: break;
+        case pipeline_state::stopped: break;
+        default: if (!this->_downstream_threads.empty()) {
+                     throw std::runtime_error("invalid pipeline state");
+                 }
     }
     this->_downstream_kernels = kernel_queue_array(n);
     this->_downstream_semaphores = semaphore_array(n);
 }
 
 void sbn::parallel_pipeline::num_upstream_threads(size_t n) {
-    if (!this->_upstream_threads.empty()) {
-        throw std::invalid_argument("upstream threads must be empty");
+    switch (state()) {
+        case pipeline_state::initial: break;
+        case pipeline_state::stopped: break;
+        default: if (!this->_upstream_threads.empty()) {
+                     throw std::runtime_error("invalid pipeline state");
+                 }
     }
     this->_upstream_threads.resize(n);
 }

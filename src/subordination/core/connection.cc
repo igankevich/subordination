@@ -102,9 +102,11 @@ void sbn::connection::write_kernel(const kernel_ptr& k) noexcept {
     try {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
+        #if defined(SBN_DEBUG)
         log("write _ src _ dst _ src-app _ dst-app _", k->is_native() ? "native" : "foreign",
             k->source(), k->destination(), k->source_application_id(),
             k->target_application_id());
+        #endif
         this->_output_buffer.write(k);
     } catch (const sbn::error& err) {
         log_write_error(err);
@@ -199,7 +201,9 @@ void sbn::connection::receive_kernel(kernel_ptr&& k, std::function<void(kernel_p
 
 void sbn::connection::plug_parent(kernel_ptr& k) {
     if (k->type_id() == 1) {
+        #if defined(SBN_DEBUG)
         log("RECV main kernel _", *k);
+        #endif
         //return;
     }
     if (!k->has_id()) {
@@ -304,7 +308,9 @@ void sbn::connection::recover_kernels(bool down) {
 
 void sbn::connection::recover_kernel(kernel_ptr& k) {
     if (parent() && (parent()->stopping() || parent()->stopped())) {
+        #if defined(SBN_DEBUG)
         log("trash _", *k);
+        #endif
         parent()->trash(std::move(k));
         return;
     }

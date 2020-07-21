@@ -47,7 +47,6 @@ sbnd_exe = executable(
     ]),
     include_directories: src,
     dependencies: [sbnd],
-    cpp_args: profiling_args,
     install: true,
     install_dir: get_option('sbindir'),
     implicit_include_directories: false,

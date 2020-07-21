@@ -38,11 +38,6 @@ foreach arg : cpp_link_args
     endif
 endforeach
 
-profiling_args = []
-if get_option('profile_node_discovery')
-    profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
-endif
-
 threads = dependency('threads')
 unistdx = dependency('unistdx', version: '>=0.22.0')
 gtest = dependency('gtest', main: true)

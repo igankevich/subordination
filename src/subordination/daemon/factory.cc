@@ -12,7 +12,6 @@ sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
     this->_remote.remote_pipeline(&this->_remote);
     this->_remote.types(&this->_types);
     this->_remote.instances(&this->_instances);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     this->_process.name("proc");
     this->_process.native_pipeline(&this->_local);
     this->_process.foreign_pipeline(&this->_remote);
@@ -26,10 +25,12 @@ sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
     this->_unix.remote_pipeline(&this->_remote);
     this->_unix.types(&this->_types);
     this->_unix.instances(&this->_instances);
-    #endif
 }
 
 void sbnd::Factory::transactions(const char* filename) {
+    if (!isset(factory_flags::transactions)) {
+        throw std::runtime_error("transactions are disabled");
+    }
     this->_transactions.pipelines({&this->_remote,&this->_process,&this->_unix});
     this->_transactions.types(&this->_types);
     this->_transactions.open(filename);
@@ -38,23 +39,37 @@ void sbnd::Factory::transactions(const char* filename) {
     this->_unix.transactions(&this->_transactions);
 }
 
+void sbnd::Factory::start() {
+    using f = factory_flags;
+    if (isset(f::local)) { this->_local.start(); }
+    if (isset(f::remote)) { this->_remote.start(); }
+    if (isset(f::process)) { this->_process.start(); }
+    if (isset(f::unix)) { this->_unix.start(); }
+}
+
+void sbnd::Factory::stop() {
+    using f = factory_flags;
+    if (isset(f::local)) { this->_local.stop(); }
+    if (isset(f::remote)) { this->_remote.stop(); }
+    if (isset(f::process)) { this->_process.stop(); }
+    if (isset(f::unix)) { this->_unix.stop(); }
+}
+
 void sbnd::Factory::wait() {
-    this->_local.wait();
-    this->_remote.wait();
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_process.wait();
-    this->_unix.wait();
-    #endif
+    using f = factory_flags;
+    if (isset(f::local)) { this->_local.wait(); }
+    if (isset(f::remote)) { this->_remote.wait(); }
+    if (isset(f::process)) { this->_process.wait(); }
+    if (isset(f::unix)) { this->_unix.wait(); }
 }
 
 void sbnd::Factory::clear() {
+    using f = factory_flags;
     sbn::kernel_sack sack;
-    this->_local.clear(sack);
-    this->_remote.clear(sack);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-    this->_process.clear(sack);
-    this->_unix.clear(sack);
-    #endif
+    if (isset(f::local)) { this->_local.clear(sack); }
+    if (isset(f::remote)) { this->_remote.clear(sack); }
+    if (isset(f::process)) { this->_process.clear(sack); }
+    if (isset(f::unix)) { this->_unix.clear(sack); }
     this->_instances.clear(sack);
 }
 

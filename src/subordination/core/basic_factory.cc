@@ -2,12 +2,7 @@
 
 #include <unistdx/util/system>
 
-sbn::Factory::Factory():
-#if defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
-_local(1) {
-#else
-_local(sys::thread_concurrency()) {
-#endif
+sbn::Factory::Factory(): _local(sys::thread_concurrency()) {
     this->_local.name("upstrm");
     this->_local.error_pipeline(&this->_remote);
     this->_remote.name("chld");
