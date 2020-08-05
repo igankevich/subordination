@@ -63,8 +63,8 @@ namespace sbn {
         connection_state _state = connection_state::initial;
 
     protected:
-        kernel_buffer _output_buffer{sys::page_size()};
-        kernel_buffer _input_buffer{sys::page_size()};
+        kernel_buffer _output_buffer;
+        kernel_buffer _input_buffer;
         sys::socket_address _socket_address;
 
     public:
@@ -143,6 +143,14 @@ namespace sbn {
         inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
         inline const kernel_queue& downstream() const noexcept { return this->_downstream; }
 
+        inline void min_input_buffer_size(size_t rhs) {
+            if (this->_input_buffer.size() < rhs) { this->_input_buffer.resize(rhs); }
+        }
+
+        inline void min_output_buffer_size(size_t rhs) {
+            if (this->_output_buffer.size() < rhs) { this->_output_buffer.resize(rhs); }
+        }
+
     protected:
 
         foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
@@ -165,6 +173,7 @@ namespace sbn {
 
         template <class Source>
         inline void fill(Source& source) {
+            log("fill buffer-size _", this->_input_buffer.size());
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
         }
@@ -177,7 +186,7 @@ namespace sbn {
 
     private:
 
-        void write_kernel(const kernel_ptr& k) noexcept;
+        void write_kernel(const kernel* k) noexcept;
         kernel_ptr read_kernel(const application* from_application);
         void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
         void plug_parent(kernel_ptr& k);

@@ -17,6 +17,7 @@ sbn_src = files([
     'parallel_pipeline.cc',
     'pipeline_base.cc',
     'process_handler.cc',
+    'properties.cc',
     'transaction_log.cc',
 ])
 
@@ -28,19 +29,20 @@ install_headers(
     'child_process_pipeline.hh',
     'connection.hh',
     'connection_table.hh',
-    'error.hh',
     'error_handler.hh',
+    'error.hh',
     'foreign_kernel.hh',
-    'kernel.hh',
     'kernel_base.hh',
     'kernel_buffer.hh',
     'kernel_header_flag.hh',
+    'kernel.hh',
     'kernel_instance_registry.hh',
     'kernel_type.hh',
     'kernel_type_registry.hh',
     'parallel_pipeline.hh',
     'pipeline_base.hh',
     'process_handler.hh',
+    'properties.hh',
     'transaction_log.hh',
     'types.hh',
     subdir: join_paths(meson.project_name(), 'core')
@@ -71,7 +73,7 @@ pkgconfig.generate(
     description: project_description,
 )
 
-foreach name : ['kernel_buffer', 'timer_pipeline']
+foreach name : ['kernel_buffer', 'timer_pipeline', 'properties']
     test_name = '-'.join(name.split('_'))
     exe_name = test_name + '-test'
     exe = executable(

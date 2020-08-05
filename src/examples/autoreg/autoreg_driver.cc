@@ -1,5 +1,8 @@
 #include <fstream>
 #include <sstream>
+#include <thread>
+
+#include <unistdx/ipc/signal>
 
 #include <autoreg/acf_generator.hh>
 #include <autoreg/autoreg_driver.hh>
@@ -17,10 +20,10 @@ namespace  {
         }
     }
 
-    template<class V>
-    inline std::ostream&
+    template <class V>
+    inline void
     write_log(const char* key, V value) {
-        return std::clog << std::setw(20) << key << value << std::endl;
+        sys::log_message("autoreg", "_: _", key, value);
     }
 
     inline uint64_t
@@ -34,15 +37,14 @@ namespace  {
 
 template <class T> void
 autoreg::Autoreg_model<T>::act() {
+    read_input_file();
     AUTOREG_MPI_SUPERIOR(
-        read_input_file();
         std::clog << std::left << std::boolalpha;
-        write_log("ACF size:", acf_size);
-        write_log("Domain:", zsize);
-        write_log("Domain 2:", zsize2);
-        write_log("Delta:", zdelta);
-        write_log("Interval:", interval);
-        write_log("Size factor:", size_factor());
+        write_log("ACF size", acf_size);
+        write_log("Phi size", _phi_size);
+        write_log("Domain", zsize);
+        write_log("Domain 2", zsize2);
+        write_log("Delta", zdelta);
         /*
         ACF_generator<T> acf_generator(_alpha, _beta, _gamma, acf_delta, acf_size, acf_model);
         acf_generator.act();
@@ -56,7 +58,7 @@ autoreg::Autoreg_model<T>::act() {
         sys::log_message("autoreg", "var(acf) = _", acf_model[0]);
         sys::log_message("autoreg", "var(eps) = _", var_wn);
         #endif
-        //Wave_surface_generator<T> generator(ar_coefs, fsize, var_wn, zsize2, zsize);
+        //Wave_surface_generator<T> generator(ar_coefs, _phi_size, var_wn, zsize2, zsize);
         */
         sbn::upstream(
             this,
@@ -93,7 +95,7 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
         }
         if (type == typeid(Autoreg_coefs<T>)) {
     //		write<T>("1.ar_coefs", ar_coefs);
-            { std::ofstream out("ar_coefs"); out << ar_coefs; }
+            //{ std::ofstream out("ar_coefs"); out << ar_coefs; }
             sbn::upstream(this, sbn::make_pointer<Variance_WN<T>>(ar_coefs, acf_model));
         }
         if (type == typeid(Variance_WN<T>)) {
@@ -104,12 +106,21 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
             sys::log_message("autoreg", "var(eps) = _", var_wn);
             #endif
             auto k = sbn::make_pointer<Wave_surface_generator<T>>(
-                ar_coefs, fsize, var_wn, zsize2, zsize);
+                ar_coefs, _phi_size, var_wn, zsize2, zsize, part_size(), this->_verify,
+                this->_buffer_size);
             //#if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
             //sbn::upstream(this, std::move(k));
             //#else
-            //k->setf(sbn::kernel_flag::carries_parent);
+            k->setf(sbn::kernel_flag::carries_parent);
             sbn::upstream<sbn::Remote>(this, std::move(k));
+            if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_FAILURE")) {
+                if (sys::this_process::hostname() == hostname) {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    sys::log_message("autoreg", "simulate superior failure _!", hostname);
+                    send(sys::signal::kill, sys::this_process::parent_id());
+                    send(sys::signal::kill, sys::this_process::id());
+                }
+            }
             //#endif
         }
         if (type == typeid(Wave_surface_generator<T>)) {
@@ -117,7 +128,7 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
             #if defined(AUTOREG_DEBUG)
             sys::log_message("autoreg", "finished all");
             #endif
-            sbn::commit(std::move(this_ptr()));
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
     );
     #if defined(AUTOREG_MPI)
@@ -125,7 +136,8 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
         T var_wn = 0;
         sbn::upstream<sbn::Remote>(
             this, sbn::make_pointer<Wave_surface_generator<T>>(
-                ar_coefs, fsize, var_wn, zsize2, zsize));
+                ar_coefs, _phi_size, var_wn, zsize2, zsize, part_size(), this->_verify,
+                this->_buffer_size));
     );
     #endif
 }
@@ -138,12 +150,14 @@ autoreg::Autoreg_model<T>::write(sbn::kernel_buffer& out) const {
     out << zdelta;
     out << acf_size;
     out << acf_delta;
-    out << fsize;
-    out << interval;
+    out << _phi_size;
     out << zsize2;
+    out << _part_size;
+    out << _zeta_padding;
     out << acf_model;
     out << acf_pure;
     out << ar_coefs;
+    out << _verify;
     out << _homogeneous;
     out << _alpha;
     out << _beta;
@@ -153,28 +167,47 @@ autoreg::Autoreg_model<T>::write(sbn::kernel_buffer& out) const {
 template <class T> void
 autoreg::Autoreg_model<T>::read(sbn::kernel_buffer& in) {
     kernel::read(in);
-    in >> zsize;
-    in >> zdelta;
-    in >> acf_size;
-    in >> acf_delta;
-    in >> fsize;
-    in >> interval;
-    in >> zsize2;
-    in >> acf_model;
-    in >> acf_pure;
-    in >> ar_coefs;
-    in >> _homogeneous;
-    in >> _alpha;
-    in >> _beta;
-    in >> _gamma;
+    if (in.remaining() == 0) {
+        if (auto* a = target_application()) {
+            const auto& args = a->arguments();
+            if (args.size() >= 2) {
+                filename(args[1]);
+                sys::log_message("autoreg", "filename _", filename());
+            }
+        }
+    } else {
+        in >> zsize;
+        in >> zdelta;
+        in >> acf_size;
+        in >> acf_delta;
+        in >> _phi_size;
+        in >> zsize2;
+        in >> _part_size;
+        in >> _zeta_padding;
+        in >> acf_model;
+        in >> acf_pure;
+        in >> ar_coefs;
+        in >> _verify;
+        in >> _homogeneous;
+        in >> _alpha;
+        in >> _beta;
+        in >> _gamma;
+    }
 }
 
 template <class T> void
 autoreg::Autoreg_model<T>::read_input_file() {
     try {
-        std::ifstream cfg(this->_filename);
-        if (cfg.is_open()) {
+        if (!filename().empty()) {
+            std::ifstream cfg;
+            cfg.open(filename());
+            if (!cfg.is_open()) {
+                std::stringstream tmp;
+                tmp << "Failed to open \"" << filename() << "\"";
+                throw std::runtime_error(tmp.str());
+            }
             cfg >> *this;
+            cfg.close();
         } else {
             #if defined(AUTOREG_DEBUG)
             sys::log_message("autoreg", "using default parameters");
@@ -191,56 +224,49 @@ autoreg::Autoreg_model<T>::validate_parameters() {
     validate_non_nought_product(zsize, "zsize");
     validate_non_nought_product(zdelta, "zdelta");
     validate_non_nought_product(acf_size, "acf_size");
+    validate_non_nought_product(_phi_size, "phi_size");
+    validate_non_nought_product(part_size(), "part_size");
     for (int i=0; i<3; ++i) {
         if (zsize2[i] < zsize[i]) {
             throw std::runtime_error("size_factor < 1, zsize2 < zsize");
         }
     }
-    int part_sz = part_size();
-    int fsize_t = fsize[0];
-    if (interval >= part_sz) {
+    if (_phi_size[0] > this->_part_size[0] ||
+        _phi_size[1] > this->_part_size[1] ||
+        _phi_size[2] > this->_part_size[2]) {
         std::stringstream tmp;
-        tmp <<
-            "interval >= part_size, should be 0 < fsize[0] < interval < part_size";
-        tmp << "fsize[0]  = " << fsize_t << '\n';
-        tmp << "interval  = " << interval << '\n';
-        tmp << "part_size = " << part_sz << '\n';
-        throw std::runtime_error(tmp.str());
-    }
-    if (fsize_t > part_sz) {
-        std::stringstream tmp;
-        tmp <<
-            "fsize[0] > part_size, should be 0 < fsize[0] < interval < part_size\n";
-        tmp << "fsize[0]  = " << fsize_t << '\n';
-        tmp << "interval  = " << interval << '\n';
-        tmp << "part_size = " << part_sz << '\n';
-        throw std::runtime_error(tmp.str());
-    }
-    if (fsize_t > interval && interval > 0) {
-        std::stringstream tmp;
-        tmp <<
-            "0 < interval < fsize[0], should be 0 < fsize[0] < interval < part_size";
-        tmp << "fsize[0]  = " << fsize_t << '\n';
-        tmp << "interval  = " << interval << '\n';
-        tmp << "part_size = " << part_sz << '\n';
+        tmp << "phi_size[i] > part_size[i], should be 0 < phi_size[i] < part_size[i]\n";
+        tmp << "phi_size = " << _phi_size << '\n';
+        tmp << "part_size = " << part_size() << '\n';
         throw std::runtime_error(tmp.str());
     }
 }
 
+template <class T> void
+autoreg::Autoreg_model<T>::num_coefficients(const size3& rhs) {
+    this->_phi_size = rhs;
+    this->ar_coefs.resize(num_coefficients().product());
+}
+
+template <class T> void
+autoreg::Autoreg_model<T>::zeta_padding(const size3& rhs) {
+    this->_zeta_padding = rhs;
+    this->zsize2 = this->zsize + this->_zeta_padding;
+}
 
 template<class T>
 std::istream&
 autoreg::operator>>(std::istream& in, Autoreg_model<T>& m) {
     std::string name;
-    int interval = 0;
-    T size_factor = 1.2;
     while (!getline(in, name, '=').eof()) {
         if (name.size() > 0 && name[0] == '#') in.ignore(1024*1024, '\n');
         else if (name == "zsize") in >> m.zsize;
         else if (name == "zdelta") in >> m.zdelta;
         else if (name == "acf_size") in >> m.acf_size;
-        else if (name == "size_factor") in >> size_factor;
-        else if (name == "interval") in >> interval;
+        else if (name == "part_size") in >> m._part_size;
+        else if (name == "zeta_padding") in >> m._zeta_padding;
+        else if (name == "buffer_size") in >> m._buffer_size;
+        else if (name == "verify") in >> m._verify;
         else if (name == "alpha") in >> m._alpha;
         else if (name == "beta") in >> m._beta;
         else if (name == "gamma") in >> m._gamma;
@@ -252,18 +278,11 @@ autoreg::operator>>(std::istream& in, Autoreg_model<T>& m) {
         }
         in >> std::ws;
     }
-    if (size_factor < T(1)) {
-        std::stringstream str;
-        str << "Invalid size factor: " << size_factor;
-        throw std::runtime_error(str.str().c_str());
-    }
-    m.zsize2 = m.zsize*size_factor;
-    m.interval = interval;
+    m.num_coefficients(m.acf_size);
+    m.zeta_padding(m._zeta_padding);
     m.acf_delta = m.zdelta;
-    m.fsize = m.acf_size;
     m.acf_model.resize(m.acf_size.product());
     m.acf_pure.resize(m.acf_size.product());
-    m.ar_coefs.resize(m.fsize.product());
     m.validate_parameters();
     return in;
 }

@@ -4,6 +4,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/properties.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/socket_pipeline.hh>
@@ -21,6 +22,32 @@ namespace sbnd {
     };
 
     UNISTDX_FLAGS(factory_flags);
+
+    class Properties: public sbn::properties {
+
+    public:
+        struct {
+            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
+            unsigned num_downstream_threads = 0;
+        } local;
+        struct {
+            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
+            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+        } remote;
+        struct {
+            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
+            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+        } process;
+        struct {
+            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
+            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+        } unix;
+
+    public:
+        Properties();
+        void property(const std::string& key, const std::string& value) override;
+
+    };
 
     class Factory: public sbn::pipeline_base {
 
@@ -70,6 +97,7 @@ namespace sbnd {
         void stop();
         void wait();
         void clear();
+        void configure(const Properties& props);
 
     };
 

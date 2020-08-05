@@ -111,8 +111,10 @@ std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
         "src", rhs.source(),
         "dst", rhs.destination(),
         "ret", rhs.return_code(),
-        "src-app", rhs._source_application_id,
-        "dst-app", rhs._target_application_id,
+        "src-app-id", rhs.source_application_id(),
+        "dst-app-id", rhs.target_application_id(),
+        "src-app", rhs.source_application(),
+        "dst-app", rhs.target_application(),
         "parent", rhs._parent,
         "principal", rhs._principal
     );

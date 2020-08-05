@@ -251,11 +251,8 @@ public:
         return_to_parent(child->return_code());
         if (t == typeid(sbnd::Main_kernel)) {
             auto k = sbn::pointer_dynamic_cast<sbnd::Main_kernel>(std::move(child));
-            if (k->return_code() != sbn::exit_code::success) {
-                message("failed to submit _", k->source_application_id());
-            } else {
-                message("submitted _", k->source_application_id());
-            }
+            message("main kernel returned from _ with exit code _",
+                    k->source_application_id(), k->return_code());
         } else {
             auto k =
                 sbn::pointer_dynamic_cast<sbnd::Transaction_test_kernel>(std::move(child));

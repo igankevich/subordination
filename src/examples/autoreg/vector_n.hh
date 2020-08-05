@@ -237,7 +237,7 @@ namespace autoreg {
     class Index<3> {
 
     private:
-        const size3& s;
+        size3 s;
 
     public:
         inline Index(const size3& sz): s(sz) {}
@@ -268,7 +268,7 @@ namespace autoreg {
     class Index<1> {
 
     private:
-        const size1& s;
+        size1 s;
 
     public:
         inline Index(const size1& sz): s(sz) {}
@@ -281,7 +281,7 @@ namespace autoreg {
     class Index<2> {
 
     private:
-        const size2& s;
+        size2 s;
 
     public:
         inline Index(const size2& sz): s(sz) {}

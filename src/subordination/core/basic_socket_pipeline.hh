@@ -59,6 +59,8 @@ namespace sbn {
         transaction_log* _transactions = nullptr;
         kernel_array _listeners;
         kernel_ptr_array _trash;
+        size_t _min_input_buffer_size = 4096*16;
+        size_t _min_output_buffer_size = 4096*16;
 
     public:
         class sentry {
@@ -141,6 +143,13 @@ namespace sbn {
         inline transaction_log* transactions() noexcept { return this->_transactions; }
 
         inline const transaction_log* transactions() const noexcept { return this->_transactions; }
+        inline void min_input_buffer_size(size_t rhs) noexcept {
+            this->_min_input_buffer_size = rhs;
+        }
+
+        inline void min_output_buffer_size(size_t rhs) noexcept {
+            this->_min_output_buffer_size = rhs;
+        }
 
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
         inline void trash(kernel_ptr&& k) { this->_trash.emplace_back(std::move(k)); }
@@ -151,6 +160,8 @@ namespace sbn {
             // in the process connection, so do not use emplace here
             this->log("add _", ptr->socket_address());
             this->_connections.emplace(ev.fd(), ptr);
+            ptr->min_input_buffer_size(this->_min_input_buffer_size);
+            ptr->min_output_buffer_size(this->_min_output_buffer_size);
             this->poller().insert(ev);
         }
 
@@ -261,6 +272,7 @@ namespace sbn {
         void remove(sys::fd_type fd, connection_ptr& conn, const char* reason);
 
         friend class connection;
+        friend class process_handler;
 
     };
 

@@ -34,14 +34,40 @@ namespace sbnd {
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
         using id_type = sbn::kernel::id_type;
-        using weight_type = uint32_t;
+
+    private:
+        class neighbour {
+        public:
+            using weight_type = uint32_t;
+        private:
+            sys::socket_address _socket_address;
+            weight_type _weight = 1;
+        public:
+            inline explicit neighbour(const sys::socket_address& a, weight_type w=1):
+            _socket_address(a), _weight(w) {}
+            neighbour() = default;
+            ~neighbour() = default;
+            neighbour(const neighbour&) = default;
+            neighbour& operator=(const neighbour&) = default;
+            neighbour(neighbour&&) = default;
+            neighbour& operator=(neighbour&&) = default;
+            /// The number of nodes "behind" this one in the hierarchy.
+            inline weight_type weight() const noexcept { return this->_weight; }
+            inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+            inline const sys::socket_address& socket_address() const noexcept {
+                return this->_socket_address;
+            }
+            inline bool local() const noexcept { return !socket_address(); }
+        };
+        using neighbour_array = std::vector<neighbour>;
+        using neighbour_iterator = neighbour_array::iterator;
+        using weight_type = neighbour::weight_type;
 
     private:
         server_array _servers;
         client_table _clients;
-        /// Iterator to client container which is used to distribute the
-        /// kernels between several clients taking into account their weight.
-        client_iterator _iterator = this->_clients.end();
+        neighbour_array _neighbours{1};
+        neighbour_iterator _neighbour_iterator = this->_neighbours.begin();
         /// Client weight counter. Goes from nought to the number of nodes
         /// "behind" the client.
         weight_type _weightcnt = 0;
@@ -59,8 +85,7 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void
-        add_client(const sys::socket_address& addr) {
+        void add_client(const sys::socket_address& addr) {
             lock_type lock(this->_mutex);
             this->do_add_client(addr);
         }
@@ -88,7 +113,8 @@ namespace sbnd {
         inline sys::port_type port() const noexcept { return this->_port; }
         inline const server_array& servers() const noexcept { return this->_servers; }
         inline const client_table& clients() const noexcept { return this->_clients; }
-        inline void use_localhost(bool b) noexcept { this->_uselocalhost = b; }
+        void use_localhost(bool rhs);
+        inline bool use_localhost() const noexcept { return this->_uselocalhost; }
         void remove_server(const interface_address& interface_address);
 
     private:
@@ -96,6 +122,10 @@ namespace sbnd {
         void remove_client(const sys::socket_address& vaddr);
         void remove_client(client_iterator result);
         void remove_server(server_iterator result);
+        void add_neighbour(const sys::socket_address& vaddr);
+        void remove_neighbour(const sys::socket_address& vaddr);
+        void reset_neighbour_iterator();
+        void advance_neighbour_iterator();
 
         server_iterator
         find_server(const interface_address& interface_address);
@@ -107,36 +137,6 @@ namespace sbnd {
         find_server(const sys::socket_address& dest);
 
         void ensure_identity(sbn::kernel* k, const sys::socket_address& dest);
-
-        /// round robin over upstream hosts
-        void find_next_client();
-
-        inline bool
-        end_reached() const noexcept {
-            return this->_iterator == this->_clients.end();
-        }
-
-        inline void
-        reset_iterator() noexcept {
-            this->_iterator = this->_clients.begin();
-            this->_weightcnt = 0;
-        }
-
-        inline const remote_client&
-        current_client() const noexcept {
-            return *this->_iterator->second;
-        }
-
-        inline remote_client&
-        current_client() noexcept {
-            return *this->_iterator->second;
-        }
-
-        inline void
-        advance_client_iterator() noexcept {
-            ++this->_iterator;
-            this->_weightcnt = 0;
-        }
 
         void
         emplace_client(const sys::socket_address& vaddr, const client_ptr& s);

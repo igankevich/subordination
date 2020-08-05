@@ -166,6 +166,10 @@ namespace sbn {
             this->_error_pipeline = rhs;
         }
 
+        inline pipeline* error_pipeline() const noexcept {
+            return this->_error_pipeline;
+        }
+
     private:
         void upstream_loop(kernel_queue& downstream_queue);
         void timer_loop();

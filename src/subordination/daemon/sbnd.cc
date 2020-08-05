@@ -119,8 +119,19 @@ namespace sbnd {
     }
 }
 
+void parse_standard_arguments(int argc, char** argv) {
+    if (argc != 2) { return; }
+    std::string h("-h"), help("--help"), version("--version");
+    if (argv[1] == h || argv[1] == help) {
+        std::cout << argv[0] << " [-h] [--help] [--version] [key=value]...";
+    } else if (argv[1] == version) {
+        std::cout << 1;
+    }
+}
+
 int main(int argc, char* argv[]) {
     using namespace sbnd;
+    parse_standard_arguments(argc, argv);
     sys::ipv4_address::rep_type fanout = 10000;
     sys::interface_address<sys::ipv4_address> servers;
     bool allow_root = false;
@@ -131,8 +142,9 @@ int main(int argc, char* argv[]) {
     sys::path transactions_directory(SBND_SHARED_STATE_DIR);
     unsigned local_num_threads = sys::thread_concurrency();
     auto flags = factory_flags::all;
-    bool profile_node_disccovery = false;
+    bool profile_node_discovery = false;
     int discoverer_max_attempts = 3;
+    std::string config;
     sys::input_operator_type options[] = {
         sys::ignore_first_argument(),
         sys::make_key_value("fanout", fanout),
@@ -146,12 +158,13 @@ int main(int argc, char* argv[]) {
         sys::make_key_value("transactions-directory", transactions_directory),
         sys::make_key_value("local-num-threads", local_num_threads),
         sys::make_key_value("factory-flags", flags),
-        sys::make_key_value("discoverer-profile", profile_node_disccovery),
+        sys::make_key_value("discoverer-profile", profile_node_discovery),
         sys::make_key_value("discoverer-max-attempts", discoverer_max_attempts),
+        sys::make_key_value("config", config),
         nullptr
     };
     sys::parse_arguments(argc, argv, options);
-    if (profile_node_disccovery) {
+    if (profile_node_discovery) {
         using namespace std::chrono;
         const auto now = system_clock::now().time_since_epoch();
         const auto t = duration_cast<microseconds>(now);
@@ -171,6 +184,11 @@ int main(int argc, char* argv[]) {
     factory.types().add<Transaction_gather_subordinate>(7);
     factory.types().add<Job_status_kernel>(8);
     factory.types().add<Pipeline_status_kernel>(9);
+    if (!config.empty()) {
+        Properties props;
+        props.open(config.data());
+        factory.configure(props);
+    }
     try {
         if (factory.isset(factory_flags::transactions)) {
             sys::mkdirs(transactions_directory);
@@ -187,7 +205,7 @@ int main(int argc, char* argv[]) {
         m->fanout(fanout);
         m->interval(network_interface_update_interval);
         m->network_scan_interval(network_scan_interval);
-        m->profile_node_discovery(profile_node_disccovery);
+        m->profile_node_discovery(profile_node_discovery);
         m->discoverer_max_attempts(discoverer_max_attempts);
         factory.instances().add(m.get());
         if (factory.isset(factory_flags::process)) {

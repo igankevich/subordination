@@ -5,13 +5,63 @@
 
 #include <mpi.h>
 
+#include <iosfwd>
+#include <string>
+#include <system_error>
 #include <utility>
 
 namespace autoreg {
 
     namespace mpi {
 
+        enum class errc: int {
+            success=MPI_SUCCESS,
+            buffer=MPI_ERR_BUFFER,
+            count=MPI_ERR_COUNT,
+            type=MPI_ERR_TYPE,
+            tag=MPI_ERR_TAG,
+            comm=MPI_ERR_COMM,
+            rank=MPI_ERR_RANK,
+            request=MPI_ERR_REQUEST,
+            root=MPI_ERR_ROOT,
+            group=MPI_ERR_GROUP,
+            op=MPI_ERR_OP,
+            topology=MPI_ERR_TOPOLOGY,
+            dims=MPI_ERR_DIMS,
+            arg=MPI_ERR_ARG,
+            unknown=MPI_ERR_UNKNOWN,
+            truncate=MPI_ERR_TRUNCATE,
+            other=MPI_ERR_OTHER,
+            intern=MPI_ERR_INTERN,
+            lastcode=MPI_ERR_LASTCODE,
+        };
+
+        std::string to_string(errc rhs);
+        std::ostream& operator<<(std::ostream& out, errc rhs);
+
+        class error_category: public std::error_category {
+        public:
+            inline const char* name() const noexcept override { return "mpi"; }
+            std::string message(int ev) const noexcept override;
+        };
+
+        extern error_category mpi_category;
+
+        inline std::error_condition
+        make_error_condition(errc e) noexcept {
+            return std::error_condition(static_cast<int>(e), mpi_category);
+        }
+
+        #define MPIX_THROW(errcode) \
+            throw ::std::system_error(static_cast<int>(errcode), ::autoreg::mpi::mpi_category)
+
+        #define MPIX_CHECK(errcode) \
+            if (static_cast<::autoreg::mpi::errc>(errcode) != ::autoreg::mpi::errc::success) { \
+                MPIX_THROW(errcode); \
+            }
+
         extern int rank, nranks;
+        extern char name[MPI_MAX_PROCESSOR_NAME];
 
         struct guard {
             guard(int* argc, char*** argv);
@@ -173,8 +223,45 @@ namespace autoreg {
             return std::make_pair(s,success);
         }
 
+        inline void abort(MPI_Comm comm=MPI_COMM_WORLD, int error=0) {
+            MPI_Abort(comm, error);
+        }
+
+        inline bool initialised() {
+            int flag = 0;
+            MPI_Initialized(&flag);
+            return flag;
+        }
+
+        inline void attach(void* data, int size) {
+            MPI_Buffer_attach(data, size);
+        }
+
+        inline void detach() {
+            void* ptr; int size;
+            MPI_Buffer_detach(&ptr, &size);
+        }
+
+        class buffer_guard {
+        public:
+            inline explicit buffer_guard(void* ptr, int size) { attach(ptr, size); }
+            inline ~buffer_guard() { detach(); }
+        };
+
+        template <class T> inline request
+        async_buffered_send(T* data, int size, int destination, int tag=MPI_ANY_TAG,
+                            MPI_Comm comm=MPI_COMM_WORLD) {
+            request r;
+            MPIX_CHECK(MPI_Ibsend(data, size, type<T>::value, destination, tag, comm, r));
+            return r;
+        }
+
     }
 
+}
+
+namespace std {
+    template<> struct is_error_condition_enum<autoreg::mpi::errc>: true_type {};
 }
 
 #define AUTOREG_MPI_SUPERIOR(...) \

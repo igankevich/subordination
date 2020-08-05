@@ -134,6 +134,7 @@ sbn::application::id_type sbn::this_application::id() noexcept { return this_app
 void sbn::this_application::id(application::id_type rhs) noexcept { this_app = rhs; }
 sys::fd_type sbn::this_application::get_input_fd() noexcept { return this_pipe_in; }
 sys::fd_type sbn::this_application::get_output_fd() noexcept { return this_pipe_out; }
+bool sbn::this_application::standalone() noexcept { return !std::getenv(SUBORDINATION_ENV_APPLICATION_ID); }
 
 sbn::application::id_type
 sbn::generate_application_id() noexcept {

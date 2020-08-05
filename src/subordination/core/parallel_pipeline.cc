@@ -74,13 +74,15 @@ namespace {
         }
     }
 
-    inline void process_kernel(sbn::kernel_ptr&& k, sbn::pipeline* error_pipeline) {
+    inline void process_kernel(sbn::kernel_ptr&& k, sbn::parallel_pipeline* this_pipeline) {
         try {
             act(k);
-        } catch (...) {
+        } catch (const std::exception& err) {
             sys::backtrace(2);
+            this_pipeline->log("error _", err.what());
             if (k) {
                 k->rollback();
+                auto* error_pipeline = this_pipeline->error_pipeline();
                 if (error_pipeline) {
                     k->return_to_parent(sbn::exit_code::error);
                     error_pipeline->send(std::move(k));
@@ -103,7 +105,7 @@ void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream) {
             auto k = std::move(queue.front());
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this->_error_pipeline);
+            process_kernel(std::move(k), this);
         }
         return this->stopping();
     });
@@ -125,7 +127,7 @@ void sbn::parallel_pipeline::timer_loop() {
             auto k = std::move(const_cast<kernel_ptr&>(queue.top()));
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this->_error_pipeline);
+            process_kernel(std::move(k), this);
         }
     }
 }
@@ -137,7 +139,7 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
             auto k = std::move(queue.front());
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this->_error_pipeline);
+            process_kernel(std::move(k), this);
         }
         return this->stopping();
     });
