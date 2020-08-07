@@ -24,6 +24,7 @@ namespace sbnd {
     public:
         using ip_address = sys::ipv4_address;
         using interface_address = sys::interface_address<ip_address>;
+        using weight_type = uint32_t;
 
     private:
         using server_ptr = std::shared_ptr<local_server>;
@@ -36,41 +37,8 @@ namespace sbnd {
         using id_type = sbn::kernel::id_type;
 
     private:
-        class neighbour {
-        public:
-            using weight_type = uint32_t;
-        private:
-            sys::socket_address _socket_address;
-            weight_type _weight = 1;
-        public:
-            inline explicit neighbour(const sys::socket_address& a, weight_type w=1):
-            _socket_address(a), _weight(w) {}
-            neighbour() = default;
-            ~neighbour() = default;
-            neighbour(const neighbour&) = default;
-            neighbour& operator=(const neighbour&) = default;
-            neighbour(neighbour&&) = default;
-            neighbour& operator=(neighbour&&) = default;
-            /// The number of nodes "behind" this one in the hierarchy.
-            inline weight_type weight() const noexcept { return this->_weight; }
-            inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
-            inline const sys::socket_address& socket_address() const noexcept {
-                return this->_socket_address;
-            }
-            inline bool local() const noexcept { return !socket_address(); }
-        };
-        using neighbour_array = std::vector<neighbour>;
-        using neighbour_iterator = neighbour_array::iterator;
-        using weight_type = neighbour::weight_type;
-
-    private:
         server_array _servers;
         client_table _clients;
-        neighbour_array _neighbours{1};
-        neighbour_iterator _neighbour_iterator = this->_neighbours.begin();
-        /// Client weight counter. Goes from nought to the number of nodes
-        /// "behind" the client.
-        weight_type _weightcnt = 0;
         sys::port_type _port = 33333;
         std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
         id_type _counter = 0;
@@ -113,7 +81,7 @@ namespace sbnd {
         inline sys::port_type port() const noexcept { return this->_port; }
         inline const server_array& servers() const noexcept { return this->_servers; }
         inline const client_table& clients() const noexcept { return this->_clients; }
-        void use_localhost(bool rhs);
+        inline void use_localhost(bool rhs) noexcept { this->_uselocalhost = rhs; }
         inline bool use_localhost() const noexcept { return this->_uselocalhost; }
         void remove_server(const interface_address& interface_address);
 
@@ -122,10 +90,7 @@ namespace sbnd {
         void remove_client(const sys::socket_address& vaddr);
         void remove_client(client_iterator result);
         void remove_server(server_iterator result);
-        void add_neighbour(const sys::socket_address& vaddr);
-        void remove_neighbour(const sys::socket_address& vaddr);
-        void reset_neighbour_iterator();
-        void advance_neighbour_iterator();
+        client_iterator advance_neighbour_iterator(const sbn::kernel* k);
 
         server_iterator
         find_server(const interface_address& interface_address);

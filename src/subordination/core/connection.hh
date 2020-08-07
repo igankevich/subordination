@@ -23,7 +23,7 @@ namespace sbn {
     enum class connection_flags: int {
         save_upstream_kernels = 1<<0,
         save_downstream_kernels = 1<<1,
-        write_transaction_log = 1<<2,
+        write_transaction_log = 1<<2
     };
 
     UNISTDX_FLAGS(connection_flags)
@@ -57,7 +57,7 @@ namespace sbn {
         basic_socket_pipeline* _parent = nullptr;
         connection_flags _flags{};
         kernel_queue _upstream, _downstream;
-        id_type _counter = 0;
+        id_type _counter = 1;
         sys::u32 _attempts = 1;
         const char* _name = "ppl";
         connection_state _state = connection_state::initial;

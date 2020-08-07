@@ -16,6 +16,11 @@ namespace autoreg {
     class Autoreg_model: public sbn::kernel {
 
     private:
+        using clock_type = std::chrono::system_clock;
+        using time_point = clock_type::time_point;
+        using duration = clock_type::duration;
+
+    private:
         size3 zsize{1000, 32, 32};
         Vector<T,3> zdelta{1,1,1};
         size3 acf_size{10, 10, 10};
@@ -37,6 +42,7 @@ namespace autoreg {
         T _alpha{0.05}, _beta{0.8}, _gamma{1.0};
 
         std::string _filename;
+        time_point _time_points[2];
 
     public:
 

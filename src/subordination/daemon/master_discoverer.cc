@@ -192,7 +192,6 @@ sbnd::master_discoverer::on_client_remove(const sys::socket_address& address) {
 }
 
 void sbnd::master_discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
-    /*
     const weight_type total = this->_hierarchy.total_weight();
     for (const hierarchy_node& sub : this->_hierarchy) {
         if (sub.socket_address() != ignored_endpoint) {
@@ -207,7 +206,6 @@ void sbnd::master_discoverer::broadcast_hierarchy(sys::socket_address ignored_en
             this->send_weight(princ.socket_address(), total - princ.weight());
         }
     }
-    */
 }
 
 void sbnd::master_discoverer::send_weight(const sys::socket_address& dest, weight_type w) {

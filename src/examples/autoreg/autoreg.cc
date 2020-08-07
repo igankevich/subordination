@@ -1,4 +1,5 @@
 #include <random>
+#include <thread>
 
 #include <autoreg/autoreg.hh>
 #include <autoreg/mpi.hh>
@@ -237,7 +238,8 @@ autoreg::Wave_surface_generator<T>::verify() {
         const auto& t = this->_time_points;
         using namespace std::chrono;
         const auto dt_parallel = duration_cast<microseconds>(t[1]-t[0]).count();
-        const auto dt_sequential = duration_cast<microseconds>(t[3]-t[2]).count();
+        const auto dt_sequential =
+            duration_cast<microseconds>(verification_duration()).count();
         log << dt_parallel << ' ';
         log << dt_sequential << '\n';
     }
@@ -409,8 +411,14 @@ autoreg::Part_generator<T>::read(sbn::kernel_buffer& in) {
 
 template <class T> void
 autoreg::Wave_surface_generator<T>::act() {
+    sys::log_message("autoreg", "wave surface generator on _", sys::this_process::hostname());
     if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_COPY_FAILURE")) {
         if (sys::this_process::hostname() == hostname) {
+            if (const char* str = std::getenv("SBN_TEST_SLEEP_FOR")) {
+                auto seconds = std::atoi(str);
+                sys::log_message("autoreg", "sleeping for _ seconds", seconds);
+                std::this_thread::sleep_for(std::chrono::seconds(seconds));
+            }
             sys::log_message("autoreg", "simulate superior copy failure _!", hostname);
             send(sys::signal::kill, sys::this_process::parent_id());
             send(sys::signal::kill, sys::this_process::id());

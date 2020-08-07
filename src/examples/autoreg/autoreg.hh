@@ -211,7 +211,7 @@ namespace autoreg {
         std::vector<Part> _parts;
         std::valarray<T> _zeta;
         uint64_t _seed = 0;
-        time_point _time_points[4];
+        std::array<time_point,4> _time_points;
         #if defined(AUTOREG_MPI)
         sbn::kernel_buffer _buffer{4096*1096};
         sbn::kernel_buffer _output_buffer{4096*1096};
@@ -243,6 +243,16 @@ namespace autoreg {
         void react(sbn::kernel_ptr&& child) override;
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;
+
+        inline const std::array<time_point,4>& time_points() const noexcept {
+            return this->_time_points;
+        }
+
+        inline duration verification_duration() const noexcept {
+            using namespace std::chrono;
+            const auto& t = this->_time_points;
+            return t[3]-t[2];
+        }
 
     private:
         void generate_white_noise(std::valarray<T>& zeta) const;

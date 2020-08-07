@@ -112,10 +112,12 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
             //sbn::upstream(this, std::move(k));
             //#else
             k->setf(sbn::kernel_flag::carries_parent);
+            this->_time_points[0] = clock_type::now();
             sbn::upstream<sbn::Remote>(this, std::move(k));
+            sys::log_message("autoreg", "autoreg model on _", sys::this_process::hostname());
             if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_FAILURE")) {
                 if (sys::this_process::hostname() == hostname) {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     sys::log_message("autoreg", "simulate superior failure _!", hostname);
                     send(sys::signal::kill, sys::this_process::parent_id());
                     send(sys::signal::kill, sys::this_process::id());
@@ -124,6 +126,22 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
             //#endif
         }
         if (type == typeid(Wave_surface_generator<T>)) {
+            this->_time_points[1] = clock_type::now();
+            {
+                std::ofstream log("time2.log");
+                log << this->zsize2[0] << ' ';
+                log << this->zsize2[1] << ' ';
+                log << this->zsize2[2] << ' ';
+                const auto& t = this->_time_points;
+                using namespace std::chrono;
+                const auto dt_total = duration_cast<microseconds>(t[1]-t[0]).count();
+                auto generator =
+                    sbn::pointer_dynamic_cast<Wave_surface_generator<T>>(std::move(child));
+                const auto dt_verify =
+                    duration_cast<microseconds>(generator->verification_duration()).count();
+                log << dt_total-dt_verify << ' ';
+                log << dt_verify << '\n';
+            }
             //this->parent(nullptr);
             #if defined(AUTOREG_DEBUG)
             sys::log_message("autoreg", "finished all");
@@ -162,6 +180,7 @@ autoreg::Autoreg_model<T>::write(sbn::kernel_buffer& out) const {
     out << _alpha;
     out << _beta;
     out << _gamma;
+    for (const auto& tp : this->_time_points) { out << tp; }
 }
 
 template <class T> void
@@ -192,6 +211,7 @@ autoreg::Autoreg_model<T>::read(sbn::kernel_buffer& in) {
         in >> _alpha;
         in >> _beta;
         in >> _gamma;
+        for (auto& tp : this->_time_points) { in >> tp; }
     }
 }
 

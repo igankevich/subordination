@@ -59,9 +59,9 @@ void sbn::connection::send(kernel_ptr& k) {
         !k->destination() &&
         k->target_application_id() == this_application::id()) {
         if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
-            if (k->carries_parent()) {
-                delete k->parent();
-            }
+            //if (k->carries_parent()) {
+            //    delete k->parent();
+            //}
             this->plug_parent(k);
         }
         #if defined(SBN_DEBUG)
@@ -144,8 +144,8 @@ void sbn::connection::receive_kernels(const application* from_application,
     this->_input_buffer.compact();
 }
 
-void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
-    parent()->forward_foreign(std::move(fk));
+void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
+    parent()->forward_foreign(std::move(k));
 }
 
 sbn::kernel_ptr

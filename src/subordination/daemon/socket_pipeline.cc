@@ -112,9 +112,14 @@ namespace sbnd {
 
     class remote_client: public sbn::connection {
 
+    public:
+        using weight_type = socket_pipeline::weight_type;
+
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
+        weight_type _max_weight = 1;
+        weight_type _weight = 0;
 
     public:
 
@@ -189,6 +194,25 @@ namespace sbnd {
             return reinterpret_cast<socket_pipeline*>(this->connection::parent());
         }
 
+        void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
+            using p = sbn::kernel::phases;
+            if (k->phase() == p::upstream) {
+                // Route upstream kernels using routing algorithm, i.e.
+                // redistribute them across all neighbours except
+                // the one from which the kernel was received.
+                { auto g = parent()->unguard(); parent()->forward(std::move(k)); }
+            } else {
+                connection::receive_foreign_kernel(std::move(k));
+            }
+        }
+
+        /// The number of nodes "behind" this one in the hierarchy.
+        inline weight_type max_weight() const noexcept { return this->_max_weight; }
+        inline void max_weight(weight_type rhs) noexcept { this->_max_weight = rhs; }
+        inline weight_type weight() const noexcept { return this->_weight; }
+        inline void weight(const weight_type& rhs) noexcept { this->_weight = rhs; }
+        inline bool full() const noexcept { return this->_max_weight <= this->_weight; }
+
     };
 
 }
@@ -244,84 +268,59 @@ void sbnd::socket_pipeline::remove_client(client_iterator result) {
     this->log("remove client _ (_)", socket_address, reason);
     #endif
     result->second->state(sbn::connection_state::stopped);
-    remove_neighbour(result->first);
     this->_clients.erase(result);
     fire_event_kernels(socket_pipeline_event::remove_client, socket_address);
 }
 
-void sbnd::socket_pipeline::add_neighbour(const sys::socket_address& address) {
-    const auto offset = this->_neighbour_iterator - this->_neighbours.begin();
-    this->_neighbours.emplace_back(address);
-    this->_neighbour_iterator = this->_neighbours.begin() + offset;
-}
-
-void sbnd::socket_pipeline::remove_neighbour(const sys::socket_address& socket_address) {
-    size_t offset = this->_neighbour_iterator - this->_neighbours.begin();
-    auto first = this->_neighbours.begin(), last = this->_neighbours.end();
-    while (first != last) {
-        if (first->socket_address() == socket_address) {
-            if (first < this->_neighbour_iterator) { --offset; }
-            first = this->_neighbours.erase(first);
-            break;
-        } else { ++first; }
+auto sbnd::socket_pipeline::advance_neighbour_iterator(const sbn::kernel* k)
+-> client_iterator {
+    using value_type = client_table::value_type;
+    if (this->_clients.empty()) {
+        log("neighbour local");
+        return this->_clients.end();
     }
-    if (offset == this->_neighbours.size()) { reset_neighbour_iterator(); }
-    else { this->_neighbour_iterator = this->_neighbours.begin() + offset; }
-}
-
-void sbnd::socket_pipeline::reset_neighbour_iterator() {
-    this->_neighbour_iterator = this->_neighbours.begin();
-    this->_weightcnt = 0;
-}
-
-void sbnd::socket_pipeline::advance_neighbour_iterator() {
-    if (this->_neighbours.empty()) { return; }
-    client_iterator client;
-    const int max_iterations = this->_neighbours.size();
-    int i = 0;
-    bool success = true;
-    do {
-        if (this->_neighbour_iterator == this->_neighbours.end()) {
-            reset_neighbour_iterator();
-        } else {
-            ++this->_weightcnt;
-            if (this->_weightcnt >= this->_neighbour_iterator->weight()) {
-                this->_weightcnt = 0;
-                if (++this->_neighbour_iterator == this->_neighbours.end()) {
-                    this->_neighbour_iterator = this->_neighbours.begin();
-                }
-            }
+    bool all_full = true, any_started = false;
+    for (const auto& pair : this->_clients) {
+        const auto& client = *pair.second;
+        if (client.state() != sbn::connection_state::started) { continue; }
+        any_started = true;
+        if (!client.full()) { all_full = false; }
+    }
+    // if there are no started clients
+    if (!any_started) {
+        log("neighbour local");
+        return this->_clients.end();
+    }
+    // reset weights when all nodes are full
+    if (all_full) {
+        for (auto& pair : this->_clients) { pair.second->weight(0); }
+        // do not send kernels carrying the parent to localhost
+        if (use_localhost() && !k->carries_parent()) {
+            log("neighbour local");
+            return this->_clients.end();
         }
-        if (this->_neighbour_iterator->local()) {
-            success = true;
-            break;
-        }
-        // check that the connection is active
-        client = this->_clients.find(this->_neighbour_iterator->socket_address());
-        if (client != this->_clients.end() &&
-            client->second->state() == sbn::connection_state::started) {
-            success = true;
-            break;
-        }
-        // ignore weight
-        this->_weightcnt = std::numeric_limits<weight_type>::max();
-    } while (++i < max_iterations);
-    if (!success) {
-        this->_neighbour_iterator = this->_neighbours.end();
     }
-    if (success) {
-        log("neighbour _ counter _ weight _", this->_neighbour_iterator->socket_address(),
-            this->_weightcnt, this->_neighbour_iterator->weight());
+    auto result = std::find_if(
+        this->_clients.begin(), this->_clients.end(),
+        [k] (value_type& pair) {
+            const auto& address = pair.first;
+            auto& client = *pair.second;
+            // do not send the kernel back
+            if (address == k->source()) { return false; }
+            // skip stopped clients
+            if (client.state() != sbn::connection_state::started) { return false; }
+            // do not choose the client that is already received max. no. of kernels
+            if (client.full()) { return false; }
+            // increase weight
+            client.weight(client.weight()+1);
+            return true;
+        });
+    if (result != this->_clients.end()) {
+        const auto& client = result->second;
+        log("neighbour _ weight _ max-weight _",
+            client->socket_address(), client->weight(), client->max_weight());
     }
-}
-
-void sbnd::socket_pipeline::use_localhost(bool rhs) {
-    this->_uselocalhost = rhs;
-    if (this->_uselocalhost) {
-        add_neighbour(sys::socket_address());
-    } else {
-        remove_neighbour(sys::socket_address());
-    }
+    return result;
 }
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
@@ -344,41 +343,23 @@ void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_addres
 void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
     lock_type lock(this->_mutex);
     log("forward _", *k);
-    bool found = false;
+    client_iterator client;
     switch (k->phase()) {
         case sbn::kernel::phases::upstream:
-            advance_neighbour_iterator();
-            if (this->_neighbour_iterator != this->_neighbours.end()) {
-                if (k->carries_parent() && this->_neighbour_iterator->local()) {
-                    // try next neighbour
-                    advance_neighbour_iterator();
-                    if (this->_neighbour_iterator != this->_neighbours.end() &&
-                        !this->_neighbour_iterator->local()) {
-                        found = true;
-                    }
-                } else {
-                    found = true;
-                }
-            }
-            if (!found || this->_neighbour_iterator->local()) {
+            client = advance_neighbour_iterator(k.get());
+            if (client == this->_clients.end()) {
                 if (k->carries_parent()) {
                     log("warning, sending a kernel carrying parent to local pipeline _", *k);
                 }
                 forward_foreign(std::move(k));
             } else {
-                const auto& address = this->_neighbour_iterator->socket_address();
                 //ensure_identity(k.get(), address);
-                auto result = this->_clients.find(address);
-                if (result == this->_clients.end()) {
-                    log("error: unable to find client _", address);
-                    throw std::invalid_argument("unable to find client");
-                }
                 //#if defined(SBN_DEBUG)
                 std::stringstream tmp;
                 for (const auto& pair : this->_clients) { tmp << pair.first << ' '; }
-                log("fwd _ to _ clients (_)", *k, address, tmp.str());
+                log("fwd _ to _ clients (_)", *k, client->first, tmp.str());
                 //#endif
-                result->second->forward(std::move(k));
+                client->second->forward(std::move(k));
                 this->_semaphore.notify_one();
             }
             break;
@@ -391,8 +372,8 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
             log("fwd _ to _", *k, k->destination());
             #endif
             {
-            auto ptr = find_or_create_client(k->destination());
-            ptr->forward(std::move(k));
+                auto ptr = find_or_create_client(k->destination());
+                ptr->forward(std::move(k));
             }
             this->_semaphore.notify_one();
             break;
@@ -462,7 +443,6 @@ void sbnd::socket_pipeline::ensure_identity(sbn::kernel* k, const sys::socket_ad
 void
 sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const client_ptr& s) {
     this->_clients.emplace(vaddr, s);
-    add_neighbour(vaddr);
 }
 
 void sbnd::socket_pipeline::process_kernels() {
@@ -503,34 +483,15 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
         }
     } else if (k->phase() == sbn::kernel::phases::upstream &&
                k->destination() == sys::socket_address()) {
-        bool found = false;
-        advance_neighbour_iterator();
-        if (this->_neighbour_iterator != this->_neighbours.end()) {
-            if (k->carries_parent() && this->_neighbour_iterator->local()) {
-                // try next neighbour
-                advance_neighbour_iterator();
-                if (this->_neighbour_iterator != this->_neighbours.end() &&
-                    !this->_neighbour_iterator->local()) {
-                    found = true;
-                }
-            } else {
-                found = true;
-            }
-        }
-        if (!found || this->_neighbour_iterator->local()) {
+        auto client = advance_neighbour_iterator(k.get());
+        if (client == this->_clients.end()) {
             if (k->carries_parent()) {
                 log("warning, sending a kernel carrying parent to local pipeline _", *k);
             }
             send_native(std::move(k));
         } else {
-            const auto& address = this->_neighbour_iterator->socket_address();
-            ensure_identity(k.get(), address);
-            auto result = this->_clients.find(address);
-            if (result == this->_clients.end()) {
-                log("error: unable to find client _", address);
-                throw std::invalid_argument("unable to find client");
-            }
-            result->second->send(k);
+            ensure_identity(k.get(), client->second->socket_address());
+            client->second->send(k);
         }
     } else if (k->phase() == sbn::kernel::phases::downstream and not k->source()) {
         // kernel @k was sent to local node
@@ -626,10 +587,6 @@ void
 sbnd::socket_pipeline::set_client_weight(const sys::socket_address& addr,
                                          weight_type new_weight) {
     lock_type lock(this->_mutex);
-    auto result = std::find_if(
-        this->_neighbours.begin(), this->_neighbours.end(),
-        [&addr] (const neighbour& n) {
-            return n.socket_address() == addr;
-        });
-    if (result != this->_neighbours.end()) { result->weight(new_weight); }
+    auto result = this->_clients.find(addr);
+    if (result != this->_clients.end()) { result->second->max_weight(new_weight); }
 }
