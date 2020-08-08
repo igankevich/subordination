@@ -28,11 +28,7 @@ sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const transaction_record
     kernel_write_guard g(frame, out);
     out.write(rhs.status);
     out.write(rhs.pipeline_index);
-    if (rhs.status == transaction_status::end) {
-        out.write(rhs.kernel_id);
-    } else {
-        out.write(rhs.k.get());
-    }
+    out.write(rhs.k.get());
     return out;
 }
 
@@ -43,11 +39,7 @@ sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, transaction_record& rhs) 
     kernel_read_guard g(frame, in);
     in.read(rhs.status);
     in.read(rhs.pipeline_index);
-    if (rhs.status == transaction_status::end) {
-        in.read(rhs.kernel_id);
-    } else {
-        in.read(rhs.k);
-    }
+    in.read(rhs.k);
     return in;
 }
 
@@ -199,6 +191,8 @@ void sbn::transaction_log::recover(record_array& records) {
             }
             auto* ppl = this->_pipelines[r.pipeline_index];
             if (r.k->is_native()) {
+                // TODO add "failed" kernel phase in which rollback() is called instead of
+                // act() or react().
                 ppl->send(std::move(r.k));
             } else {
                 ppl->forward(pointer_dynamic_cast<foreign_kernel>(std::move(r.k)));

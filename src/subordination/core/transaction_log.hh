@@ -20,16 +20,11 @@ namespace sbn {
 
     struct transaction_record {
         transaction_status status{};
-        union {
-            pipeline::index_type pipeline_index;
-            kernel::id_type kernel_id{};
-        };
+        pipeline::index_type pipeline_index;
         kernel_ptr k;
         transaction_record() = default;
         inline transaction_record(transaction_status s, pipeline::index_type i, kernel_ptr&& kk):
-        status(s), pipeline_index(i), k(std::move(kk)) {
-            if (status == transaction_status::end) { kernel_id = k->id(); }
-        }
+        status(s), pipeline_index(i), k(std::move(kk)) {}
     };
 
     kernel_buffer& operator<<(kernel_buffer& out, const transaction_record& rhs);

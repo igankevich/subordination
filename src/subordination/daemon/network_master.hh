@@ -33,6 +33,8 @@ namespace sbnd {
         /// Interface address list update interval.
         duration _interval = std::chrono::minutes(1);
         duration _network_scan_interval = std::chrono::minutes(1);
+        bool _profile_node_discovery = false;
+        int _discoverer_max_attempts = 3;
 
     public:
         void act() override;
@@ -55,6 +57,22 @@ namespace sbnd {
 
         inline duration network_scan_interval() const noexcept {
             return this->_network_scan_interval;
+        }
+
+        inline bool profile_node_discovery() const noexcept {
+            return this->_profile_node_discovery;
+        }
+
+        inline void profile_node_discovery(bool rhs) noexcept {
+            this->_profile_node_discovery = rhs;
+        }
+
+        inline int discoverer_max_attempts() const noexcept {
+            return this->_discoverer_max_attempts;
+        }
+
+        inline void discoverer_max_attempts(int rhs) noexcept {
+            this->_discoverer_max_attempts = rhs;
         }
 
     private:

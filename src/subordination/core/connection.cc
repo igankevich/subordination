@@ -59,9 +59,9 @@ void sbn::connection::send(kernel_ptr& k) {
         !k->destination() &&
         k->target_application_id() == this_application::id()) {
         if (k->isset(kernel_flag::parent_is_id) || k->carries_parent()) {
-            if (k->carries_parent()) {
-                delete k->parent();
-            }
+            //if (k->carries_parent()) {
+            //    delete k->parent();
+            //}
             this->plug_parent(k);
         }
         #if defined(SBN_DEBUG)
@@ -78,7 +78,7 @@ void sbn::connection::send(kernel_ptr& k) {
     #if defined(SBN_DEBUG)
     this->log("send _ to _", *k, this->_socket_address);
     #endif
-    this->write_kernel(k);
+    this->write_kernel(k.get());
     /// The kernel is deleted if it goes downstream
     /// and does not carry its parent.
     k = save_kernel(std::move(k));
@@ -90,21 +90,18 @@ void sbn::connection::send(kernel_ptr& k) {
 }
 
 sbn::foreign_kernel_ptr sbn::connection::do_forward(foreign_kernel_ptr k) {
-    {
-        kernel_frame frame;
-        kernel_write_guard g(frame, this->_output_buffer);
-        this->_output_buffer.write(k.get());
-    }
+    write_kernel(k.get());
     return pointer_dynamic_cast<foreign_kernel>(save_kernel(std::move(k)));
 }
 
-void sbn::connection::write_kernel(const kernel_ptr& k) noexcept {
+void sbn::connection::write_kernel(const kernel* k) noexcept {
     try {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
-        log("write _ src _ dst _ src-app _ dst-app _", k->is_native() ? "native" : "foreign",
-            k->source(), k->destination(), k->source_application_id(),
-            k->target_application_id());
+        #if defined(SBN_DEBUG)
+        log("write _ buffer-size _ _", k->is_native() ? "native" : "foreign",
+            this->_output_buffer.size(), *k);
+        #endif
         this->_output_buffer.write(k);
     } catch (const sbn::error& err) {
         log_write_error(err);
@@ -147,8 +144,8 @@ void sbn::connection::receive_kernels(const application* from_application,
     this->_input_buffer.compact();
 }
 
-void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
-    parent()->forward_foreign(std::move(fk));
+void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
+    parent()->forward_foreign(std::move(k));
 }
 
 sbn::kernel_ptr
@@ -199,11 +196,12 @@ void sbn::connection::receive_kernel(kernel_ptr&& k, std::function<void(kernel_p
 
 void sbn::connection::plug_parent(kernel_ptr& k) {
     if (k->type_id() == 1) {
+        #if defined(SBN_DEBUG)
         log("RECV main kernel _", *k);
+        #endif
         //return;
     }
     if (!k->has_id()) {
-        sys::backtrace(2);
         throw std::invalid_argument("downstream kernel without an id");
     }
     auto result = find_kernel(k, this->_upstream);
@@ -234,7 +232,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         k->principal(k->parent());
         this->_upstream.erase(result);
         #if defined(SBN_DEBUG)
-        this->log("plug parent for _", *k);
+        this->log("plug parent _ for _", typeid(*k->parent()).name(), *k);
         #endif
     }
 }
@@ -246,16 +244,26 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
     //}
     transaction_status status{};
     kernel_queue* queue{};
-    if (bool(this->_flags & connection_flags::save_upstream_kernels) &&
-        (k->phase() == kernel::phases::upstream || k->phase() == kernel::phases::point_to_point)) {
-        queue = &this->_upstream;
-        status = transaction_status::start;
-    } else if (bool(this->_flags & connection_flags::save_downstream_kernels) &&
-               k->phase() == kernel::phases::downstream && k->carries_parent()) {
-        queue = &this->_downstream;
-        status = transaction_status::end;
+    switch (k->phase()) {
+        case kernel::phases::upstream:
+        case kernel::phases::point_to_point:
+            if (isset(connection_flags::save_upstream_kernels)) {
+                queue = &this->_upstream;
+                if (k->carries_parent() || k->isset(kernel_flag::transactional)) {
+                    status = transaction_status::start;
+                }
+            }
+            break;
+        case kernel::phases::downstream:
+            if (isset(connection_flags::save_downstream_kernels) && k->carries_parent()) {
+                queue = &this->_downstream;
+                status = transaction_status::end;
+            }
+            break;
+        case kernel::phases::broadcast:
+            break;
     }
-    if (bool(this->_flags & connection_flags::write_transaction_log) &&
+    if (isset(connection_flags::write_transaction_log) &&
         status != transaction_status{} && parent()->transactions()) {
         try {
             parent()->write_transaction(status, k);
@@ -295,7 +303,9 @@ void sbn::connection::recover_kernels(bool down) {
 
 void sbn::connection::recover_kernel(kernel_ptr& k) {
     if (parent() && (parent()->stopping() || parent()->stopped())) {
+        #if defined(SBN_DEBUG)
         log("trash _", *k);
+        #endif
         parent()->trash(std::move(k));
         return;
     }
@@ -323,6 +333,7 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
         k->return_code(exit_code::endpoint_not_connected);
         k->principal(k->parent());
         */
+        k->source(k->destination());
         k->return_to_parent(exit_code::endpoint_not_connected);
         if (native) {
             parent()->send_native(std::move(k));

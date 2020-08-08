@@ -1,3 +1,6 @@
 subdir('dtest')
 subdir('subordination')
-subdir('examples')
+
+if with_examples
+    subdir('examples')
+endif

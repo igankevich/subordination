@@ -75,12 +75,12 @@ int main(int argc, char* argv[]) {
                 R"(^x1.*add interface address 10\.0\.0\.1.*$)",
                 R"(^x1.*add subordinate 10\.0\.0\.2.*$)",
             });
-            dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
+            //dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
             dts::expect_event_sequence(lines, {
                 R"(^x2.*add interface address 10\.0\.0\.2.*$)",
                 R"(^x2.*set principal to 10\.0\.0\.1.*$)"
             });
-            dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
+            //dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
         });
     app.emplace_test(
         "Run test application.",

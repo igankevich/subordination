@@ -41,6 +41,7 @@ namespace sbn {
     void
     commit(kernel_ptr&& rhs, exit_code ret) {
         if (!rhs->has_parent()) {
+            rhs.reset();
             sbn::exit(static_cast<int>(ret));
         } else {
             rhs->return_to_parent(ret);

@@ -102,14 +102,11 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
 
 void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     #if defined(SBN_DEBUG)
+    log("forward _", *fk);
     log("forward src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
         fk->source_application_id(), fk->target_application_id(), fk->id());
     #endif
     lock_type lock(this->_mutex);
-    #if defined(SBN_DEBUG)
-    log("forward2 src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
-        fk->source_application_id(), fk->target_application_id(), fk->id());
-    #endif
     if (stopping() || stopped()) { return; }
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {

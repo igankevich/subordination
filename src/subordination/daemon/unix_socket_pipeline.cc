@@ -109,6 +109,7 @@ void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
         return;
     }
     result->second->forward(std::move(fk));
+    this->_semaphore.notify_one();
 }
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):

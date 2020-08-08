@@ -27,7 +27,7 @@ namespace sbnd {
     protected:
         ifaddr_type _ifaddr;
         sys::socket_address _endpoint;
-        hierarchy_node _principal;
+        hierarchy_node _superior;
         container_type _subordinates;
 
     public:
@@ -36,7 +36,7 @@ namespace sbnd {
         Hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
         _ifaddr(interface_address),
         _endpoint(interface_address.address(), port),
-        _principal(),
+        _superior(),
         _subordinates()
         {}
 
@@ -58,19 +58,19 @@ namespace sbnd {
         }
 
         inline const node_type&
-        principal() const noexcept {
-            return this->_principal;
+        superior() const noexcept {
+            return this->_superior;
         }
 
         inline void
-        unset_principal() noexcept {
-            this->_principal.reset();
+        remove_superior() noexcept {
+            this->_superior.reset();
         }
 
         inline void
-        set_principal(const sys::socket_address& new_princ) {
-            this->_principal.socket_address(new_princ);
-            this->_subordinates.erase(this->_principal);
+        superior(const sys::socket_address& new_princ) {
+            this->_superior.socket_address(new_princ);
+            this->_subordinates.erase(this->_superior);
         }
 
         inline void
@@ -89,13 +89,13 @@ namespace sbnd {
         }
 
         inline bool
-        has_principal() const noexcept {
-            return static_cast<bool>(this->_principal.socket_address());
+        has_superior() const noexcept {
+            return static_cast<bool>(this->_superior.socket_address());
         }
 
         inline bool
-        has_principal(const sys::socket_address& rhs) const noexcept {
-            return this->_principal.socket_address() == rhs;
+        has_superior(const sys::socket_address& rhs) const noexcept {
+            return this->_superior.socket_address() == rhs;
         }
 
         inline bool
@@ -106,7 +106,7 @@ namespace sbnd {
 
         inline size_type
         num_neighbours() const noexcept {
-            return this->num_subordinates() + (this->has_principal() ? 1 : 0);
+            return this->num_subordinates() + (this->has_superior() ? 1 : 0);
         }
 
         inline sys::port_type
@@ -129,11 +129,11 @@ namespace sbnd {
         }
 
         inline bool
-        set_principal_weight(weight_type w) noexcept {
-            weight_type old = this->_principal.weight();
+        set_superior_weight(weight_type w) noexcept {
+            weight_type old = this->_superior.weight();
             bool changed = old != w;
             if (changed) {
-                this->_principal.weight(w);
+                this->_superior.weight(w);
             }
             return changed;
         }
@@ -148,7 +148,7 @@ namespace sbnd {
 
         inline weight_type
         principal_weight() const noexcept {
-            return this->has_principal() ? this->_principal.weight() : 0;
+            return this->has_superior() ? this->_superior.weight() : 0;
         }
 
         bool

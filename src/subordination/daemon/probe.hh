@@ -39,12 +39,12 @@ namespace sbnd {
         void read(sbn::kernel_buffer& in) override;
 
         inline const sys::socket_address&
-        new_principal() const noexcept {
+        new_superior() const noexcept {
             return this->_newprinc;
         }
 
         inline const sys::socket_address&
-        old_principal() const noexcept {
+        old_superior() const noexcept {
             return this->_oldprinc;
         }
 
