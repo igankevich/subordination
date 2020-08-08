@@ -1,11 +1,4 @@
 option(
-	'profile_node_discovery',
-	type: 'boolean',
-	value: false,
-	description: 'profile node discovery'
-)
-
-option(
 	'unitdir',
 	type: 'string',
 	value: 'lib/systemd/system',
@@ -24,4 +17,11 @@ option(
 	type: 'boolean',
 	value: false,
 	description: 'build RPM package'
+)
+
+option(
+	'with_examples',
+	type: 'boolean',
+	value: false,
+	description: 'build examples'
 )

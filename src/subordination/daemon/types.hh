@@ -7,9 +7,13 @@ namespace sbnd {
 
     class Hierarchy_kernel;
     class Job_status_kernel;
+    class Main_kernel;
     class Pipeline_status_kernel;
     class Status_kernel;
     class Terminate_kernel;
+    class Transaction_gather_subordinate;
+    class Transaction_gather_superior;
+    class Transaction_test_kernel;
     class local_server;
     class probe;
     class prober;

@@ -97,6 +97,7 @@ namespace sbn {
         void id(application::id_type rhs) noexcept;
         sys::fd_type get_input_fd() noexcept;
         sys::fd_type get_output_fd() noexcept;
+        bool standalone() noexcept;
 
     }
 

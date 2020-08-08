@@ -37,10 +37,14 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
 void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
     if (fk->type_id() == 1) {
         log("RECV _", *fk);
-        fk->return_to_parent();
-        fk->principal_id(0);
-        fk->parent_id(0);
-        connection::forward(std::move(fk));
+        //fk->return_to_parent();
+        //fk->principal_id(0);
+        //fk->parent_id(0);
+        //connection::forward(std::move(fk));
+        fk->target_application_id(1);
+        parent()->forward_to(this->_unix, std::move(fk));
+        //parent()->remove(application().id());
+        sys::send(sys::signal::terminate, child_process_id());
     } else {
         connection::receive_foreign_kernel(std::move(fk));
     }

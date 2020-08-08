@@ -22,22 +22,32 @@ sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, transaction_status rhs) 
 }
 
 sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const transaction_record& rhs) {
+    // N.B. We use embedded frame here, because foreign kernels read their payload
+    // up to the end of the frame.
     kernel_frame frame;
     kernel_write_guard g(frame, out);
     out.write(rhs.status);
     out.write(rhs.pipeline_index);
-    if (rhs.status == transaction_status::end) {
-        out.write(rhs.k->id());
-    } else {
-        out.write(rhs.k.get());
-    }
+    out.write(rhs.k.get());
     return out;
+}
+
+sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, transaction_record& rhs) {
+    // N.B. We use embedded frame here, because foreign kernels read their payload
+    // up to the end of the frame.
+    kernel_frame frame;
+    kernel_read_guard g(frame, in);
+    in.read(rhs.status);
+    in.read(rhs.pipeline_index);
+    in.read(rhs.k);
+    return in;
 }
 
 sbn::transaction_log::transaction_log() { this->_buffer.carry_all_parents(false); }
 sbn::transaction_log::~transaction_log() { close(); }
 
 sbn::kernel_ptr sbn::transaction_log::write(transaction_record record) {
+    if (!record.k->carries_parent()) { return std::move(record.k); }
     lock_type lock(this->_mutex);
     this->_buffer << record;
     this->_buffer.flip();
@@ -63,7 +73,7 @@ void sbn::transaction_log::close() {
 void sbn::transaction_log::open(const char* filename) {
     using f = sys::open_flag;
     this->_file_descriptor.open(filename,
-                                f::close_on_exec | f::create | f::write_only /*| f::dsync*/,
+                                f::close_on_exec | f::create | f::read_write /*| f::dsync*/,
                                 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
     const auto offset = this->_file_descriptor.offset();
@@ -74,21 +84,37 @@ void sbn::transaction_log::open(const char* filename) {
     }
 }
 
-void sbn::transaction_log::recover(const char* filename, sys::offset_type max_offset) {
-    log("recover");
-    using f = sys::open_flag;
-    auto& buf = this->_buffer;
-    sys::fildes fd(filename, f::close_on_exec | f::read_only);
-    kernel_buffer new_buffer{4096};
-    new_buffer.types(this->_buffer.types());
-    new_buffer.carry_all_parents(false);
-    std::unordered_map<kernel::id_type,kernel*> parents;
+auto sbn::transaction_log::select(application::id_type id) -> record_array {
+    lock_type lock(this->_mutex);
+    offset_guard g(this->_file_descriptor);
+    this->_file_descriptor.offset(0);
+    kernel_buffer buf{4096};
+    buf.types(this->_buffer.types());
+    buf.carry_all_parents(false);
+    auto records = read_records(this->_file_descriptor, g.old_offset(), buf);
+    auto first = records.begin(), last = records.end();
+    while (first != last) {
+        auto& r = *first;
+        if (!r.k || (r.k->source_application_id() != id &&
+                     r.k->target_application_id() != id)) {
+            first = records.erase(first);
+            last = records.end();
+        } else { ++first; }
+    }
+    return records;
+}
+
+auto sbn::transaction_log::read_records(sys::fildes& fd,
+                                        sys::offset_type max_offset,
+                                        kernel_buffer& buf)
+-> record_array {
     std::vector<transaction_record> records;
     auto erase_upstream = [&] (kernel::id_type id) {
         auto first = records.begin(), last = records.end();
         while (first != last) {
             if (first->k->id() == id) {
                 first = records.erase(first);
+                last = records.end();
             } else { ++first; }
         }
     };
@@ -122,33 +148,78 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
                 buf.read(id);
                 erase_upstream(id);
             } else {
-                // TODO add recursive flag to kernel buffer
-                // when enabled, the buffer saves all hierarchy of parent kernels,
-                // not just the closest one
                 buf.read(k);
-                auto* p = k.get();
-                while (p) {
-                    parents[p->id()] = p;
-                    p = p->parent();
-                }
                 records.emplace_back(status, pipeline_index, std::move(k));
             }
         }
         buf.compact();
     }
-    fd.close();
-    buf.clear();
+    return records;
+}
+
+void sbn::transaction_log::plug_parents(record_array& records) {
+    std::unordered_map<kernel::id_type,kernel*> parents;
     for (auto& r : records) {
-        if (r.pipeline_index >= this->_pipelines.size()) {
-            log("wrong pipeline index _, deleting _", r.pipeline_index, r.k.get());
-            r.k = nullptr;
-        } else if (!r.k->carries_parent()) {
-            log("does not carry parent, deleting _", r.k.get());
-            r.k = nullptr;
-        } else {
-            new_buffer << r;
+        if (!r.k) { continue; }
+        auto* p = r.k.get();
+        while (p) {
+            parents[p->id()] = p;
+            p = p->parent();
         }
     }
+    for (auto& r : records) {
+        if (!r.k) { continue; }
+        auto result = parents.find(r.k->parent_id());
+        if (result != parents.end()) {
+            r.k->parent(result->second);
+        }
+    }
+}
+
+void sbn::transaction_log::recover(record_array& records) {
+    // send recovered kernels to the respective pipelines
+    for (auto& r : records) {
+        if (r.k) {
+            log("restore _", *r.k);
+        }
+    }
+    for (auto& r : records) {
+        if (r.k) {
+            if (r.pipeline_index >= this->_pipelines.size()) {
+                log("wrong pipeline index _, deleting _", r.pipeline_index, r.k.get());
+                r.k.reset();
+            }
+            auto* ppl = this->_pipelines[r.pipeline_index];
+            if (r.k->is_native()) {
+                // TODO add "failed" kernel phase in which rollback() is called instead of
+                // act() or react().
+                ppl->send(std::move(r.k));
+            } else {
+                ppl->forward(pointer_dynamic_cast<foreign_kernel>(std::move(r.k)));
+            }
+        }
+    }
+    // TODO clean log periodically
+}
+
+void sbn::transaction_log::recover(const char* filename, sys::offset_type max_offset) {
+    log("recover");
+    using f = sys::open_flag;
+    sys::fildes fd(filename, f::close_on_exec | f::read_only);
+    auto& buf = this->_buffer;
+    auto records = read_records(fd, max_offset, buf);
+    plug_parents(records);
+    kernel_buffer new_buffer{4096};
+    new_buffer.types(this->_buffer.types());
+    new_buffer.carry_all_parents(false);
+    fd.close();
+    buf.clear();
+    if (records.size() > max_records()) {
+        actual_records(records.size());
+        log("restore _/_ records", max_records(), actual_records());
+        records.resize(max_records());
+    }
+    for (auto& r : records) { new_buffer << r; }
     std::string new_name;
     new_name += filename;
     new_name += ".new";
@@ -163,22 +234,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     this->_file_descriptor.open(filename, f::close_on_exec | f::create |
                                 f::write_only /*| f::dsync*/, 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
-    // send recovered kernels to the respective pipelines
-    for (auto& r : records) {
-        if (r.k) {
-            log("restore _", *r.k);
-        }
-    }
-    for (auto& r : records) {
-        if (r.k) {
-            auto result = parents.find(r.k->parent_id());
-            if (result != parents.end()) {
-                r.k->parent(result->second);
-            }
-            this->_pipelines[r.pipeline_index]->send(std::move(r.k));
-        }
-    }
-    // TODO clean log periodically
+    recover(records);
 }
 
 void sbn::transaction_log::update_pipeline_indices() {

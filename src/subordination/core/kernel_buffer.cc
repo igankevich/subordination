@@ -20,7 +20,7 @@ namespace  {
         k->write(*out);
     }
 
-    inline sbn::kernel_ptr read_native(sbn::kernel_buffer* in) {
+    inline sbn::kernel_ptr make_native(sbn::kernel_buffer* in) {
         sbn::kernel_type::id_type id = 0;
         in->read(id);
         if (!in->types()) { sbn::throw_error("no kernel types"); }
@@ -31,6 +31,11 @@ namespace  {
         static_assert(sizeof(sbn::kernel) <= sizeof(sbn::foreign_kernel), "bad size");
         auto k = type->construct();
         k->type_id(type->id());
+        return k;
+    }
+
+    inline sbn::kernel_ptr read_native(sbn::kernel_buffer* in) {
+        auto k = make_native(in);
         k->read(*in);
         return k;
     }
@@ -65,9 +70,10 @@ void sbn::kernel_buffer::read(kernel_ptr& k) {
         fk->read(*this);
         k = std::move(fk);
     } else {
-        k = read_native(this);
+        k = make_native(this);
         k->swap_header(fk.get());
         fk.reset();
+        k->read(*this);
         if (carry_all_parents()) {
             for (auto* p = k.get(); position() != limit(); p = p->parent()) {
                 p->parent(read_native(this).release());
@@ -145,18 +151,20 @@ sbn::kernel_write_guard::~kernel_write_guard() {
     }
 }
 
-sbn::kernel_read_guard::kernel_read_guard(kernel_frame& f, kernel_buffer& buffer):
-frame(f), in(buffer), _old_limit(buffer.limit()) {
+sbn::kernel_read_guard::kernel_read_guard(kernel_frame& f, kernel_buffer& in):
+_frame(f), _buffer(in), _old_limit(in.limit()) {
     if (in.remaining() < sizeof(kernel_frame)) { return; }
-    std::memcpy(&frame, in.data()+in.position(), sizeof(kernel_frame));
-    if (in.remaining() >= frame.size()) {
+    std::memcpy(&this->_frame, in.data()+in.position(), sizeof(kernel_frame));
+    if (in.remaining() >= this->_frame.size()) {
         this->_good = true;
-        in.limit(in.position() + frame.size());
+        in.limit(in.position() + this->_frame.size());
         in.bump(sizeof(kernel_frame));
     }
 }
 
 sbn::kernel_read_guard::~kernel_read_guard() {
-    in.position(in.limit());
-    in.limit(this->_old_limit);
+    if (good()) {
+        this->_buffer.position(this->_buffer.limit());
+        this->_buffer.limit(this->_old_limit);
+    }
 }

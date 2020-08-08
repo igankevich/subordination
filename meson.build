@@ -12,33 +12,31 @@ project_description = 'A framework for distributed programming'
 with_debug = get_option('buildtype').contains('debug')
 with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
+with_examples = get_option('with_examples')
 
 cpp = meson.get_compiler('cpp')
 
+cpp_args = ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
+cpp_link_args = ['-rdynamic']
+
 if with_debug
-    add_global_arguments('-DSBN_DEBUG', language: 'cpp')
-    add_global_arguments('-DUNW_LOCAL_ONLY', language: 'cpp')
+    cpp_args += '-DSBN_DEBUG'
+    cpp_args += '-DUNW_LOCAL_ONLY'
 else
-    arg = '-fvisibility-inlines-hidden'
-    if cpp.has_argument(arg)
-        add_global_arguments(arg, language: 'cpp')
-    endif
+    cpp_args += '-fvisibility-inlines-hidden'
 endif
 
-foreach arg : ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
+foreach arg : cpp_args
     if cpp.has_argument(arg)
         add_global_arguments(arg, language: 'cpp')
     endif
 endforeach
 
-if cpp.has_link_argument('-rdynamic')
-    add_global_link_arguments('-rdynamic', language: 'cpp')
-endif
-
-profiling_args = []
-if get_option('profile_node_discovery')
-    profiling_args += ['-DSUBORDINATION_PROFILE_NODE_DISCOVERY']
-endif
+foreach arg : cpp_link_args
+    if cpp.has_link_argument(arg)
+        add_global_link_arguments(arg, language: 'cpp')
+    endif
+endforeach
 
 threads = dependency('threads')
 unistdx = dependency('unistdx', version: '>=0.22.0')
@@ -50,6 +48,7 @@ src = include_directories('src')
 pkgconfig = import('pkgconfig')
 
 subdir('src')
+subdir('guix')
 
 if with_rpm
     subdir('rpm')

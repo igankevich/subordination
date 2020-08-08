@@ -1,10 +1,10 @@
 #ifndef EXAMPLES_AUTOREG_DOMAIN_HH
 #define EXAMPLES_AUTOREG_DOMAIN_HH
 
-#include "vector_n.hh"
 #include <istream>
 #include <ostream>
-#include <stdlib.h>
+
+#include <autoreg/vector_n.hh>
 
 namespace autoreg {
 
@@ -49,60 +49,16 @@ namespace autoreg {
         Domain(const Domain<A, D>& d):
         lower(d.lower), upper(d.upper), length(d.length) {}
 
-        inline size_t
-        dimensions() const {
-            return D;
-        }
-
-        inline const Vec&
-        min() const {
-            return lower;
-        }
-
-        inline const Vec&
-        max() const {
-            return upper;
-        }
-
-        inline const Size&
-        count() const {
-            return length;
-        }
-
-        inline Vec&
-        min() {
-            return lower;
-        }
-
-        inline Vec&
-        max() {
-            return upper;
-        }
-
-        inline Size&
-        count() {
-            return length;
-        }
-
-        inline Vec
-        delta() const {
-            return (upper-lower)/Vec(length);
-        }
-
-        inline size_t
-        size() const {
-            return length;
-        }
-
-        inline
-        operator size_t() const {
-            return size();
-        }
-
-        inline Vec
-        point(Size idx) const {
-            return lower + delta() * Vec(idx);
-        }
+        static constexpr inline size_t dimensions() noexcept { return D; }
+        inline const Vec& min() const noexcept { return lower; }
+        inline const Vec& max() const noexcept { return upper; }
+        inline const Size& count() const noexcept { return length; }
+        inline Vec& min() noexcept { return lower; }
+        inline Vec& max() noexcept { return upper; }
+        inline Size& count() noexcept { return length; }
+        inline size_t size() const noexcept { return length; }
+        inline Vec delta() const { return (upper-lower)/Vec(length); }
+        inline Vec point(Size idx) const { return lower + delta() * Vec(idx); }
 
         template <class A, size_t B, class C>
         inline const Domain<T, D, S>&

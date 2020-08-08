@@ -59,6 +59,8 @@ namespace sbn {
         transaction_log* _transactions = nullptr;
         kernel_array _listeners;
         kernel_ptr_array _trash;
+        size_t _min_input_buffer_size = 4096*16;
+        size_t _min_output_buffer_size = 4096*16;
 
     public:
         class sentry {
@@ -72,9 +74,22 @@ namespace sbn {
         };
 
     public:
+        class unsentry {
+        private:
+            const basic_socket_pipeline& _pipeline;
+        public:
+            inline explicit unsentry(const basic_socket_pipeline& rhs): _pipeline(rhs) {
+                this->_pipeline._mutex.unlock();
+            }
+            inline ~unsentry() { this->_pipeline._mutex.lock(); }
+        };
+
+    public:
 
         inline sentry guard() noexcept { return sentry(*this); }
         inline sentry guard() const noexcept { return sentry(*this); }
+        inline unsentry unguard() noexcept { return unsentry(*this); }
+        inline unsentry unguard() const noexcept { return unsentry(*this); }
 
         basic_socket_pipeline();
         ~basic_socket_pipeline() = default;
@@ -128,6 +143,13 @@ namespace sbn {
         inline transaction_log* transactions() noexcept { return this->_transactions; }
 
         inline const transaction_log* transactions() const noexcept { return this->_transactions; }
+        inline void min_input_buffer_size(size_t rhs) noexcept {
+            this->_min_input_buffer_size = rhs;
+        }
+
+        inline void min_output_buffer_size(size_t rhs) noexcept {
+            this->_min_output_buffer_size = rhs;
+        }
 
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
         inline void trash(kernel_ptr&& k) { this->_trash.emplace_back(std::move(k)); }
@@ -138,6 +160,8 @@ namespace sbn {
             // in the process connection, so do not use emplace here
             this->log("add _", ptr->socket_address());
             this->_connections.emplace(ev.fd(), ptr);
+            ptr->min_input_buffer_size(this->_min_input_buffer_size);
+            ptr->min_output_buffer_size(this->_min_output_buffer_size);
             this->poller().insert(ev);
         }
 
@@ -172,6 +196,32 @@ namespace sbn {
         void remove_listener(kernel* k);
 
     protected:
+
+        /// \brief This wrapper method prevents deadlock between socket and process pipelines.
+        inline void send_to(pipeline* ppl, kernel_ptr&& k) {
+            if (ppl) { auto g = unguard(); ppl->send(std::move(k)); }
+        }
+
+        inline void send_remote(kernel_ptr&& k) { send_to(remote_pipeline(), std::move(k)); }
+        inline void send_native(kernel_ptr&& k) { send_to(native_pipeline(), std::move(k)); }
+        inline void send_foreign(kernel_ptr&& k) { send_to(foreign_pipeline(), std::move(k)); }
+
+        /// \brief This wrapper method prevents deadlock between socket and process pipelines.
+        inline void forward_to(pipeline* ppl, foreign_kernel_ptr&& k) {
+            if (ppl) { auto g = unguard(); ppl->forward(std::move(k)); }
+        }
+
+        inline void forward_remote(foreign_kernel_ptr&& k) {
+            forward_to(remote_pipeline(), std::move(k));
+        }
+
+        inline void forward_native(foreign_kernel_ptr&& k) {
+            forward_to(native_pipeline(), std::move(k));
+        }
+
+        inline void forward_foreign(foreign_kernel_ptr&& k) {
+            forward_to(foreign_pipeline(), std::move(k));
+        }
 
         inline semaphore_type& poller() noexcept { return this->_semaphore; }
         inline const semaphore_type& poller() const noexcept { return this->_semaphore; }
@@ -220,6 +270,9 @@ namespace sbn {
         void deactivate(sys::fd_type fd, connection_ptr conn, time_point now,
                         const char* reason);
         void remove(sys::fd_type fd, connection_ptr& conn, const char* reason);
+
+        friend class connection;
+        friend class process_handler;
 
     };
 

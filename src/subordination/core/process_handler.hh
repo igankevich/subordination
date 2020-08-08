@@ -75,9 +75,7 @@ namespace sbn {
                         k->return_to_parent();
                         k->target_application_id(0);
                         k->source_application_id(application().id());
-                        if (this->_unix) {
-                            this->_unix->forward(std::move(k));
-                        }
+                        parent()->forward_to(this->_unix, std::move(k));
                     }
                 }
             }

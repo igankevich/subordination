@@ -10,9 +10,11 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/job_status_kernel.hh>
+#include <subordination/daemon/main_kernel.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/small_factory.hh>
 #include <subordination/daemon/status_kernel.hh>
+#include <subordination/daemon/transaction_test_kernel.hh>
 
 enum class Command { Submit, Status, Delete };
 
@@ -20,6 +22,25 @@ template <class ... Args>
 inline void
 message(const Args& ... args) {
     sys::log_message("sbnc", args ...);
+}
+
+inline void
+tell(std::ostream& out, const char* text) {
+    out << text;
+}
+
+template <class Head, class ... Tail> inline void
+tell(std::ostream& out, const char* text, const Head& head, const Tail& ... tail) {
+    while (*text) {
+        if (*text == '%') {
+            out << head;
+            tell(out, ++text, tail...);
+            break;
+        } else {
+            out.put(*text);
+        }
+        ++text;
+    }
 }
 
 template <class T> void
@@ -32,7 +53,7 @@ class Rec {
 private:
     const T& _object;
 public:
-    inline Rec(T object): _object(object) {}
+    inline Rec(const T& object): _object(object) {}
     inline const T& object() const noexcept { return this->_object; }
 };
 
@@ -41,12 +62,13 @@ template <class T> inline Rec<T> make_rec(const T& rhs) { return Rec<T>(rhs); }
 std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hierarchy_type>& rhs) {
     const auto& h = rhs.object();
     rec(out, "interface-address", h.interface_address());
-    rec(out, "principal", h.principal());
+    rec(out, "superior", h.superior());
     out << "subordinates: ";
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
         out << *first;
+        ++first;
         while (first != last) {
             out << ' ' << *first;
             ++first;
@@ -75,6 +97,7 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbn::application>& rhs) {
 
 std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Pipeline_status_kernel::Pipeline>& rhs) {
     const auto& ppl = rhs.object();
+    bool empty = true;
     for (const auto& conn : ppl.connections) {
         for (const auto& k : conn.kernels) {
             rec(out, "pipeline-name", ppl.name);
@@ -85,9 +108,11 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Pipeline_status_kern
             rec(out, "target-application-id", k.target_application_id);
             rec(out, "source-socket-address", k.source);
             rec(out, "destination-socket-address", k.destination);
+            empty = false;
         }
     }
-    return out << '\n';
+    if (!empty) { out << '\n'; }
+    return out;
 }
 
 template <class T>
@@ -95,7 +120,7 @@ class Human {
 private:
     const T& _object;
 public:
-    inline Human(T object): _object(object) {}
+    inline Human(const T& object): _object(object) {}
     inline const T& object() const noexcept { return this->_object; }
 };
 
@@ -119,12 +144,18 @@ template <> constexpr int column_width(const sbnd::hierarchy_node&) {
 
 std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hierarchy_type>& rhs) {
     const auto& h = rhs.object();
-    out << std::left << std::setw(column_width(h.interface_address())) << h.interface_address();
-    out << std::left << std::setw(column_width(h.principal())) << h.principal();
+    std::stringstream tmp;
+    tmp << h.interface_address();
+    out << std::left << std::setw(std::max(column_width(h.interface_address()), 18))
+        << tmp.str();
+    tmp.str("");
+    tmp << h.superior();
+    out << std::left << std::setw(std::max(column_width(h.superior()), 10)) << tmp.str();
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
         out << *first;
+        ++first;
         while (first != last) {
             out << ' ' << *first;
             ++first;
@@ -137,8 +168,10 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hie
     const auto& hierarchies = rhs.object();
     if (!hierarchies.empty()) {
         const auto& h = hierarchies.front();
-        out << std::left << std::setw(std::max(column_width(h.interface_address()), 18)) << "Interface address";
-        out << std::left << std::setw(std::max(column_width(h.principal()), 10)) << "Principal";
+        out << std::left << std::setw(std::max(column_width(h.interface_address()), 18))
+            << "Interface address";
+        out << std::left << std::setw(std::max(column_width(h.superior()), 10))
+            << "Superior";
         out << "Subordinates";
         out << '\n';
     }
@@ -181,50 +214,81 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Pipeline_status_ke
     return out << make_rec(rhs.object());
 }
 
-class Main_kernel: public sbn::kernel {};
-
-sbn::kernel_ptr new_application_kernel(int argc, char* argv[]) {
-    using string_array = sbn::application::string_array;
-    string_array args, env;
-    for (int i=1; i<argc; ++i) {
-        args.emplace_back(argv[i]);
-    }
-    for (char** first=environ; *first; ++first) {
-        env.emplace_back(*first);
-    }
-    auto* app = new sbn::application(args, env);
-    app->working_directory(sys::canonical_path("."));
-    auto k = sbn::make_pointer<Main_kernel>();
-    k->target_application(app);
-    //k->source_application_id(app->id());
-    k->destination(sys::socket_address(SBND_SOCKET));
-    return k;
-}
-
 class Submit: public sbn::kernel {
 
+public:
+    using string_array = sbn::application::string_array;
+
 private:
-    int _argc;
-    char** _argv;
+    string_array _arguments;
+    bool _test_recovery = false;
 
 public:
-    Submit(int argc, char** argv): _argc(argc), _argv(argv) {}
+    Submit(int argc, char** argv) {
+        int i0 = 1;
+        if (argc >= 2 && std::string(argv[1]) == "-T") {
+            this->_test_recovery = true;
+            i0 = 2;
+        }
+        for (int i=i0; i<argc; ++i) {
+            this->_arguments.emplace_back(argv[i]);
+        }
+    }
 
     void act() override {
-        auto k = new_application_kernel(this->_argc, this->_argv);
+        sbn::kernel_ptr k;
+        if (this->_test_recovery) {
+            k = make_transaction_test_kernel();
+        } else {
+            k = make_application_kernel();
+        }
         k->parent(this);
         sbnc::factory.remote().send(std::move(k));
     }
 
     void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Main_kernel>(std::move(child));
-        if (k->return_code() != sbn::exit_code::success) {
-            message("failed to submit _", k->source_application_id());
+        const auto& t = typeid(*child);
+        return_to_parent(child->return_code());
+        if (t == typeid(sbnd::Main_kernel)) {
+            auto k = sbn::pointer_dynamic_cast<sbnd::Main_kernel>(std::move(child));
+            message("main kernel returned from _ with exit code _",
+                    k->source_application_id(), k->return_code());
         } else {
-            message("submitted _", k->source_application_id());
+            auto k =
+                sbn::pointer_dynamic_cast<sbnd::Transaction_test_kernel>(std::move(child));
+            int i = 0;
+            for (auto ret : k->exit_codes()) {
+                message("exit code #_: _", ++i, ret);
+            }
         }
-        return_to_parent(k->return_code());
         sbnc::factory.local().send(std::move(this_ptr()));
+    }
+
+private:
+
+    static string_array make_environment() {
+        string_array env;
+        for (char** first=environ; *first; ++first) { env.emplace_back(*first); }
+        return env;
+    }
+
+    sbn::kernel_ptr make_application_kernel() {
+        auto* app = new sbn::application(std::move(this->_arguments), make_environment());
+        app->working_directory(sys::canonical_path("."));
+        auto k = sbn::make_pointer<sbnd::Main_kernel>();
+        k->target_application(app);
+        //k->source_application_id(app->id());
+        k->destination(sys::socket_address(SBND_SOCKET));
+        return k;
+    }
+
+    sbn::kernel_ptr make_transaction_test_kernel() {
+        sbn::application app(std::move(this->_arguments), make_environment());
+        app.working_directory(sys::canonical_path("."));
+        auto k = sbn::make_pointer<sbnd::Transaction_test_kernel>(std::move(app));
+        k->target_application(0);
+        k->destination(sys::socket_address(SBND_SOCKET));
+        return k;
     }
 
 };
@@ -316,12 +380,15 @@ public:
                 if (argument == "-t") {
                     if (i+1 == argc) { throw std::invalid_argument("bad argument \"-t\""); }
                     this->_entity_type = string_to_entity_type(argv[i+1]);
+                    ++i;
                 } else if (argument == "-o") {
                     if (i+1 == argc) { throw std::invalid_argument("bad argument \"-o\""); }
                     this->_output_format = string_to_format(argv[i+1]);
+                    ++i;
                 } else if (argument == "-d") {
                     if (i+1 == argc) { throw std::invalid_argument("bad argument \"-d\""); }
                     this->_job_ids.emplace_back(std::stoul(argv[i+1]));
+                    ++i;
                     inside_d = true;
                 } else {
                     std::stringstream tmp;
@@ -339,61 +406,71 @@ public:
             case Entity_type::Job: k = sbn::make_pointer<sbnd::Job_status_kernel>(this->_job_ids); break;
             case Entity_type::Kernel: k = sbn::make_pointer<sbnd::Pipeline_status_kernel>(); break;
         }
+        k->phase(sbn::kernel::phases::point_to_point);
         k->destination(sys::socket_address(SBND_SOCKET));
         k->principal_id(1); // TODO
         k->parent(this);
+        k->target_application_id(0);
         sbnc::factory.remote().send(std::move(k));
     }
 
     void react(sbn::kernel_ptr&& child) override {
         if (child->return_code() != sbn::exit_code::success) {
-            message("error: _", child->return_code());
-            return;
+            return_code(child->return_code());
+            if (child->return_code() == sbn::exit_code::endpoint_not_connected) {
+                tell(std::cerr, "Unable to contact the daemon at %.\n",
+                               sys::socket_address(SBND_SOCKET));
+            } else {
+                tell(std::cerr, "Error: %.\n", child->return_code());
+            }
+        } else {
+            if (typeid(*child) == typeid(sbnd::Status_kernel)) {
+                auto k = sbn::pointer_dynamic_cast<sbnd::Status_kernel>(std::move(child));
+                switch (this->_output_format) {
+                    case Format::Human:
+                        std::cout << k->hierarchies();
+                        break;
+                    case Format::Rec:
+                        for (const auto& h : k->hierarchies()) { std::cout << make_rec(h); }
+                        break;
+                }
+            } else if (typeid(*child) == typeid(sbnd::Job_status_kernel)) {
+                auto k = sbn::pointer_dynamic_cast<sbnd::Job_status_kernel>(std::move(child));
+                switch (this->_output_format) {
+                    case Format::Human:
+                        std::cout << k->jobs();
+                        break;
+                    case Format::Rec:
+                        for (const auto& j : k->jobs()) { std::cout << make_rec(j); }
+                        break;
+                }
+            } else if (typeid(*child) == typeid(sbnd::Pipeline_status_kernel)) {
+                auto k = sbn::pointer_dynamic_cast<sbnd::Pipeline_status_kernel>(std::move(child));
+                switch (this->_output_format) {
+                    case Format::Human:
+                        for (const auto& j : k->pipelines()) { std::cout << make_human(j); }
+                        break;
+                    case Format::Rec:
+                        for (const auto& j : k->pipelines()) { std::cout << make_rec(j); }
+                        break;
+                }
+            }
         }
-        if (typeid(*child) == typeid(sbnd::Status_kernel)) {
-            auto k = sbn::pointer_dynamic_cast<sbnd::Status_kernel>(std::move(child));
-            switch (this->_output_format) {
-                case Format::Human:
-                    std::cout << k->hierarchies();
-                    break;
-                case Format::Rec:
-                    for (const auto& h : k->hierarchies()) { std::cout << make_rec(h); }
-                    break;
-            }
-        } else if (typeid(*child) == typeid(sbnd::Job_status_kernel)) {
-            auto k = sbn::pointer_dynamic_cast<sbnd::Job_status_kernel>(std::move(child));
-            switch (this->_output_format) {
-                case Format::Human:
-                    std::cout << k->jobs();
-                    break;
-                case Format::Rec:
-                    for (const auto& j : k->jobs()) { std::cout << make_rec(j); }
-                    break;
-            }
-        } else if (typeid(*child) == typeid(sbnd::Pipeline_status_kernel)) {
-            auto k = sbn::pointer_dynamic_cast<sbnd::Pipeline_status_kernel>(std::move(child));
-            switch (this->_output_format) {
-                case Format::Human:
-                    for (const auto& j : k->pipelines()) { std::cout << make_human(j); }
-                    break;
-                case Format::Rec:
-                    for (const auto& j : k->pipelines()) { std::cout << make_rec(j); }
-                    break;
-            }
-        }
-        return_to_parent(child->return_code());
+        return_to_parent();
         sbnc::factory.local().send(std::move(this_ptr()));
     }
 
 };
 
 void usage(char* argv[0]) {
-    std::cerr << "usage: " << argv[0] <<
-        " [-h] [-t entity-type] [-o output-format] [-d ids...] [command] [arguments...]\n"
+    std::cerr << "usage: "
+        "sbnc [-h] [-t entity-type] [-o output-format] [-d ids...]\n"
+        "sbnc [-T] [command] [arguments...]\n"
         "-t type            entity type (node, job, kernel)\n"
         "-o format          output format (human, rec)\n"
         "-d ids...          delete entity (job)\n"
         "-h                 usage\n"
+        "-T                 test an ability to recover from power failure\n"
         "command arguments  a command with arguments to run\n";
 }
 
@@ -401,13 +478,18 @@ int main(int argc, char* argv[]) {
     auto command = Command::Submit;
     if (argc <= 1) { usage(argv); return 1; }
     if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(argv); return 0; }
-    if (argc >= 2 && argv[1][0] == '-') { command = Command::Status; }
-    if (sbn::this_application::id() == 0) {
-        sbn::this_application::id(1);
+    if (argc >= 2 && argv[1][0] == '-' && std::string(argv[1]) != "-T") {
+        command = Command::Status;
+    }
+    if (command == Command::Submit) {
+        if (sbn::this_application::id() == 0) { sbn::this_application::id(1); }
     }
     sbn::install_error_handler();
-    sbnc::factory.types().add<Main_kernel>(1);
+    sbnc::factory.types().add<sbnd::Main_kernel>(1);
     sbnc::factory.types().add<sbnd::Status_kernel>(4);
+    sbnc::factory.types().add<sbnd::Transaction_test_kernel>(6);
+    sbnc::factory.types().add<sbnd::Job_status_kernel>(8);
+    sbnc::factory.types().add<sbnd::Pipeline_status_kernel>(9);
     try {
         sbnc::factory.start();
         sbnc::factory.remote().use_localhost(false);
@@ -419,7 +501,7 @@ int main(int argc, char* argv[]) {
         }
         sbnc::factory.local().send(std::move(k));
     } catch (const std::exception& err) {
-        message("failed to connect to daemon process: _", err.what());
+        tell(std::cerr, err.what());
         sbn::exit(1);
     }
     auto ret = sbn::wait_and_return();

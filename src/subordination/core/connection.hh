@@ -23,7 +23,7 @@ namespace sbn {
     enum class connection_flags: int {
         save_upstream_kernels = 1<<0,
         save_downstream_kernels = 1<<1,
-        write_transaction_log = 1<<2,
+        write_transaction_log = 1<<2
     };
 
     UNISTDX_FLAGS(connection_flags)
@@ -57,14 +57,14 @@ namespace sbn {
         basic_socket_pipeline* _parent = nullptr;
         connection_flags _flags{};
         kernel_queue _upstream, _downstream;
-        id_type _counter = 0;
+        id_type _counter = 1;
         sys::u32 _attempts = 1;
         const char* _name = "ppl";
         connection_state _state = connection_state::initial;
 
     protected:
-        kernel_buffer _output_buffer{sys::page_size()};
-        kernel_buffer _input_buffer{sys::page_size()};
+        kernel_buffer _output_buffer;
+        kernel_buffer _input_buffer;
         sys::socket_address _socket_address;
 
     public:
@@ -123,6 +123,7 @@ namespace sbn {
 
         inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
         inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
+        inline bool isset(connection_flags rhs) noexcept { return bool(this->_flags & rhs); }
         inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
         inline connection_flags flags() const noexcept { return this->_flags; }
 
@@ -142,21 +143,37 @@ namespace sbn {
         inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
         inline const kernel_queue& downstream() const noexcept { return this->_downstream; }
 
+        inline void min_input_buffer_size(size_t rhs) {
+            if (this->_input_buffer.size() < rhs) { this->_input_buffer.resize(rhs); }
+        }
+
+        inline void min_output_buffer_size(size_t rhs) {
+            if (this->_output_buffer.size() < rhs) { this->_output_buffer.resize(rhs); }
+        }
+
     protected:
 
         foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
         void recover_kernels(bool downstream);
         virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
 
+        struct flush_guard {
+            kernel_buffer& _buffer;
+            inline explicit flush_guard(kernel_buffer& buffer): _buffer(buffer) {
+                this->_buffer.flip();
+            }
+            inline ~flush_guard() { this->_buffer.compact(); }
+        };
+
         template <class Sink>
         inline void flush(Sink& sink) {
-            this->_output_buffer.flip();
+            flush_guard g(this->_output_buffer);
             this->_output_buffer.flush(sink);
-            this->_output_buffer.compact();
         }
 
         template <class Source>
         inline void fill(Source& source) {
+            log("fill buffer-size _", this->_input_buffer.size());
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
         }
@@ -169,7 +186,7 @@ namespace sbn {
 
     private:
 
-        void write_kernel(const kernel_ptr& k) noexcept;
+        void write_kernel(const kernel* k) noexcept;
         kernel_ptr read_kernel(const application* from_application);
         void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
         void plug_parent(kernel_ptr& k);

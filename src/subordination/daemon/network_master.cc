@@ -86,15 +86,9 @@ void
 sbnd::network_master::update_ifaddrs() {
     interface_address_set new_ifaddrs = this->enumerate_ifaddrs();
     interface_address_set ifaddrs_to_add =
-        set_difference_copy(
-            new_ifaddrs,
-            this->_discoverers
-        );
+        set_difference_copy(new_ifaddrs, this->_discoverers);
     interface_address_set ifaddrs_to_rm =
-        set_difference_copy(
-            this->_discoverers,
-            new_ifaddrs
-        );
+        set_difference_copy(this->_discoverers, new_ifaddrs);
     // filter allowed interface addresses
     if (!this->_allowedifaddrs.empty()) {
         auto first = ifaddrs_to_add.begin();
@@ -144,9 +138,7 @@ void sbnd::network_master::report_status(pointer<Status_kernel> status) {
     }
     status->hierarchies(std::move(hierarchies));
     status->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(status));
-    #endif
 }
 
 void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
@@ -164,9 +156,7 @@ void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
     factory.remote().send(std::move(tk));
     k->jobs(std::move(jobs));
     k->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(k));
-    #endif
 }
 
 void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
@@ -205,9 +195,7 @@ void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel
     }
     k->pipelines(std::move(pipelines));
     k->return_to_parent(sbn::exit_code::success);
-    #if !defined(SUBORDINATION_PROFILE_NODE_DISCOVERY)
     factory.unix().send(std::move(k));
-    #endif
 }
 
 void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
@@ -217,6 +205,8 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
         const auto port = factory.remote().port();
         auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_fanout);
         d->interval(network_scan_interval());
+        d->profile(this->_profile_node_discovery);
+        d->max_attempts(this->_discoverer_max_attempts);
         this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
         factory.local().send(std::move(d));
@@ -277,7 +267,7 @@ void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
         const addr_type& a = traits_type::address(ev->socket_address());
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {
-            sys::log_message("net", "bad event socket_address _", a);
+            sys::log_message("net", "bad event socket address _", a);
         } else {
             auto* discoverer = result->second;
             ev->principal(discoverer);

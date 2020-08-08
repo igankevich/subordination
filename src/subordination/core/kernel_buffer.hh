@@ -146,16 +146,17 @@ namespace sbn {
     class kernel_read_guard {
 
     private:
-        kernel_frame& frame;
-        kernel_buffer& in;
+        kernel_frame& _frame;
+        kernel_buffer& _buffer;
         sys::byte_buffer::size_type _old_limit = 0;
         bool _good = false;
 
     public:
         explicit kernel_read_guard(kernel_frame& frame, kernel_buffer& buffer);
         ~kernel_read_guard();
-        inline explicit operator bool() const noexcept { return this->_good; }
-        inline bool operator!() const noexcept { return !this->_good; }
+        inline bool good() const noexcept { return this->_good; }
+        inline explicit operator bool() const noexcept { return good(); }
+        inline bool operator!() const noexcept { return !good(); }
 
     };
 

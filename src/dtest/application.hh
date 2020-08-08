@@ -5,11 +5,13 @@
 #include <chrono>
 #include <functional>
 #include <future>
+#include <mutex>
 #include <queue>
 #include <thread>
 
 #include <unistdx/base/byte_buffer>
 #include <unistdx/base/log_message>
+#include <unistdx/base/simple_lock>
 #include <unistdx/io/poller>
 #include <unistdx/ipc/argstream>
 #include <unistdx/ipc/process_group>
@@ -21,12 +23,13 @@
 
 namespace dts {
 
+    using string_array = std::vector<std::string>;
+
     class application;
 
     class process_output {
 
     public:
-        using line_array = std::vector<std::string>;
 
     private:
         sys::byte_buffer _buffer;
@@ -45,7 +48,7 @@ namespace dts {
         ):
         _buffer{size}, _prefix(prefix), _in(std::move(in)), _out(out) {}
 
-        void copy(line_array& lines);
+        void copy(string_array& lines);
 
         inline const sys::fildes& in() const { return this->_in; }
         inline const sys::fd_type& out() const { return this->_out; }
@@ -55,8 +58,7 @@ namespace dts {
     class test {
 
     public:
-        using line_array = process_output::line_array;
-        using test_function = std::function<void(application&, const line_array&)>;
+        using test_function = std::function<void(application&, const string_array&)>;
 
     private:
         std::string _description;
@@ -81,7 +83,7 @@ namespace dts {
             this->_function = rhs;
         }
 
-        inline void operator()(application& a, const line_array& lines) {
+        inline void operator()(application& a, const string_array& lines) {
             this->_function(a, lines);
         }
 
@@ -90,13 +92,14 @@ namespace dts {
     class application {
 
     public:
-        using line_array = process_output::line_array;
         using test_queue = std::queue<test>;
         using arguments_array = std::vector<sys::argstream>;
 
     private:
         using duration = std::chrono::system_clock::duration;
         using exit_code_type = ::dts::exit_code;
+        using mutex_type = std::recursive_mutex;
+        using lock_type = sys::simple_lock<mutex_type>;
 
     private:
         ::dts::cluster _cluster;
@@ -113,10 +116,11 @@ namespace dts {
         bool _will_restart = false;
         std::atomic<bool> _stopped{false};
         test_queue _tests;
-        line_array _lines;
+        string_array _lines;
         bool _no_tests = false;
         bool _tests_succeeded = false;
         std::promise<void> _tests_completed;
+        mutable mutex_type _mutex;
 
     public:
 
@@ -178,6 +182,16 @@ namespace dts {
     };
 
     int run(application& app);
+
+    void expect_event_sequence(const string_array& lines, const string_array& regex_strings);
+
+    inline void expect_event(const string_array& lines, std::string regex_string) {
+        expect_event_sequence(lines, {std::move(regex_string)});
+    }
+
+    void expect_event_count(const string_array& lines,
+                            std::string regex_string,
+                            size_t expected_count);
 
 }
 
