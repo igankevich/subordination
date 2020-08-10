@@ -9,6 +9,7 @@
 #include <unistdx/net/ipv4_address>
 
 #include <subordination/daemon/config.hh>
+#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
@@ -66,30 +67,24 @@ namespace sbnd {
         bool _profile = false;
 
     public:
-        inline
-        master_discoverer(
-            const ifaddr_type& interface_address,
-            const sys::port_type port,
-            uint_type fanout
-        ): _fanout(fanout), _hierarchy(interface_address, port)
-        { reset_iterator(); }
+
+        master_discoverer(const ifaddr_type& interface_address,
+                          const sys::port_type port,
+                          const Properties::Discoverer& props);
 
         void on_start() override;
         void on_kernel(sbn::kernel_ptr&& k) override;
 
         inline const hierarchy_type& hierarchy() const noexcept { return this->_hierarchy; }
-        inline void interval(duration rhs) noexcept { this->_interval = rhs; }
-        inline duration interval() const noexcept { return this->_interval; }
-        inline bool profile() const noexcept { return this->_profile; }
-        inline void profile(bool rhs) noexcept { this->_profile = rhs; }
-        inline int max_attempts() const noexcept { return this->_max_attempts; }
-        inline void max_attempts(int rhs) noexcept { this->_max_attempts = rhs; }
-        inline const sys::path& cache_directory() const noexcept { return this->_cache_directory; }
-        inline void cache_directory(const sys::path& rhs) noexcept { this->_cache_directory = rhs; }
 
         void read_cache();
 
     private:
+
+        inline duration interval() const noexcept { return this->_interval; }
+        inline bool profile() const noexcept { return this->_profile; }
+        inline int max_attempts() const noexcept { return this->_max_attempts; }
+        inline const sys::path& cache_directory() const noexcept { return this->_cache_directory; }
 
         const ifaddr_type&
         interface_address() const noexcept {

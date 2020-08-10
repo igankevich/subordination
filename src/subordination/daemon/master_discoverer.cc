@@ -273,9 +273,11 @@ void sbnd::master_discoverer::read_cache() {
         log("read hierarchy from _: _", path, this->_hierarchy);
         if (this->_hierarchy.has_superior()) {
             const auto& sup = this->_hierarchy.superior();
+            auto g = factory.remote().guard();
             factory.remote().add_client(sup.socket_address(), sup.weight());
         }
         //for (const auto& s : this->_hierarchy.subordinates()) {
+        //    auto g = factory.remote().guard();
         //    factory.remote().add_client(s.socket_address(), s.weight());
         //}
     } catch (const sys::bad_call& err) {
@@ -312,4 +314,15 @@ void sbnd::master_discoverer::update_weights(pointer<Hierarchy_kernel> k) {
             broadcast_hierarchy(src);
         }
     }
+}
+
+sbnd::master_discoverer::master_discoverer(const ifaddr_type& interface_address,
+                                           const sys::port_type port,
+                                           const Properties::Discoverer& props):
+_fanout(props.fanout), _hierarchy(interface_address, port) {
+    this->_interval = props.scan_interval;
+    this->_profile = props.profile;
+    this->_max_attempts = props.max_attempts;
+    this->_cache_directory = props.cache_directory;
+    reset_iterator();
 }

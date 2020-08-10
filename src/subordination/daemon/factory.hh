@@ -6,6 +6,7 @@
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/properties.hh>
 #include <subordination/core/transaction_log.hh>
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
@@ -23,6 +24,17 @@ namespace sbnd {
 
     UNISTDX_FLAGS(factory_flags);
 
+    auto string_to_factory_flags(const std::string& s) -> factory_flags;
+    std::istream& operator>>(std::istream& in, sbnd::factory_flags& rhs);
+
+    class interface_address_list:
+        public std::vector<sys::interface_address<sys::ipv4_address>> {
+    public:
+        using std::vector<sys::interface_address<sys::ipv4_address>>::vector;
+    };
+
+    auto string_to_interface_address_list(const std::string& s) -> interface_address_list;
+
     class Properties: public sbn::properties {
 
     public:
@@ -33,15 +45,36 @@ namespace sbnd {
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+            sys::u32 max_connection_attempts = 1;
+            sbn::Duration connection_timeout{std::chrono::seconds(7)};
         } remote;
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+            bool allow_root = false;
         } process;
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
         } unix;
+        struct {
+            factory_flags flags = factory_flags::all;
+        } factory;
+        struct {
+            sys::path directory{SBND_SHARED_STATE_DIR};
+            sbn::Duration recover_after = sbn::Duration::zero();
+        } transactions;
+        struct {
+            interface_address_list allowed_interface_addresses;
+            sbn::Duration interface_update_interval = std::chrono::minutes(1);
+        } network;
+        struct Discoverer {
+            sbn::Duration scan_interval = std::chrono::minutes(1);
+            sys::path cache_directory{SBND_SHARED_STATE_DIR};
+            sys::ipv4_address::rep_type fanout = 64;
+            int max_attempts = 1;
+            bool profile = false;
+        } discoverer;
 
     public:
         Properties();

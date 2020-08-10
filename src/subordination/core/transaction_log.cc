@@ -234,10 +234,23 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     this->_file_descriptor.open(filename, f::close_on_exec | f::create |
                                 f::write_only /*| f::dsync*/, 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
-    this->_records = std::move(records);
+    if (this->_recover_after == duration::zero()) {
+        recover(records);
+    } else {
+        auto k = sbn::make_pointer<transaction_kernel>();
+        k->records(std::move(records));
+        k->transactions(this);
+        k->after(this->_recover_after);
+        if (this->_timer_pipeline) { this->_timer_pipeline->send(std::move(k)); }
+    }
 }
 
 void sbn::transaction_log::update_pipeline_indices() {
     auto n = static_cast<pipeline::index_type>(this->_pipelines.size());
     for (pipeline::index_type i=0; i<n; ++i) { this->_pipelines[i]->index(i); }
+}
+
+void sbn::transaction_kernel::act() {
+    this->_transactions->recover(this->_records);
+    this_ptr().reset();
 }

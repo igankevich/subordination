@@ -5,10 +5,29 @@
 #include <subordination/core/properties.hh>
 
 namespace  {
-    enum State { Key, Value, Comment, Finished };
+
+    constexpr const char line_delimiter = '\n';
+    constexpr const char word_delimiter = '=';
+    constexpr const char comment_character = '#';
+
     inline void trim_right(std::string& s) {
         while (!s.empty() && std::isspace(s.back())) { s.pop_back(); }
     }
+
+    inline void trim_left(std::string& s) {
+        std::string::size_type i = 0;
+        auto n = s.size();
+        for (; i<n && std::isspace(s[i]); ++i) {}
+        if (i != n) { s = s.substr(i); }
+    }
+
+    inline void trim_both(std::string& s) {
+        trim_right(s);
+        trim_left(s);
+    }
+
+    enum State { Key, Value, Comment, Finished };
+
     inline bool parse(char ch, char line_delimiter, char word_delimiter,
                       char comment_character,
                       std::string& key, std::string& value, State& state, bool& success) {
@@ -71,7 +90,7 @@ void sbn::properties::read(std::istream& in, const char* filename) {
                 break;
             }
             if (in.eof()) { ch = 0; }
-            if (parse(ch, line_delimiter(), word_delimiter(), comment_character(),
+            if (parse(ch, line_delimiter, word_delimiter, comment_character,
                       key, value, state, success)) {
                 break;
             }
@@ -105,7 +124,7 @@ void sbn::properties::read(int argc, char** argv) {
             key.clear(), value.clear();
             State state = Key;
             bool success = true;
-            while (!parse(ch=*s++, line_delimiter(), word_delimiter(), comment_character(),
+            while (!parse(ch=*s++, ' ', word_delimiter, '\0',
                           key, value, state, success)) {}
             if (success && state == Finished) {
                 trim_right(key), trim_right(value);
@@ -117,4 +136,37 @@ void sbn::properties::read(int argc, char** argv) {
             }
         } while (ch != 0);
     }
+}
+
+bool sbn::string_to_bool(std::string s) {
+    trim_both(s);
+    for (auto& ch : s) { ch = std::tolower(ch); }
+    if (s == "yes" || s == "on" || s == "1") { return true; }
+    if (s == "no" || s == "off" || s == "0") { return false; }
+    throw std::invalid_argument("bad boolean");
+}
+
+auto sbn::string_to_duration(std::string s) -> Duration {
+    using namespace std::chrono;
+    using d = Duration::base_duration;
+    using days = std::chrono::duration<Duration::rep,std::ratio<60*60*24>>;
+    trim_both(s);
+    std::size_t i = 0, n = s.size();
+    Duration::rep value = std::stoul(s, &i);
+    std::string suffix;
+    if (i != n) { suffix = s.substr(i); }
+    if (suffix == "ns") { return duration_cast<d>(nanoseconds(value)); }
+    if (suffix == "us") { return duration_cast<d>(microseconds(value)); }
+    if (suffix == "ms") { return duration_cast<d>(milliseconds(value)); }
+    if (suffix == "s" || suffix.empty()) { return duration_cast<d>(seconds(value)); }
+    if (suffix == "m") { return duration_cast<d>(minutes(value)); }
+    if (suffix == "h") { return duration_cast<d>(hours(value)); }
+    if (suffix == "d") { return duration_cast<d>(days(value)); }
+    std::stringstream tmp;
+    tmp << "unknown duration suffix \"" << suffix << "\"";
+    throw std::invalid_argument(tmp.str());
+}
+
+std::istream& sbn::operator>>(std::istream& in, Duration& rhs) {
+    std::string s; in >> s; rhs = string_to_duration(s); return in;
 }

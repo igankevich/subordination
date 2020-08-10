@@ -394,7 +394,6 @@ auto sbnd::socket_pipeline::advance_neighbour_iterator(const sbn::kernel* k)
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
     using traits_type = sys::ipaddr_traits<ip_address>;
-    lock_type lock(this->_mutex);
     interface_address interface_address(traits_type::address(rhs), netmask);
     if (this->find_server(interface_address) == this->_servers.end()) {
         auto ptr = std::make_shared<local_server>(interface_address, traits_type::port(rhs));
@@ -653,7 +652,6 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
 }
 
 void sbnd::socket_pipeline::add_client(const sys::socket_address& addr, weight_type weight) {
-    lock_type lock(this->_mutex);
     auto ptr = this->do_add_client(addr);
     ptr->weight(weight);
 }

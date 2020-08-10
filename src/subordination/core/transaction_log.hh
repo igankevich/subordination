@@ -35,6 +35,9 @@ namespace sbn {
     public:
         using pipeline_array = std::vector<pipeline*>;
         using record_array = std::vector<transaction_record>;
+        using clock_type = std::chrono::system_clock;
+        using duration = clock_type::duration;
+        using time_point = clock_type::time_point;
 
     private:
         using mutex_type = std::mutex;
@@ -66,10 +69,11 @@ namespace sbn {
         kernel_buffer _buffer{4096};
         sys::fildes _file_descriptor;
         pipeline_array _pipelines;
+        pipeline* _timer_pipeline{};
         mutable mutex_type _mutex;
         std::size_t _max_records = std::numeric_limits<std::size_t>::max();
         std::size_t _actual_records = 0;
-        record_array _records;
+        duration _recover_after{duration::zero()};
 
     public:
         transaction_log();
@@ -87,8 +91,6 @@ namespace sbn {
         record_array select(application::id_type id);
         void recover(record_array& records);
 
-        inline void recover() { recover(this->_records); }
-
         inline void pipelines(const pipeline_array& rhs) {
             this->_pipelines = rhs;
             update_pipeline_indices();
@@ -99,6 +101,11 @@ namespace sbn {
             update_pipeline_indices();
         }
 
+        inline const pipeline_array& pipelines() const noexcept {
+            return this->_pipelines;
+        }
+
+        inline void timer_pipeline(pipeline* rhs) noexcept { this->_timer_pipeline = rhs; }
         inline void types(kernel_type_registry* rhs) noexcept { this->_buffer.types(rhs); }
         inline std::size_t max_records() const noexcept { return this->_max_records; }
         inline void max_records(std::size_t rhs) noexcept { this->_max_records = rhs; }
@@ -106,6 +113,8 @@ namespace sbn {
         inline void actual_records(std::size_t rhs) noexcept { this->_actual_records = rhs; }
         inline sentry guard() noexcept { return sentry(*this); }
         inline sentry guard() const noexcept { return sentry(*this); }
+        inline void recover_after(duration rhs) noexcept { this->_recover_after = rhs; }
+        inline duration recover_after() const noexcept { return this->_recover_after; }
 
         static void plug_parents(record_array& records);
 
@@ -120,6 +129,28 @@ namespace sbn {
         inline void
         log(const Args& ... args) const {
             sys::log_message("transactions", args ...);
+        }
+
+    };
+
+    class transaction_kernel: public kernel {
+
+    public:
+        using record_array = std::vector<transaction_record>;
+
+    private:
+        record_array _records;
+        transaction_log* _transactions{};
+
+    public:
+        void act() override;
+
+        inline void records(record_array&& rhs) noexcept {
+            this->_records = std::move(rhs);
+        }
+
+        inline void transactions(transaction_log* rhs) noexcept {
+            this->_transactions = rhs;
         }
 
     };
