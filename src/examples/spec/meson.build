@@ -8,5 +8,6 @@ if zlib.found()
         dependencies: [threads, zlib, unistdx, sbn],
         implicit_include_directories: false,
         cpp_args: ['-DSPECTRUM_REAL_TYPE=float'],
+        install: true,
     )
 endif

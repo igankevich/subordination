@@ -56,13 +56,13 @@ namespace sbn {
         time_point _start{duration::zero()};
         basic_socket_pipeline* _parent = nullptr;
         connection_flags _flags{};
-        kernel_queue _upstream, _downstream;
         id_type _counter = 1;
         sys::u32 _attempts = 1;
         const char* _name = "ppl";
         connection_state _state = connection_state::initial;
 
     protected:
+        kernel_queue _upstream, _downstream;
         kernel_buffer _output_buffer;
         kernel_buffer _input_buffer;
         sys::socket_address _socket_address;
@@ -173,7 +173,6 @@ namespace sbn {
 
         template <class Source>
         inline void fill(Source& source) {
-            log("fill buffer-size _", this->_input_buffer.size());
             this->_input_buffer.fill(source);
             this->_input_buffer.flip();
         }
@@ -202,6 +201,16 @@ namespace sbn {
         inline void ensure_has_id(kernel* k) { if (!k->has_id()) { k->id(++this->_counter); } }
 
     };
+
+    template <class Queue>
+    inline typename Queue::const_iterator
+    find_kernel(const sbn::kernel* a, const Queue& queue) {
+        return std::find_if(queue.begin(), queue.end(),
+                            [a] (const sbn::kernel_ptr& b) {
+                                return a->id() == b->id() &&
+                                    a->source_application_id() == b->target_application_id();
+                            });
+    }
 
 }
 

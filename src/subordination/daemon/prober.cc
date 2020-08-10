@@ -10,6 +10,7 @@ void sbnd::prober::react(sbn::kernel_ptr&& k) {
     log("probe returned from _: _", p->source(), p->return_code());
     if (p->source() == this->_newprinc) {
         this->return_code(p->return_code());
+        this->_new_superior_weight = p->superior_weight();
         if (this->return_code() == sbn::exit_code::success &&
             this->_oldprinc && this->_oldprinc != this->_newprinc) {
             this->send_probe(this->_oldprinc);

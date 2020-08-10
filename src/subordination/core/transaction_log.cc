@@ -234,7 +234,7 @@ void sbn::transaction_log::recover(const char* filename, sys::offset_type max_of
     this->_file_descriptor.open(filename, f::close_on_exec | f::create |
                                 f::write_only /*| f::dsync*/, 0600);
     this->_file_descriptor.offset(0, sys::seek_origin::end);
-    recover(records);
+    this->_records = std::move(records);
 }
 
 void sbn::transaction_log::update_pipeline_indices() {

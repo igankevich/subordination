@@ -8,6 +8,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
@@ -58,6 +59,7 @@ namespace sbnd {
         uint_type _fanout = 10000;
         hierarchy_type _hierarchy;
         iterator _iterator, _end;
+        sys::path _cache_directory{SBND_SHARED_STATE_DIR};
         states _state = states::initial;
         int _attempts = 0;
         int _max_attempts = 3;
@@ -69,11 +71,8 @@ namespace sbnd {
             const ifaddr_type& interface_address,
             const sys::port_type port,
             uint_type fanout
-        ):
-        _fanout(fanout),
-        _hierarchy(interface_address, port),
-        _iterator(interface_address, fanout)
-        {}
+        ): _fanout(fanout), _hierarchy(interface_address, port)
+        { reset_iterator(); }
 
         void on_start() override;
         void on_kernel(sbn::kernel_ptr&& k) override;
@@ -85,6 +84,10 @@ namespace sbnd {
         inline void profile(bool rhs) noexcept { this->_profile = rhs; }
         inline int max_attempts() const noexcept { return this->_max_attempts; }
         inline void max_attempts(int rhs) noexcept { this->_max_attempts = rhs; }
+        inline const sys::path& cache_directory() const noexcept { return this->_cache_directory; }
+        inline void cache_directory(const sys::path& rhs) noexcept { this->_cache_directory = rhs; }
+
+        void read_cache();
 
     private:
 
@@ -103,6 +106,10 @@ namespace sbnd {
         void discover_later();
         void reset_iterator();
         void update_subordinates(pointer<probe> p);
+        void add_subordinate(const sys::socket_address& address);
+        void add_superior(const sys::socket_address& address, weight_type weight);
+        void remove_subordinate(const sys::socket_address& address);
+        void remove_superior();
         probe_result process_probe(pointer<probe>& p);
         void update_superior(pointer<prober> p);
 
@@ -113,16 +120,18 @@ namespace sbnd {
         void on_client_add(const sys::socket_address& endp);
         void on_client_remove(const sys::socket_address& endp);
         void broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
+        std::string cache_filename() const;
+        void write_cache() const;
         void send_weight(const sys::socket_address& dest, weight_type w);
         void update_weights(pointer<Hierarchy_kernel> k);
 
         template <class ... Args> inline void
-        log(const char* fmt, const Args& ... args) {
+        log(const char* fmt, const Args& ... args) const {
             sys::log_message("discoverer", fmt, args ...);
         }
 
         template <class ... Args> inline void
-        profile(const char* fmt, const Args& ... args) {
+        profile(const char* fmt, const Args& ... args) const {
             sys::log_message("profile-node-discovery", fmt, args...);
         }
 

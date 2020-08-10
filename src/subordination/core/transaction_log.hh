@@ -69,6 +69,7 @@ namespace sbn {
         mutable mutex_type _mutex;
         std::size_t _max_records = std::numeric_limits<std::size_t>::max();
         std::size_t _actual_records = 0;
+        record_array _records;
 
     public:
         transaction_log();
@@ -85,6 +86,8 @@ namespace sbn {
         void close();
         record_array select(application::id_type id);
         void recover(record_array& records);
+
+        inline void recover() { recover(this->_records); }
 
         inline void pipelines(const pipeline_array& rhs) {
             this->_pipelines = rhs;

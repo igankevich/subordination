@@ -82,17 +82,21 @@ public:
     operator>>(std::istream& in, Timestamp& rhs) {
         // YYYY MM DD hh mm
         // 2010 01 01 00 00
+        // N.B. std::get_time is not thread-safe
         std::tm t{};
-        in >> std::get_time(&t, "%Y %m %d %H %M");
+        in >> t.tm_year;
+        in >> t.tm_mon;
+        in >> t.tm_mday;
+        in >> t.tm_hour;
+        in >> t.tm_min;
+        ++t.tm_mon;
         rhs._timestamp = std::mktime(&t);
         return in;
     }
 
     friend std::ostream&
     operator<<(std::ostream& out, const Timestamp& rhs) {
-        std::tm* t = std::gmtime(&rhs._timestamp);
-        out << std::put_time(t, "%Y %m %d %H %M");
-        return out;
+        return out << rhs._timestamp;
     }
 
     friend sbn::kernel_buffer&
@@ -317,7 +321,7 @@ public:
     T compute_variance() {
         const T theta0 = 0;
         const T theta1 = 2.0f*M_PI;
-        int32_t n = _frequencies.size();
+        int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
         T sum = 0;
         for (int32_t i=0; i<n; ++i) {
             for (int32_t j=0; j<n; ++j) {
@@ -399,7 +403,15 @@ public:
     inline explicit Spectrum_file_kernel(const spectrum_file_array& files): _files(files) {}
 
     void act() override {
+        if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                sys::log_message("spec", "simulate subordinate failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
+        }
         char buf[4096];
+        int contents_size = 0;
         for (const auto& f : this->_files) {
             GZIP_file in;
             in.open(f.filename().data(), "rb");
@@ -407,6 +419,7 @@ public:
             std::stringstream contents;
             while ((count=in.read(buf, sizeof(buf))) != 0) {
                 contents.write(buf, count);
+                contents_size += count;
             }
             std::string line;
             std::stringstream str;
@@ -430,23 +443,32 @@ public:
                     Timestamp timestamp;
                     str.clear();
                     str.str(line);
-                    str >> timestamp;
-                    T value;
-                    while (str >> value) {
-                        if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
-                        this->_spectra[timestamp][int(f.variable())].emplace_back(std::move(value));
+                    if (str >> timestamp) {
+                        auto& spec = this->_spectra[timestamp];
+                        T value;
+                        while (str >> value) {
+                            if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
+                            spec[int(f.variable())].emplace_back(value);
+                        }
                     }
                 }
             }
             in.close();
         }
+        #if defined(SBN_DEBUG)
+        sys::log_message(
+            "spec", "station _ year _ num-records _ num-frequencies _ contents-size _",
+            station(), year(), this->_spectra.size(), this->_frequencies.size(),
+            contents_size);
+        #endif
         // remove incomplete records for given date
         const size_t old_size = _spectra.size();
         for (auto it=_spectra.begin(); it!=_spectra.end(); ) {
             const auto& array = it->second;
+            auto front_size = array.front().size();
             bool any_empty = std::any_of(
-                array.begin(), array.end(),
-                [] (const std::vector<T>& rhs) { return rhs.empty(); });
+                array.begin()+1, array.end(),
+                [front_size] (const std::vector<T>& rhs) { return front_size != rhs.size(); });
             if (any_empty) {
                 it = _spectra.erase(it);
             } else {
@@ -458,14 +480,17 @@ public:
             sys::log_message(
                 "spec",
                 "removed _ incomplete records from station _, year _",
-                old_size-new_size, station(), year()
-            );
+                old_size-new_size, station(), year());
         }
         _count = _spectra.size();
-        for (auto& pair : this->_spectra) {
-            auto k =
-                sbn::make_pointer<Spectrum_kernel<T>>(pair.second, pair.first, _frequencies);
-            sbn::upstream(this, std::move(k));
+        if (this->_spectra.empty()) {
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        } else {
+            for (auto& pair : this->_spectra) {
+                auto k = sbn::make_pointer<Spectrum_kernel<T>>(
+                    pair.second, pair.first, _frequencies);
+                sbn::upstream(this, std::move(k));
+            }
         }
     }
 
@@ -482,7 +507,8 @@ public:
         auto k = sbn::pointer_dynamic_cast<Spectrum_kernel<T>>(std::move(child));
         _out_matrix[k->date()] = k->variance();
         if (--_count == 0) {
-            _files.clear();
+            sys::log_message("spec", "finished year _ station _", year(), station());
+            if (!this->_files.empty()) { this->_files.resize(1); }
             _spectra.clear();
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
@@ -500,8 +526,7 @@ public:
 
     inline int32_t num_processed_spectra() const noexcept { return _out_matrix.size(); }
 
-    void
-    read(sbn::kernel_buffer& in) override {
+    void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _files;
         in >> _frequencies;
@@ -509,8 +534,7 @@ public:
         in >> _out_matrix;
     }
 
-    void
-    write(sbn::kernel_buffer& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _files;
         out << _frequencies;
@@ -544,6 +568,19 @@ public:
     _input_directories(input_directories) {}
 
     void act() override {
+        if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_COPY_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                if (const char* str = std::getenv("SBN_TEST_SLEEP_FOR")) {
+                    auto seconds = std::atoi(str);
+                    sys::log_message("spec", "sleeping for _ seconds", seconds);
+                    std::this_thread::sleep_for(std::chrono::seconds(seconds));
+                }
+                sys::log_message("spec", "simulate superior copy failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
+        }
+        sys::log_message("spec", "spectrum-directory _", this->_input_directories.size());
         this->_time_points[0] = clock_type::now();
         sys::idirtree tree;
         std::regex rx("([0-9]+)([dijkw])([0-9]+)\\.txt\\.gz");
@@ -568,10 +605,13 @@ public:
                 }
             }
         }
+        // skip incomplete records that have less than five files
+        for (auto first=files.begin(); first!=files.end(); ) {
+            if (complete(first->second)) { ++first; }
+            else { first = files.erase(first); }
+        }
+        this->_num_kernels = files.size();
         for (const auto& pair : files) {
-            // skip incomplete records that have less than five files
-            if (!complete(pair.second)) { continue; }
-            ++this->_num_kernels;
             sbn::upstream<sbn::Remote>(this, sbn::make_pointer<Spectrum_file_kernel<T>>(pair.second));
         }
     }
@@ -606,24 +646,22 @@ public:
                 std::ofstream log("nspectra.log");
                 log << _count_spectra << std::endl;
             }
-            #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-            sbn::commit<sbn::Local>(std::move(this_ptr()));
-            #else
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
-            #endif
         }
     }
 
-    void
-    read(sbn::kernel_buffer& in) override {
+    void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _count >> _count_spectra;
+        in >> this->_input_directories;
+        for (auto& tp : this->_time_points) { in >> tp; }
     }
 
-    void
-    write(sbn::kernel_buffer& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _count << _count_spectra;
+        out << this->_input_directories;
+        for (const auto& tp : this->_time_points) { out << tp; }
     }
 
 private:
@@ -642,8 +680,14 @@ private:
 template <class T>
 class Main: public sbn::kernel {
 
+public:
+    using clock_type = std::chrono::system_clock;
+    using time_point = clock_type::time_point;
+    using duration = clock_type::duration;
+
 private:
     std::vector<sys::path> _input_directories;
+    std::array<time_point,2> _time_points;
 
 public:
 
@@ -656,22 +700,56 @@ public:
     }
 
     void act() override {
-        #if defined(SBN_DEBUG)
         sys::log_message("spec", "program start");
-        #endif
-        #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-        sbn::upstream<sbn::Local>(
-            this, sbn::make_pointer<Spectrum_directory_kernel<T>>(this->_input_directories));
-        #else
-        auto k =
-            sbn::make_pointer<Spectrum_directory_kernel<T>>(this->_input_directories);
+        auto k = sbn::make_pointer<Spectrum_directory_kernel<T>>(this->_input_directories);
         k->setf(sbn::kernel_flag::carries_parent);
+        this->_time_points[0] = clock_type::now();
         sbn::upstream<sbn::Remote>(this, std::move(k));
-        #endif
+        if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                sys::log_message("spec", "simulate superior failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
+        }
     }
 
     void react(sbn::kernel_ptr&&) override {
-        sbn::commit<sbn::Local>(std::move(this_ptr()));
+        this->_time_points[1] = clock_type::now();
+        {
+            using namespace std::chrono;
+            this->_time_points[1] = clock_type::now();
+            const auto& t = this->_time_points;
+            std::ofstream out("time2.log");
+            out << duration_cast<microseconds>(t[1] - t[0]).count() << std::endl;
+            out.close();
+        }
+        sys::log_message("spec", "finished all");
+        sbn::commit<sbn::Remote>(std::move(this_ptr()));
+    }
+
+    void read(sbn::kernel_buffer& in) override {
+        kernel::read(in);
+        if (in.remaining() == 0) {
+            if (auto* a = target_application()) {
+                const auto& args = a->arguments();
+                const auto nargs = args.size();
+                for (size_t i=1; i<nargs; ++i) {
+                    sys::log_message("spec", "arg _", args[i]);
+                    this->_input_directories.emplace_back(args[i]);
+                }
+            }
+        } else {
+            in >> this->_input_directories;
+            for (auto& tp : this->_time_points) { in >> tp; }
+        }
+    }
+
+    void write(sbn::kernel_buffer& out) const override {
+        kernel::write(out);
+        out << this->_input_directories;
+        for (const auto& tp : this->_time_points) { out << tp; }
     }
 
 };

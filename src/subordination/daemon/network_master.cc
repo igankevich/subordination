@@ -207,6 +207,8 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
         d->interval(network_scan_interval());
         d->profile(this->_profile_node_discovery);
         d->max_attempts(this->_discoverer_max_attempts);
+        d->cache_directory(this->_discoverer_cache_directory);
+        d->read_cache();
         this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
         factory.local().send(std::move(d));

@@ -26,7 +26,7 @@ namespace sbnd {
 
     protected:
         ifaddr_type _ifaddr;
-        sys::socket_address _endpoint;
+        sys::socket_address _socket_address;
         hierarchy_node _superior;
         container_type _subordinates;
 
@@ -35,7 +35,7 @@ namespace sbnd {
         inline explicit
         Hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
         _ifaddr(interface_address),
-        _endpoint(interface_address.address(), port),
+        _socket_address(interface_address.address(), port),
         _superior(),
         _subordinates()
         {}
@@ -54,7 +54,7 @@ namespace sbnd {
 
         inline const sys::socket_address&
         socket_address() const noexcept {
-            return this->_endpoint;
+            return this->_socket_address;
         }
 
         inline const node_type&
@@ -62,9 +62,20 @@ namespace sbnd {
             return this->_superior;
         }
 
-        inline void
+        inline bool
         remove_superior() noexcept {
+            bool old_state = bool(this->_superior.socket_address());
             this->_superior.reset();
+            return old_state != bool(this->_superior.socket_address());
+        }
+
+        inline bool
+        add_superior(const hierarchy_node& node) {
+            if (node.socket_address() == this->_superior.socket_address() &&
+                node.weight() == this->_superior.weight()) { return false; }
+            this->_superior = node;
+            this->_subordinates.erase(this->_superior);
+            return true;
         }
 
         inline void
@@ -73,9 +84,10 @@ namespace sbnd {
             this->_subordinates.erase(this->_superior);
         }
 
-        inline void
+        inline bool
         add_subordinate(const sys::socket_address& addr) {
-            this->_subordinates.emplace(addr);
+            auto result = this->_subordinates.insert(hierarchy_node(addr));
+            return result.second;
         }
 
         inline bool
@@ -111,7 +123,7 @@ namespace sbnd {
 
         inline sys::port_type
         port() const noexcept {
-            return sys::ipaddr_traits<addr_type>::port(this->_endpoint);
+            return sys::ipaddr_traits<addr_type>::port(this->_socket_address);
         }
 
         inline const_iterator

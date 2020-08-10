@@ -10,10 +10,13 @@ main(int argc, char** argv) {
     install_error_handler();
     {
         auto g = factory.types().guard();
-        factory.types().add<Spectrum_directory_kernel<T>>(1);
-        factory.types().add<Spectrum_file_kernel<T>>(2);
+        factory.types().add<Main<T>>(1);
+        factory.types().add<Spectrum_directory_kernel<T>>(2);
+        factory.types().add<Spectrum_file_kernel<T>>(3);
     }
     factory_guard g;
-    send(sbn::make_pointer<Main<T>>(argc, argv));
+    if (sbn::this_application::standalone()) {
+        send(sbn::make_pointer<Main<T>>(argc, argv));
+    }
     return wait_and_return();
 }

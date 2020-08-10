@@ -69,7 +69,6 @@ std::istream& operator>>(std::istream& in, Duration& rhs) {
 void
 print_state(int) {
     std::clog << __func__ << std::endl;
-    //sbnd::factory.print_state(std::clog);
 }
 
 void
@@ -140,10 +139,12 @@ int main(int argc, char* argv[]) {
     Duration network_interface_update_interval = std::chrono::minutes(1);
     Duration network_scan_interval = std::chrono::minutes(1);
     sys::path transactions_directory(SBND_SHARED_STATE_DIR);
+    Duration transactions_recover_after{};
     unsigned local_num_threads = sys::thread_concurrency();
     auto flags = factory_flags::all;
     bool profile_node_discovery = false;
     int discoverer_max_attempts = 3;
+    sys::path discoverer_cache_directory(SBND_SHARED_STATE_DIR);
     std::string config;
     sys::input_operator_type options[] = {
         sys::ignore_first_argument(),
@@ -156,10 +157,12 @@ int main(int argc, char* argv[]) {
                             network_interface_update_interval),
         sys::make_key_value("network-scan-interval", network_scan_interval),
         sys::make_key_value("transactions-directory", transactions_directory),
+        sys::make_key_value("transactions-recover-after", transactions_recover_after),
         sys::make_key_value("local-num-threads", local_num_threads),
         sys::make_key_value("factory-flags", flags),
         sys::make_key_value("discoverer-profile", profile_node_discovery),
         sys::make_key_value("discoverer-max-attempts", discoverer_max_attempts),
+        sys::make_key_value("discoverer-cache-directory", discoverer_cache_directory),
         sys::make_key_value("config", config),
         nullptr
     };
@@ -190,11 +193,6 @@ int main(int argc, char* argv[]) {
         factory.configure(props);
     }
     try {
-        if (factory.isset(factory_flags::transactions)) {
-            sys::mkdirs(transactions_directory);
-            transactions_directory = sys::canonical_path(transactions_directory);
-            factory.transactions(sys::path(transactions_directory, "transactions").data());
-        }
         factory.local().num_upstream_threads(local_num_threads);
         if (factory.isset(factory_flags::unix)) {
             factory.unix().add_server(sys::socket_address(SBND_SOCKET));
@@ -207,6 +205,7 @@ int main(int argc, char* argv[]) {
         m->network_scan_interval(network_scan_interval);
         m->profile_node_discovery(profile_node_discovery);
         m->discoverer_max_attempts(discoverer_max_attempts);
+        m->discoverer_cache_directory(discoverer_cache_directory);
         factory.instances().add(m.get());
         if (factory.isset(factory_flags::process)) {
             factory.process().allow_root(allow_root);
@@ -217,8 +216,20 @@ int main(int argc, char* argv[]) {
             factory.remote().max_connection_attempts(max_connection_attempts);
             factory.remote().add_listener(m.get());
         }
+        if (factory.isset(factory_flags::transactions)) {
+            sys::mkdirs(transactions_directory);
+            transactions_directory = sys::canonical_path(transactions_directory);
+            factory.transactions(sys::path(transactions_directory, "transactions").data());
+        }
+        if (transactions_recover_after == Duration::zero()) {
+            factory.transactions().recover();
+        }
         factory.start();
         factory.local().send(std::move(m));
+        if (transactions_recover_after != Duration::zero()) {
+            std::this_thread::sleep_for(transactions_recover_after);
+            factory.transactions().recover();
+        }
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         sbn::exit(1);

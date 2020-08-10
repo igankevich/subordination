@@ -7,6 +7,7 @@
 
 #include <unistdx/net/interface_addresses>
 
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/master_discoverer.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
@@ -35,6 +36,7 @@ namespace sbnd {
         duration _network_scan_interval = std::chrono::minutes(1);
         bool _profile_node_discovery = false;
         int _discoverer_max_attempts = 3;
+        sys::path _discoverer_cache_directory{SBND_SHARED_STATE_DIR};
 
     public:
         void act() override;
@@ -73,6 +75,14 @@ namespace sbnd {
 
         inline void discoverer_max_attempts(int rhs) noexcept {
             this->_discoverer_max_attempts = rhs;
+        }
+
+        inline const sys::path& discoverer_cache_directory() const noexcept {
+            return this->_discoverer_cache_directory;
+        }
+
+        inline void discoverer_cache_directory(const sys::path& rhs) noexcept {
+            this->_discoverer_cache_directory = rhs;
         }
 
     private:

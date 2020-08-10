@@ -6,20 +6,6 @@
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 
-namespace  {
-
-    template <class Queue>
-    inline typename Queue::const_iterator
-    find_kernel(sbn::kernel_ptr& a, const Queue& queue) {
-        return std::find_if(queue.begin(), queue.end(),
-                            [&a] (const sbn::kernel_ptr& b) {
-                                return a->id() == b->id() &&
-                                    a->source_application_id() == b->target_application_id();
-                            });
-    }
-
-}
-
 const char* sbn::to_string(connection_state rhs) {
     switch (rhs) {
         case connection_state::initial: return "initial";
@@ -204,12 +190,12 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
     if (!k->has_id()) {
         throw std::invalid_argument("downstream kernel without an id");
     }
-    auto result = find_kernel(k, this->_upstream);
+    auto result = find_kernel(k.get(), this->_upstream);
     if (result == this->_upstream.end()) {
         if (k->carries_parent()) {
             k->principal(k->parent());
             this->log("use carried parent for _", *k);
-            auto result2 = find_kernel(k, this->_downstream);
+            auto result2 = find_kernel(k.get(), this->_downstream);
             if (result2 != this->_downstream.end()) {
                 auto& old = *result2;
                 this->log("delete _", *old);

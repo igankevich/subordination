@@ -108,9 +108,6 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
             auto k = sbn::make_pointer<Wave_surface_generator<T>>(
                 ar_coefs, _phi_size, var_wn, zsize2, zsize, part_size(), this->_verify,
                 this->_buffer_size);
-            //#if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-            //sbn::upstream(this, std::move(k));
-            //#else
             k->setf(sbn::kernel_flag::carries_parent);
             this->_time_points[0] = clock_type::now();
             sbn::upstream<sbn::Remote>(this, std::move(k));
@@ -123,7 +120,6 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
                     send(sys::signal::kill, sys::this_process::id());
                 }
             }
-            //#endif
         }
         if (type == typeid(Wave_surface_generator<T>)) {
             this->_time_points[1] = clock_type::now();
