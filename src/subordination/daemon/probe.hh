@@ -12,13 +12,15 @@ namespace sbnd {
     class probe: public sbn::kernel {
 
     public:
-        typedef sys::ipv4_address addr_type;
-        typedef sys::interface_address<addr_type> ifaddr_type;
+        using addr_type = sys::ipv4_address;
+        using ifaddr_type = sys::interface_address<addr_type>;
+        using weight_type = uint32_t;
 
     private:
         ifaddr_type _ifaddr;
         sys::socket_address _oldprinc;
         sys::socket_address _newprinc;
+        weight_type _superior_weight{};
 
     public:
 
@@ -52,6 +54,9 @@ namespace sbnd {
         interface_address() const noexcept {
             return this->_ifaddr;
         }
+
+        inline void superior_weight(weight_type rhs) noexcept { this->_superior_weight = rhs; }
+        inline weight_type superior_weight() const noexcept { return this->_superior_weight; }
 
     };
 

@@ -249,13 +249,17 @@ TEST(socket_pipeline, _) {
     sys::socket_address subordinate_endpoint(*address++, port+1);
     sys::socket_address principal_endpoint(*address++, port);
     if (role == Role::Slave) {
+        auto g = remote.guard();
         remote.port(port+1);
         using namespace std::this_thread;
         using namespace std::chrono;
+        g.unlock();
         sleep_for(milliseconds(1000));
+        g.lock();
         remote.add_server(principal_endpoint, network.netmask());
     }
     if (role == Role::Master) {
+        auto g = remote.guard();
         remote.port(port);
         remote.add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start

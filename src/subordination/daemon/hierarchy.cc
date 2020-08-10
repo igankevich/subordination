@@ -9,7 +9,7 @@
 template <class Addr>
 std::ostream&
 sbnd::operator<<(std::ostream& out, const Hierarchy<Addr>& rhs) {
-    out << "interface_address=" << rhs._ifaddr << ',';
+    out << "interface-address=" << rhs._ifaddr << ',';
     out << "principal=" << rhs._superior << ',';
     out << "subordinates=";
     std::copy(
@@ -58,7 +58,7 @@ sbnd::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
 template <class T> void
 sbnd::Hierarchy<T>::write(sbn::kernel_buffer& out) const {
     out << this->_ifaddr;
-    out << this->_endpoint;
+    out << this->_socket_address;
     out << this->_superior;
     write_set(out, this->_subordinates);
 }
@@ -66,7 +66,7 @@ sbnd::Hierarchy<T>::write(sbn::kernel_buffer& out) const {
 template <class T> void
 sbnd::Hierarchy<T>::read(sbn::kernel_buffer& in) {
     in >> this->_ifaddr;
-    in >> this->_endpoint;
+    in >> this->_socket_address;
     in >> this->_superior;
     read_set(in, this->_subordinates);
 }

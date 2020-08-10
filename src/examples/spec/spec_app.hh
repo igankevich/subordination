@@ -3,85 +3,123 @@
 
 #include <zlib.h>
 
+#include <array>
+#include <bitset>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <regex>
 #include <sstream>
 
 #include <unistdx/base/log_message>
+#include <unistdx/fs/idirtree>
 #include <unistdx/fs/path>
 
 #include <subordination/api.hh>
 #include <subordination/core/error.hh>
 
-typedef int32_t Year;
-typedef int32_t Month;
-typedef int32_t Day;
-typedef int32_t Hour;
-typedef int32_t Minute;
-typedef int32_t Station;
-typedef char Variable;
+using Year = int32_t;
+using Month = int32_t;
+using Day = int32_t;
+using Hour = int32_t;
+using Minute = int32_t;
+using Station = int32_t;
 
-typedef std::string Resource;
+constexpr const auto max_variables = 5;
 
-struct Date {
+enum class Variable: int {D=0, I=1, J=2, K=3, W=4};
 
-    Date() = default;
+Variable string_to_variable(const std::string& s) {
+    if (s.empty()) { throw std::invalid_argument("bad variable"); }
+    switch (s.front()) {
+        case 'd': return Variable::D;
+        case 'i': return Variable::I;
+        case 'j': return Variable::J;
+        case 'k': return Variable::K;
+        case 'w': return Variable::W;
+        default: throw std::invalid_argument("bad variable");
+    }
+}
 
-    Date(const Date&) = default;
+namespace std {
+    template <>
+    class hash<Variable>: public hash<std::underlying_type<Variable>::type> {
+    private:
+        using tp = std::underlying_type<Variable>::type;
+    public:
+        size_t operator()(Variable v) const noexcept {
+            return this->hash<tp>::operator()(tp(v));
+        }
+    };
+}
 
-    Date&
-    operator=(const Date& rhs) = default;
+class Timestamp {
 
-    bool operator==(const Date& rhs) const {
-        return _year == rhs._year &&
-        _month       == rhs._month &&
-        _day         == rhs._day &&
-        _hours       == rhs._hours &&
-        _minutes     == rhs._minutes;
+private:
+    std::time_t _timestamp{};
+
+public:
+
+    Timestamp() = default;
+    ~Timestamp() = default;
+    Timestamp(const Timestamp&) = default;
+    Timestamp& operator=(const Timestamp&) = default;
+    Timestamp(Timestamp&&) = default;
+    Timestamp& operator=(Timestamp&&) = default;
+
+    inline std::time_t get() const noexcept { return this->_timestamp; }
+
+    inline bool operator==(const Timestamp& rhs) const noexcept {
+        return this->_timestamp == rhs._timestamp;
     }
 
-    bool operator<(const Date& rhs) const {
-        return integral() < rhs.integral();
-    }
-
-    int64_t integral() const {
-        return _minutes + 60*_hours + 60*24*_day + 60*24*31*_month + 60*24*31*12*_year;
+    inline bool operator<(const Timestamp& rhs) const noexcept {
+        return this->_timestamp < rhs._timestamp;
     }
 
     friend std::istream&
-    operator>>(std::istream& in, Date& rhs) {
-        return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
+    operator>>(std::istream& in, Timestamp& rhs) {
+        // YYYY MM DD hh mm
+        // 2010 01 01 00 00
+        // N.B. std::get_time is not thread-safe
+        std::tm t{};
+        in >> t.tm_year;
+        in >> t.tm_mon;
+        in >> t.tm_mday;
+        in >> t.tm_hour;
+        in >> t.tm_min;
+        ++t.tm_mon;
+        rhs._timestamp = std::mktime(&t);
+        return in;
     }
 
     friend std::ostream&
-    operator<<(std::ostream& out, const Date& rhs) {
-        return out << std::setfill('0')
-                            << rhs._year << ' '
-            << std::setw(2) << rhs._month << ' '
-            << std::setw(2) << rhs._day << ' '
-            << std::setw(2) << rhs._hours << ' '
-            << std::setw(2) << rhs._minutes;
+    operator<<(std::ostream& out, const Timestamp& rhs) {
+        return out << rhs._timestamp;
     }
 
     friend sbn::kernel_buffer&
-    operator>>(sbn::kernel_buffer& in, Date& rhs) {
-        return in >> rhs._year >> rhs._month >> rhs._day >> rhs._hours >> rhs._minutes;
+    operator>>(sbn::kernel_buffer& in, Timestamp& rhs) {
+        return in >> rhs._timestamp;
     }
 
     friend sbn::kernel_buffer&
-    operator<<(sbn::kernel_buffer& out, const Date& rhs) {
-        return out << rhs._year << rhs._month << rhs._day << rhs._hours << rhs._minutes;
+    operator<<(sbn::kernel_buffer& out, const Timestamp& rhs) {
+        return out << rhs._timestamp;
     }
 
-private:
-    Year _year = 0;
-    Month _month = 0;
-    Day _day = 0;
-    Hour _hours = 0;
-    Minute _minutes = 0;
 };
+
+namespace std {
+    template <>
+    class hash<Timestamp>: public hash<std::time_t> {
+    public:
+        size_t operator()(Timestamp t) const noexcept {
+            return this->hash<std::time_t>::operator()(t.get());
+        }
+    };
+}
 
 /*
 
@@ -98,51 +136,39 @@ private:
 
 */
 
-struct Observation {
-
-    Observation() = default;
-
-    Observation(Year year, Station station, Variable var):
-        _year(year), _station(station), _var(var) {}
-
-    Observation(const Observation& rhs) = default;
-    Observation&
-    operator=(const Observation& rhs) = default;
-
-    Year year() const { return _year; }
-    Station station() const { return _station; }
-    Variable variable() const { return _var; }
-
-    std::string filename() const {
-        std::stringstream str;
-        str << '.'
-            << '/' << year()
-            << '/' << station()
-            << '/' << station() << variable() << year()
-            << ".txt.gz";
-        return str.str();
-    }
-
-    friend std::istream& operator>>(std::istream& in, Observation& rhs) {
-        return in >> rhs._station >> rhs._var >> rhs._year;
-    }
-
-    friend std::ostream& operator<<(std::ostream& out, const Observation& rhs) {
-        return out << rhs._year << ',' << rhs._station<< ',' << rhs._var;
-    }
-
-    friend sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Observation& rhs) {
-        return in >> rhs._year >> rhs._station >> rhs._var;
-    }
-
-    friend sbn::kernel_buffer& operator<<(sbn::kernel_buffer& out, const Observation& rhs) {
-        return out << rhs._year << rhs._station << rhs._var;
-    }
+class Spectrum_file {
 
 private:
-    Year _year = 0;
+    sys::path _filename;
     Station _station = 0;
-    Variable _var = 0;
+    Year _year = 0;
+    Variable _variable{};
+
+public:
+
+    Spectrum_file() = default;
+    ~Spectrum_file() = default;
+    Spectrum_file(const Spectrum_file&) = default;
+    Spectrum_file& operator=(const Spectrum_file&) = default;
+    Spectrum_file(Spectrum_file&&) = default;
+    Spectrum_file& operator=(Spectrum_file&&) = default;
+
+    inline Spectrum_file(const sys::path& filename, Station station, Variable var, Year year):
+    _filename(filename), _station(station), _year(year), _variable(var) {}
+
+    inline const sys::path& filename() const noexcept { return this->_filename; }
+    inline Station station() const noexcept { return this->_station; }
+    inline Variable variable() const noexcept { return this->_variable; }
+    inline Year year() const noexcept { return this->_year; }
+
+    friend sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Spectrum_file& rhs) {
+        return in >> rhs._filename >> rhs._year >> rhs._station >> rhs._variable;
+    }
+
+    friend sbn::kernel_buffer& operator<<(sbn::kernel_buffer& out, const Spectrum_file& rhs) {
+        return out << rhs._filename << rhs._year << rhs._station << rhs._variable;
+    }
+
 };
 
 namespace sys {
@@ -251,39 +277,52 @@ namespace sys {
 
 }
 
-struct Spectrum_kernel: public sbn::kernel {
+static constexpr const int DENSITY = int(Variable::W);
+static constexpr const int ALPHA_1 = int(Variable::D);
+static constexpr const int ALPHA_2 = int(Variable::I);
+static constexpr const int R_1     = int(Variable::J);
+static constexpr const int R_2     = int(Variable::K);
 
-    enum {
-        DENSITY = 'w',
-        ALPHA_1 = 'd',
-        ALPHA_2 = 'i',
-        R_1     = 'j',
-        R_2     = 'k'
-    };
+template <class T>
+class Spectrum_kernel: public sbn::kernel {
 
-    typedef std::unordered_map<Variable, std::vector<float>> Map;
+public:
 
-    Spectrum_kernel(Map& m, const Date& d, const std::vector<float>& freq):
+    using Map = std::array<std::vector<T>,max_variables>;
+
+private:
+    Map& _data;
+    Timestamp _date{};
+    const std::vector<T>& _frequencies;
+    T _variance{};
+
+public:
+
+    Spectrum_kernel(Map& m, Timestamp d, const std::vector<T>& freq):
         _data(m), _date(d), _frequencies(freq), _variance(0)
     {}
 
     void act() override {
-        // TODO Filter 999 values.
         _variance = compute_variance();
         sbn::commit(std::move(this_ptr()));
     }
 
-    float spectrum(int32_t i, float angle) {
-        return _data[DENSITY][i] * (1.0f/PI) * (0.5f
-            + 0.01f*_data[R_1][i]*std::cos(      angle - _data[ALPHA_1][i])
-            + 0.01f*_data[R_2][i]*std::cos(2.0f*(angle - _data[ALPHA_2][i])));
+    T spectrum(int32_t i, T angle) {
+        auto density = this->_data[DENSITY][i];
+        auto r1 = this->_data[R_1][i];
+        auto r2 = this->_data[R_2][i];
+        auto alpha1 = this->_data[ALPHA_1][i];
+        auto alpha2 = this->_data[ALPHA_2][i];
+        return density * (T{1}/T{M_PI}) * (T{0.5}
+            + T{0.01}*r1*std::cos(      angle - alpha1)
+            + T{0.01}*r2*std::cos(T{2}*(angle - alpha2)));
     }
 
-    float compute_variance() {
-        const float theta0 = 0;
-        const float theta1 = 2.0f*PI;
-        int32_t n = _frequencies.size();
-        float sum = 0;
+    T compute_variance() {
+        const T theta0 = 0;
+        const T theta1 = 2.0f*M_PI;
+        int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
+        T sum = 0;
         for (int32_t i=0; i<n; ++i) {
             for (int32_t j=0; j<n; ++j) {
                 sum += spectrum(i, theta0 + (theta1 - theta0)*j/n);
@@ -292,123 +331,145 @@ struct Spectrum_kernel: public sbn::kernel {
         return sum;
     }
 
-    float variance() const { return _variance; }
-    const Date& date() const { return _date; }
+    inline T variance() const noexcept { return this->_variance; }
+    inline Timestamp date() const noexcept { return this->_date; }
 
-private:
-    Map& _data;
-    Date _date;
-    const std::vector<float>& _frequencies;
-    float _variance;
-
-    static const float PI;
 };
 
-const float Spectrum_kernel::PI = std::acos(-1.0f);
+class GZIP_file {
 
-struct Station_kernel: public sbn::kernel {
+public:
+    using file_type = ::gzFile;
 
-    typedef std::unordered_map<Variable, Observation> Map;
+private:
+    file_type _file{};
 
-    Station_kernel() = default;
+public:
 
-    Station_kernel(const Map& m, Station st, Year year):
-    _observations(m), _station(st), _year(year), _count(0)
-    {}
+    GZIP_file() = default;
+    ~GZIP_file() = default;
+    GZIP_file(const GZIP_file&) = delete;
+    GZIP_file& operator=(const GZIP_file&) = delete;
 
-    int check_read(const std::string& filename, int ret) {
-        if (ret == -1) {
-            sys::log_message(
-                "spec",
-                "error while reading file \"_\"",
-                filename
-            );
-            sbn::throw_error("error while reading file");
+    inline GZIP_file(GZIP_file&& rhs): _file(rhs._file) { rhs._file = nullptr; }
+
+    inline GZIP_file& operator=(GZIP_file&& rhs) {
+        swap(rhs);
+        return *this;
+    }
+
+    inline void swap(GZIP_file& rhs) {
+        std::swap(this->_file, rhs._file);
+    }
+
+    inline void open(const char* filename, const char* flags) {
+        this->_file = ::gzopen(filename, flags);
+        if (!this->_file) {
+            sbn::throw_error("unable to open ", filename);
         }
+    }
+
+    inline void close() {
+        ::gzclose(this->_file);
+    }
+
+    inline int read(void* ptr, unsigned len) {
+        int ret = ::gzread(this->_file, ptr, len);
+        if (ret == -1) { sbn::throw_error("i/o error"); }
         return ret;
     }
 
-    void write_output_to(std::ostream& out, Year year) {
-        std::for_each(_out_matrix.cbegin(), _out_matrix.cend(),
-            [this, &out, year] (const decltype(_out_matrix)::value_type& pair) {
-                out << year << ',' << _station << ',' << pair.second << '\n';
-            }
-        );
-        out << std::flush;
-    }
+};
 
-    void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Spectrum_kernel>(std::move(child));
-        _out_matrix[k->date()] = k->variance();
-        if (--_count == 0) {
-            #if defined(SBN_DEBUG)
-            sys::log_message(
-                "spec",
-                "finished station _, year _, total no. of spectra _",
-                station(), _year, num_processed_spectra()
-            );
-            #endif
-            _observations.clear();
-            _spectra.clear();
-            sbn::commit<sbn::Remote>(std::move(this_ptr()));
-        }
-    }
+inline void swap(GZIP_file& a, GZIP_file& b) { a.swap(b); }
+
+template <class T>
+class Spectrum_file_kernel: public sbn::kernel {
+
+public:
+    using spectrum_file_array = std::vector<Spectrum_file>;
+
+private:
+    spectrum_file_array _files;
+    std::vector<T> _frequencies;
+    uint32_t _count = 0;
+    std::map<Timestamp, std::array<std::vector<T>,max_variables>> _spectra;
+    std::map<Timestamp, T> _out_matrix;
+
+public:
+
+    Spectrum_file_kernel() = default;
+
+    inline explicit Spectrum_file_kernel(const spectrum_file_array& files): _files(files) {}
 
     void act() override {
-        // skip records when some variables are missing
-        if (_observations.size() != NUM_VARIABLES) {
-            sbn::commit<sbn::Remote>(std::move(this_ptr()));
-            return;
+        if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                sys::log_message("spec", "simulate subordinate failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
         }
-        std::for_each(_observations.cbegin(), _observations.cend(),
-            [this] (const decltype(_observations)::value_type& pair) {
-                const Observation& ob = pair.second;
-                ::gzFile file = ::gzopen(ob.filename().c_str(), "rb");
-                if (file == NULL) {
-                    sys::log_message(
-                        "spec",
-                        "unable to open file \"_\" for reading",
-                        ob.filename()
-                    );
-                    sbn::throw_error("error opening a file for reading");
-                }
-                char buf[64];
-                int count = 0;
-                std::stringstream contents;
-                while (check_read(ob.filename(), count=::gzread(file, buf, sizeof(buf))) != 0) {
-                    contents.write(buf, count);
-                }
-                // skip header
-                if (_frequencies.size() == 0) {
-                    contents.ignore(16);
-                    char ch;
-                    while (contents && (ch = contents.get()) != '\n') {
-                        contents.putback(ch);
-                        float value;
-                        contents >> value;
-                        _frequencies.push_back(value);
+        char buf[4096];
+        int contents_size = 0;
+        for (const auto& f : this->_files) {
+            GZIP_file in;
+            in.open(f.filename().data(), "rb");
+            int count = 0;
+            std::stringstream contents;
+            while ((count=in.read(buf, sizeof(buf))) != 0) {
+                contents.write(buf, count);
+                contents_size += count;
+            }
+            std::string line;
+            std::stringstream str;
+            while (!(contents >> std::ws).eof()) {
+                std::getline(contents, line, '\n');
+                if (line.empty()) { continue; }
+                if (line.front() == '#') {
+                    // read frequencies
+                    if (_frequencies.size() == 0) {
+                        str.clear();
+                        str.str(line);
+                        str.ignore(16);
+                        T value;
+                        while (str >> value) {
+                            this->_frequencies.emplace_back(std::move(value));
+                        }
+                    } else {
+                        // skip lines starting with "#"
                     }
                 } else {
-                    contents.ignore(1000, '\n');
-                }
-
-                Date date;
-                while (contents >> date) {
-                    char ch;
-                    while (contents && (ch = contents.get()) != '\n') {
-                        contents.putback(ch);
-                        float value;
-                        contents >> value;
-                        _spectra[date][ob.variable()].push_back(value);
+                    Timestamp timestamp;
+                    str.clear();
+                    str.str(line);
+                    if (str >> timestamp) {
+                        auto& spec = this->_spectra[timestamp];
+                        T value;
+                        while (str >> value) {
+                            if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
+                            spec[int(f.variable())].emplace_back(value);
+                        }
                     }
                 }
-                ::gzclose(file);
             }
-        );
+            in.close();
+        }
+        #if defined(SBN_DEBUG)
+        sys::log_message(
+            "spec", "station _ year _ num-records _ num-frequencies _ contents-size _",
+            station(), year(), this->_spectra.size(), this->_frequencies.size(),
+            contents_size);
+        #endif
         // remove incomplete records for given date
         const size_t old_size = _spectra.size();
         for (auto it=_spectra.begin(); it!=_spectra.end(); ) {
-            if (it->second.size() != NUM_VARIABLES) {
+            const auto& array = it->second;
+            auto front_size = array.front().size();
+            bool any_empty = std::any_of(
+                array.begin()+1, array.end(),
+                [front_size] (const std::vector<T>& rhs) { return front_size != rhs.size(); });
+            if (any_empty) {
                 it = _spectra.erase(it);
             } else {
                 ++it;
@@ -416,295 +477,281 @@ struct Station_kernel: public sbn::kernel {
         }
         const size_t new_size = _spectra.size();
         if (new_size < old_size) {
-            #if defined(SBN_DEBUG)
             sys::log_message(
                 "spec",
                 "removed _ incomplete records from station _, year _",
-                old_size-new_size, _station, _year
-            );
-            #endif
+                old_size-new_size, station(), year());
         }
-
         _count = _spectra.size();
-        std::for_each(_spectra.begin(), _spectra.end(),
-            [this] (decltype(_spectra)::value_type& pair) {
-                auto k =
-                    sbn::make_pointer<Spectrum_kernel>(pair.second, pair.first, _frequencies);
-//				k->setf(kernel_flag::priority_service);
+        if (this->_spectra.empty()) {
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        } else {
+            for (auto& pair : this->_spectra) {
+                auto k = sbn::make_pointer<Spectrum_kernel<T>>(
+                    pair.second, pair.first, _frequencies);
                 sbn::upstream(this, std::move(k));
             }
-        );
+        }
     }
 
-    Year year() const { return _year; }
-    Station station() const { return _station; }
-    int32_t num_processed_spectra() const { return _out_matrix.size(); }
+    void write_output_to(std::ostream& out) {
+        std::for_each(_out_matrix.cbegin(), _out_matrix.cend(),
+            [this, &out] (const typename decltype(_out_matrix)::value_type& pair) {
+                out << year() << ',' << station() << ',' << pair.second << '\n';
+            }
+        );
+        out << std::flush;
+    }
 
-    void
-    read(sbn::kernel_buffer& in) override {
+    void react(sbn::kernel_ptr&& child) override {
+        auto k = sbn::pointer_dynamic_cast<Spectrum_kernel<T>>(std::move(child));
+        _out_matrix[k->date()] = k->variance();
+        if (--_count == 0) {
+            sys::log_message("spec", "finished year _ station _", year(), station());
+            if (!this->_files.empty()) { this->_files.resize(1); }
+            _spectra.clear();
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        }
+    }
+
+    inline Year year() const noexcept {
+        if (this->_files.empty()) { return {}; }
+        return this->_files.front().year();
+    }
+
+    inline Station station() const noexcept {
+        if (this->_files.empty()) { return {}; }
+        return this->_files.front().station();
+    }
+
+    inline int32_t num_processed_spectra() const noexcept { return _out_matrix.size(); }
+
+    void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
-        in >> _observations;
-        in >> _station;
-        in >> _year;
+        in >> _files;
         in >> _frequencies;
         in >> _count;
         in >> _out_matrix;
     }
 
-    void
-    write(sbn::kernel_buffer& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
-        out << _observations;
-        out << _station;
-        out << _year;
+        out << _files;
         out << _frequencies;
         out << _count;
         out << _out_matrix;
     }
 
-private:
-    Map _observations;
-    Station _station;
-    Year _year;
-    std::vector<float> _frequencies;
-    uint32_t _count = 0;
-    std::map<Date, std::unordered_map<Variable, std::vector<float>>> _spectra;
-    std::map<Date, float> _out_matrix;
-
-    static const int NUM_VARIABLES = 5;
 };
 
-struct Year_kernel: public sbn::kernel {
+template <class T>
+class Spectrum_directory_kernel: public sbn::kernel {
 
-    typedef std::unordered_map<Station,
-        std::unordered_map<Variable, Observation>> Map;
+public:
+    using clock_type = std::chrono::system_clock;
+    using time_point = clock_type::time_point;
+    using duration = clock_type::duration;
+    using spectrum_file_array = std::vector<Spectrum_file>;
 
-    Year_kernel() = default;
+private:
+    std::vector<sys::path> _input_directories;
+    int32_t _count = 0;
+    int32_t _count_spectra = 0;
+    int32_t _num_kernels = 0;
+    std::array<time_point,2> _time_points;
+    std::unordered_map<Year,std::ofstream> _output_files;
 
-    Year_kernel(const Map& m, Year year):
-        _observations(m), _year(year), _count(0), _num_spectra(0),
-        _output_file()
-    {}
+public:
+    Spectrum_directory_kernel() = default;
 
-    Resource resource() const {
-        return std::to_string(_year);
-    }
+    inline explicit Spectrum_directory_kernel(const std::vector<sys::path>& input_directories):
+    _input_directories(input_directories) {}
 
-    std::string output_filename() const {
-        return std::to_string(_year) + ".out";
-    }
-
-    bool
-    finished() const noexcept {
-        return _count == _observations.size();
+    void act() override {
+        if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_COPY_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                if (const char* str = std::getenv("SBN_TEST_SLEEP_FOR")) {
+                    auto seconds = std::atoi(str);
+                    sys::log_message("spec", "sleeping for _ seconds", seconds);
+                    std::this_thread::sleep_for(std::chrono::seconds(seconds));
+                }
+                sys::log_message("spec", "simulate superior copy failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
+        }
+        sys::log_message("spec", "spectrum-directory _", this->_input_directories.size());
+        this->_time_points[0] = clock_type::now();
+        sys::idirtree tree;
+        std::regex rx("([0-9]+)([dijkw])([0-9]+)\\.txt\\.gz");
+        std::cmatch match;
+        std::map<std::pair<Year,Station>,std::vector<Spectrum_file>> files;
+        for (const auto& path : this->_input_directories) {
+            tree.open(path);
+            while (!tree.eof()) {
+                tree.clear();
+                for (const auto& entry : tree) {
+                    sys::path path(tree.current_dir(), entry.name());
+                    if (std::regex_match(entry.name(), match, rx)) {
+                        sys::log_message(
+                            "spec", "file _ station _ variable _ year _",
+                            path, match[1], match[2], match[3]);
+                        Station station = std::stoi(match[1].str());
+                        Year year = std::stoi(match[3].str());
+                        files[std::make_pair(year,station)].emplace_back(
+                            path, station, string_to_variable(match[2].str()),
+                            year);
+                    }
+                }
+            }
+        }
+        // skip incomplete records that have less than five files
+        for (auto first=files.begin(); first!=files.end(); ) {
+            if (complete(first->second)) { ++first; }
+            else { first = files.erase(first); }
+        }
+        this->_num_kernels = files.size();
+        for (const auto& pair : files) {
+            sbn::upstream<sbn::Remote>(this, sbn::make_pointer<Spectrum_file_kernel<T>>(pair.second));
+        }
     }
 
     void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Station_kernel>(std::move(child));
-        if (!_output_file.is_open()) {
-            _output_file.open(output_filename());
+        auto k = sbn::pointer_dynamic_cast<Spectrum_file_kernel<T>>(std::move(child));
+        auto year = k->year();
+        auto& output_file = this->_output_files[year];
+        if (!output_file.is_open()) {
+            output_file.open(std::to_string(year) + ".out");
         }
-        k->write_output_to(_output_file, _year);
-        #if defined(SBN_DEBUG)
+        k->write_output_to(output_file);
+        this->_count_spectra += k->num_processed_spectra();
         sys::log_message(
             "spec",
-            "finished station _, year _, [_/_], total no. of spectra _, from _",
-            k->station(), _year, 1+_count, _observations.size(),
-            k->num_processed_spectra(), k->source()
+            "[_/_] finished station _, year _, total no. of spectra _",
+            this->_count+1, this->_num_kernels,
+            k->station(), k->year(), k->num_processed_spectra()
         );
-        #endif
-        _num_spectra += k->num_processed_spectra();
-        if (++_count == _observations.size()) {
-            sbn::commit(std::move(this_ptr()));
+        if (++_count == this->_num_kernels) {
+            for (auto& pair : this->_output_files) { pair.second.close(); }
+            sys::log_message("spec", "total number of processed spectra _", _count_spectra);
+            {
+                using namespace std::chrono;
+                this->_time_points[1] = clock_type::now();
+                const auto& t = this->_time_points;
+                std::ofstream out("time.log");
+                out << duration_cast<microseconds>(t[1] - t[0]).count() << std::endl;
+                out.close();
+            }
+            {
+                std::ofstream log("nspectra.log");
+                log << _count_spectra << std::endl;
+            }
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
     }
 
-    void act() override {
-        std::for_each(_observations.cbegin(), _observations.cend(),
-            [this] (const decltype(_observations)::value_type& pair) {
-                sbn::upstream<sbn::Remote>(
-                    this,
-                    sbn::make_pointer<Station_kernel>(pair.second, pair.first, _year)
-                );
-            }
-        );
-    }
-
-    void
-    read(sbn::kernel_buffer& in) override {
-        kernel::read(in);
-        in >> _year;
-        int32_t num_stations;
-        in >> num_stations;
-        for (int32_t i=0; i<num_stations; ++i) {
-            int32_t num_observations;
-            in >> num_observations;
-            for (int32_t j=0; j<num_observations; ++j) {
-                Observation ob;
-                in >> ob;
-                _observations[ob.station()][ob.variable()] = ob;
-            }
-        }
-        in >> _num_spectra;
-    }
-
-    void
-    write(sbn::kernel_buffer& out) const override {
-        kernel::write(out);
-        out << _year;
-        out << int32_t(_observations.size());
-        std::for_each(_observations.cbegin(), _observations.cend(),
-            [&out] (const decltype(_observations)::value_type& pair) {
-                out << int32_t(pair.second.size());
-                std::for_each(pair.second.cbegin(), pair.second.cend(),
-                    [&out] (const decltype(pair.second)::value_type& pair2) {
-                        out << pair2.second;
-                    }
-                );
-            }
-        );
-        out << _num_spectra;
-    }
-
-    Year year() const { return _year; }
-    int32_t num_processed_spectra() const { return _num_spectra; }
-
-private:
-    Map _observations;
-    Year _year = 0;
-    uint32_t _count = 0;
-    int32_t _num_spectra = 0;
-    std::ofstream _output_file;
-};
-
-struct Launcher: public sbn::kernel {
-
-    typedef std::unordered_map<Station,
-        std::unordered_map<Variable, Observation>> Map;
-
-    typedef std::chrono::nanoseconds::rep Time;
-
-    Launcher(): _count(0), _count_spectra(0) {}
-
-    static Time
-    current_time_nano() {
-        using namespace std::chrono;
-        typedef std::chrono::system_clock clock_type;
-        return duration_cast<nanoseconds>(clock_type::now().time_since_epoch()).count();
-    }
-
-    void act() override {
-        #if defined(SBN_DEBUG)
-        sys::log_message("spec", "launcher start");
-        #endif
-        _time0 = current_time_nano();
-        std::ifstream in("input");
-        std::unordered_map<Year,
-            std::unordered_map<Station,
-                std::unordered_map<Variable, Observation>>>
-                    observations;
-        Observation ob;
-        while (in >> ob) {
-            in.ignore(100, '\n');
-            observations[ob.year()][ob.station()][ob.variable()] = ob;
-        }
-        _count -= observations.size();
-        std::for_each(observations.cbegin(), observations.cend(),
-            [this] (const decltype(observations)::value_type& pair) {
-                Year year = pair.first;
-                _yearkernels[year] = sbn::make_pointer<Year_kernel>(pair.second, year);
-                submit_station_kernels(pair.second, year);
-                // upstream<Remote>(new Year_kernel(pair.second, year));
-            }
-        );
-    }
-
-    void react(sbn::kernel_ptr&& child) override {
-        // auto k = sbn::pointer_dynamic_cast<Year_kernel>(std::move(k));
-        auto k1 = sbn::pointer_dynamic_cast<Station_kernel>(std::move(child));
-        auto year = k1->year();
-        auto& k = _yearkernels[year];
-        k->react(std::move(k1));
-        if (k->finished()) {
-            #if defined(SBN_DEBUG)
-            sys::log_message("spec", "finished year _", k->year());
-            #endif
-            _count_spectra += k->num_processed_spectra();
-            _yearkernels.erase(year);
-            if (++_count == 0) {
-                #if defined(SBN_DEBUG)
-                sys::log_message("spec", "total number of processed spectra _", _count_spectra);
-                #endif
-                {
-                    Time time1 = current_time_nano();
-                    std::ofstream timerun_log("time.log");
-                    timerun_log << float(time1 - _time0)/1000/1000/1000 << std::endl;
-                }
-                {
-                    std::ofstream log("nspectra.log");
-                    log << _count_spectra << std::endl;
-                }
-                #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-                sbn::commit<sbn::Local>(std::move(this_ptr()));
-                #else
-                sbn::commit<sbn::Remote>(std::move(this_ptr()));
-                #endif
-            }
-        }
-    }
-
-    void
-    read(sbn::kernel_buffer& in) override {
+    void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _count >> _count_spectra;
+        in >> this->_input_directories;
+        for (auto& tp : this->_time_points) { in >> tp; }
     }
 
-    void
-    write(sbn::kernel_buffer& out) const override {
+    void write(sbn::kernel_buffer& out) const override {
         kernel::write(out);
         out << _count << _count_spectra;
-    }
-
-    void
-    submit_station_kernels(Map _observations, Year _year) {
-        std::for_each(_observations.cbegin(), _observations.cend(),
-            [this,&_observations,_year] (const decltype(_observations)::value_type& pair) {
-                sbn::upstream<sbn::Remote>(
-                    this,
-                    sbn::make_pointer<Station_kernel>(pair.second, pair.first, _year)
-                );
-            }
-        );
+        out << this->_input_directories;
+        for (const auto& tp : this->_time_points) { out << tp; }
     }
 
 private:
-    int32_t _count;
-    int32_t _count_spectra;
-    Time _time0;
 
-    std::unordered_map<Year,pointer<Year_kernel>> _yearkernels;
+    bool complete(const std::vector<Spectrum_file>& files) {
+        if (files.size() != 5) { return false; }
+        std::bitset<5> variables;
+        for (const auto& f : files) {
+            variables.set(static_cast<int>(f.variable()));
+        }
+        return variables.all();
+    }
+
 };
 
-struct Spec_app: public sbn::kernel {
+template <class T>
+class Main: public sbn::kernel {
+
+public:
+    using clock_type = std::chrono::system_clock;
+    using time_point = clock_type::time_point;
+    using duration = clock_type::duration;
+
+private:
+    std::vector<sys::path> _input_directories;
+    std::array<time_point,2> _time_points;
+
+public:
+
+    Main() = default;
+
+    inline Main(int argc, char** argv) {
+        for (int i=1; i<argc; ++i) {
+            this->_input_directories.emplace_back(argv[i]);
+        }
+    }
 
     void act() override {
-        #if defined(SBN_DEBUG)
         sys::log_message("spec", "program start");
-        #endif
-        #if defined(SUBORDINATION_TEST_SLAVE_FAILURE)
-        sbn::upstream<sbn::Local>(this, sbn::make_pointer<Launcher>());
-        #else
-        auto launcher = sbn::make_pointer<Launcher>();
-        launcher->setf(sbn::kernel_flag::carries_parent);
-        sbn::upstream<sbn::Remote>(this, std::move(launcher));
-        #endif
+        auto k = sbn::make_pointer<Spectrum_directory_kernel<T>>(this->_input_directories);
+        k->setf(sbn::kernel_flag::carries_parent);
+        this->_time_points[0] = clock_type::now();
+        sbn::upstream<sbn::Remote>(this, std::move(k));
+        if (const char* hostname = std::getenv("SBN_TEST_SUPERIOR_FAILURE")) {
+            if (sys::this_process::hostname() == hostname) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                sys::log_message("spec", "simulate superior failure _!", hostname);
+                send(sys::signal::kill, sys::this_process::parent_id());
+                send(sys::signal::kill, sys::this_process::id());
+            }
+        }
     }
 
     void react(sbn::kernel_ptr&&) override {
-        sbn::commit<sbn::Local>(std::move(this_ptr()));
+        this->_time_points[1] = clock_type::now();
+        {
+            using namespace std::chrono;
+            this->_time_points[1] = clock_type::now();
+            const auto& t = this->_time_points;
+            std::ofstream out("time2.log");
+            out << duration_cast<microseconds>(t[1] - t[0]).count() << std::endl;
+            out.close();
+        }
+        sys::log_message("spec", "finished all");
+        sbn::commit<sbn::Remote>(std::move(this_ptr()));
+    }
+
+    void read(sbn::kernel_buffer& in) override {
+        kernel::read(in);
+        if (in.remaining() == 0) {
+            if (auto* a = target_application()) {
+                const auto& args = a->arguments();
+                const auto nargs = args.size();
+                for (size_t i=1; i<nargs; ++i) {
+                    sys::log_message("spec", "arg _", args[i]);
+                    this->_input_directories.emplace_back(args[i]);
+                }
+            }
+        } else {
+            in >> this->_input_directories;
+            for (auto& tp : this->_time_points) { in >> tp; }
+        }
+    }
+
+    void write(sbn::kernel_buffer& out) const override {
+        kernel::write(out);
+        out << this->_input_directories;
+        for (const auto& tp : this->_time_points) { out << tp; }
     }
 
 };
-
 
 #endif // vim:filetype=cpp

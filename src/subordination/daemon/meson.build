@@ -69,7 +69,7 @@ test_app_exe = executable(
     implicit_include_directories: false,
 )
 
-foreach name : ['local_server', 'tree_hierarchy_iterator']
+foreach name : ['local_server', 'tree_hierarchy_iterator', 'hierarchy']
     test_name = '-'.join(name.split('_'))
     exe_name = test_name + '-test'
     exe = executable(

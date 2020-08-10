@@ -67,10 +67,10 @@ namespace sbn {
         private:
             const basic_socket_pipeline& _pipeline;
         public:
-            inline explicit sentry(const basic_socket_pipeline& rhs): _pipeline(rhs) {
-                this->_pipeline._mutex.lock();
-            }
-            inline ~sentry() { this->_pipeline._mutex.unlock(); }
+            inline explicit sentry(const basic_socket_pipeline& rhs): _pipeline(rhs) { lock(); }
+            inline ~sentry() { unlock(); }
+            inline void lock() { this->_pipeline._mutex.lock(); }
+            inline void unlock() { this->_pipeline._mutex.unlock(); }
         };
 
     public:

@@ -8,11 +8,11 @@ sbnd::operator<<(std::ostream& out, const hierarchy_node& rhs) {
 }
 
 void sbnd::hierarchy_node::write(sbn::kernel_buffer& out) const {
-    out << this->_endpoint;
+    out << this->_socket_address;
     out << this->_weight;
 }
 
 void sbnd::hierarchy_node::read(sbn::kernel_buffer& in) {
-    in >> this->_endpoint;
+    in >> this->_socket_address;
     in >> this->_weight;
 }

@@ -7,6 +7,7 @@
 
 #include <unistdx/net/interface_addresses>
 
+#include <subordination/daemon/config.hh>
 #include <subordination/daemon/master_discoverer.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
@@ -27,53 +28,20 @@ namespace sbnd {
         typedef typename discoverer_table::iterator map_iterator;
 
     private:
+        Properties::Discoverer _discoverer_properties;
         discoverer_table _discoverers;
         interface_address_set _allowedifaddrs;
-        uint_type _fanout = 10000;
         /// Interface address list update interval.
         duration _interval = std::chrono::minutes(1);
-        duration _network_scan_interval = std::chrono::minutes(1);
-        bool _profile_node_discovery = false;
-        int _discoverer_max_attempts = 3;
 
     public:
+
+        network_master() = default;
+        network_master(const Properties& props);
+
         void act() override;
         void react(sbn::kernel_ptr&& child) override;
         void mark_as_deleted(sbn::kernel_sack& result) override;
-
-        inline void
-        allow(const ifaddr_type& rhs) {
-            if (rhs) {
-                this->_allowedifaddrs.emplace(rhs);
-            }
-        }
-
-        inline void fanout(uint_type rhs) noexcept { this->_fanout = rhs; }
-        inline void interval(duration rhs) noexcept { this->_interval = rhs; }
-
-        inline void network_scan_interval(duration rhs) noexcept {
-            this->_network_scan_interval = rhs;
-        }
-
-        inline duration network_scan_interval() const noexcept {
-            return this->_network_scan_interval;
-        }
-
-        inline bool profile_node_discovery() const noexcept {
-            return this->_profile_node_discovery;
-        }
-
-        inline void profile_node_discovery(bool rhs) noexcept {
-            this->_profile_node_discovery = rhs;
-        }
-
-        inline int discoverer_max_attempts() const noexcept {
-            return this->_discoverer_max_attempts;
-        }
-
-        inline void discoverer_max_attempts(int rhs) noexcept {
-            this->_discoverer_max_attempts = rhs;
-        }
 
     private:
 

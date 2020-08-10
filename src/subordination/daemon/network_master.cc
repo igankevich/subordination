@@ -200,13 +200,11 @@ void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel
 
 void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
     sys::log_message("net", "add interface address _", ifa);
-    factory.remote().add_server(ifa);
+    { auto g = factory.remote().guard(); factory.remote().add_server(ifa); }
     if (this->_discoverers.find(ifa) == this->_discoverers.end()) {
         const auto port = factory.remote().port();
-        auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_fanout);
-        d->interval(network_scan_interval());
-        d->profile(this->_profile_node_discovery);
-        d->max_attempts(this->_discoverer_max_attempts);
+        auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_discoverer_properties);
+        d->read_cache();
         this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
         factory.local().send(std::move(d));
@@ -287,4 +285,12 @@ void sbnd::network_master::on_event(pointer<process_pipeline_kernel> k) {
             factory.remote().send(std::move(tk));
         }
     }
+}
+
+sbnd::network_master::network_master(const Properties& props):
+_discoverer_properties(props.discoverer) {
+    for (const auto& x : props.network.allowed_interface_addresses) {
+        if (x) { this->_allowedifaddrs.insert(x); }
+    }
+    this->_interval = props.network.interface_update_interval;
 }

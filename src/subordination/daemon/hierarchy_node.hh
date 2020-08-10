@@ -15,7 +15,7 @@ namespace sbnd {
         typedef uint32_t weight_type;
 
     private:
-        sys::socket_address _endpoint;
+        sys::socket_address _socket_address;
         mutable weight_type _weight = 1;
 
     public:
@@ -24,29 +24,29 @@ namespace sbnd {
 
         inline explicit
         hierarchy_node(const sys::socket_address& socket_address):
-        _endpoint(socket_address)
+        _socket_address(socket_address)
         {}
 
         inline
         hierarchy_node(const sys::socket_address& socket_address, weight_type w):
-        _endpoint(socket_address),
+        _socket_address(socket_address),
         _weight(w)
         {}
 
         inline void
         reset() {
-            this->_endpoint.reset();
+            this->_socket_address.reset();
             this->_weight = 0;
         }
 
         inline const sys::socket_address&
         socket_address() const noexcept {
-            return this->_endpoint;
+            return this->_socket_address;
         }
 
         inline void
         socket_address(const sys::socket_address& rhs) noexcept {
-            this->_endpoint = rhs;
+            this->_socket_address = rhs;
         }
 
         inline weight_type
@@ -61,7 +61,7 @@ namespace sbnd {
 
         inline bool
         operator==(const hierarchy_node& rhs) const noexcept {
-            return this->_endpoint == rhs._endpoint;
+            return this->_socket_address == rhs._socket_address;
         }
 
         inline bool

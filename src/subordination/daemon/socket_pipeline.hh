@@ -42,6 +42,7 @@ namespace sbnd {
         sys::port_type _port = 33333;
         std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
         id_type _counter = 0;
+        weight_type _local_weight = 0;
         bool _uselocalhost = true;
 
     public:
@@ -53,10 +54,7 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr) {
-            lock_type lock(this->_mutex);
-            this->do_add_client(addr);
-        }
+        void add_client(const sys::socket_address& addr, weight_type weight=1);
 
         void
         stop_client(const sys::socket_address& addr);
@@ -66,10 +64,7 @@ namespace sbnd {
 
         void
         add_server(const interface_address& rhs) {
-            this->add_server(
-                sys::socket_address(rhs.address(), this->_port),
-                rhs.netmask()
-            );
+            this->add_server(sys::socket_address(rhs.address(), this->_port), rhs.netmask());
         }
 
         void

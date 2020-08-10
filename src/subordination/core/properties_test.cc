@@ -44,7 +44,7 @@ c=3)";
 
 TEST(properties, read_3) {
     my_properties props;
-    props.line_delimiter(' ');
+    //props.line_delimiter(' ');
     std::stringstream in;
     in << R"(a=1 b=2 c=3)";
     props.read(in, "string");
@@ -83,7 +83,7 @@ TEST(properties, read_string_1) {
 
 TEST(properties, read_string_2) {
     my_properties props;
-    props.line_delimiter(' ');
+    //props.line_delimiter(' ');
     props.read("a=1 b=2 c=3");
     EXPECT_EQ(props.all["a"], std::string("1"));
     EXPECT_EQ(props.all["b"], std::string("2"));
