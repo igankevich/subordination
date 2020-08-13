@@ -21,7 +21,9 @@
    (@ (gnu packages compression) xz)
    (@ (gnu packages pre-commit) python-pre-commit)
    (@ (gnu packages compression) zlib)
-   (@ (stables packages mpi) openmpi-4.0.2))
+   (@ (stables packages mpi) openmpi-4.0.2)
+   (@ (gnu packages guile) guile-2.2)
+   (@ (gnu packages guile-zlib) guile-zlib))
   (if-enabled "site"
               (list
                (@ (gnu packages documentation) doxygen)

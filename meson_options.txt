@@ -25,3 +25,10 @@ option(
 	value: false,
 	description: 'build examples'
 )
+
+option(
+	'with_guile',
+	type: 'boolean',
+	value: true,
+	description: 'build Guile-based interpreter'
+)
