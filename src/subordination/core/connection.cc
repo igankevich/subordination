@@ -247,6 +247,9 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
             }
             break;
         case kernel::phases::broadcast:
+            if (k->principal_id()) {
+                queue = &this->_upstream;
+            }
             break;
     }
     if (isset(connection_flags::write_transaction_log) &&

@@ -75,6 +75,11 @@ namespace sbnd {
             int max_attempts = 1;
             bool profile = false;
         } discoverer;
+        #if defined(SBND_WITH_GLUSTERFS)
+        struct GlusterFS {
+            sys::path working_directory{"/var/lib/glusterd"};
+        } glusterfs;
+        #endif
 
     public:
         Properties();

@@ -31,84 +31,17 @@ namespace {
 
 }
 
+void sbnd::local_server::add(const connection_ptr& self) {
+    connection::parent()->emplace_handler(
+        sys::epoll_event{socket().fd(), sys::event::in}, self);
+}
+
+void sbnd::local_server::remove(const connection_ptr& self) {
+    connection::parent()->erase(socket().fd());
+    parent()->remove_server(this->_ifaddr);
+}
+
 namespace sbnd {
-
-    class local_server: public sbn::connection {
-
-    public:
-        using ip_address = sys::ipv4_address;
-        using interface_address_type = sys::interface_address<ip_address>;
-        using id_type = typename interface_address_type::rep_type;
-        using counter_type = id_type;
-
-    private:
-        interface_address_type _ifaddr;
-        id_type _pos0 = 0;
-        id_type _pos1 = 0;
-        counter_type _counter {0};
-        sys::socket _socket;
-
-    public:
-
-        inline explicit
-        local_server(const interface_address_type& ifaddr, sys::port_type port):
-        _ifaddr(ifaddr),
-        _socket(sys::socket_address(ifaddr.address(), port)) {
-            socket_address(sys::socket_address(ifaddr.address(), port));
-            this->init();
-        }
-
-        local_server() = delete;
-        local_server(const local_server&) = delete;
-        local_server& operator=(const local_server&) = delete;
-        local_server& operator=(local_server&&) = default;
-
-        inline const interface_address_type
-        interface_address() const noexcept {
-            return this->_ifaddr;
-        }
-
-        inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
-        inline const sys::socket& socket() const noexcept { return this->_socket; }
-        inline sys::socket& socket() noexcept { return this->_socket; }
-
-        inline id_type generate_id() noexcept {
-            id_type id;
-            if (this->_counter == this->_pos1) {
-                id = this->_pos0;
-                this->_counter = id+1;
-            } else {
-                id = this->_counter++;
-            }
-            return id;
-        }
-
-        void handle(const sys::epoll_event& ev) override;
-
-        void add(const connection_ptr& self) override {
-            connection::parent()->emplace_handler(
-                sys::epoll_event{socket().fd(), sys::event::in}, self);
-        }
-
-        void remove(const connection_ptr& self) override {
-            connection::parent()->erase(socket().fd());
-            parent()->remove_server(this->_ifaddr);
-        }
-
-        using connection::parent;
-        inline socket_pipeline* parent() const noexcept {
-            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
-        }
-
-    private:
-
-        inline void
-        init() noexcept {
-            determine_id_range(this->_ifaddr, this->_pos0, this->_pos1);
-            this->_counter = this->_pos0;
-        }
-
-    };
 
     class remote_client: public sbn::connection {
 
@@ -594,7 +527,7 @@ auto
 sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_ptr {
     if (addr.family() == sys::family_type::unix) {
         sys::socket s(sys::family_type::unix);
-        s.setopt(sys::socket::pass_credentials);
+        s.set(sys::socket::options::pass_credentials);
         try {
             s.connect(addr);
         } catch (const sys::bad_call& err) {

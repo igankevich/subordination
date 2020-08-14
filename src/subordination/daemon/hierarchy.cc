@@ -60,7 +60,7 @@ sbnd::Hierarchy<T>::write(sbn::kernel_buffer& out) const {
     out << this->_ifaddr;
     out << this->_socket_address;
     out << this->_superior;
-    write_set(out, this->_subordinates);
+    out << this->_subordinates;
 }
 
 template <class T> void
@@ -68,7 +68,7 @@ sbnd::Hierarchy<T>::read(sbn::kernel_buffer& in) {
     in >> this->_ifaddr;
     in >> this->_socket_address;
     in >> this->_superior;
-    read_set(in, this->_subordinates);
+    in >> this->_subordinates;
 }
 
 template class sbnd::Hierarchy<sys::ipv4_address>;

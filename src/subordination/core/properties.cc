@@ -2,29 +2,17 @@
 #include <sstream>
 #include <string>
 
+#include <subordination/bits/string.hh>
 #include <subordination/core/properties.hh>
+
+using sbn::bits::trim_both;
+using sbn::bits::trim_right;
 
 namespace  {
 
     constexpr const char line_delimiter = '\n';
     constexpr const char word_delimiter = '=';
     constexpr const char comment_character = '#';
-
-    inline void trim_right(std::string& s) {
-        while (!s.empty() && std::isspace(s.back())) { s.pop_back(); }
-    }
-
-    inline void trim_left(std::string& s) {
-        std::string::size_type i = 0;
-        auto n = s.size();
-        for (; i<n && std::isspace(s[i]); ++i) {}
-        if (i != n) { s = s.substr(i); }
-    }
-
-    inline void trim_both(std::string& s) {
-        trim_right(s);
-        trim_left(s);
-    }
 
     enum State { Key, Value, Comment, Finished };
 

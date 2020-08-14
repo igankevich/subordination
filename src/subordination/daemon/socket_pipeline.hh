@@ -19,6 +19,76 @@
 
 namespace sbnd {
 
+    class local_server: public sbn::connection {
+
+    public:
+        using ip_address = sys::ipv4_address;
+        using interface_address_type = sys::interface_address<ip_address>;
+        using id_type = typename interface_address_type::rep_type;
+        using counter_type = id_type;
+
+    private:
+        interface_address_type _ifaddr;
+        id_type _pos0 = 0;
+        id_type _pos1 = 0;
+        counter_type _counter {0};
+        sys::socket _socket;
+
+    public:
+
+        inline explicit
+        local_server(const interface_address_type& ifaddr, sys::port_type port):
+        _ifaddr(ifaddr),
+        _socket(sys::socket_address(ifaddr.address(), port)) {
+            socket_address(sys::socket_address(ifaddr.address(), port));
+            this->init();
+        }
+
+        local_server() = delete;
+        local_server(const local_server&) = delete;
+        local_server& operator=(const local_server&) = delete;
+        local_server& operator=(local_server&&) = default;
+
+        inline const interface_address_type
+        interface_address() const noexcept {
+            return this->_ifaddr;
+        }
+
+        inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
+        inline const sys::socket& socket() const noexcept { return this->_socket; }
+        inline sys::socket& socket() noexcept { return this->_socket; }
+
+        inline id_type generate_id() noexcept {
+            id_type id;
+            if (this->_counter == this->_pos1) {
+                id = this->_pos0;
+                this->_counter = id+1;
+            } else {
+                id = this->_counter++;
+            }
+            return id;
+        }
+
+        void handle(const sys::epoll_event& ev) override;
+        void add(const connection_ptr& self) override;
+        void remove(const connection_ptr& self) override;
+
+        using connection::parent;
+        inline socket_pipeline* parent() const noexcept {
+            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
+        }
+
+    private:
+
+        inline void
+        init() noexcept {
+            determine_id_range(this->_ifaddr, this->_pos0, this->_pos1);
+            this->_counter = this->_pos0;
+        }
+
+    };
+
+
     class socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:

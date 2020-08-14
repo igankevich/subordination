@@ -76,8 +76,10 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         discoverer.cache_directory = value;
     } else if (key == "discoverer.profile") {
         discoverer.profile = sbn::string_to_bool(value);
+    } else if (key == "glusterfs.working-directory") {
+        glusterfs.working_directory = value;
     } else {
-        throw std::runtime_error("unknown property");
+        throw std::invalid_argument("unknown property");
     }
 }
 

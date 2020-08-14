@@ -13,6 +13,7 @@ with_debug = get_option('buildtype').contains('debug')
 with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
 with_examples = get_option('with_examples')
+with_glusterfs = get_option('with_glusterfs')
 
 cpp = meson.get_compiler('cpp')
 
@@ -39,7 +40,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.22.0')
+unistdx = dependency('unistdx', version: '>=0.28.0')
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []
