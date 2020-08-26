@@ -47,7 +47,15 @@
  (map update-all-data-hash list-of-tables)
 )
 
+(define (filter-hash-table table)
+    (hash-for-each (lambda (key value) 
+     (if (zero? (- 5 (length value)) ) (hash-remove! table key) )) 
+    table)
+)
+
 (nftw (list-ref (program-arguments) 1) process-dir)
 (merge-table all-data)
+(filter-hash-table all-data-hash)
+
 (display (hash-count (const #t) all-data-hash))
 (newline)
