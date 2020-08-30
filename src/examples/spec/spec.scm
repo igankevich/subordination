@@ -35,7 +35,7 @@
 (define (add-list-to-hash-table key value)
  (if (hash-ref all-data-hash key) 
   (hash-set! all-data-hash key (cons value (hash-ref all-data-hash key)))
-  (hash-set! all-data-hash key value)
+  (hash-set! all-data-hash key (cons value '()))
  )
 )
 
@@ -53,9 +53,41 @@
     table)
 )
 
+(define (make-seq-n-reverse n) 
+ (if (zero? n) 
+  '()
+  (cons (- n 1) (make-seq-n-reverse (- n 1) )) )
+)
+
+(define (make-seq-n n) (reverse (make-seq-n-reverse n) ))
+
+(define (spectrum alpha-1 alpha-2 r-1 r-2 density angle)
+ ((* density (/ 1 3.14159) (+ 0.5 (* 0.01 r-1 (cos (- angle alpha-1))) (* 0.01 r-2 (cos (* 2 (- angle alpha-2)))) )))
+)
+
+(define (compute-variance lists) 
+ (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (list-ref lists 0)) )
+ (
+  let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )) (make-seq-n n))) )) ( ;; angle
+   (fold spectrum 0 (list-ref lists 0) (list-ref lists 1) (list-ref lists 2) (list-ref lists 3) (list-ref lists 4) angles)
+  )
+ ) )
+)
+
+
 (nftw (list-ref (program-arguments) 1) process-dir)
 (merge-table all-data)
 (filter-hash-table all-data-hash)
 
 (display (hash-count (const #t) all-data-hash))
+;;(hash-for-each (lambda (key value)
+;;    (display key)
+;;    (display " : ")
+;;    (for-each (lambda (s) (display s)(newline) ) value)
+;;    (newline)
+;;    (newline))
+;;    all-data-hash
+;;)
+;;(display (make-seq-n 42))
+(display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
 (newline)
