@@ -64,6 +64,7 @@ namespace sbnd {
         sys::socket_address _old_bind_address;
         weight_type _max_weight = 1;
         weight_type _weight = 0;
+        bool _route = false;
 
     public:
 
@@ -147,9 +148,14 @@ namespace sbnd {
             return reinterpret_cast<socket_pipeline*>(this->connection::parent());
         }
 
-        /*
-           TODO
+        inline bool route() const noexcept { return this->_route; }
+        inline void route(bool rhs) noexcept { this->_route = rhs; }
+
         void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
+            if (!route()) {
+                connection::receive_foreign_kernel(std::move(k));
+                return;
+            }
             using p = sbn::kernel::phases;
             switch (k->phase()) {
                 case p::upstream:
@@ -172,7 +178,6 @@ namespace sbnd {
                     break;
             }
         }
-        */
 
         /// The number of nodes "behind" this one in the hierarchy.
         inline weight_type max_weight() const noexcept { return this->_max_weight; }

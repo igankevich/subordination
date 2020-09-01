@@ -47,6 +47,7 @@ namespace sbnd {
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
             sys::u32 max_connection_attempts = 1;
             sbn::Duration connection_timeout{std::chrono::seconds(7)};
+            bool route = false;
         } remote;
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();

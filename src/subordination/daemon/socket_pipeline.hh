@@ -145,6 +145,7 @@ namespace sbnd {
         sys::port_type _port = 33333;
         std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
         socket_pipeline_scheduler _scheduler;
+        bool _route = false;
 
     public:
 
@@ -180,6 +181,8 @@ namespace sbnd {
         void remove_server(const interface_address& interface_address);
         inline const socket_pipeline_scheduler& scheduler() const noexcept { return this->_scheduler; }
         inline socket_pipeline_scheduler& scheduler() noexcept { return this->_scheduler; }
+        inline bool route() const noexcept { return this->_route; }
+        inline void route(bool rhs) noexcept { this->_route = rhs; }
 
     private:
 
