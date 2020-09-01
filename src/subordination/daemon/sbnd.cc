@@ -76,22 +76,27 @@ int main(int argc, char* argv[]) {
             factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         }
         {
-            auto m = sbn::make_pointer<network_master>(props);
-            m->id(1);
-            factory.instances().add(m.get());
+            auto k = sbn::make_pointer<network_master>(props);
+            k->id(1);
+            factory.instances().add(k.get());
             if (factory.isset(factory_flags::process)) {
-                factory.process().add_listener(m.get());
+                factory.process().add_listener(k.get());
             }
             if (factory.isset(factory_flags::remote)) {
-                factory.remote().add_listener(m.get());
+                factory.remote().add_listener(k.get());
             }
-            factory.local().send(std::move(m));
+            factory.local().send(std::move(k));
         }
         #if defined(SBND_WITH_GLUSTERFS)
         {
             auto k = sbn::make_pointer<glusterfs_kernel>(props.glusterfs);
             k->id(2);
             factory.instances().add(k.get());
+            if (factory.isset(factory_flags::remote)) {
+                auto& remote = factory.remote();
+                remote.add_listener(k.get());
+                remote.scheduler().add_file_system(k->file_system());
+            }
             factory.local().send(std::move(k));
         }
         #endif

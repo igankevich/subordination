@@ -198,7 +198,15 @@ namespace sbn {
         template <class E> inline void
         log_read_error(const E& err) { this->log("read error _", err); }
 
-        inline void ensure_has_id(kernel* k) { if (!k->has_id()) { k->id(++this->_counter); } }
+    protected:
+
+        inline void generate_new_id(kernel* k) {
+            k->id(++this->_counter);
+        }
+
+        inline void ensure_has_id(kernel* k) {
+            if (!k->has_id()) { k->id(++this->_counter); }
+        }
 
     };
 
@@ -208,6 +216,7 @@ namespace sbn {
         return std::find_if(queue.begin(), queue.end(),
                             [a] (const sbn::kernel_ptr& b) {
                                 return a->id() == b->id() &&
+                                    a->old_id() == b->old_id() &&
                                     a->source_application_id() == b->target_application_id();
                             });
     }

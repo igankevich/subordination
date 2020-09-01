@@ -106,7 +106,7 @@ void sbn::properties::read(int argc, char** argv) {
     std::string key, value;
     key.reserve(512), value.reserve(512);
     char ch = 0;
-    for (int i=0; i<argc; ++i) {
+    for (int i=1; i<argc; ++i) {
         char* s = argv[i];
         do {
             key.clear(), value.clear();
@@ -116,7 +116,14 @@ void sbn::properties::read(int argc, char** argv) {
                           key, value, state, success)) {}
             if (success && state == Finished) {
                 trim_right(key), trim_right(value);
-                property(key, value);
+                try {
+                    property(key, value);
+                } catch (const std::exception& err) {
+                    std::stringstream msg;
+                    msg << "invalid property: key=\"" << key << "\", value=\"" << value
+                        << "\": " << err.what();
+                    throw std::runtime_error(msg.str());
+                }
             } else if (!key.empty() || !value.empty()) {
                 std::stringstream msg;
                 msg << "invalid property: key=\"" << key << "\", value=\"" << value << '\"';

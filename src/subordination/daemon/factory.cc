@@ -76,8 +76,10 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         discoverer.cache_directory = value;
     } else if (key == "discoverer.profile") {
         discoverer.profile = sbn::string_to_bool(value);
+    #if defined(SBND_WITH_GLUSTERFS)
     } else if (key == "glusterfs.working-directory") {
         glusterfs.working_directory = value;
+    #endif
     } else {
         throw std::invalid_argument("unknown property");
     }
@@ -191,7 +193,7 @@ void sbnd::Factory::configure(const Properties& props) {
     if (isset(f::transactions)) {
         this->_transactions.recover_after(props.transactions.recover_after);
         sys::mkdirs(props.transactions.directory);
-        transactions(sys::canonical_path(props.transactions.directory).data());
+        transactions(sys::path(sys::canonical_path(props.transactions.directory), "transactions").data());
     }
 }
 

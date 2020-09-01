@@ -7,23 +7,26 @@
 
 #include <unistdx/base/log_message>
 #include <unistdx/net/interface_address>
+#include <unistdx/net/interface_socket_address>
 #include <unistdx/net/socket>
 #include <unistdx/net/socket_address>
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/types.hh>
+#include <subordination/daemon/file_system.hh>
 #include <subordination/daemon/local_server.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
 
 namespace sbnd {
 
-    class local_server: public sbn::connection {
+    class socket_pipeline_server: public sbn::connection {
 
     public:
         using ip_address = sys::ipv4_address;
         using interface_address_type = sys::interface_address<ip_address>;
+        using interface_socket_address_type = sys::interface_socket_address<ip_address>;
         using id_type = typename interface_address_type::rep_type;
         using counter_type = id_type;
 
@@ -31,33 +34,33 @@ namespace sbnd {
         interface_address_type _ifaddr;
         id_type _pos0 = 0;
         id_type _pos1 = 0;
-        counter_type _counter {0};
+        //counter_type _counter {0};
         sys::socket _socket;
 
     public:
 
-        inline explicit
-        local_server(const interface_address_type& ifaddr, sys::port_type port):
-        _ifaddr(ifaddr),
-        _socket(sys::socket_address(ifaddr.address(), port)) {
-            socket_address(sys::socket_address(ifaddr.address(), port));
-            this->init();
-        }
+        explicit
+        socket_pipeline_server(const interface_address_type& ifaddr, sys::port_type port);
 
-        local_server() = delete;
-        local_server(const local_server&) = delete;
-        local_server& operator=(const local_server&) = delete;
-        local_server& operator=(local_server&&) = default;
+        socket_pipeline_server() = delete;
+        socket_pipeline_server(const socket_pipeline_server&) = delete;
+        socket_pipeline_server& operator=(const socket_pipeline_server&) = delete;
+        socket_pipeline_server& operator=(socket_pipeline_server&&) = default;
 
         inline const interface_address_type
         interface_address() const noexcept {
             return this->_ifaddr;
         }
 
+        inline interface_socket_address_type interface_socket_address() const {
+            return {this->_ifaddr.address(), this->_ifaddr.prefix(), socket_address().port()};
+        }
+
         inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
         inline const sys::socket& socket() const noexcept { return this->_socket; }
         inline sys::socket& socket() noexcept { return this->_socket; }
 
+        /*
         inline id_type generate_id() noexcept {
             id_type id;
             if (this->_counter == this->_pos1) {
@@ -68,6 +71,7 @@ namespace sbnd {
             }
             return id;
         }
+        */
 
         void handle(const sys::epoll_event& ev) override;
         void add(const connection_ptr& self) override;
@@ -78,16 +82,45 @@ namespace sbnd {
             return reinterpret_cast<socket_pipeline*>(this->connection::parent());
         }
 
-    private:
+    };
 
+    class socket_pipeline_scheduler {
+
+    public:
+        using client_ptr = std::shared_ptr<socket_pipeline_client>;
+        using client_table = std::unordered_map<sys::socket_address,client_ptr>;
+        using client_iterator = typename client_table::const_iterator;
+        using server_ptr = std::shared_ptr<socket_pipeline_server>;
+        using server_array = std::vector<server_ptr>;
+        using weight_type = uint32_t;
+        using file_system_ptr = std::shared_ptr<file_system>;
+
+    private:
+        std::vector<file_system_ptr> _file_systems;
+        std::vector<sys::socket_address> _nodes;
+        weight_type _local_weight = 0;
+        bool _local = true;
+
+    public:
+
+        client_iterator schedule(const sbn::kernel* k,
+                                 const client_table& clients,
+                                 const server_array& servers);
+
+        inline void local(bool rhs) noexcept { this->_local = rhs; }
+        inline bool local() const noexcept { return this->_local; }
+
+        inline void add_file_system(file_system_ptr ptr) {
+            this->_file_systems.emplace_back(std::move(ptr));
+        }
+
+        template <class ... Args>
         inline void
-        init() noexcept {
-            determine_id_range(this->_ifaddr, this->_pos0, this->_pos1);
-            this->_counter = this->_pos0;
+        log(const Args& ... args) const {
+            sys::log_message("scheduler", args ...);
         }
 
     };
-
 
     class socket_pipeline: public sbn::basic_socket_pipeline {
 
@@ -97,11 +130,11 @@ namespace sbnd {
         using weight_type = uint32_t;
 
     private:
-        using server_ptr = std::shared_ptr<local_server>;
+        using server_ptr = std::shared_ptr<socket_pipeline_server>;
         using server_array = std::vector<server_ptr>;
         using server_iterator = typename server_array::iterator;
         using server_const_iterator = typename server_array::const_iterator;
-        using client_ptr = std::shared_ptr<remote_client>;
+        using client_ptr = std::shared_ptr<socket_pipeline_client>;
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
         using id_type = sbn::kernel::id_type;
@@ -111,9 +144,7 @@ namespace sbnd {
         client_table _clients;
         sys::port_type _port = 33333;
         std::chrono::milliseconds _socket_timeout = std::chrono::seconds(7);
-        id_type _counter = 0;
-        weight_type _local_weight = 0;
-        bool _uselocalhost = true;
+        socket_pipeline_scheduler _scheduler;
 
     public:
 
@@ -146,16 +177,15 @@ namespace sbnd {
         inline sys::port_type port() const noexcept { return this->_port; }
         inline const server_array& servers() const noexcept { return this->_servers; }
         inline const client_table& clients() const noexcept { return this->_clients; }
-        inline void use_localhost(bool rhs) noexcept { this->_uselocalhost = rhs; }
-        inline bool use_localhost() const noexcept { return this->_uselocalhost; }
         void remove_server(const interface_address& interface_address);
+        inline const socket_pipeline_scheduler& scheduler() const noexcept { return this->_scheduler; }
+        inline socket_pipeline_scheduler& scheduler() noexcept { return this->_scheduler; }
 
     private:
 
         void remove_client(const sys::socket_address& vaddr);
         void remove_client(client_iterator result);
         void remove_server(server_iterator result);
-        client_iterator advance_neighbour_iterator(const sbn::kernel* k);
 
         server_iterator
         find_server(const interface_address& interface_address);
@@ -166,7 +196,7 @@ namespace sbnd {
         server_iterator
         find_server(const sys::socket_address& dest);
 
-        void ensure_identity(sbn::kernel* k, const sys::socket_address& dest);
+        //void ensure_identity(sbn::kernel* k, const sys::socket_address& dest);
 
         void
         emplace_client(const sys::socket_address& vaddr, const client_ptr& s);
@@ -202,8 +232,8 @@ namespace sbnd {
             }
         }
 
-        friend class local_server;
-        friend class remote_client;
+        friend class socket_pipeline_server;
+        friend class socket_pipeline_client;
 
     };
 

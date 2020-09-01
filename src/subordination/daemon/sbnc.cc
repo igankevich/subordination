@@ -492,7 +492,7 @@ int main(int argc, char* argv[]) {
     sbnc::factory.types().add<sbnd::Pipeline_status_kernel>(9);
     try {
         sbnc::factory.start();
-        sbnc::factory.remote().use_localhost(false);
+        sbnc::factory.remote().scheduler().local(false);
         sbn::kernel_ptr k;
         switch (command) {
             case Command::Submit: k = sbn::make_pointer<Submit>(argc, argv); break;

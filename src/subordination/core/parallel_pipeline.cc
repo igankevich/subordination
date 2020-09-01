@@ -147,7 +147,7 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
 
 void sbn::parallel_pipeline::start() {
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::starting);
+    this->setstate(states::starting);
     const auto num_upstream_threads = this->_upstream_threads.size();
     const auto num_downstream_threads = this->_downstream_threads.size();
     if (num_downstream_threads == 0) {
@@ -176,12 +176,12 @@ void sbn::parallel_pipeline::start() {
                                   this->_downstream_semaphores[i]);
         });
     }
-    this->setstate(pipeline_state::started);
+    this->setstate(states::started);
 }
 
 void sbn::parallel_pipeline::stop() {
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::stopping);
+    this->setstate(states::stopping);
     this->_upstream_semaphore.notify_all();
     this->_timer_semaphore.notify_all();
     for (auto& s : this->_downstream_semaphores) { s.notify_all(); }
@@ -192,7 +192,7 @@ void sbn::parallel_pipeline::wait() {
     if (this->_timer_thread.joinable()) { this->_timer_thread.join(); }
     for (auto& t : this->_downstream_threads) { if (t.joinable()) { t.join(); } }
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::stopped);
+    this->setstate(states::stopped);
 }
 
 void sbn::parallel_pipeline::clear(kernel_sack& sack) {
@@ -203,8 +203,8 @@ void sbn::parallel_pipeline::clear(kernel_sack& sack) {
 
 void sbn::parallel_pipeline::num_downstream_threads(size_t n) {
     switch (state()) {
-        case pipeline_state::initial: break;
-        case pipeline_state::stopped: break;
+        case states::initial: break;
+        case states::stopped: break;
         default: if (!this->_downstream_threads.empty()) {
                      throw std::runtime_error("invalid pipeline state");
                  }
@@ -215,8 +215,8 @@ void sbn::parallel_pipeline::num_downstream_threads(size_t n) {
 
 void sbn::parallel_pipeline::num_upstream_threads(size_t n) {
     switch (state()) {
-        case pipeline_state::initial: break;
-        case pipeline_state::stopped: break;
+        case states::initial: break;
+        case states::stopped: break;
         default: if (!this->_upstream_threads.empty()) {
                      throw std::runtime_error("invalid pipeline state");
                  }

@@ -87,7 +87,7 @@ namespace sbnd {
 
     };
 
-    class Factory: public sbn::pipeline_base {
+    class Factory {
 
     private:
         sbn::parallel_pipeline _local;
