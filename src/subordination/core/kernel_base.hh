@@ -39,6 +39,10 @@ namespace sbn {
         failure occures in the middle of its \link sbn::kernel::act \endlink
         method. */
         transactional = 1<<4,
+        /** Send the kernel to the superior of cluster node hierarchy. */
+        send_to_superior_node = 1<<5,
+        /** Send the kernel to all of the subordinates of cluster node hierarchy. */
+        send_to_subordinate_node = 1<<6,
     };
 
     UNISTDX_FLAGS(kernel_flag)

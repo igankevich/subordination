@@ -1,5 +1,6 @@
 config = configuration_data()
 config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
+config.set('SBND_WITH_GLUSTERFS', with_glusterfs)
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([
@@ -31,20 +32,26 @@ sbnd = declare_dependency(
     dependencies: [sbn],
 )
 
+sbnd_exe_src = files([
+  'factory.cc',
+  'master_discoverer.cc',
+  'network_master.cc',
+  'probe.cc',
+  'prober.cc',
+  'resident_kernel.cc',
+  'sbnd.cc',
+  'terminate_kernel.cc',
+  'transaction_test_kernel.cc',
+  'unix_socket_pipeline.cc',
+])
+
+if with_glusterfs
+    subdir('glusterfs')
+endif
+
 sbnd_exe = executable(
     'sbnd',
-    sources: files([
-        'factory.cc',
-        'master_discoverer.cc',
-        'network_master.cc',
-        'probe.cc',
-        'prober.cc',
-        'resident_kernel.cc',
-        'sbnd.cc',
-        'terminate_kernel.cc',
-        'transaction_test_kernel.cc',
-        'unix_socket_pipeline.cc',
-    ]),
+    sources: sbnd_exe_src,
     include_directories: src,
     dependencies: [sbnd],
     install: true,

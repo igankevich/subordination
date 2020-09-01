@@ -23,23 +23,25 @@ sbn::kernel::~kernel() {
 }
 
 void sbn::kernel::read(kernel_buffer& in) {
-    in >> this->_result >> this->_id;
+    in >> this->_result >> this->_id >> this->_old_id;
     in >> this->_at;
     in >> this->_flags;
     in >> this->_parent_id;
     in >> this->_principal_id;
     in >> this->_phase;
+    in >> this->_path;
     this->_flags |= kernel_flag::parent_is_id;
     this->_flags |= kernel_flag::principal_is_id;
 }
 
 void sbn::kernel::write(kernel_buffer& out) const {
-    out << this->_result << this->_id;
+    out << this->_result << this->_id << this->_old_id;
     out << this->_at;
     out << this->_flags;
     out << parent_id();
     out << principal_id();
     out << this->_phase;
+    out << this->_path;
 }
 
 void sbn::kernel::write_header(kernel_buffer& out) const {
@@ -108,6 +110,7 @@ std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
         "type", typeid(rhs).name(),
         "type-id", rhs.type_id(),
         "id", rhs.id(),
+        "old-id", rhs.old_id(),
         "src", rhs.source(),
         "dst", rhs.destination(),
         "ret", rhs.return_code(),

@@ -123,19 +123,19 @@ void sbn::basic_socket_pipeline::flush_buffers() {
 
 void sbn::basic_socket_pipeline::start() {
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::starting);
+    this->setstate(states::starting);
     this->_thread = std::thread([this] () {
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
         loop();
     });
-    this->setstate(pipeline_state::started);
+    this->setstate(states::started);
 }
 
 void sbn::basic_socket_pipeline::stop() {
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::stopping);
+    this->setstate(states::stopping);
     for (auto& conn : this->_connections) { if (conn) { conn->stop(); } }
     this->_semaphore.notify_all();
 }
@@ -144,7 +144,7 @@ void sbn::basic_socket_pipeline::wait() {
     auto& t = this->_thread;
     if (t.joinable()) { t.join(); }
     lock_type lock(this->_mutex);
-    this->setstate(pipeline_state::stopped);
+    this->setstate(states::stopped);
 }
 
 void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {

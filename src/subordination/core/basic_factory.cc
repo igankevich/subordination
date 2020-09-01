@@ -48,25 +48,19 @@ namespace  {
                 auto n = std::stoi(value);
                 if (n < 1) { throw std::out_of_range("out of range"); }
                 this->_num_upstream_threads = n;
-                return;
-            }
-            if (key == "local.num-downstream-threads") {
+            } else if (key == "local.num-downstream-threads") {
                 auto n = std::stoi(value);
                 if (n < 0) { throw std::out_of_range("out of range"); }
                 this->_num_downstream_threads = n;
-                return;
-            }
-            if (key == "remote.min-input-buffer-size") {
+            } else if (key == "remote.min-input-buffer-size") {
                 auto n = std::stoul(value);
                 this->_min_input_buffer_size = n;
-                return;
-            }
-            if (key == "remote.min-output-buffer-size") {
+            } else if (key == "remote.min-output-buffer-size") {
                 auto n = std::stoul(value);
                 this->_min_output_buffer_size = n;
-                return;
+            } else {
+                throw std::invalid_argument("unknown property");
             }
-            throw std::runtime_error("unknown property");
         }
 
         inline void init_default_values() {

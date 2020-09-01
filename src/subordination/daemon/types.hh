@@ -19,7 +19,7 @@ namespace sbnd {
     class prober;
     class process_pipeline;
     class process_pipeline_kernel;
-    class remote_client;
+    class socket_pipeline_client;
     class socket_pipeline;
     class socket_pipeline_kernel;
     class unix_socket_client;

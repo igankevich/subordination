@@ -2,29 +2,17 @@
 #include <sstream>
 #include <string>
 
+#include <subordination/bits/string.hh>
 #include <subordination/core/properties.hh>
+
+using sbn::bits::trim_both;
+using sbn::bits::trim_right;
 
 namespace  {
 
     constexpr const char line_delimiter = '\n';
     constexpr const char word_delimiter = '=';
     constexpr const char comment_character = '#';
-
-    inline void trim_right(std::string& s) {
-        while (!s.empty() && std::isspace(s.back())) { s.pop_back(); }
-    }
-
-    inline void trim_left(std::string& s) {
-        std::string::size_type i = 0;
-        auto n = s.size();
-        for (; i<n && std::isspace(s[i]); ++i) {}
-        if (i != n) { s = s.substr(i); }
-    }
-
-    inline void trim_both(std::string& s) {
-        trim_right(s);
-        trim_left(s);
-    }
 
     enum State { Key, Value, Comment, Finished };
 
@@ -118,7 +106,7 @@ void sbn::properties::read(int argc, char** argv) {
     std::string key, value;
     key.reserve(512), value.reserve(512);
     char ch = 0;
-    for (int i=0; i<argc; ++i) {
+    for (int i=1; i<argc; ++i) {
         char* s = argv[i];
         do {
             key.clear(), value.clear();
@@ -128,7 +116,14 @@ void sbn::properties::read(int argc, char** argv) {
                           key, value, state, success)) {}
             if (success && state == Finished) {
                 trim_right(key), trim_right(value);
-                property(key, value);
+                try {
+                    property(key, value);
+                } catch (const std::exception& err) {
+                    std::stringstream msg;
+                    msg << "invalid property: key=\"" << key << "\", value=\"" << value
+                        << "\": " << err.what();
+                    throw std::runtime_error(msg.str());
+                }
             } else if (!key.empty() || !value.empty()) {
                 std::stringstream msg;
                 msg << "invalid property: key=\"" << key << "\", value=\"" << value << '\"';

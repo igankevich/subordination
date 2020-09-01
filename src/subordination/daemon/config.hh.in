@@ -4,4 +4,6 @@
 #define SBND_SHARED_STATE_DIR "@sharedstatedir@"
 #define SBND_SOCKET "\0/tmp/.sbnd"
 
+#mesondefine SBND_WITH_GLUSTERFS
+
 #endif // vim:filetype=cpp

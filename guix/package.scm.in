@@ -8,8 +8,9 @@
   (version "@version@")
   (source "@source_root@")
   (build-system meson-build-system)
-  (arguments `(#:build-type "release"
-               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-O3 -march=native")
+  (arguments `(#:build-type "debug"
+               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args="
+                                       "-Dwith_glusterfs=true")
                #:tests? #f))
   (inputs
    `(("unistdx" ,(@ (gnu packages unistdx) unistdx))
