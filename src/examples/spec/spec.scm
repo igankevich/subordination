@@ -61,14 +61,14 @@
 
 (define (make-seq-n n) (reverse (make-seq-n-reverse n) ))
 
-(define (spectrum alpha-1 alpha-2 r-1 r-2 density angle)
- ((* density (/ 1 3.14159) (+ 0.5 (* 0.01 r-1 (cos (- angle alpha-1))) (* 0.01 r-2 (cos (* 2 (- angle alpha-2)))) )))
+(define (spectrum alpha-1 alpha-2 r-1 r-2 density angle sum)
+ (+ sum ((* density (/ 1 3.14159) (+ 0.5 (* 0.01 r-1 (cos (- angle alpha-1))) (* 0.01 r-2 (cos (* 2 (- angle alpha-2)))) ))))
 )
 
 (define (compute-variance lists) 
- (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (list-ref lists 0)) )
+ (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (length (list-ref lists 0))) )
  (
-  let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )) (make-seq-n n))) )) ( ;; angle
+  let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ( ;; angle
    (fold spectrum 0 (list-ref lists 0) (list-ref lists 1) (list-ref lists 2) (list-ref lists 3) (list-ref lists 4) angles)
   )
  ) )
@@ -89,5 +89,6 @@
 ;;    all-data-hash
 ;;)
 ;;(display (make-seq-n 42))
+;;(display (hash-ref all-data-hash "2010 06 29 10 00"))
 (display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
 (newline)
