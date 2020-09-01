@@ -18,10 +18,11 @@ namespace sbn {
 
     public:
         pipeline_base() = default;
-        virtual ~pipeline_base() = default;
+        ~pipeline_base() = default;
+        pipeline_base(const pipeline_base&) = default;
+        pipeline_base& operator=(const pipeline_base&) = default;
         pipeline_base(pipeline_base&&) = default;
-        pipeline_base(const pipeline_base&) = delete;
-        pipeline_base& operator=(pipeline_base&) = delete;
+        pipeline_base& operator=(pipeline_base&&) = default;
 
         inline states state() const noexcept { return this->_state; }
         inline bool starting() const noexcept { return this->_state == states::starting; }
@@ -68,6 +69,13 @@ namespace sbn {
         index_type _index{};
 
     public:
+        pipeline() = default;
+        virtual ~pipeline() = default;
+        pipeline(const pipeline&) = delete;
+        pipeline& operator=(const pipeline&) = delete;
+        pipeline(pipeline&&) = delete;
+        pipeline& operator=(pipeline&&) = delete;
+
         virtual void send(kernel_ptr&& k) = 0;
         virtual void forward(foreign_kernel_ptr&& k);
         virtual void recover(kernel_ptr&& k);
