@@ -15,11 +15,13 @@ namespace sbn {
         protected:
             SCM _act = SCM_UNSPECIFIED;
             SCM _react = SCM_UNSPECIFIED;
+            SCM _data{scm_make_undefined_variable()};
 
         public:
 
             Kernel() = default;
-            inline Kernel(SCM act, SCM react): _act(act), _react(react) {}
+            inline Kernel(SCM act, SCM react, SCM data) noexcept:
+            _act(act), _react(react), _data(scm_make_variable(data)) {}
 
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
@@ -29,8 +31,11 @@ namespace sbn {
             inline Kernel& operator=(const Kernel& rhs) {
                 this->_act = rhs._act;
                 this->_react = rhs._react;
+                this->_data = rhs._data;
                 return *this;
             }
+
+            inline SCM data() noexcept { return this->_data; }
 
         };
 
