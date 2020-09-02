@@ -79,9 +79,8 @@
 
 (define (compute-variance lists) 
  (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (length (list-ref lists 0))) )
- (let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ( ;; angle
-   (fold spectrum 0 (list-ref lists 0) (list-ref lists 1) (list-ref lists 2) (list-ref lists 3) (list-ref lists 4) angles)
-  )
+ (let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ;; angle
+  (fold spectrum 0 (list-ref lists 0) (list-ref lists 1) (list-ref lists 2) (list-ref lists 3) (list-ref lists 4) angles)
  ) )
 )
 
