@@ -32,6 +32,7 @@ namespace sbn {
         // TODO replace with sys::process
         using thread_type = std::thread;
         using thread_array = std::vector<thread_type>;
+        using thread_init_type = std::function<void(size_t)>;
 
     private:
         /// Same mutex for all kernel queues.
@@ -50,6 +51,8 @@ namespace sbn {
         semaphore_array _downstream_semaphores;
         /// Kernels that threw an exception are sent to this pipeline.
         pipeline* _error_pipeline = nullptr;
+        /// Function that is called in each new thread.
+        thread_init_type _thread_init;
 
     public:
 
@@ -169,6 +172,8 @@ namespace sbn {
         inline pipeline* error_pipeline() const noexcept {
             return this->_error_pipeline;
         }
+
+        inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
     private:
         void upstream_loop(kernel_queue& downstream_queue);

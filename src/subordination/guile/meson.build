@@ -5,7 +5,7 @@ sbn_guile_src = files([
     'main.cc',
 ])
 
-sbn_guile_deps = [sbn,threads,unistdx,guile]
+sbn_guile_deps = [sbn,threads,unistdx,guile,dependency('zlib')]
 
 sbn_guile_exe = executable(
     'sbn-guile',

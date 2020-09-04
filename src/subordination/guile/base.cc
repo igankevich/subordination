@@ -2,13 +2,6 @@
 
 #include <subordination/guile/base.hh>
 
-namespace  {
-    struct c_deleter {
-        inline void operator()(void* ptr) { std::free(ptr); }
-    };
-    using c_string = std::unique_ptr<char,c_deleter>;
-}
-
 std::string sbn::guile::object_to_string(SCM scm) {
     SCM port = scm_open_output_string();
     scm_write(scm, port);

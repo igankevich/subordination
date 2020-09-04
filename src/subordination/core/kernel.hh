@@ -76,6 +76,8 @@ namespace sbn {
         // node-local type id
         kernel_type::id_type _type_id = 0;
         kernel_ptr* _this_ptr{};
+        // A pipeline that received the kernel. Node-local variable.
+        pipeline* _source_pipeline{};
 
     private:
         bool _routed = false;
@@ -103,6 +105,8 @@ namespace sbn {
         inline const std::string& path() const noexcept { return this->_path; }
         inline void path(const std::string& rhs) { this->_path = rhs; }
         inline void path(std::string&& rhs) { this->_path = std::move(rhs); }
+        inline pipeline* source_pipeline() const noexcept { return this->_source_pipeline; }
+        inline void source_pipeline(pipeline* rhs) noexcept { this->_source_pipeline = rhs; }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {
