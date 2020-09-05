@@ -1,5 +1,6 @@
 #include <zlib.h>
 
+#include <cmath>
 #include <sstream>
 
 #include <subordination/api.hh>
@@ -143,6 +144,34 @@ namespace {
         return scm_from_utf8_string(tmp.str().data());
     }
 
+    template <class T>
+    SCM compute_variance(SCM length, SCM alpha1, SCM alpha2, SCM rr1, SCM rr2, SCM density) {
+        const auto n = scm_to_int(length);
+        const T theta0 = 0;
+        const T theta1 = 2.0f*M_PI;
+        //int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
+        T sum = 0;
+        for (int i=0; i<n; ++i) {
+            auto a1 = scm_to_double(scm_car(alpha1));
+            auto a2 = scm_to_double(scm_car(alpha2));
+            auto r1 = scm_to_double(scm_car(rr1));
+            auto r2 = scm_to_double(scm_car(rr2));
+            auto d = scm_to_double(scm_car(density));
+            for (int j=0; j<n; ++j) {
+                const T theta = theta0 + (theta1 - theta0)*j/n;
+                sum += d * (T{1}/T{M_PI}) *
+                    (T{0.5} + T{0.01}*r1*std::cos(      theta - a1)
+                            + T{0.01}*r2*std::cos(T{2}*(theta - a2)));
+            }
+            alpha1 = scm_cdr(alpha1);
+            alpha2 = scm_cdr(alpha2);
+            rr1 = scm_cdr(rr1);
+            rr2 = scm_cdr(rr2);
+            density = scm_cdr(density);
+        }
+        return scm_from_double(sum);
+    }
+
     void set_current_kernel(sbn::guile::Kernel_base* k) {
         scm_fluid_set_x(fluid_current_kernel, scm_from_pointer(k, nullptr));
     }
@@ -175,6 +204,11 @@ namespace {
         parent->postamble(postamble);
         parent->result(initial);
         parent->upstream_children();
+        return SCM_UNSPECIFIED;
+    }
+
+    SCM kernel_exit(SCM exit_code) {
+        sbn::exit(scm_to_int(exit_code));
         return SCM_UNSPECIFIED;
     }
 
@@ -219,7 +253,6 @@ sbn::guile::Kernel::~Kernel() noexcept {
 }
 
 void sbn::guile::Kernel::act() {
-    scm_init_guile();
     SCM code = scm_list_3(scm_sym_lambda,
                           scm_list_n(sym_self, sym_data, SCM_UNDEFINED),
                           this->_act);
@@ -231,7 +264,6 @@ void sbn::guile::Kernel::act() {
 }
 
 void sbn::guile::Kernel::react(sbn::kernel_ptr&& child) {
-    scm_init_guile();
     SCM code = scm_list_3(scm_sym_lambda,
                           scm_list_n(sym_self, sym_child, sym_data, SCM_UNDEFINED),
                           this->_react);
@@ -331,6 +363,11 @@ The default is pipeline is @code{local}.)",
         {"path"}, {}, {},
         R"("Read GZ file as string.)",
         VTB_GUILE_1(gzip_file_to_string));
+    define_procedure<6,0,0>(
+        "compute-variance",
+        {"length","alpha1","alpha2","r1","r2","density"}, {}, {},
+        R"("Compute spectrum variance.)",
+        VTB_GUILE_6(compute_variance<double>));
     define_procedure<2,3,0>(
         "kernel-map",
         {"proc","lists"}, {"pipeline","child-pipeline","block-size"}, {},
@@ -341,10 +378,14 @@ The default is pipeline is @code{local}.)",
         {"cons","postamble","initial"}, {}, {},
         R"("Fold child kernels.)",
         VTB_GUILE_3(kernel_react));
+    define_procedure<1,0,0>(
+        "kernel-exit",
+        {"exit-code"}, {}, {},
+        R"("Exit the script.)",
+        VTB_GUILE_1(kernel_exit));
 }
 
 void sbn::guile::Main::act() {
-    scm_init_guile();
     SCM ret = SCM_EOL;
     if (auto* a = target_application()) {
         const auto& args = a->arguments();
@@ -368,7 +409,6 @@ void sbn::guile::Main::act() {
 }
 
 void sbn::guile::Map_kernel::act() {
-    scm_init_guile();
     result(SCM_EOL);
     auto* ppl = symbol_to_pipeline(this->_pipeline);
     std::vector<SCM> lists;
@@ -425,7 +465,6 @@ void sbn::guile::Map_kernel::write(sbn::kernel_buffer& out) const {
 }
 
 void sbn::guile::Map_child_kernel::act() {
-    scm_init_guile();
     SCM code = scm_eval(this->_proc, scm_current_module());
     SCM map = scm_variable_ref(scm_c_lookup("map"));
     result(scm_apply_0(map, scm_cons(code, this->_lists)));

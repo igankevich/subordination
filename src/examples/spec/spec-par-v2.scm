@@ -7,6 +7,16 @@
   (ice-9 pretty-print)
   (oop goops))
 
+(define %start-time (tms:clock (times)))
+
+;; https://rosettacode.org/wiki/Flatten_a_list#Scheme
+(define (flatten x depth)
+  (cond
+    ((null? x) '())
+    ((not (pair? x)) (list x))
+    (else (append (flatten (car x) (- depth 1))
+                  (flatten (cdr x) (- depth 1))))))
+
 (define filename-rx (make-regexp "^([0-9]+)([dijkw])([0-9]+)\\.txt\\.gz$"))
 (define not-space (char-set-complement (char-set #\space)))
 (define %pi (acos -1))
@@ -77,26 +87,22 @@
 (hash-for-each
   (lambda (key value)
     (if (not (= (length value) 5))
-      (begin
-        (format (current-error-port) "remove ~a length ~a\n" key (length value))
-        (hash-remove! files key))))
-  files)
-(hash-for-each
-  (lambda (key value)
-    (format (current-error-port) "~a length ~a\n" key (length value)))
+      (hash-remove! files key)))
   files)
 (kernel-map
   '(lambda (five-files)
-     (format (current-error-port) "five-files ~a\n" five-files)
      (define records (make-hash-table))
      ;; read five files
      (for-each
        (lambda (file)
          (define variable (spectrum-file-variable file))
          (define lines
-           (string-split
-             (string-trim-both (gzip-file->string (spectrum-file-path file)))
-             #\newline))
+           (filter
+             (lambda (line)
+               (not (string-null? (string-trim-both line))))
+             (string-split
+               (string-trim-both (gzip-file->string (spectrum-file-path file)))
+               #\newline)))
          (for-each
            (lambda (s)
              (let* ((timestamp (substring s 0 16))
@@ -114,28 +120,43 @@
      ;; remove incomplete records
      (hash-for-each
        (lambda (timestamp arrays)
-         (if (not (= (length (delete-duplicates (map length arrays))) 1))
+         (define min-length (apply min (map length arrays)))
+         (if (or (not (= (length arrays) 5)) (= min-length 0))
            (begin
-             (format (current-error-port) "remove ~a length ~a\n"
-                     timestamp (map length arrays))
-             (force-output (current-error-port))
+             ;;(format (current-error-port) "remove ~a length ~a\n"
+             ;;        timestamp (map length arrays))
+             ;;(force-output (current-error-port))
              (hash-remove! records timestamp))))
        records)
      ;; compute variance
-     (map
-       (lambda (data)
-         (define file (car five-files))
-         (cons (spectrum-file-station file) data))
-       (hash-map->list
-         (lambda (timestamp arrays)
-           (list timestamp (compute-variance arrays)))
-         records)))
+     (hash-map->list
+       (lambda (timestamp arrays)
+         0.0
+         ;;(compute-variance arrays)
+         )
+       records)
+     ;;(map
+     ;;  (lambda (data)
+     ;;    (define file (car five-files))
+     ;;    (cons (spectrum-file-station file) data))
+     ;;  (hash-map->list
+     ;;    (lambda (timestamp arrays)
+     ;;      (list timestamp (compute-variance arrays)))
+     ;;    records))
+     )
   (hash-map->list (lambda (key value) value) files))
 
 (kernel-react
-  '(lambda (new-row rows)
-     (cons new-row rows))
+  '(lambda (new-rows rows)
+     (append new-rows rows))
   '(lambda (rows)
-     (pretty-print rows)
+     (define %end-time (tms:clock (times)))
+     (call-with-output-file "time.log"
+       (lambda (port)
+         (format port "~a\n"
+                 (exact->inexact (/ (- %end-time %start-time) internal-time-units-per-second)))))
+     (call-with-output-file "nspectra.log"
+       (lambda (port) (format port "~a\n" (length (flatten rows 999)))))
+     (pretty-print (length rows))
      (force-output (current-error-port)))
   '())

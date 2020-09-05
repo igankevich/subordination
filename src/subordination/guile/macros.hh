@@ -109,4 +109,9 @@ namespace {
         return ::scheme_call(func,a,b,c,d,e); \
     })
 
+#define VTB_GUILE_6(func) \
+    static_cast<SCM(*)(SCM,SCM,SCM,SCM,SCM,SCM)>([] (SCM a, SCM b, SCM c, SCM d, SCM e, SCM f) -> SCM { \
+        return ::scheme_call(func,a,b,c,d,e,f); \
+    })
+
 #endif // vim:filetype=cpp
