@@ -8,10 +8,9 @@
  (ice-9 i18n)
  (srfi srfi-1)
  (srfi srfi-13)
+ (srfi srfi-26)
  (ice-9 hash-table)
  (ice-9 ftw))
-
-(define all-data '())
 
 (define (process-file path-to-file)
  (alist->hash-table 
@@ -26,30 +25,24 @@
 
 (define (process-dir path statinfo flag base level)
  ;;(display flag)
- (if (eq? (stat:type statinfo) 'regular) (set! all-data (cons (process-file path) all-data )))
- #t
+  (if (eq? (stat:type statinfo) 'regular) (process-file path))
+  #t
 )
 
-(define all-data-hash (make-hash-table))
-
-(define (add-list-to-hash-table key value)
- (if (hash-ref all-data-hash key) 
-  (hash-set! all-data-hash key (cons value (hash-ref all-data-hash key)))
-  (hash-set! all-data-hash key (cons value '()))
- )
-)
-
-(define (update-all-data-hash hash-table)
- (hash-for-each add-list-to-hash-table hash-table)
-)
-
-(define (merge-table list-of-tables) 
- (map update-all-data-hash list-of-tables)
+(define (merge-table list-of-tables all-hash-table) 
+  (map (lambda (hash-table) 
+    (hash-for-each (lambda (key value) 
+      (if (hash-ref all-hash-table key) 
+        (hash-set! all-hash-table key (cons value (hash-ref all-hash-table key)))
+        (hash-set! all-hash-table key (cons value '()))
+      )
+    ) hash-table)
+  ) list-of-tables)
 )
 
 (define (filter-hash-table table)
     (hash-for-each (lambda (key value) 
-     (if (zero? (- 5 (length value)) ) (hash-remove! table key) )) 
+     (if (not (zero? (- 5 (length value))) ) (hash-remove! table key) )) 
     table)
 )
 
@@ -85,11 +78,20 @@
 )
 
 
-(nftw (list-ref (program-arguments) 1) process-dir)
-(merge-table all-data)
-(filter-hash-table all-data-hash)
+(let ((all-data '()) (all-data-hash (make-hash-table)))
+  (nftw (list-ref (program-arguments) 1) 
+    (lambda (path statinfo flag base level) 
+      (if (eq? (stat:type statinfo) 'regular) (set! all-data (cons (process-file path) all-data)))
+      #t
+    )
+  )
+  (display (length all-data)) 
+  (merge-table all-data all-data-hash)
+  (filter-hash-table all-data-hash)
+  (display (hash-count (const #t) all-data-hash))
+  (display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
+)
 
-(display (hash-count (const #t) all-data-hash))
 ;;(hash-for-each (lambda (key value)
 ;;    (display key)
 ;;    (display " : ")
@@ -100,5 +102,5 @@
 ;;)
 ;;(display (make-seq-n 42))
 ;;(display (hash-ref all-data-hash "2010 06 29 10 00"))
-(display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
+;;(display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
 (newline)
