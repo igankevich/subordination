@@ -5,6 +5,7 @@
   (ice-9 regex)
   (ice-9 textual-ports)
   (ice-9 pretty-print)
+  (ice-9 threads)
   (oop goops))
 
 (define %start-time (tms:clock (times)))
@@ -101,7 +102,8 @@
           (hash-remove! files key)))
       files)))
 (define variances
-  (map
+  (n-par-map
+    (string->number (getenv "SPEC_NUM_THREADS"))
     (lambda (five-files)
       (define records (make-hash-table))
       ;; read five files
