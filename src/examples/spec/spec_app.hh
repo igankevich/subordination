@@ -1,8 +1,6 @@
 #ifndef EXAMPLES_SPEC_SPEC_APP_HH
 #define EXAMPLES_SPEC_SPEC_APP_HH
 
-#include <zlib.h>
-
 #include <array>
 #include <bitset>
 #include <cmath>
@@ -19,40 +17,12 @@
 #include <subordination/api.hh>
 #include <subordination/core/error.hh>
 
+#include <spec/gzip_file.hh>
+#include <spec/timestamp.hh>
+#include <spec/variable.hh>
+
 using Year = int32_t;
-using Month = int32_t;
-using Day = int32_t;
-using Hour = int32_t;
-using Minute = int32_t;
 using Station = int32_t;
-
-constexpr const auto max_variables = 5;
-
-enum class Variable: int {D=0, I=1, J=2, K=3, W=4};
-
-Variable string_to_variable(const std::string& s) {
-    if (s.empty()) { throw std::invalid_argument("bad variable"); }
-    switch (s.front()) {
-        case 'd': return Variable::D;
-        case 'i': return Variable::I;
-        case 'j': return Variable::J;
-        case 'k': return Variable::K;
-        case 'w': return Variable::W;
-        default: throw std::invalid_argument("bad variable");
-    }
-}
-
-namespace std {
-    template <>
-    class hash<Variable>: public hash<std::underlying_type<Variable>::type> {
-    private:
-        using tp = std::underlying_type<Variable>::type;
-    public:
-        size_t operator()(Variable v) const noexcept {
-            return this->hash<tp>::operator()(tp(v));
-        }
-    };
-}
 
 namespace  {
 
@@ -61,74 +31,6 @@ namespace  {
         sys::log_message("spec", fmt, args ...);
     }
 
-}
-
-class Timestamp {
-
-private:
-    std::uint64_t _timestamp{};
-public:
-    std::string orig;
-
-public:
-
-    Timestamp() = default;
-    ~Timestamp() = default;
-    Timestamp(const Timestamp&) = default;
-    Timestamp& operator=(const Timestamp&) = default;
-    Timestamp(Timestamp&&) = default;
-    Timestamp& operator=(Timestamp&&) = default;
-
-    inline std::uint64_t get() const noexcept { return this->_timestamp; }
-
-    inline bool operator==(const Timestamp& rhs) const noexcept {
-        return this->_timestamp == rhs._timestamp;
-    }
-
-    inline bool operator<(const Timestamp& rhs) const noexcept {
-        return this->_timestamp < rhs._timestamp;
-    }
-
-    friend std::istream&
-    operator>>(std::istream& in, Timestamp& rhs) {
-        // YYYY MM DD hh mm
-        // 2010 01 01 00 00
-        // N.B. std::get_time is not thread-safe
-        std::tm t{};
-        in >> t.tm_year;
-        in >> t.tm_mon;
-        in >> t.tm_mday;
-        in >> t.tm_hour;
-        in >> t.tm_min;
-        rhs._timestamp = 60*(t.tm_min + 60*(t.tm_hour + 24*(t.tm_mday + 31*(t.tm_mon + 12*t.tm_year))));
-        return in;
-    }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const Timestamp& rhs) {
-        return out << rhs._timestamp;
-    }
-
-    friend sbn::kernel_buffer&
-    operator>>(sbn::kernel_buffer& in, Timestamp& rhs) {
-        return in >> rhs._timestamp;
-    }
-
-    friend sbn::kernel_buffer&
-    operator<<(sbn::kernel_buffer& out, const Timestamp& rhs) {
-        return out << rhs._timestamp;
-    }
-
-};
-
-namespace std {
-    template <>
-    class hash<Timestamp>: public hash<std::time_t> {
-    public:
-        size_t operator()(Timestamp t) const noexcept {
-            return this->hash<std::time_t>::operator()(t.get());
-        }
-    };
 }
 
 /*
@@ -152,7 +54,7 @@ private:
     sys::path _filename;
     Station _station = 0;
     Year _year = 0;
-    Variable _variable{};
+    spec::Variable _variable{};
 
 public:
 
@@ -163,12 +65,13 @@ public:
     Spectrum_file(Spectrum_file&&) = default;
     Spectrum_file& operator=(Spectrum_file&&) = default;
 
-    inline Spectrum_file(const sys::path& filename, Station station, Variable var, Year year):
+    inline
+    Spectrum_file(const sys::path& filename, Station station, spec::Variable var, Year year):
     _filename(filename), _station(station), _year(year), _variable(var) {}
 
     inline const sys::path& filename() const noexcept { return this->_filename; }
     inline Station station() const noexcept { return this->_station; }
-    inline Variable variable() const noexcept { return this->_variable; }
+    inline spec::Variable variable() const noexcept { return this->_variable; }
     inline Year year() const noexcept { return this->_year; }
 
     friend sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Spectrum_file& rhs) {
@@ -287,28 +190,28 @@ namespace sys {
 
 }
 
-static constexpr const int DENSITY = int(Variable::W);
-static constexpr const int ALPHA_1 = int(Variable::D);
-static constexpr const int ALPHA_2 = int(Variable::I);
-static constexpr const int R_1     = int(Variable::J);
-static constexpr const int R_2     = int(Variable::K);
+static constexpr const int DENSITY = int(spec::Variable::W);
+static constexpr const int ALPHA_1 = int(spec::Variable::D);
+static constexpr const int ALPHA_2 = int(spec::Variable::I);
+static constexpr const int R_1     = int(spec::Variable::J);
+static constexpr const int R_2     = int(spec::Variable::K);
 
 template <class T>
 class Variance_kernel: public sbn::kernel {
 
 public:
 
-    using Map = std::array<std::vector<T>,max_variables>;
+    using Map = std::array<std::vector<T>,spec::max_variables>;
 
 private:
     Map& _data;
-    Timestamp _date{};
+    spec::Timestamp _date{};
     const std::vector<T>& _frequencies;
     T _variance{};
 
 public:
 
-    Variance_kernel(Map& m, Timestamp d, const std::vector<T>& freq):
+    Variance_kernel(Map& m, spec::Timestamp d, const std::vector<T>& freq):
         _data(m), _date(d), _frequencies(freq), _variance(0)
     {}
 
@@ -330,7 +233,6 @@ public:
     }
 
     T compute_variance() {
-        /*
         const T theta0 = 0;
         const T theta1 = 2.0f*M_PI;
         int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
@@ -345,63 +247,13 @@ public:
             }
         }
         return sum;
-        */
-        return 0;
     }
 
     inline T variance() const noexcept { return this->_variance; }
-    inline Timestamp date() const noexcept { return this->_date; }
+    inline spec::Timestamp date() const noexcept { return this->_date; }
 
 };
 
-class GZIP_file {
-
-public:
-    using file_type = ::gzFile;
-
-private:
-    file_type _file{};
-
-public:
-
-    GZIP_file() = default;
-    ~GZIP_file() = default;
-    GZIP_file(const GZIP_file&) = delete;
-    GZIP_file& operator=(const GZIP_file&) = delete;
-
-    inline GZIP_file(GZIP_file&& rhs): _file(rhs._file) { rhs._file = nullptr; }
-
-    inline GZIP_file& operator=(GZIP_file&& rhs) {
-        swap(rhs);
-        return *this;
-    }
-
-    inline void swap(GZIP_file& rhs) {
-        std::swap(this->_file, rhs._file);
-    }
-
-    inline void open(const char* filename, const char* flags) {
-        this->_file = ::gzopen(filename, flags);
-        if (!this->_file) {
-            std::stringstream tmp;
-            tmp << "unable to open " << filename;
-            throw std::invalid_argument(tmp.str());
-        }
-    }
-
-    inline void close() {
-        ::gzclose(this->_file);
-    }
-
-    inline int read(void* ptr, unsigned len) {
-        int ret = ::gzread(this->_file, ptr, len);
-        if (ret == -1) { sbn::throw_error("i/o error"); }
-        return ret;
-    }
-
-};
-
-inline void swap(GZIP_file& a, GZIP_file& b) { a.swap(b); }
 
 template <class T>
 class File_kernel: public sbn::kernel {
@@ -409,7 +261,7 @@ class File_kernel: public sbn::kernel {
 private:
     Spectrum_file _file;
     std::vector<T> _frequencies;
-    std::map<Timestamp, std::vector<T>> _data;
+    std::map<spec::Timestamp, std::vector<T>> _data;
 
 public:
 
@@ -429,7 +281,7 @@ public:
             }
         }
         char buf[4096];
-        GZIP_file in;
+        spec::GZIP_file in;
         // read directly from GlusterFS
         try {
             //sys::path new_path("/var", this->_file.filename());
@@ -465,19 +317,10 @@ public:
                     // skip lines starting with "#"
                 }
             } else {
-                Timestamp timestamp;
+                spec::Timestamp timestamp;
                 str.clear();
                 str.str(line);
                 if (str >> timestamp) {
-                    timestamp.orig = line.substr(0,16);
-                    {
-                        auto result = this->_data.find(timestamp);
-                        if (result != this->_data.end()) {
-                            sys::log_message("spec", "timestamp _ orig _",
-                                             timestamp.orig,
-                                             result->first.orig);
-                        }
-                    }
                     auto& spec = this->_data[timestamp];
                     T value;
                     while (str >> value) {
@@ -508,7 +351,7 @@ public:
         in >> this->_data;
     }
 
-    inline std::map<Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
+    inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
     inline const Spectrum_file& file() const noexcept { return this->_file; }
 
 };
@@ -524,8 +367,8 @@ private:
     spectrum_file_array _files;
     std::vector<T> _frequencies;
     uint32_t _count = 0;
-    std::map<Timestamp, std::array<std::vector<T>,max_variables>> _spectra;
-    std::map<Timestamp, T> _out_matrix;
+    std::map<spec::Timestamp, std::array<std::vector<T>,spec::max_variables>> _spectra;
+    std::map<spec::Timestamp, T> _out_matrix;
     State _state = State::Reading;
 
 public:
@@ -712,7 +555,7 @@ public:
                         Station station = std::stoi(match[1].str());
                         Year year = std::stoi(match[3].str());
                         files[std::make_pair(year,station)].emplace_back(
-                            path, station, string_to_variable(match[2].str()),
+                            path, station, spec::string_to_variable(match[2].str()),
                             year);
                     }
                 }
