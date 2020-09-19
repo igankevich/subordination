@@ -35,6 +35,8 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
         }
     }
     sys::two_way_pipe data_pipe;
+    data_pipe.in().pipe_buffer_size(this->_pipe_buffer_size);
+    data_pipe.out().pipe_buffer_size(this->_pipe_buffer_size);
     const auto& p = _child_processes.emplace(
         [&app,this,&data_pipe] () {
             try {

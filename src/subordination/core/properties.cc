@@ -136,8 +136,8 @@ void sbn::properties::read(int argc, char** argv) {
 bool sbn::string_to_bool(std::string s) {
     trim_both(s);
     for (auto& ch : s) { ch = std::tolower(ch); }
-    if (s == "yes" || s == "on" || s == "1") { return true; }
-    if (s == "no" || s == "off" || s == "0") { return false; }
+    if (s == "1" || s == "yes" || s == "on" || s == "true") { return true; }
+    if (s == "0" || s == "no" || s == "off" || s == "false") { return false; }
     throw std::invalid_argument("bad boolean");
 }
 

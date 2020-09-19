@@ -269,7 +269,12 @@ public:
 
     inline explicit
     File_kernel(const Spectrum_file& file): _file(file) {
-        path(this->_file.filename());
+        if (const char* fs = std::getenv("SBN_TEST_FS")) {
+            std::string fs_str(fs);
+            if (fs_str == "gfs") {
+                path(this->_file.filename());
+            }
+        }
     }
 
     void act() override {
@@ -284,13 +289,12 @@ public:
         spec::GZIP_file in;
         // read directly from GlusterFS
         try {
-            //sys::path new_path("/var", this->_file.filename());
-            const auto& new_path = this->_file.filename();
-            log("use new path _", new_path);
+            sys::path new_path("/var", this->_file.filename());
             in.open(new_path.data(), "rb");
+            log("use new path _", new_path);
         } catch (const std::exception& err) {
-            log("use old path _", this->_file.filename());
             in.open(this->_file.filename().data(), "rb");
+            log("use old path _", this->_file.filename());
         }
         int count = 0;
         std::stringstream contents;
@@ -334,7 +338,7 @@ public:
         in.close();
         sys::log_message("spec", "_: _ records _ lines", this->_file.filename(),
                          this->_data.size(), num_lines);
-        sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        sbn::commit<sbn::Local>(std::move(this_ptr()));
     }
 
     void write(sbn::kernel_buffer& out) const override {
@@ -380,7 +384,7 @@ public:
 
     void act() override {
         for (const auto& file : this->_files) {
-            sbn::upstream<sbn::Remote>(this, sbn::make_pointer<File_kernel<T>>(file));
+            sbn::upstream<sbn::Local>(this, sbn::make_pointer<File_kernel<T>>(file));
         }
     }
 

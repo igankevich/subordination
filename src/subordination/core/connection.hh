@@ -169,6 +169,8 @@ namespace sbn {
         inline void flush(Sink& sink) {
             flush_guard g(this->_output_buffer);
             this->_output_buffer.flush(sink);
+            log("flush position _ remaining _ ", this->_output_buffer.position(),
+                this->_output_buffer.remaining());
         }
 
         template <class Source>
