@@ -32,6 +32,8 @@ namespace sbn {
         inline void schedule(kernel_ptr&& k) { this->_local.send_timer(std::move(k)); }
         inline void schedule(kernel_ptr_array&& k) { this->_local.send(std::move(k)); }
 
+        inline parallel_pipeline& local() noexcept { return this->_local; }
+        inline const parallel_pipeline& local() const noexcept { return this->_local; }
         inline child_process_pipeline& remote() noexcept { return this->_remote; }
         inline const child_process_pipeline& remote() const noexcept { return this->_remote; }
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }

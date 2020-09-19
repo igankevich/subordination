@@ -143,6 +143,7 @@ sbn::connection::read_kernel(const application* from_application) {
         }
     }
     if (this->_socket_address) { k->source(this->_socket_address); }
+    k->source_pipeline(this->_parent);
     return k;
 }
 

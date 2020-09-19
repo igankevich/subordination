@@ -66,7 +66,9 @@ namespace  {
 class Timestamp {
 
 private:
-    std::time_t _timestamp{};
+    std::uint64_t _timestamp{};
+public:
+    std::string orig;
 
 public:
 
@@ -77,7 +79,7 @@ public:
     Timestamp(Timestamp&&) = default;
     Timestamp& operator=(Timestamp&&) = default;
 
-    inline std::time_t get() const noexcept { return this->_timestamp; }
+    inline std::uint64_t get() const noexcept { return this->_timestamp; }
 
     inline bool operator==(const Timestamp& rhs) const noexcept {
         return this->_timestamp == rhs._timestamp;
@@ -98,8 +100,7 @@ public:
         in >> t.tm_mday;
         in >> t.tm_hour;
         in >> t.tm_min;
-        ++t.tm_mon;
-        rhs._timestamp = std::mktime(&t);
+        rhs._timestamp = 60*(t.tm_min + 60*(t.tm_hour + 24*(t.tm_mday + 31*(t.tm_mon + 12*t.tm_year))));
         return in;
     }
 
@@ -312,7 +313,8 @@ public:
     {}
 
     void act() override {
-        _variance = compute_variance();
+        //_variance = compute_variance();
+        _variance = 0;
         sbn::commit(std::move(this_ptr()));
     }
 
@@ -328,9 +330,14 @@ public:
     }
 
     T compute_variance() {
+        /*
         const T theta0 = 0;
         const T theta1 = 2.0f*M_PI;
         int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
+        for (const auto& array : this->_data) {
+            int32_t new_n = array.size();
+            if (new_n < n) { n = new_n; }
+        }
         T sum = 0;
         for (int32_t i=0; i<n; ++i) {
             for (int32_t j=0; j<n; ++j) {
@@ -338,6 +345,8 @@ public:
             }
         }
         return sum;
+        */
+        return 0;
     }
 
     inline T variance() const noexcept { return this->_variance; }
@@ -438,6 +447,7 @@ public:
         }
         std::string line;
         std::stringstream str;
+        int num_lines = 0;
         while (!(contents >> std::ws).eof()) {
             std::getline(contents, line, '\n');
             if (line.empty()) { continue; }
@@ -459,6 +469,15 @@ public:
                 str.clear();
                 str.str(line);
                 if (str >> timestamp) {
+                    timestamp.orig = line.substr(0,16);
+                    {
+                        auto result = this->_data.find(timestamp);
+                        if (result != this->_data.end()) {
+                            sys::log_message("spec", "timestamp _ orig _",
+                                             timestamp.orig,
+                                             result->first.orig);
+                        }
+                    }
                     auto& spec = this->_data[timestamp];
                     T value;
                     while (str >> value) {
@@ -466,9 +485,12 @@ public:
                         spec.emplace_back(value);
                     }
                 }
+                ++num_lines;
             }
         }
         in.close();
+        sys::log_message("spec", "_: _ records _ lines", this->_file.filename(),
+                         this->_data.size(), num_lines);
         sbn::commit<sbn::Remote>(std::move(this_ptr()));
     }
 

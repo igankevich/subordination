@@ -44,6 +44,7 @@ unistdx = dependency('unistdx', version: '>=0.30.0')
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []
+guile = dependency('guile-3.0')
 
 src = include_directories('src')
 pkgconfig = import('pkgconfig')

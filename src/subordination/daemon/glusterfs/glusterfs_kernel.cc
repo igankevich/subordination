@@ -95,7 +95,7 @@ void sbnd::gluster_file_system::read_peer_uuids() {
             in.close();
         }
     } catch (const std::exception& err) {
-        log("failued to load peers from _", peers_path);
+        log("failed to load peers from _", peers_path);
     }
     read_this_uuid();
 }

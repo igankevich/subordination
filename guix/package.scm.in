@@ -8,12 +8,13 @@
   (version "@version@")
   (source "@source_root@")
   (build-system meson-build-system)
-  (arguments `(#:build-type "debug"
-               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args="
+  (arguments `(#:build-type "release"
+               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-march=native"
                                        "-Dwith_glusterfs=true")
                #:tests? #f))
   (inputs
    `(("unistdx" ,(@ (gnu packages unistdx) unistdx))
+     ("guile" ,(@ (gnu packages guile) guile-3.0))
      ;; examples
      ("zlib" ,(@ (gnu packages compression) zlib))
      ("openmpi" ,(@ (stables packages mpi) openmpi-4.0.2))

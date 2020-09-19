@@ -158,6 +158,7 @@ void sbn::parallel_pipeline::start() {
             #if defined(UNISTDX_HAVE_PRCTL)
             ::prctl(PR_SET_NAME, this->_name);
             #endif
+            if (this->_thread_init) { this->_thread_init(i); }
             this->upstream_loop(this->_downstream_kernels[i]);
         });
     }
@@ -165,6 +166,7 @@ void sbn::parallel_pipeline::start() {
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
+        if (this->_thread_init) { this->_thread_init(0); }
         this->timer_loop();
     });
     for (size_t i=0; i<num_downstream_threads; ++i) {
@@ -172,6 +174,7 @@ void sbn::parallel_pipeline::start() {
             #if defined(UNISTDX_HAVE_PRCTL)
             ::prctl(PR_SET_NAME, this->_name);
             #endif
+            if (this->_thread_init) { this->_thread_init(i); }
             this->downstream_loop(this->_downstream_kernels[i],
                                   this->_downstream_semaphores[i]);
         });

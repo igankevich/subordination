@@ -21,12 +21,12 @@
    (@ (gnu packages compression) xz)
    (@ (gnu packages pre-commit) python-pre-commit)
    (@ (gnu packages compression) zlib)
+   (@ (gnu packages guile) guile-3.0)
    (@ (stables packages mpi) openmpi-4.0.2))
   (if-enabled "site"
               (list
                (@ (gnu packages documentation) doxygen)
                (@ (gnu packages tex) texlive-bin)
-               (@ (gnu packages guile) guile-2.2)
                (@ (gnu packages guile-xyz) haunt)
                (@ (gnu packages guile-xyz) guile-syntax-highlight)
                (@ (gnu packages groff) groff)
