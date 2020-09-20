@@ -23,6 +23,14 @@
   ))
 )
 
+(define (profile name proc)
+  (define t0 (tms:clock (times)))
+  (define ret (proc))
+  (define t1 (tms:clock (times)))
+  (format (current-error-port) "~a: ~as\n" name
+          (exact->inexact (/ (- t1 t0) internal-time-units-per-second)))
+  ret)
+
 
 (define (process-dir path statinfo flag base level)
  ;;(display flag)
@@ -74,11 +82,26 @@
   )
 )
 
-(define (compute-variance lists) 
+(define (compute-variance-lists lists) 
   (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (length (list-ref lists 0))) )
-  (let (( angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ;; angle
+  (let ((angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ;; angle
     (fold spectrum 0 (cdr (assoc #\d lists)) (cdr (assoc #\i lists)) (cdr (assoc #\j lists)) (cdr (assoc #\k lists)) (cdr (assoc #\w lists)) angles)
   ))
+)
+
+(define (compute-variance-arrays lists) 
+  (let ((theta-0 0) (theta-1 (* 2 3.1415)) (n (length (list-ref lists 0))) )
+  (let ((angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) )))  (make-seq-n n)) )) ;; angle
+  (let ((sum 0))
+    (array-for-each (lambda (d i j k w a) (set! sum (+ sum (spectrum d i j k w a 0))))
+      (list->array 1 (cdr (assoc #\d lists))) 
+      (list->array 1 (cdr (assoc #\i lists))) 
+      (list->array 1 (cdr (assoc #\j lists))) 
+      (list->array 1 (cdr (assoc #\k lists))) 
+      (list->array 1 (cdr (assoc #\w lists))) 
+      (list->array 1 angles)
+    )
+  sum)))
 )
 
 (let ((all-data '()) (all-data-hash (make-hash-table)))
@@ -88,8 +111,20 @@
       #t
     )
   )
-  (merge-table all-data all-data-hash)
-  (filter-hash-table all-data-hash)
-  (display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
+  ;(merge-table all-data all-data-hash)
+  ;(filter-hash-table all-data-hash)
+  ;(display (compute-variance (hash-ref all-data-hash "2010 06 29 10 00")))
+  (newline)
+  (profile "merge" (lambda () (merge-table all-data all-data-hash)))
+  (profile "filter" (lambda () (filter-hash-table all-data-hash)))
+  (profile "lists" (lambda () (hash-for-each (lambda (key value) (compute-variance-lists value)) all-data-hash)))
+  (profile "arrays" (lambda () (hash-for-each (lambda (key value) (compute-variance-arrays value)) all-data-hash)))
+  (newline)
+  (display "equals: ")
+  (display (= (compute-variance-lists (hash-ref all-data-hash "2010 06 29 10 00")) (compute-variance-arrays (hash-ref all-data-hash "2010 06 29 10 00"))  ))
+  (newline)
+  (display (compute-variance-lists (hash-ref all-data-hash "2010 06 29 10 00")))
+  (newline)
+  (display (compute-variance-arrays (hash-ref all-data-hash "2010 06 29 10 00")))
   (newline)
 )
