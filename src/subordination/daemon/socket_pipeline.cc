@@ -258,7 +258,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         }
         this->_local_weight -= min_weight;
     }
-    auto first = clients.begin(), last = clients.end();
+    auto last = clients.end();
     auto result = last, result_with_nodes = last;
     const auto& path = k->path();
     const bool has_path = !path.empty();
@@ -292,7 +292,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         }
         return false;
     }();
-    for (; first != last; ++first) {
+    for (auto first=clients.begin(); first != last; ++first) {
         const auto& address = first->first;
         auto& client = *first->second;
         // skip stopped clients
@@ -326,10 +326,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         }
         if (client_matches_file_location) {
             if (result_with_nodes == last) {
-                if ((file_is_local && client.modular_weight() < this->_local_weight) ||
-                    !file_is_local) {
-                    result_with_nodes = first;
-                }
+                result_with_nodes = first;
             } else {
                 if (client.modular_weight() < result_with_nodes->second->modular_weight()) {
                     result_with_nodes = first;
@@ -339,9 +336,15 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
     }
     // prefer nodes where associated file is located
     if (result_with_nodes != last) {
-        result = result_with_nodes;
+        auto& client = *result_with_nodes->second;
+        if (file_is_local && this->_local_weight < client.modular_weight()) {
+            result = last;
+        } else {
+            result = result_with_nodes;
+        }
+    } else {
+        if (file_is_local) { result = last; }
     }
-    if (file_is_local) { result = last; }
     std::stringstream tmp;
     for (const auto& address : this->_nodes) {
         tmp << ' ' << address;

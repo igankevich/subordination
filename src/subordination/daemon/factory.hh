@@ -52,6 +52,7 @@ namespace sbnd {
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+            size_t pipe_buffer_size = std::numeric_limits<size_t>::max();
             bool allow_root = false;
         } process;
         struct {

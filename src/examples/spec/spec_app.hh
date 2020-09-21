@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <random>
 #include <regex>
 #include <sstream>
 
@@ -30,6 +31,8 @@ namespace  {
     log(const char* fmt, const Args& ... args) {
         sys::log_message("spec", fmt, args ...);
     }
+
+    thread_local std::default_random_engine prng;
 
 }
 
@@ -345,14 +348,74 @@ public:
         sbn::kernel::write(out);
         out << this->_file;
         out << this->_frequencies;
-        out << this->_data;
+        sbn::kernel_buffer tmp{16*4096};
+        tmp << this->_data;
+        tmp.flip();
+        ::z_stream s{};
+        s.next_in = reinterpret_cast<Bytef*>(tmp.data());
+        s.avail_in = tmp.remaining();
+        s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+        s.avail_out = out.remaining();
+        // gzip compression
+        ::deflateInit2(&s, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY);
+        // write
+        do {
+            const auto old_total_out = s.total_out;
+            int res = deflate(&s, Z_NO_FLUSH);
+            if (res != Z_OK) { sbn::throw_error("deflate write error ", res); }
+            const auto total_out = s.total_out;
+            out.bump(total_out-old_total_out);
+            if (out.remaining() == 0) { out.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+            s.avail_out = out.remaining();
+        } while (s.avail_in != 0);
+        // finish
+        int res = 0;
+        do {
+            if (out.remaining() == 0) { out.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+            s.avail_out = out.remaining();
+            const auto old_total_out = s.total_out;
+            res = deflate(&s, Z_FINISH);
+            const auto total_out = s.total_out;
+            out.bump(total_out-old_total_out);
+        } while (res == Z_OK);
+        if (res != Z_STREAM_END) { sbn::throw_error("deflate finish error ", res); }
+        log("deflate in _ out _ ratio _", tmp.remaining(), s.total_out,
+            double(tmp.remaining()) / double(s.total_out));
+        ::deflateEnd(&s);
     }
 
     void read(sbn::kernel_buffer& in) override {
         sbn::kernel::read(in);
         in >> this->_file;
         in >> this->_frequencies;
-        in >> this->_data;
+        sbn::kernel_buffer tmp{16*4096};
+        ::z_stream s{};
+        s.next_in = reinterpret_cast<Bytef*>(in.data() + in.position());
+        s.avail_in = in.remaining();
+        s.next_out = reinterpret_cast<Bytef*>(tmp.data());
+        s.avail_out = tmp.size();
+        // gzip
+        ::inflateInit2(&s, 16+MAX_WBITS);
+        // read
+        do {
+            const auto old_total_out = s.total_out;
+            int res = inflate(&s, Z_NO_FLUSH);
+            if (res != Z_OK && res != Z_STREAM_END) {
+                sbn::throw_error("inflate error ", res);
+            }
+            const auto total_out = s.total_out;
+            tmp.bump(total_out-old_total_out);
+            if (tmp.remaining() == 0) { tmp.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(tmp.data() + tmp.position());
+            s.avail_out = tmp.remaining();
+        } while (s.avail_in != 0);
+        ::inflateEnd(&s);
+        log("inflate in _ out _ ratio _", in.remaining(), s.total_out,
+            double(s.total_out) / double(in.remaining()));
+        tmp.flip();
+        tmp >> this->_data;
     }
 
     inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
@@ -380,7 +443,15 @@ public:
     Five_files_kernel() = default;
 
     inline explicit
-    Five_files_kernel(const spectrum_file_array& files): _files(files) {}
+    Five_files_kernel(const spectrum_file_array& files): _files(files) {
+        if (const char* fs = std::getenv("SBN_TEST_FS")) {
+            std::string fs_str(fs);
+            if (fs_str == "gfs") {
+                std::uniform_int_distribution<size_t> dist(0, this->_files.size()-1);
+                path(this->_files[dist(prng)].filename());
+            }
+        }
+    }
 
     void act() override {
         for (const auto& file : this->_files) {

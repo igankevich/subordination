@@ -41,6 +41,8 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         process.min_input_buffer_size = std::stoul(value);
     } else if (key == "process.min-output-buffer-size") {
         process.min_output_buffer_size = std::stoul(value);
+    } else if (key == "process.pipe-buffer-size") {
+        process.pipe_buffer_size = std::stoul(value);
     } else if (key == "process.allow-root") {
         process.allow_root = sbn::string_to_bool(value);
     } else if (key == "unix.min-input-buffer-size") {
@@ -187,6 +189,7 @@ void sbnd::Factory::configure(const Properties& props) {
     if (isset(f::process)) {
         this->_process.min_output_buffer_size(props.process.min_output_buffer_size);
         this->_process.min_input_buffer_size(props.process.min_input_buffer_size);
+        this->_process.pipe_buffer_size(props.process.pipe_buffer_size);
         this->_process.allow_root(props.process.allow_root);
     }
     if (isset(f::unix)) {
