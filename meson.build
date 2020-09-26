@@ -2,7 +2,7 @@ project(
     'subordination',
     'cpp',
     version: '0.3.1',
-    meson_version: '>=0.47.0',
+    meson_version: '>=0.50.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'
 )
@@ -14,11 +14,20 @@ with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
 with_examples = get_option('with_examples')
 with_glusterfs = get_option('with_glusterfs')
+with_dtests = get_option('with_dtests')
 
 cpp = meson.get_compiler('cpp')
 
 cpp_args = ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
 cpp_link_args = ['-rdynamic']
+test_cpp_args = ['-DSBN_TEST']
+
+# default configuration (for binaries that are installed)
+binary_configs = [ {'cpp_args': [], 'prefix': ''}, ]
+if with_dtests
+    # test configuration (for binaries that are used in distributed tests)
+    binary_configs += [ {'cpp_args': test_cpp_args, 'prefix': 'test_'}, ]
+endif
 
 if with_debug
     cpp_args += '-DSBN_DEBUG'

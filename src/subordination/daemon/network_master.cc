@@ -199,7 +199,9 @@ void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel
 }
 
 void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
-    sys::log_message("net", "add interface address _", ifa);
+    #if defined(SBN_TEST)
+    sys::log_message("test", "add interface address _", ifa);
+    #endif
     { auto g = factory.remote().guard(); factory.remote().add_server(ifa); }
     if (this->_discoverers.find(ifa) == this->_discoverers.end()) {
         const auto port = factory.remote().port();
@@ -213,7 +215,9 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
 
 void
 sbnd::network_master::remove_ifaddr(const ifaddr_type& ifa) {
-    sys::log_message("net", "remove interface address _", ifa);
+    #if defined(SBN_TEST)
+    sys::log_message("test", "remove interface address _", ifa);
+    #endif
     factory.remote().remove_server(ifa);
     auto result = this->_discoverers.find(ifa);
     if (result != this->_discoverers.end()) {
@@ -227,7 +231,7 @@ void
 sbnd::network_master::forward_probe(pointer<probe> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
-        sys::log_message("net", "bad probe _", p->interface_address());
+        log("bad probe _", p->interface_address());
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);
@@ -239,7 +243,7 @@ void
 sbnd::network_master::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
-        sys::log_message("net", "bad hierarchy kernel _", p->interface_address());
+        log("bad hierarchy kernel _", p->interface_address());
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);
@@ -265,7 +269,7 @@ void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
         const addr_type& a = traits_type::address(ev->socket_address());
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {
-            sys::log_message("net", "bad event socket address _", a);
+            log("bad event socket address _", a);
         } else {
             auto* discoverer = result->second;
             ev->principal(discoverer);
@@ -276,8 +280,10 @@ void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
 
 void sbnd::network_master::on_event(pointer<process_pipeline_kernel> k) {
     if (k->event() == process_pipeline_event::child_process_terminated) {
-        sys::log_message("net", "job _ terminated with status _",
+        #if defined(SBN_TEST)
+        sys::log_message("test", "job _ terminated with status _",
                          k->application_id(), k->status());
+        #endif
         if (k->status().exited()) {
             auto tk = sbn::make_pointer<Terminate_kernel>(
                 Terminate_kernel::application_id_array{k->application_id()});

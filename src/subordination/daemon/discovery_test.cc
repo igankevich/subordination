@@ -35,15 +35,15 @@ void test_superior(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout >= n || n == 2) {
         if (n == 2) {
             dts::expect_event_sequence(lines, {
-                R"(^x1.*add interface address 10\.0\.0\.1.*$)",
-                R"(^x1.*add subordinate 10\.0\.0\.2.*$)",
+                R"(^x1.*test.*add interface address 10\.0\.0\.1.*$)",
+                R"(^x1.*test.*add subordinate 10\.0\.0\.2.*$)",
             });
             //dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
         } else {
             dts::expect_event(lines, R"(^x1.*add interface address 10\.0\.0\.1.*$)");
             for (int i=2; i<=n; ++i) {
                 std::stringstream re;
-                re << R"(^x1.*add subordinate 10\.0\.0\.)" << i << ".*$";
+                re << R"(^x1.*test.*add subordinate 10\.0\.0\.)" << i << ".*$";
                 dts::expect_event(lines, re.str());
             }
             /*
@@ -61,17 +61,17 @@ void test_subordinates(const std::vector<std::string>& lines, int fanout, int n)
     if (fanout >= n || n == 2) {
         if (n == 2) {
             dts::expect_event_sequence(lines, {
-                R"(^x2.*add interface address 10\.0\.0\.2.*$)",
-                R"(^x2.*set principal to 10\.0\.0\.1.*$)"
+                R"(^x2.*test.*add interface address 10\.0\.0\.2.*$)",
+                R"(^x2.*test.*set principal to 10\.0\.0\.1.*$)"
             });
             //dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
         } else {
             for (int i=2; i<=n; ++i) {
                 std::stringstream re;
-                re << "^x" << i << R"(.*add interface address 10\.0\.0\.)" << i << ".*$";
+                re << "^x" << i << R"(.*test.*add interface address 10\.0\.0\.)" << i << ".*$";
                 dts::expect_event(lines, re.str());
                 re.str("");
-                re << "^x" << i << R"(.*set principal to 10\.0\.0\.1.*$)";
+                re << "^x" << i << R"(.*test.*set principal to 10\.0\.0\.1.*$)";
                 dts::expect_event(lines,	re.str());
                 //re.str("");
                 //re << "^x" << i << R"(.*set 10\.0\.0\.1.*weight to )" << n-1 << "$";
@@ -83,19 +83,19 @@ void test_subordinates(const std::vector<std::string>& lines, int fanout, int n)
 
 void test_hierarchy(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout != 2 || n == 2) { return; }
-    dts::expect_event(lines, R"(^x1.*add interface address 10\.0\.0\.1.*$)");
+    dts::expect_event(lines, R"(^x1.*test.*add interface address 10\.0\.0\.1.*$)");
     if (n == 4) {
-        dts::expect_event(lines, R"(^x1.*add subordinate 10\.0\.0\.2.*$)");
-        dts::expect_event(lines, R"(^x1.*add subordinate 10\.0\.0\.3.*$)");
-        dts::expect_event(lines, R"(^x2.*add subordinate 10\.0\.0\.4.*$)");
+        dts::expect_event(lines, R"(^x1.*test.*add subordinate 10\.0\.0\.2.*$)");
+        dts::expect_event(lines, R"(^x1.*test.*add subordinate 10\.0\.0\.3.*$)");
+        dts::expect_event(lines, R"(^x2.*test.*add subordinate 10\.0\.0\.4.*$)");
     } else if (n == 8) {
-        dts::expect_event(lines, R"(^x1.*add subordinate 10\.0\.0\.2.*$)");
-        dts::expect_event(lines, R"(^x1.*add subordinate 10\.0\.0\.3.*$)");
-        dts::expect_event(lines, R"(^x2.*add subordinate 10\.0\.0\.4.*$)");
-        dts::expect_event(lines, R"(^x2.*add subordinate 10\.0\.0\.5.*$)");
-        dts::expect_event(lines, R"(^x3.*add subordinate 10\.0\.0\.6.*$)");
-        dts::expect_event(lines, R"(^x3.*add subordinate 10\.0\.0\.7.*$)");
-        dts::expect_event(lines, R"(^x4.*add subordinate 10\.0\.0\.8.*$)");
+        dts::expect_event(lines, R"(^x1.*test.*add subordinate 10\.0\.0\.2.*$)");
+        dts::expect_event(lines, R"(^x1.*test.*add subordinate 10\.0\.0\.3.*$)");
+        dts::expect_event(lines, R"(^x2.*test.*add subordinate 10\.0\.0\.4.*$)");
+        dts::expect_event(lines, R"(^x2.*test.*add subordinate 10\.0\.0\.5.*$)");
+        dts::expect_event(lines, R"(^x3.*test.*add subordinate 10\.0\.0\.6.*$)");
+        dts::expect_event(lines, R"(^x3.*test.*add subordinate 10\.0\.0\.7.*$)");
+        dts::expect_event(lines, R"(^x4.*test.*add subordinate 10\.0\.0\.8.*$)");
     } else {
         std::stringstream msg;
         msg << "bad number of nodes: " << n;
@@ -105,33 +105,33 @@ void test_hierarchy(const std::vector<std::string>& lines, int fanout, int n) {
 
 void test_weights(const std::vector<std::string>& lines, int fanout, int n) {
     if (fanout != 2 || n == 2) { return; }
-    dts::expect_event(lines, R"(^x1.*add interface address 10\.0\.0\.1.*$)");
+    dts::expect_event(lines, R"(^x1.*test.*add interface address 10\.0\.0\.1.*$)");
     if (n == 4) {
         // upstream
-        dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 2$)");
-        dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.3.*weight to 1$)");
-        dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.4.*weight to 1$)");
+        dts::expect_event(lines, R"(^x1.*test.*set 10\.0\.0\.2.*weight to 2$)");
+        dts::expect_event(lines, R"(^x1.*test.*set 10\.0\.0\.3.*weight to 1$)");
+        dts::expect_event(lines, R"(^x2.*test.*set 10\.0\.0\.4.*weight to 1$)");
         // downstream
-        dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 2$)");
-        dts::expect_event(lines, R"(^x3.*set 10\.0\.0\.1.*weight to 3$)");
-        dts::expect_event(lines, R"(^x4.*set 10\.0\.0\.2.*weight to 3$)");
+        dts::expect_event(lines, R"(^x2.*test.*set 10\.0\.0\.1.*weight to 2$)");
+        dts::expect_event(lines, R"(^x3.*test.*set 10\.0\.0\.1.*weight to 3$)");
+        dts::expect_event(lines, R"(^x4.*test.*set 10\.0\.0\.2.*weight to 3$)");
     } else if (n == 8) {
         // upstream
-        dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 4$)");
-        dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.3.*weight to 3$)");
-        dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.4.*weight to 2$)");
-        dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.5.*weight to 1$)");
-        dts::expect_event(lines, R"(^x3.*set 10\.0\.0\.6.*weight to 1$)");
-        dts::expect_event(lines, R"(^x3.*set 10\.0\.0\.7.*weight to 1$)");
-        dts::expect_event(lines, R"(^x4.*set 10\.0\.0\.8.*weight to 1$)");
+        dts::expect_event(lines, R"(^x1.*test.*set 10\.0\.0\.2.*weight to 4$)");
+        dts::expect_event(lines, R"(^x1.*test.*set 10\.0\.0\.3.*weight to 3$)");
+        dts::expect_event(lines, R"(^x2.*test.*set 10\.0\.0\.4.*weight to 2$)");
+        dts::expect_event(lines, R"(^x2.*test.*set 10\.0\.0\.5.*weight to 1$)");
+        dts::expect_event(lines, R"(^x3.*test.*set 10\.0\.0\.6.*weight to 1$)");
+        dts::expect_event(lines, R"(^x3.*test.*set 10\.0\.0\.7.*weight to 1$)");
+        dts::expect_event(lines, R"(^x4.*test.*set 10\.0\.0\.8.*weight to 1$)");
         // downstream
-        dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 4$)");
-        dts::expect_event(lines, R"(^x3.*set 10\.0\.0\.1.*weight to 5$)");
-        dts::expect_event(lines, R"(^x4.*set 10\.0\.0\.2.*weight to 6$)");
-        dts::expect_event(lines, R"(^x5.*set 10\.0\.0\.2.*weight to 7$)");
-        dts::expect_event(lines, R"(^x6.*set 10\.0\.0\.3.*weight to 7$)");
-        dts::expect_event(lines, R"(^x7.*set 10\.0\.0\.3.*weight to 7$)");
-        dts::expect_event(lines, R"(^x8.*set 10\.0\.0\.4.*weight to 7$)");
+        dts::expect_event(lines, R"(^x2.*test.*set 10\.0\.0\.1.*weight to 4$)");
+        dts::expect_event(lines, R"(^x3.*test.*set 10\.0\.0\.1.*weight to 5$)");
+        dts::expect_event(lines, R"(^x4.*test.*set 10\.0\.0\.2.*weight to 6$)");
+        dts::expect_event(lines, R"(^x5.*test.*set 10\.0\.0\.2.*weight to 7$)");
+        dts::expect_event(lines, R"(^x6.*test.*set 10\.0\.0\.3.*weight to 7$)");
+        dts::expect_event(lines, R"(^x7.*test.*set 10\.0\.0\.3.*weight to 7$)");
+        dts::expect_event(lines, R"(^x8.*test.*set 10\.0\.0\.4.*weight to 7$)");
     } else {
         std::stringstream msg;
         msg << "bad number of nodes: " << n;
@@ -148,12 +148,12 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
     }
     if (node_no == 0) {
         //dts::expect_event(lines, R"(^x.*app exited:.*status=exited,exit_code=0.*$)");
-        dts::expect_event(lines, R"(^x.*job .* terminated with status .*status=exited,exit_code=0$)");
+        dts::expect_event(lines, R"(^x.*test.*job .* terminated with status .*$)");
     } else {
         node_no = (expected_failure == "superior-failure") ? 2 : 1;
         std::stringstream re;
         //re << "^x" << node_no << R"(.*app exited:.*status=exited,exit_code=0.*$)";
-        re << "^x" << node_no << R"(.*job .* terminated with status .*status=exited,exit_code=0$)";
+        re << "^x" << node_no << R"(.*test.*job .* terminated with status .*$)";
         dts::expect_event(lines, re.str());
     }
 }
@@ -161,14 +161,14 @@ void test_application(const std::vector<std::string>& lines, int fanout, int n) 
 sys::argstream sbnd_args() {
     sys::argstream args;
     args.append(SBND_PATH);
-    args.append("fanout=2");
-    args.append("allow-root=1");
+    args.append("discoverer.fanout=2");
+    args.append("process.allow-root=1");
     // tolerate asynchronous start of daemons
-    args.append("connection-timeout=1s");
-    args.append("max-connection-attempts=10");
-    args.append("network-scan-interval=5s");
+    args.append("remote.connection-timeout=1s");
+    args.append("remote.max-connection-attempts=10");
+    args.append("discoverer.scan-interval=5s");
     // never update NICs
-    args.append("network-interface-update-interval=1h");
+    args.append("network.interface-update-interval=1h");
     return args;
 }
 
@@ -196,7 +196,7 @@ int main(int argc, char* argv[]) {
             tmp << app.cluster().name() << (i+1);
             const auto& transactions_directory = tmp.str();
             std::remove(sys::path(transactions_directory, "transactions").data());
-            args << "transactions-directory=" << transactions_directory << '\0';
+            args << "transactions.directory=" << transactions_directory << '\0';
             app.add_process(i, std::move(args));
         }
     }
@@ -260,7 +260,7 @@ int main(int argc, char* argv[]) {
                 const auto num_nodes = app.cluster().size();
                 for (size_t i=0; i<num_nodes; ++i) {
                     auto args = sbnd_args();
-                    args << "transactions-directory=" << app.cluster().name() << (i+1) << '\0';
+                    args << "transactions.directory=" << app.cluster().name() << (i+1) << '\0';
                     app.run_process(i, std::move(args));
                 }
             });

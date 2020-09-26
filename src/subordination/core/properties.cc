@@ -102,12 +102,12 @@ void sbn::properties::read(std::istream& in, const char* filename) {
     }
 }
 
-void sbn::properties::read(int argc, char** argv) {
+void sbn::properties::read(int argc, const char** argv) {
     std::string key, value;
     key.reserve(512), value.reserve(512);
     char ch = 0;
     for (int i=1; i<argc; ++i) {
-        char* s = argv[i];
+        const char* s = argv[i];
         do {
             key.clear(), value.clear();
             State state = Key;
