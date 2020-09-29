@@ -1,14 +1,13 @@
 #ifndef EXAMPLES_SPEC_SPEC_APP_HH
 #define EXAMPLES_SPEC_SPEC_APP_HH
 
-#include <zlib.h>
-
 #include <array>
 #include <bitset>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <random>
 #include <regex>
 #include <sstream>
 
@@ -19,106 +18,22 @@
 #include <subordination/api.hh>
 #include <subordination/core/error.hh>
 
+#include <spec/gzip_file.hh>
+#include <spec/timestamp.hh>
+#include <spec/variable.hh>
+
 using Year = int32_t;
-using Month = int32_t;
-using Day = int32_t;
-using Hour = int32_t;
-using Minute = int32_t;
 using Station = int32_t;
 
-constexpr const auto max_variables = 5;
+namespace  {
 
-enum class Variable: int {D=0, I=1, J=2, K=3, W=4};
-
-Variable string_to_variable(const std::string& s) {
-    if (s.empty()) { throw std::invalid_argument("bad variable"); }
-    switch (s.front()) {
-        case 'd': return Variable::D;
-        case 'i': return Variable::I;
-        case 'j': return Variable::J;
-        case 'k': return Variable::K;
-        case 'w': return Variable::W;
-        default: throw std::invalid_argument("bad variable");
-    }
-}
-
-namespace std {
-    template <>
-    class hash<Variable>: public hash<std::underlying_type<Variable>::type> {
-    private:
-        using tp = std::underlying_type<Variable>::type;
-    public:
-        size_t operator()(Variable v) const noexcept {
-            return this->hash<tp>::operator()(tp(v));
-        }
-    };
-}
-
-class Timestamp {
-
-private:
-    std::time_t _timestamp{};
-
-public:
-
-    Timestamp() = default;
-    ~Timestamp() = default;
-    Timestamp(const Timestamp&) = default;
-    Timestamp& operator=(const Timestamp&) = default;
-    Timestamp(Timestamp&&) = default;
-    Timestamp& operator=(Timestamp&&) = default;
-
-    inline std::time_t get() const noexcept { return this->_timestamp; }
-
-    inline bool operator==(const Timestamp& rhs) const noexcept {
-        return this->_timestamp == rhs._timestamp;
+    template <class ... Args> inline static void
+    log(const char* fmt, const Args& ... args) {
+        sys::log_message("spec", fmt, args ...);
     }
 
-    inline bool operator<(const Timestamp& rhs) const noexcept {
-        return this->_timestamp < rhs._timestamp;
-    }
+    thread_local std::default_random_engine prng;
 
-    friend std::istream&
-    operator>>(std::istream& in, Timestamp& rhs) {
-        // YYYY MM DD hh mm
-        // 2010 01 01 00 00
-        // N.B. std::get_time is not thread-safe
-        std::tm t{};
-        in >> t.tm_year;
-        in >> t.tm_mon;
-        in >> t.tm_mday;
-        in >> t.tm_hour;
-        in >> t.tm_min;
-        ++t.tm_mon;
-        rhs._timestamp = std::mktime(&t);
-        return in;
-    }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const Timestamp& rhs) {
-        return out << rhs._timestamp;
-    }
-
-    friend sbn::kernel_buffer&
-    operator>>(sbn::kernel_buffer& in, Timestamp& rhs) {
-        return in >> rhs._timestamp;
-    }
-
-    friend sbn::kernel_buffer&
-    operator<<(sbn::kernel_buffer& out, const Timestamp& rhs) {
-        return out << rhs._timestamp;
-    }
-
-};
-
-namespace std {
-    template <>
-    class hash<Timestamp>: public hash<std::time_t> {
-    public:
-        size_t operator()(Timestamp t) const noexcept {
-            return this->hash<std::time_t>::operator()(t.get());
-        }
-    };
 }
 
 /*
@@ -142,7 +57,7 @@ private:
     sys::path _filename;
     Station _station = 0;
     Year _year = 0;
-    Variable _variable{};
+    spec::Variable _variable{};
 
 public:
 
@@ -153,12 +68,13 @@ public:
     Spectrum_file(Spectrum_file&&) = default;
     Spectrum_file& operator=(Spectrum_file&&) = default;
 
-    inline Spectrum_file(const sys::path& filename, Station station, Variable var, Year year):
+    inline
+    Spectrum_file(const sys::path& filename, Station station, spec::Variable var, Year year):
     _filename(filename), _station(station), _year(year), _variable(var) {}
 
     inline const sys::path& filename() const noexcept { return this->_filename; }
     inline Station station() const noexcept { return this->_station; }
-    inline Variable variable() const noexcept { return this->_variable; }
+    inline spec::Variable variable() const noexcept { return this->_variable; }
     inline Year year() const noexcept { return this->_year; }
 
     friend sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Spectrum_file& rhs) {
@@ -277,33 +193,34 @@ namespace sys {
 
 }
 
-static constexpr const int DENSITY = int(Variable::W);
-static constexpr const int ALPHA_1 = int(Variable::D);
-static constexpr const int ALPHA_2 = int(Variable::I);
-static constexpr const int R_1     = int(Variable::J);
-static constexpr const int R_2     = int(Variable::K);
+static constexpr const int DENSITY = int(spec::Variable::W);
+static constexpr const int ALPHA_1 = int(spec::Variable::D);
+static constexpr const int ALPHA_2 = int(spec::Variable::I);
+static constexpr const int R_1     = int(spec::Variable::J);
+static constexpr const int R_2     = int(spec::Variable::K);
 
 template <class T>
-class Spectrum_kernel: public sbn::kernel {
+class Variance_kernel: public sbn::kernel {
 
 public:
 
-    using Map = std::array<std::vector<T>,max_variables>;
+    using Map = std::array<std::vector<T>,spec::max_variables>;
 
 private:
     Map& _data;
-    Timestamp _date{};
+    spec::Timestamp _date{};
     const std::vector<T>& _frequencies;
     T _variance{};
 
 public:
 
-    Spectrum_kernel(Map& m, Timestamp d, const std::vector<T>& freq):
+    Variance_kernel(Map& m, spec::Timestamp d, const std::vector<T>& freq):
         _data(m), _date(d), _frequencies(freq), _variance(0)
     {}
 
     void act() override {
-        _variance = compute_variance();
+        //_variance = compute_variance();
+        _variance = 0;
         sbn::commit(std::move(this_ptr()));
     }
 
@@ -322,6 +239,10 @@ public:
         const T theta0 = 0;
         const T theta1 = 2.0f*M_PI;
         int32_t n = std::min(this->_frequencies.size(), this->_data[0].size());
+        for (const auto& array : this->_data) {
+            int32_t new_n = array.size();
+            if (new_n < n) { n = new_n; }
+        }
         T sum = 0;
         for (int32_t i=0; i<n; ++i) {
             for (int32_t j=0; j<n; ++j) {
@@ -332,75 +253,32 @@ public:
     }
 
     inline T variance() const noexcept { return this->_variance; }
-    inline Timestamp date() const noexcept { return this->_date; }
+    inline spec::Timestamp date() const noexcept { return this->_date; }
 
 };
 
-class GZIP_file {
-
-public:
-    using file_type = ::gzFile;
-
-private:
-    file_type _file{};
-
-public:
-
-    GZIP_file() = default;
-    ~GZIP_file() = default;
-    GZIP_file(const GZIP_file&) = delete;
-    GZIP_file& operator=(const GZIP_file&) = delete;
-
-    inline GZIP_file(GZIP_file&& rhs): _file(rhs._file) { rhs._file = nullptr; }
-
-    inline GZIP_file& operator=(GZIP_file&& rhs) {
-        swap(rhs);
-        return *this;
-    }
-
-    inline void swap(GZIP_file& rhs) {
-        std::swap(this->_file, rhs._file);
-    }
-
-    inline void open(const char* filename, const char* flags) {
-        this->_file = ::gzopen(filename, flags);
-        if (!this->_file) {
-            sbn::throw_error("unable to open ", filename);
-        }
-    }
-
-    inline void close() {
-        ::gzclose(this->_file);
-    }
-
-    inline int read(void* ptr, unsigned len) {
-        int ret = ::gzread(this->_file, ptr, len);
-        if (ret == -1) { sbn::throw_error("i/o error"); }
-        return ret;
-    }
-
-};
-
-inline void swap(GZIP_file& a, GZIP_file& b) { a.swap(b); }
 
 template <class T>
-class Spectrum_file_kernel: public sbn::kernel {
-
-public:
-    using spectrum_file_array = std::vector<Spectrum_file>;
+class File_kernel: public sbn::kernel {
 
 private:
-    spectrum_file_array _files;
+    Spectrum_file _file;
     std::vector<T> _frequencies;
-    uint32_t _count = 0;
-    std::map<Timestamp, std::array<std::vector<T>,max_variables>> _spectra;
-    std::map<Timestamp, T> _out_matrix;
+    std::map<spec::Timestamp, std::vector<T>> _data;
 
 public:
 
-    Spectrum_file_kernel() = default;
+    File_kernel() = default;
 
-    inline explicit Spectrum_file_kernel(const spectrum_file_array& files): _files(files) {}
+    inline explicit
+    File_kernel(const Spectrum_file& file): _file(file) {
+        if (const char* fs = std::getenv("SBN_TEST_FS")) {
+            std::string fs_str(fs);
+            if (fs_str == "gfs") {
+                path(this->_file.filename());
+            }
+        }
+    }
 
     void act() override {
         if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
@@ -411,70 +289,186 @@ public:
             }
         }
         char buf[4096];
-        int contents_size = 0;
-        for (const auto& f : this->_files) {
-            GZIP_file in;
-            in.open(f.filename().data(), "rb");
-            int count = 0;
-            std::stringstream contents;
-            while ((count=in.read(buf, sizeof(buf))) != 0) {
-                contents.write(buf, count);
-                contents_size += count;
-            }
-            std::string line;
-            std::stringstream str;
-            while (!(contents >> std::ws).eof()) {
-                std::getline(contents, line, '\n');
-                if (line.empty()) { continue; }
-                if (line.front() == '#') {
-                    // read frequencies
-                    if (_frequencies.size() == 0) {
-                        str.clear();
-                        str.str(line);
-                        str.ignore(16);
-                        T value;
-                        while (str >> value) {
-                            this->_frequencies.emplace_back(std::move(value));
-                        }
-                    } else {
-                        // skip lines starting with "#"
-                    }
-                } else {
-                    Timestamp timestamp;
+        spec::GZIP_file in;
+        // read directly from GlusterFS
+        try {
+            sys::path new_path("/var", this->_file.filename());
+            in.open(new_path.data(), "rb");
+            log("use new path _", new_path);
+        } catch (const std::exception& err) {
+            in.open(this->_file.filename().data(), "rb");
+            log("use old path _", this->_file.filename());
+        }
+        int count = 0;
+        std::stringstream contents;
+        while ((count=in.read(buf, sizeof(buf))) != 0) {
+            contents.write(buf, count);
+        }
+        std::string line;
+        std::stringstream str;
+        int num_lines = 0;
+        while (!(contents >> std::ws).eof()) {
+            std::getline(contents, line, '\n');
+            if (line.empty()) { continue; }
+            if (line.front() == '#') {
+                // read frequencies
+                if (_frequencies.size() == 0) {
                     str.clear();
                     str.str(line);
-                    if (str >> timestamp) {
-                        auto& spec = this->_spectra[timestamp];
-                        T value;
-                        while (str >> value) {
-                            if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
-                            spec[int(f.variable())].emplace_back(value);
-                        }
+                    str.ignore(16);
+                    T value;
+                    while (str >> value) {
+                        this->_frequencies.emplace_back(std::move(value));
+                    }
+                } else {
+                    // skip lines starting with "#"
+                }
+            } else {
+                spec::Timestamp timestamp;
+                str.clear();
+                str.str(line);
+                if (str >> timestamp) {
+                    auto& spec = this->_data[timestamp];
+                    T value;
+                    while (str >> value) {
+                        if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
+                        spec.emplace_back(value);
                     }
                 }
+                ++num_lines;
             }
-            in.close();
         }
+        in.close();
+        sys::log_message("spec", "_: _ records _ lines", this->_file.filename(),
+                         this->_data.size(), num_lines);
+        sbn::commit<sbn::Local>(std::move(this_ptr()));
+    }
+
+    void write(sbn::kernel_buffer& out) const override {
+        sbn::kernel::write(out);
+        out << this->_file;
+        out << this->_frequencies;
+        sbn::kernel_buffer tmp{16*4096};
+        tmp << this->_data;
+        tmp.flip();
+        ::z_stream s{};
+        s.next_in = reinterpret_cast<Bytef*>(tmp.data());
+        s.avail_in = tmp.remaining();
+        s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+        s.avail_out = out.remaining();
+        // gzip compression
+        ::deflateInit2(&s, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 8, Z_DEFAULT_STRATEGY);
+        // write
+        do {
+            const auto old_total_out = s.total_out;
+            int res = deflate(&s, Z_NO_FLUSH);
+            if (res != Z_OK) { sbn::throw_error("deflate write error ", res); }
+            const auto total_out = s.total_out;
+            out.bump(total_out-old_total_out);
+            if (out.remaining() == 0) { out.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+            s.avail_out = out.remaining();
+        } while (s.avail_in != 0);
+        // finish
+        int res = 0;
+        do {
+            if (out.remaining() == 0) { out.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(out.data() + out.position());
+            s.avail_out = out.remaining();
+            const auto old_total_out = s.total_out;
+            res = deflate(&s, Z_FINISH);
+            const auto total_out = s.total_out;
+            out.bump(total_out-old_total_out);
+        } while (res == Z_OK);
+        if (res != Z_STREAM_END) { sbn::throw_error("deflate finish error ", res); }
+        log("deflate in _ out _ ratio _", tmp.remaining(), s.total_out,
+            double(tmp.remaining()) / double(s.total_out));
+        ::deflateEnd(&s);
+    }
+
+    void read(sbn::kernel_buffer& in) override {
+        sbn::kernel::read(in);
+        in >> this->_file;
+        in >> this->_frequencies;
+        sbn::kernel_buffer tmp{16*4096};
+        ::z_stream s{};
+        s.next_in = reinterpret_cast<Bytef*>(in.data() + in.position());
+        s.avail_in = in.remaining();
+        s.next_out = reinterpret_cast<Bytef*>(tmp.data());
+        s.avail_out = tmp.size();
+        // gzip
+        ::inflateInit2(&s, 16+MAX_WBITS);
+        // read
+        do {
+            const auto old_total_out = s.total_out;
+            int res = inflate(&s, Z_NO_FLUSH);
+            if (res != Z_OK && res != Z_STREAM_END) {
+                sbn::throw_error("inflate error ", res);
+            }
+            const auto total_out = s.total_out;
+            tmp.bump(total_out-old_total_out);
+            if (tmp.remaining() == 0) { tmp.grow(); }
+            s.next_out = reinterpret_cast<Bytef*>(tmp.data() + tmp.position());
+            s.avail_out = tmp.remaining();
+        } while (s.avail_in != 0);
+        ::inflateEnd(&s);
+        log("inflate in _ out _ ratio _", in.remaining(), s.total_out,
+            double(s.total_out) / double(in.remaining()));
+        tmp.flip();
+        tmp >> this->_data;
+    }
+
+    inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
+    inline const Spectrum_file& file() const noexcept { return this->_file; }
+
+};
+
+template <class T>
+class Five_files_kernel: public sbn::kernel {
+
+public:
+    using spectrum_file_array = std::vector<Spectrum_file>;
+    enum class State { Reading, Processing };
+
+private:
+    spectrum_file_array _files;
+    std::vector<T> _frequencies;
+    uint32_t _count = 0;
+    std::map<spec::Timestamp, std::array<std::vector<T>,spec::max_variables>> _spectra;
+    std::map<spec::Timestamp, T> _out_matrix;
+    State _state = State::Reading;
+
+public:
+
+    Five_files_kernel() = default;
+
+    inline explicit
+    Five_files_kernel(const spectrum_file_array& files): _files(files) {
+        if (const char* fs = std::getenv("SBN_TEST_FS")) {
+            std::string fs_str(fs);
+            if (fs_str == "gfs") {
+                std::uniform_int_distribution<size_t> dist(0, this->_files.size()-1);
+                path(this->_files[dist(prng)].filename());
+            }
+        }
+    }
+
+    void act() override {
+        for (const auto& file : this->_files) {
+            sbn::upstream<sbn::Local>(this, sbn::make_pointer<File_kernel<T>>(file));
+        }
+    }
+
+    void process_spectra() {
         #if defined(SBN_DEBUG)
         sys::log_message(
-            "spec", "station _ year _ num-records _ num-frequencies _ contents-size _",
-            station(), year(), this->_spectra.size(), this->_frequencies.size(),
-            contents_size);
+            "spec", "station _ year _ num-records _ num-frequencies _",
+            station(), year(), this->_spectra.size(), this->_frequencies.size());
         #endif
+        this->_state = State::Processing;
         // remove incomplete records for given date
         const size_t old_size = _spectra.size();
-        for (auto it=_spectra.begin(); it!=_spectra.end(); ) {
-            const auto& array = it->second;
-            auto front_size = array.front().size();
-            bool any_empty = std::any_of(
-                array.begin()+1, array.end(),
-                [front_size] (const std::vector<T>& rhs) { return front_size != rhs.size(); });
-            if (any_empty) {
-                it = _spectra.erase(it);
-            } else {
-                ++it;
-            }
-        }
+        remove_incomplete_records();
         const size_t new_size = _spectra.size();
         if (new_size < old_size) {
             sys::log_message(
@@ -482,15 +476,44 @@ public:
                 "removed _ incomplete records from station _, year _",
                 old_size-new_size, station(), year());
         }
-        _count = _spectra.size();
+        this->_count = this->_spectra.size();
         if (this->_spectra.empty()) {
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
         } else {
             for (auto& pair : this->_spectra) {
-                auto k = sbn::make_pointer<Spectrum_kernel<T>>(
+                auto k = sbn::make_pointer<Variance_kernel<T>>(
                     pair.second, pair.first, _frequencies);
                 sbn::upstream(this, std::move(k));
             }
+        }
+    }
+
+    void add_spectrum_variable(pointer<File_kernel<T>>&& k) {
+        const auto variable = k->file().variable();
+        for (auto& pair : k->data()) {
+            this->_spectra[pair.first][int(variable)] = std::move(pair.second);
+        }
+        if (++this->_count == 5) { process_spectra(); }
+    }
+
+    void add_variance(pointer<Variance_kernel<T>>&& k) {
+        this->_out_matrix[k->date()] = k->variance();
+        if (--_count == 0) {
+            sys::log_message("spec", "finished year _ station _", year(), station());
+            if (!this->_files.empty()) { this->_files.resize(1); }
+            this->_spectra.clear();
+            sbn::commit<sbn::Remote>(std::move(this_ptr()));
+        }
+    }
+
+    void react(sbn::kernel_ptr&& k) override {
+        switch (this->_state) {
+            case State::Reading:
+                add_spectrum_variable(sbn::pointer_dynamic_cast<File_kernel<T>>(std::move(k)));
+                break;
+            case State::Processing:
+                add_variance(sbn::pointer_dynamic_cast<Variance_kernel<T>>(std::move(k)));
+                break;
         }
     }
 
@@ -501,17 +524,6 @@ public:
             }
         );
         out << std::flush;
-    }
-
-    void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Spectrum_kernel<T>>(std::move(child));
-        _out_matrix[k->date()] = k->variance();
-        if (--_count == 0) {
-            sys::log_message("spec", "finished year _ station _", year(), station());
-            if (!this->_files.empty()) { this->_files.resize(1); }
-            _spectra.clear();
-            sbn::commit<sbn::Remote>(std::move(this_ptr()));
-        }
     }
 
     inline Year year() const noexcept {
@@ -532,6 +544,7 @@ public:
         in >> _frequencies;
         in >> _count;
         in >> _out_matrix;
+        in >> this->_state;
     }
 
     void write(sbn::kernel_buffer& out) const override {
@@ -540,6 +553,24 @@ public:
         out << _frequencies;
         out << _count;
         out << _out_matrix;
+        out << this->_state;
+    }
+
+private:
+
+    void remove_incomplete_records() {
+        for (auto it=_spectra.begin(); it!=_spectra.end(); ) {
+            const auto& array = it->second;
+            auto front_size = array.front().size();
+            bool any_empty = std::any_of(
+                array.begin()+1, array.end(),
+                [front_size] (const std::vector<T>& rhs) { return front_size != rhs.size(); });
+            if (any_empty) {
+                it = _spectra.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
 };
@@ -599,7 +630,7 @@ public:
                         Station station = std::stoi(match[1].str());
                         Year year = std::stoi(match[3].str());
                         files[std::make_pair(year,station)].emplace_back(
-                            path, station, string_to_variable(match[2].str()),
+                            path, station, spec::string_to_variable(match[2].str()),
                             year);
                     }
                 }
@@ -612,12 +643,14 @@ public:
         }
         this->_num_kernels = files.size();
         for (const auto& pair : files) {
-            sbn::upstream<sbn::Remote>(this, sbn::make_pointer<Spectrum_file_kernel<T>>(pair.second));
+            sbn::upstream<sbn::Remote>(
+                this, sbn::make_pointer<Five_files_kernel<T>>(pair.second));
         }
     }
 
     void react(sbn::kernel_ptr&& child) override {
-        auto k = sbn::pointer_dynamic_cast<Spectrum_file_kernel<T>>(std::move(child));
+        sys::log_message("spec", "typeid _ kernel _", typeid(*child.get()).name(), *child.get());
+        auto k = sbn::pointer_dynamic_cast<Five_files_kernel<T>>(std::move(child));
         auto year = k->year();
         auto& output_file = this->_output_files[year];
         if (!output_file.is_open()) {

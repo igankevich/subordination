@@ -18,12 +18,13 @@ namespace sbn {
         properties(properties&&) = default;
         properties& operator=(properties&&) = default;
 
-        inline explicit properties(const char* filename) { read(filename); }
+        inline explicit properties(const char* filename) { open(filename); }
         inline explicit properties(std::istream& in, const char* filename) { read(in, filename); }
         void open(const char* filename);
         void read(std::istream& in, const char* filename);
-        inline void read(const char* string) { read(1, const_cast<char**>(&string)); }
-        void read(int argc, char** argv);
+        void read(int argc, const char** argv);
+        inline void read(int argc, char** argv) { read(argc, const_cast<const char**>(argv)); }
+
         virtual void property(const std::string& key, const std::string& value) = 0;
 
     };
@@ -34,6 +35,7 @@ namespace sbn {
     public:
         using base_duration = std::chrono::system_clock::duration;
         using base_duration::duration;
+        inline Duration(base_duration rhs): base_duration(rhs) {}
     };
 
     auto string_to_duration(std::string s) -> Duration;

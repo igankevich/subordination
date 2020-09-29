@@ -48,6 +48,7 @@ namespace sbn {
 
     private:
         id_type _id = 0;
+        id_type _old_id = 0;
         kernel_field _fields{};
         phases _phase = phases::upstream;
         sys::socket_address _source{};
@@ -69,11 +70,17 @@ namespace sbn {
             kernel* _principal = nullptr;
             id_type _principal_id;
         };
+        std::string _path;
 
     protected:
         // node-local type id
         kernel_type::id_type _type_id = 0;
         kernel_ptr* _this_ptr{};
+        // A pipeline that received the kernel. Node-local variable.
+        pipeline* _source_pipeline{};
+
+    private:
+        bool _routed = false;
 
     public:
 
@@ -87,10 +94,19 @@ namespace sbn {
         inline id_type id() const noexcept { return this->_id; }
         inline void id(id_type rhs) noexcept { this->_id = rhs; }
         inline bool has_id() const noexcept { return this->_id != 0; }
+        inline id_type old_id() const noexcept { return this->_old_id; }
+        inline void old_id(id_type rhs) noexcept { this->_old_id = rhs; }
+        inline bool routed() const noexcept { return this->_routed; }
+        inline void routed(bool rhs) noexcept { this->_routed = rhs; }
         inline kernel_type::id_type type_id() const noexcept { return this->_type_id; }
         inline void type_id(kernel_type::id_type rhs) noexcept { this->_type_id = rhs; }
         inline phases phase() const noexcept { return this->_phase; }
         inline void phase(phases rhs) noexcept { this->_phase = rhs; }
+        inline const std::string& path() const noexcept { return this->_path; }
+        inline void path(const std::string& rhs) { this->_path = rhs; }
+        inline void path(std::string&& rhs) { this->_path = std::move(rhs); }
+        inline pipeline* source_pipeline() const noexcept { return this->_source_pipeline; }
+        inline void source_pipeline(pipeline* rhs) noexcept { this->_source_pipeline = rhs; }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {

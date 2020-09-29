@@ -7,57 +7,35 @@
 
 namespace sbn {
 
-    enum struct pipeline_state {
-        initial,
-        starting,
-        started,
-        stopping,
-        stopped
-    };
-
-    const char* to_string(pipeline_state rhs);
-    std::ostream& operator<<(std::ostream& out, pipeline_state rhs);
-
     class pipeline_base {
 
+    public:
+        enum struct states {initial, starting, started, stopping, stopped};
+
     protected:
-        volatile pipeline_state _state{pipeline_state::initial};
+        states _state{states::initial};
         const char* _name = "ppl";
 
     public:
         pipeline_base() = default;
-        virtual ~pipeline_base() = default;
+        ~pipeline_base() = default;
+        pipeline_base(const pipeline_base&) = default;
+        pipeline_base& operator=(const pipeline_base&) = default;
         pipeline_base(pipeline_base&&) = default;
-        pipeline_base(const pipeline_base&) = delete;
-        pipeline_base& operator=(pipeline_base&) = delete;
+        pipeline_base& operator=(pipeline_base&&) = default;
 
-        inline pipeline_state state() const noexcept { return this->_state; }
-
-        inline bool
-        is_starting() const noexcept {
-            return this->_state == pipeline_state::starting;
-        }
+        inline states state() const noexcept { return this->_state; }
+        inline bool starting() const noexcept { return this->_state == states::starting; }
+        inline bool started() const noexcept { return this->_state == states::started; }
 
         inline bool
-        has_started() const noexcept {
-            return this->_state == pipeline_state::started;
+        running() const noexcept {
+            return this->_state == states::starting ||
+                   this->_state == states::started;
         }
 
-        inline bool
-        is_running() const noexcept {
-            return this->_state == pipeline_state::starting ||
-                   this->_state == pipeline_state::started;
-        }
-
-        inline bool
-        stopping() const noexcept {
-            return this->_state == pipeline_state::stopping;
-        }
-
-        inline bool
-        stopped() const noexcept {
-            return this->_state == pipeline_state::stopped;
-        }
+        inline bool stopping() const noexcept { return this->_state == states::stopping; }
+        inline bool stopped() const noexcept { return this->_state == states::stopped; }
 
         inline const char* name() const noexcept { return this->_name; }
         inline void name(const char* rhs) noexcept { this->_name = rhs; }
@@ -75,9 +53,12 @@ namespace sbn {
 
     protected:
 
-        inline void setstate(pipeline_state rhs) noexcept { this->_state = rhs; }
+        inline void setstate(states rhs) noexcept { this->_state = rhs; }
 
     };
+
+    const char* to_string(pipeline_base::states rhs);
+    std::ostream& operator<<(std::ostream& out, pipeline_base::states rhs);
 
     class pipeline: public pipeline_base {
 
@@ -88,6 +69,13 @@ namespace sbn {
         index_type _index{};
 
     public:
+        pipeline() = default;
+        virtual ~pipeline() = default;
+        pipeline(const pipeline&) = delete;
+        pipeline& operator=(const pipeline&) = delete;
+        pipeline(pipeline&&) = delete;
+        pipeline& operator=(pipeline&&) = delete;
+
         virtual void send(kernel_ptr&& k) = 0;
         virtual void forward(foreign_kernel_ptr&& k);
         virtual void recover(kernel_ptr&& k);

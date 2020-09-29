@@ -32,3 +32,17 @@ option(
 	value: true,
 	description: 'build Guile-based interpreter'
 )
+
+option(
+	'with_glusterfs',
+	type: 'boolean',
+	value: false,
+	description: 'build GlusterFS driver'
+)
+
+option(
+	'with_dtests',
+	type: 'boolean',
+	value: true,
+	description: 'build separate versions of all the binaries for distributed tests (in addition to normal versions)'
+)

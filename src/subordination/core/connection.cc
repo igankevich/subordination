@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <subordination/core/application.hh>
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/connection.hh>
@@ -59,12 +61,12 @@ void sbn::connection::send(kernel_ptr& k) {
     if (k->phase() == kernel::phases::upstream ||
         k->phase() == kernel::phases::point_to_point) {
         ensure_has_id(k->parent());
-        ensure_has_id(k.get());
+        generate_new_id(k.get());
     }
     #if defined(SBN_DEBUG)
-    this->log("send _ to _", *k, this->_socket_address);
+    log("send _ to _", *k, this->_socket_address);
     #endif
-    this->write_kernel(k.get());
+    write_kernel(k.get());
     /// The kernel is deleted if it goes downstream
     /// and does not carry its parent.
     k = save_kernel(std::move(k));
@@ -84,10 +86,6 @@ void sbn::connection::write_kernel(const kernel* k) noexcept {
     try {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
-        #if defined(SBN_DEBUG)
-        log("write _ buffer-size _ _", k->is_native() ? "native" : "foreign",
-            this->_output_buffer.size(), *k);
-        #endif
         this->_output_buffer.write(k);
     } catch (const sbn::error& err) {
         log_write_error(err);
@@ -145,6 +143,7 @@ sbn::connection::read_kernel(const application* from_application) {
         }
     }
     if (this->_socket_address) { k->source(this->_socket_address); }
+    k->source_pipeline(this->_parent);
     return k;
 }
 
@@ -216,9 +215,15 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         #endif
         k->parent(orig->parent());
         k->principal(k->parent());
+        k->id(orig->id());
         this->_upstream.erase(result);
         #if defined(SBN_DEBUG)
         this->log("plug parent _ for _", typeid(*k->parent()).name(), *k);
+        std::stringstream tmp;
+        for (const auto& k : this->_upstream) {
+            tmp << *k << '\n';
+        }
+        log("all kernels:\n_", tmp.str());
         #endif
     }
 }
@@ -247,6 +252,9 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
             }
             break;
         case kernel::phases::broadcast:
+            if (k->principal_id()) {
+                queue = &this->_upstream;
+            }
             break;
     }
     if (isset(connection_flags::write_transaction_log) &&

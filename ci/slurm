@@ -1,56 +1,89 @@
-#!/bin/sh
+#!/bin/guile3.0
+!#
 
-if test "$CI_PULL_REQUEST" != "false"
-then
-    echo "Skipping pull requests"
-    exit 0
-fi
+(use-modules
+  (oop goops)
+  (ice-9 format)
+  (ice-9 ftw)
+  (ice-9 popen)
+  (ice-9 textual-ports)
+  (slurm)
+  (slurm-ci))
 
-export GUIX_MANIFEST=guix/manifest.scm
-export GUIX_CHANNELS=guix/channels.scm
+(define env
+  (make <guix-environment>
+    #:channels "guix/channels.scm"
+    #:manifest "guix/manifest.scm"))
 
-echo
-echo "Environment:"
-env | grep -E '^(CI_|HOME|GUIX)' | sort | column -t -s= -R 1
-echo
+(define tag
+  (let ((port (open-input-pipe "git describe --tags --exact-match")))
+    (define output (string-trim-both (get-string-all port)))
+    (close-pipe port)
+    output))
 
-if test "$CI_BUILD_BRANCH" = "site"
-then
-    echo "Building the site"
-    echo
-/usr/libexec/gitbucket-ci << 'EOF'
-export SBN_MANIFEST=ci,site
-slurm_job "site" sh -c '
-    set -ex
-    export PYTHONUNBUFFERED=1
-    dst="cmmshq.ru:/srv/subordination"
-    d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
-    meson -Dwith_site=true . $d
-    cd $d
-    ninja -v site
-    rsync -e "ssh -p 22222" -acv --delete src/subordination/site/ $dst/
-    rm -rf $d
-'
-EOF
-else
-    echo "Building the project"
-    echo
-/usr/libexec/gitbucket-ci << 'EOF'
-export SBN_MANIFEST=ci
+(define branch (getenv "CI_BUILD_BRANCH"))
 
-test_flags() {
-    flags="$@"
-    echo '
-        set -ex
-        export PYTHONUNBUFFERED=1
-        d=$(mktemp --directory /tmp/sbn-XXXXXXXX)
-        meson '$flags' . $d
-        cd $d
-        meson test --verbose --timeout-multiplier 2
-        rm -rf $d'
-}
+(define (job-transform job)
+  (set! (job-name job)
+    (string-join (list "sbn" (getenv "CI_BUILD_NUMBER") (job-name job)) "-"))
+  (set! (job-partitions job) '("ci"))
+  (guix-environment-wrap! job env))
 
-slurm_job "sanitize-address" sh -c "$(test_flags -Db_sanitize=address)"
-slurm_job "sanitize-none" sh -c "$(test_flags -Db_sanitize=none)"
-EOF
-fi
+(cond
+  ;; build site
+  ((and branch (string=? branch "site"))
+   (let ((prefix "/var/lib/gitbucket/repositories"))
+     (format (current-error-port) "Building the site\n")
+     (setenv "SBN_MANIFEST" "ci,site")
+     (exit
+       (gitbucket-run
+         (list
+           (job-transform
+             (make <job>
+               #:name "site"
+               #:script
+               (string-join
+                 (list
+                   "#!/bin/sh"
+                   "set -ex"
+                   "d=$(mktemp -d /tmp/gitbucket-$SLURM_JOB_ID-XXXXXX)"
+                   "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
+                   "meson -Dwith_site=true . $d"
+                   "cd $d"
+                   "ninja -v site"
+                   "rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ cmmshq.ru:/srv/subordination/"
+                   "rm -rf $d")
+                 "\n"
+                 'suffix)
+               )))))))
+  ;; default build
+  (else
+    (let ()
+      (define all-jobs
+        (map
+          (lambda (lst)
+            (define name (car lst))
+            (define meson-arguments (cdr lst))
+            (make <job>
+              #:script
+              (string-join
+                (list
+                  "#!/bin/sh"
+                  "set -ex"
+                  "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
+                  "d=$(mktemp -d /tmp/gitbucket-$SLURM_JOB_ID-XXXXXX)"
+                  (format #f "meson ~a . $d" (string-join meson-arguments " "))
+                  "cd $d"
+                  "meson test --verbose --timeout-multiplier 3"
+                  "rm -rf --one-file-system --preserve-root $d")
+                "\n"
+                'suffix)
+              #:name name))
+          '(("no-dtests" "-Dwith_dtests=false")
+            ("default")
+            ("sanitize-address" "-Dwith_dtests=true" "-Db_sanitize=address"))))
+      (format (current-error-port) "Building the project\n")
+      (setenv "SBN_MANIFEST" "ci")
+      (exit (gitbucket-run (map job-transform all-jobs))))))
+
+;; vim:filetype=scheme

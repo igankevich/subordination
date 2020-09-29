@@ -8,6 +8,13 @@
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/terminate_kernel.hh>
 
+namespace {
+    inline void update_buffer_size(sys::fildes& fd, size_t new_size) {
+        if (new_size == std::numeric_limits<size_t>::max()) { return; }
+        fd.pipe_buffer_size(new_size);
+    }
+}
+
 void sbnd::process_pipeline::loop() {
     std::thread waiting_thread([this] () { wait_loop(); });
     basic_socket_pipeline::loop();
@@ -35,6 +42,8 @@ sbnd::process_pipeline::do_add(const sbn::application& app) {
         }
     }
     sys::two_way_pipe data_pipe;
+    update_buffer_size(data_pipe.in(), this->_pipe_buffer_size);
+    update_buffer_size(data_pipe.out(), this->_pipe_buffer_size);
     const auto& p = _child_processes.emplace(
         [&app,this,&data_pipe] () {
             try {

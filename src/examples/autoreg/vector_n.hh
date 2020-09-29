@@ -245,7 +245,11 @@ namespace autoreg {
         inline int x(int i) const { return (i/s[2])%s[1]; }
         inline int y(int i) const { return i%s[2]; }
 
-        inline int operator()(int i, int j, int k) const noexcept {
+        inline int operator()(int i, int j, int k) const
+        #if !defined(AUTOREG_DEBUG)
+        noexcept
+        #endif
+        {
             #if defined(AUTOREG_DEBUG)
             if (i < 0 || i >= int(s[0]) ||
                 j < 0 || j >= int(s[1]) ||

@@ -44,10 +44,8 @@ c=3)";
 
 TEST(properties, read_3) {
     my_properties props;
-    //props.line_delimiter(' ');
-    std::stringstream in;
-    in << R"(a=1 b=2 c=3)";
-    props.read(in, "string");
+    const char* argv[] = {"", "a=1", "b=2", "c=3", 0};
+    props.read(4, argv);
     EXPECT_EQ(props.all["a"], std::string("1"));
     EXPECT_EQ(props.all["b"], std::string("2"));
     EXPECT_EQ(props.all["c"], std::string("3"));
@@ -68,23 +66,6 @@ TEST(properties, read_5) {
     std::stringstream in;
     in << "a=1\n\rb=2\n\rc=3\n\r";
     props.read(in, "string");
-    EXPECT_EQ(props.all["a"], std::string("1"));
-    EXPECT_EQ(props.all["b"], std::string("2"));
-    EXPECT_EQ(props.all["c"], std::string("3"));
-}
-
-TEST(properties, read_string_1) {
-    my_properties props;
-    props.read("a=1\n\rb=2\n\rc=3\n\r");
-    EXPECT_EQ(props.all["a"], std::string("1"));
-    EXPECT_EQ(props.all["b"], std::string("2"));
-    EXPECT_EQ(props.all["c"], std::string("3"));
-}
-
-TEST(properties, read_string_2) {
-    my_properties props;
-    //props.line_delimiter(' ');
-    props.read("a=1 b=2 c=3");
     EXPECT_EQ(props.all["a"], std::string("1"));
     EXPECT_EQ(props.all["b"], std::string("2"));
     EXPECT_EQ(props.all["c"], std::string("3"));

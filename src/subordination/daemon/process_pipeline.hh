@@ -54,6 +54,7 @@ namespace sbnd {
         application_table _jobs;
         sys::process_group _child_processes;
         pipeline* _unix{};
+        size_t _pipe_buffer_size = 4096*16;
         /// How long a child process lives without receiving/sending kernels.
         duration _timeout;
         /// Allow process execution as superuser/supergroup.
@@ -79,6 +80,7 @@ namespace sbnd {
         void loop() override;
         void forward(sbn::foreign_kernel_ptr&& hdr) override;
 
+        inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
         inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
         inline void timeout(duration rhs) noexcept { this->_timeout = rhs; }
 

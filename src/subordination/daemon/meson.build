@@ -1,5 +1,6 @@
 config = configuration_data()
 config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
+config.set('SBND_WITH_GLUSTERFS', with_glusterfs)
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([
@@ -15,59 +16,68 @@ sbnd_src = files([
     'tree_hierarchy_iterator.cc',
 ])
 
-sbnd_lib = library(
-    'sbnd',
-    sources: sbnd_src,
-    dependencies: [sbn],
-    version: meson.project_version(),
-    include_directories: src,
-    install: true,
-    implicit_include_directories: false,
-)
+foreach config : binary_configs
+    tmp_sbn = get_variable(config.get('prefix') + 'sbn')
+    tmp_lib = library(
+        config.get('prefix') + 'sbnd',
+        cpp_args: test_cpp_args,
+        sources: sbnd_src,
+        dependencies: [tmp_sbn],
+        version: meson.project_version(),
+        include_directories: src,
+        install: true,
+        implicit_include_directories: false,
+    )
+    tmp_dep = declare_dependency(
+        link_with: tmp_lib,
+        include_directories: src,
+        dependencies: [tmp_sbn],
+    )
+    set_variable(config.get('prefix') + 'sbnd_lib', tmp_lib)
+    set_variable(config.get('prefix') + 'sbnd', tmp_dep)
+endforeach
 
-sbnd = declare_dependency(
-    link_with: sbnd_lib,
-    include_directories: src,
-    dependencies: [sbn],
-)
+sbnd_exe_src = files([
+    'factory.cc',
+    'master_discoverer.cc',
+    'network_master.cc',
+    'probe.cc',
+    'prober.cc',
+    'resident_kernel.cc',
+    'sbnd.cc',
+    'terminate_kernel.cc',
+    'transaction_test_kernel.cc',
+    'unix_socket_pipeline.cc',
+])
 
-sbnd_exe = executable(
-    'sbnd',
-    sources: files([
-        'factory.cc',
-        'master_discoverer.cc',
-        'network_master.cc',
-        'probe.cc',
-        'prober.cc',
-        'resident_kernel.cc',
-        'sbnd.cc',
-        'terminate_kernel.cc',
-        'transaction_test_kernel.cc',
-        'unix_socket_pipeline.cc',
-    ]),
-    include_directories: src,
-    dependencies: [sbnd],
-    install: true,
-    install_dir: get_option('sbindir'),
-    implicit_include_directories: false,
-)
+if with_glusterfs
+    subdir('glusterfs')
+endif
 
-sbnc_exe = executable(
-    'sbnc',
-    sources: ['small_factory.cc', 'sbnc.cc', 'sbnc_transaction_test_kernel.cc'],
-    include_directories: [src],
-    dependencies: [sbnd],
-    install: true,
-    implicit_include_directories: false,
-)
-
-test_app_exe = executable(
-    'test-application',
-    sources: 'test_application.cc',
-    include_directories: [src],
-    dependencies: [sbn],
-    implicit_include_directories: false,
-)
+foreach config : binary_configs
+    tmp_sbnd = get_variable(config.get('prefix') + 'sbnd')
+    tmp_sbnd_exe = executable(
+        config.get('prefix') + 'sbnd',
+        sources: sbnd_exe_src,
+        cpp_args: test_cpp_args,
+        include_directories: src,
+        dependencies: [tmp_sbnd],
+        install: true,
+        install_dir: get_option('sbindir'),
+        implicit_include_directories: false,
+    )
+    tmp_sbnc_exe = executable(
+        config.get('prefix') + 'sbnc',
+        sources: ['small_factory.cc', 'sbnc.cc', 'sbnc_transaction_test_kernel.cc'],
+        cpp_args: test_cpp_args,
+        include_directories: [src],
+        dependencies: [tmp_sbnd],
+        install: true,
+        implicit_include_directories: false,
+    )
+    set_variable(config.get('prefix') + 'sbnd_exe', tmp_sbnd_exe)
+    set_variable(config.get('prefix') + 'sbnc_exe', tmp_sbnc_exe)
+endforeach
 
 foreach name : ['local_server', 'tree_hierarchy_iterator', 'hierarchy']
     test_name = '-'.join(name.split('_'))
@@ -75,6 +85,7 @@ foreach name : ['local_server', 'tree_hierarchy_iterator', 'hierarchy']
     exe = executable(
         exe_name,
         sources: name + '_test.cc',
+        cpp_args: test_cpp_args,
         include_directories: src,
         dependencies: [sbnd, gtest],
         implicit_include_directories: false,
@@ -82,10 +93,15 @@ foreach name : ['local_server', 'tree_hierarchy_iterator', 'hierarchy']
     test('daemon/' + test_name, exe)
 endforeach
 
+if not with_dtests
+    subdir_done()
+endif
+
 socket_pipeline_test = executable(
     'socket-pipeline-test',
     sources: 'socket_pipeline_test.cc',
-    dependencies: [gtest, sbnd],
+    cpp_args: test_cpp_args,
+    dependencies: [gtest, test_sbnd],
     include_directories: src,
     implicit_include_directories: false,
 )
@@ -133,7 +149,7 @@ test(
     'daemon/socket-pipeline-power-failure',
     dtest_exe,
     args: [
-        '--exit-code', 'all',
+        '--exit-code', '1',
         '--restart',
         '--size', '2',
         '--exec', '1', socket_pipeline_test.full_path(), 'role=master', 'failure=power',
@@ -146,7 +162,8 @@ test(
 app_exe = executable(
     'process-pipeline-test-app',
     sources: 'process_pipeline_test.cc',
-    dependencies: [sbn],
+    cpp_args: test_cpp_args,
+    dependencies: [test_sbn],
     include_directories: src,
     cpp_args: ['-DSUBORDINATION_TEST_APPLICATION'],
     implicit_include_directories: false,
@@ -163,7 +180,8 @@ configure_file(
 daemon_exe = executable(
     'process-pipeline-test-daemon',
     sources: 'process_pipeline_test.cc',
-    dependencies: [sbnd],
+    cpp_args: test_cpp_args,
+    dependencies: [test_sbnd],
     include_directories: src,
     cpp_args: ['-DSUBORDINATION_TEST_DAEMON'],
     implicit_include_directories: false,
@@ -171,9 +189,17 @@ daemon_exe = executable(
 
 test('daemon/process-pipeline', daemon_exe)
 
+test_app_exe = executable(
+    'test-application',
+    sources: 'test_application.cc',
+    include_directories: [src],
+    dependencies: [test_sbn],
+    implicit_include_directories: false,
+)
+
 test_config = configuration_data()
-test_config.set('sbnd_exe_path', sbnd_exe.full_path())
-test_config.set('sbnc_exe_path', sbnc_exe.full_path())
+test_config.set('sbnd_exe_path', test_sbnd_exe.full_path())
+test_config.set('sbnc_exe_path', test_sbnc_exe.full_path())
 test_config.set('app_exe_path', test_app_exe.full_path())
 configure_file(
     input: 'discovery_test.hh.in',
@@ -184,8 +210,9 @@ configure_file(
 discovery_test_exe = executable(
     'discovery-test',
     sources: 'discovery_test.cc',
+    cpp_args: test_cpp_args,
     include_directories: [src],
-    dependencies: [sbn,dtest],
+    dependencies: [test_sbn,dtest],
     implicit_include_directories: false,
 )
 
@@ -204,8 +231,9 @@ test(
     executable(
         'transaction-test',
         sources: 'transaction_test.cc',
+        cpp_args: test_cpp_args,
         include_directories: [src],
-        dependencies: [sbn,dtest],
+        dependencies: [test_sbn,dtest],
         implicit_include_directories: false,
     ),
     workdir: meson.build_root(),

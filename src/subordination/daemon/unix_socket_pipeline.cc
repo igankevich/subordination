@@ -51,7 +51,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
 void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     using f = sbn::connection_flags;
     sys::socket s(sys::family_type::unix);
-    s.setopt(sys::socket::pass_credentials);
+    s.set(sys::socket::options::pass_credentials);
     try {
         s.connect(addr);
     } catch (const sys::bad_call& err) {
@@ -72,7 +72,7 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
 void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
     sys::socket s(sys::family_type::unix);
     s.bind(rhs);
-    s.setopt(sys::socket::pass_credentials);
+    s.set(sys::socket::options::pass_credentials);
     s.listen();
     auto ptr = std::make_shared<unix_socket_server>(std::move(s));
     ptr->name(name());

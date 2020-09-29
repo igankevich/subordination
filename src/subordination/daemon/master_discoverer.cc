@@ -103,7 +103,9 @@ void sbnd::master_discoverer::update_subordinates(pointer<probe> p) {
         profile("`((time . _) (node . \"_\") (operation . _) (subordinate . \"_\"))",
                 current_time_in_microseconds(), interface_address(), result, src);
     } else {
-        log("_: _ subordinate _", this->interface_address(), result, src);
+        #if defined(SBN_TEST)
+        sys::log_message("test", "_: _ subordinate _", this->interface_address(), result, src);
+        #endif
     }
     weight_type total_weight = 0;
     if (result == probe_result::add_subordinate) {
@@ -177,8 +179,11 @@ void sbnd::master_discoverer::update_superior(pointer<prober> p) {
                         current_time_in_microseconds(), interface_address(),
                         new_superior, this->_attempts);
             } else {
-                log("_: set principal to _ attempts _ weight _", interface_address(),
-                    new_superior, this->_attempts, p->new_superior_weight());
+                #if defined(SBN_TEST)
+                sys::log_message("test", "_: set principal to _ attempts _ weight _",
+                                 interface_address(), new_superior, this->_attempts,
+                                 p->new_superior_weight());
+                #endif
             }
             add_superior(new_superior, p->new_superior_weight());
         }
@@ -205,11 +210,15 @@ sbnd::master_discoverer::on_client_add(const sys::socket_address& address) {}
 void
 sbnd::master_discoverer::on_client_remove(const sys::socket_address& address) {
     if (address == this->_hierarchy.superior()) {
-        log("_: unset principal _", interface_address(), address);
+        #if defined(SBN_TEST)
+        sys::log_message("test", "_: unset principal _", interface_address(), address);
+        #endif
         remove_superior();
         discover();
     } else {
-        log("_: remove subordinate _", interface_address(), address);
+        #if defined(SBN_TEST)
+        sys::log_message("test", "_: remove subordinate _", interface_address(), address);
+        #endif
         remove_subordinate(address);
     }
 }
@@ -309,7 +318,10 @@ void sbnd::master_discoverer::update_weights(pointer<Hierarchy_kernel> k) {
             changed = this->_hierarchy.set_subordinate_weight(src, k->weight());
         }
         if (changed) {
-            log("_: set _ weight to _", interface_address(), k->source(), k->weight());
+            #if defined(SBN_TEST)
+            sys::log_message("test", "_: set _ weight to _",
+                             interface_address(), k->source(), k->weight());
+            #endif
             factory.remote().set_client_weight(src, k->weight());
             broadcast_hierarchy(src);
         }

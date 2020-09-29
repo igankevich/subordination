@@ -34,14 +34,14 @@ log(const Args& ... args) {
 sys::argstream sbnd_args() {
     sys::argstream args;
     args.append(SBND_PATH);
-    args.append("fanout=2");
-    args.append("allow-root=1");
+    args.append("discoverer.fanout=2");
+    args.append("process.allow-root=1");
     // tolerate asynchronous start of daemons
-    args.append("connection-timeout=1s");
-    args.append("max-connection-attempts=10");
-    args.append("network-scan-interval=5s");
+    args.append("remote.connection-timeout=1s");
+    args.append("remote.max-connection-attempts=10");
+    args.append("discoverer.scan-interval=5s");
     // never update NICs
-    args.append("network-interface-update-interval=1h");
+    args.append("network.interface-update-interval=1h");
     return args;
 }
 
@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             tmp << app.cluster().name() << (i+1);
             const auto& transactions_directory = tmp.str();
             std::remove(sys::path(transactions_directory, "transactions").data());
-            args << "transactions-directory=" << transactions_directory << '\0';
+            args << "transactions.directory=" << transactions_directory << '\0';
             app.add_process(i, std::move(args));
         }
     }

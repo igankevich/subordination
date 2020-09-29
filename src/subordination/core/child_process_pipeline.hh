@@ -16,6 +16,7 @@ namespace sbn {
 
     private:
         connection_ptr _parent;
+        size_t _pipe_buffer_size = std::numeric_limits<size_t>::max();
 
     public:
 
@@ -25,6 +26,8 @@ namespace sbn {
 
         void send(kernel_ptr&& k) override;
         void add_connection();
+
+        inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
 
     protected:
 

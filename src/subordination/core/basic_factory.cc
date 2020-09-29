@@ -36,6 +36,7 @@ namespace  {
         unsigned _num_downstream_threads = 0;
         size_t _min_output_buffer_size = std::numeric_limits<size_t>::max();
         size_t _min_input_buffer_size = std::numeric_limits<size_t>::max();
+        size_t _pipe_buffer_size = std::numeric_limits<size_t>::max();
 
     public:
         inline Properties() {
@@ -48,25 +49,22 @@ namespace  {
                 auto n = std::stoi(value);
                 if (n < 1) { throw std::out_of_range("out of range"); }
                 this->_num_upstream_threads = n;
-                return;
-            }
-            if (key == "local.num-downstream-threads") {
+            } else if (key == "local.num-downstream-threads") {
                 auto n = std::stoi(value);
                 if (n < 0) { throw std::out_of_range("out of range"); }
                 this->_num_downstream_threads = n;
-                return;
-            }
-            if (key == "remote.min-input-buffer-size") {
+            } else if (key == "remote.min-input-buffer-size") {
                 auto n = std::stoul(value);
                 this->_min_input_buffer_size = n;
-                return;
-            }
-            if (key == "remote.min-output-buffer-size") {
+            } else if (key == "remote.min-output-buffer-size") {
                 auto n = std::stoul(value);
                 this->_min_output_buffer_size = n;
-                return;
+            } else if (key == "remote.pipe-buffer-size") {
+                auto n = std::stoul(value);
+                this->_pipe_buffer_size = n;
+            } else {
+                throw std::invalid_argument("unknown property");
             }
-            throw std::runtime_error("unknown property");
         }
 
         inline void init_default_values() {
@@ -96,6 +94,7 @@ sbn::Factory::Factory() {
     this->_local.error_pipeline(&this->_remote);
     this->_remote.min_input_buffer_size(config._min_input_buffer_size);
     this->_remote.min_output_buffer_size(config._min_output_buffer_size);
+    this->_remote.pipe_buffer_size(config._pipe_buffer_size);
     this->_remote.name("app remote");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);

@@ -19,6 +19,10 @@
 #include <subordination/daemon/terminate_kernel.hh>
 #include <subordination/daemon/transaction_test_kernel.hh>
 
+#if defined(SBND_WITH_GLUSTERFS)
+#include <subordination/daemon/glusterfs/glusterfs_kernel.hh>
+#endif
+
 template <class ... Args>
 inline void
 log(const Args& ... args) {
@@ -71,17 +75,32 @@ int main(int argc, char* argv[]) {
         if (factory.isset(factory_flags::unix)) {
             factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         }
-        auto m = sbn::make_pointer<network_master>(props);
-        m->id(1);
-        factory.instances().add(m.get());
-        if (factory.isset(factory_flags::process)) {
-            factory.process().add_listener(m.get());
+        {
+            auto k = sbn::make_pointer<network_master>(props);
+            k->id(1);
+            factory.instances().add(k.get());
+            if (factory.isset(factory_flags::process)) {
+                factory.process().add_listener(k.get());
+            }
+            if (factory.isset(factory_flags::remote)) {
+                factory.remote().add_listener(k.get());
+            }
+            factory.local().send(std::move(k));
         }
-        if (factory.isset(factory_flags::remote)) {
-            factory.remote().add_listener(m.get());
+        #if defined(SBND_WITH_GLUSTERFS)
+        {
+            auto k = sbn::make_pointer<glusterfs_kernel>(props.glusterfs);
+            k->id(2);
+            factory.instances().add(k.get());
+            if (factory.isset(factory_flags::remote)) {
+                auto& remote = factory.remote();
+                remote.add_listener(k.get());
+                remote.scheduler().add_file_system(k->file_system());
+            }
+            factory.local().send(std::move(k));
         }
+        #endif
         factory.start();
-        factory.local().send(std::move(m));
     } catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
         sbn::exit(1);

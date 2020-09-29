@@ -225,7 +225,6 @@ TEST(socket_pipeline, _) {
         failure = Failure::None;
         restore = true;
     }
-
     sbn::kernel_type_registry types;
     types.add<Main>(1);
     types.add<Sender>(2);
@@ -238,7 +237,6 @@ TEST(socket_pipeline, _) {
     remote.transactions(&transactions);
     remote.max_connection_attempts(10);
     remote.connection_timeout(std::chrono::seconds(1));
-
     sys::port_type port = 10000;
     ipv4_interface_address network{{127,0,0,1},8};
     if (const char* text = std::getenv("DTEST_INTERFACE_ADDRESS")) {
@@ -253,9 +251,9 @@ TEST(socket_pipeline, _) {
         remote.port(port+1);
         using namespace std::this_thread;
         using namespace std::chrono;
-        g.unlock();
-        sleep_for(milliseconds(1000));
-        g.lock();
+        //g.unlock();
+        //sleep_for(milliseconds(1000));
+        //g.lock();
         remote.add_server(principal_endpoint, network.netmask());
     }
     if (role == Role::Master) {
@@ -263,9 +261,9 @@ TEST(socket_pipeline, _) {
         remote.port(port);
         remote.add_server(subordinate_endpoint, network.netmask());
         // wait for the child to start
-        //using namespace std::this_thread;
-        //using namespace std::chrono;
-        //sleep_for(milliseconds(1000));
+        using namespace std::this_thread;
+        using namespace std::chrono;
+        sleep_for(milliseconds(1000));
         remote.add_client(principal_endpoint);
     }
 

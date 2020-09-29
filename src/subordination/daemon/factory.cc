@@ -35,10 +35,14 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         remote.max_connection_attempts = static_cast<sys::u32>(v);
     } else if (key == "remote.connection-timeout") {
         remote.connection_timeout = sbn::string_to_duration(value);
+    } else if (key == "remote.route") {
+        remote.route = sbn::string_to_bool(value);
     } else if (key == "process.min-input-buffer-size") {
         process.min_input_buffer_size = std::stoul(value);
     } else if (key == "process.min-output-buffer-size") {
         process.min_output_buffer_size = std::stoul(value);
+    } else if (key == "process.pipe-buffer-size") {
+        process.pipe_buffer_size = std::stoul(value);
     } else if (key == "process.allow-root") {
         process.allow_root = sbn::string_to_bool(value);
     } else if (key == "unix.min-input-buffer-size") {
@@ -76,8 +80,12 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         discoverer.cache_directory = value;
     } else if (key == "discoverer.profile") {
         discoverer.profile = sbn::string_to_bool(value);
+    #if defined(SBND_WITH_GLUSTERFS)
+    } else if (key == "glusterfs.working-directory") {
+        glusterfs.working_directory = value;
+    #endif
     } else {
-        throw std::runtime_error("unknown property");
+        throw std::invalid_argument("unknown property");
     }
 }
 
@@ -176,10 +184,12 @@ void sbnd::Factory::configure(const Properties& props) {
         this->_remote.min_input_buffer_size(props.remote.min_input_buffer_size);
         this->_remote.max_connection_attempts(props.remote.max_connection_attempts);
         this->_remote.connection_timeout(props.remote.connection_timeout);
+        this->_remote.route(props.remote.route);
     }
     if (isset(f::process)) {
         this->_process.min_output_buffer_size(props.process.min_output_buffer_size);
         this->_process.min_input_buffer_size(props.process.min_input_buffer_size);
+        this->_process.pipe_buffer_size(props.process.pipe_buffer_size);
         this->_process.allow_root(props.process.allow_root);
     }
     if (isset(f::unix)) {
@@ -189,7 +199,7 @@ void sbnd::Factory::configure(const Properties& props) {
     if (isset(f::transactions)) {
         this->_transactions.recover_after(props.transactions.recover_after);
         sys::mkdirs(props.transactions.directory);
-        transactions(sys::canonical_path(props.transactions.directory).data());
+        transactions(sys::path(sys::canonical_path(props.transactions.directory), "transactions").data());
     }
 }
 

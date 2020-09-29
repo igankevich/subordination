@@ -80,6 +80,11 @@ namespace sbnd {
             return false;
         }
 
+        template <class ... Args> inline void
+        log(const char* fmt, const Args& ... args) const {
+            sys::log_message("net", fmt, args ...);
+        }
+
     };
 
 }
