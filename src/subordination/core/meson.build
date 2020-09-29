@@ -56,7 +56,7 @@ foreach config : binary_configs
         dependencies: [threads,unistdx] + libunwind + libdw,
         version: meson.project_version(),
         include_directories: src,
-        install: true,
+        install: config.get('prefix') == '',
         implicit_include_directories: false,
     )
     tmp_dep = declare_dependency(
