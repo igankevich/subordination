@@ -11,7 +11,6 @@ project_description = 'A framework for distributed programming'
 
 with_debug = get_option('buildtype').contains('debug')
 with_site = get_option('with_site')
-with_rpm = get_option('with_rpm')
 with_examples = get_option('with_examples')
 with_guile = get_option('with_guile')
 with_glusterfs = get_option('with_glusterfs')
@@ -65,10 +64,6 @@ pkgconfig = import('pkgconfig')
 
 subdir('src')
 subdir('guix')
-
-if with_rpm
-    subdir('rpm')
-endif
 
 cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()

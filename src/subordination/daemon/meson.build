@@ -25,7 +25,7 @@ foreach config : binary_configs
         dependencies: [tmp_sbn],
         version: meson.project_version(),
         include_directories: src,
-        install: true,
+        install: config.get('prefix') == '',
         implicit_include_directories: false,
     )
     tmp_dep = declare_dependency(
@@ -62,7 +62,7 @@ foreach config : binary_configs
         cpp_args: test_cpp_args,
         include_directories: src,
         dependencies: [tmp_sbnd],
-        install: true,
+        install: config.get('prefix') == '',
         install_dir: get_option('sbindir'),
         implicit_include_directories: false,
     )
@@ -72,7 +72,7 @@ foreach config : binary_configs
         cpp_args: test_cpp_args,
         include_directories: [src],
         dependencies: [tmp_sbnd],
-        install: true,
+        install: config.get('prefix') == '',
         implicit_include_directories: false,
     )
     set_variable(config.get('prefix') + 'sbnd_exe', tmp_sbnd_exe)
@@ -162,10 +162,9 @@ test(
 app_exe = executable(
     'process-pipeline-test-app',
     sources: 'process_pipeline_test.cc',
-    cpp_args: test_cpp_args,
     dependencies: [test_sbn],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_APPLICATION'],
+    cpp_args: test_cpp_args + ['-DSUBORDINATION_TEST_APPLICATION'],
     implicit_include_directories: false,
 )
 
@@ -180,10 +179,9 @@ configure_file(
 daemon_exe = executable(
     'process-pipeline-test-daemon',
     sources: 'process_pipeline_test.cc',
-    cpp_args: test_cpp_args,
     dependencies: [test_sbnd],
     include_directories: src,
-    cpp_args: ['-DSUBORDINATION_TEST_DAEMON'],
+    cpp_args: test_cpp_args + ['-DSUBORDINATION_TEST_DAEMON'],
     implicit_include_directories: false,
 )
 

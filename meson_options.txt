@@ -1,22 +1,8 @@
 option(
-	'unitdir',
-	type: 'string',
-	value: 'lib/systemd/system',
-	description: 'systemd unit directory'
-)
-
-option(
 	'with_site',
 	type: 'boolean',
 	value: false,
 	description: 'build documentation and web pages'
-)
-
-option(
-	'with_rpm',
-	type: 'boolean',
-	value: false,
-	description: 'build RPM package'
 )
 
 option(
