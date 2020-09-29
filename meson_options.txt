@@ -27,6 +27,13 @@ option(
 )
 
 option(
+	'with_guile',
+	type: 'boolean',
+	value: true,
+	description: 'build Guile-based interpreter'
+)
+
+option(
 	'with_glusterfs',
 	type: 'boolean',
 	value: false,

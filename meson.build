@@ -13,6 +13,7 @@ with_debug = get_option('buildtype').contains('debug')
 with_site = get_option('with_site')
 with_rpm = get_option('with_rpm')
 with_examples = get_option('with_examples')
+with_guile = get_option('with_guile')
 with_glusterfs = get_option('with_glusterfs')
 with_dtests = get_option('with_dtests')
 
@@ -34,6 +35,10 @@ if with_debug
     cpp_args += '-DUNW_LOCAL_ONLY'
 else
     cpp_args += '-fvisibility-inlines-hidden'
+endif
+
+if with_guile
+    guile = dependency('guile-3.0')
 endif
 
 foreach arg : cpp_args
