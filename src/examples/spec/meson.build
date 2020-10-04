@@ -1,7 +1,7 @@
 zlib = dependency('zlib')
 spec_src = files(['main.cc','timestamp.cc','variable.cc'])
 spec_deps = [threads, zlib, unistdx, sbn]
-clang_tidy_files += autoreg_src
+clang_tidy_files += spec_src
 executable(
     'spec',
     sources: spec_src,
