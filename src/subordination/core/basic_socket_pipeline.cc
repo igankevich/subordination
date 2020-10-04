@@ -102,7 +102,7 @@ void sbn::basic_socket_pipeline::flush_buffers() {
                 using namespace std::chrono;
                 log("activate _ _", conn->socket_address(),
                     duration_cast<milliseconds>(conn->start_time_point()-clock_type::now()).count());
-                connection_ptr& tmp = conn;
+                connection_ptr tmp = conn;
                 this->_connections.erase(i);
                 try {
                     tmp->activate(tmp);

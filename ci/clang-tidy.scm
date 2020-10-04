@@ -10,9 +10,9 @@
 (define args-before (string-split (second (command-line)) #\|))
 (define args-after (string-split (third (command-line)) #\|))
 (define files (cdddr (command-line)))
-(pretty-print args-before)
-(pretty-print args-after)
-(pretty-print files)
+;;(pretty-print args-before)
+;;(pretty-print args-after)
+;;(pretty-print files)
 
 ;; add include paths from environment variables
 (define cpp-args

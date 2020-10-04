@@ -14,6 +14,7 @@ if clang_tidy.found() and guix.found()
         '-misc-non-private-member-variables-in-classes',
         'performance-*',
         '-performance-unnecessary-value-param',
+        '-performance-unnecessary-copy-initialization',
     ]
     run_target(
         'clang-tidy',
@@ -31,7 +32,7 @@ if clang_tidy.found() and guix.found()
                 '--',
                 '-I' + join_paths(meson.source_root(), 'src'),
                 '-I' + join_paths(meson.build_root(), 'src'),
-                '-std=c++11'
+                '-std=' + get_option('cpp_std')
             ] + cpp_args + ['-pthread'])] +
             clang_tidy_files)
 endif
