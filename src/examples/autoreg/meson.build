@@ -8,6 +8,8 @@ autoreg_src = [
     'yule_walker.cc'
 ]
 
+clang_tidy_files += autoreg_src
+
 autoreg_deps = [threads, unistdx, sbn]
 autoreg_cpp_args = ['-DAUTOREG_REAL_TYPE=double'] + (with_debug ? ['-DAUTOREG_DEBUG'] : [])
 

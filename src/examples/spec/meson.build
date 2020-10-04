@@ -1,13 +1,13 @@
-zlib = dependency('zlib', required: false)
-
-if zlib.found()
-    executable(
-        'spec',
-        sources: ['main.cc','timestamp.cc','variable.cc'],
-        include_directories: [src,examples],
-        dependencies: [threads, zlib, unistdx, sbn],
-        implicit_include_directories: false,
-        cpp_args: ['-DSPECTRUM_REAL_TYPE=double'],
-        install: true,
-    )
-endif
+zlib = dependency('zlib')
+spec_src = files(['main.cc','timestamp.cc','variable.cc'])
+spec_deps = [threads, zlib, unistdx, sbn]
+clang_tidy_files += autoreg_src
+executable(
+    'spec',
+    sources: spec_src,
+    include_directories: [src,examples],
+    dependencies: spec_deps,
+    implicit_include_directories: false,
+    cpp_args: ['-DSPECTRUM_REAL_TYPE=double'],
+    install: true,
+)

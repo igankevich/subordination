@@ -33,8 +33,8 @@ void sbn::connection::handle(const sys::epoll_event& event) {
 
 void sbn::connection::add(const connection_ptr& self) {}
 void sbn::connection::remove(const connection_ptr& self) {}
-void sbn::connection::retry(const connection_ptr& self) { ++this->_attempts; }
-void sbn::connection::deactivate(const connection_ptr& self) { ++this->_attempts; }
+void sbn::connection::retry(const connection_ptr&) { ++this->_attempts; }
+void sbn::connection::deactivate(const connection_ptr&) { ++this->_attempts; }
 void sbn::connection::activate(const connection_ptr& self) {}
 void sbn::connection::flush() {}
 void sbn::connection::stop() { state(connection_state::stopped); }
@@ -347,8 +347,8 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
 }
 
 void sbn::connection::clear(kernel_sack& sack) {
-    for (auto& k : this->_upstream) { k->mark_as_deleted(sack); k.release(); }
+    for (auto& k : this->_upstream) { k.release()->mark_as_deleted(sack); }
     this->_upstream.clear();
-    for (auto& k : this->_downstream) { k->mark_as_deleted(sack); k.release(); }
+    for (auto& k : this->_downstream) { k.release()->mark_as_deleted(sack); }
     this->_downstream.clear();
 }

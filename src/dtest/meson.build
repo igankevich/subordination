@@ -29,3 +29,5 @@ dtest_exe = executable(
     dependencies: dtest,
     implicit_include_directories: false,
 )
+
+clang_tidy_files += dtest_src

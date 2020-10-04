@@ -29,7 +29,7 @@ log(const Args& ... args) {
     sys::log_message("sbnd", args...);
 }
 
-void on_terminate(int s) {
+void on_terminate(int) {
     // TODO flush transactions
     sbn::exit(0);
 }
@@ -46,7 +46,7 @@ void parse_standard_arguments(int argc, char** argv) {
     }
 }
 
-int main(int argc, char* argv[]) {
+int real_main(int argc, char* argv[]) {
     using namespace sbnd;
     using sbn::Duration;
     parse_standard_arguments(argc, argv);
@@ -110,4 +110,13 @@ int main(int argc, char* argv[]) {
     factory.wait();
     factory.clear();
     return ret;
+}
+
+int main(int argc, char* argv[]) {
+    try {
+        return real_main(argc, argv);
+    } catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        return 1;
+    }
 }

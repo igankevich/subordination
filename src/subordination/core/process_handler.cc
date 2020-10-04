@@ -30,7 +30,7 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
     if (event.in()) {
         fill(this->_file_descriptors.in());
         receive_kernels(this->_role == role_type::parent ?  &this->_application : nullptr,
-                        [this] (kernel_ptr& k) { ++this->_kernel_count; });
+                        [this] (kernel_ptr&) { ++this->_kernel_count; });
     }
 }
 
@@ -55,7 +55,7 @@ void sbn::process_handler::add(const connection_ptr& self) {
     connection::parent()->emplace_handler(sys::epoll_event(out(), sys::event::out), self);
 }
 
-void sbn::process_handler::remove(const connection_ptr& self) {
+void sbn::process_handler::remove(const connection_ptr&) {
     try {
         connection::parent()->erase(in());
     } catch (const sys::bad_call& err) {

@@ -13,7 +13,7 @@ void nested_main(int argc, char* argv[]) {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
         factory.types().add<Kernel>(2);
-        factory.local().thread_init([] (size_t i) { scm_init_guile(); });
+        factory.local().thread_init([] (size_t) { scm_init_guile(); });
     }
     factory_guard g;
     if (this_application::standalone()) {

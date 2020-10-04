@@ -49,7 +49,7 @@ void sbn::basic_socket_pipeline::handle_events() {
             if (err.errc() != std::errc::connection_refused) {
                 remove(ev.fd(), conn, err.what());
             } else {
-                deactivate(ev.fd(), conn, clock_type::now(), err.what());
+                deactivate(ev.fd(), conn, err.what());
             }
         }
     }
@@ -57,7 +57,6 @@ void sbn::basic_socket_pipeline::handle_events() {
 
 void sbn::basic_socket_pipeline::deactivate(sys::fd_type fd,
                                             connection_ptr conn,
-                                            time_point now,
                                             const char* reason) {
     if (conn->attempts() >= max_connection_attempts()) {
         remove(fd, conn, "max. attempts reached");
@@ -88,7 +87,7 @@ void sbn::basic_socket_pipeline::flush_buffers() {
         } catch (const std::exception& err) {
             log("flush _", err.what());
             if (conn->state() == connection_state::started) {
-                deactivate(i, conn, now, err.what());
+                deactivate(i, conn, err.what());
                 continue;
             }
         }
@@ -96,7 +95,7 @@ void sbn::basic_socket_pipeline::flush_buffers() {
             remove(i, conn, "stopped");
         } else if (conn->state() == connection_state::starting) {
             if (conn->start_time_point() + connection_timeout() <= now) {
-                deactivate(i, conn, now, "timed out");
+                deactivate(i, conn, "timed out");
             }
         } else if (conn->state() == connection_state::inactive) {
             if (conn->start_time_point() + connection_timeout() <= now) {
@@ -114,7 +113,7 @@ void sbn::basic_socket_pipeline::flush_buffers() {
                         if (c.get() == tmp.get()) { break; }
                         ++j;
                     }
-                    deactivate(j, tmp, now, err.what());
+                    deactivate(j, tmp, err.what());
                 }
             }
         }
@@ -149,15 +148,14 @@ void sbn::basic_socket_pipeline::wait() {
 
 void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     while (!this->_kernels.empty()) {
-        auto& k = this->_kernels.front();
+        auto* k = this->_kernels.front().release();
         k->mark_as_deleted(sack);
-        k.release();
         this->_kernels.pop();
     }
     for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
     this->_listeners.clear();
-    for (auto& k : this->_trash) { k->mark_as_deleted(sack); k.release(); }
+    for (auto& k : this->_trash) { k.release()->mark_as_deleted(sack); }
     this->_trash.clear();
 }
 

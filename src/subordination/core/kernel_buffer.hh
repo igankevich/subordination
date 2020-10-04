@@ -28,48 +28,6 @@ namespace sbn {
         using sys::byte_buffer::write;
 
         template <class T>
-        auto write(T x) -> typename std::enable_if<std::is_enum<T>::value,void>::type {
-            using type = typename std::underlying_type<T>::type;
-            this->write(static_cast<type>(x));
-        }
-
-        template <class T>
-        auto read(T& x) -> typename std::enable_if<std::is_enum<T>::value,void>::type {
-            using type = typename std::underlying_type<T>::type;
-            this->read(reinterpret_cast<type&>(x));
-        }
-
-        template <class Rep, class Period>
-        void write(std::chrono::duration<Rep,Period> dt) {
-            using std::chrono::duration_cast;
-            using std::chrono::nanoseconds;
-            this->write(sys::u64(duration_cast<nanoseconds>(dt).count()));
-        }
-
-        template <class Rep, class Period>
-        void read(std::chrono::duration<Rep,Period>& dt) {
-            using std::chrono::duration_cast;
-            using std::chrono::nanoseconds;
-            sys::u64 n = 0;
-            this->read(n);
-            dt = duration_cast<std::chrono::duration<Rep,Period>>(nanoseconds(n));
-        }
-
-        template <class Clock, class Duration>
-        void write(std::chrono::time_point<Clock,Duration> t) {
-            this->write(t.time_since_epoch());
-        }
-
-        template <class Clock, class Duration>
-        void read(std::chrono::time_point<Clock,Duration>& t) {
-            using time_point = std::chrono::time_point<Clock,Duration>;
-            using duration = typename time_point::duration;
-            duration dt{};
-            this->read(dt);
-            t = time_point(dt);
-        }
-
-        template <class T>
         void write(const std::vector<T>& rhs) {
             const sys::u32 n = rhs.size();
             this->write(n);
