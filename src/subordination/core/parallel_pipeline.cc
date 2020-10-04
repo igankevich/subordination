@@ -26,8 +26,7 @@ namespace {
     clear_queue(T& queue, Sack& sack) {
         while (!queue.empty()) {
             auto& k = Front<T>::front(queue);
-            k->mark_as_deleted(sack);
-            k.release();
+            k.release()->mark_as_deleted(sack);
             queue.pop();
         }
     }
@@ -40,14 +39,14 @@ namespace {
             case sbn::kernel::phases::upstream:
                 k->this_ptr(&k);
                 k->act();
-                k.release();
+                (void)k.release();
                 break;
             case sbn::kernel::phases::downstream:
                 if (auto* p = k->principal()) {
                     sbn::kernel_ptr ptr(p);
                     p->this_ptr(&ptr);
                     p->react(std::move(k));
-                    ptr.release();
+                    (void)ptr.release();
                 } else {
                     #if defined(SBN_DEBUG)
                     sys::log_message("act", "shutdown after _", *k);
@@ -60,7 +59,7 @@ namespace {
                     sbn::kernel_ptr ptr(p);
                     p->this_ptr(&ptr);
                     p->react(std::move(k));
-                    ptr.release();
+                    (void)ptr.release();
                 } else {
                     throw std::invalid_argument("point-to-point kernel without target");
                 }

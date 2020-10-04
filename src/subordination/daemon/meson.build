@@ -16,6 +16,8 @@ sbnd_src = files([
     'tree_hierarchy_iterator.cc',
 ])
 
+clang_tidy_files += sbnd_src
+
 foreach config : binary_configs
     tmp_sbn = get_variable(config.get('prefix') + 'sbn')
     tmp_lib = library(
@@ -53,6 +55,8 @@ sbnd_exe_src = files([
 if with_glusterfs
     subdir('glusterfs')
 endif
+
+clang_tidy_files += sbnd_exe_src
 
 foreach config : binary_configs
     tmp_sbnd = get_variable(config.get('prefix') + 'sbnd')

@@ -15,7 +15,7 @@ namespace {
         std::atexit([]() { scm_gc(); scm_run_finalizers(); });
     }
 
-    void inner_main(void* closure, int argc, char** argv) {
+    void inner_main(void*, int argc, char** argv) {
         scm_c_define_module("sbn", sbn_init, nullptr);
         // these two modules provide help command
         scm_c_use_module("ice-9 session");

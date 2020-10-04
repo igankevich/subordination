@@ -58,10 +58,11 @@ namespace sbnd {
             pos_type stride=1
         );
 
+        ~tree_hierarchy_iterator() = default;
         tree_hierarchy_iterator(const tree_hierarchy_iterator&) = default;
-
-        tree_hierarchy_iterator&
-        operator=(const tree_hierarchy_iterator&) = default;
+        tree_hierarchy_iterator& operator=(const tree_hierarchy_iterator&) = default;
+        tree_hierarchy_iterator(tree_hierarchy_iterator&&) = default;
+        tree_hierarchy_iterator& operator=(tree_hierarchy_iterator&&) = default;
 
         inline bool
         operator==(const tree_hierarchy_iterator& rhs) const noexcept {

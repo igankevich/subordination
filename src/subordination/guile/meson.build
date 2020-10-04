@@ -5,6 +5,8 @@ sbn_guile_src = files([
     'main.cc',
 ])
 
+clang_tidy_files += sbn_guile_src
+
 sbn_guile_deps = [sbn,threads,unistdx,guile,dependency('zlib')]
 
 sbn_guile_exe = executable(

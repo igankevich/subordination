@@ -53,7 +53,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.30.0')
+unistdx = dependency('unistdx', version: '>=0.30.9')
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []
@@ -61,9 +61,11 @@ guile = dependency('guile-3.0')
 
 src = include_directories('src')
 pkgconfig = import('pkgconfig')
+clang_tidy_files = []
 
 subdir('src')
 subdir('guix')
+subdir('ci')
 
 cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()

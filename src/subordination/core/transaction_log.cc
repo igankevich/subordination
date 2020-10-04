@@ -44,7 +44,14 @@ sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, transaction_record& rhs) 
 }
 
 sbn::transaction_log::transaction_log() { this->_buffer.carry_all_parents(false); }
-sbn::transaction_log::~transaction_log() { close(); }
+
+sbn::transaction_log::~transaction_log() noexcept {
+    try {
+        close();
+    } catch (...) {
+        std::terminate();
+    }
+}
 
 sbn::kernel_ptr sbn::transaction_log::write(transaction_record record) {
     if (!record.k->carries_parent()) { return std::move(record.k); }

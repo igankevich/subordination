@@ -46,7 +46,7 @@ void sbnd::socket_pipeline_server::add(const connection_ptr& self) {
         sys::epoll_event{socket().fd(), sys::event::in}, self);
 }
 
-void sbnd::socket_pipeline_server::remove(const connection_ptr& self) {
+void sbnd::socket_pipeline_server::remove(const connection_ptr&) {
     connection::parent()->erase(socket().fd());
     parent()->remove_server(this->_ifaddr);
 }
@@ -123,7 +123,7 @@ namespace sbnd {
                 sys::epoll_event{socket().fd(), sys::event::inout}, self);
         }
 
-        void remove(const connection_ptr& self) override {
+        void remove(const connection_ptr&) override {
             connection::parent()->erase(socket().fd());
             parent()->remove_client(socket_address());
         }
@@ -364,7 +364,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
 }
 
 
-void sbnd::socket_pipeline_server::handle(const sys::epoll_event& ev) {
+void sbnd::socket_pipeline_server::handle(const sys::epoll_event&) {
     sys::socket_address addr;
     sys::socket sock;
     while (this->_socket.accept(sock, addr)) {

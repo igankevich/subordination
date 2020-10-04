@@ -267,8 +267,7 @@ namespace sbn {
         }
 
         void handle_events();
-        void deactivate(sys::fd_type fd, connection_ptr conn, time_point now,
-                        const char* reason);
+        void deactivate(sys::fd_type fd, connection_ptr conn, const char* reason);
         void remove(sys::fd_type fd, connection_ptr& conn, const char* reason);
 
         friend class connection;

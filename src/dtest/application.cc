@@ -454,7 +454,7 @@ namespace  {
     void parent_signal_handlers() {
         using namespace sys::this_process;
         using s = sys::signal;
-        auto on_terminate = sys::signal_action([](int sig) {
+        auto on_terminate = sys::signal_action([](int) {
             if (child_process_id) {
                 try {
                     sys::send(s::terminate, child_process_id);

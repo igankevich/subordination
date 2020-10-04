@@ -77,7 +77,7 @@ namespace sbn {
 
     public:
         transaction_log();
-        ~transaction_log();
+        ~transaction_log() noexcept;
         transaction_log(const transaction_log&) = delete;
         transaction_log& operator=(const transaction_log&) = delete;
         transaction_log(transaction_log&&) = default;

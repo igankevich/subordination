@@ -10,11 +10,6 @@
   (slurm)
   (slurm-ci))
 
-(define env
-  (make <guix-environment>
-    #:channels "guix/channels.scm"
-    #:manifest "guix/manifest.scm"))
-
 (define tag
   (let ((port (open-input-pipe "git describe --tags --exact-match")))
     (define output (string-trim-both (get-string-all port)))
@@ -23,67 +18,76 @@
 
 (define branch (getenv "CI_BUILD_BRANCH"))
 
-(define (job-transform job)
-  (set! (job-name job)
-    (string-join (list "sbn" (getenv "CI_BUILD_NUMBER") (job-name job)) "-"))
+(define* (make-job . rest)
+  (define job (apply make (cons <job> rest)))
   (set! (job-partitions job) '("ci"))
-  (guix-environment-wrap! job env))
+  (guix-environment-wrap!
+    job (make <guix-environment>
+          #:channels "guix/channels.scm"
+          #:manifest "guix/manifest.scm"))
+  (gitbucket-wrap!
+    job (make <gitbucket-build>)))
 
-(cond
-  ;; build site
-  ((and branch (string=? branch "site"))
-   (let ((prefix "/var/lib/gitbucket/repositories"))
-     (format (current-error-port) "Building the site\n")
-     (setenv "SBN_MANIFEST" "ci,site")
-     (exit
-       (gitbucket-run
-         (list
-           (job-transform
-             (make <job>
-               #:name "site"
-               #:script
-               (string-join
-                 (list
-                   "#!/bin/sh"
-                   "set -ex"
-                   "d=$(mktemp -d /tmp/gitbucket-$SLURM_JOB_ID-XXXXXX)"
-                   "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
-                   "meson -Dwith_site=true . $d"
-                   "cd $d"
-                   "ninja -v site"
-                   "rsync -e 'ssh -p 22222' -acv --delete src/subordination/site/ cmmshq.ru:/srv/subordination/"
-                   "rm -rf $d")
-                 "\n"
-                 'suffix)
-               )))))))
-  ;; default build
-  (else
-    (let ()
-      (define all-jobs
-        (map
-          (lambda (lst)
-            (define name (car lst))
-            (define meson-arguments (cdr lst))
-            (make <job>
-              #:script
-              (string-join
-                (list
-                  "#!/bin/sh"
-                  "set -ex"
-                  "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
-                  "d=$(mktemp -d /tmp/gitbucket-$SLURM_JOB_ID-XXXXXX)"
-                  (format #f "meson ~a . $d" (string-join meson-arguments " "))
-                  "cd $d"
-                  "meson test --verbose --timeout-multiplier 3"
-                  "rm -rf --one-file-system --preserve-root $d")
-                "\n"
-                'suffix)
-              #:name name))
-          '(("no-dtests" "-Dwith_dtests=false")
-            ("default")
-            ("sanitize-address" "-Dwith_dtests=true" "-Db_sanitize=address"))))
-      (format (current-error-port) "Building the project\n")
-      (setenv "SBN_MANIFEST" "ci")
-      (exit (gitbucket-run (map job-transform all-jobs))))))
+(define all-jobs
+  (append
+    (map
+      (lambda (lst)
+        (define name (car lst))
+        (define meson-arguments (cdr lst))
+        (make-job
+          #:script
+          (string-join
+            (list
+              "#!/bin/sh"
+              "set -ex"
+              "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
+              "d=$(mktemp -d /tmp/gitbucket-XXXXXX)"
+              (format #f "meson ~a . $d" (string-join meson-arguments " "))
+              "cd $d"
+              "meson test --verbose --timeout-multiplier 3"
+              "rm -rf --one-file-system --preserve-root $d")
+            "\n"
+            'suffix)
+          #:name name))
+      '(("no-dtests" "-Dwith_dtests=false")
+        ("default")
+        ("sanitize-address" "-Dwith_dtests=true" "-Db_sanitize=address")))
+    (list
+      (make-job
+        #:script
+        (string-join
+          (list
+            "#!/bin/sh"
+            "set -ex"
+            "outdir=$(pwd)"
+            "d=$(mktemp -d /tmp/gitbucket-XXXXXX)"
+            "meson . $d"
+            "cd $d"
+            "ninja -v clang-tidy"
+            "rm -rf --one-file-system --preserve-root $d")
+          "\n")
+        #:name "clang-tidy"))
+    (if (and branch (string=? branch "dev"))
+      (list
+        (make-job
+          #:name "site"
+          #:script
+          (string-join
+            (list
+              "#!/bin/sh"
+              "set -ex"
+              "d=$(mktemp -d /tmp/gitbucket-XXXXXX)"
+              "export LANG=en_US.utf-8 PYTHONUNBUFFERED=1"
+              "meson -Dwith_site=true . $d"
+              "cd $d"
+              "ninja -v site"
+              "rsync -acv --delete src/subordination/site/ /fennec/home/gitbucket/.sites/subordination/"
+              "rm -rf --one-file-system $d")
+            "\n"
+            'suffix)))
+      '())))
+
+(setenv "SBN_MANIFEST" "ci,site")
+(exit (gitbucket-run all-jobs))
 
 ;; vim:filetype=scheme
