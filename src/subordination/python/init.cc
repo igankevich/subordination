@@ -11,19 +11,55 @@ namespace {
 void sbn::python::main(int argc, char* argv[], main_function_type _nested_main) {
     ::nested_main = _nested_main;
 
-    wchar_t *program = Py_DecodeLocale(argv[0], NULL);
-    if (program == NULL) {
-        fprintf(stderr, "Fatal error: cannot decode argv[0]\n");
+    PyObject *pName, *pModule, *pFunc;
+    PyObject *pValue;
+
+    if (argc < 3) {
+        fprintf(stderr,"Usage: call pythonfile funcname [args]\n");
         exit(1);
     }
-    Py_SetProgramName(program);  /* optional but recommended */
+
     Py_Initialize();
-    PyRun_SimpleString("from time import time,ctime\n"
-                    "print('Today is', ctime(time()))\n");
+
+    PyObject *sys_path = PySys_GetObject("path");
+    PyList_Append(sys_path, PyUnicode_FromString("."));
+
+    pName = PyUnicode_DecodeFSDefault(argv[1]);
+    /* Error checking of pName left out */
+
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (pModule != NULL) {
+        pFunc = PyObject_GetAttrString(pModule, argv[2]);
+        /* pFunc is a new reference */
+
+        if (pFunc && PyCallable_Check(pFunc)) {           
+            pValue = PyObject_CallObject(pFunc, NULL);
+            if (pValue == NULL) {
+                Py_DECREF(pFunc);
+                Py_DECREF(pModule);
+                PyErr_Print();
+                fprintf(stderr,"Call failed\n");
+                exit(1);
+            }
+        }
+        else {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            fprintf(stderr, "Cannot find function \"%s\"\n", argv[2]);
+        }
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+    }
+    else {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", argv[1]);
+        exit(1);
+    }
     if (Py_FinalizeEx() < 0) {
         exit(120);
     }
-    PyMem_RawFree(program);
-    
+
     nested_main(argc, argv);
 }
