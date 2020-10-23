@@ -1,6 +1,8 @@
 #include <subordination/api.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/python/init.hh>
+#include <subordination/python/kernel.hh>
+
 
 void nested_main(int argc, char* argv[]) {
     using namespace sbn;
@@ -8,15 +10,12 @@ void nested_main(int argc, char* argv[]) {
     install_error_handler();
     {
         auto g = factory.types().guard();
-        // factory.types().add<Main>(1);
+        factory.types().add<Main>(1);
         // factory.types().add<Kernel>(2);
     }
     factory_guard g;
-    if (this_application::standalone()) {
-        // send(sbn::make_pointer<Main>(argc, argv));
-        //scm_c_primitive_load(argv[1]);
-        //sbn::exit(0);
-    }
+    if (this_application::standalone())
+        send(sbn::make_pointer<Main>(argc, argv));
     wait_and_return();
 }
 

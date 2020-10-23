@@ -1,5 +1,6 @@
 sbn_python_src = files([
     'main.cc',
+    'kernel.cc',
     'init.cc',
 ])
 
