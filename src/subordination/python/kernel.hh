@@ -12,6 +12,22 @@ namespace sbn {
 
         PyObject* test_func(PyObject *self, PyObject *args);
 
+        // ================ kernel_map ================
+
+        typedef struct {
+            PyObject_HEAD
+            PyObject *_act;
+            PyObject *_react;
+        } kernel_map;
+
+        void kernel_map_dealloc(kernel_map *self);
+        PyObject * kernel_map_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+        int kernel_map_init(kernel_map *self, PyObject *args, PyObject *kwds);
+
+        PyObject* kernel_map_test_method(kernel_map *self, PyObject *Py_UNUSED(ignored));
+
+        // ============================================
+
         class Main: public sbn::kernel {
 
         public:
