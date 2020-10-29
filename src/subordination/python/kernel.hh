@@ -10,25 +10,44 @@ namespace sbn {
 
     namespace python {
 
-        PyObject* test_func(PyObject *self, PyObject *args);
+        class kernel_map;
 
         // ================ kernel_map ================
 
         typedef struct {
             PyObject_HEAD
-            PyObject *_act;
-            PyObject *_react;
-        } kernel_map;
+            PyObject* _act;
+            PyObject* _react;
+            kernel_map* _kernel_map;
+        } py_kernel_map;
 
-        void kernel_map_dealloc(kernel_map *self);
-        PyObject * kernel_map_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-        int kernel_map_init(kernel_map *self, PyObject *args, PyObject *kwds);
+        void py_kernel_map_dealloc(py_kernel_map* self);
+        PyObject* py_kernel_map_new(PyTypeObject* type, PyObject* args, PyObject* kwds);
+        int py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds);
 
-        PyObject* kernel_map_test_method(kernel_map *self, PyObject *Py_UNUSED(ignored));
+        PyObject* py_kernel_map_test_method(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
 
         // ============================================
 
-        class Main: public sbn::kernel {
+        class kernel_map: public sbn::kernel {
+
+        private:
+            py_kernel_map* _py_k_map;
+        public:
+
+            kernel_map() = default;
+            // ~kernel_map() noexcept;
+
+            void py_k_map(py_kernel_map* py_k_map){this->_py_k_map = py_k_map;}
+            py_kernel_map* py_k_map(){return this->_py_k_map;}
+
+            inline kernel_map(py_kernel_map* py_k_map) noexcept: _py_k_map(py_k_map){}
+
+            // void act() override;
+            // void react(sbn::kernel_ptr&& child) override;
+        };
+
+        class Main: public kernel_map {
 
         public:
 
@@ -47,7 +66,13 @@ namespace sbn {
             void act() override;
 
         };
+
+        extern Main* _main;
+        extern bool _is_main;
+
+        PyObject* kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds);
     }
 }
+
 
 #endif // vim:filetype=cpp
