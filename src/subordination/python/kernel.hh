@@ -43,7 +43,7 @@ namespace sbn {
 
             inline kernel_map(py_kernel_map* py_k_map) noexcept: _py_k_map(py_k_map){}
 
-            // void act() override;
+            void act() override;
             // void react(sbn::kernel_ptr&& child) override;
         };
 

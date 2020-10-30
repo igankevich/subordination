@@ -11,7 +11,7 @@ void nested_main(int argc, char* argv[]) {
     {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
-        // factory.types().add<Kernel>(2);
+        factory.types().add<kernel_map>(2);
     }
     factory_guard g;
     if (this_application::standalone())

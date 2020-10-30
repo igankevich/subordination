@@ -29,7 +29,7 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
     msg << typeid(_kernel_parent).name() << " " << typeid(_kernel_child).name();
     std::clog << msg.str() << std::flush;
 
-    // ... call sbn upstream
+    sbn::upstream<sbn::Remote>(_kernel_parent->_kernel_map, std::unique_ptr<sbn::python::kernel_map>(_kernel_child->_kernel_map));
 
     Py_RETURN_NONE;
 }
@@ -108,6 +108,11 @@ PyObject* sbn::python::py_kernel_map_test_method(py_kernel_map* self, PyObject* 
     std::clog << msg.str() << std::flush;
 
     Py_RETURN_NONE;
+}
+
+
+void sbn::python::kernel_map::act() {
+    PyObject_CallMethod((PyObject *)this->_py_k_map, "act", NULL);
 }
 
 
