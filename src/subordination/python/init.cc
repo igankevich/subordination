@@ -99,6 +99,12 @@ namespace{
 
         return m;
     }
+
+    std::tuple<std::string, std::string> SplitFilename(const std::string& str)
+    {
+        std::string::size_type found = str.find_last_of("/\\");  
+        return {str.substr(0,found), str.substr(found+1)};
+    }
 }
 
 void sbn::python::main(int argc, char* argv[], main_function_type _nested_main) {
@@ -110,13 +116,33 @@ void sbn::python::main(int argc, char* argv[], main_function_type _nested_main) 
 
     PyImport_AppendInittab("sbn", &PyInit_sbn);
 
+    wchar_t* program = NULL;
+    wchar_t** wargv = NULL;
+
+    program = Py_DecodeLocale(argv[0], NULL);
+    Py_SetProgramName(program);
+
     Py_Initialize();
 
-    PyObject *sys_path = PySys_GetObject("path");
-    PyList_Append(sys_path, PyUnicode_FromString("."));
+    wargv = (wchar_t**) malloc(argc * sizeof(wchar_t*));
+    for (int i = 0; i < argc; i++)
+        wargv[i] = Py_DecodeLocale(argv[i], NULL);
+    PySys_SetArgv(argc, wargv);
+
+    PyObject* sysPath = PySys_GetObject((char*)"path");
+    auto [_path, _name] = SplitFilename((const std::string)argv[1]);
+    PyObject* programPath = PyUnicode_FromString(_path.c_str());
+    PyList_Append(sysPath, programPath);
+    Py_DECREF(programPath);
+    argv[1] = (char*)_name.substr(0, _name.find('.')).c_str();
 
     _nested_main(argc, argv);
 
     if (Py_FinalizeEx() < 0)
         exit(120);
+
+    PyMem_RawFree(program);
+    for (int i = 0; i < argc; i++)
+        PyMem_RawFree(wargv[i]);
+    free(wargv);
 }
