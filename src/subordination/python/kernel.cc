@@ -21,18 +21,39 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
     {
         return NULL;
     }
+    Py_INCREF(_py_kernel_parent);
+    Py_INCREF(_py_kernel_child);
 
     sbn::python::py_kernel_map* _kernel_parent = (sbn::python::py_kernel_map*)_py_kernel_parent;
     sbn::python::py_kernel_map* _kernel_child = (sbn::python::py_kernel_map*)_py_kernel_child;
 
-    std::stringstream msg;
-    msg << typeid(_kernel_parent).name() << " " << typeid(_kernel_child).name();
-    std::clog << msg.str() << std::flush;
-
-    sbn::upstream<sbn::Remote>(_kernel_parent->_kernel_map, std::unique_ptr<sbn::python::kernel_map>(_kernel_child->_kernel_map));
+    sbn::upstream<sbn::Remote>(std::move(_kernel_parent->_kernel_map), std::unique_ptr<sbn::python::kernel_map>(std::move(_kernel_child->_kernel_map)));
 
     Py_RETURN_NONE;
 }
+
+PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"kernel", NULL};
+    PyObject *_py_kernel = NULL;
+
+    if (!PyArg_ParseTupleAndKeywords(
+        args, kwds, "|O!", kwlist,
+        &sbn::python::py_kernel_map_type, 
+        &_py_kernel
+        ))
+    {
+        return NULL;
+    }
+    Py_INCREF(_py_kernel);
+
+    sbn::python::py_kernel_map* _kernel = (sbn::python::py_kernel_map*)_py_kernel;
+
+    sbn::commit<sbn::Remote>(std::unique_ptr<sbn::python::kernel_map>(std::move(_kernel->_kernel_map)));
+
+    Py_RETURN_NONE;
+}
+
 
 void sbn::python::py_kernel_map_dealloc(sbn::python::py_kernel_map* self)
 {
@@ -53,13 +74,16 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
     self = (sbn::python::py_kernel_map *) type->tp_alloc(type, 0);
 
     // Init _kernel_map
-    if (sbn::python::_is_main)
+    if (sbn::python::_main != nullptr)
     {
-        self->_kernel_map = sbn::python::_main;
-        sbn::python::_is_main = false;
+        self->_kernel_map = std::move(sbn::python::_main);
+        sbn::python::_main = nullptr;
     }
     else
-        self->_kernel_map = new sbn::python::kernel_map(self);
+    {
+        self->_kernel_map = new sbn::python::kernel_map(std::move((PyObject*)self));
+    }
+
 
     return (PyObject *) self;
 }
@@ -67,25 +91,6 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
 int sbn::python::py_kernel_map_init(sbn::python::py_kernel_map* self, PyObject* args, PyObject* kwds)
 {
     /* Initialization of kernel */
-
-    static char *kwlist[] = {"act", "react", NULL};
-    PyObject *act = NULL, *react = NULL; 
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO", kwlist, &act, &react))
-        return -1;
-
-    if (act) {
-        // tmp = self->_act;
-        Py_INCREF(act);
-        self->_act = act;
-        // Py_DECREF(tmp);
-    }
-    if (react) {
-        // tmp = self->_react;
-        Py_INCREF(react);
-        self->_react = react;
-        // Py_DECREF(tmp);
-    }
 
     return 0;
 }
@@ -102,21 +107,29 @@ PyObject* sbn::python::py_kernel_map_test_method(py_kernel_map* self, PyObject* 
     // char *ret = NULL;
     // PyArg_Parse(func_ret, "s", &ret);
 
-    std::stringstream msg;
-    // msg << "Result of kernel._act method: " << ret << '\n';
-    msg << "Work!";
-    std::clog << msg.str() << std::flush;
+    // std::stringstream msg;
+    // // msg << "Result of kernel._act method: " << ret << '\n';
+    // msg << "Work!";
+    // std::clog << msg.str() << std::flush;
 
     Py_RETURN_NONE;
 }
 
 
 void sbn::python::kernel_map::act() {
-    PyObject_CallMethod((PyObject *)this->_py_k_map, "act", NULL);
+    sys::log_message(">>>> Sbn", "Kernel_map.act");
+    PyObject_CallMethod(this->py_k_map(), "act", NULL);
+}
+
+void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
+    sys::log_message(">>>> Sbn", "Kernel_map.react");
+    auto child = sbn::pointer_dynamic_cast<sbn::python::kernel_map>(std::move(child_ptr));
+    PyObject_CallMethod(this->py_k_map(), "react", "O", child->py_k_map());
 }
 
 
 void sbn::python::Main::act() {
+    sys::log_message(">>>> Sbn", "Main.act");
 
     if (auto* a = target_application()) {
         const auto& args = a->arguments();    
@@ -136,9 +149,8 @@ void sbn::python::Main::act() {
         if (pModule != NULL) {
 
             sbn::python::_main = this;
-            sbn::python::_is_main = true;
             pMainClass = PyObject_CallMethod(pModule, "Main", NULL);
-            this->py_k_map((sbn::python::py_kernel_map*)pMainClass);
+            this->py_k_map(std::move(pMainClass));
 
             pValue = PyObject_CallMethod(pMainClass, "act", NULL);
             if (pValue == NULL) {
@@ -171,4 +183,3 @@ void sbn::python::Main::act() {
 
 
 sbn::python::Main* sbn::python::_main = nullptr;
-extern bool sbn::python::_is_main = false;

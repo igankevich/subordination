@@ -55,13 +55,19 @@ extern PyTypeObject sbn::python::py_kernel_map_type = {
 };  
 
 extern PyMethodDef sbn::python::SbnMethods[] = {
-{
-    .ml_name = "kernel_upstream",
-    .ml_meth = (PyCFunction) sbn::python::kernel_upstream,
-    .ml_flags = METH_VARARGS | METH_KEYWORDS,
-    .ml_doc = "Up kernel of sbn."
-},
-{NULL, NULL, 0, NULL}        /* Sentinel */
+    {
+        .ml_name = "kernel_upstream",
+        .ml_meth = (PyCFunction) sbn::python::kernel_upstream,
+        .ml_flags = METH_VARARGS | METH_KEYWORDS,
+        .ml_doc = "Upstream kernel of sbn."
+    },
+    {
+        .ml_name = "kernel_commit",
+        .ml_meth = (PyCFunction) sbn::python::kernel_commit,
+        .ml_flags = METH_VARARGS | METH_KEYWORDS,
+        .ml_doc = "Commit kernel of sbn."
+    },
+    {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 extern PyModuleDef sbn::python::SbnModule = {

@@ -16,8 +16,6 @@ namespace sbn {
 
         typedef struct {
             PyObject_HEAD
-            PyObject* _act;
-            PyObject* _react;
             kernel_map* _kernel_map;
         } py_kernel_map;
 
@@ -32,19 +30,19 @@ namespace sbn {
         class kernel_map: public sbn::kernel {
 
         private:
-            py_kernel_map* _py_k_map;
+            PyObject* _py_k_map;
         public:
 
             kernel_map() = default;
-            // ~kernel_map() noexcept;
+            inline kernel_map(PyObject* py_k_map) noexcept: _py_k_map(py_k_map){Py_INCREF(this->_py_k_map);}
 
-            void py_k_map(py_kernel_map* py_k_map){this->_py_k_map = py_k_map;}
-            py_kernel_map* py_k_map(){return this->_py_k_map;}
+            ~kernel_map() noexcept{Py_DECREF(this->_py_k_map);}
 
-            inline kernel_map(py_kernel_map* py_k_map) noexcept: _py_k_map(py_k_map){}
+            PyObject* py_k_map(){return this->_py_k_map;} // Getter
+            void py_k_map(PyObject* py_k_map){this->_py_k_map = py_k_map;} // Setter
 
             void act() override;
-            // void react(sbn::kernel_ptr&& child) override;
+            void react(sbn::kernel_ptr&& child) override;
         };
 
         class Main: public kernel_map {
@@ -68,9 +66,9 @@ namespace sbn {
         };
 
         extern Main* _main;
-        extern bool _is_main;
 
         PyObject* kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds);
+        PyObject* kernel_commit(PyObject *self, PyObject *args, PyObject *kwds);
     }
 }
 
