@@ -1,7 +1,7 @@
 sbn_python_src = files([
-    'main.cc',
     'kernel.cc',
     'init.cc',
+    'python.cc',
 ])
 
 clang_tidy_files += sbn_python_src
@@ -22,4 +22,13 @@ sbn_python_exe = executable(
     include_directories: src,
     install: true,
     implicit_include_directories: false,
+    cpp_args: ['-DPY_SSIZE_T_CLEAN'],
+)
+
+test(
+    'python',
+    sbn_python_exe,
+    args: ['../src/examples/python_examples/example.py'],
+    env: test_env,
+    workdir: meson.build_root(),
 )

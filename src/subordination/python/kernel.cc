@@ -2,60 +2,64 @@
 #include <typeinfo>
 
 #include <subordination/api.hh>
-#include <subordination/python/kernel.hh>
 #include <subordination/python/init.hh>
+#include <subordination/python/kernel.hh>
+#include <subordination/python/python.hh>
 
+namespace {
+    constexpr const char* upstream_kwlist[] = {"parent", "child", nullptr};
+    constexpr const char* commit_kwlist[] = {"kernel", nullptr};
+    sbn::python::Main* main_kernel{};
+}
 
 PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds)
 {
-    static char *kwlist[] = {"parent", "child", NULL};
-    PyObject *_py_kernel_parent = NULL, *_py_kernel_child = NULL;
+    PyObject *_py_kernel_parent = nullptr, *_py_kernel_child = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
-        args, kwds, "|O!O!", kwlist,
-        &sbn::python::py_kernel_map_type, 
+        args, kwds, "|O!O!", const_cast<char**>(upstream_kwlist),
+        &py_kernel_map_type,
         &_py_kernel_parent,
-        &sbn::python::py_kernel_map_type,
+        &py_kernel_map_type,
         &_py_kernel_child
         ))
     {
-        return NULL;
+        return nullptr;
     }
     Py_INCREF(_py_kernel_parent);
     Py_INCREF(_py_kernel_child);
 
-    sbn::python::py_kernel_map* _kernel_parent = (sbn::python::py_kernel_map*)_py_kernel_parent;
-    sbn::python::py_kernel_map* _kernel_child = (sbn::python::py_kernel_map*)_py_kernel_child;
+    auto _kernel_parent = (py_kernel_map*)_py_kernel_parent;
+    auto _kernel_child = (py_kernel_map*)_py_kernel_child;
 
-    sbn::upstream<sbn::Remote>(std::move(_kernel_parent->_kernel_map), std::unique_ptr<sbn::python::kernel_map>(std::move(_kernel_child->_kernel_map)));
+    sbn::upstream<sbn::Remote>(std::move(_kernel_parent->_kernel_map),
+                               std::unique_ptr<kernel_map>(std::move(_kernel_child->_kernel_map)));
 
     Py_RETURN_NONE;
 }
 
-PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds)
-{
-    static char *kwlist[] = {"kernel", NULL};
-    PyObject *_py_kernel = NULL;
+PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds) {
+    PyObject *_py_kernel = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
-        args, kwds, "|O!", kwlist,
-        &sbn::python::py_kernel_map_type, 
+        args, kwds, "|O!", const_cast<char**>(commit_kwlist),
+        &py_kernel_map_type,
         &_py_kernel
         ))
     {
-        return NULL;
+        return nullptr;
     }
     Py_INCREF(_py_kernel);
 
-    sbn::python::py_kernel_map* _kernel = (sbn::python::py_kernel_map*)_py_kernel;
+    auto _kernel = (py_kernel_map*)_py_kernel;
 
-    sbn::commit<sbn::Remote>(std::unique_ptr<sbn::python::kernel_map>(std::move(_kernel->_kernel_map)));
+    sbn::commit<sbn::Remote>(std::unique_ptr<kernel_map>(std::move(_kernel->_kernel_map)));
 
     Py_RETURN_NONE;
 }
 
 
-void sbn::python::py_kernel_map_dealloc(sbn::python::py_kernel_map* self)
+void sbn::python::py_kernel_map_dealloc(py_kernel_map* self)
 {
     /* Custom deallocation behavior */
 
@@ -70,25 +74,23 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
     /* Custom allocation behavior */
 
     // Default allocation behavior
-    sbn::python::py_kernel_map *self;
-    self = (sbn::python::py_kernel_map *) type->tp_alloc(type, 0);
+    auto self = (py_kernel_map *) type->tp_alloc(type, 0);
 
     // Init _kernel_map
-    if (sbn::python::_main != nullptr)
-    {
-        self->_kernel_map = std::move(sbn::python::_main);
-        sbn::python::_main = nullptr;
+    if (main_kernel != nullptr) {
+        self->_kernel_map = std::move(main_kernel);
+        main_kernel = nullptr;
     }
     else
     {
-        self->_kernel_map = new sbn::python::kernel_map(std::move((PyObject*)self));
+        self->_kernel_map = new kernel_map(std::move((PyObject*)self));
     }
 
 
     return (PyObject *) self;
 }
 
-int sbn::python::py_kernel_map_init(sbn::python::py_kernel_map* self, PyObject* args, PyObject* kwds)
+int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds)
 {
     /* Initialization of kernel */
 
@@ -98,13 +100,13 @@ int sbn::python::py_kernel_map_init(sbn::python::py_kernel_map* self, PyObject* 
 
 PyObject* sbn::python::py_kernel_map_test_method(py_kernel_map* self, PyObject* Py_UNUSED(ignored))
 {
-    // PyObject *func_args = NULL;
+    // PyObject *func_args = nullptr;
     // // func_args = Py_BuildValue("(ii)", 5, 10);
 
-    // PyObject *func_ret = NULL;
+    // PyObject *func_ret = nullptr;
     // func_ret = PyEval_CallObject(self->_act, func_args);
 
-    // char *ret = NULL;
+    // char *ret = nullptr;
     // PyArg_Parse(func_ret, "s", &ret);
 
     // std::stringstream msg;
@@ -118,53 +120,35 @@ PyObject* sbn::python::py_kernel_map_test_method(py_kernel_map* self, PyObject* 
 
 void sbn::python::kernel_map::act() {
     sys::log_message(">>>> Sbn", "Kernel_map.act");
-    PyObject_CallMethod(this->py_k_map(), "act", NULL);
+    PyObject_CallMethod(this->py_k_map(), "act", nullptr);
 }
 
 void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
     sys::log_message(">>>> Sbn", "Kernel_map.react");
-    auto child = sbn::pointer_dynamic_cast<sbn::python::kernel_map>(std::move(child_ptr));
+    auto child = sbn::pointer_dynamic_cast<kernel_map>(std::move(child_ptr));
     PyObject_CallMethod(this->py_k_map(), "react", "O", child->py_k_map());
 }
 
 
 void sbn::python::Main::act() {
     sys::log_message(">>>> Sbn", "Main.act");
-
     if (auto* a = target_application()) {
-        const auto& args = a->arguments();    
-
-        PyObject *pName, *pModule, *pMainClass;;
-        PyObject *pValue;
-
+        const auto& args = a->arguments();
         // PyGILState_STATE gstate;
         // gstate = PyGILState_Ensure();
-
-        pName = PyUnicode_DecodeFSDefault(args[0].c_str());
-        /* Error checking of pName left out */
-
-        pModule = PyImport_Import(pName);
-        Py_DECREF(pName);
-
-        if (pModule != NULL) {
-
-            sbn::python::_main = this;
-            pMainClass = PyObject_CallMethod(pModule, "Main", NULL);
-            this->py_k_map(std::move(pMainClass));
-
-            pValue = PyObject_CallMethod(pMainClass, "act", NULL);
-            if (pValue == NULL) {
-                Py_DECREF(pMainClass);
-                Py_DECREF(pModule);
-
+        //pName = PyUnicode_DecodeFSDefault(args[0].c_str());
+        load(args[0].data());
+        object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
+        if (main_module) {
+            main_kernel = this;
+            object main_class = PyObject_CallMethod(main_module, "Main", nullptr);
+            this->py_k_map(std::move(main_class));
+            object pValue = PyObject_CallMethod(main_class, "act", nullptr);
+            if (!pValue) {
                 PyErr_Print();
                 sbn::exit(1);
             }
-                    
-            Py_XDECREF(pMainClass);
-            Py_DECREF(pModule);
-        }
-        else {
+        } else {
             PyErr_Print();
             sbn::exit(1);
         }
@@ -180,6 +164,3 @@ void sbn::python::Main::act() {
     //     ppl->send(std::move(this_ptr()));
     // }
 }
-
-
-sbn::python::Main* sbn::python::_main = nullptr;

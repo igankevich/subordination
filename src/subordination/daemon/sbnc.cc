@@ -462,8 +462,8 @@ public:
 
 };
 
-void usage(char* argv[0]) {
-    std::cerr << "usage: "
+void usage(std::ostream& out, char**) {
+    out << "usage: "
         "sbnc [-h] [-t entity-type] [-o output-format] [-d ids...]\n"
         "sbnc [-T] [command] [arguments...]\n"
         "-t type            entity type (node, job, kernel)\n"
@@ -476,8 +476,8 @@ void usage(char* argv[0]) {
 
 int main(int argc, char* argv[]) {
     auto command = Command::Submit;
-    if (argc <= 1) { usage(argv); return 1; }
-    if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(argv); return 0; }
+    if (argc <= 1) { usage(std::clog, argv); return 1; }
+    if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(std::cout, argv); return 0; }
     if (argc >= 2 && argv[1][0] == '-' && std::string(argv[1]) != "-T") {
         command = Command::Status;
     }

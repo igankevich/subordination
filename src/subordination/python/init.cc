@@ -1,20 +1,46 @@
-#define PY_SSIZE_T_CLEAN
-
+#include <subordination/api.hh>
+#include <subordination/core/error_handler.hh>
 #include <subordination/python/init.hh>
+#include <subordination/python/python.hh>
+
+namespace {
+
+    void usage(std::ostream& out, char** argv) {
+        out << "usage: " << argv[0] << " args...\n"
+            "args    Python 3 interpreter arguemnts\n";
+    }
+
+    int nested_main(int argc, char* argv[]) {
+        using namespace sbn;
+        using namespace sbn::python;
+        install_error_handler();
+        {
+            auto g = factory.types().guard();
+            factory.types().add<Main>(1);
+            factory.types().add<kernel_map>(2);
+        }
+        factory_guard g;
+        if (this_application::standalone()) {
+            send(sbn::make_pointer<Main>(argc, argv));
+        }
+        return wait_and_return();
+    }
+
+}
 
 
-extern PyMethodDef sbn::python::py_kernel_map_methods[] = {
+PyMethodDef sbn::python::py_kernel_map_methods[] = {
     {
         .ml_name = "test_method",
         .ml_meth = (PyCFunction) sbn::python::py_kernel_map_test_method,
         .ml_flags = METH_NOARGS,
         .ml_doc = "Test method of kernel"
     },
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    {nullptr, nullptr, 0, nullptr}        /* Sentinel */
 };
 
-extern PyTypeObject sbn::python::py_kernel_map_type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+PyTypeObject sbn::python::py_kernel_map_type = {
+    PyVarObject_HEAD_INIT(nullptr, 0)
     "sbn.kernel",                                       /* tp_name */
     sizeof(sbn::python::py_kernel_map),                 /* tp_basicsize */
     0,                                                  /* tp_itemsize */
@@ -52,97 +78,71 @@ extern PyTypeObject sbn::python::py_kernel_map_type = {
     (initproc) sbn::python::py_kernel_map_init,                      /* tp_init */
     0,                                                  /* tp_alloc */
     (newfunc) sbn::python::py_kernel_map_new,                        /* tp_new */
-};  
-
-extern PyMethodDef sbn::python::SbnMethods[] = {
-    {
-        .ml_name = "kernel_upstream",
-        .ml_meth = (PyCFunction) sbn::python::kernel_upstream,
-        .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = "Upstream kernel of sbn."
-    },
-    {
-        .ml_name = "kernel_commit",
-        .ml_meth = (PyCFunction) sbn::python::kernel_commit,
-        .ml_flags = METH_VARARGS | METH_KEYWORDS,
-        .ml_doc = "Commit kernel of sbn."
-    },
-    {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-extern PyModuleDef sbn::python::SbnModule = {
-    PyModuleDef_HEAD_INIT,
-    .m_name = "sbn",
-    .m_doc = "Subordination framework.",
-    .m_size = -1,
-    .m_methods = SbnMethods
-};
+namespace {
 
-namespace{
-    PyMODINIT_FUNC
-    PyInit_sbn(void)
-    {
-        PyObject *m;
-        if (PyType_Ready(&sbn::python::py_kernel_map_type) < 0)
-            return NULL;
+    PyMethodDef sbn_methods[] = {
+        {
+            .ml_name = "kernel_upstream",
+            .ml_meth = (PyCFunction) sbn::python::kernel_upstream,
+            .ml_flags = METH_VARARGS | METH_KEYWORDS,
+            .ml_doc = "Upstream kernel of sbn."
+        },
+        {
+            .ml_name = "kernel_commit",
+            .ml_meth = (PyCFunction) sbn::python::kernel_commit,
+            .ml_flags = METH_VARARGS | METH_KEYWORDS,
+            .ml_doc = "Commit kernel of sbn."
+        },
+        {nullptr, nullptr, 0, nullptr}        /* Sentinel */
+    };
 
-        m = PyModule_Create(&sbn::python::SbnModule);
-        if (m == NULL)
-            return NULL;
+    PyModuleDef sbn_module = {
+        PyModuleDef_HEAD_INIT,
+        .m_name = "sbn",
+        .m_doc = "Subordination framework.",
+        .m_size = -1,
+        .m_methods = sbn_methods
+    };
 
-        Py_INCREF(&sbn::python::py_kernel_map_type);
-        if (PyModule_AddObject(m, "kernel", (PyObject *) &sbn::python::py_kernel_map_type) < 0) {
-            Py_DECREF(&sbn::python::py_kernel_map_type);
-            Py_DECREF(m);
-            return NULL;
+    PyMODINIT_FUNC sbn_init() {
+        if (PyType_Ready(&sbn::python::py_kernel_map_type) < 0) {
+            return nullptr;
         }
-
-        return m;
+        sbn::python::object m = PyModule_Create(&sbn_module);
+        if (!m) { return nullptr; }
+        Py_INCREF(&sbn::python::py_kernel_map_type);
+        if (PyModule_AddObject(m.get(), "kernel", (PyObject *) &sbn::python::py_kernel_map_type) < 0) {
+            Py_DECREF(&sbn::python::py_kernel_map_type);
+            return nullptr;
+        }
+        return m.get();
     }
 
-    std::tuple<std::string, std::string> SplitFilename(const std::string& str)
-    {
-        std::string::size_type found = str.find_last_of("/\\");  
-        return {str.substr(0,found), str.substr(found+1)};
-    }
+    //std::tuple<std::string, std::string> SplitFilename(const std::string& str)
+    //{
+    //    std::string::size_type found = str.find_last_of("/\\");
+    //    return {str.substr(0,found), str.substr(found+1)};
+    //}
 }
 
-void sbn::python::main(int argc, char* argv[], main_function_type _nested_main) {
-
+int main(int argc, char* argv[]) {
+    using namespace sbn::python;
     if (argc < 2) {
-        fprintf(stderr,"Usage: call pythonfile [args]\n");
-        exit(1);
+        usage(std::clog, argv);
+        std::exit(1);
     }
-
-    PyImport_AppendInittab("sbn", &PyInit_sbn);
-
-    wchar_t* program = NULL;
-    wchar_t** wargv = NULL;
-
-    program = Py_DecodeLocale(argv[0], NULL);
-    Py_SetProgramName(program);
-
-    Py_Initialize();
-
-    wargv = (wchar_t**) malloc(argc * sizeof(wchar_t*));
-    for (int i = 0; i < argc; i++)
-        wargv[i] = Py_DecodeLocale(argv[i], NULL);
-    PySys_SetArgv(argc, wargv);
-
-    PyObject* sysPath = PySys_GetObject((char*)"path");
-    auto [_path, _name] = SplitFilename((const std::string)argv[1]);
-    PyObject* programPath = PyUnicode_FromString(_path.c_str());
-    PyList_Append(sysPath, programPath);
-    Py_DECREF(programPath);
-    argv[1] = (char*)_name.substr(0, _name.find('.')).c_str();
-
-    _nested_main(argc, argv);
-
-    if (Py_FinalizeEx() < 0)
-        exit(120);
-
-    PyMem_RawFree(program);
-    for (int i = 0; i < argc; i++)
-        PyMem_RawFree(wargv[i]);
-    free(wargv);
+    PyImport_AppendInittab("sbn", &sbn_init);
+    //pointer<wchar_t>(Py_DecodeLocale(argv[0], nullptr));
+    //Py_SetProgramName(program.get());
+    interpreter_guard g;
+    set_arguments(argc, argv);
+    //PyObject* sysPath = PySys_GetObject((char*)"path");
+    //auto [_path, _name] = SplitFilename((const std::string)argv[1]);
+    //PyObject* programPath = PyUnicode_FromString(_path.c_str());
+    //PyList_Append(sysPath, programPath);
+    //Py_DECREF(programPath);
+    //argv[1] = (char*)_name.substr(0, _name.find('.')).c_str();
+    return nested_main(argc, argv);
 }

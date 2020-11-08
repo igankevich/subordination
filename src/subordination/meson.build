@@ -1,8 +1,8 @@
+subdir('test')
 subdir('core')
 subdir('daemon')
 subdir('guile')
 subdir('python')
-subdir('test')
 
 if with_site
     subdir('doxygen')

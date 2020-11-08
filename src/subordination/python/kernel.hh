@@ -1,7 +1,6 @@
 #ifndef SUBORDINATION_PYTHON_KERNEL_HH
 #define SUBORDINATION_PYTHON_KERNEL_HH
 
-#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
 #include <subordination/core/kernel.hh>
@@ -14,10 +13,10 @@ namespace sbn {
 
         // ================ kernel_map ================
 
-        typedef struct {
+        struct py_kernel_map {
             PyObject_HEAD
             kernel_map* _kernel_map;
-        } py_kernel_map;
+        };
 
         void py_kernel_map_dealloc(py_kernel_map* self);
         PyObject* py_kernel_map_new(PyTypeObject* type, PyObject* args, PyObject* kwds);
@@ -65,12 +64,10 @@ namespace sbn {
 
         };
 
-        extern Main* _main;
-
         PyObject* kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds);
         PyObject* kernel_commit(PyObject *self, PyObject *args, PyObject *kwds);
+
     }
 }
-
 
 #endif // vim:filetype=cpp
