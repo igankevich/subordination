@@ -19,6 +19,7 @@
           (@ (gnu packages elf) elfutils)
           (@ (gnu packages compression) xz)
           (@ (gnu packages pre-commit) python-pre-commit)
+          (@ (gnu packages python) python-3)
           (@ (gnu packages compression) zlib)
           (@ (gnu packages guile-zlib) guile-zlib)
           (@ (gnu packages guile) guile-3.0)

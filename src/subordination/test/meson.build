@@ -6,3 +6,11 @@ configure_file(
     output: 'config.hh',
     configuration: test_config
 )
+
+test_env = environment()
+if get_option('b_sanitize') == 'address'
+    test_env.set(
+        'LSAN_OPTIONS',
+        'suppressions=' + join_paths(meson.current_source_dir(), 'lsan.supp')
+    )
+endif

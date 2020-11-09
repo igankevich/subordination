@@ -44,3 +44,13 @@ tags
 
 # Coc configuration directory
 .vim
+
+### vscode ###
+.vscode/*
+*.code-workspace
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
