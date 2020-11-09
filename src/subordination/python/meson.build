@@ -28,7 +28,6 @@ sbn_python_exe = executable(
 test(
     'python',
     sbn_python_exe,
-    args: ['../src/examples/python_examples/example.py'],
+    args: [join_paths(meson.current_source_dir(), 'test.py')],
     env: test_env,
-    workdir: meson.build_root(),
 )
