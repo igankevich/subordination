@@ -34,8 +34,8 @@ namespace {
 
 sbnd::socket_pipeline_server::socket_pipeline_server(const interface_address_type& ifaddr, sys::port_type port):
 _ifaddr(ifaddr),
-_socket(sys::socket_address(ifaddr.address(), port)) {
-    socket_address(sys::socket_address(ifaddr.address(), port));
+_socket(sys::ipv4_socket_address(ifaddr.address(), port)) {
+    socket_address(sys::socket_address(sys::ipv4_socket_address{ifaddr.address(), port}));
     determine_id_range(this->_ifaddr, this->_pos0, this->_pos1);
     //this->_counter = this->_pos0;
 }

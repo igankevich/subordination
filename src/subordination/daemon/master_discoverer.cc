@@ -53,7 +53,7 @@ void sbnd::master_discoverer::discover() {
         discover_later();
     } else {
         auto addr = *this->_iterator;
-        sys::socket_address new_superior(addr, port());
+        sys::socket_address new_superior(sys::ipv4_socket_address{addr, port()});
         const auto& old_superior = this->_hierarchy.superior().socket_address();
         if (profile()) {
             profile("`((time . _) (node . \"_\") (probe . \"_\") (attempts . _))",
@@ -76,7 +76,7 @@ void sbnd::master_discoverer::discover() {
 void sbnd::master_discoverer::on_timer() {
     if (state() != states::waiting) { return; }
     if (this->_hierarchy.has_superior()) { reset_iterator(); }
-    sys::socket_address new_superior(*this->_iterator, port());
+    sys::socket_address new_superior(sys::ipv4_socket_address{*this->_iterator, port()});
     const auto& old_superior = this->_hierarchy.superior().socket_address();
     if (old_superior != new_superior) { discover(); }
     else { discover_later(); }

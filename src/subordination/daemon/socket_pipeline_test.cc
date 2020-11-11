@@ -83,7 +83,7 @@ struct Test_socket: public sbn::kernel {
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("slave failure!");
                     //sbn::exit(0);
-                    send(sys::signal::kill, sys::this_process::id());
+                    sys::this_process::send(sys::signal::kill);
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
@@ -94,7 +94,7 @@ struct Test_socket: public sbn::kernel {
                 delete this;
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("master failure!");
-                    send(sys::signal::kill, sys::this_process::id());
+                    sys::this_process::send(sys::signal::kill);
                     //sbn::exit(0);
                 }
             } else {
@@ -118,7 +118,7 @@ struct Test_socket: public sbn::kernel {
                 } catch (const std::exception& err) {
                     message("slave size -1");
                 }
-                send(sys::signal::kill, sys::this_process::id());
+                sys::this_process::send(sys::signal::kill);
             }
         } else {
             return_to_parent(sbn::exit_code::success);
@@ -244,8 +244,10 @@ TEST(socket_pipeline, _) {
         tmp >> network;
     }
     auto address = network.begin();
-    sys::socket_address subordinate_endpoint(*address++, port+1);
-    sys::socket_address principal_endpoint(*address++, port);
+    sys::socket_address subordinate_endpoint(sys::ipv4_socket_address(*address, port+sys::port_type(1)));
+    ++address;
+    sys::socket_address principal_endpoint(sys::ipv4_socket_address{*address, port});
+    ++address;
     if (role == Role::Slave) {
         auto g = remote.guard();
         remote.port(port+1);
