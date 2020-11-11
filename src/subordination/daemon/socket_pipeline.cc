@@ -514,7 +514,9 @@ auto sbnd::socket_pipeline::find_server(const sys::socket_address& dest) -> serv
         this->_servers.begin(),
         this->_servers.end(),
         [&dest] (const value_type& rhs) {
-            return rhs->interface_address().contains(dest.addr4());
+            return rhs->interface_address().contains(
+                sys::socket_address_cast<sys::ipv4_socket_address>(dest).address()
+            );
         }
     );
 }

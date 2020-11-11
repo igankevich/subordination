@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
     sbn::kernel_sack sack;
     remote.clear(sack);
     local.clear(sack);
-    sys::send(sys::signal::user_defined_1, sys::this_process::parent_id());
+    sys::process_view(sys::this_process::parent_id()).send(sys::signal::user_defined_1);
     return ret;
 }
 #endif
