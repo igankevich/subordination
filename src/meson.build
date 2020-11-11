@@ -1,3 +1,4 @@
+subdir('valgrind')
 subdir('dtest')
 subdir('subordination')
 

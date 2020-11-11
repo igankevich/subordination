@@ -26,7 +26,7 @@ dtest_exe = executable(
     'dtest',
     sources: dtest_src + ['main.cc'],
     include_directories: src,
-    dependencies: dtest,
+    dependencies: [dtest] + valgrind_dep,
     implicit_include_directories: false,
 )
 

@@ -1,0 +1,6 @@
+#ifndef VALGRIND_CONFIG_HH_IN
+#define VALGRIND_CONFIG_HH_IN
+
+#mesondefine SBN_TEST_HAVE_VALGRIND_H
+
+#endif // vim:filetype=cpp

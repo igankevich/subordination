@@ -11,8 +11,14 @@
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/socket_pipeline.hh>
+#include <subordination/test/config.hh>
 #include <subordination/test/datum.hh>
 #include <subordination/test/role.hh>
+#include <valgrind/config.hh>
+
+#if defined(SBN_TEST_HAVE_VALGRIND_H)
+#include <valgrind.h>
+#endif
 
 using test::Role;
 using sys::this_process::hostname;
@@ -303,6 +309,9 @@ TEST(socket_pipeline, _) {
 }
 
 int main(int argc, char* argv[]) {
+    #if defined(SBN_TEST_HAVE_VALGRIND_H)
+    if (RUNNING_ON_VALGRIND) { std::exit(77); }
+    #endif
     sbn::install_error_handler();
     ::testing::InitGoogleTest(&argc, argv);
     sys::this_process::ignore_signal(sys::signal::broken_pipe);

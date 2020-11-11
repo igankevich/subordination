@@ -24,6 +24,12 @@
 
 #include <subordination/daemon/discovery_test.hh>
 #include <subordination/daemon/test_application.hh>
+#include <subordination/test/config.hh>
+#include <valgrind/config.hh>
+
+#if defined(SBN_TEST_HAVE_VALGRIND_H)
+#include <valgrind.h>
+#endif
 
 template <class ... Args>
 inline void
@@ -46,6 +52,9 @@ sys::argstream sbnd_args() {
 }
 
 int main(int argc, char* argv[]) {
+    #if defined(SBN_TEST_HAVE_VALGRIND_H)
+    if (RUNNING_ON_VALGRIND) { std::exit(77); }
+    #endif
     dts::application app;
     dts::cluster cluster;
     cluster.name("x");
