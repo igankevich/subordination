@@ -24,7 +24,7 @@ namespace sbn {
         sys::fildes_pair _file_descriptors;
         ::sbn::application _application;
         role_type _role;
-        int _kernel_count = 0;
+        int _num_active_kernels = 0;
         int _kernel_count_last = 0;
         time_point _last{};
         foreign_kernel_ptr _main_kernel{};
@@ -79,7 +79,8 @@ namespace sbn {
                     }
                 }
             }
-            ++this->_kernel_count;
+            log("send DEBUG upstream _ downstream _", upstream().size(), downstream().size());
+            ++this->_num_active_kernels;
         }
 
         inline const ::sbn::application& application() const noexcept {
@@ -92,8 +93,8 @@ namespace sbn {
 
         inline bool stale(time_point now, duration timeout) noexcept {
             if (now-this->_last < timeout) { return false; }
-            bool changed = this->_kernel_count != this->_kernel_count_last;
-            this->_kernel_count_last = this->_kernel_count;
+            bool changed = this->_num_active_kernels != this->_kernel_count_last;
+            this->_kernel_count_last = this->_num_active_kernels;
             this->_last = now;
             return !changed;
         }
@@ -102,6 +103,9 @@ namespace sbn {
         inline sys::fd_type out() const noexcept { return this->_file_descriptors.out().fd(); }
         inline pipeline* unix() const noexcept { return this->_unix; }
         inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
+
+        /// The number of kernels that were sent to the process, but have not returned yet.
+        inline int num_active_kernels() const noexcept { return this->_num_active_kernels; }
 
     protected:
         void receive_foreign_kernel(foreign_kernel_ptr&& fk) override;

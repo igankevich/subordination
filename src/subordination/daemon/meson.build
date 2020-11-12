@@ -44,7 +44,6 @@ sbnd_exe_src = files([
     'master_discoverer.cc',
     'network_master.cc',
     'probe.cc',
-    'prober.cc',
     'resident_kernel.cc',
     'sbnd.cc',
     'terminate_kernel.cc',

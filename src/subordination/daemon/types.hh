@@ -16,7 +16,6 @@ namespace sbnd {
     class Transaction_test_kernel;
     class local_server;
     class probe;
-    class prober;
     class process_pipeline;
     class process_pipeline_kernel;
     class socket_pipeline_client;

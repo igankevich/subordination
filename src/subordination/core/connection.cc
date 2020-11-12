@@ -9,13 +9,14 @@
 #include <subordination/core/kernel_instance_registry.hh>
 
 const char* sbn::to_string(connection_state rhs) {
+    using s = connection_state;
     switch (rhs) {
-        case connection_state::initial: return "initial";
-        case connection_state::starting: return "starting";
-        case connection_state::started: return "started";
-        case connection_state::stopping: return "stopping";
-        case connection_state::stopped: return "stopped";
-        case connection_state::inactive: return "inactive";
+        case s::initial: return "initial";
+        case s::starting: return "starting";
+        case s::started: return "started";
+        case s::stopping: return "stopping";
+        case s::stopped: return "stopped";
+        case s::inactive: return "inactive";
         default: return "unknown";
     }
 }
@@ -43,6 +44,8 @@ void sbn::connection::send(kernel_ptr& k) {
     // return local downstream kernels immediately
     // TODO we need to move some kernel flags to
     // kernel header in order to use them in routing
+    // The logic is not in receive_foreign_kernel method.
+    /*
     if (k->phase() == kernel::phases::downstream &&
         !k->destination() &&
         k->target_application_id() == this_application::id()) {
@@ -58,6 +61,7 @@ void sbn::connection::send(kernel_ptr& k) {
         this->parent()->native_pipeline()->send(std::move(k));
         return;
     }
+    */
     if (k->phase() == kernel::phases::upstream ||
         k->phase() == kernel::phases::point_to_point) {
         ensure_has_id(k->parent());
@@ -129,7 +133,25 @@ void sbn::connection::receive_kernels(const application* from_application,
 }
 
 void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
-    parent()->forward_foreign(std::move(k));
+    // TODO The following two lines destroy daemon/transactions test.
+    if (k->phase() == kernel::phases::downstream) {
+        auto result = find_kernel(k.get(), this->_upstream);
+        if (result != this->_upstream.end()) {
+            //#if defined(SBN_DEBUG)
+            //log("erase _", **result);
+            //log("k _", *k);
+            //#endif
+            this->_upstream.erase(result);
+        }
+    }
+    if (k->phase() == kernel::phases::downstream && !k->destination()) {
+        #if defined(SBN_DEBUG)
+        log("forward _ to _", *k, this->_socket_address);
+        #endif
+        write_kernel(k.get());
+    } else {
+        parent()->forward_foreign(std::move(k));
+    }
 }
 
 sbn::kernel_ptr
@@ -218,12 +240,15 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         k->id(orig->id());
         this->_upstream.erase(result);
         #if defined(SBN_DEBUG)
-        this->log("plug parent _ for _", typeid(*k->parent()).name(), *k);
-        std::stringstream tmp;
-        for (const auto& k : this->_upstream) {
-            tmp << *k << '\n';
+        {
+            auto parent = k->parent();
+            this->log("plug parent _ for _", parent ? typeid(*parent).name() : "<null>", *k);
+            std::stringstream tmp;
+            for (const auto& k : this->_upstream) {
+                tmp << *k << '\n';
+            }
+            log("all kernels:\n_", tmp.str());
         }
-        log("all kernels:\n_", tmp.str());
         #endif
     }
 }

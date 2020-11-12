@@ -30,7 +30,8 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
     if (event.in()) {
         fill(this->_file_descriptors.in());
         receive_kernels(this->_role == role_type::parent ?  &this->_application : nullptr,
-                        [this] (kernel_ptr&) { ++this->_kernel_count; });
+                        [this] (kernel_ptr&) { ++this->_num_active_kernels; });
+        log("recv DEBUG upstream _ downstream _", upstream().size(), downstream().size());
     }
 }
 

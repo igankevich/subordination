@@ -217,7 +217,8 @@ namespace sbn {
                             [a] (const sbn::kernel_ptr& b) {
                                 return a->id() == b->id() &&
                                     a->old_id() == b->old_id() &&
-                                    a->source_application_id() == b->target_application_id();
+                                    a->source_application_id() == b->target_application_id() &&
+                                    a->is_native() == b->is_native();
                             });
     }
 

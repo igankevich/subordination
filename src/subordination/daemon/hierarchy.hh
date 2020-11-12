@@ -16,13 +16,13 @@ namespace sbnd {
     class Hierarchy {
 
     public:
-        typedef Addr addr_type;
-        typedef sys::interface_address<addr_type> ifaddr_type;
-        typedef std::unordered_set<hierarchy_node> container_type;
-        typedef typename container_type::const_iterator const_iterator;
-        typedef typename container_type::size_type size_type;
-        typedef hierarchy_node node_type;
-        typedef node_type::weight_type weight_type;
+        using addr_type = Addr;
+        using ifaddr_type = sys::interface_address<addr_type>;
+        using container_type = std::unordered_set<hierarchy_node>;
+        using const_iterator = typename container_type::const_iterator;
+        using size_type = typename container_type::size_type;
+        using node_type = hierarchy_node;
+        using weight_type = node_type::weight_type;
 
     protected:
         ifaddr_type _ifaddr;

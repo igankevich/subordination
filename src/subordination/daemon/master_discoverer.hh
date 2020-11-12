@@ -13,7 +13,6 @@
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
-#include <subordination/daemon/prober.hh>
 #include <subordination/daemon/resident_kernel.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/tree_hierarchy_iterator.hh>
@@ -106,7 +105,8 @@ namespace sbnd {
         void remove_subordinate(const sys::socket_address& address);
         void remove_superior();
         probe_result process_probe(pointer<probe>& p);
-        void update_superior(pointer<prober> p);
+        void update_superior(pointer<probe> p);
+        //void send_probe(const sys::socket_address& dest);
 
         inline states state() const noexcept { return this->_state; }
         inline void state(states rhs) noexcept { this->_state = rhs; }

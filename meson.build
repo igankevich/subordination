@@ -18,7 +18,12 @@ with_dtests = get_option('with_dtests')
 
 cpp = meson.get_compiler('cpp')
 
-cpp_args = ['-Werror=return-type', '-Werror=return-local-addr', '-Werror=cast-align']
+cpp_args = [
+    '-Werror=return-type',
+    '-Werror=return-local-addr',
+    '-Werror=cast-align',
+    '-Wcast-align=strict'
+]
 cpp_link_args = ['-rdynamic']
 test_cpp_args = ['-DSBN_TEST']
 
@@ -53,7 +58,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx = dependency('unistdx', version: '>=0.30.9')
+unistdx = dependency('unistdx', version: '>=0.34.1')
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []

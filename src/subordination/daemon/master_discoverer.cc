@@ -36,9 +36,15 @@ void sbnd::master_discoverer::on_kernel(sbn::kernel_ptr&& k) {
     if (typeid(*k) == typeid(discovery_timer)) {
         on_timer();
     } else if (typeid(*k) == typeid(probe)) {
-        update_subordinates(sbn::pointer_dynamic_cast<probe>(std::move(k)));
-    } else if (typeid(*k) == typeid(prober)) {
-        update_superior(sbn::pointer_dynamic_cast<prober>(std::move(k)));
+        switch (k->phase()) {
+            case sbn::kernel::phases::downstream:
+                update_superior(sbn::pointer_dynamic_cast<probe>(std::move(k)));
+                break;
+            case sbn::kernel::phases::point_to_point:
+                update_subordinates(sbn::pointer_dynamic_cast<probe>(std::move(k)));
+                break;
+            default: break;
+        }
     } else if (typeid(*k) == typeid(socket_pipeline_kernel)) {
         on_event(sbn::pointer_dynamic_cast<socket_pipeline_kernel>(std::move(k)));
     } else if (typeid(*k) == typeid(Hierarchy_kernel)) {
@@ -62,10 +68,12 @@ void sbnd::master_discoverer::discover() {
         } else {
             log("_: probe _ attempts _", interface_address(), addr, this->_attempts);
         }
-        auto p = sbn::make_pointer<prober>(interface_address(), old_superior,
-                                           new_superior);
+        auto p = sbn::make_pointer<probe>(interface_address(), old_superior, new_superior);
         p->parent(this);
-        factory.local().send(std::move(p));
+        p->destination(new_superior);
+        p->principal_id(1); // TODO
+        p->phase(sbn::kernel::phases::point_to_point);
+        factory.remote().send(std::move(p));
         if (++this->_attempts >= max_attempts()) {
             this->_attempts = 0;
             ++this->_iterator;
@@ -165,10 +173,10 @@ sbnd::probe_result sbnd::master_discoverer::process_probe(pointer<probe>& p) {
     return result;
 }
 
-void sbnd::master_discoverer::update_superior(pointer<prober> p) {
+void sbnd::master_discoverer::update_superior(pointer<probe> p) {
     if (p->return_code() != sbn::exit_code::success) {
-        this->log("_: prober returned from _: _", this->interface_address(),
-            p->new_superior(), p->return_code());
+        this->log("_: probe returned from _: _", this->interface_address(),
+                  p->new_superior(), p->return_code());
         discover();
     } else {
         const auto& old_superior = p->old_superior(), new_superior = p->new_superior();
@@ -182,10 +190,19 @@ void sbnd::master_discoverer::update_superior(pointer<prober> p) {
                 #if defined(SBN_TEST)
                 sys::log_message("test", "_: set principal to _ attempts _ weight _",
                                  interface_address(), new_superior, this->_attempts,
-                                 p->new_superior_weight());
+                                 p->superior_weight());
                 #endif
             }
-            add_superior(new_superior, p->new_superior_weight());
+            add_superior(new_superior, p->superior_weight());
+        }
+        if (p->old_superior() && p->old_superior() != p->new_superior()) {
+            auto new_p = sbn::make_pointer<probe>(p->interface_address(), p->old_superior(),
+                                                  p->new_superior());
+            new_p->parent(this);
+            new_p->destination(p->old_superior());
+            new_p->principal_id(1); // TODO
+            new_p->phase(sbn::kernel::phases::point_to_point);
+            factory.remote().send(std::move(new_p));
         }
         // try to find better superior after a period of time
         discover_later();
