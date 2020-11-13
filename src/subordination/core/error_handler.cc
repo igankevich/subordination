@@ -71,8 +71,6 @@ void sbn::print_error() noexcept {
     if (std::exception_ptr ptr = std::current_exception()) {
         try {
             std::rethrow_exception(ptr);
-        } catch (const error& err) {
-            message("error=_, process=_", err, name);
         } catch (const std::exception& err) {
             message("error=_, process=_", err.what(), name);
         } catch (...) {

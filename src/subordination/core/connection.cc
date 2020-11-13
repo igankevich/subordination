@@ -91,8 +91,6 @@ void sbn::connection::write_kernel(const kernel* k) noexcept {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
         this->_output_buffer.write(k);
-    } catch (const sbn::error& err) {
-        log_write_error(err);
     } catch (const std::exception& err) {
         log_write_error(err.what());
     } catch (...) {
@@ -121,8 +119,6 @@ void sbn::connection::receive_kernels(const application* from_application,
                 #endif
                 receive_kernel(std::move(k), func);
             }
-        } catch (const sbn::error& err) {
-            log_read_error(err);
         } catch (const std::exception& err) {
             log_read_error(err.what());
         } catch (...) {
@@ -286,8 +282,6 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
         status != transaction_status{} && parent()->transactions()) {
         try {
             parent()->write_transaction(status, k);
-        } catch (const sbn::error& err) {
-            log_write_error(err);
         } catch (const std::exception& err) {
             log_write_error(err.what());
         } catch (...) {
