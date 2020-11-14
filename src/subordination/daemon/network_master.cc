@@ -232,6 +232,8 @@ sbnd::network_master::forward_probe(pointer<probe> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         log("bad probe _", p->interface_address());
+        p->return_to_parent(sbn::exit_code::error);
+        factory.remote().send(std::move(p));
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);
@@ -244,6 +246,8 @@ sbnd::network_master::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         log("bad hierarchy kernel _", p->interface_address());
+        p->return_to_parent(sbn::exit_code::error);
+        factory.remote().send(std::move(p));
     } else {
         auto* discoverer = result->second;
         p->principal(discoverer);

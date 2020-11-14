@@ -15,6 +15,7 @@
           (list (@ (gnu packages gcc) gcc) "lib")
           (@ (gnu packages check) googletest)
           (@ (gnu packages unistdx) unistdx)
+          (@ (gnu packages unistdx) unistdx-debug)
           (@ (gnu packages libunwind) libunwind)
           (@ (gnu packages elf) elfutils)
           (@ (gnu packages compression) xz)
