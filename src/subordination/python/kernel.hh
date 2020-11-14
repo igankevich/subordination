@@ -15,7 +15,8 @@ namespace sbn {
 
         struct py_kernel_map {
             PyObject_HEAD
-            kernel_map* _kernel_map;
+            // kernel_map* _kernel_map;
+            PyObject* _kernel_map_capsule;
         };
 
         void py_kernel_map_dealloc(py_kernel_map* self);
@@ -23,6 +24,7 @@ namespace sbn {
         int py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds);
 
         PyObject* py_kernel_map_test_method(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
+        PyObject* py_kernel_map_reduce(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
 
         // ============================================
 
@@ -42,6 +44,9 @@ namespace sbn {
 
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
+            void write(sbn::kernel_buffer& out) const override;
+            void read(sbn::kernel_buffer& in) override; 
+
         };
 
         class Main: public kernel_map {
@@ -53,7 +58,7 @@ namespace sbn {
             inline Main(int argc, char** argv) {
                 application::string_array args;
                 args.reserve(argc);
-                for (int i=1; i<argc; ++i) { args.emplace_back(argv[i]); }
+                for (int i=0; i<argc; ++i) { args.emplace_back(argv[i]); }
                 if (!target_application()) {
                     std::unique_ptr<sbn::application> app{new sbn::application(args, {})};
                     target_application(app.release());
@@ -61,6 +66,7 @@ namespace sbn {
             }
 
             void act() override;
+            void read(sbn::kernel_buffer& in) override;
 
         };
 

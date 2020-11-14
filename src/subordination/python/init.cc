@@ -36,6 +36,12 @@ PyMethodDef sbn::python::py_kernel_map_methods[] = {
         .ml_flags = METH_NOARGS,
         .ml_doc = "Test method of kernel"
     },
+    {
+        .ml_name = "__reduce__",
+        .ml_meth = (PyCFunction) sbn::python::py_kernel_map_reduce,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = "Pickle support method."
+    },
     {nullptr, nullptr, 0, nullptr}        /* Sentinel */
 };
 
