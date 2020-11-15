@@ -11,14 +11,11 @@ class Child2(sbn.kernel):
 
 
 class Child(sbn.kernel):
-    def test1(self):
-        print('TEEEEST1')
 
     def act(self):
         print('>>>> Python: Child.act')
         self.data = "ChildData"
         sbn.kernel_upstream(parent=self, child=Child2())
-        self.test_method()
 
     def react(self, child2):
         print('>>>> Python: Child.react')

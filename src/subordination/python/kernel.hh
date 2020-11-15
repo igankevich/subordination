@@ -23,8 +23,8 @@ namespace sbn {
         PyObject* py_kernel_map_new(PyTypeObject* type, PyObject* args, PyObject* kwds);
         int py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds);
 
-        PyObject* py_kernel_map_test_method(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
         PyObject* py_kernel_map_reduce(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
+        PyObject* py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObject * args);
 
         // ============================================
 

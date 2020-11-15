@@ -31,16 +31,16 @@ namespace {
 
 PyMethodDef sbn::python::py_kernel_map_methods[] = {
     {
-        .ml_name = "test_method",
-        .ml_meth = (PyCFunction) sbn::python::py_kernel_map_test_method,
-        .ml_flags = METH_NOARGS,
-        .ml_doc = "Test method of kernel"
-    },
-    {
         .ml_name = "__reduce__",
         .ml_meth = (PyCFunction) sbn::python::py_kernel_map_reduce,
         .ml_flags = METH_NOARGS,
         .ml_doc = "Pickle support method."
+    },
+    {
+        .ml_name = "_set_kernel_cpp",
+        .ml_meth = (PyCFunction) sbn::python::py_kernel_map_set_kernel_cpp,
+        .ml_flags = METH_VARARGS,
+        .ml_doc = "Set cpp kernel."
     },
     {nullptr, nullptr, 0, nullptr}        /* Sentinel */
 };

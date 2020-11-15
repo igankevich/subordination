@@ -38,9 +38,6 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
     sbn::upstream<sbn::Remote>(std::move(_kernel_parent_ptr),
                                std::unique_ptr<kernel_map>(std::move(_kernel_child_ptr)));
 
-    // sbn::upstream<sbn::Remote>(std::move(_kernel_parent->_kernel_map),
-    //                            std::unique_ptr<kernel_map>(std::move(_kernel_child->_kernel_map)));
-
     Py_RETURN_NONE;
 }
 
@@ -62,8 +59,6 @@ PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *k
     auto _kernel_ptr = (sbn::python::kernel_map*)PyCapsule_GetPointer(_kernel->_kernel_map_capsule, "ptr");
 
     sbn::commit<sbn::Remote>(std::unique_ptr<kernel_map>(std::move(_kernel_ptr)));
-
-    // sbn::commit<sbn::Remote>(std::unique_ptr<kernel_map>(std::move(_kernel->_kernel_map)));
 
     Py_RETURN_NONE;
 }
@@ -88,16 +83,13 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
 
     // Init _kernel_map
     if (main_kernel != nullptr) {
-        // self->_kernel_map = std::move(main_kernel);
-        self->_kernel_map_capsule = PyCapsule_New((void *)std::move(main_kernel), "ptr", NULL);
+        self->_kernel_map_capsule = PyCapsule_New((void *)std::move(main_kernel), "ptr", nullptr);
         main_kernel = nullptr;
     }
     else
     {
-        // self->_kernel_map = new kernel_map(std::move((PyObject*)self));
-        
         auto _kernel_map = new kernel_map(std::move((PyObject*)self));
-        self->_kernel_map_capsule = PyCapsule_New((void *)_kernel_map, "ptr", NULL);
+        self->_kernel_map_capsule = PyCapsule_New((void *)_kernel_map, "ptr", nullptr);
     }
 
 
@@ -111,25 +103,14 @@ int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObjec
     return 0;
 }
 
-
-PyObject* sbn::python::py_kernel_map_test_method(py_kernel_map* self, PyObject* Py_UNUSED(ignored))
+PyObject* sbn::python::py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObject * args)
 {
+    PyObject* capsule_kernel_cpp;
+    if (! PyArg_UnpackTuple( args, "ptr", 0, 1, &capsule_kernel_cpp))
+        return NULL;
 
-    auto t = (sbn::python::kernel_map*)PyCapsule_GetPointer(self->_kernel_map_capsule, "ptr");
-    PyObject_CallMethod(t->py_k_map(), "test1", nullptr);
-    // PyObject *func_args = nullptr;
-    // // func_args = Py_BuildValue("(ii)", 5, 10);
-
-    // PyObject *func_ret = nullptr;
-    // func_ret = PyEval_CallObject(self->_act, func_args);
-
-    // char *ret = nullptr;
-    // PyArg_Parse(func_ret, "s", &ret);
-
-    // std::stringstream msg;
-    // // msg << "Result of kernel._act method: " << ret << '\n';
-    // msg << "Work!";
-    // std::clog << msg.str() << std::flush;
+    Py_INCREF(capsule_kernel_cpp);
+    self->_kernel_map_capsule = capsule_kernel_cpp;
 
     Py_RETURN_NONE;
 }
@@ -138,6 +119,7 @@ PyObject* sbn::python::py_kernel_map_reduce(py_kernel_map* self, PyObject* Py_UN
 {
     return Py_BuildValue("N()", Py_TYPE(self), nullptr);
 }
+
 
 void sbn::python::kernel_map::act() {
     sys::log_message(">>>> Sbn", "Kernel_map.act");
@@ -149,7 +131,6 @@ void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
     auto child = sbn::pointer_dynamic_cast<kernel_map>(std::move(child_ptr));
     PyObject_CallMethod(this->py_k_map(), "react", "O", child->py_k_map());
 }
-
 
 void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
     kernel::write(out);
@@ -171,7 +152,6 @@ void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
     Py_XDECREF(pybytearr_pyobj);
 }
 
-
 void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
     kernel::read(in);
     PyObject *pickle = PyImport_ImportModule("pickle"); // import module
@@ -187,13 +167,10 @@ void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
     Py_INCREF(pybytearr_pyobj);
     
     PyObject* pyobj = PyObject_CallMethod(pickle, "loads", "O", pybytearr_pyobj);
+    Py_INCREF(pyobj);
+    
     this->py_k_map(pyobj);
-
-    // object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
-    // PyObject *testClass = PyObject_CallMethod(main_module, "Test", nullptr);
-    // Py_INCREF(testClass);
-    // PyObject_CallMethod(testClass, "func", "O", pickled_obj_rev);
-    // Py_XDECREF(testClass);
+    PyObject_CallMethod(pyobj, "_set_kernel_cpp", "O", PyCapsule_New((void *)this, "ptr", nullptr));
     
     Py_XDECREF(pickle);
     Py_XDECREF(pybytearr_pyobj);
@@ -205,45 +182,35 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
     if (in.remaining() != 0)
     {
-         PyObject *pickle = PyImport_ImportModule("pickle"); // import module
+        PyObject *pickle = PyImport_ImportModule("pickle"); // import module
 
         std::string str_pyobj;
         Py_ssize_t size_pyobj;
 
-        sys::log_message("READ", "START");
         in >> str_pyobj;
         in >> size_pyobj;
 
-        sys::log_message("READ", "TEST");
         const char* bytearr_pyobj = str_pyobj.data();
-
         PyObject* pybytearr_pyobj = PyByteArray_FromStringAndSize(bytearr_pyobj, size_pyobj);
         Py_INCREF(pybytearr_pyobj);
+
         PyObject* pyobj = PyObject_CallMethod(pickle, "loads", "O", pybytearr_pyobj);
+        Py_INCREF(pyobj);
 
         this->py_k_map(pyobj);
+        PyObject_CallMethod(pyobj, "_set_kernel_cpp", "O", PyCapsule_New((void *)this, "ptr", nullptr));
 
-        // object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
-        // PyObject *testClass = PyObject_CallMethod(main_module, "Test", nullptr);
-        // Py_INCREF(testClass);
-        // PyObject_CallMethod(testClass, "func", "O", pickled_obj_rev);
-        // Py_XDECREF(testClass);
-        
         Py_XDECREF(pickle);
         Py_XDECREF(pybytearr_pyobj);
         Py_XDECREF(pyobj);
     }
 }
 
-
 void sbn::python::Main::act() {
     sys::log_message(">>>> Sbn", "Main.act");
     if (auto* a = target_application()) {
         const auto& args = a->arguments();
 
-        // PyGILState_STATE gstate;
-        // gstate = PyGILState_Ensure();
-        //pName = PyUnicode_DecodeFSDefault(args[0].c_str());
         load(args[1].data());
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
@@ -259,8 +226,6 @@ void sbn::python::Main::act() {
             PyErr_Print();
             sbn::exit(1);
         }
-
-        // PyGILState_Release(gstate);
     }
 
     // auto* ppl = source_pipeline() ? source_pipeline() : &sbn::factory.local();
