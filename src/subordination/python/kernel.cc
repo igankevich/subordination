@@ -9,7 +9,6 @@
 namespace {
     constexpr const char* upstream_kwlist[] = {"parent", "child", nullptr};
     constexpr const char* commit_kwlist[] = {"kernel", nullptr};
-    sbn::python::Main* main_kernel{};
 }
 
 PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds)
@@ -81,10 +80,19 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
     // Default allocation behavior
     auto self = (py_kernel_map *) type->tp_alloc(type, 0);
 
-    // Init _kernel_map
-    if (main_kernel != nullptr) {
-        self->_kernel_map_capsule = PyCapsule_New((void *)std::move(main_kernel), "ptr", nullptr);
-        main_kernel = nullptr;
+    return (PyObject *) self;
+}
+
+int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds)
+{
+    /* Initialization of kernel */
+    PyObject* capsule_kernel_cpp;
+    PyArg_UnpackTuple(args, "ptr", 0, 1, &capsule_kernel_cpp);
+
+    if (PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
+    {
+        Py_INCREF(capsule_kernel_cpp);
+        self->_kernel_map_capsule = capsule_kernel_cpp;
     }
     else
     {
@@ -92,22 +100,16 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
         self->_kernel_map_capsule = PyCapsule_New((void *)_kernel_map, "ptr", nullptr);
     }
 
-
-    return (PyObject *) self;
-}
-
-int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds)
-{
-    /* Initialization of kernel */
-
     return 0;
 }
 
 PyObject* sbn::python::py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObject * args)
 {
     PyObject* capsule_kernel_cpp;
-    if (! PyArg_UnpackTuple( args, "ptr", 0, 1, &capsule_kernel_cpp))
-        return NULL;
+    PyArg_UnpackTuple(args, "ptr", 0, 1, &capsule_kernel_cpp);
+
+    if (!PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
+        return nullptr;
 
     Py_INCREF(capsule_kernel_cpp);
     self->_kernel_map_capsule = capsule_kernel_cpp;
@@ -214,8 +216,8 @@ void sbn::python::Main::act() {
         load(args[1].data());
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
-            main_kernel = this;
-            object main_class = PyObject_CallMethod(main_module, "Main", nullptr);
+            object main_class = PyObject_CallMethod(
+                main_module, "Main", "O", PyCapsule_New((void *)this, "ptr", nullptr));
             this->py_k_map(std::move(main_class));
             object pValue = PyObject_CallMethod(main_class, "act", nullptr);
             if (!pValue) {
