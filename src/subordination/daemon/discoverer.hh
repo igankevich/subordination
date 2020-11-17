@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_DAEMON_MASTER_DISCOVERER_HH
-#define SUBORDINATION_DAEMON_MASTER_DISCOVERER_HH
+#ifndef SUBORDINATION_DAEMON_DISCOVERER_HH
+#define SUBORDINATION_DAEMON_DISCOVERER_HH
 
 #include <chrono>
 #include <iosfwd>
@@ -21,10 +21,6 @@
 
 namespace sbnd {
 
-    /// Timer which is used to periodically scan nodes
-    /// to find the best principal node.
-    class discovery_timer: public sbn::kernel {};
-
     enum class probe_result {
         add_subordinate = 0,
         remove_subordinate,
@@ -35,7 +31,7 @@ namespace sbnd {
     std::ostream&
     operator<<(std::ostream& out, probe_result rhs);
 
-    class master_discoverer: public resident_kernel {
+    class discoverer: public resident_kernel {
 
     public:
         using addr_type = sys::ipv4_address;
@@ -67,7 +63,7 @@ namespace sbnd {
 
     public:
 
-        master_discoverer(const ifaddr_type& interface_address,
+        discoverer(const ifaddr_type& interface_address,
                           const sys::port_type port,
                           const Properties::Discoverer& props);
 

@@ -41,8 +41,8 @@ endforeach
 
 sbnd_exe_src = files([
     'factory.cc',
-    'master_discoverer.cc',
-    'network_master.cc',
+    'discoverer.cc',
+    'main.cc',
     'probe.cc',
     'resident_kernel.cc',
     'sbnd.cc',

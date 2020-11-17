@@ -34,8 +34,12 @@ namespace {
 
 sbnd::socket_pipeline_server::socket_pipeline_server(const interface_address_type& ifaddr, sys::port_type port):
 _ifaddr(ifaddr),
-_socket(sys::ipv4_socket_address(ifaddr.address(), port)) {
-    socket_address(sys::socket_address(sys::ipv4_socket_address{ifaddr.address(), port}));
+_socket(sys::family_type::inet) {
+    sys::ipv4_socket_address name(ifaddr.address(), port);
+    this->_socket.set(sys::socket::options::reuse_address);
+    this->_socket.bind(name);
+    this->_socket.listen();
+    socket_address(sys::socket_address(name));
     determine_id_range(this->_ifaddr, this->_pos0, this->_pos1);
     //this->_counter = this->_pos0;
 }
@@ -56,19 +60,21 @@ namespace sbnd {
     class socket_pipeline_client: public sbn::connection {
 
     public:
-        using weight_type = socket_pipeline::weight_type;
+        using counter_type = socket_pipeline::counter_type;
         using kernel_queue = std::deque<sbn::kernel_ptr>;
 
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
-        weight_type _max_weight = 1;
-        weight_type _weight = 0;
+        counter_type _num_nodes_behind = 1;
+        counter_type _num_kernels = 0;
         bool _route = false;
 
     public:
 
-        inline explicit socket_pipeline_client(sys::socket&& socket): _socket(std::move(socket)) {}
+        inline explicit socket_pipeline_client(sys::socket&& socket):
+        _socket(std::move(socket)) {}
+
         virtual ~socket_pipeline_client() { recover(); }
 
         socket_pipeline_client() = default;
@@ -80,7 +86,7 @@ namespace sbnd {
         inline sbn::foreign_kernel_ptr forward(sbn::foreign_kernel_ptr k) {
             using p = sbn::kernel::phases;
             if (k->phase() == p::downstream) {
-                if (this->_weight != 0) { --this->_weight; }
+                if (this->_num_kernels != 0) { --this->_num_kernels; }
             }
             if (k->routed()){
                 k->old_id(k->id());
@@ -137,6 +143,8 @@ namespace sbnd {
         }
 
         inline void activate(const connection_ptr& self) override {
+            this->_socket = sys::socket(this->_old_bind_address.family());
+            this->_socket.set(sys::socket::options::reuse_address);
             this->_socket.bind(this->_old_bind_address);
             this->_socket.connect(socket_address());
             add(self);
@@ -180,25 +188,26 @@ namespace sbnd {
         }
 
         /// The number of nodes "behind" this one in the hierarchy.
-        inline weight_type max_weight() const noexcept { return this->_max_weight; }
-        inline void max_weight(weight_type rhs) noexcept { this->_max_weight = rhs; }
-        inline weight_type weight() const noexcept { return this->_weight; }
+        inline counter_type num_nodes_behind() const noexcept { return this->_num_nodes_behind; }
+        inline void num_nodes_behind(counter_type rhs) noexcept { this->_num_nodes_behind = rhs; }
+        /// The number of kernels that were sent to the client, but have not returned yet.
+        inline counter_type num_kernels() const noexcept { return this->_num_kernels; }
 
-        inline weight_type modular_weight() const noexcept {
-            return this->_weight / this->_max_weight;
+        inline counter_type modular_weight() const noexcept {
+            return this->_num_kernels / this->_num_nodes_behind;
         }
 
-        inline void weight(const weight_type& rhs) noexcept { this->_weight = rhs; }
+        inline void num_kernels(const counter_type& rhs) noexcept { this->_num_kernels = rhs; }
 
         inline bool full() const noexcept {
-            //return this->_weight != 0 && this->_weight%this->_max_weight == 0;
-            return this->_weight >= this->_max_weight;
+            //return this->_num_kernels != 0 && this->_num_kernels%this->_num_nodes_behind == 0;
+            return this->_num_kernels >= this->_num_nodes_behind;
         }
 
     private:
 
         void receive_downstream_foreign_kernel(sbn::foreign_kernel_ptr&& a) {
-            if (this->_weight != 0) { --this->_weight; }
+            if (this->_num_kernels != 0) { --this->_num_kernels; }
             auto result = find_kernel(a.get(), this->_upstream);
             if (result == this->_upstream.end() || !(*result)->source()) {
                 connection::receive_foreign_kernel(std::move(a));
@@ -229,19 +238,19 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         return clients.end();
     }
     bool any_started = false, overflow = false;
-    auto min_weight = std::numeric_limits<weight_type>::max();
-    auto max_weight = std::numeric_limits<weight_type>::lowest();
+    auto num_kernels_min = std::numeric_limits<counter_type>::max();
+    auto num_kernels_max = std::numeric_limits<counter_type>::lowest();
     for (const auto& pair : clients) {
         const auto& client = *pair.second;
         if (client.state() != sbn::connection_state::started) { continue; }
         any_started = true;
-        if (client.weight() < min_weight) { min_weight = client.weight(); }
-        if (max_weight < client.weight()) { max_weight = client.weight(); }
-        if (client.weight() == std::numeric_limits<weight_type>::max()) {
+        if (client.num_kernels() < num_kernels_min) { num_kernels_min = client.num_kernels(); }
+        if (num_kernels_max < client.num_kernels()) { num_kernels_max = client.num_kernels(); }
+        if (client.num_kernels() == std::numeric_limits<counter_type>::max()) {
             overflow = true;
         }
     }
-    if (this->_local_weight == std::numeric_limits<weight_type>::max()) {
+    if (this->_local_num_kernels == std::numeric_limits<counter_type>::max()) {
         overflow = true;
     }
     // if there are no started clients
@@ -249,14 +258,14 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         log("neighbour local");
         return clients.end();
     }
-    // reset weights on overflow
+    // reset the number of kernels on overflow
     if (overflow) {
         log("neighbour reset");
         for (auto& pair : clients) {
-            auto old_weight = pair.second->weight();
-            pair.second->weight(old_weight - min_weight);
+            auto old = pair.second->num_kernels();
+            pair.second->num_kernels(old - num_kernels_min);
         }
-        this->_local_weight -= min_weight;
+        this->_local_num_kernels -= num_kernels_min;
     }
     auto last = clients.end();
     auto result = last, result_with_nodes = last;
@@ -297,18 +306,18 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         auto& client = *first->second;
         // skip stopped clients
         if (client.state() != sbn::connection_state::started) {
-            log("neighbour skip (inactive) _ weight _ max-weight _",
-                client.socket_address(), client.modular_weight(), client.max_weight());
+            log("neighbour skip (inactive) _ num-kernels _ num-nodes-behind _",
+                client.socket_address(), client.num_kernels(), client.num_nodes_behind());
             continue;
         }
         // do not send the kernel back
         if (address == k->source()) {
-            log("neighbour skip (source) _ weight _ max-weight _",
-                client.socket_address(), client.modular_weight(), client.max_weight());
+            log("neighbour skip (source) _ num-kernels _ num-nodes-behind _",
+                client.socket_address(), client.num_kernels(), client.num_nodes_behind());
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
-                    client.modular_weight() < this->_local_weight) {
+                    client.modular_weight() < this->_local_num_kernels) {
                     result = first;
                 }
             } else {
@@ -337,7 +346,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
     // prefer nodes where associated file is located
     if (result_with_nodes != last) {
         auto& client = *result_with_nodes->second;
-        if (file_is_local && this->_local_weight < client.modular_weight()) {
+        if (file_is_local && this->_local_num_kernels < client.modular_weight()) {
             result = last;
         } else {
             result = result_with_nodes;
@@ -350,15 +359,15 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         tmp << ' ' << address;
     }
     if (result != last) {
-        // increase weight
+        // increase the number of kernels
         auto& client = result->second;
-        client->weight(client->weight()+1);
-        log("neighbour _ weight _ max-weight _ local-weight _ path _ nodes_",
-            client->socket_address(), client->modular_weight(), client->max_weight(),
-            this->_local_weight, path, tmp.str());
+        client->num_kernels(client->num_kernels()+1);
+        log("neighbour _ num-kernels _ num-nodes-behind _ local-num-kernels _ path _ nodes_",
+            client->socket_address(), client->num_kernels(), client->num_nodes_behind(),
+            this->_local_num_kernels, path, tmp.str());
     } else {
-        ++this->_local_weight;
-        log("neighbour local weight _ path _ nodes_", this->_local_weight, path, tmp.str());
+        ++this->_local_num_kernels;
+        log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
     }
     return result;
 }
@@ -628,6 +637,7 @@ sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_
     if (addr.family() == sys::family_type::unix) {
         sys::socket s(sys::family_type::unix);
         s.set(sys::socket::options::pass_credentials);
+        s.set(sys::socket::options::reuse_address);
         try {
             s.connect(addr);
         } catch (const sys::bad_call& err) {
@@ -644,6 +654,7 @@ sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_
         // bind to server address with ephemeral port
         sys::socket_address srv_addr((*result)->socket_address(), 0);
         sys::socket s(addr.family());
+        s.set(sys::socket::options::reuse_address);
         s.bind(srv_addr);
         try {
             s.connect(addr);
@@ -684,17 +695,17 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     }
 }
 
-void sbnd::socket_pipeline::add_client(const sys::socket_address& addr, weight_type weight) {
+void sbnd::socket_pipeline::add_client(const sys::socket_address& addr, counter_type n) {
     auto ptr = this->do_add_client(addr);
-    ptr->weight(weight);
+    ptr->num_nodes_behind(n);
 }
 
 void
-sbnd::socket_pipeline::set_client_weight(const sys::socket_address& addr,
-                                         weight_type new_weight) {
+sbnd::socket_pipeline::update_client(const sys::socket_address& addr,
+                                     counter_type new_num_nodes_behind) {
     lock_type lock(this->_mutex);
-    auto ptr = find_or_create_client(addr);
-        ptr->max_weight(new_weight);
+    //auto ptr = find_or_create_client(addr);
+    //ptr->num_nodes_behind(new_num_nodes_behind);
     auto result = this->_clients.find(addr);
-    if (result != this->_clients.end()) { result->second->max_weight(new_weight); }
+    if (result != this->_clients.end()) { result->second->num_nodes_behind(new_num_nodes_behind); }
 }

@@ -12,8 +12,8 @@
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/job_status_kernel.hh>
+#include <subordination/daemon/main.hh>
 #include <subordination/daemon/main_kernel.hh>
-#include <subordination/daemon/network_master.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/status_kernel.hh>
 #include <subordination/daemon/terminate_kernel.hh>
@@ -53,7 +53,7 @@ int real_main(int argc, char* argv[]) {
     sbn::install_error_handler();
     sys::this_process::bind_signal(sys::signal::terminate, on_terminate);
     sys::this_process::bind_signal(sys::signal::keyboard_interrupt, on_terminate);
-    factory.types().add<Main_kernel>(1);
+    factory.types().add<Foreign_main_kernel>(1);
     factory.types().add<probe>(2);
     factory.types().add<Hierarchy_kernel>(3);
     factory.types().add<Status_kernel>(4);
@@ -76,7 +76,7 @@ int real_main(int argc, char* argv[]) {
             factory.unix().add_server(sys::socket_address(SBND_SOCKET));
         }
         {
-            auto k = sbn::make_pointer<network_master>(props);
+            auto k = sbn::make_pointer<Main>(props);
             k->id(1);
             factory.instances().add(k.get());
             if (factory.isset(factory_flags::process)) {

@@ -5,7 +5,7 @@
 
 namespace sbnd {
 
-    class Main_kernel: public sbn::kernel {};
+    class Foreign_main_kernel: public sbn::kernel {};
 
 }
 

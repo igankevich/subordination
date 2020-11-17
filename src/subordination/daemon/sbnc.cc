@@ -249,8 +249,8 @@ public:
     void react(sbn::kernel_ptr&& child) override {
         const auto& t = typeid(*child);
         return_to_parent(child->return_code());
-        if (t == typeid(sbnd::Main_kernel)) {
-            auto k = sbn::pointer_dynamic_cast<sbnd::Main_kernel>(std::move(child));
+        if (t == typeid(sbnd::Foreign_main_kernel)) {
+            auto k = sbn::pointer_dynamic_cast<sbnd::Foreign_main_kernel>(std::move(child));
             message("main kernel returned from _ with exit code _",
                     k->source_application_id(), k->return_code());
         } else {
@@ -275,7 +275,7 @@ private:
     sbn::kernel_ptr make_application_kernel() {
         auto* app = new sbn::application(std::move(this->_arguments), make_environment());
         app->working_directory(sys::canonical_path("."));
-        auto k = sbn::make_pointer<sbnd::Main_kernel>();
+        auto k = sbn::make_pointer<sbnd::Foreign_main_kernel>();
         k->target_application(app);
         //k->source_application_id(app->id());
         k->destination(sys::socket_address(SBND_SOCKET));
@@ -485,7 +485,7 @@ int main(int argc, char* argv[]) {
         if (sbn::this_application::id() == 0) { sbn::this_application::id(1); }
     }
     sbn::install_error_handler();
-    sbnc::factory.types().add<sbnd::Main_kernel>(1);
+    sbnc::factory.types().add<sbnd::Foreign_main_kernel>(1);
     sbnc::factory.types().add<sbnd::Status_kernel>(4);
     sbnc::factory.types().add<sbnd::Transaction_test_kernel>(6);
     sbnc::factory.types().add<sbnd::Job_status_kernel>(8);

@@ -5,9 +5,9 @@
 
 namespace sbnd {
 
+    class Foreign_main_kernel;
     class Hierarchy_kernel;
     class Job_status_kernel;
-    class Main_kernel;
     class Pipeline_status_kernel;
     class Status_kernel;
     class Terminate_kernel;
@@ -18,8 +18,8 @@ namespace sbnd {
     class probe;
     class process_pipeline;
     class process_pipeline_kernel;
-    class socket_pipeline_client;
     class socket_pipeline;
+    class socket_pipeline_client;
     class socket_pipeline_kernel;
     class unix_socket_client;
     class unix_socket_pipeline;

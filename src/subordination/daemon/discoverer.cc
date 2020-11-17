@@ -3,8 +3,8 @@
 #include <ostream>
 #include <sstream>
 
+#include <subordination/daemon/discoverer.hh>
 #include <subordination/daemon/factory.hh>
-#include <subordination/daemon/master_discoverer.hh>
 
 namespace {
 
@@ -19,6 +19,10 @@ namespace {
         return t.count();
     }
 
+    /// Timer which is used to periodically scan nodes
+    /// to find the best principal node.
+    class discovery_timer: public sbn::kernel {};
+
 }
 
 std::ostream&
@@ -28,11 +32,11 @@ sbnd::operator<<(std::ostream& out, probe_result rhs) {
     return out << s;
 }
 
-void sbnd::master_discoverer::on_start() {
+void sbnd::discoverer::on_start() {
     discover();
 }
 
-void sbnd::master_discoverer::on_kernel(sbn::kernel_ptr&& k) {
+void sbnd::discoverer::on_kernel(sbn::kernel_ptr&& k) {
     if (typeid(*k) == typeid(discovery_timer)) {
         on_timer();
     } else if (typeid(*k) == typeid(probe)) {
@@ -52,7 +56,7 @@ void sbnd::master_discoverer::on_kernel(sbn::kernel_ptr&& k) {
     }
 }
 
-void sbnd::master_discoverer::discover() {
+void sbnd::discoverer::discover() {
     if (this->_iterator == this->_end) {
         reset_iterator();
         log("_: all addresses have been probed", interface_address());
@@ -81,7 +85,7 @@ void sbnd::master_discoverer::discover() {
     }
 }
 
-void sbnd::master_discoverer::on_timer() {
+void sbnd::discoverer::on_timer() {
     if (state() != states::waiting) { return; }
     if (this->_hierarchy.has_superior()) { reset_iterator(); }
     sys::socket_address new_superior(sys::ipv4_socket_address{*this->_iterator, port()});
@@ -90,11 +94,11 @@ void sbnd::master_discoverer::on_timer() {
     else { discover_later(); }
 }
 
-void sbnd::master_discoverer::reset_iterator() {
+void sbnd::discoverer::reset_iterator() {
     this->_iterator = iterator(interface_address(), this->_fanout);
 }
 
-void sbnd::master_discoverer::discover_later() {
+void sbnd::discoverer::discover_later() {
     state(states::waiting);
     using namespace std::chrono;
     auto k = sbn::make_pointer<discovery_timer>();
@@ -104,7 +108,7 @@ void sbnd::master_discoverer::discover_later() {
     factory.local().send(std::move(k));
 }
 
-void sbnd::master_discoverer::update_subordinates(pointer<probe> p) {
+void sbnd::discoverer::update_subordinates(pointer<probe> p) {
     const sys::socket_address src = p->source();
     probe_result result = this->process_probe(p);
     if (profile()) {
@@ -128,32 +132,32 @@ void sbnd::master_discoverer::update_subordinates(pointer<probe> p) {
     factory.remote().send(std::move(p));
 }
 
-void sbnd::master_discoverer::add_subordinate(const sys::socket_address& address) {
+void sbnd::discoverer::add_subordinate(const sys::socket_address& address) {
     if (this->_hierarchy.add_subordinate(address)) {
         broadcast_hierarchy(address);
     }
 }
 
-void sbnd::master_discoverer::add_superior(const sys::socket_address& address, weight_type weight) {
+void sbnd::discoverer::add_superior(const sys::socket_address& address, weight_type weight) {
     if (this->_hierarchy.add_superior(hierarchy_node(address, weight))) {
-        factory.remote().set_client_weight(address, weight);
+        factory.remote().update_client(address, weight);
         broadcast_hierarchy(address);
     }
 }
 
-void sbnd::master_discoverer::remove_subordinate(const sys::socket_address& address) {
+void sbnd::discoverer::remove_subordinate(const sys::socket_address& address) {
     if (this->_hierarchy.remove_subordinate(address)) {
         broadcast_hierarchy();
     }
 }
 
-void sbnd::master_discoverer::remove_superior() {
+void sbnd::discoverer::remove_superior() {
     if (this->_hierarchy.remove_superior()) {
         broadcast_hierarchy();
     }
 }
 
-sbnd::probe_result sbnd::master_discoverer::process_probe(pointer<probe>& p) {
+sbnd::probe_result sbnd::discoverer::process_probe(pointer<probe>& p) {
     probe_result result = probe_result::retain;
     if (p->source() == this->_hierarchy.superior()) {
         // superior tries to become subordinate
@@ -173,7 +177,7 @@ sbnd::probe_result sbnd::master_discoverer::process_probe(pointer<probe>& p) {
     return result;
 }
 
-void sbnd::master_discoverer::update_superior(pointer<probe> p) {
+void sbnd::discoverer::update_superior(pointer<probe> p) {
     if (p->return_code() != sbn::exit_code::success) {
         this->log("_: probe returned from _: _", this->interface_address(),
                   p->new_superior(), p->return_code());
@@ -210,7 +214,7 @@ void sbnd::master_discoverer::update_superior(pointer<probe> p) {
 }
 
 void
-sbnd::master_discoverer::on_event(pointer<socket_pipeline_kernel> ev) {
+sbnd::discoverer::on_event(pointer<socket_pipeline_kernel> ev) {
     using e = socket_pipeline_event;
     switch (ev->event()) {
         case e::add_client: on_client_add(ev->socket_address()); break;
@@ -222,10 +226,10 @@ sbnd::master_discoverer::on_event(pointer<socket_pipeline_kernel> ev) {
 }
 
 void
-sbnd::master_discoverer::on_client_add(const sys::socket_address& address) {}
+sbnd::discoverer::on_client_add(const sys::socket_address& address) {}
 
 void
-sbnd::master_discoverer::on_client_remove(const sys::socket_address& address) {
+sbnd::discoverer::on_client_remove(const sys::socket_address& address) {
     if (address == this->_hierarchy.superior()) {
         #if defined(SBN_TEST)
         sys::log_message("test", "_: unset principal _", interface_address(), address);
@@ -240,7 +244,7 @@ sbnd::master_discoverer::on_client_remove(const sys::socket_address& address) {
     }
 }
 
-void sbnd::master_discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
+void sbnd::discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
     const weight_type total = this->_hierarchy.total_weight();
     for (const hierarchy_node& sub : this->_hierarchy) {
         if (sub.socket_address() != ignored_endpoint) {
@@ -258,7 +262,7 @@ void sbnd::master_discoverer::broadcast_hierarchy(sys::socket_address ignored_en
     write_cache();
 }
 
-std::string sbnd::master_discoverer::cache_filename() const {
+std::string sbnd::discoverer::cache_filename() const {
     std::stringstream tmp;
     tmp << this->_hierarchy.interface_address().address();
     tmp << '-';
@@ -268,7 +272,7 @@ std::string sbnd::master_discoverer::cache_filename() const {
     return tmp.str();
 }
 
-void sbnd::master_discoverer::write_cache() const {
+void sbnd::discoverer::write_cache() const {
     using f = sys::open_flag;
     sys::fildes out;
     try {
@@ -285,7 +289,7 @@ void sbnd::master_discoverer::write_cache() const {
     }
 }
 
-void sbnd::master_discoverer::read_cache() {
+void sbnd::discoverer::read_cache() {
     using f = sys::open_flag;
     sys::fildes in;
     try {
@@ -313,7 +317,7 @@ void sbnd::master_discoverer::read_cache() {
     }
 }
 
-void sbnd::master_discoverer::send_weight(const sys::socket_address& dest, weight_type w) {
+void sbnd::discoverer::send_weight(const sys::socket_address& dest, weight_type w) {
     auto h = sbn::make_pointer<Hierarchy_kernel>(this->interface_address(), w);
     h->point_to_point(1);
     h->parent(this);
@@ -321,7 +325,7 @@ void sbnd::master_discoverer::send_weight(const sys::socket_address& dest, weigh
     factory.remote().send(std::move(h));
 }
 
-void sbnd::master_discoverer::update_weights(pointer<Hierarchy_kernel> k) {
+void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
     if (k->phase() == kernel::phases::downstream &&
         k->return_code() != sbn::exit_code::success) {
         log("_: failed to send hierarchy to _: _", interface_address(), k->source(),
@@ -339,13 +343,13 @@ void sbnd::master_discoverer::update_weights(pointer<Hierarchy_kernel> k) {
             sys::log_message("test", "_: set _ weight to _",
                              interface_address(), k->source(), k->weight());
             #endif
-            factory.remote().set_client_weight(src, k->weight());
+            factory.remote().update_client(src, k->weight());
             broadcast_hierarchy(src);
         }
     }
 }
 
-sbnd::master_discoverer::master_discoverer(const ifaddr_type& interface_address,
+sbnd::discoverer::discoverer(const ifaddr_type& interface_address,
                                            const sys::port_type port,
                                            const Properties::Discoverer& props):
 _fanout(props.fanout), _hierarchy(interface_address, port) {

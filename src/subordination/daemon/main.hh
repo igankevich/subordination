@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_DAEMON_NETWORK_MASTER_HH
-#define SUBORDINATION_DAEMON_NETWORK_MASTER_HH
+#ifndef SUBORDINATION_DAEMON_MAIN_HH
+#define SUBORDINATION_DAEMON_MAIN_HH
 
 #include <chrono>
 #include <unordered_map>
@@ -8,24 +8,22 @@
 #include <unistdx/net/interface_addresses>
 
 #include <subordination/daemon/config.hh>
-#include <subordination/daemon/master_discoverer.hh>
+#include <subordination/daemon/discoverer.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
 
 namespace sbnd {
 
-    class network_timer: public sbn::kernel {};
-
-    class network_master: public sbn::kernel {
+    class Main: public sbn::kernel {
 
     private:
-        typedef sys::ipv4_address addr_type;
-        typedef addr_type::rep_type uint_type;
-        typedef sys::interface_address<addr_type> ifaddr_type;
-        typedef typename sys::ipaddr_traits<addr_type> traits_type;
-        typedef std::unordered_set<ifaddr_type> interface_address_set;
-        typedef std::unordered_map<ifaddr_type,master_discoverer*> discoverer_table;
-        typedef typename discoverer_table::iterator map_iterator;
+        using addr_type = sys::ipv4_address;
+        using uint_type = addr_type::rep_type;
+        using ifaddr_type = sys::interface_address<addr_type>;
+        using traits_type = typename sys::ipaddr_traits<addr_type>;
+        using interface_address_set = std::unordered_set<ifaddr_type>;
+        using discoverer_table = std::unordered_map<ifaddr_type,discoverer*>;
+        using map_iterator = typename discoverer_table::iterator;
 
     private:
         Properties::Discoverer _discoverer_properties;
@@ -36,8 +34,8 @@ namespace sbnd {
 
     public:
 
-        network_master() = default;
-        network_master(const Properties& props);
+        Main() = default;
+        Main(const Properties& props);
 
         void act() override;
         void react(sbn::kernel_ptr&& child) override;
@@ -47,17 +45,10 @@ namespace sbnd {
 
         void send_timer(bool first_time=false);
 
-        interface_address_set
-        enumerate_ifaddrs();
-
-        void
-        update_ifaddrs();
-
-        void
-        add_ifaddr(const ifaddr_type& rhs);
-
-        void
-        remove_ifaddr(const ifaddr_type& rhs);
+        interface_address_set enumerate_ifaddrs();
+        void update_discoverers();
+        void add_discoverer(const ifaddr_type& rhs);
+        void remove_discoverer(const ifaddr_type& rhs);
 
         /// forward the probe to an appropriate discoverer
         void forward_probe(pointer<probe> p);

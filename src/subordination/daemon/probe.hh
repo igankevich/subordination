@@ -18,8 +18,8 @@ namespace sbnd {
 
     private:
         ifaddr_type _ifaddr;
-        sys::socket_address _oldprinc;
-        sys::socket_address _newprinc;
+        sys::socket_address _old_superior;
+        sys::socket_address _new_superior;
         weight_type _superior_weight{};
 
     public:
@@ -33,28 +33,16 @@ namespace sbnd {
             const sys::socket_address& newprinc
         ):
         _ifaddr(interface_address),
-        _oldprinc(oldprinc),
-        _newprinc(newprinc)
+        _old_superior(oldprinc),
+        _new_superior(newprinc)
         {}
 
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;
 
-        inline const sys::socket_address&
-        new_superior() const noexcept {
-            return this->_newprinc;
-        }
-
-        inline const sys::socket_address&
-        old_superior() const noexcept {
-            return this->_oldprinc;
-        }
-
-        inline const ifaddr_type&
-        interface_address() const noexcept {
-            return this->_ifaddr;
-        }
-
+        inline const sys::socket_address& new_superior() const noexcept { return this->_new_superior; }
+        inline const sys::socket_address& old_superior() const noexcept { return this->_old_superior; }
+        inline const ifaddr_type& interface_address() const noexcept { return this->_ifaddr; }
         inline void superior_weight(weight_type rhs) noexcept { this->_superior_weight = rhs; }
         inline weight_type superior_weight() const noexcept { return this->_superior_weight; }
 

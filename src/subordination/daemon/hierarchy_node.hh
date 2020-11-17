@@ -34,7 +34,7 @@ namespace sbnd {
         {}
 
         inline void
-        reset() {
+        clear() {
             this->_socket_address.clear();
             this->_weight = 0;
         }

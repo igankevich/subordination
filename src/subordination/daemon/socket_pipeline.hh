@@ -93,13 +93,13 @@ namespace sbnd {
         using client_iterator = typename client_table::const_iterator;
         using server_ptr = std::shared_ptr<socket_pipeline_server>;
         using server_array = std::vector<server_ptr>;
-        using weight_type = uint32_t;
+        using counter_type = uint32_t;
         using file_system_ptr = std::shared_ptr<file_system>;
 
     private:
         std::vector<file_system_ptr> _file_systems;
         std::vector<sys::socket_address> _nodes;
-        weight_type _local_weight = 0;
+        counter_type _local_num_kernels = 0;
         bool _local = true;
 
     public:
@@ -128,7 +128,7 @@ namespace sbnd {
     public:
         using ip_address = sys::ipv4_address;
         using interface_address = sys::interface_address<ip_address>;
-        using weight_type = uint32_t;
+        using counter_type = uint32_t;
 
     private:
         using server_ptr = std::shared_ptr<socket_pipeline_server>;
@@ -157,21 +157,14 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr, weight_type weight=1);
+        void add_client(const sys::socket_address& addr, counter_type num_nodes_behind=1);
+        void stop_client(const sys::socket_address& addr);
+        void update_client(const sys::socket_address& addr, counter_type new_weight);
 
-        void
-        stop_client(const sys::socket_address& addr);
-
-        void
-        set_client_weight(const sys::socket_address& addr, weight_type new_weight);
-
-        void
-        add_server(const interface_address& rhs) {
+        void add_server(const interface_address& rhs) {
             this->add_server(sys::ipv4_socket_address(rhs.address(), this->_port), rhs.netmask());
         }
-
-        void
-        add_server(const sys::socket_address& rhs, ip_address netmask);
+        void add_server(const sys::socket_address& rhs, ip_address netmask);
 
         void forward(sbn::foreign_kernel_ptr&& hdr) override;
 

@@ -11,7 +11,7 @@ log(const Args& ... args) {
 }
 
 void sbnd::Transaction_test_kernel::act() {
-    auto k = sbn::make_pointer<Main_kernel>();
+    auto k = sbn::make_pointer<Foreign_main_kernel>();
     auto* a = new sbn::application(this->_application);
     if (auto* src = source_application()) {
         a->credentials(src->user(), src->group());
@@ -23,7 +23,7 @@ void sbnd::Transaction_test_kernel::act() {
 
 void sbnd::Transaction_test_kernel::react(sbn::kernel_ptr&& k) {
     const auto& t = typeid(*k);
-    if (t == typeid(Main_kernel)) {
+    if (t == typeid(Foreign_main_kernel)) {
         if (this->_exit_codes.empty()) {
             log("recv main kernel _", *k);
             this->_exit_codes.emplace_back(k->return_code());

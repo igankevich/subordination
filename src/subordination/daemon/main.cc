@@ -8,7 +8,7 @@
 
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/job_status_kernel.hh>
-#include <subordination/daemon/network_master.hh>
+#include <subordination/daemon/main.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 #include <subordination/daemon/status_kernel.hh>
 #include <subordination/daemon/terminate_kernel.hh>
@@ -46,16 +46,18 @@ namespace {
         return result;
     }
 
+    class network_timer: public sbn::kernel {};
+
 }
 
-void sbnd::network_master::mark_as_deleted(sbn::kernel_sack& result) {
+void sbnd::Main::mark_as_deleted(sbn::kernel_sack& result) {
     sbn::kernel::mark_as_deleted(result);
     for (auto& pair : this->_discoverers) {
         pair.second->mark_as_deleted(result);
     }
 }
 
-void sbnd::network_master::send_timer(bool first_time) {
+void sbnd::Main::send_timer(bool first_time) {
     using namespace std::chrono;
     auto k = sbn::make_pointer<network_timer>();
     k->after(first_time ? duration::zero() : this->_interval);
@@ -63,12 +65,12 @@ void sbnd::network_master::send_timer(bool first_time) {
     factory.local().send(std::move(k));
 }
 
-void sbnd::network_master::act() {
+void sbnd::Main::act() {
     this->send_timer(true);
 }
 
 auto
-sbnd::network_master::enumerate_ifaddrs() -> interface_address_set {
+sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
     interface_address_set new_ifaddrs;
     sys::interface_addresses addrs;
     for (const sys::interface_addresses::value_type& ifa : addrs) {
@@ -83,7 +85,7 @@ sbnd::network_master::enumerate_ifaddrs() -> interface_address_set {
 }
 
 void
-sbnd::network_master::update_ifaddrs() {
+sbnd::Main::update_discoverers() {
     interface_address_set new_ifaddrs = this->enumerate_ifaddrs();
     interface_address_set ifaddrs_to_add =
         set_difference_copy(new_ifaddrs, this->_discoverers);
@@ -102,17 +104,17 @@ sbnd::network_master::update_ifaddrs() {
     }
     // update servers in socket pipeline
     for (const ifaddr_type& interface_address : ifaddrs_to_rm) {
-        this->remove_ifaddr(interface_address);
+        this->remove_discoverer(interface_address);
     }
     for (const ifaddr_type& interface_address : ifaddrs_to_add) {
-        this->add_ifaddr(interface_address);
+        this->add_discoverer(interface_address);
     }
     this->send_timer();
 }
 
-void sbnd::network_master::react(sbn::kernel_ptr&& child) {
+void sbnd::Main::react(sbn::kernel_ptr&& child) {
     if (typeid(*child) == typeid(network_timer)) {
-        update_ifaddrs();
+        update_discoverers();
     } else if (typeid(*child) == typeid(probe)) {
         forward_probe(sbn::pointer_dynamic_cast<probe>(std::move(child)));
     } else if (typeid(*child) == typeid(Hierarchy_kernel)) {
@@ -130,7 +132,7 @@ void sbnd::network_master::react(sbn::kernel_ptr&& child) {
     }
 }
 
-void sbnd::network_master::report_status(pointer<Status_kernel> status) {
+void sbnd::Main::report_status(pointer<Status_kernel> status) {
     Status_kernel::hierarchy_array hierarchies;
     hierarchies.reserve(this->_discoverers.size());
     for (const auto& pair : this->_discoverers) {
@@ -141,7 +143,7 @@ void sbnd::network_master::report_status(pointer<Status_kernel> status) {
     factory.unix().send(std::move(status));
 }
 
-void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
+void sbnd::Main::report_job_status(pointer<Job_status_kernel> k) {
     Job_status_kernel::application_array jobs;
     {
         auto g = factory.process().guard();
@@ -159,7 +161,7 @@ void sbnd::network_master::report_job_status(pointer<Job_status_kernel> k) {
     factory.unix().send(std::move(k));
 }
 
-void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
+void sbnd::Main::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
     Pipeline_status_kernel::pipeline_array pipelines;
     const sbn::basic_socket_pipeline* pipelines_b[] =
         { &factory.remote(), &factory.process(), &factory.unix() };
@@ -198,14 +200,14 @@ void sbnd::network_master::report_pipeline_status(pointer<Pipeline_status_kernel
     factory.unix().send(std::move(k));
 }
 
-void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
+void sbnd::Main::add_discoverer(const ifaddr_type& ifa) {
     #if defined(SBN_TEST)
     sys::log_message("test", "add interface address _", ifa);
     #endif
     { auto g = factory.remote().guard(); factory.remote().add_server(ifa); }
     if (this->_discoverers.find(ifa) == this->_discoverers.end()) {
         const auto port = factory.remote().port();
-        auto d = sbn::make_pointer<master_discoverer>(ifa, port, this->_discoverer_properties);
+        auto d = sbn::make_pointer<discoverer>(ifa, port, this->_discoverer_properties);
         d->read_cache();
         this->_discoverers.emplace(ifa, d.get());
         d->parent(this);
@@ -214,7 +216,7 @@ void sbnd::network_master::add_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-sbnd::network_master::remove_ifaddr(const ifaddr_type& ifa) {
+sbnd::Main::remove_discoverer(const ifaddr_type& ifa) {
     #if defined(SBN_TEST)
     sys::log_message("test", "remove interface address _", ifa);
     #endif
@@ -228,7 +230,7 @@ sbnd::network_master::remove_ifaddr(const ifaddr_type& ifa) {
 }
 
 void
-sbnd::network_master::forward_probe(pointer<probe> p) {
+sbnd::Main::forward_probe(pointer<probe> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         log("bad probe _", p->interface_address());
@@ -242,7 +244,7 @@ sbnd::network_master::forward_probe(pointer<probe> p) {
 }
 
 void
-sbnd::network_master::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
+sbnd::Main::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
     map_iterator result = this->find_discoverer(p->interface_address().address());
     if (result == this->_discoverers.end()) {
         log("bad hierarchy kernel _", p->interface_address());
@@ -256,7 +258,7 @@ sbnd::network_master::forward_hierarchy_kernel(pointer<Hierarchy_kernel> p) {
 }
 
 auto
-sbnd::network_master::find_discoverer(const addr_type& a) -> map_iterator {
+sbnd::Main::find_discoverer(const addr_type& a) -> map_iterator {
     typedef typename discoverer_table::value_type value_type;
     return std::find_if(
         this->_discoverers.begin(),
@@ -267,7 +269,7 @@ sbnd::network_master::find_discoverer(const addr_type& a) -> map_iterator {
     );
 }
 
-void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
+void sbnd::Main::on_event(pointer<socket_pipeline_kernel> ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
         const addr_type& a = traits_type::address(ev->socket_address());
@@ -282,7 +284,7 @@ void sbnd::network_master::on_event(pointer<socket_pipeline_kernel> ev) {
     }
 }
 
-void sbnd::network_master::on_event(pointer<process_pipeline_kernel> k) {
+void sbnd::Main::on_event(pointer<process_pipeline_kernel> k) {
     if (k->event() == process_pipeline_event::child_process_terminated) {
         #if defined(SBN_TEST)
         sys::log_message("test", "job _ terminated with status _",
@@ -297,7 +299,7 @@ void sbnd::network_master::on_event(pointer<process_pipeline_kernel> k) {
     }
 }
 
-sbnd::network_master::network_master(const Properties& props):
+sbnd::Main::Main(const Properties& props):
 _discoverer_properties(props.discoverer) {
     for (const auto& x : props.network.allowed_interface_addresses) {
         if (x) { this->_allowedifaddrs.insert(x); }

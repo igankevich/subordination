@@ -65,7 +65,7 @@ namespace sbnd {
         inline bool
         remove_superior() noexcept {
             bool old_state = bool(this->_superior.socket_address());
-            this->_superior.reset();
+            this->_superior.clear();
             return old_state != bool(this->_superior.socket_address());
         }
 
