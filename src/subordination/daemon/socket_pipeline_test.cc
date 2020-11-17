@@ -11,8 +11,14 @@
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/socket_pipeline.hh>
+#include <subordination/test/config.hh>
 #include <subordination/test/datum.hh>
 #include <subordination/test/role.hh>
+#include <valgrind/config.hh>
+
+#if defined(SBN_TEST_HAVE_VALGRIND_H)
+#include <valgrind.h>
+#endif
 
 using test::Role;
 using sys::this_process::hostname;
@@ -83,7 +89,7 @@ struct Test_socket: public sbn::kernel {
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("slave failure!");
                     //sbn::exit(0);
-                    send(sys::signal::kill, sys::this_process::id());
+                    sys::this_process::send(sys::signal::kill);
                 }
             } else {
                 return_to_parent(sbn::exit_code::success);
@@ -94,7 +100,7 @@ struct Test_socket: public sbn::kernel {
                 delete this;
                 if (++shutdown_counter == NUM_KERNELS/3) {
                     message("master failure!");
-                    send(sys::signal::kill, sys::this_process::id());
+                    sys::this_process::send(sys::signal::kill);
                     //sbn::exit(0);
                 }
             } else {
@@ -118,7 +124,7 @@ struct Test_socket: public sbn::kernel {
                 } catch (const std::exception& err) {
                     message("slave size -1");
                 }
-                send(sys::signal::kill, sys::this_process::id());
+                sys::this_process::send(sys::signal::kill);
             }
         } else {
             return_to_parent(sbn::exit_code::success);
@@ -244,8 +250,10 @@ TEST(socket_pipeline, _) {
         tmp >> network;
     }
     auto address = network.begin();
-    sys::socket_address subordinate_endpoint(*address++, port+1);
-    sys::socket_address principal_endpoint(*address++, port);
+    sys::socket_address subordinate_endpoint(sys::ipv4_socket_address(*address, port+sys::port_type(1)));
+    ++address;
+    sys::socket_address principal_endpoint(sys::ipv4_socket_address{*address, port});
+    ++address;
     if (role == Role::Slave) {
         auto g = remote.guard();
         remote.port(port+1);
@@ -301,6 +309,9 @@ TEST(socket_pipeline, _) {
 }
 
 int main(int argc, char* argv[]) {
+    #if defined(SBN_TEST_HAVE_VALGRIND_H)
+    if (RUNNING_ON_VALGRIND) { std::exit(77); }
+    #endif
     sbn::install_error_handler();
     ::testing::InitGoogleTest(&argc, argv);
     sys::this_process::ignore_signal(sys::signal::broken_pipe);

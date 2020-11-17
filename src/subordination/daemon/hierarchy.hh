@@ -35,7 +35,7 @@ namespace sbnd {
         inline explicit
         Hierarchy(const ifaddr_type& interface_address, const sys::port_type port):
         _ifaddr(interface_address),
-        _socket_address(interface_address.address(), port),
+        _socket_address(sys::ipv4_socket_address{interface_address.address(), port}),
         _superior(),
         _subordinates()
         {}

@@ -44,7 +44,7 @@ void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
         fk->target_application_id(1);
         parent()->forward_to(this->_unix, std::move(fk));
         //parent()->remove(application().id());
-        sys::send(sys::signal::terminate, child_process_id());
+        sys::process_view(child_process_id()).send(sys::signal::terminate);
     } else {
         connection::receive_foreign_kernel(std::move(fk));
     }

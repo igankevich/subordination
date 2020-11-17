@@ -1,3 +1,4 @@
+# clang-tidy {{{
 clang_tidy = find_program('clang-tidy', required: false)
 guix = find_program('guix', required: false)
 if clang_tidy.found() and guix.found()
@@ -36,3 +37,14 @@ if clang_tidy.found() and guix.found()
             ] + cpp_args + ['-pthread'])] +
             clang_tidy_files)
 endif
+# }}}
+# valgrind {{{
+valgrind = find_program('valgrind', required: false)
+guile = find_program('guile', required: false)
+if valgrind.found() and guile.found()
+    run_target(
+        'valgrind',
+        command: [guile, join_paths(meson.current_source_dir(), 'valgrind.scm')]
+    )
+endif
+# }}}
