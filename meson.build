@@ -13,6 +13,7 @@ with_debug = get_option('buildtype').contains('debug')
 with_site = get_option('with_site')
 with_examples = get_option('with_examples')
 with_guile = get_option('with_guile')
+with_python = get_option('with_python')
 with_glusterfs = get_option('with_glusterfs')
 with_dtests = get_option('with_dtests')
 
