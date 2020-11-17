@@ -20,8 +20,14 @@
 
 #include <subordination/daemon/discovery_test.hh>
 #include <subordination/daemon/test_application.hh>
+#include <subordination/test/config.hh>
+#include <valgrind/config.hh>
 
 #include <dtest/application.hh>
+
+#if defined(SBN_TEST_HAVE_VALGRIND_H)
+#include <valgrind.h>
+#endif
 
 template <class ... Args>
 inline void
@@ -173,6 +179,9 @@ sys::argstream sbnd_args() {
 }
 
 int main(int argc, char* argv[]) {
+    #if defined(SBN_TEST_HAVE_VALGRIND_H)
+    if (RUNNING_ON_VALGRIND) { std::exit(77); }
+    #endif
     if (argc < 2) {
         throw std::invalid_argument("usage: discovery-test <failure>");
     }

@@ -53,7 +53,8 @@ namespace sbnd {
         }
 
         inline interface_socket_address_type interface_socket_address() const {
-            return {this->_ifaddr.address(), this->_ifaddr.prefix(), socket_address().port()};
+            return {this->_ifaddr.address(), this->_ifaddr.prefix(),
+                sys::socket_address_cast<sys::ipv4_socket_address>(socket_address()).port()};
         }
 
         inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
@@ -166,7 +167,7 @@ namespace sbnd {
 
         void
         add_server(const interface_address& rhs) {
-            this->add_server(sys::socket_address(rhs.address(), this->_port), rhs.netmask());
+            this->add_server(sys::ipv4_socket_address(rhs.address(), this->_port), rhs.netmask());
         }
 
         void

@@ -457,7 +457,7 @@ namespace  {
         auto on_terminate = sys::signal_action([](int) {
             if (child_process_id) {
                 try {
-                    sys::send(s::terminate, child_process_id);
+                    sys::process_view(child_process_id).send(s::terminate);
                 } catch (const std::exception& err) {
                     const char* msg = "error in parent signal handler";
                     ::write(2, msg, std::string::traits_type::length(msg));

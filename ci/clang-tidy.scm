@@ -53,7 +53,7 @@
 
 ;; add other arguemnts via pkg-config
 (define more-cpp-args
-  (let* ((port (open-input-pipe "pkg-config --cflags guile-3.0"))
+  (let* ((port (open-input-pipe "pkg-config --cflags guile-3.0 python3-embed"))
          (args (string-split (string-trim-both (get-string-all port)) #\space)))
     (close-pipe port)
     args))

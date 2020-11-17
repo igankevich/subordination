@@ -1,5 +1,6 @@
 import sbn
 import sys
+import pickle
 
 class Child2(sbn.kernel):
 

@@ -97,16 +97,16 @@ void sbn::kernel_buffer::read(kernel_ptr& k) {
 
 void sbn::kernel_buffer::write(const sys::socket_address& rhs) {
     // TODO we need more portable solution
-    sys::u16 n = rhs.sockaddrlen();
+    sys::u16 n = rhs.size();
     this->write(n);
-    this->write(rhs.sockaddr(), rhs.sockaddrlen());
+    this->write(rhs.get(), rhs.size());
 }
 
 void sbn::kernel_buffer::read(sys::socket_address& rhs) {
     // TODO we need more portable solution
     sys::u16 n = 0;
     this->read(n);
-    this->read(rhs.sockaddr(), n);
+    this->read(rhs.get(), n);
 }
 
 void sbn::kernel_buffer::write(const sys::ipv4_address& rhs) {

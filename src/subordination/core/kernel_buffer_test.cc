@@ -8,12 +8,12 @@
 TEST(socket_address, _) {
     sys::socket_address inputs[] {
         sys::socket_address{},
-        sys::socket_address{{127,0,0,1},2222},
-        sys::socket_address{{127,0,0,1},0},
-        sys::socket_address{{84,10,32,12},321},
+        sys::socket_address{sys::ipv4_socket_address{{127,0,0,1},2222}},
+        sys::socket_address{sys::ipv4_socket_address{{127,0,0,1},0}},
+        sys::socket_address{sys::ipv4_socket_address{{84,10,32,12},321}},
         //sys::socket_address{"\0/tmp/.socket"},
         sys::socket_address{"/tmp/.socket"},
-        sys::socket_address{{0,0,0,0xffff,0x127,1,2,3},333},
+        sys::socket_address{sys::ipv6_socket_address{{0,0,0,0xffff,0x127,1,2,3},333}},
     };
     for (const auto& a : inputs) {
         sys::socket_address b;

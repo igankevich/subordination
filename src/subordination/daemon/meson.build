@@ -105,7 +105,7 @@ socket_pipeline_test = executable(
     'socket-pipeline-test',
     sources: 'socket_pipeline_test.cc',
     cpp_args: test_cpp_args,
-    dependencies: [gtest, test_sbnd],
+    dependencies: [gtest, test_sbnd] + valgrind_dep,
     include_directories: src,
     implicit_include_directories: false,
 )
@@ -214,7 +214,7 @@ discovery_test_exe = executable(
     sources: 'discovery_test.cc',
     cpp_args: test_cpp_args,
     include_directories: [src],
-    dependencies: [test_sbn,dtest],
+    dependencies: [test_sbn,dtest] + valgrind_dep,
     implicit_include_directories: false,
 )
 
@@ -235,7 +235,7 @@ test(
         sources: 'transaction_test.cc',
         cpp_args: test_cpp_args,
         include_directories: [src],
-        dependencies: [test_sbn,dtest],
+        dependencies: [test_sbn,dtest] + valgrind_dep,
         implicit_include_directories: false,
     ),
     workdir: meson.build_root(),
