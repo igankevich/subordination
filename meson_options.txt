@@ -20,6 +20,13 @@ option(
 )
 
 option(
+	'with_python',
+	type: 'boolean',
+	value: true,
+	description: 'build Python-based interpreter'
+)
+
+option(
 	'with_glusterfs',
 	type: 'boolean',
 	value: false,
