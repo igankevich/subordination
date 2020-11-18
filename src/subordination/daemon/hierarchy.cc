@@ -2,56 +2,60 @@
 
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/ipv4_address>
+#include <unistdx/util/system>
 
 #include <subordination/daemon/byte_buffers.hh>
 #include <subordination/daemon/hierarchy.hh>
 
-template <class Addr>
+template <class T> bool
+sbnd::Hierarchy<T>::add_subordinate(const sys::socket_address& addr) {
+    auto result = this->_subordinates.find(addr);
+    if (result != this->_subordinates.end()) { return false; }
+    this->_subordinates.emplace(addr, hierarchy_node{});
+    return true;
+}
+
+template <class T>
 std::ostream&
-sbnd::operator<<(std::ostream& out, const Hierarchy<Addr>& rhs) {
+sbnd::operator<<(std::ostream& out, const Hierarchy<T>& rhs) {
     out << "interface-address=" << rhs._ifaddr << ',';
     out << "principal=" << rhs._superior << ',';
     out << "subordinates=";
-    std::copy(
-        rhs._subordinates.begin(),
-        rhs._subordinates.end(),
-        sys::intersperse_iterator<hierarchy_node,char>(out, ',')
-    );
+    bool first = true;
+    for (const auto& pair : rhs._subordinates) {
+        out << pair.first << '*' << pair.second.weight();
+        if (!first) { out << ','; }
+        first = false;
+    }
     return out;
 }
 
-template <class Addr>
+template <class T>
 bool
-sbnd::Hierarchy<Addr>::set_subordinate_weight(
-    const sys::socket_address& endp,
-    weight_type w
+sbnd::Hierarchy<T>::set_subordinate(
+    const sys::socket_address& address,
+    const hierarchy_node& new_sub
 ) {
-    bool changed = false;
-    auto result = this->_subordinates.find(node_type(endp));
-    if (result != this->_subordinates.end()) {
-        weight_type old = result->weight();
-        changed = old != w;
-        if (changed) {
-            result->weight(w);
-        }
+    auto result = this->_subordinates.find(address);
+    if (result == this->_subordinates.end()) { return false; }
+    if (new_sub != result->second) {
+        result->second = new_sub;
+        return true;
     }
-    return changed;
+    return false;
 }
 
-template <class Addr>
-typename sbnd::Hierarchy<Addr>::weight_type
-sbnd::Hierarchy<Addr>::total_weight() const noexcept {
-    // add 1 for the current node
-    return this->principal_weight() + this->total_subordinate_weight() + 1;
+template <class T> auto
+sbnd::Hierarchy<T>::total_weight() const noexcept -> weight_type {
+    return this->superior_weight() +
+        this->total_subordinate_weight() +
+        sys::thread_concurrency();
 }
 
-template <class Addr>
-typename sbnd::Hierarchy<Addr>::weight_type
-sbnd::Hierarchy<Addr>::total_subordinate_weight() const noexcept {
+template <class T> auto
+sbnd::Hierarchy<T>::total_subordinate_weight() const noexcept -> weight_type {
     weight_type sum = 0;
-    for (const node_type& n : this->_subordinates) {
-        sum += n.weight();
-    }
+    for (const auto& pair : this->_subordinates) { sum += pair.second.weight(); }
     return sum;
 }
 
@@ -59,6 +63,7 @@ template <class T> void
 sbnd::Hierarchy<T>::write(sbn::kernel_buffer& out) const {
     out << this->_ifaddr;
     out << this->_socket_address;
+    out << this->_superior_socket_address;
     out << this->_superior;
     out << this->_subordinates;
 }
@@ -67,6 +72,7 @@ template <class T> void
 sbnd::Hierarchy<T>::read(sbn::kernel_buffer& in) {
     in >> this->_ifaddr;
     in >> this->_socket_address;
+    in >> this->_superior_socket_address;
     in >> this->_superior;
     in >> this->_subordinates;
 }

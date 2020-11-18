@@ -64,7 +64,7 @@ void sbnd::discoverer::discover() {
     } else {
         auto addr = *this->_iterator;
         sys::socket_address new_superior(sys::ipv4_socket_address{addr, port()});
-        const auto& old_superior = this->_hierarchy.superior().socket_address();
+        const auto& old_superior = this->_hierarchy.superior_socket_address();
         if (profile()) {
             profile("`((time . _) (node . \"_\") (probe . \"_\") (attempts . _))",
                     current_time_in_microseconds(), interface_address(), addr,
@@ -89,7 +89,7 @@ void sbnd::discoverer::on_timer() {
     if (state() != states::waiting) { return; }
     if (this->_hierarchy.has_superior()) { reset_iterator(); }
     sys::socket_address new_superior(sys::ipv4_socket_address{*this->_iterator, port()});
-    const auto& old_superior = this->_hierarchy.superior().socket_address();
+    const auto& old_superior = this->_hierarchy.superior_socket_address();
     if (old_superior != new_superior) { discover(); }
     else { discover_later(); }
 }
@@ -128,7 +128,9 @@ void sbnd::discoverer::update_subordinates(pointer<probe> p) {
         total_weight = this->_hierarchy.total_weight();
     }
     p->return_to_parent(sbn::exit_code::success);
-    p->superior_weight(total_weight);
+    hierarchy_node sup;
+    sup.weight(total_weight);
+    p->superior(sup);
     factory.remote().send(std::move(p));
 }
 
@@ -139,7 +141,7 @@ void sbnd::discoverer::add_subordinate(const sys::socket_address& address) {
 }
 
 void sbnd::discoverer::add_superior(const sys::socket_address& address, weight_type weight) {
-    if (this->_hierarchy.add_superior(hierarchy_node(address, weight))) {
+    if (this->_hierarchy.add_superior(address, hierarchy_node(weight))) {
         factory.remote().update_client(address, weight);
         broadcast_hierarchy(address);
     }
@@ -159,7 +161,7 @@ void sbnd::discoverer::remove_superior() {
 
 sbnd::probe_result sbnd::discoverer::process_probe(pointer<probe>& p) {
     probe_result result = probe_result::retain;
-    if (p->source() == this->_hierarchy.superior()) {
+    if (p->source() == this->_hierarchy.superior_socket_address()) {
         // superior tries to become subordinate
         // which is prohibited
         p->return_code(sbn::exit_code::error);
@@ -194,10 +196,10 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
                 #if defined(SBN_TEST)
                 sys::log_message("test", "_: set principal to _ attempts _ weight _",
                                  interface_address(), new_superior, this->_attempts,
-                                 p->superior_weight());
+                                 p->superior().weight());
                 #endif
             }
-            add_superior(new_superior, p->superior_weight());
+            add_superior(new_superior, p->superior().weight());
         }
         if (p->old_superior() && p->old_superior() != p->new_superior()) {
             auto new_p = sbn::make_pointer<probe>(p->interface_address(), p->old_superior(),
@@ -230,7 +232,7 @@ sbnd::discoverer::on_client_add(const sys::socket_address& address) {}
 
 void
 sbnd::discoverer::on_client_remove(const sys::socket_address& address) {
-    if (address == this->_hierarchy.superior()) {
+    if (address == this->_hierarchy.superior_socket_address()) {
         #if defined(SBN_TEST)
         sys::log_message("test", "_: unset principal _", interface_address(), address);
         #endif
@@ -246,17 +248,20 @@ sbnd::discoverer::on_client_remove(const sys::socket_address& address) {
 
 void sbnd::discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
     const weight_type total = this->_hierarchy.total_weight();
-    for (const hierarchy_node& sub : this->_hierarchy) {
-        if (sub.socket_address() != ignored_endpoint) {
+    for (const auto& pair : this->_hierarchy.subordinates()) {
+        const auto& sub_socket_address = pair.first;
+        const auto& sub = pair.second;
+        if (sub_socket_address != ignored_endpoint) {
             assert(total >= sub.weight());
-            this->send_weight(sub.socket_address(), total - sub.weight());
+            this->send_weight(sub_socket_address, total - sub.weight());
         }
     }
     if (this->_hierarchy.has_superior()) {
-        const hierarchy_node& princ = this->_hierarchy.superior();
-        if (princ.socket_address() != ignored_endpoint) {
-            assert(total >= princ.weight());
-            this->send_weight(princ.socket_address(), total - princ.weight());
+        const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
+        const hierarchy_node& sup = this->_hierarchy.superior();
+        if (sup_socket_address != ignored_endpoint) {
+            assert(total >= sup.weight());
+            this->send_weight(sup_socket_address, total - sup.weight());
         }
     }
     write_cache();
@@ -303,8 +308,9 @@ void sbnd::discoverer::read_cache() {
         log("read hierarchy from _: _", path, this->_hierarchy);
         if (this->_hierarchy.has_superior()) {
             const auto& sup = this->_hierarchy.superior();
+            const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
             auto g = factory.remote().guard();
-            factory.remote().add_client(sup.socket_address(), sup.weight());
+            factory.remote().add_client(sup_socket_address, sup.weight());
         }
         //for (const auto& s : this->_hierarchy.subordinates()) {
         //    auto g = factory.remote().guard();
@@ -334,9 +340,9 @@ void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
         const sys::socket_address& src = k->source();
         bool changed = false;
         if (this->_hierarchy.has_superior(src)) {
-            changed = this->_hierarchy.set_superior_weight(k->weight());
+            changed = this->_hierarchy.set_superior(hierarchy_node(k->weight()));
         } else if (this->_hierarchy.has_subordinate(src)) {
-            changed = this->_hierarchy.set_subordinate_weight(src, k->weight());
+            changed = this->_hierarchy.set_subordinate(src, hierarchy_node(k->weight()));
         }
         if (changed) {
             #if defined(SBN_TEST)
@@ -350,8 +356,8 @@ void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
 }
 
 sbnd::discoverer::discoverer(const ifaddr_type& interface_address,
-                                           const sys::port_type port,
-                                           const Properties::Discoverer& props):
+                             const sys::port_type port,
+                             const Properties::Discoverer& props):
 _fanout(props.fanout), _hierarchy(interface_address, port) {
     this->_interval = props.scan_interval;
     this->_profile = props.profile;

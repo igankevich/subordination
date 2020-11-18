@@ -67,10 +67,10 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hiera
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
-        out << *first;
+        out << first->first << '*' << first->second.weight();
         ++first;
         while (first != last) {
-            out << ' ' << *first;
+            out << ' ' << first->first << '*' << first->second.weight();
             ++first;
         }
     }
@@ -154,10 +154,10 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hie
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
-        out << *first;
+        out << first->first << '*' << first->second.weight();
         ++first;
         while (first != last) {
-            out << ' ' << *first;
+            out << ' ' << first->first << '*' << first->second.weight();
             ++first;
         }
     }

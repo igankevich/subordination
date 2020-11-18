@@ -187,12 +187,12 @@ int main(int argc, char* argv[]) {
     }
     auto sbn_failure = argv[1];
     expected_failure = sbn_failure;
-    dts::application app;
     dts::cluster cluster;
     cluster.name("x");
     cluster.network({{10,1,0,1},16});
     cluster.peer_network({{10,0,0,1},16});
     cluster.generate_nodes(2);
+    dts::application app;
     app.exit_code(dts::exit_code::all);
     //app.execution_delay(std::chrono::seconds(1));
     app.cluster(std::move(cluster));

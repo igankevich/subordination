@@ -59,7 +59,8 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx = with_debug ? dependency('unistdx-debug', version: '>=0.38.1') : dependency('unistdx', version: '>=0.38.1')
+unistdx_version = '>=0.41.0'
+unistdx = with_debug ? dependency('unistdx-debug', version: unistdx_version) : dependency('unistdx', version: unistdx_version)
 gtest = dependency('gtest', main: true)
 libunwind = with_debug ? [dependency('libunwind')] : []
 libdw = with_debug ? [dependency('libdw')] : []

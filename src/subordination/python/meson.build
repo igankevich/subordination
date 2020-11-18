@@ -25,7 +25,7 @@ sbn_python_exe = executable(
 )
 
 test(
-    'python',
+    'python/local',
     executable(
         'python-local-test',
         sources: ['python_local_test.cc'],

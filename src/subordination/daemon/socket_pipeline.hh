@@ -157,7 +157,7 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr, counter_type num_nodes_behind=1);
+        void add_client(const sys::socket_address& addr, counter_type thread_concurrency_behind=1);
         void stop_client(const sys::socket_address& addr);
         void update_client(const sys::socket_address& addr, counter_type new_weight);
 

@@ -37,6 +37,7 @@ namespace sbn {
     public:
         using id_type = uint64_t;
         template <class T> using pointer = ::sbn::pointer<T>;
+        using weight_type = uint32_t;
 
     public:
         enum class phases: sys::u8 {
@@ -71,6 +72,7 @@ namespace sbn {
             id_type _principal_id;
         };
         std::string _path;
+        weight_type _weight = 1;
 
     protected:
         // node-local type id
@@ -107,6 +109,17 @@ namespace sbn {
         inline void path(std::string&& rhs) { this->_path = std::move(rhs); }
         inline pipeline* source_pipeline() const noexcept { return this->_source_pipeline; }
         inline void source_pipeline(pipeline* rhs) noexcept { this->_source_pipeline = rhs; }
+
+        /**
+        \brief The total number of potentially parallel subordinate kernels.
+        \details
+        This number corresponds to the number of subordinate kernels that
+        will be created and submitted to the local queue for parallel execution.
+        The scheduler uses this number as a \em hint to spread the load equally between
+        subordinate cluster nodes.
+        */
+        inline weight_type weight() const noexcept { return this->_weight; }
+        inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {

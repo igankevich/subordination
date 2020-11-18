@@ -30,6 +30,7 @@ void sbn::kernel::read(kernel_buffer& in) {
     in >> this->_principal_id;
     in >> this->_phase;
     in >> this->_path;
+    in >> this->_weight;
     this->_flags |= kernel_flag::parent_is_id;
     this->_flags |= kernel_flag::principal_is_id;
 }
@@ -42,6 +43,7 @@ void sbn::kernel::write(kernel_buffer& out) const {
     out << principal_id();
     out << this->_phase;
     out << this->_path;
+    out << this->_weight;
 }
 
 void sbn::kernel::write_header(kernel_buffer& out) const {
