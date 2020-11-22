@@ -15,7 +15,6 @@ namespace sbn {
 
         struct py_kernel_map {
             PyObject_HEAD
-            // kernel_map* _kernel_map;
             PyObject* _kernel_map_capsule;
         };
 
