@@ -13,6 +13,7 @@ namespace {
 
 PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds){
     sys::log_message(">>>> Sbn", "upstream");
+    sys::log_message("test", "Sbn: upstream");
     PyObject *_py_kernel_parent = nullptr, *_py_kernel_child = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
@@ -40,6 +41,7 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
 
 PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds) {
     sys::log_message(">>>> Sbn", "commit");
+    sys::log_message("test", "Sbn: commit");
     PyObject *_py_kernel = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
@@ -84,12 +86,12 @@ PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyO
 int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds)
 {
     /* Initialization of kernel */
-    PyObject* capsule_kernel_cpp;
+    PyObject* capsule_kernel_cpp = nullptr;
     PyArg_UnpackTuple(args, "ptr", 0, 1, &capsule_kernel_cpp);
 
     if (PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
     {
-        sys::log_message("test", "py_kernel_main.__init__");
+        sys::log_message("test", "Sbn: py_kernel_main.__init__");
         Py_INCREF(capsule_kernel_cpp);
         self->_kernel_map_capsule = capsule_kernel_cpp;
     }
@@ -124,18 +126,21 @@ PyObject* sbn::python::py_kernel_map_reduce(py_kernel_map* self, PyObject* Py_UN
 
 
 void sbn::python::kernel_map::act() {
-    sys::log_message(">>>> Sbn", "Kernel_map.act");
+    sys::log_message(">>>> Sbn", "kernel_map.act");
+    sys::log_message("test", "Sbn: kernel_map.act");
     PyObject_CallMethod(this->py_k_map(), "act", nullptr);
 }
 
 void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
-    sys::log_message(">>>> Sbn", "Kernel_map.react");
+    sys::log_message(">>>> Sbn", "kernel_map.react");
+    sys::log_message("test", "Sbn: kernel_map.react");
     auto child = sbn::pointer_dynamic_cast<kernel_map>(std::move(child_ptr));
     PyObject_CallMethod(this->py_k_map(), "react", "O", child->py_k_map());
 }
 
 void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
-    sys::log_message(">>>> Sbn", "Kernel_map.write");
+    sys::log_message(">>>> Sbn", "kernel_map.write");
+    sys::log_message("test", "Sbn: kernel_map.write");
     kernel::write(out); 
 
     PyObject *pickle = PyImport_ImportModule("pickle"); // import module
@@ -160,7 +165,8 @@ void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
 }
 
 void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
-    sys::log_message(">>>> Sbn", "Kernel_map.read");
+    sys::log_message(">>>> Sbn", "kernel_map.read");
+    sys::log_message("test", "Sbn: kernel_map.read");
     kernel::read(in);
     PyObject *pickle = PyImport_ImportModule("pickle"); // import module
     Py_INCREF(pickle);
@@ -188,7 +194,7 @@ void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
 
 void sbn::python::Main::read(sbn::kernel_buffer& in) {
     sys::log_message(">>>> Sbn", "Main.read");
-    sys::log_message("test", "Main.read");
+    sys::log_message("test", "Sbn: Main.read");
     sbn::kernel::read(in);
     if (in.remaining() != 0)
     {
@@ -218,7 +224,7 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
 
 void sbn::python::Main::act() {
     sys::log_message(">>>> Sbn", "Main.act");
-    sys::log_message("test", "Main.act");
+    sys::log_message("test", "Sbn: Main.act");
     if (target_application()) {
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
