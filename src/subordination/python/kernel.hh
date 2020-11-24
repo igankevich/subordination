@@ -9,37 +9,37 @@ namespace sbn {
 
     namespace python {
 
-        class kernel_map;
+        class Cpp_kernel;
 
-        // ================ kernel_map ================
+        // ================ Cpp_kernel ================
 
-        struct py_kernel_map {
+        struct Py_kernel {
             PyObject_HEAD
-            PyObject* _kernel_map_capsule;
+            PyObject* _cpp_kernel_capsule;
         };
 
-        void py_kernel_map_dealloc(py_kernel_map* self);
-        PyObject* py_kernel_map_new(PyTypeObject* type, PyObject* args, PyObject* kwds);
-        int py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds);
+        void Py_kernel_dealloc(Py_kernel* self);
+        PyObject* Py_kernel_new(PyTypeObject* type, PyObject* args, PyObject* kwds);
+        int Py_kernel_init(Py_kernel* self, PyObject* args, PyObject* kwds);
 
-        PyObject* py_kernel_map_reduce(py_kernel_map *self, PyObject *Py_UNUSED(ignored));
-        PyObject* py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObject * args);
+        PyObject* Py_kernel_reduce(Py_kernel *self, PyObject *Py_UNUSED(ignored));
+        PyObject* Py_kernel_set_Cpp_kernel(Py_kernel* self, PyObject * args);
 
         // ============================================
 
-        class kernel_map: public sbn::kernel {
+        class Cpp_kernel: public sbn::kernel {
 
         private:
-            PyObject* _py_k_map;
+            PyObject* _py_kernel_obj;
         public:
 
-            kernel_map() = default;
-            inline kernel_map(PyObject* py_k_map) noexcept: _py_k_map(py_k_map){Py_INCREF(this->_py_k_map);}
+            Cpp_kernel() = default;
+            inline Cpp_kernel(PyObject* py_kernel_obj) noexcept: _py_kernel_obj(py_kernel_obj){Py_INCREF(this->_py_kernel_obj);}
 
-            ~kernel_map() noexcept{Py_DECREF(this->_py_k_map);}
+            ~Cpp_kernel() noexcept{Py_DECREF(this->_py_kernel_obj);}
 
-            PyObject* py_k_map(){return this->_py_k_map;} // Getter
-            void py_k_map(PyObject* py_k_map){this->_py_k_map = py_k_map;} // Setter
+            PyObject* py_kernel_obj(){return this->_py_kernel_obj;} // Getter
+            void py_kernel_obj(PyObject* py_kernel_obj){this->_py_kernel_obj = py_kernel_obj;} // Setter
 
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
@@ -48,7 +48,7 @@ namespace sbn {
 
         };
 
-        class Main: public kernel_map {
+        class Main: public Cpp_kernel {
 
         public:
 
@@ -69,8 +69,8 @@ namespace sbn {
 
         };
 
-        PyObject* kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds);
-        PyObject* kernel_commit(PyObject *self, PyObject *args, PyObject *kwds);
+        PyObject* upstream(PyObject *self, PyObject *args, PyObject *kwds);
+        PyObject* commit(PyObject *self, PyObject *args, PyObject *kwds);
 
     }
 }

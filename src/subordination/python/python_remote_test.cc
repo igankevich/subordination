@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
             dts::expect_event(lines, R"(^x1.*Sbn: Main.read.*$)");
             dts::expect_event_sequence(lines, {
                 R"(^x1.*Sbn: Main.act.*$)",
-                R"(^x1.*Sbn: py_kernel_main.__init__.*$)",
+                R"(^x1.*Sbn: Py_kernel_main.__init__.*$)",
                 R"(^x1.*Python: Main.act.*$)",
                 R"(^x1.*Sbn: upstream.*$)",
             });
@@ -114,34 +114,34 @@ int main(int argc, char* argv[]) {
     app.emplace_test(
         "Wait for events from x1 node.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x1.*Sbn: kernel_map.read.*$)");
+            dts::expect_event(lines, R"(^x1.*Sbn: Cpp_kernel.read.*$)");
             dts::expect_event_sequence(lines, {
-                R"(^x1.*Sbn: kernel_map.act.*$)",
-                R"(^x1.*Python: py_kernel.act.*$)",
+                R"(^x1.*Sbn: Cpp_kernel.act.*$)",
+                R"(^x1.*Python: Py_kernel.act.*$)",
             });
-            dts::expect_event(lines, R"(^x1.*Sbn: kernel_map.write.*$)");
+            dts::expect_event(lines, R"(^x1.*Sbn: Cpp_kernel.write.*$)");
         });
     app.emplace_test(
         "Wait for events from x2 node.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x2.*Sbn: kernel_map.read.*$)");
+            dts::expect_event(lines, R"(^x2.*Sbn: Cpp_kernel.read.*$)");
             dts::expect_event_sequence(lines, {
-                R"(^x2.*Sbn: kernel_map.act.*$)",
-                R"(^x2.*Python: py_kernel.act.*$)",
+                R"(^x2.*Sbn: Cpp_kernel.act.*$)",
+                R"(^x2.*Python: Py_kernel.act.*$)",
             });
-            dts::expect_event(lines, R"(^x2.*Sbn: kernel_map.write.*$)");
+            dts::expect_event(lines, R"(^x2.*Sbn: Cpp_kernel.write.*$)");
         });
     app.emplace_test(
         "Wait for results from nodes.",
         [] (dts::application& app, const dts::string_array& lines) {
             dts::expect_event_sequence(lines, {
-                R"(^.*Sbn: kernel_map.react.*$)",
+                R"(^.*Sbn: Cpp_kernel.react.*$)",
                 R"(^.*Python: Child.react.*$)",
                 R"(^.*Python: Child2.data => Child2Data.*$)",
                 R"(^.*Sbn: commit.*$)"
             });
             dts::expect_event_sequence(lines, {
-                R"(^.*Sbn: kernel_map.react.*$)",
+                R"(^.*Sbn: Cpp_kernel.react.*$)",
                 R"(^.*Python: Main.react.*$)",
                 R"(^.*Python: Child.data => ChildData_Child2Data.*$)",
                 R"(^.*Sbn: commit.*$)"

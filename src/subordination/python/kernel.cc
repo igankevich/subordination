@@ -11,59 +11,59 @@ namespace {
     constexpr const char* commit_kwlist[] = {"kernel", nullptr};
 }
 
-PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds){
+PyObject* sbn::python::upstream(PyObject *self, PyObject *args, PyObject *kwds){
     sys::log_message(">>>> Sbn", "upstream");
     sys::log_message("test", "Sbn: upstream");
-    PyObject *_py_kernel_parent = nullptr, *_py_kernel_child = nullptr;
+    PyObject *py_kernel_obj_parent = nullptr, *py_kernel_obj_child = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
         args, kwds, "|O!O!", const_cast<char**>(upstream_kwlist),
-        &py_kernel_map_type,
-        &_py_kernel_parent,
-        &py_kernel_map_type,
-        &_py_kernel_child))
+        &Py_kernel_type,
+        &py_kernel_obj_parent,
+        &Py_kernel_type,
+        &py_kernel_obj_child))
         return nullptr;
 
-    Py_INCREF(_py_kernel_parent);
-    Py_INCREF(_py_kernel_child);
+    Py_INCREF(py_kernel_obj_parent);
+    Py_INCREF(py_kernel_obj_child);
 
-    auto _kernel_parent = (py_kernel_map*)_py_kernel_parent;
-    auto _kernel_child = (py_kernel_map*)_py_kernel_child;
+    auto py_kernel_parent = (Py_kernel*)py_kernel_obj_parent;
+    auto py_kernel_child = (Py_kernel*)py_kernel_obj_child;
 
-    auto _kernel_parent_ptr = (sbn::python::kernel_map*)PyCapsule_GetPointer(_kernel_parent->_kernel_map_capsule, "ptr");
-    auto _kernel_child_ptr = (sbn::python::kernel_map*)PyCapsule_GetPointer(_kernel_child->_kernel_map_capsule, "ptr");
+    auto cpp_kernel_parent = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel_parent->_cpp_kernel_capsule, "ptr");
+    auto cpp_kernel_child = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel_child->_cpp_kernel_capsule, "ptr");
 
-    sbn::upstream<sbn::Remote>(std::move(_kernel_parent_ptr),
-                               std::unique_ptr<kernel_map>(std::move(_kernel_child_ptr)));
+    sbn::upstream<sbn::Remote>(std::move(cpp_kernel_parent),
+                               std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel_child)));
 
     Py_RETURN_NONE;
 }
 
-PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds) {
+PyObject* sbn::python::commit(PyObject *self, PyObject *args, PyObject *kwds) {
     sys::log_message(">>>> Sbn", "commit");
     sys::log_message("test", "Sbn: commit");
-    PyObject *_py_kernel = nullptr;
+    PyObject *py_kernel_obj = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
         args, kwds, "|O!", const_cast<char**>(commit_kwlist),
-        &py_kernel_map_type,
-        &_py_kernel
+        &Py_kernel_type,
+        &py_kernel_obj
         ))
     {
         return nullptr;
     }
-    Py_INCREF(_py_kernel);
+    Py_INCREF(py_kernel_obj);
 
-    auto _kernel = (py_kernel_map*)_py_kernel;
+    auto py_kernel = (Py_kernel*)py_kernel_obj;
 
-    auto _kernel_ptr = (sbn::python::kernel_map*)PyCapsule_GetPointer(_kernel->_kernel_map_capsule, "ptr");
+    auto cpp_kernel = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel->_cpp_kernel_capsule, "ptr");
 
-    sbn::commit<sbn::Remote>(std::unique_ptr<kernel_map>(std::move(_kernel_ptr)));
+    sbn::commit<sbn::Remote>(std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel)));
     Py_RETURN_NONE;
 }
 
 
-void sbn::python::py_kernel_map_dealloc(py_kernel_map* self)
+void sbn::python::Py_kernel_dealloc(Py_kernel* self)
 {
     /* Custom deallocation behavior */
 
@@ -73,122 +73,131 @@ void sbn::python::py_kernel_map_dealloc(py_kernel_map* self)
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-PyObject* sbn::python::py_kernel_map_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+PyObject* sbn::python::Py_kernel_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     /* Custom allocation behavior */
 
     // Default allocation behavior
-    auto self = (py_kernel_map *) type->tp_alloc(type, 0);
+    auto self = (Py_kernel *) type->tp_alloc(type, 0);
 
     return (PyObject *) self;
 }
 
-int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObject* kwds)
+int sbn::python::Py_kernel_init(Py_kernel* self, PyObject* args, PyObject* kwds)
 {
     /* Initialization of kernel */
-    PyObject* capsule_kernel_cpp = nullptr;
-    PyArg_UnpackTuple(args, "ptr", 0, 1, &capsule_kernel_cpp);
+    PyObject* cpp_kernel_capsule = nullptr;
+    PyArg_UnpackTuple(args, "ptr", 0, 1, &cpp_kernel_capsule);
 
-    if (PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
+    if (PyCapsule_IsValid(cpp_kernel_capsule, "ptr"))
     {
-        sys::log_message("test", "Sbn: py_kernel_main.__init__");
-        Py_INCREF(capsule_kernel_cpp);
-        self->_kernel_map_capsule = capsule_kernel_cpp;
+        sys::log_message("test", "Sbn: Py_kernel_main.__init__");
+        Py_INCREF(cpp_kernel_capsule);
+        self->_cpp_kernel_capsule = cpp_kernel_capsule;
     }
     else
     {
-        auto _kernel_map = new kernel_map(std::move((PyObject*)self));
-        self->_kernel_map_capsule = PyCapsule_New((void *)_kernel_map, "ptr", nullptr);
+        auto cpp_kernel = new Cpp_kernel(std::move((PyObject*)self));
+        self->_cpp_kernel_capsule = PyCapsule_New((void *)cpp_kernel, "ptr", nullptr);
     }
 
     return 0;
 }
 
-PyObject* sbn::python::py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObject * args)
+PyObject* sbn::python::Py_kernel_set_Cpp_kernel(Py_kernel* self, PyObject * args)
 {
-    PyObject* capsule_kernel_cpp;
-    PyArg_UnpackTuple(args, "ptr", 0, 1, &capsule_kernel_cpp);
+    PyObject* cpp_kernel_capsule = nullptr;
+    PyArg_UnpackTuple(args, "ptr", 0, 1, &cpp_kernel_capsule);
 
-    if (!PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
+    if (!PyCapsule_IsValid(cpp_kernel_capsule, "ptr"))
         return nullptr;
 
-    Py_INCREF(capsule_kernel_cpp);
-    self->_kernel_map_capsule = capsule_kernel_cpp;
+    Py_INCREF(cpp_kernel_capsule);
+    self->_cpp_kernel_capsule = cpp_kernel_capsule;
 
     Py_RETURN_NONE;
 }
 
-PyObject* sbn::python::py_kernel_map_reduce(py_kernel_map* self, PyObject* Py_UNUSED(ignored))
+PyObject* sbn::python::Py_kernel_reduce(Py_kernel* self, PyObject* Py_UNUSED(ignored))
 {
     PyObject * dict = PyObject_GetAttrString((PyObject*)self, "__dict__");
     return Py_BuildValue("N()N", Py_TYPE(self), dict);
 }
 
 
-void sbn::python::kernel_map::act() {
-    sys::log_message(">>>> Sbn", "kernel_map.act");
-    sys::log_message("test", "Sbn: kernel_map.act");
-    PyObject_CallMethod(this->py_k_map(), "act", nullptr);
+void sbn::python::Cpp_kernel::act() {
+    sys::log_message(">>>> Sbn", "Cpp_kernel.act");
+    sys::log_message("test", "Sbn: Cpp_kernel.act");
+    object pValue = PyObject_CallMethod(this->py_kernel_obj(), "act", nullptr);
+    if (!pValue) {
+        PyErr_Print();
+        sbn::exit(1);
+    }
 }
 
-void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
-    sys::log_message(">>>> Sbn", "kernel_map.react");
-    sys::log_message("test", "Sbn: kernel_map.react");
-    auto child = sbn::pointer_dynamic_cast<kernel_map>(std::move(child_ptr));
-    PyObject_CallMethod(this->py_k_map(), "react", "O", child->py_k_map());
+void sbn::python::Cpp_kernel::react(sbn::kernel_ptr&& cpp_child_ptr){
+    sys::log_message(">>>> Sbn", "Cpp_kernel.react");
+    sys::log_message("test", "Sbn: Cpp_kernel.react");
+    auto cpp_child = sbn::pointer_dynamic_cast<Cpp_kernel>(std::move(cpp_child_ptr));
+    object pValue = PyObject_CallMethod(this->py_kernel_obj(), "react", "O", cpp_child->py_kernel_obj());
+    if (!pValue) {
+        PyErr_Print();
+        sbn::exit(1);
+    }
 }
 
-void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
-    sys::log_message(">>>> Sbn", "kernel_map.write");
-    sys::log_message("test", "Sbn: kernel_map.write");
+void sbn::python::Cpp_kernel::write(sbn::kernel_buffer& out) const {
+    sys::log_message(">>>> Sbn", "Cpp_kernel.write");
+    sys::log_message("test", "Sbn: Cpp_kernel.write");
     kernel::write(out); 
 
-    PyObject *pickle = PyImport_ImportModule("pickle"); // import module
-    Py_INCREF(pickle);
+    PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
+    Py_INCREF(pickle_module);
 
-    PyObject *pickled_pyobj = PyObject_CallMethod(pickle, "dumps", "O", this->_py_k_map);
-    Py_INCREF(pickled_pyobj);
+    PyObject *pkl_py_kernel_obj = PyObject_CallMethod(pickle_module, "dumps", "O", this->_py_kernel_obj);
+    Py_INCREF(pkl_py_kernel_obj);
 
-    PyObject* pybytearr_pyobj = PyByteArray_FromObject(pickled_pyobj);
-    Py_INCREF(pybytearr_pyobj);
+    PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromObject(pkl_py_kernel_obj);
+    Py_INCREF(py_bytearr_py_kernel_obj);
     
-    const char* bytearr_pyobj = PyByteArray_AsString(pybytearr_pyobj);
-    Py_ssize_t size_pyobj = PyByteArray_Size(pybytearr_pyobj);
-    std::string str_pyobj(bytearr_pyobj, size_pyobj);
+    const char* bytearr_py_kernel_obj = PyByteArray_AsString(py_bytearr_py_kernel_obj);
+    Py_ssize_t size_py_kernel_obj = PyByteArray_Size(py_bytearr_py_kernel_obj);
+    std::string str_py_kernel_obj(bytearr_py_kernel_obj, size_py_kernel_obj);
 
-    out << str_pyobj;
-    out << size_pyobj;
+    out << str_py_kernel_obj;
+    out << size_py_kernel_obj;
 
-    Py_XDECREF(pickle);
-    Py_XDECREF(pickled_pyobj);
-    Py_XDECREF(pybytearr_pyobj);
+    Py_XDECREF(pickle_module);
+    Py_XDECREF(pkl_py_kernel_obj);
+    Py_XDECREF(py_bytearr_py_kernel_obj);
 }
 
-void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
-    sys::log_message(">>>> Sbn", "kernel_map.read");
-    sys::log_message("test", "Sbn: kernel_map.read");
+void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
+    sys::log_message(">>>> Sbn", "Cpp_kernel.read");
+    sys::log_message("test", "Sbn: Cpp_kernel.read");
     kernel::read(in);
-    PyObject *pickle = PyImport_ImportModule("pickle"); // import module
-    Py_INCREF(pickle);
 
-    std::string str_pyobj;
-    Py_ssize_t size_pyobj;
+    PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
+    Py_INCREF(pickle_module);
 
-    in >> str_pyobj;
-    in >> size_pyobj;
+    std::string str_py_kernel_obj;
+    Py_ssize_t size_py_kernel_obj;
+    in >> str_py_kernel_obj;
+    in >> size_py_kernel_obj;
 
-    const char* bytearr_pyobj = str_pyobj.data();
-    PyObject* pybytearr_pyobj = PyByteArray_FromStringAndSize(bytearr_pyobj, size_pyobj);
-    Py_INCREF(pybytearr_pyobj);
+    const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
+    PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
+    Py_INCREF(py_bytearr_py_kernel_obj);
     
-    PyObject* pyobj = PyObject_CallMethod(pickle, "loads", "O", pybytearr_pyobj);
-    Py_INCREF(pyobj);
-    this->py_k_map(pyobj);
-    PyObject_CallMethod(pyobj, "_set_kernel_cpp", "O", PyCapsule_New((void *)this, "ptr", nullptr));
+    PyObject* py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj);
+    Py_INCREF(py_kernel_obj);
+
+    this->py_kernel_obj(py_kernel_obj);
+    PyObject_CallMethod(py_kernel_obj, "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
     
-    Py_XDECREF(pickle);
-    Py_XDECREF(pybytearr_pyobj);
-    Py_XDECREF(pyobj);
+    Py_XDECREF(pickle_module);
+    Py_XDECREF(py_bytearr_py_kernel_obj);
+    Py_XDECREF(py_kernel_obj);
 }
 
 
@@ -196,29 +205,30 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
     sys::log_message(">>>> Sbn", "Main.read");
     sys::log_message("test", "Sbn: Main.read");
     sbn::kernel::read(in);
+
     if (in.remaining() != 0)
     {
-        PyObject *pickle = PyImport_ImportModule("pickle"); // import module
+        PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
+        Py_INCREF(pickle_module);
 
-        std::string str_pyobj;
-        Py_ssize_t size_pyobj;
+        std::string str_py_kernel_obj;
+        Py_ssize_t size_py_kernel_obj;
+        in >> str_py_kernel_obj;
+        in >> size_py_kernel_obj;
 
-        in >> str_pyobj;
-        in >> size_pyobj;
+        const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
+        PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
+        Py_INCREF(py_bytearr_py_kernel_obj);
+        
+        PyObject* py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj);
+        Py_INCREF(py_kernel_obj);
 
-        const char* bytearr_pyobj = str_pyobj.data();
-        PyObject* pybytearr_pyobj = PyByteArray_FromStringAndSize(bytearr_pyobj, size_pyobj);
-        Py_INCREF(pybytearr_pyobj);
-
-        PyObject* pyobj = PyObject_CallMethod(pickle, "loads", "O", pybytearr_pyobj);
-        Py_INCREF(pyobj);
-
-        this->py_k_map(pyobj);
-        PyObject_CallMethod(pyobj, "_set_kernel_cpp", "O", PyCapsule_New((void *)this, "ptr", nullptr));
-
-        Py_XDECREF(pickle);
-        Py_XDECREF(pybytearr_pyobj);
-        Py_XDECREF(pyobj);
+        this->py_kernel_obj(py_kernel_obj);
+        PyObject_CallMethod(py_kernel_obj, "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
+        
+        Py_XDECREF(pickle_module);
+        Py_XDECREF(py_bytearr_py_kernel_obj);
+        Py_XDECREF(py_kernel_obj);
     }
 }
 
@@ -228,10 +238,10 @@ void sbn::python::Main::act() {
     if (target_application()) {
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
-            object main_class = PyObject_CallMethod(
+            object py_main_obj = PyObject_CallMethod(
                 main_module, "Main", "O", PyCapsule_New((void *)this, "ptr", nullptr));
-            this->py_k_map(std::move(main_class));
-            object pValue = PyObject_CallMethod(main_class, "act", nullptr);
+            this->py_kernel_obj(py_main_obj);
+            object pValue = PyObject_CallMethod(py_main_obj, "act", nullptr);
             if (!pValue) {
                 PyErr_Print();
                 sbn::exit(1);
