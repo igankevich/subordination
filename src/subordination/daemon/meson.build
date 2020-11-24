@@ -109,6 +109,9 @@ socket_pipeline_test = executable(
     implicit_include_directories: false,
 )
 
+dtest = dependency('dtest')
+dtest_exe = find_program('dtest')
+
 test(
     'daemon/socket-pipeline-no-failure',
     dtest_exe,

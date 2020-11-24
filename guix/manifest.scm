@@ -24,6 +24,7 @@
           (@ (gnu packages compression) zlib)
           (@ (gnu packages guile-zlib) guile-zlib)
           (@ (gnu packages guile) guile-3.0)
+          (@ (gnu packages subordination) dtest)
           (@ (stables packages mpi) openmpi-4.0.2)
           (list (@ (gnu packages llvm) clang-10) "extra") ;; clang-tidy
           (@ (gnu packages valgrind) valgrind))

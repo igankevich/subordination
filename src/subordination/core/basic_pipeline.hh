@@ -10,7 +10,7 @@
 #include <unistdx/base/spin_mutex>
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/thread_semaphore>
-#include <unistdx/util/system>
+#include <unistdx/system/resource>
 
 #include <subordination/core/kernel_type.hh>
 #include <subordination/core/pipeline_base.hh>

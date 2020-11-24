@@ -2,7 +2,7 @@
 
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/ipv4_address>
-#include <unistdx/util/system>
+#include <unistdx/system/resource>
 
 #include <subordination/daemon/byte_buffers.hh>
 #include <subordination/daemon/hierarchy.hh>

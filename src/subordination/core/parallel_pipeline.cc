@@ -1,5 +1,5 @@
 #include <unistdx/ipc/process>
-#include <unistdx/util/backtrace>
+#include <unistdx/system/error>
 
 #include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/parallel_pipeline.hh>
