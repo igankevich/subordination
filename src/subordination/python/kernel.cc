@@ -47,13 +47,10 @@ PyObject* sbn::python::commit(PyObject *self, PyObject *args, PyObject *kwds) {
     if (!PyArg_ParseTupleAndKeywords(
         args, kwds, "|O!", const_cast<char**>(commit_kwlist),
         &Py_kernel_type,
-        &py_kernel_obj
-        ))
-    {
+        &py_kernel_obj))
         return nullptr;
-    }
-    Py_INCREF(py_kernel_obj);
 
+    Py_INCREF(py_kernel_obj);
     auto py_kernel = (Py_kernel*)py_kernel_obj;
 
     auto cpp_kernel = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel->_cpp_kernel_capsule, "ptr");
@@ -97,7 +94,7 @@ int sbn::python::Py_kernel_init(Py_kernel* self, PyObject* args, PyObject* kwds)
     }
     else
     {
-        auto cpp_kernel = new Cpp_kernel(std::move((PyObject*)self));
+        auto cpp_kernel = new Cpp_kernel((PyObject*)self);
         self->_cpp_kernel_capsule = PyCapsule_New((void *)cpp_kernel, "ptr", nullptr);
     }
 
@@ -120,8 +117,8 @@ PyObject* sbn::python::Py_kernel_set_Cpp_kernel(Py_kernel* self, PyObject * args
 
 PyObject* sbn::python::Py_kernel_reduce(Py_kernel* self, PyObject* Py_UNUSED(ignored))
 {
-    PyObject * dict = PyObject_GetAttrString((PyObject*)self, "__dict__");
-    return Py_BuildValue("N()N", Py_TYPE(self), dict);
+    object dict = PyObject_GetAttrString((PyObject*)self, "__dict__");
+    return Py_BuildValue("N()N", Py_TYPE(self), dict.get());
 }
 
 
@@ -151,25 +148,17 @@ void sbn::python::Cpp_kernel::write(sbn::kernel_buffer& out) const {
     sys::log_message("test", "Sbn: Cpp_kernel.write");
     kernel::write(out); 
 
-    PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
-    Py_INCREF(pickle_module);
+    object pickle_module = PyImport_ImportModule("pickle"); // import module
 
-    PyObject *pkl_py_kernel_obj = PyObject_CallMethod(pickle_module, "dumps", "O", this->_py_kernel_obj);
-    Py_INCREF(pkl_py_kernel_obj);
-
-    PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromObject(pkl_py_kernel_obj);
-    Py_INCREF(py_bytearr_py_kernel_obj);
+    object pkl_py_kernel_obj = PyObject_CallMethod(pickle_module.get(), "dumps", "O", this->_py_kernel_obj);
+    object py_bytearr_py_kernel_obj = PyByteArray_FromObject(pkl_py_kernel_obj.get());
+    const char* bytearr_py_kernel_obj = PyByteArray_AsString(py_bytearr_py_kernel_obj.get());
     
-    const char* bytearr_py_kernel_obj = PyByteArray_AsString(py_bytearr_py_kernel_obj);
-    Py_ssize_t size_py_kernel_obj = PyByteArray_Size(py_bytearr_py_kernel_obj);
+    Py_ssize_t size_py_kernel_obj = PyByteArray_Size(py_bytearr_py_kernel_obj.get());
     std::string str_py_kernel_obj(bytearr_py_kernel_obj, size_py_kernel_obj);
 
     out << str_py_kernel_obj;
     out << size_py_kernel_obj;
-
-    Py_XDECREF(pickle_module);
-    Py_XDECREF(pkl_py_kernel_obj);
-    Py_XDECREF(py_bytearr_py_kernel_obj);
 }
 
 void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
@@ -177,8 +166,7 @@ void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
     sys::log_message("test", "Sbn: Cpp_kernel.read");
     kernel::read(in);
 
-    PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
-    Py_INCREF(pickle_module);
+    object pickle_module = PyImport_ImportModule("pickle"); // import module
 
     std::string str_py_kernel_obj;
     Py_ssize_t size_py_kernel_obj;
@@ -186,18 +174,11 @@ void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
     in >> size_py_kernel_obj;
 
     const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
-    PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
-    Py_INCREF(py_bytearr_py_kernel_obj);
-    
-    PyObject* py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj);
-    Py_INCREF(py_kernel_obj);
+    object py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
+    object py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj.get());
 
-    this->py_kernel_obj(py_kernel_obj);
-    PyObject_CallMethod(py_kernel_obj, "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
-    
-    Py_XDECREF(pickle_module);
-    Py_XDECREF(py_bytearr_py_kernel_obj);
-    Py_XDECREF(py_kernel_obj);
+    this->py_kernel_obj(py_kernel_obj.get());
+    PyObject_CallMethod(py_kernel_obj.get(), "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
 }
 
 
@@ -208,8 +189,7 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
 
     if (in.remaining() != 0)
     {
-        PyObject *pickle_module = PyImport_ImportModule("pickle"); // import module
-        Py_INCREF(pickle_module);
+        object pickle_module = PyImport_ImportModule("pickle"); // import module
 
         std::string str_py_kernel_obj;
         Py_ssize_t size_py_kernel_obj;
@@ -217,18 +197,11 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
         in >> size_py_kernel_obj;
 
         const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
-        PyObject* py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
-        Py_INCREF(py_bytearr_py_kernel_obj);
-        
-        PyObject* py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj);
-        Py_INCREF(py_kernel_obj);
+        object py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
+        object py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj.get());
 
-        this->py_kernel_obj(py_kernel_obj);
-        PyObject_CallMethod(py_kernel_obj, "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
-        
-        Py_XDECREF(pickle_module);
-        Py_XDECREF(py_bytearr_py_kernel_obj);
-        Py_XDECREF(py_kernel_obj);
+        this->py_kernel_obj(py_kernel_obj.get());
+        PyObject_CallMethod(py_kernel_obj.get(), "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
     }
 }
 
