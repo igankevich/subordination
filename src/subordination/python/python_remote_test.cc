@@ -101,9 +101,13 @@ int main(int argc, char* argv[]) {
                             std::move(args));
         });
     app.emplace_test(
-        "Check Main kernel.",
+        "Wait for Main kernel to do base steps.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x1.*MainAct.*$)");
+            dts::expect_event_sequence(lines, {
+                R"(^x1.*Main.read.*$)",
+                R"(^x1.*Main.act.*$)",
+                R"(^x1.*py_kernel_main.__init__.*$)"
+            });
         });
     app.emplace_test(
         "Wait for transaction test to exit.",

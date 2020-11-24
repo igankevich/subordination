@@ -11,8 +11,8 @@ namespace {
     constexpr const char* commit_kwlist[] = {"kernel", nullptr};
 }
 
-PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds)
-{
+PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject *kwds){
+    sys::log_message(">>>> Sbn", "upstream");
     PyObject *_py_kernel_parent = nullptr, *_py_kernel_child = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
@@ -20,11 +20,9 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
         &py_kernel_map_type,
         &_py_kernel_parent,
         &py_kernel_map_type,
-        &_py_kernel_child
-        ))
-    {
+        &_py_kernel_child))
         return nullptr;
-    }
+
     Py_INCREF(_py_kernel_parent);
     Py_INCREF(_py_kernel_child);
 
@@ -41,6 +39,7 @@ PyObject* sbn::python::kernel_upstream(PyObject *self, PyObject *args, PyObject 
 }
 
 PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *kwds) {
+    sys::log_message(">>>> Sbn", "commit");
     PyObject *_py_kernel = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
@@ -58,7 +57,6 @@ PyObject* sbn::python::kernel_commit(PyObject *self, PyObject *args, PyObject *k
     auto _kernel_ptr = (sbn::python::kernel_map*)PyCapsule_GetPointer(_kernel->_kernel_map_capsule, "ptr");
 
     sbn::commit<sbn::Remote>(std::unique_ptr<kernel_map>(std::move(_kernel_ptr)));
-
     Py_RETURN_NONE;
 }
 
@@ -91,6 +89,7 @@ int sbn::python::py_kernel_map_init(py_kernel_map* self, PyObject* args, PyObjec
 
     if (PyCapsule_IsValid(capsule_kernel_cpp, "ptr"))
     {
+        sys::log_message("test", "py_kernel_main.__init__");
         Py_INCREF(capsule_kernel_cpp);
         self->_kernel_map_capsule = capsule_kernel_cpp;
     }
@@ -119,7 +118,8 @@ PyObject* sbn::python::py_kernel_map_set_kernel_cpp(py_kernel_map* self, PyObjec
 
 PyObject* sbn::python::py_kernel_map_reduce(py_kernel_map* self, PyObject* Py_UNUSED(ignored))
 {
-    return Py_BuildValue("N()", Py_TYPE(self), nullptr);
+    PyObject * dict = PyObject_GetAttrString((PyObject*)self, "__dict__");
+    return Py_BuildValue("N()N", Py_TYPE(self), dict);
 }
 
 
@@ -135,12 +135,17 @@ void sbn::python::kernel_map::react(sbn::kernel_ptr&& child_ptr){
 }
 
 void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
-    kernel::write(out);
+    sys::log_message(">>>> Sbn", "Kernel_map.write");
+    kernel::write(out); 
 
     PyObject *pickle = PyImport_ImportModule("pickle"); // import module
+    Py_INCREF(pickle);
 
     PyObject *pickled_pyobj = PyObject_CallMethod(pickle, "dumps", "O", this->_py_k_map);
+    Py_INCREF(pickled_pyobj);
+
     PyObject* pybytearr_pyobj = PyByteArray_FromObject(pickled_pyobj);
+    Py_INCREF(pybytearr_pyobj);
     
     const char* bytearr_pyobj = PyByteArray_AsString(pybytearr_pyobj);
     Py_ssize_t size_pyobj = PyByteArray_Size(pybytearr_pyobj);
@@ -155,8 +160,10 @@ void sbn::python::kernel_map::write(sbn::kernel_buffer& out) const {
 }
 
 void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
+    sys::log_message(">>>> Sbn", "Kernel_map.read");
     kernel::read(in);
     PyObject *pickle = PyImport_ImportModule("pickle"); // import module
+    Py_INCREF(pickle);
 
     std::string str_pyobj;
     Py_ssize_t size_pyobj;
@@ -170,7 +177,6 @@ void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
     
     PyObject* pyobj = PyObject_CallMethod(pickle, "loads", "O", pybytearr_pyobj);
     Py_INCREF(pyobj);
-    
     this->py_k_map(pyobj);
     PyObject_CallMethod(pyobj, "_set_kernel_cpp", "O", PyCapsule_New((void *)this, "ptr", nullptr));
     
@@ -181,6 +187,8 @@ void sbn::python::kernel_map::read(sbn::kernel_buffer& in) {
 
 
 void sbn::python::Main::read(sbn::kernel_buffer& in) {
+    sys::log_message(">>>> Sbn", "Main.read");
+    sys::log_message("test", "Main.read");
     sbn::kernel::read(in);
     if (in.remaining() != 0)
     {
@@ -210,10 +218,8 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
 
 void sbn::python::Main::act() {
     sys::log_message(">>>> Sbn", "Main.act");
-    if (auto* a = target_application()) {
-        const auto& args = a->arguments();
-
-        load(args[1].data());
+    sys::log_message("test", "Main.act");
+    if (target_application()) {
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
             object main_class = PyObject_CallMethod(
@@ -229,12 +235,4 @@ void sbn::python::Main::act() {
             sbn::exit(1);
         }
     }
-
-    // auto* ppl = source_pipeline() ? source_pipeline() : &sbn::factory.local();
-    // if (!parent()) {
-    //     sbn::exit(0);
-    // } else {
-    //     return_to_parent();
-    //     ppl->send(std::move(this_ptr()));
-    // }
 }

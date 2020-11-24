@@ -143,6 +143,7 @@ int main(int argc, char* argv[]) {
     //pointer<wchar_t>(Py_DecodeLocale(argv[0], nullptr));
     //Py_SetProgramName(program.get());
     interpreter_guard g;
+    load(argv[1]);
     set_arguments(argc, argv);
     //PyObject* sysPath = PySys_GetObject((char*)"path");
     //auto [_path, _name] = SplitFilename((const std::string)argv[1]);
