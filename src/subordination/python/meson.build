@@ -24,8 +24,35 @@ sbn_python_exe = executable(
     cpp_args: ['-DPY_SSIZE_T_CLEAN'],
 )
 
+if with_dtests
+    test_config = configuration_data()
+    test_config.set('sbnd_exe_path', test_sbnd_exe.full_path())
+    test_config.set('sbnc_exe_path', test_sbnc_exe.full_path())
+    test_config.set('sbn_python_exe_path', sbn_python_exe.full_path())
+    test_config.set('pyfile_path', join_paths(meson.current_source_dir(), 'test.py'))
+    configure_file(
+        input: 'python_remote_test.hh.in',
+        output: 'python_remote_test.hh',
+        configuration: test_config
+    )
+
+    test(
+        'python/remote',
+        executable(
+            'python-remote-test',
+            sources: 'python_remote_test.cc',
+            cpp_args: test_cpp_args,
+            include_directories: [src],
+            dependencies: [test_sbn,dtest] + valgrind_dep,
+            implicit_include_directories: false,
+        ),
+        workdir: meson.build_root(),
+        is_parallel: false
+    )
+endif
+
 test(
-    'python',
+    'python/local',
     executable(
         'python-local-test',
         sources: ['python_local_test.cc'],

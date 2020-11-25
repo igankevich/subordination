@@ -17,7 +17,7 @@ namespace {
         {
             auto g = factory.types().guard();
             factory.types().add<Main>(1);
-            factory.types().add<kernel_map>(2);
+            factory.types().add<Cpp_kernel>(2);
         }
         factory_guard g;
         if (this_application::standalone()) {
@@ -29,28 +29,28 @@ namespace {
 }
 
 
-PyMethodDef sbn::python::py_kernel_map_methods[] = {
+PyMethodDef sbn::python::Py_kernel_methods[] = {
     {
         .ml_name = "__reduce__",
-        .ml_meth = (PyCFunction) sbn::python::py_kernel_map_reduce,
+        .ml_meth = (PyCFunction) sbn::python::Py_kernel_reduce,
         .ml_flags = METH_NOARGS,
         .ml_doc = "Pickle support method."
     },
     {
-        .ml_name = "_set_kernel_cpp",
-        .ml_meth = (PyCFunction) sbn::python::py_kernel_map_set_kernel_cpp,
+        .ml_name = "_set_Cpp_kernel",
+        .ml_meth = (PyCFunction) sbn::python::Py_kernel_set_Cpp_kernel,
         .ml_flags = METH_VARARGS,
-        .ml_doc = "Set cpp kernel."
+        .ml_doc = "Set cpp kernel to python kernel."
     },
     {nullptr, nullptr, 0, nullptr}        /* Sentinel */
 };
 
-PyTypeObject sbn::python::py_kernel_map_type = {
+PyTypeObject sbn::python::Py_kernel_type = {
     PyVarObject_HEAD_INIT(nullptr, 0)
-    "sbn.kernel",                                       /* tp_name */
-    sizeof(sbn::python::py_kernel_map),                 /* tp_basicsize */
+    "sbn.Kernel",                                       /* tp_name */
+    sizeof(sbn::python::Py_kernel),                     /* tp_basicsize */
     0,                                                  /* tp_itemsize */
-    (destructor) sbn::python::py_kernel_map_dealloc,                 /* tp_dealloc */
+    (destructor) sbn::python::Py_kernel_dealloc,        /* tp_dealloc */
     0,                                                  /* tp_print */
     0,                                                  /* tp_getattr */
     0,                                                  /* tp_setattr */
@@ -73,7 +73,7 @@ PyTypeObject sbn::python::py_kernel_map_type = {
     0,                                                  /* tp_weaklistoffset */
     0,                                                  /* tp_iter */
     0,                                                  /* tp_iternext */
-    py_kernel_map_methods,                              /* tp_methods */
+    Py_kernel_methods,                                  /* tp_methods */
     0,                                                  /* tp_members */
     0,                                                  /* tp_getset */
     0,                                                  /* tp_base */
@@ -81,23 +81,23 @@ PyTypeObject sbn::python::py_kernel_map_type = {
     0,                                                  /* tp_descr_get */
     0,                                                  /* tp_descr_set */
     0,                                                  /* tp_dictoffset */
-    (initproc) sbn::python::py_kernel_map_init,                      /* tp_init */
+    (initproc) sbn::python::Py_kernel_init,             /* tp_init */
     0,                                                  /* tp_alloc */
-    (newfunc) sbn::python::py_kernel_map_new,                        /* tp_new */
+    (newfunc) sbn::python::Py_kernel_new,               /* tp_new */
 };
 
 namespace {
 
     PyMethodDef sbn_methods[] = {
         {
-            .ml_name = "kernel_upstream",
-            .ml_meth = (PyCFunction) sbn::python::kernel_upstream,
+            .ml_name = "upstream",
+            .ml_meth = (PyCFunction) sbn::python::upstream,
             .ml_flags = METH_VARARGS | METH_KEYWORDS,
             .ml_doc = "Upstream kernel of sbn."
         },
         {
-            .ml_name = "kernel_commit",
-            .ml_meth = (PyCFunction) sbn::python::kernel_commit,
+            .ml_name = "commit",
+            .ml_meth = (PyCFunction) sbn::python::commit,
             .ml_flags = METH_VARARGS | METH_KEYWORDS,
             .ml_doc = "Commit kernel of sbn."
         },
@@ -113,24 +113,18 @@ namespace {
     };
 
     PyMODINIT_FUNC sbn_init() {
-        if (PyType_Ready(&sbn::python::py_kernel_map_type) < 0) {
+        if (PyType_Ready(&sbn::python::Py_kernel_type) < 0) {
             return nullptr;
         }
         sbn::python::object m = PyModule_Create(&sbn_module);
         if (!m) { return nullptr; }
-        Py_INCREF(&sbn::python::py_kernel_map_type);
-        if (PyModule_AddObject(m.get(), "kernel", (PyObject *) &sbn::python::py_kernel_map_type) < 0) {
-            Py_DECREF(&sbn::python::py_kernel_map_type);
+        Py_INCREF(&sbn::python::Py_kernel_type);
+        if (PyModule_AddObject(m.get(), "Kernel", (PyObject *) &sbn::python::Py_kernel_type) < 0) {
+            Py_DECREF(&sbn::python::Py_kernel_type);
             return nullptr;
         }
         return m.get();
     }
-
-    //std::tuple<std::string, std::string> SplitFilename(const std::string& str)
-    //{
-    //    std::string::size_type found = str.find_last_of("/\\");
-    //    return {str.substr(0,found), str.substr(found+1)};
-    //}
 }
 
 int main(int argc, char* argv[]) {
@@ -140,15 +134,10 @@ int main(int argc, char* argv[]) {
         std::exit(1);
     }
     PyImport_AppendInittab("sbn", &sbn_init);
-    //pointer<wchar_t>(Py_DecodeLocale(argv[0], nullptr));
-    //Py_SetProgramName(program.get());
+
     interpreter_guard g;
+    load(argv[1]);
     set_arguments(argc, argv);
-    //PyObject* sysPath = PySys_GetObject((char*)"path");
-    //auto [_path, _name] = SplitFilename((const std::string)argv[1]);
-    //PyObject* programPath = PyUnicode_FromString(_path.c_str());
-    //PyList_Append(sysPath, programPath);
-    //Py_DECREF(programPath);
-    //argv[1] = (char*)_name.substr(0, _name.find('.')).c_str();
+
     return nested_main(argc, argv);
 }

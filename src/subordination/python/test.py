@@ -1,39 +1,36 @@
-import sbn
 import sys
+import sbn
 
-class Child2(sbn.kernel):
+
+class Child2(sbn.Kernel):
 
     def act(self):
-        print('>>>> Python: Child2.act')
+        print('Python: Py_kernel.act', file=sys.stderr, flush=True)
         self.data = "Child2Data"
-        sbn.kernel_commit(kernel=self)
+        sbn.commit(kernel=self)
 
 
-class Child(sbn.kernel):
+class Child(sbn.Kernel):
 
     def act(self):
-        print('>>>> Python: Child.act')
+        print('Python: Py_kernel.act', file=sys.stderr, flush=True)
         self.data = "ChildData"
-        sbn.kernel_upstream(parent=self, child=Child2())
+        sbn.upstream(parent=self, child=Child2())
 
     def react(self, child2):
-        print('>>>> Python: Child.react')
-        print('>>>> Python: child2.data =>', child2.data)
+        print('Python: Child.react', file=sys.stderr, flush=True)
+        print('Python: Child2.data =>', child2.data, file=sys.stderr, flush=True)
         self.data += "_" + child2.data
-        sbn.kernel_commit(kernel=self)
+        sbn.commit(kernel=self)
 
 
-class Main(sbn.kernel):
-    # def __init__(self):
-    #     super(Main, self).__init__()
-    #     print('Create!')
+class Main(sbn.Kernel):
 
     def act(self):
-        print('>>>> Python: Main.act')
-        print(sys.argv)
-        sbn.kernel_upstream(parent=self, child=Child())
+        print('Python: Main.act', file=sys.stderr, flush=True)
+        sbn.upstream(parent=self, child=Child())
 
     def react(self, child):
-        print('>>>> Python: Main.react')
-        print('>>>> Python: child.data =>', child.data)
-        sbn.kernel_commit(kernel=self)
+        print('Python: Main.react', file=sys.stderr, flush=True)
+        print('Python: Child.data =>', child.data, file=sys.stderr, flush=True)
+        sbn.commit(kernel=self)
