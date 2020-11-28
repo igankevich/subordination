@@ -53,7 +53,7 @@ foreach config : binary_configs
         config.get('prefix') + 'sbn',
         sources: sbn_src,
         cpp_args: config.get('cpp_args'),
-        dependencies: [threads,unistdx] + libunwind + libdw,
+        dependencies: [threads,unistdx],
         version: meson.project_version(),
         include_directories: src,
         install: config.get('prefix') == '',
@@ -62,7 +62,7 @@ foreach config : binary_configs
     tmp_dep = declare_dependency(
         link_with: tmp_lib,
         include_directories: src,
-        dependencies: [unistdx,threads] + libunwind + libdw
+        dependencies: [unistdx,threads],
     )
     set_variable(config.get('prefix') + 'sbn_lib', tmp_lib)
     set_variable(config.get('prefix') + 'sbn', tmp_dep)
@@ -70,7 +70,7 @@ endforeach
 
 pkgconfig.generate(
     sbn_lib,
-    requires: [unistdx] + libunwind + libdw,
+    requires: [unistdx],
     version: meson.project_version(),
     name: 'sbn',
     filebase: 'sbn',

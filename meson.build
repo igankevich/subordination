@@ -9,7 +9,7 @@ project(
 
 project_description = 'A framework for distributed programming'
 
-with_debug = get_option('buildtype').contains('debug')
+with_debug = get_option('with_debug')
 with_site = get_option('with_site')
 with_examples = get_option('with_examples')
 with_guile = get_option('with_guile')
@@ -37,7 +37,6 @@ endif
 
 if with_debug
     cpp_args += '-DSBN_DEBUG'
-    cpp_args += '-DUNW_LOCAL_ONLY'
 else
     cpp_args += '-fvisibility-inlines-hidden'
 endif
@@ -62,8 +61,6 @@ threads = dependency('threads')
 unistdx_version = '>=0.41.0'
 unistdx = with_debug ? dependency('unistdx-debug', version: unistdx_version) : dependency('unistdx', version: unistdx_version)
 gtest = dependency('gtest', main: true)
-libunwind = with_debug ? [dependency('libunwind')] : []
-libdw = with_debug ? [dependency('libdw')] : []
 guile = dependency('guile-3.0')
 
 src = include_directories('src')

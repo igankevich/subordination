@@ -10,18 +10,18 @@
   (build-system meson-build-system)
   (arguments `(#:build-type "release"
                #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-march=native"
-                                       "-Dwith_glusterfs=true")
+                                       "-Dwith_glusterfs=true" "-Dwith_debug=true")
                #:tests? #f))
   (inputs
-   `(("unistdx" ,(@ (gnu packages unistdx) unistdx))
+   `(("unistdx-debug" ,(@ (gnu packages unistdx) unistdx-debug))
      ("guile" ,(@ (gnu packages guile) guile-3.0))
      ;; examples
      ("zlib" ,(@ (gnu packages compression) zlib))
      ("openmpi" ,(@ (stables packages mpi) openmpi-4.0.2))
      ;; debug
-     ("libunwind" ,(@ (gnu packages libunwind) libunwind))
-     ("elfutils" ,(@ (gnu packages elf) elfutils))
-     ("xz" ,(@ (gnu packages compression) xz))))
+     ;;("elfutils" ,(@ (gnu packages elf) elfutils))
+     ;;("xz" ,(@ (gnu packages compression) xz))
+     ))
   (native-inputs
    `(("googletest" ,(@ (gnu packages check) googletest))
      ("pkg-config" ,(@ (gnu packages pkg-config) pkg-config))))
