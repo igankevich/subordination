@@ -125,7 +125,6 @@ PyObject* sbn::python::Py_kernel_reduce(Py_kernel* self, PyObject* Py_UNUSED(ign
 void sbn::python::Cpp_kernel::act() {
     sys::log_message(">>>> Sbn", "Cpp_kernel.act");
     sys::log_message("test", "Sbn: Cpp_kernel.act");
-    gil_guard g;
     object pValue = PyObject_CallMethod(this->py_kernel_obj(), "act", nullptr);
     if (!pValue) {
         PyErr_Print();
@@ -137,7 +136,6 @@ void sbn::python::Cpp_kernel::react(sbn::kernel_ptr&& cpp_child_ptr){
     sys::log_message(">>>> Sbn", "Cpp_kernel.react");
     sys::log_message("test", "Sbn: Cpp_kernel.react");
     auto cpp_child = sbn::pointer_dynamic_cast<Cpp_kernel>(std::move(cpp_child_ptr));
-    gil_guard g;
     object pValue = PyObject_CallMethod(this->py_kernel_obj(), "react", "O", cpp_child->py_kernel_obj());
     if (!pValue) {
         PyErr_Print();
@@ -149,7 +147,6 @@ void sbn::python::Cpp_kernel::write(sbn::kernel_buffer& out) const {
     sys::log_message(">>>> Sbn", "Cpp_kernel.write");
     sys::log_message("test", "Sbn: Cpp_kernel.write");
     kernel::write(out);
-    gil_guard g;
 
     object pickle_module = PyImport_ImportModule("pickle"); // import module
 
@@ -168,7 +165,6 @@ void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
     sys::log_message(">>>> Sbn", "Cpp_kernel.read");
     sys::log_message("test", "Sbn: Cpp_kernel.read");
     kernel::read(in);
-    gil_guard g;
 
     object pickle_module = PyImport_ImportModule("pickle"); // import module
 
@@ -193,7 +189,6 @@ void sbn::python::Main::read(sbn::kernel_buffer& in) {
 
     if (in.remaining() != 0)
     {
-        gil_guard g;
         object pickle_module = PyImport_ImportModule("pickle"); // import module
 
         std::string str_py_kernel_obj;
@@ -214,7 +209,6 @@ void sbn::python::Main::act() {
     sys::log_message(">>>> Sbn", "Main.act");
     sys::log_message("test", "Sbn: Main.act");
     if (target_application()) {
-        gil_guard g2;
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
         if (main_module) {
             object py_main_obj = PyObject_CallMethod(

@@ -39,7 +39,7 @@ class Five_files_kernel(sbn.Kernel):
         super(Five_files_kernel, self).__init__()
         self._files = files
         self._count = len(self._files)
-        
+
     def act(self):
         for file in self._files:
             sbn.upstream(self, File_kernel(file))
@@ -49,11 +49,11 @@ class Five_files_kernel(sbn.Kernel):
         self._count -= 1
         #gitlock.release()
         if self._count == 0: sbn.commit(self)
-        
+
 
 
 class Spectrum_directory_kernel(sbn.Kernel):
-    
+
     def __init__(self, input_directories: List[str]):
         super(Spectrum_directory_kernel, self).__init__()
         self._input_directories = input_directories
@@ -87,16 +87,16 @@ class Spectrum_directory_kernel(sbn.Kernel):
         files = dict(filter(lambda item: self._complete(item[1]), files.items()))
 
         if len(files) == 0: sbn.commit(self)
-
-        # Processing groups of files
-        self._num_kernels = len(files)
-        for item in files.items():
-            sbn.upstream(self, Five_files_kernel(item[1].copy()))
+        else:
+            # Processing groups of files
+            self._num_kernels = len(files)
+            for item in files.items():
+                sbn.upstream(self, Five_files_kernel(item[1].copy()))
 
 
     def react(self, child: Five_files_kernel):
         sbn.commit(self)
-    
+
 
 class Main(sbn.Kernel):
 

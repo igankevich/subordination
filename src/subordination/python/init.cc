@@ -18,7 +18,7 @@ namespace {
             auto g = factory.types().guard();
             factory.types().add<Main>(1);
             factory.types().add<Cpp_kernel>(2);
-            factory.local().thread_init([] (size_t) { ::PyEval_InitThreads(); });
+            factory.local().num_upstream_threads(1); // Python 3 does not like multiple threads
         }
         factory_guard g;
         if (this_application::standalone()) {
@@ -114,6 +114,7 @@ namespace {
     };
 
     PyMODINIT_FUNC sbn_init() {
+        sbn::python::gil_guard g;
         if (PyType_Ready(&sbn::python::Py_kernel_type) < 0) {
             return nullptr;
         }

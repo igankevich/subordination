@@ -22,7 +22,10 @@ namespace sbn {
         private:
             ::PyThreadState* _state;
         public:
-            inline thread_guard() noexcept: _state(::PyEval_SaveThread()) {}
+            inline thread_guard() noexcept {
+            //    PyEval_InitThreads();
+                _state = ::PyEval_SaveThread();
+            }
             inline ~thread_guard() noexcept { ::PyEval_RestoreThread(this->_state); }
             thread_guard(const thread_guard&) = delete;
             thread_guard& operator=(const thread_guard&) = delete;
@@ -34,7 +37,7 @@ namespace sbn {
         private:
             ::PyGILState_STATE _state;
         public:
-            inline gil_guard() noexcept: _state(::PyGILState_Ensure()) {}
+            inline gil_guard() noexcept: _state{::PyGILState_Ensure()} {}
             inline ~gil_guard() noexcept { ::PyGILState_Release(this->_state); }
             gil_guard(const gil_guard&) = delete;
             gil_guard& operator=(const gil_guard&) = delete;
