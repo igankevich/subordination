@@ -18,7 +18,19 @@ namespace sbn {
             interpreter_guard& operator=(interpreter_guard&&) = delete;
         };
 
-        class gil_guard {
+        class thread_guard {
+        private:
+            ::PyThreadState* _state;
+        public:
+            inline thread_guard() noexcept: _state(::PyEval_SaveThread()) {}
+            inline ~thread_guard() noexcept { ::PyEval_RestoreThread(this->_state); }
+            thread_guard(const thread_guard&) = delete;
+            thread_guard& operator=(const thread_guard&) = delete;
+            thread_guard(thread_guard&&) = delete;
+            thread_guard& operator=(thread_guard&&) = delete;
+        };
+
+        class gil_guard: public thread_guard {
         private:
             ::PyGILState_STATE _state;
         public:

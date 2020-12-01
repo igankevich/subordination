@@ -18,6 +18,7 @@ namespace {
             auto g = factory.types().guard();
             factory.types().add<Main>(1);
             factory.types().add<Cpp_kernel>(2);
+            factory.local().thread_init([] (size_t) { ::PyEval_InitThreads(); });
         }
         factory_guard g;
         if (this_application::standalone()) {
