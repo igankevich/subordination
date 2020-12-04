@@ -31,9 +31,9 @@ Spectrum_file = namedtuple('Spectrum_file', 'filename, station, var, year')
 class Variance_kernel(sbn.Kernel):
 
     def __init__(self, 
-        var_values: List[List[float]],
-        timestamp: datetime.timestamp,
-        freq: List[float]
+        var_values: List[List[float]]=None,
+        timestamp: datetime.timestamp=None,
+        freq: List[float]=None
         ):
         super(Variance_kernel, self).__init__()
         self._data = var_values
@@ -61,7 +61,7 @@ class Variance_kernel(sbn.Kernel):
 
     def act(self):
         self._variance = self._compute_variance()
-        sbn.commit(self)
+        sbn.commit(self, target=sbn.Target.Local)
 
     def variance(self) -> float: return self._variance
 
@@ -70,7 +70,7 @@ class Variance_kernel(sbn.Kernel):
 
 class File_kernel(sbn.Kernel):
 
-    def __init__(self, sfile: Spectrum_file):
+    def __init__(self, sfile: Spectrum_file=None):
         super(File_kernel, self).__init__()
         self._sfile = sfile
         self._frequencies = []
@@ -95,14 +95,14 @@ class File_kernel(sbn.Kernel):
                     timestamp = datetime(*map(int, time_componets)).timestamp()
 
                     # read spec values
-                    # map_func = lambda val: 0 if float(val) - 999 < 1e-1 else float(val)  # TODO
-                    self._data[timestamp] = list(map(float, line.split()))
+                    map_func = lambda val: 0 if abs(float(val) - 999) < 1e-1 else float(val)  # missing values
+                    self._data[timestamp] = list(map(map_func, line.split()))
 
                     num_lines += 1
 
         print('>>>> Python (spec): %s: %i records %i lines' % \
             (self._sfile.filename, len(self._data), num_lines))
-        sbn.commit(self)  # TODO Local
+        sbn.commit(self, target=sbn.Target.Local)
 
     def data(self) -> Dict[datetime.timestamp, List[float]]: return self._data
 
@@ -117,7 +117,7 @@ class Five_files_kernel(sbn.Kernel):
         Reading = 0
         Processing = 1
 
-    def __init__(self, files: List[Spectrum_file]):
+    def __init__(self, files: List[Spectrum_file]=None):
         super(Five_files_kernel, self).__init__()
         self._files = files
         self._frequencies = None
@@ -128,7 +128,7 @@ class Five_files_kernel(sbn.Kernel):
         
     def act(self):
         for file in self._files:
-            sbn.upstream(self, File_kernel(file))  # TODO Local!
+            sbn.upstream(self, File_kernel(file), target=sbn.Target.Local)
 
     def _remove_incomplete_records(self) -> None:
         self._spectra = dict(filter(
@@ -148,12 +148,13 @@ class Five_files_kernel(sbn.Kernel):
             print('>>>> Python (spec): removed %i incomplete records from station %i, year %i' %\
                 (old_size - new_size, self.station(), self.year()))
 
-        if new_size == 0: sbn.commit(self)
+        if new_size == 0: sbn.commit(self, target=sbn.Target.Remote)
         else:
             self._count = new_size
             for timestamp, var_values in self._spectra.items():
                 sbn.upstream(self,
-                    Variance_kernel(var_values, timestamp, self._frequencies))
+                    Variance_kernel(var_values, timestamp, self._frequencies),
+                    target=sbn.Target.Local)
 
     def _add_spectrum_variable(self, child: File_kernel) -> None:
         self._count += 1
@@ -174,7 +175,7 @@ class Five_files_kernel(sbn.Kernel):
         self._out_matrix[child.date()] = child.variance()
         if self._count == 0:
             print('>>>> Python (spec): finished year %i station %i' % (self.year(), self.station()))
-            sbn.commit(self)
+            sbn.commit(self, target=sbn.Target.Remote)
 
     def react(self, child):
         if self._state == self.State.Reading:
@@ -182,9 +183,10 @@ class Five_files_kernel(sbn.Kernel):
         elif self._state == self.State.Processing:
             self._add_variance(child)
 
-    def write_output_to(self, out: TextIO) -> None:
-        for variance in self._out_matrix.values():
-            out.write('%i,%i,%f\n' % (self.year(), self.station(), variance))
+    def write_output_to(self, outfile: Path) -> None:
+        with open(outfile, 'a') as out:
+            for variance in self._out_matrix.values():
+                out.write('%i,%i,%f\n' % (self.year(), self.station(), variance))
 
     def year(self) -> Optional[int]:
         return self._files[0].year if len(self._files) != 0 else None
@@ -197,13 +199,12 @@ class Five_files_kernel(sbn.Kernel):
 
 class Spectrum_directory_kernel(sbn.Kernel):
 
-    def __init__(self, input_directories: List[str]):
+    def __init__(self, input_directories: List[str]=None):
         super(Spectrum_directory_kernel, self).__init__()
         self._input_directories = input_directories
         self._count = 0
         self._num_kernels = 0
         self._count_spectra = 0
-        self._output_files = {}
 
     def _complete(self, files: List[Spectrum_file]) -> bool:
         '''Checking that all the necessary files are available'''
@@ -231,20 +232,18 @@ class Spectrum_directory_kernel(sbn.Kernel):
         # skip incomplete records that have less than five files
         files = dict(filter(lambda item: self._complete(item[1]), files.items()))
 
-        if len(files) == 0: sbn.commit(self)
+        if len(files) == 0: sbn.commit(self, target=sbn.Target.Remote)
         else:
             # Processing groups of files
             self._num_kernels = len(files)
             for item in files.items():
-                sbn.upstream(self, Five_files_kernel(item[1].copy()))
+                sbn.upstream(self, Five_files_kernel(item[1].copy()), target=sbn.Target.Remote)
 
     def react(self, child: Five_files_kernel):
         self._count += 1
 
         year = child.year()
-        if year not in self._output_files:
-            self._output_files[year] = open(str(year) + '.out', 'a')
-        output_file = self._output_files[year]
+        output_file = Path(str(year) + '.out')
         child.write_output_to(output_file)
 
         self._count_spectra += child.num_processed_spectra()
@@ -256,7 +255,7 @@ class Spectrum_directory_kernel(sbn.Kernel):
         if self._count == self._num_kernels:
             print('>>>> Python (spec): total number of processed spectra %i' % self._count_spectra)
             with open('nspectra.log', 'a') as log: log.write(str(self._count_spectra) + '\n')
-            sbn.commit(self)
+            sbn.commit(self, target=sbn.Target.Remote)
 
 
 class Main(sbn.Kernel):
@@ -268,8 +267,9 @@ class Main(sbn.Kernel):
     def act(self):
         print('>>>> Python (spec): program start!')
         # TODO carries_parent
-        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()))
+        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()), 
+            target=sbn.Target.Remote)
 
     def react(self, child: sbn.Kernel):
         print('>>>> Python (spec): finished all!')
-        sbn.commit(self)
+        sbn.commit(self, target=sbn.Target.Remote)

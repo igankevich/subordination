@@ -7,21 +7,23 @@
 #include <subordination/python/python.hh>
 
 namespace {
-    constexpr const char* upstream_kwlist[] = {"parent", "child", nullptr};
-    constexpr const char* commit_kwlist[] = {"kernel", nullptr};
+    constexpr const char* upstream_kwlist[] = {"parent", "child", "target", nullptr};
+    constexpr const char* commit_kwlist[] = {"kernel", "target", nullptr};
 }
 
 PyObject* sbn::python::upstream(PyObject *self, PyObject *args, PyObject *kwds){
     sys::log_message(">>>> Sbn", "upstream");
     sys::log_message("test", "Sbn: upstream");
+    int target = 0;
     PyObject *py_kernel_obj_parent = nullptr, *py_kernel_obj_child = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
-        args, kwds, "|O!O!", const_cast<char**>(upstream_kwlist),
+        args, kwds, "|O!O!$i", const_cast<char**>(upstream_kwlist),
         &Py_kernel_type,
         &py_kernel_obj_parent,
         &Py_kernel_type,
-        &py_kernel_obj_child))
+        &py_kernel_obj_child,
+        &target))
         return nullptr;
 
     Py_INCREF(py_kernel_obj_parent);
@@ -33,8 +35,12 @@ PyObject* sbn::python::upstream(PyObject *self, PyObject *args, PyObject *kwds){
     auto cpp_kernel_parent = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel_parent->_cpp_kernel_capsule, "ptr");
     auto cpp_kernel_child = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel_child->_cpp_kernel_capsule, "ptr");
 
-    sbn::upstream<sbn::Remote>(std::move(cpp_kernel_parent),
-                               std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel_child)));
+    if (static_cast<sbn::Target>(target) == sbn::Remote)
+        sbn::upstream<sbn::Remote>(std::move(cpp_kernel_parent),
+                                std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel_child)));
+    else
+        sbn::upstream<sbn::Local>(std::move(cpp_kernel_parent),
+                                std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel_child)));
 
     Py_RETURN_NONE;
 }
@@ -42,12 +48,14 @@ PyObject* sbn::python::upstream(PyObject *self, PyObject *args, PyObject *kwds){
 PyObject* sbn::python::commit(PyObject *self, PyObject *args, PyObject *kwds) {
     sys::log_message(">>>> Sbn", "commit");
     sys::log_message("test", "Sbn: commit");
+    int target = 0;
     PyObject *py_kernel_obj = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(
-        args, kwds, "|O!", const_cast<char**>(commit_kwlist),
+        args, kwds, "|O!$i", const_cast<char**>(commit_kwlist),
         &Py_kernel_type,
-        &py_kernel_obj))
+        &py_kernel_obj,
+        &target))
         return nullptr;
 
     Py_INCREF(py_kernel_obj);
@@ -55,7 +63,10 @@ PyObject* sbn::python::commit(PyObject *self, PyObject *args, PyObject *kwds) {
 
     auto cpp_kernel = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(py_kernel->_cpp_kernel_capsule, "ptr");
 
-    sbn::commit<sbn::Remote>(std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel)));
+    if (static_cast<sbn::Target>(target) == sbn::Remote)
+        sbn::commit<sbn::Remote>(std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel)));
+    else
+        sbn::commit<sbn::Local>(std::unique_ptr<Cpp_kernel>(std::move(cpp_kernel)));
     Py_RETURN_NONE;
 }
 
