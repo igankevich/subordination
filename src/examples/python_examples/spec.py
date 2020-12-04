@@ -253,7 +253,10 @@ class Spectrum_directory_kernel(sbn.Kernel):
             self._count, self._num_kernels,
             child.station(), child.year(), child.num_processed_spectra()))
 
-        if self._count == self._num_kernels: sbn.commit(self)
+        if self._count == self._num_kernels:
+            print('>>>> Python (spec): total number of processed spectra %i' % self._count_spectra)
+            with open('nspectra.log', 'a') as log: log.write(str(self._count_spectra) + '\n')
+            sbn.commit(self)
 
 
 class Main(sbn.Kernel):
@@ -264,6 +267,7 @@ class Main(sbn.Kernel):
 
     def act(self):
         print('>>>> Python (spec): program start!')
+        # TODO carries_parent
         sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()))
 
     def react(self, child: sbn.Kernel):
