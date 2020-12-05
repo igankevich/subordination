@@ -13,7 +13,11 @@ spec::operator>>(std::istream& in, Timestamp& rhs) {
     in >> t.tm_mday;
     in >> t.tm_hour;
     in >> t.tm_min;
-    rhs._timestamp = 60*(t.tm_min + 60*(t.tm_hour + 24*(t.tm_mday + 31*(t.tm_mon + 12*t.tm_year))));
+    rhs._timestamp = 60UL*(
+        (std::uint64_t)t.tm_min + 60UL*(
+            (std::uint64_t)t.tm_hour + 24UL*(
+                (std::uint64_t)t.tm_mday + 31UL*(
+                    (std::uint64_t)t.tm_mon + 12UL*(std::uint64_t)t.tm_year))));
     return in;
 }
 

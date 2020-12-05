@@ -219,8 +219,7 @@ public:
     {}
 
     void act() override {
-        //_variance = compute_variance();
-        _variance = 0;
+        _variance = compute_variance();
         sbn::commit(std::move(this_ptr()));
     }
 
@@ -329,6 +328,7 @@ public:
                 str.str(line);
                 if (str >> timestamp) {
                     auto& spec = this->_data[timestamp];
+                    spec.clear();
                     T value;
                     while (str >> value) {
                         if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
@@ -420,6 +420,7 @@ public:
 
     inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
     inline const Spectrum_file& file() const noexcept { return this->_file; }
+    inline std::vector<T>& frequencies() noexcept { return this->_frequencies; }
 
 };
 
@@ -493,6 +494,7 @@ public:
         for (auto& pair : k->data()) {
             this->_spectra[pair.first][int(variable)] = std::move(pair.second);
         }
+        if (this->_frequencies.size() == 0) { this->_frequencies = k->frequencies(); }
         if (++this->_count == 5) { process_spectra(); }
     }
 
