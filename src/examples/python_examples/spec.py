@@ -1,12 +1,13 @@
 import sys
 import re
 import gzip
+import time
 from math import pi, cos
-from datetime import datetime
+# from datetime import datetime
 from collections import namedtuple
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, TextIO, Optional
+from typing import Dict, List, Optional
 
 import sbn
 
@@ -28,11 +29,16 @@ R_2     = Variable.K.value
 Spectrum_file = namedtuple('Spectrum_file', 'filename, station, var, year')
 
 
+def datetime_to_timestamp(
+    year: int = 0, month: int = 0, day: int = 0, hour: int = 0, minute: int = 0, second: int = 0) -> int:
+    return second + 60 * (minute + 60 * (hour + 24 * (day + 31 * (month + 12 * year))))
+
+
 class Variance_kernel(sbn.Kernel):
 
     def __init__(self,
         var_values: List[List[float]]=None,
-        timestamp: datetime.timestamp=None,
+        timestamp: int=None,
         freq: List[float]=None
         ):
         super(Variance_kernel, self).__init__()
@@ -52,7 +58,6 @@ class Variance_kernel(sbn.Kernel):
             + 0.01 * r2 * cos(2 * (angle - alpha2)))
 
     def _compute_variance(self) -> float:
-        return 0
         theta0 = 0
         theta1 = 2.0 * pi
         n = min(len(self._frequencies), min(map(len, self._data)))
@@ -66,7 +71,7 @@ class Variance_kernel(sbn.Kernel):
 
     def variance(self) -> float: return self._variance
 
-    def date(self) -> datetime.timestamp: return self._date
+    def date(self) -> int: return self._date
 
 
 class File_kernel(sbn.Kernel):
@@ -93,19 +98,22 @@ class File_kernel(sbn.Kernel):
                     # YYYY MM DD hh mm
                     # 2010 01 01 00 00 -> time_componets
                     *time_componets, line = line.split(maxsplit=5)
-                    timestamp = datetime(*map(int, time_componets)).timestamp()
+                    
+                    # timestamp = datetime(*map(int, time_componets)).timestamp()
+                    timestamp = datetime_to_timestamp(*map(int, time_componets))
 
                     # read spec values
                     map_func = lambda val: 0 if abs(float(val) - 999) < 1e-1 else float(val)  # missing values
                     self._data[timestamp] = list(map(map_func, line.split()))
 
                     num_lines += 1
+        
 
         print('>>>> Python (spec): %s: %i records %i lines' % \
-            (self._sfile.filename, len(self._data), num_lines))
+            (self._sfile.filename, len(self._data), num_lines), file=open('pyspec.log', 'a'))
         sbn.commit(self, target=sbn.Target.Local)
 
-    def data(self) -> Dict[datetime.timestamp, List[float]]: return self._data
+    def data(self) -> Dict[int, List[float]]: return self._data
 
     def sfile(self) -> Spectrum_file: return self._sfile
 
@@ -133,21 +141,23 @@ class Five_files_kernel(sbn.Kernel):
 
     def _remove_incomplete_records(self) -> None:
         self._spectra = dict(filter(
-            lambda item: item[1][0] is not None and all(
-                var_values is not None and len(item[1][0]) == len(var_values)
-                for var_values in item[1]),
+            lambda item: all(
+                len(item[1][0]) == len(var_values)
+                for var_values in item[1][1:]),
             self._spectra.items()
         ))
 
     def _process_spectra(self) -> None:
         self._state = self.State.Processing
+        print('>>>> Python (spec): %i records from station %i, year %i' %\
+                (len(self._spectra), self.station(), self.year()), file=open('pyspec.log', 'a'))
 
         old_size = len(self._spectra)
         self._remove_incomplete_records()
         new_size = len(self._spectra)
         if new_size < old_size:
             print('>>>> Python (spec): removed %i incomplete records from station %i, year %i' %\
-                (old_size - new_size, self.station(), self.year()))
+                (old_size - new_size, self.station(), self.year()), file=open('pyspec.log', 'a'))
 
         if new_size == 0: sbn.commit(self, target=sbn.Target.Remote)
         else:
@@ -163,7 +173,7 @@ class Five_files_kernel(sbn.Kernel):
         var = child.sfile().var
         for timestamp, spec_values in child.data().items():
             if timestamp not in self._spectra:
-                self._spectra[timestamp] = [None] * len(Variable)
+                self._spectra[timestamp] = [ [] for _ in range(len(Variable)) ]
             self._spectra[timestamp][var.value] = spec_values
 
         if self._frequencies is None: self._frequencies = child.frequencies()
@@ -176,7 +186,7 @@ class Five_files_kernel(sbn.Kernel):
         self._out_matrix[child.date()] = child.variance()
         print('>>>> Python (spec): remaining %i' % (self._count))
         if self._count == 0:
-            print('>>>> Python (spec): finished year %i station %i' % (self.year(), self.station()))
+            print('>>>> Python (spec): finished year %i station %i' % (self.year(), self.station()), file=open('pyspec.log', 'a'))
             sbn.commit(self, target=sbn.Target.Remote)
 
     def react(self, child):
@@ -198,6 +208,8 @@ class Five_files_kernel(sbn.Kernel):
 
     def num_processed_spectra(self) -> int: return len(self._out_matrix)
 
+    def sum_processed_spectra(self) -> float: return sum(self._out_matrix.values())
+
 
 class Spectrum_directory_kernel(sbn.Kernel):
 
@@ -207,13 +219,14 @@ class Spectrum_directory_kernel(sbn.Kernel):
         self._count = 0
         self._num_kernels = 0
         self._count_spectra = 0
+        self._sum_spectra = 0
 
     def _complete(self, files: List[Spectrum_file]) -> bool:
         '''Checking that all the necessary files are available'''
         return len(files) == 5 and len(set(f.var for f in files)) == 5
 
     def act(self):
-        print('>>>> Python (spec): spectrum-directory %i' % len(self._input_directories))
+        print('>>>> Python (spec): spectrum-directory %i' % len(self._input_directories), file=open('pyspec.log', 'a'))
 
         # Grouping files
         files = {}
@@ -223,7 +236,7 @@ class Spectrum_directory_kernel(sbn.Kernel):
                 if match := re.match(pattern, path_file.name):
                     station, variable, year = match.groups()
                     print('>>>> Python (spec): file %s station %s variable %s year %s' % \
-                        (path_file, station, variable, year))
+                        (path_file, station, variable, year), file=open('pyspec.log', 'a'))
                     if (year, station) not in files: files[(year, station)] = []
                     files[(year, station)].append(Spectrum_file(
                         filename=path_file,
@@ -245,18 +258,19 @@ class Spectrum_directory_kernel(sbn.Kernel):
         self._count += 1
 
         year = child.year()
-        output_file = Path(str(year) + '.out')
+        output_file = Path(str(year) + '_pyspec.out')
         child.write_output_to(output_file)
 
         self._count_spectra += child.num_processed_spectra()
+        self._sum_spectra += child.sum_processed_spectra()
 
         print('>>>> Python (spec): [%i/%i] finished station %i, year %i, total no. of spectra %i' % (
             self._count, self._num_kernels,
-            child.station(), child.year(), child.num_processed_spectra()))
+            child.station(), child.year(), child.num_processed_spectra()), file=open('pyspec.log', 'a'))
 
         if self._count == self._num_kernels:
-            print('>>>> Python (spec): total number of processed spectra %i' % self._count_spectra)
-            with open('nspectra.log', 'a') as log: log.write(str(self._count_spectra) + '\n')
+            print('>>>> Python (spec): total number of processed spectra %i' % self._count_spectra, file=open('pyspec.log', 'a'))
+            print('>>>> Python (spec): total sum of processed spectra %i' % self._sum_spectra, file=open('pyspec.log', 'a'))
             sbn.commit(self, target=sbn.Target.Remote)
 
 
@@ -265,13 +279,19 @@ class Main(sbn.Kernel):
     def __init__(self, *args, **kwargs):
         super(Main, self).__init__(*args, **kwargs)
         self._input_directories = sys.argv[1:].copy()
+        self._time_start = 0
+        self._time_end = 0
 
     def act(self):
-        print('>>>> Python (spec): program start!')
+        self._time_start = time.time()
+        print('>>>> Python (spec): ============= program start! =============', file=open('pyspec.log', 'a'))
         # TODO carries_parent
         sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()),
             target=sbn.Target.Remote)
 
     def react(self, child: sbn.Kernel):
-        print('>>>> Python (spec): finished all!')
+        self._time_end = time.time()
+        total_time = self._time_end - self._time_start
+        print('>>>> Python (spec): finished all!', file=open('pyspec.log', 'a'))
+        print('>>>> Python (spec): total time execution: %f s' % total_time, file=open('pyspec.log', 'a'))
         sbn.commit(self, target=sbn.Target.Remote)

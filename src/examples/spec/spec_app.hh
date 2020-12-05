@@ -540,6 +540,16 @@ public:
 
     inline int32_t num_processed_spectra() const noexcept { return _out_matrix.size(); }
 
+    T sum_processed_spectra() {
+        T sum_spectra = 0;
+        std::for_each(_out_matrix.cbegin(), _out_matrix.cend(),
+            [this, &sum_spectra] (const typename decltype(_out_matrix)::value_type& pair) {
+                sum_spectra += pair.second;
+            }
+        );
+        return sum_spectra;
+    }
+
     void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
         in >> _files;
@@ -590,6 +600,7 @@ private:
     std::vector<sys::path> _input_directories;
     int32_t _count = 0;
     int32_t _count_spectra = 0;
+    T _sum_spectra = 0;
     int32_t _num_kernels = 0;
     std::array<time_point,2> _time_points;
     std::unordered_map<Year,std::ofstream> _output_files;
@@ -660,6 +671,7 @@ public:
         }
         k->write_output_to(output_file);
         this->_count_spectra += k->num_processed_spectra();
+        this->_sum_spectra += k->sum_processed_spectra();
         sys::log_message(
             "spec",
             "[_/_] finished station _, year _, total no. of spectra _",
@@ -669,6 +681,7 @@ public:
         if (++_count == this->_num_kernels) {
             for (auto& pair : this->_output_files) { pair.second.close(); }
             sys::log_message("spec", "total number of processed spectra _", _count_spectra);
+            sys::log_message("spec", "total sum of processed spectra _", _sum_spectra);
             {
                 using namespace std::chrono;
                 this->_time_points[1] = clock_type::now();
@@ -680,6 +693,10 @@ public:
             {
                 std::ofstream log("nspectra.log");
                 log << _count_spectra << std::endl;
+            }
+            {
+                std::ofstream log("sumspectra.log");
+                log << _sum_spectra << std::endl;
             }
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
