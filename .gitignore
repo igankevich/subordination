@@ -54,3 +54,7 @@ tags
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Logs and outputs
+*.log
+*.out
