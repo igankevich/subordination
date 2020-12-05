@@ -30,7 +30,7 @@ Spectrum_file = namedtuple('Spectrum_file', 'filename, station, var, year')
 
 class Variance_kernel(sbn.Kernel):
 
-    def __init__(self, 
+    def __init__(self,
         var_values: List[List[float]]=None,
         timestamp: datetime.timestamp=None,
         freq: List[float]=None
@@ -52,6 +52,7 @@ class Variance_kernel(sbn.Kernel):
             + 0.01 * r2 * cos(2 * (angle - alpha2)))
 
     def _compute_variance(self) -> float:
+        return 0
         theta0 = 0
         theta1 = 2.0 * pi
         n = min(len(self._frequencies), min(map(len, self._data)))
@@ -125,7 +126,7 @@ class Five_files_kernel(sbn.Kernel):
         self._spectra = {}
         self._out_matrix = {}
         self._state = self.State.Reading
-        
+
     def act(self):
         for file in self._files:
             sbn.upstream(self, File_kernel(file), target=sbn.Target.Local)
@@ -173,6 +174,7 @@ class Five_files_kernel(sbn.Kernel):
         self._count -= 1
 
         self._out_matrix[child.date()] = child.variance()
+        print('>>>> Python (spec): remaining %i' % (self._count))
         if self._count == 0:
             print('>>>> Python (spec): finished year %i station %i' % (self.year(), self.station()))
             sbn.commit(self, target=sbn.Target.Remote)
@@ -267,7 +269,7 @@ class Main(sbn.Kernel):
     def act(self):
         print('>>>> Python (spec): program start!')
         # TODO carries_parent
-        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()), 
+        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()),
             target=sbn.Target.Remote)
 
     def react(self, child: sbn.Kernel):

@@ -122,8 +122,6 @@ namespace {
     };
 
     PyMODINIT_FUNC sbn_init() {
-        sbn::python::gil_guard g;
-        
         // Preparation components
         if (PyType_Ready(&sbn::python::Py_kernel_type) < 0)
             return nullptr;
@@ -134,14 +132,14 @@ namespace {
 
         if (PyModule_AddObject(t_enum.get(), "Local", PyLong_FromLong(sbn::Local)) < 0)    // 0
             return nullptr;
-        
+
         if (PyModule_AddObject(t_enum.get(), "Remote", PyLong_FromLong(sbn::Remote)) < 0)  // 1
             return nullptr;
 
         // Adding to sbn module
         sbn::python::object m = PyModule_Create(&sbn_module);
         if (!m) { return nullptr; }
-        
+
         Py_INCREF(&sbn::python::Py_kernel_type);
         if (PyModule_AddObject(m.get(), "Kernel", (PyObject *) &sbn::python::Py_kernel_type) < 0) {
             Py_DECREF(&sbn::python::Py_kernel_type);
@@ -149,7 +147,7 @@ namespace {
         }
 
         if (PyModule_AddObject(m.get(), "Target", t_enum.get()) < 0)
-           return nullptr; 
+           return nullptr;
 
         return m.get();
     }
