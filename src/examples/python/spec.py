@@ -98,7 +98,7 @@ class File_kernel(sbn.Kernel):
                     # YYYY MM DD hh mm
                     # 2010 01 01 00 00 -> time_componets
                     *time_componets, line = line.split(maxsplit=5)
-                    
+
                     # timestamp = datetime(*map(int, time_componets)).timestamp()
                     timestamp = datetime_to_timestamp(*map(int, time_componets))
 
@@ -107,7 +107,7 @@ class File_kernel(sbn.Kernel):
                     self._data[timestamp] = list(map(map_func, line.split()))
 
                     num_lines += 1
-        
+
 
         print('>>>> Python (spec): %s: %i records %i lines' % \
             (self._sfile.filename, len(self._data), num_lines), file=open('pyspec.log', 'a'))

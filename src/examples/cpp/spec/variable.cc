@@ -13,4 +13,3 @@ auto spec::string_to_variable(const std::string& s) -> Variable {
         default: throw std::invalid_argument("bad variable");
     }
 }
-

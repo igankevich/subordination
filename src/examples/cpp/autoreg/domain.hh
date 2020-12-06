@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_AUTOREG_DOMAIN_HH
-#define EXAMPLES_AUTOREG_DOMAIN_HH
+#ifndef EXAMPLES_CPP_AUTOREG_DOMAIN_HH
+#define EXAMPLES_CPP_AUTOREG_DOMAIN_HH
 
 #include <istream>
 #include <ostream>

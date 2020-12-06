@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_AUTOREG_VECTOR_N_HH
-#define EXAMPLES_AUTOREG_VECTOR_N_HH
+#ifndef EXAMPLES_CPP_AUTOREG_VECTOR_N_HH
+#define EXAMPLES_CPP_AUTOREG_VECTOR_N_HH
 
 #include <algorithm>
 #include <cstdint>

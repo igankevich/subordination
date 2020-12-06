@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_SPEC_SPEC_APP_HH
-#define EXAMPLES_SPEC_SPEC_APP_HH
+#ifndef EXAMPLES_CPP_SPEC_SPEC_APP_HH
+#define EXAMPLES_CPP_SPEC_SPEC_APP_HH
 
 #include <array>
 #include <bitset>
