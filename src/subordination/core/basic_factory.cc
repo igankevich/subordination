@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iomanip>
 
-#include <unistdx/util/system>
+#include <unistdx/system/resource>
 
 #include <subordination/core/basic_factory.hh>
 #include <subordination/core/properties.hh>

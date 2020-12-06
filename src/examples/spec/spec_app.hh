@@ -283,8 +283,8 @@ public:
         if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
             if (sys::this_process::hostname() == hostname) {
                 sys::log_message("spec", "simulate subordinate failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
         char buf[4096];
@@ -331,6 +331,7 @@ public:
                     spec.clear();
                     T value;
                     while (str >> value) {
+                        // 999 is used to indicate missing data
                         if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
                         spec.emplace_back(value);
                     }
@@ -420,7 +421,7 @@ public:
 
     inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
     inline const Spectrum_file& file() const noexcept { return this->_file; }
-    inline std::vector<T>& frequencies() noexcept { return this->_frequencies; }
+    inline const std::vector<T>& frequencies() const noexcept { return this->_frequencies; }
 
 };
 
@@ -494,7 +495,7 @@ public:
         for (auto& pair : k->data()) {
             this->_spectra[pair.first][int(variable)] = std::move(pair.second);
         }
-        if (this->_frequencies.size() == 0) { this->_frequencies = k->frequencies(); }
+        if (this->_frequencies.empty()) { this->_frequencies = k->frequencies(); }
         if (++this->_count == 5) { process_spectra(); }
     }
 
@@ -620,8 +621,8 @@ public:
                     std::this_thread::sleep_for(std::chrono::seconds(seconds));
                 }
                 sys::log_message("spec", "simulate superior copy failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
         sys::log_message("spec", "spectrum-directory _", this->_input_directories.size());
@@ -761,8 +762,8 @@ public:
             if (sys::this_process::hostname() == hostname) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 sys::log_message("spec", "simulate superior failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
     }

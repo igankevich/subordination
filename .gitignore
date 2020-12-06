@@ -1,9 +1,6 @@
-/tags
-/GPATH
-/GRTAGS
-/GTAGS
 /build*
-/fit.log
+*.log
+*.out
 
 
 ### Linux ###
@@ -54,7 +51,3 @@ tags
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Logs and outputs
-*.log
-*.out
