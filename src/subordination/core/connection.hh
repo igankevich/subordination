@@ -11,7 +11,7 @@
 #include <unistdx/io/epoll_event>
 #include <unistdx/io/poller>
 #include <unistdx/net/socket_address>
-#include <unistdx/util/system>
+#include <unistdx/system/resource>
 
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>

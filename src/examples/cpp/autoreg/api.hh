@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_AUTOREG_API_HH
-#define EXAMPLES_AUTOREG_API_HH
+#ifndef EXAMPLES_CPP_AUTOREG_API_HH
+#define EXAMPLES_CPP_AUTOREG_API_HH
 
 #if defined(AUTOREG_MPI)
 #include <subordination/core/kernel_buffer.hh>

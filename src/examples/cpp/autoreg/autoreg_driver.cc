@@ -116,8 +116,8 @@ autoreg::Autoreg_model<T>::react(sbn::kernel_ptr&& child) {
                 if (sys::this_process::hostname() == hostname) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     sys::log_message("autoreg", "simulate superior failure _!", hostname);
-                    send(sys::signal::kill, sys::this_process::parent_id());
-                    send(sys::signal::kill, sys::this_process::id());
+                    sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                    sys::process_view(sys::this_process::id()).send(sys::signal::kill);
                 }
             }
         }

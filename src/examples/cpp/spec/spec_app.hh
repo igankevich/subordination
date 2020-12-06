@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_SPEC_SPEC_APP_HH
-#define EXAMPLES_SPEC_SPEC_APP_HH
+#ifndef EXAMPLES_CPP_SPEC_SPEC_APP_HH
+#define EXAMPLES_CPP_SPEC_SPEC_APP_HH
 
 #include <array>
 #include <bitset>
@@ -219,8 +219,7 @@ public:
     {}
 
     void act() override {
-        //_variance = compute_variance();
-        _variance = 0;
+        _variance = compute_variance();
         sbn::commit(std::move(this_ptr()));
     }
 
@@ -284,8 +283,8 @@ public:
         if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
             if (sys::this_process::hostname() == hostname) {
                 sys::log_message("spec", "simulate subordinate failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
         char buf[4096];
@@ -329,8 +328,10 @@ public:
                 str.str(line);
                 if (str >> timestamp) {
                     auto& spec = this->_data[timestamp];
+                    spec.clear();
                     T value;
                     while (str >> value) {
+                        // 999 is used to indicate missing data
                         if (std::abs(value-T{999}) < T{1e-1}) { value = 0; }
                         spec.emplace_back(value);
                     }
@@ -420,6 +421,7 @@ public:
 
     inline std::map<spec::Timestamp,std::vector<T>>& data() noexcept { return this->_data; }
     inline const Spectrum_file& file() const noexcept { return this->_file; }
+    inline const std::vector<T>& frequencies() const noexcept { return this->_frequencies; }
 
 };
 
@@ -493,6 +495,7 @@ public:
         for (auto& pair : k->data()) {
             this->_spectra[pair.first][int(variable)] = std::move(pair.second);
         }
+        if (this->_frequencies.empty()) { this->_frequencies = k->frequencies(); }
         if (++this->_count == 5) { process_spectra(); }
     }
 
@@ -537,6 +540,16 @@ public:
     }
 
     inline int32_t num_processed_spectra() const noexcept { return _out_matrix.size(); }
+
+    T sum_processed_spectra() {
+        T sum_spectra = 0;
+        std::for_each(_out_matrix.cbegin(), _out_matrix.cend(),
+            [this, &sum_spectra] (const typename decltype(_out_matrix)::value_type& pair) {
+                sum_spectra += pair.second;
+            }
+        );
+        return sum_spectra;
+    }
 
     void read(sbn::kernel_buffer& in) override {
         kernel::read(in);
@@ -588,6 +601,7 @@ private:
     std::vector<sys::path> _input_directories;
     int32_t _count = 0;
     int32_t _count_spectra = 0;
+    T _sum_spectra = 0;
     int32_t _num_kernels = 0;
     std::array<time_point,2> _time_points;
     std::unordered_map<Year,std::ofstream> _output_files;
@@ -607,8 +621,8 @@ public:
                     std::this_thread::sleep_for(std::chrono::seconds(seconds));
                 }
                 sys::log_message("spec", "simulate superior copy failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
         sys::log_message("spec", "spectrum-directory _", this->_input_directories.size());
@@ -658,6 +672,7 @@ public:
         }
         k->write_output_to(output_file);
         this->_count_spectra += k->num_processed_spectra();
+        this->_sum_spectra += k->sum_processed_spectra();
         sys::log_message(
             "spec",
             "[_/_] finished station _, year _, total no. of spectra _",
@@ -667,6 +682,7 @@ public:
         if (++_count == this->_num_kernels) {
             for (auto& pair : this->_output_files) { pair.second.close(); }
             sys::log_message("spec", "total number of processed spectra _", _count_spectra);
+            sys::log_message("spec", "total sum of processed spectra _", _sum_spectra);
             {
                 using namespace std::chrono;
                 this->_time_points[1] = clock_type::now();
@@ -678,6 +694,10 @@ public:
             {
                 std::ofstream log("nspectra.log");
                 log << _count_spectra << std::endl;
+            }
+            {
+                std::ofstream log("sumspectra.log");
+                log << _sum_spectra << std::endl;
             }
             sbn::commit<sbn::Remote>(std::move(this_ptr()));
         }
@@ -742,8 +762,8 @@ public:
             if (sys::this_process::hostname() == hostname) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 sys::log_message("spec", "simulate superior failure _!", hostname);
-                send(sys::signal::kill, sys::this_process::parent_id());
-                send(sys::signal::kill, sys::this_process::id());
+                sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+                sys::process_view(sys::this_process::id()).send(sys::signal::kill);
             }
         }
     }

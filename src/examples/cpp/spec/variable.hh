@@ -1,5 +1,5 @@
-#ifndef EXAMPLES_SPEC_VARIABLE_HH
-#define EXAMPLES_SPEC_VARIABLE_HH
+#ifndef EXAMPLES_CPP_SPEC_VARIABLE_HH
+#define EXAMPLES_CPP_SPEC_VARIABLE_HH
 
 #include <string>
 #include <type_traits>

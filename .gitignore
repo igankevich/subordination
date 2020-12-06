@@ -1,9 +1,6 @@
-/tags
-/GPATH
-/GRTAGS
-/GTAGS
 /build*
-/fit.log
+*.log
+*.out
 
 
 ### Linux ###

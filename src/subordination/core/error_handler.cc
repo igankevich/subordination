@@ -11,7 +11,7 @@
 #include <unistdx/io/fildes>
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/signal>
-#include <unistdx/util/backtrace>
+#include <unistdx/system/error>
 
 #include <subordination/core/error.hh>
 #include <subordination/core/error_handler.hh>
