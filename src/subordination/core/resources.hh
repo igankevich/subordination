@@ -2,6 +2,8 @@
 #define SUBORDINATION_CORE_RESOURCES_HH
 
 #include <memory>
+#include <ostream>
+#include <type_traits>
 
 #include <unistdx/base/byte_buffer>
 
@@ -54,6 +56,8 @@ namespace sbn {
             Any& operator=(Any&&) = default;
         };
 
+        std::ostream& operator<<(std::ostream& out, const Any& rhs);
+
         template <class T>
         inline T cast(const Any& a) noexcept { return a.cast<T>(); }
 
@@ -72,12 +76,16 @@ namespace sbn {
         template <> struct cpp_to_any_type<uint64_t> { static constexpr const auto value = Any::Type::U64; };
         */
 
-        enum class Resource {
+        enum class resources {
+            num_threads=1,
         };
+
+        const char* resources_to_string(resources r) noexcept;
+        resources string_to_resources(const char* s, size_t n) noexcept;
 
         class Context {
         public:
-            virtual Any get(Resource resource) const noexcept;
+            virtual Any get(resources r) const noexcept;
             Context() = default;
             virtual ~Context() = default;
             Context(const Context&) = delete;
@@ -97,18 +105,24 @@ namespace sbn {
             virtual Any evaluate(Context* context) const noexcept = 0;
             virtual void write(sys::byte_buffer& out) const = 0;
             virtual void read(sys::byte_buffer& in) = 0;
+            virtual void write(std::ostream& out) const = 0;
         };
+
+        inline std::ostream& operator<<(std::ostream& out, const Expression& rhs) {
+            rhs.write(out); return out;
+        }
 
         using expression_ptr = std::unique_ptr<Expression>;
 
         class Symbol: public Expression {
         private:
-            Resource _name{};
+            resources _name{};
         public:
-            inline explicit Symbol(Resource name) noexcept: _name(name) {}
+            inline explicit Symbol(resources name) noexcept: _name(name) {}
             Any evaluate(Context* context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
+            void write(std::ostream& out) const override;
             Symbol() = default;
             ~Symbol() = default;
             Symbol(const Symbol&) = delete;
@@ -125,6 +139,7 @@ namespace sbn {
             Any evaluate(Context* context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
+            void write(std::ostream& out) const override;
             Constant() = default;
             ~Constant() = default;
             Constant(const Constant&) = delete;
@@ -141,6 +156,7 @@ namespace sbn {
             Any evaluate(Context* context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
+            void write(std::ostream& out) const override;
             Not() = default;
             ~Not() = default;
             Not(const Not&) = delete;
@@ -159,6 +175,7 @@ namespace sbn {
                 Any evaluate(Context* context) const noexcept override; \
                 void write(sys::byte_buffer& out) const override; \
                 void read(sys::byte_buffer& in) override; \
+                void write(std::ostream& out) const override; \
                 NAME() = default; \
                 ~NAME() = default; \
                 NAME(const NAME&) = delete; \
@@ -179,6 +196,8 @@ namespace sbn {
         #undef SBN_RESOURCES_BINARY_OPERATION
 
         expression_ptr read(sys::byte_buffer& in);
+        expression_ptr read(const char* begin, const char* end, int max_depth);
+        expression_ptr read(std::istream& in, int max_depth);
 
         enum class Expressions: uint8_t {
             Symbol=1,
@@ -195,6 +214,65 @@ namespace sbn {
         };
 
         expression_ptr make_expression(Expressions type);
+
+        inline expression_ptr operator!(expression_ptr&& a) {
+            return expression_ptr(new Not(std::move(a)));
+        }
+
+        inline expression_ptr operator!(resources r) {
+            return !expression_ptr(new Symbol(r));
+        }
+
+        #define SBN_RESOURCES_BINARY_OPERATOR(OP, NAME) \
+            inline expression_ptr \
+            operator OP(resources a, expression_ptr&& b) { \
+                return expression_ptr(new NAME(expression_ptr(new Symbol(a)), std::move(b))); \
+            } \
+            inline expression_ptr \
+            operator OP(resources a, const Any& b) { \
+                return expression_ptr(new NAME(expression_ptr(new Symbol(a)), \
+                                               expression_ptr(new Constant(b)))); \
+            } \
+            inline expression_ptr \
+            operator OP(expression_ptr&& a, resources b) { \
+                return expression_ptr(new NAME(std::move(a), expression_ptr(new Symbol(b)))); \
+            } \
+            inline expression_ptr \
+            operator OP(const Any& a, resources b) { \
+                return expression_ptr(new NAME(expression_ptr(new Constant(a)), \
+                                               expression_ptr(new Symbol(b)))); \
+            }
+
+        SBN_RESOURCES_BINARY_OPERATOR(==, Equal);
+        SBN_RESOURCES_BINARY_OPERATOR(<, Less_than);
+        SBN_RESOURCES_BINARY_OPERATOR(<=, Less_or_equal);
+        SBN_RESOURCES_BINARY_OPERATOR(>, Greater_than);
+        SBN_RESOURCES_BINARY_OPERATOR(>=, Greater_or_equal);
+        SBN_RESOURCES_BINARY_OPERATOR(&&, And);
+        SBN_RESOURCES_BINARY_OPERATOR(||, Or);
+        SBN_RESOURCES_BINARY_OPERATOR(^, Xor);
+
+        inline expression_ptr
+        operator!=(resources a, expression_ptr&& b) {
+            return !operator==(a, std::move(b));
+        }
+
+        inline expression_ptr
+        operator!=(resources a, const Any& b) {
+            return !operator==(a, b);
+        }
+
+        inline expression_ptr
+        operator!=(expression_ptr&& a, resources b) {
+            return !operator==(std::move(a), b);
+        }
+
+        inline expression_ptr
+        operator!=(const Any& a, resources b) {
+            return !operator==(a, b);
+        }
+
+        #undef SBN_RESOURCES_BINARY_OPERATOR
 
     }
 

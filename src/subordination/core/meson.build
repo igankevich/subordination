@@ -81,7 +81,7 @@ pkgconfig.generate(
 
 clang_tidy_files += sbn_src
 
-foreach name : ['kernel_buffer', 'timer_pipeline', 'properties']
+foreach name : ['kernel_buffer', 'timer_pipeline', 'properties', 'resources']
     test_name = '-'.join(name.split('_'))
     exe_name = test_name + '-test'
     exe = executable(

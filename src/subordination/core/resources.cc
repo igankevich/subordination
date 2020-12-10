@@ -1,4 +1,69 @@
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+
 #include <subordination/core/resources.hh>
+
+namespace {
+
+    inline void trim(const char** first_inout, const char** last_inout) {
+        auto first = *first_inout, last = *last_inout;
+        while (first != last && std::isspace(*first)) { ++first; }
+        *first_inout = first;
+        while (first != last && std::isspace(*(last-1))) { --last; }
+        *last_inout = last;
+    }
+
+    constexpr const int max_depth = 10;
+
+    inline sbn::resources::expression_ptr
+    read_expression(const char* first, const char* last, int depth) {
+        trim(&first, &last);
+        using namespace sbn::resources;
+        expression_ptr result;
+        auto name_last = first;
+        while (name_last != last && !std::isspace(*name_last)) { ++name_last; }
+        std::string name(first, name_last);
+        while (name_last != last && std::isspace(*name_last)) { ++name_last; }
+        if (name == "not") {
+            // parse one arguments
+            auto arg = read(name_last, last, depth-1);
+            result = expression_ptr(new Not(std::move(arg)));
+        } else {
+            // parse two arguments
+            int bracket = 0;
+            auto ptr = name_last;
+            while (ptr != last && (bracket != 0 || !std::isspace(*ptr))) {
+                if (*ptr == '(') { ++bracket; }
+                else if (*ptr == ')') { --bracket; }
+                if (bracket < 0) { return nullptr; }
+                ++ptr;
+            }
+            if (ptr == last) { return nullptr; }
+            auto arg0 = read(name_last, ptr, depth-1);
+            auto arg1 = read(ptr, last, depth-1);
+            if (name == "and") {
+                result = expression_ptr(new And(std::move(arg0), std::move(arg1)));
+            } else if (name == "or") {
+                result = expression_ptr(new Or(std::move(arg0), std::move(arg1)));
+            } else if (name == "xor") {
+                result = expression_ptr(new Xor(std::move(arg0), std::move(arg1)));
+            } else if (name == "=") {
+                result = expression_ptr(new Equal(std::move(arg0), std::move(arg1)));
+            } else if (name == "<") {
+                result = expression_ptr(new Less_than(std::move(arg0), std::move(arg1)));
+            } else if (name == "<=") {
+                result = expression_ptr(new Less_or_equal(std::move(arg0), std::move(arg1)));
+            } else if (name == ">") {
+                result = expression_ptr(new Greater_than(std::move(arg0), std::move(arg1)));
+            } else if (name == ">=") {
+                result = expression_ptr(new Greater_or_equal(std::move(arg0), std::move(arg1)));
+            }
+        }
+        return result;
+    }
+
+}
 
 auto sbn::resources::Symbol::evaluate(Context* c) const noexcept -> Any {
     return c->get(this->_name);
@@ -73,7 +138,7 @@ void sbn::resources::Not::read(sys::byte_buffer& in) {
     this->_arg = ::sbn::resources::read(in);
 }
 
-#define SBN_RESOURCES_BINARY_OPERATION_IO(NAME) \
+#define SBN_RESOURCES_BINARY_OPERATION_IO(NAME, HUMAN_NAME) \
     void sbn::resources::NAME::write(sys::byte_buffer& out) const { \
         out.write(Expressions::NAME); \
         this->_a->write(out); \
@@ -82,16 +147,19 @@ void sbn::resources::Not::read(sys::byte_buffer& in) {
     void sbn::resources::NAME::read(sys::byte_buffer& in) { \
         this->_a = ::sbn::resources::read(in); \
         this->_b = ::sbn::resources::read(in); \
+    } \
+    void sbn::resources::NAME::write(std::ostream& out) const { \
+        out << "(" HUMAN_NAME " " << *this->_a << ' ' << *this->_b << ')'; \
     }
 
-SBN_RESOURCES_BINARY_OPERATION_IO(And);
-SBN_RESOURCES_BINARY_OPERATION_IO(Or);
-SBN_RESOURCES_BINARY_OPERATION_IO(Xor);
-SBN_RESOURCES_BINARY_OPERATION_IO(Less_than);
-SBN_RESOURCES_BINARY_OPERATION_IO(Less_or_equal);
-SBN_RESOURCES_BINARY_OPERATION_IO(Equal);
-SBN_RESOURCES_BINARY_OPERATION_IO(Greater_than);
-SBN_RESOURCES_BINARY_OPERATION_IO(Greater_or_equal);
+SBN_RESOURCES_BINARY_OPERATION_IO(And, "and");
+SBN_RESOURCES_BINARY_OPERATION_IO(Or, "or");
+SBN_RESOURCES_BINARY_OPERATION_IO(Xor, "xor");
+SBN_RESOURCES_BINARY_OPERATION_IO(Less_than, "<");
+SBN_RESOURCES_BINARY_OPERATION_IO(Less_or_equal, "<=");
+SBN_RESOURCES_BINARY_OPERATION_IO(Equal, "=");
+SBN_RESOURCES_BINARY_OPERATION_IO(Greater_than, ">");
+SBN_RESOURCES_BINARY_OPERATION_IO(Greater_or_equal, ">=");
 
 auto sbn::resources::make_expression(Expressions type) -> expression_ptr {
     switch (type) {
@@ -117,3 +185,64 @@ auto sbn::resources::read(sys::byte_buffer& in) -> expression_ptr {
     result->read(in);
     return result;
 }
+
+std::ostream& sbn::resources::operator<<(std::ostream& out, const Any& rhs) {
+    return out << rhs.cast<uint64_t>();
+}
+
+void sbn::resources::Symbol::write(std::ostream& out) const {
+    auto s = resources_to_string(this->_name);
+    out << (s ? s : "unknown");
+}
+
+void sbn::resources::Constant::write(std::ostream& out) const {
+    out << this->_value;
+}
+
+void sbn::resources::Not::write(std::ostream& out) const {
+    out << "(not " << *this->_arg << ')';
+}
+
+const char* sbn::resources::resources_to_string(resources r) noexcept {
+    switch (r) {
+        case resources::num_threads: return "num-threads";
+        default: return nullptr;
+    }
+}
+
+auto sbn::resources::string_to_resources(const char* s, size_t n) noexcept -> resources {
+    using t = std::char_traits<char>;
+    if (t::compare(s, "num-threads", n) == 0) {
+        return resources::num_threads;
+    }
+    return resources{};
+}
+
+auto sbn::resources::read(const char* first, const char* last, int depth) -> expression_ptr {
+    if (depth <= 0) { return nullptr; }
+    trim(&first, &last);
+    if (first == last) { return nullptr; }
+    expression_ptr result;
+    if (*first == '(' && last[-1] == ')') {
+        result = read_expression(first+1, last-1, depth);
+    } else {
+        auto r = string_to_resources(first, last-first);
+        if (r != resources{}) {
+            result = expression_ptr(new Symbol(r));
+        } else {
+            uint64_t v = std::stol(std::string(first, last));
+            result = expression_ptr(new Constant(v));
+        }
+    }
+    return result;
+};
+
+auto sbn::resources::read(std::istream& in, int max_depth) -> expression_ptr {
+    std::stringstream tmp;
+    tmp << in.rdbuf();
+    auto s = tmp.str();
+    return read(s.data(), s.data()+s.size(), max_depth);
+}
+
+//std::istream& sbn::resource::operator>>(std::istream& in, expression_ptr& rhs) {
+//}
