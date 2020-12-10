@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include <examples/spec/variable.hh>
+#include <spec/variable.hh>
 
 auto spec::string_to_variable(const std::string& s) -> Variable {
     if (s.empty()) { throw std::invalid_argument("bad variable"); }
@@ -13,4 +13,3 @@ auto spec::string_to_variable(const std::string& s) -> Variable {
         default: throw std::invalid_argument("bad variable");
     }
 }
-

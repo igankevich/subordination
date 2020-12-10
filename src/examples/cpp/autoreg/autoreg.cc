@@ -278,8 +278,8 @@ autoreg::Part_generator<T>::act() {
     if (const char* hostname = std::getenv("SBN_TEST_SUBORDINATE_FAILURE")) {
         if (sys::this_process::hostname() == hostname) {
             sys::log_message("autoreg", "simulate subordinate failure _!", hostname);
-            send(sys::signal::kill, sys::this_process::parent_id());
-            send(sys::signal::kill, sys::this_process::id());
+            sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+            sys::process_view(sys::this_process::id()).send(sys::signal::kill);
         }
     }
     auto t0 = clock_type::now();
@@ -420,8 +420,8 @@ autoreg::Wave_surface_generator<T>::act() {
                 std::this_thread::sleep_for(std::chrono::seconds(seconds));
             }
             sys::log_message("autoreg", "simulate superior copy failure _!", hostname);
-            send(sys::signal::kill, sys::this_process::parent_id());
-            send(sys::signal::kill, sys::this_process::id());
+            sys::process_view(sys::this_process::parent_id()).send(sys::signal::kill);
+            sys::process_view(sys::this_process::id()).send(sys::signal::kill);
         }
     }
     this->_seed = std::chrono::system_clock::now().time_since_epoch().count();
