@@ -18,6 +18,7 @@ sbn_src = files([
     'pipeline_base.cc',
     'process_handler.cc',
     'properties.cc',
+    'resources.cc',
     'transaction_log.cc',
 ])
 
@@ -43,6 +44,7 @@ install_headers(
     'pipeline_base.hh',
     'process_handler.hh',
     'properties.hh',
+    'resources.hh',
     'transaction_log.hh',
     'types.hh',
     subdir: join_paths(meson.project_name(), 'core')
