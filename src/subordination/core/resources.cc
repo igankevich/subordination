@@ -29,6 +29,10 @@ namespace {
             // parse one arguments
             auto arg = read(name_last, last, depth-1);
             result = expression_ptr(new Not(std::move(arg)));
+        } else if (name == "negate") {
+            // parse one arguments
+            auto arg = read(name_last, last, depth-1);
+            result = expression_ptr(new Negate(std::move(arg)));
         } else {
             // parse two arguments
             int bracket = 0;
@@ -58,6 +62,16 @@ namespace {
                 result = expression_ptr(new Greater_than(std::move(arg0), std::move(arg1)));
             } else if (name == ">=") {
                 result = expression_ptr(new Greater_or_equal(std::move(arg0), std::move(arg1)));
+            } else if (name == "+") {
+                result = expression_ptr(new Add(std::move(arg0), std::move(arg1)));
+            } else if (name == "-") {
+                result = expression_ptr(new Subtract(std::move(arg0), std::move(arg1)));
+            } else if (name == "*") {
+                result = expression_ptr(new Multiply(std::move(arg0), std::move(arg1)));
+            } else if (name == "quotient") {
+                result = expression_ptr(new Quotient(std::move(arg0), std::move(arg1)));
+            } else if (name == "remainder") {
+                result = expression_ptr(new Remainder(std::move(arg0), std::move(arg1)));
             }
         }
         return result;
@@ -73,6 +87,9 @@ auto sbn::resources::Constant::evaluate(Context* c) const noexcept -> Any {
 }
 auto sbn::resources::Not::evaluate(Context* c) const noexcept -> Any {
     return !cast<bool>(this->_arg->evaluate(c));
+}
+auto sbn::resources::Negate::evaluate(Context* c) const noexcept -> Any {
+    return -cast<uint64_t>(this->_arg->evaluate(c));
 }
 auto sbn::resources::And::evaluate(Context* c) const noexcept -> Any {
     return cast<bool>(this->_a->evaluate(c)) && cast<bool>(this->_b->evaluate(c));
@@ -97,6 +114,21 @@ auto sbn::resources::Greater_than::evaluate(Context* c) const noexcept -> Any {
 }
 auto sbn::resources::Greater_or_equal::evaluate(Context* c) const noexcept -> Any {
     return cast<uint64_t>(this->_a->evaluate(c)) >= cast<uint64_t>(this->_b->evaluate(c));
+}
+auto sbn::resources::Add::evaluate(Context* c) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(c)) + cast<uint64_t>(this->_b->evaluate(c));
+}
+auto sbn::resources::Subtract::evaluate(Context* c) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(c)) - cast<uint64_t>(this->_b->evaluate(c));
+}
+auto sbn::resources::Multiply::evaluate(Context* c) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(c)) * cast<uint64_t>(this->_b->evaluate(c));
+}
+auto sbn::resources::Quotient::evaluate(Context* c) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(c)) / cast<uint64_t>(this->_b->evaluate(c));
+}
+auto sbn::resources::Remainder::evaluate(Context* c) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(c)) % cast<uint64_t>(this->_b->evaluate(c));
 }
 
 void sbn::resources::Any::write(sys::byte_buffer& out) const {
@@ -133,10 +165,18 @@ void sbn::resources::Constant::write(sys::byte_buffer& out) const {
     this->_value.write(out);
 }
 void sbn::resources::Constant::read(sys::byte_buffer& in) { this->_value.read(in); }
-void sbn::resources::Not::write(sys::byte_buffer& out) const { this->_arg->write(out); }
-void sbn::resources::Not::read(sys::byte_buffer& in) {
-    this->_arg = ::sbn::resources::read(in);
-}
+
+#define SBN_RESOURCES_UNARY_OPERATION_IO(NAME, HUMAN_NAME) \
+    void sbn::resources::NAME::write(sys::byte_buffer& out) const { this->_arg->write(out); } \
+    void sbn::resources::NAME::read(sys::byte_buffer& in) { \
+        this->_arg = ::sbn::resources::read(in); \
+    } \
+    void sbn::resources::NAME::write(std::ostream& out) const { \
+        out << "(" HUMAN_NAME " " << *this->_arg << ')'; \
+    }
+
+SBN_RESOURCES_UNARY_OPERATION_IO(Not, "not");
+SBN_RESOURCES_UNARY_OPERATION_IO(Negate, "negate");
 
 #define SBN_RESOURCES_BINARY_OPERATION_IO(NAME, HUMAN_NAME) \
     void sbn::resources::NAME::write(sys::byte_buffer& out) const { \
@@ -160,6 +200,11 @@ SBN_RESOURCES_BINARY_OPERATION_IO(Less_or_equal, "<=");
 SBN_RESOURCES_BINARY_OPERATION_IO(Equal, "=");
 SBN_RESOURCES_BINARY_OPERATION_IO(Greater_than, ">");
 SBN_RESOURCES_BINARY_OPERATION_IO(Greater_or_equal, ">=");
+SBN_RESOURCES_BINARY_OPERATION_IO(Add, "+");
+SBN_RESOURCES_BINARY_OPERATION_IO(Subtract, "-");
+SBN_RESOURCES_BINARY_OPERATION_IO(Multiply, "*");
+SBN_RESOURCES_BINARY_OPERATION_IO(Quotient, "quotient");
+SBN_RESOURCES_BINARY_OPERATION_IO(Remainder, "remainder");
 
 auto sbn::resources::make_expression(Expressions type) -> expression_ptr {
     switch (type) {
@@ -174,6 +219,11 @@ auto sbn::resources::make_expression(Expressions type) -> expression_ptr {
         case Expressions::Equal: return expression_ptr(new Equal);
         case Expressions::Greater_than: return expression_ptr(new Greater_than);
         case Expressions::Greater_or_equal: return expression_ptr(new Greater_or_equal);
+        case Expressions::Add: return expression_ptr(new Add);
+        case Expressions::Subtract: return expression_ptr(new Subtract);
+        case Expressions::Multiply: return expression_ptr(new Multiply);
+        case Expressions::Quotient: return expression_ptr(new Quotient);
+        case Expressions::Remainder: return expression_ptr(new Remainder);
         default: throw std::invalid_argument("bad expression type");
     }
 }
@@ -197,10 +247,6 @@ void sbn::resources::Symbol::write(std::ostream& out) const {
 
 void sbn::resources::Constant::write(std::ostream& out) const {
     out << this->_value;
-}
-
-void sbn::resources::Not::write(std::ostream& out) const {
-    out << "(not " << *this->_arg << ')';
 }
 
 const char* sbn::resources::resources_to_string(resources r) noexcept {

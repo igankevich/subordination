@@ -148,22 +148,28 @@ namespace sbn {
             Constant& operator=(Constant&&) = delete;
         };
 
-        class Not: public Expression {
-        private:
-            expression_ptr _arg;
-        public:
-            inline explicit Not(expression_ptr&& arg) noexcept: _arg(std::move(arg)) {}
-            Any evaluate(Context* context) const noexcept override;
-            void write(sys::byte_buffer& out) const override;
-            void read(sys::byte_buffer& in) override;
-            void write(std::ostream& out) const override;
-            Not() = default;
-            ~Not() = default;
-            Not(const Not&) = delete;
-            Not& operator=(const Not&) = delete;
-            Not(Not&&) = delete;
-            Not& operator=(Not&&) = delete;
-        };
+        #define SBN_RESOURCES_UNARY_OPERATION(NAME) \
+            class NAME: public Expression { \
+            private: \
+                expression_ptr _arg; \
+            public: \
+                inline explicit NAME(expression_ptr&& arg) noexcept: _arg(std::move(arg)) {} \
+                Any evaluate(Context* context) const noexcept override; \
+                void write(sys::byte_buffer& out) const override; \
+                void read(sys::byte_buffer& in) override; \
+                void write(std::ostream& out) const override; \
+                NAME() = default; \
+                ~NAME() = default; \
+                NAME(const NAME&) = delete; \
+                NAME& operator=(const NAME&) = delete; \
+                NAME(NAME&&) = delete; \
+                NAME& operator=(NAME&&) = delete; \
+            };
+
+        SBN_RESOURCES_UNARY_OPERATION(Not);
+        SBN_RESOURCES_UNARY_OPERATION(Negate);
+
+        #undef SBN_RESOURCES_UNARY_OPERATION
 
         #define SBN_RESOURCES_BINARY_OPERATION(NAME) \
             class NAME: public Expression { \
@@ -192,6 +198,11 @@ namespace sbn {
         SBN_RESOURCES_BINARY_OPERATION(Equal);
         SBN_RESOURCES_BINARY_OPERATION(Greater_than);
         SBN_RESOURCES_BINARY_OPERATION(Greater_or_equal);
+        SBN_RESOURCES_BINARY_OPERATION(Add);
+        SBN_RESOURCES_BINARY_OPERATION(Subtract);
+        SBN_RESOURCES_BINARY_OPERATION(Multiply);
+        SBN_RESOURCES_BINARY_OPERATION(Quotient);
+        SBN_RESOURCES_BINARY_OPERATION(Remainder);
 
         #undef SBN_RESOURCES_BINARY_OPERATION
 
@@ -211,6 +222,12 @@ namespace sbn {
             Equal=9,
             Greater_than=10,
             Greater_or_equal=11,
+            Add=12,
+            Subtract=13,
+            Multiply=14,
+            Quotient=15,
+            Remainder=16,
+            Negate=17,
         };
 
         expression_ptr make_expression(Expressions type);
@@ -221,6 +238,14 @@ namespace sbn {
 
         inline expression_ptr operator!(resources r) {
             return !expression_ptr(new Symbol(r));
+        }
+
+        inline expression_ptr operator-(expression_ptr&& a) {
+            return expression_ptr(new Negate(std::move(a)));
+        }
+
+        inline expression_ptr operator-(resources r) {
+            return -expression_ptr(new Symbol(r));
         }
 
         #define SBN_RESOURCES_BINARY_OPERATOR(OP, NAME) \
@@ -251,6 +276,11 @@ namespace sbn {
         SBN_RESOURCES_BINARY_OPERATOR(&&, And);
         SBN_RESOURCES_BINARY_OPERATOR(||, Or);
         SBN_RESOURCES_BINARY_OPERATOR(^, Xor);
+        SBN_RESOURCES_BINARY_OPERATOR(+, Add);
+        SBN_RESOURCES_BINARY_OPERATOR(-, Subtract);
+        SBN_RESOURCES_BINARY_OPERATOR(*, Multiply);
+        SBN_RESOURCES_BINARY_OPERATOR(/, Quotient);
+        SBN_RESOURCES_BINARY_OPERATOR(%, Remainder);
 
         inline expression_ptr
         operator!=(resources a, expression_ptr&& b) {
