@@ -79,56 +79,56 @@ namespace {
 
 }
 
-auto sbn::resources::Symbol::evaluate(Context* c) const noexcept -> Any {
-    return c->get(this->_name);
+auto sbn::resources::Symbol::evaluate(Bindings& b) const noexcept -> Any {
+    return b.get(this->_name);
 }
-auto sbn::resources::Constant::evaluate(Context* c) const noexcept -> Any {
+auto sbn::resources::Constant::evaluate(Bindings& b) const noexcept -> Any {
     return this->_value;
 }
-auto sbn::resources::Not::evaluate(Context* c) const noexcept -> Any {
-    return !cast<bool>(this->_arg->evaluate(c));
+auto sbn::resources::Not::evaluate(Bindings& b) const noexcept -> Any {
+    return !cast<bool>(this->_arg->evaluate(b));
 }
-auto sbn::resources::Negate::evaluate(Context* c) const noexcept -> Any {
-    return -cast<uint64_t>(this->_arg->evaluate(c));
+auto sbn::resources::Negate::evaluate(Bindings& b) const noexcept -> Any {
+    return -cast<uint64_t>(this->_arg->evaluate(b));
 }
-auto sbn::resources::And::evaluate(Context* c) const noexcept -> Any {
-    return cast<bool>(this->_a->evaluate(c)) && cast<bool>(this->_b->evaluate(c));
+auto sbn::resources::And::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<bool>(this->_a->evaluate(b)) && cast<bool>(this->_b->evaluate(b));
 }
-auto sbn::resources::Or::evaluate(Context* c) const noexcept -> Any {
-    return cast<bool>(this->_a->evaluate(c)) || cast<bool>(this->_b->evaluate(c));
+auto sbn::resources::Or::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<bool>(this->_a->evaluate(b)) || cast<bool>(this->_b->evaluate(b));
 }
-auto sbn::resources::Xor::evaluate(Context* c) const noexcept -> Any {
-    return bool(cast<bool>(this->_a->evaluate(c)) ^ cast<bool>(this->_b->evaluate(c)));
+auto sbn::resources::Xor::evaluate(Bindings& b) const noexcept -> Any {
+    return bool(cast<bool>(this->_a->evaluate(b)) ^ cast<bool>(this->_b->evaluate(b)));
 }
-auto sbn::resources::Less_than::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) < cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Less_than::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) < cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Less_or_equal::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) <= cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Less_or_equal::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) <= cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Equal::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) == cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Equal::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) == cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Greater_than::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) > cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Greater_than::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) > cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Greater_or_equal::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) >= cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Greater_or_equal::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) >= cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Add::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) + cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Add::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) + cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Subtract::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) - cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Subtract::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) - cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Multiply::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) * cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Multiply::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) * cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Quotient::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) / cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Quotient::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) / cast<uint64_t>(this->_b->evaluate(b));
 }
-auto sbn::resources::Remainder::evaluate(Context* c) const noexcept -> Any {
-    return cast<uint64_t>(this->_a->evaluate(c)) % cast<uint64_t>(this->_b->evaluate(c));
+auto sbn::resources::Remainder::evaluate(Bindings& b) const noexcept -> Any {
+    return cast<uint64_t>(this->_a->evaluate(b)) % cast<uint64_t>(this->_b->evaluate(b));
 }
 
 void sbn::resources::Any::write(sys::byte_buffer& out) const {
@@ -290,5 +290,10 @@ auto sbn::resources::read(std::istream& in, int max_depth) -> expression_ptr {
     return read(s.data(), s.data()+s.size(), max_depth);
 }
 
-//std::istream& sbn::resource::operator>>(std::istream& in, expression_ptr& rhs) {
-//}
+void sbn::resources::Bindings::write(sys::byte_buffer& out) const {
+    for (const auto& x : this->_data) { out.write(x); }
+}
+
+void sbn::resources::Bindings::read(sys::byte_buffer& in) {
+    for (auto& x : this->_data) { in.read(x); }
+}

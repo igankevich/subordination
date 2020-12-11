@@ -272,7 +272,7 @@ TEST(socket_pipeline, _) {
         using namespace std::this_thread;
         using namespace std::chrono;
         sleep_for(milliseconds(1000));
-        remote.add_client(principal_endpoint);
+        remote.add_client(principal_endpoint, {});
     }
 
     const auto* filename = role == Role::Slave

@@ -8,6 +8,7 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/hierarchy_node.hh>
 
@@ -23,10 +24,11 @@ namespace sbnd {
         using const_iterator = typename container_type::const_iterator;
         using iterator = typename container_type::iterator;
         using size_type = typename container_type::size_type;
-        using weight_type = hierarchy_node::weight_type;
+        using resource_array = sbn::resource_array;
 
     protected:
         ifaddr_type _ifaddr;
+        resource_array _resources;
         sys::socket_address _socket_address;
         sys::socket_address _superior_socket_address;
         hierarchy_node _superior;
@@ -47,24 +49,27 @@ namespace sbnd {
         Hierarchy(Hierarchy&&) = default;
         Hierarchy& operator=(Hierarchy&&) = default;
 
+        /// Interface address of the current node.
         inline const ifaddr_type&
         interface_address() const noexcept {
             return this->_ifaddr;
         }
 
+        /// Socket address of the current node.
         inline const sys::socket_address&
         socket_address() const noexcept {
             return this->_socket_address;
         }
 
+        /// Resources of the current node.
+        inline const resource_array& resources() const noexcept { return this->_resources; }
+        inline void resources(const resource_array& rhs) { this->_resources = rhs; }
+
         inline const sys::socket_address& superior_socket_address() const noexcept {
             return this->_superior_socket_address;
         }
 
-        inline const hierarchy_node&
-        superior() const noexcept {
-            return this->_superior;
-        }
+        inline const hierarchy_node& superior() const noexcept { return this->_superior; }
 
         inline bool
         remove_superior() noexcept {
@@ -77,7 +82,7 @@ namespace sbnd {
         inline bool
         add_superior(const sys::socket_address& addr, const hierarchy_node& node) {
             if (addr == this->_superior_socket_address &&
-                node.weight() == this->_superior.weight()) { return false; }
+                node.resources() == this->_superior.resources()) { return false; }
             this->_superior_socket_address = addr;
             this->_superior = node;
             remove_subordinate(this->_superior_socket_address);
@@ -139,14 +144,11 @@ namespace sbnd {
         }
 
         /// \brief Total weight of all subordinate and principal nodes and the current node.
-        weight_type total_weight() const noexcept;
+        resource_array total_resources() const noexcept;
 
-        /// @return total weight of all subordinate nodes
-        weight_type total_subordinate_weight() const noexcept;
-
-        inline weight_type
-        superior_weight() const noexcept {
-            return this->has_superior() ? this->_superior.weight() : 0;
+        inline resource_array
+        superior_resources() const noexcept {
+            return this->has_superior() ? this->_superior.resources() : resource_array{};
         }
 
         bool

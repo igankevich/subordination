@@ -119,17 +119,17 @@ void sbnd::discoverer::update_subordinates(pointer<probe> p) {
         sys::log_message("test", "_: _ subordinate _", this->interface_address(), result, src);
         #endif
     }
-    weight_type total_weight = 0;
+    resource_array total_resources;
     if (result == probe_result::add_subordinate) {
-        total_weight = this->_hierarchy.total_weight();
+        total_resources = this->_hierarchy.total_resources();
         add_subordinate(src);
     } else if (result == probe_result::remove_subordinate) {
         remove_subordinate(src);
-        total_weight = this->_hierarchy.total_weight();
+        total_resources = this->_hierarchy.total_resources();
     }
     p->return_to_parent(sbn::exit_code::success);
     hierarchy_node sup;
-    sup.weight(total_weight);
+    sup.resources(total_resources);
     p->superior(sup);
     factory.remote().send(std::move(p));
 }
@@ -140,9 +140,10 @@ void sbnd::discoverer::add_subordinate(const sys::socket_address& address) {
     }
 }
 
-void sbnd::discoverer::add_superior(const sys::socket_address& address, weight_type weight) {
-    if (this->_hierarchy.add_superior(address, hierarchy_node(weight))) {
-        factory.remote().update_client(address, weight);
+void sbnd::discoverer::add_superior(const sys::socket_address& address,
+                                    const resource_array& resources) {
+    if (this->_hierarchy.add_superior(address, hierarchy_node(resources))) {
+        factory.remote().update_client(address, resources);
         broadcast_hierarchy(address);
     }
 }
@@ -196,10 +197,10 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
                 #if defined(SBN_TEST)
                 sys::log_message("test", "_: set principal to _ attempts _ weight _",
                                  interface_address(), new_superior, this->_attempts,
-                                 p->superior().weight());
+                                 p->superior().num_threads());
                 #endif
             }
-            add_superior(new_superior, p->superior().weight());
+            add_superior(new_superior, p->superior().resources());
         }
         if (p->old_superior() && p->old_superior() != p->new_superior()) {
             auto new_p = sbn::make_pointer<probe>(p->interface_address(), p->old_superior(),
@@ -247,21 +248,23 @@ sbnd::discoverer::on_client_remove(const sys::socket_address& address) {
 }
 
 void sbnd::discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
-    const weight_type total = this->_hierarchy.total_weight();
+    auto total = this->_hierarchy.total_resources();
     for (const auto& pair : this->_hierarchy.subordinates()) {
         const auto& sub_socket_address = pair.first;
         const auto& sub = pair.second;
         if (sub_socket_address != ignored_endpoint) {
-            assert(total >= sub.weight());
-            this->send_weight(sub_socket_address, total - sub.weight());
+            //assert(total >= sub.weight());
+            total -= sub.resources();
+            this->send_weight(sub_socket_address, total);
         }
     }
     if (this->_hierarchy.has_superior()) {
         const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
         const hierarchy_node& sup = this->_hierarchy.superior();
         if (sup_socket_address != ignored_endpoint) {
-            assert(total >= sup.weight());
-            this->send_weight(sup_socket_address, total - sup.weight());
+            //assert(total >= sup.weight());
+            total -= sup.resources();
+            this->send_weight(sup_socket_address, total);
         }
     }
     write_cache();
@@ -310,21 +313,22 @@ void sbnd::discoverer::read_cache() {
             const auto& sup = this->_hierarchy.superior();
             const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
             auto g = factory.remote().guard();
-            factory.remote().add_client(sup_socket_address, sup.weight());
+            factory.remote().add_client(sup_socket_address, sup.resources());
         }
         //for (const auto& s : this->_hierarchy.subordinates()) {
         //    auto g = factory.remote().guard();
         //    factory.remote().add_client(s.socket_address(), s.weight());
         //}
     } catch (const sys::bad_call& err) {
-        if (err.errc() != std::errc:: no_such_file_or_directory) {
+        if (err.errc() != std::errc::no_such_file_or_directory) {
             log("failed to read cache: _", err.what());
         }
     }
 }
 
-void sbnd::discoverer::send_weight(const sys::socket_address& dest, weight_type w) {
-    auto h = sbn::make_pointer<Hierarchy_kernel>(this->interface_address(), w);
+void sbnd::discoverer::send_weight(const sys::socket_address& dest,
+                                   const resource_array& resources) {
+    auto h = sbn::make_pointer<Hierarchy_kernel>(this->interface_address(), resources);
     h->point_to_point(1);
     h->parent(this);
     h->destination(dest);
@@ -340,16 +344,16 @@ void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
         const sys::socket_address& src = k->source();
         bool changed = false;
         if (this->_hierarchy.has_superior(src)) {
-            changed = this->_hierarchy.set_superior(hierarchy_node(k->weight()));
+            changed = this->_hierarchy.set_superior(hierarchy_node(k->resources()));
         } else if (this->_hierarchy.has_subordinate(src)) {
-            changed = this->_hierarchy.set_subordinate(src, hierarchy_node(k->weight()));
+            changed = this->_hierarchy.set_subordinate(src, hierarchy_node(k->resources()));
         }
         if (changed) {
             #if defined(SBN_TEST)
             sys::log_message("test", "_: set _ weight to _",
-                             interface_address(), k->source(), k->weight());
+                             interface_address(), k->source(), k->resources()[1]);
             #endif
-            factory.remote().update_client(src, k->weight());
+            factory.remote().update_client(src, k->resources());
             broadcast_hierarchy(src);
         }
     }

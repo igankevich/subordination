@@ -85,13 +85,14 @@ namespace sbnd {
     public:
         using counter_type = socket_pipeline::counter_type;
         using kernel_queue = std::deque<sbn::kernel_ptr>;
+        using resource_array = sbn::resources::Bindings;
 
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
-        counter_type _thread_concurrency_behind = 1;
         counter_type _num_kernels = 0;
         bool _route = false;
+        resource_array _resources;
 
     public:
 
@@ -182,6 +183,10 @@ namespace sbnd {
         inline bool route() const noexcept { return this->_route; }
         inline void route(bool rhs) noexcept { this->_route = rhs; }
 
+        inline const resource_array& resources() const noexcept { return this->_resources; }
+        inline resource_array& resources() noexcept { return this->_resources; }
+        inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
+
         void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
             if (!route()) {
                 connection::receive_foreign_kernel(std::move(k));
@@ -212,11 +217,8 @@ namespace sbnd {
 
         /// The number of threads "behind" this node in the hierarchy.
         inline counter_type thread_concurrency_behind() const noexcept {
-            return this->_thread_concurrency_behind;
-        }
-
-        inline void thread_concurrency_behind(counter_type rhs) noexcept {
-            this->_thread_concurrency_behind = rhs;
+            using r = sbn::resources::resources;
+            return this->_resources[r::num_threads];
         }
 
         /// The number of kernels that were sent to the client, but have not returned yet.
@@ -227,13 +229,15 @@ namespace sbnd {
         the number of threads "behind" the client.
         */
         inline counter_type weight() const noexcept {
-            return this->_num_kernels / this->_thread_concurrency_behind;
+            auto nthreads = thread_concurrency_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            return this->_num_kernels / nthreads;
         }
 
         inline void num_kernels(const counter_type& rhs) noexcept { this->_num_kernels = rhs; }
 
         inline bool full() const noexcept {
-            return this->_num_kernels >= this->_thread_concurrency_behind;
+            return this->_num_kernels >= thread_concurrency_behind();
         }
 
         inline void num_kernels_increment(sbn::kernel::weight_type w) {
@@ -338,6 +342,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         }
         return false;
     }();
+    auto node_filter = k->node_filter();
     for (auto first=clients.begin(); first != last; ++first) {
         const auto& address = first->first;
         auto& client = *first->second;
@@ -345,6 +350,11 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         if (client.state() != sbn::connection_state::started) {
             log("neighbour skip (inactive) _ num-kernels _ num-nodes-behind _",
                 client.socket_address(), client.num_kernels(), client.thread_concurrency_behind());
+            continue;
+        }
+        // skip nodes that do not match resource specification
+        if (node_filter && !node_filter->evaluate(client.resources()).cast<bool>()) {
+            log("neighbour skip (node filter) _ filter _", client.socket_address(), *node_filter);
             continue;
         }
         // do not send the kernel back
@@ -732,19 +742,20 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     }
 }
 
-void sbnd::socket_pipeline::add_client(const sys::socket_address& addr, counter_type n) {
+void sbnd::socket_pipeline::add_client(const sys::socket_address& addr,
+                                       const resource_array& resources_behind) {
     auto ptr = this->do_add_client(addr);
-    ptr->thread_concurrency_behind(n);
+    ptr->resources(resources_behind);
 }
 
 void
 sbnd::socket_pipeline::update_client(const sys::socket_address& addr,
-                                     counter_type thread_concurrency_behind) {
+                                     const resource_array& resources_behind) {
     lock_type lock(this->_mutex);
     //auto ptr = find_or_create_client(addr);
     //ptr->thread_concurrency_behind(new_num_nodes_behind);
     auto result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
-        result->second->thread_concurrency_behind(thread_concurrency_behind);
+        result->second->resources(resources_behind);
     }
 }

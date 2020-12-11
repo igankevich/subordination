@@ -7,6 +7,7 @@
 
 #include <unistdx/net/interface_addresses>
 
+#include <subordination/core/resources.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/discoverer.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
@@ -24,6 +25,7 @@ namespace sbnd {
         using interface_address_set = std::unordered_set<ifaddr_type>;
         using discoverer_table = std::unordered_map<ifaddr_type,discoverer*>;
         using map_iterator = typename discoverer_table::iterator;
+        using resource_array = sbn::resources::Bindings;
 
     private:
         Properties::Discoverer _discoverer_properties;
@@ -31,6 +33,7 @@ namespace sbnd {
         interface_address_set _allowedifaddrs;
         /// Interface address list update interval.
         duration _interval = std::chrono::minutes(1);
+        resource_array _resources;
 
     public:
 
@@ -46,6 +49,7 @@ namespace sbnd {
         void send_timer(bool first_time=false);
 
         interface_address_set enumerate_ifaddrs();
+        void update_resources();
         void update_discoverers();
         void add_discoverer(const ifaddr_type& rhs);
         void remove_discoverer(const ifaddr_type& rhs);

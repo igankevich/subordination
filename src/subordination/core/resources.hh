@@ -1,6 +1,7 @@
 #ifndef SUBORDINATION_CORE_RESOURCES_HH
 #define SUBORDINATION_CORE_RESOURCES_HH
 
+#include <array>
 #include <memory>
 #include <ostream>
 #include <type_traits>
@@ -77,22 +78,81 @@ namespace sbn {
         */
 
         enum class resources {
-            num_threads=1,
+            num_threads=0,
+            size=1,
         };
 
         const char* resources_to_string(resources r) noexcept;
         resources string_to_resources(const char* s, size_t n) noexcept;
 
-        class Context {
+        class Bindings {
         public:
-            virtual Any get(resources r) const noexcept;
-            Context() = default;
-            virtual ~Context() = default;
-            Context(const Context&) = delete;
-            Context& operator=(const Context&) = delete;
-            Context(Context&&) = delete;
-            Context& operator=(Context&&) = delete;
+            using value_type = uint64_t;
+        private:
+            // num-threads should be at least 1
+            std::array<value_type,size_t(resources::size)> _data{1};
+        public:
+            inline value_type get(resources r) const noexcept {
+                return this->_data[static_cast<size_t>(r)];
+            }
+            inline value_type operator[](resources r) const noexcept {
+                return this->_data[static_cast<size_t>(r)];
+            }
+            inline value_type& operator[](resources r) noexcept {
+                return this->_data[static_cast<size_t>(r)];
+            }
+            inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
+            inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
+            inline void set(resources r, value_type value) {
+                this->_data[static_cast<size_t>(r)] = value;
+            }
+            inline void clear() { this->_data.fill(value_type{}); }
+            static inline size_t size() noexcept { return size_t(resources::size); }
+            inline Bindings& operator+=(const Bindings& y) noexcept {
+                const auto n = size();
+                for (size_t i=0; i<n; ++i) { this->_data[i] += y._data[i]; }
+                return *this;
+            }
+            inline Bindings& operator-=(const Bindings& y) noexcept {
+                const auto n = size();
+                for (size_t i=0; i<n; ++i) { this->_data[i] -= y._data[i]; }
+                return *this;
+            }
+            void write(sys::byte_buffer& out) const;
+            void read(sys::byte_buffer& in);
+            Bindings() = default;
+            virtual ~Bindings() = default;
+            Bindings(const Bindings&) = default;
+            Bindings& operator=(const Bindings&) = default;
+            Bindings(Bindings&&) = default;
+            Bindings& operator=(Bindings&&) = default;
         };
+
+        inline bool operator==(const Bindings& a, const Bindings& b) {
+            const auto n = Bindings::size();
+            for (size_t i=0; i<n; ++i) {
+                if (a[i] != b[i]) { return false; }
+            }
+            return true;
+        }
+
+        inline bool operator!=(const Bindings& a, const Bindings& b) {
+            const auto n = Bindings::size();
+            for (size_t i=0; i<n; ++i) {
+                if (a[i] == b[i]) { return false; }
+            }
+            return true;
+        }
+
+        inline sys::byte_buffer&
+        operator<<(sys::byte_buffer& out, const Bindings& rhs) {
+            rhs.write(out); return out;
+        }
+
+        inline sys::byte_buffer&
+        operator>>(sys::byte_buffer& in, Bindings& rhs) {
+            rhs.read(in); return in;
+        }
 
         class Expression {
         public:
@@ -102,7 +162,7 @@ namespace sbn {
             Expression& operator=(const Expression&) = delete;
             Expression(Expression&&) = delete;
             Expression& operator=(Expression&&) = delete;
-            virtual Any evaluate(Context* context) const noexcept = 0;
+            virtual Any evaluate(Bindings& context) const noexcept = 0;
             virtual void write(sys::byte_buffer& out) const = 0;
             virtual void read(sys::byte_buffer& in) = 0;
             virtual void write(std::ostream& out) const = 0;
@@ -119,7 +179,7 @@ namespace sbn {
             resources _name{};
         public:
             inline explicit Symbol(resources name) noexcept: _name(name) {}
-            Any evaluate(Context* context) const noexcept override;
+            Any evaluate(Bindings& context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
             void write(std::ostream& out) const override;
@@ -136,7 +196,7 @@ namespace sbn {
             Any _value{};
         public:
             inline explicit Constant(Any value) noexcept: _value(value) {}
-            Any evaluate(Context* context) const noexcept override;
+            Any evaluate(Bindings& context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
             void write(std::ostream& out) const override;
@@ -154,7 +214,7 @@ namespace sbn {
                 expression_ptr _arg; \
             public: \
                 inline explicit NAME(expression_ptr&& arg) noexcept: _arg(std::move(arg)) {} \
-                Any evaluate(Context* context) const noexcept override; \
+                Any evaluate(Bindings& context) const noexcept override; \
                 void write(sys::byte_buffer& out) const override; \
                 void read(sys::byte_buffer& in) override; \
                 void write(std::ostream& out) const override; \
@@ -178,7 +238,7 @@ namespace sbn {
             public: \
                 inline explicit NAME(expression_ptr&& a, expression_ptr&& b) noexcept: \
                 _a(std::move(a)), _b(std::move(b)) {} \
-                Any evaluate(Context* context) const noexcept override; \
+                Any evaluate(Bindings& context) const noexcept override; \
                 void write(sys::byte_buffer& out) const override; \
                 void read(sys::byte_buffer& in) override; \
                 void write(std::ostream& out) const override; \
@@ -305,6 +365,8 @@ namespace sbn {
         #undef SBN_RESOURCES_BINARY_OPERATOR
 
     }
+
+    using resource_array = resources::Bindings;
 
 }
 

@@ -5,6 +5,7 @@
 
 #include <unistdx/net/socket_address>
 
+#include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
 
 namespace sbnd {
@@ -12,10 +13,10 @@ namespace sbnd {
     class hierarchy_node {
 
     public:
-        using weight_type = uint32_t;
+        using resource_array = sbn::resource_array;
 
     private:
-        weight_type _weight = 1;
+        resource_array _resources;
 
     public:
 
@@ -27,14 +28,14 @@ namespace sbnd {
         hierarchy_node& operator=(hierarchy_node&&) = default;
 
         inline explicit
-        hierarchy_node(weight_type w) noexcept:
-        _weight(w)
+        hierarchy_node(const resource_array& w) noexcept:
+        _resources(w)
         {}
 
         inline void clear() noexcept { *this = {}; }
 
         inline bool operator==(const hierarchy_node& rhs) const noexcept {
-            return this->_weight == rhs.weight();
+            return this->_resources == rhs.resources();
         }
 
         inline bool operator!=(const hierarchy_node& rhs) const noexcept {
@@ -42,11 +43,16 @@ namespace sbnd {
         }
 
         /**
-        \brief The sum of thread concurrency of each cluster node "behind"
-        this one in the hierarchy.
+        \brief The sum of all the resources (e.g. thread concurrency)
+        of each cluster node "behind" this one in the hierarchy.
         */
-        inline weight_type weight() const noexcept { return this->_weight; }
-        inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+        inline const resource_array& resources() const noexcept { return this->_resources; }
+        inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
+
+        inline uint64_t num_threads() const noexcept {
+            using r = sbn::resources::resources;
+            return this->_resources[r::num_threads];
+        }
 
         friend std::ostream&
         operator<<(std::ostream& out, const hierarchy_node& rhs);

@@ -2,7 +2,6 @@
 
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/ipv4_address>
-#include <unistdx/system/resource>
 
 #include <subordination/daemon/byte_buffers.hh>
 #include <subordination/daemon/hierarchy.hh>
@@ -23,7 +22,7 @@ sbnd::operator<<(std::ostream& out, const Hierarchy<T>& rhs) {
     out << "subordinates=";
     bool first = true;
     for (const auto& pair : rhs._subordinates) {
-        out << pair.first << '*' << pair.second.weight();
+        out << pair.first << '*' << pair.second.num_threads();
         if (!first) { out << ','; }
         first = false;
     }
@@ -46,16 +45,12 @@ sbnd::Hierarchy<T>::set_subordinate(
 }
 
 template <class T> auto
-sbnd::Hierarchy<T>::total_weight() const noexcept -> weight_type {
-    return this->superior_weight() +
-        this->total_subordinate_weight() +
-        sys::thread_concurrency();
-}
-
-template <class T> auto
-sbnd::Hierarchy<T>::total_subordinate_weight() const noexcept -> weight_type {
-    weight_type sum = 0;
-    for (const auto& pair : this->_subordinates) { sum += pair.second.weight(); }
+sbnd::Hierarchy<T>::total_resources() const noexcept -> resource_array {
+    resource_array sum;
+    sum += superior_resources();
+    /// total resources of all subordinate nodes
+    for (const auto& pair : this->_subordinates) { sum += pair.second.resources(); }
+    sum += this->_resources;
     return sum;
 }
 

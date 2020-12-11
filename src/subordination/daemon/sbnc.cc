@@ -67,10 +67,10 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hiera
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
-        out << first->first << '*' << first->second.weight();
+        out << first->first << '*' << first->second.num_threads();
         ++first;
         while (first != last) {
-            out << ' ' << first->first << '*' << first->second.weight();
+            out << ' ' << first->first << '*' << first->second.num_threads();
             ++first;
         }
     }
@@ -139,7 +139,7 @@ template <> constexpr int column_width(const sys::interface_address<sys::ipv6_ad
 }
 
 template <> constexpr int column_width(const sbnd::hierarchy_node&) {
-    return 3*4 + 3 + 1 + 5 + 1 + std::numeric_limits<sbnd::hierarchy_node::weight_type>::digits10;
+    return 3*4 + 3 + 1 + 5 + 1 + std::numeric_limits<sbn::resource_array::value_type>::digits10;
 }
 
 std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hierarchy_type>& rhs) {
@@ -154,10 +154,10 @@ std::ostream& operator<<(std::ostream& out, const Human<sbnd::Status_kernel::hie
     if (!h.subordinates().empty()) {
         auto first = h.subordinates().begin();
         auto last = h.subordinates().end();
-        out << first->first << '*' << first->second.weight();
+        out << first->first << '*' << first->second.num_threads();
         ++first;
         while (first != last) {
-            out << ' ' << first->first << '*' << first->second.weight();
+            out << ' ' << first->first << '*' << first->second.num_threads();
             ++first;
         }
     }

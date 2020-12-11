@@ -41,7 +41,7 @@ namespace sbnd {
         using hierarchy_type = Hierarchy<addr_type>;
         using clock_type = std::chrono::system_clock;
         using duration = clock_type::duration;
-        using weight_type = typename hierarchy_type::weight_type;
+        using resource_array = sbn::resource_array;
 
         enum class states {
             initial,
@@ -74,6 +74,10 @@ namespace sbnd {
 
         void read_cache();
 
+        inline void resources(const sbn::resource_array& rhs) {
+            this->_hierarchy.resources(rhs);
+        }
+
     private:
 
         inline duration interval() const noexcept { return this->_interval; }
@@ -97,7 +101,7 @@ namespace sbnd {
         void reset_iterator();
         void update_subordinates(pointer<probe> p);
         void add_subordinate(const sys::socket_address& address);
-        void add_superior(const sys::socket_address& address, weight_type weight);
+        void add_superior(const sys::socket_address& address, const resource_array& weight);
         void remove_subordinate(const sys::socket_address& address);
         void remove_superior();
         probe_result process_probe(pointer<probe>& p);
@@ -113,7 +117,7 @@ namespace sbnd {
         void broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
         std::string cache_filename() const;
         void write_cache() const;
-        void send_weight(const sys::socket_address& dest, weight_type w);
+        void send_weight(const sys::socket_address& dest, const resource_array& w);
         void update_weights(pointer<Hierarchy_kernel> k);
 
         template <class ... Args> inline void

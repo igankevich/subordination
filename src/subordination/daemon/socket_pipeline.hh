@@ -139,6 +139,7 @@ namespace sbnd {
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
         using id_type = sbn::kernel::id_type;
+        using resource_array = sbn::resources::Bindings;
 
     private:
         server_array _servers;
@@ -157,10 +158,11 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr, counter_type thread_concurrency_behind=1);
+        void add_client(const sys::socket_address& addr,
+                        const resource_array& resources_behind);
         void stop_client(const sys::socket_address& addr);
-        void update_client(const sys::socket_address& addr, counter_type new_weight);
-
+        void update_client(const sys::socket_address& addr,
+                           const resource_array& resources_behind);
         void add_server(const interface_address& rhs) {
             this->add_server(sys::ipv4_socket_address(rhs.address(), this->_port), rhs.netmask());
         }

@@ -7,6 +7,7 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_base.hh>
 #include <subordination/core/kernel_type.hh>
+#include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
@@ -38,6 +39,8 @@ namespace sbn {
         using id_type = uint64_t;
         template <class T> using pointer = ::sbn::pointer<T>;
         using weight_type = uint32_t;
+        using resource_expression = resources::Expression;
+        using resource_expression_ptr = resources::expression_ptr;
 
     public:
         enum class phases: sys::u8 {
@@ -73,6 +76,7 @@ namespace sbn {
         };
         std::string _path;
         weight_type _weight = 1;
+        resource_expression_ptr _node_filter;
 
     protected:
         // node-local type id
@@ -120,6 +124,10 @@ namespace sbn {
         */
         inline weight_type weight() const noexcept { return this->_weight; }
         inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+
+        inline resource_expression* node_filter() noexcept { return this->_node_filter.get(); }
+        inline const resource_expression* node_filter() const noexcept { return this->_node_filter.get(); }
+        inline void node_filter(resource_expression_ptr&& rhs) { this->_node_filter = std::move(rhs); }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {

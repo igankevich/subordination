@@ -4,11 +4,13 @@
 void
 sbnd::Hierarchy_kernel::write(sbn::kernel_buffer& out) const {
     sbn::kernel::write(out);
-    out << this->_ifaddr << this->_weight;
+    out << this->_interface_address;
+    this->_resources.write(out);
 }
 
 void
 sbnd::Hierarchy_kernel::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
-    in >> this->_ifaddr >> this->_weight;
+    in >> this->_interface_address;
+    this->_resources.read(in);
 }
