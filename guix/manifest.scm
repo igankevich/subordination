@@ -16,6 +16,8 @@
           (@ (gnu packages check) googletest)
           (@ (gnu packages unistdx) unistdx)
           (@ (gnu packages unistdx) unistdx-debug)
+          (@ (gnu packages elf) elfutils)
+          (@ (gnu packages compression) xz)
           (@ (gnu packages pre-commit) python-pre-commit)
           (@ (gnu packages python) python-3)
           (@ (gnu packages compression) zlib)
