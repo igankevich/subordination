@@ -14,13 +14,15 @@
                #:tests? #f))
   (inputs
    `(("unistdx-debug" ,(@ (gnu packages unistdx) unistdx-debug))
+     ("unistdx" ,(@ (gnu packages unistdx) unistdx))
      ("guile" ,(@ (gnu packages guile) guile-3.0))
      ;; examples
      ("zlib" ,(@ (gnu packages compression) zlib))
      ("openmpi" ,(@ (stables packages mpi) openmpi-4.0.2))
      ;; debug
-     ;;("elfutils" ,(@ (gnu packages elf) elfutils))
-     ;;("xz" ,(@ (gnu packages compression) xz))
+     ("elfutils" ,(@ (gnu packages elf) elfutils))
+     ("xz" ,(@ (gnu packages compression) xz))
+     ("dtest" ,(@ (gnu packages subordination) dtest))
      ))
   (native-inputs
    `(("googletest" ,(@ (gnu packages check) googletest))
