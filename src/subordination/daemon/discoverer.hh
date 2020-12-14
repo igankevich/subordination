@@ -74,9 +74,7 @@ namespace sbnd {
 
         void read_cache();
 
-        inline void resources(const sbn::resource_array& rhs) {
-            this->_hierarchy.resources(rhs);
-        }
+        void resources(const sbn::resource_array& rhs);
 
     private:
 

@@ -268,7 +268,7 @@ namespace sbnd {
 
 }
 
-auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
+auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                                                const client_table& clients,
                                                const server_array& servers)
 -> client_iterator {
@@ -413,8 +413,25 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
             client->socket_address(), client->num_kernels(), client->thread_concurrency_behind(),
             this->_local_num_kernels, path, tmp.str());
     } else {
-        increment(this->_local_num_kernels, kernel_weight);
-        log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
+        // If the local node does not have the required resources,
+        // return the kernel to its parent.
+        if (node_filter && !node_filter->evaluate(this->_local_resources).cast<bool>()) {
+            if (k->source()) {
+                for (auto first=clients.begin(); first != last; ++first) {
+                    const auto& address = first->first;
+                    if (address == k->source()) {
+                        result = first;
+                        break;
+                    }
+                }
+            }
+            k->return_to_parent(sbn::exit_code::no_resources);
+            log("neighbour return-to-parent: parent _ filter _ ", k->source(), *node_filter);
+        }
+        if (result == last) {
+            increment(this->_local_num_kernels, kernel_weight);
+            log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
+        }
     }
     return result;
 }
@@ -497,8 +514,7 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
     switch (k->phase()) {
         case sbn::kernel::phases::upstream:
             {
-                auto client = this->_scheduler.schedule(k.get(), this->_clients,
-                                                        this->_servers);
+                auto client = this->_scheduler.schedule(k.get(), this->_clients, this->_servers);
                 if (client == this->_clients.end()) {
                     if (k->carries_parent()) {
                         log("warning, sending a kernel carrying parent to local pipeline _", *k);

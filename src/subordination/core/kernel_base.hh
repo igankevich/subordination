@@ -16,7 +16,8 @@ namespace sbn {
         error = 2,
         endpoint_not_connected = 3,
         no_principal_found = 4,
-        no_upstream_servers_available = 5
+        no_upstream_servers_available = 5,
+        no_resources = 6,
     };
 
     const char* to_string(exit_code rhs) noexcept;

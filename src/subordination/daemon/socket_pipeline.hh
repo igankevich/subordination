@@ -95,21 +95,31 @@ namespace sbnd {
         using server_array = std::vector<server_ptr>;
         using counter_type = uint32_t;
         using file_system_ptr = std::shared_ptr<file_system>;
+        using resource_array = sbn::resources::Bindings;
 
     private:
         std::vector<file_system_ptr> _file_systems;
         std::vector<sys::socket_address> _nodes;
         counter_type _local_num_kernels = 0;
+        resource_array _local_resources;
         bool _local = true;
 
     public:
 
-        client_iterator schedule(const sbn::kernel* k,
+        client_iterator schedule(sbn::kernel* k,
                                  const client_table& clients,
                                  const server_array& servers);
 
         inline void local(bool rhs) noexcept { this->_local = rhs; }
         inline bool local() const noexcept { return this->_local; }
+
+        inline const resource_array& local_resources() const noexcept {
+            return this->_local_resources;
+        }
+
+        inline void local_resources(const resource_array& rhs) noexcept {
+            this->_local_resources = rhs;
+        }
 
         inline void add_file_system(file_system_ptr ptr) {
             this->_file_systems.emplace_back(std::move(ptr));

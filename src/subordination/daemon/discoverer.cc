@@ -369,3 +369,9 @@ _fanout(props.fanout), _hierarchy(interface_address, port) {
     this->_cache_directory = props.cache_directory;
     reset_iterator();
 }
+
+void sbnd::discoverer::resources(const sbn::resource_array& rhs) {
+    this->_hierarchy.resources(rhs);
+    auto g = factory.remote().guard();
+    factory.remote().scheduler().local_resources(rhs);
+}
