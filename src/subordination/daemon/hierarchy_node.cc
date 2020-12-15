@@ -4,7 +4,7 @@
 std::ostream&
 sbnd::operator<<(std::ostream& out, const hierarchy_node& rhs) {
     using r = sbn::resources::resources;
-    return out << rhs.resources()[r::num_threads];
+    return out << rhs.resources()[r::total_threads];
 }
 
 void sbnd::hierarchy_node::write(sbn::kernel_buffer& out) const {

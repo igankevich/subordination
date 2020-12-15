@@ -78,8 +78,9 @@ namespace sbn {
         */
 
         enum class resources: uint32_t {
-            num_threads=0,
-            size=1,
+            total_threads=0,
+            total_memory=1,
+            size=2,
         };
 
         const char* resource_to_string(resources r) noexcept;
@@ -89,7 +90,7 @@ namespace sbn {
         public:
             using value_type = uint64_t;
         private:
-            // num-threads should be at least 1
+            // total-threads should be at least 1
             std::array<value_type,size_t(resources::size)> _data{1};
         public:
             inline value_type get(resources r) const noexcept {

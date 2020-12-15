@@ -197,7 +197,7 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
                 #if defined(SBN_TEST)
                 sys::log_message("test", "_: set principal to _ attempts _ weight _",
                                  interface_address(), new_superior, this->_attempts,
-                                 p->superior().num_threads());
+                                 p->superior().total_threads());
                 #endif
             }
             add_superior(new_superior, p->superior().resources());

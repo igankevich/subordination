@@ -254,16 +254,16 @@ void sbn::resources::Constant::write(std::ostream& out) const {
 
 const char* sbn::resources::resource_to_string(resources r) noexcept {
     switch (r) {
-        case resources::num_threads: return "num-threads";
+        case resources::total_threads: return "total-threads";
+        case resources::total_memory: return "total-memory";
         default: return nullptr;
     }
 }
 
 auto sbn::resources::string_to_resource(const char* s, size_t n) noexcept -> resources {
     using t = std::char_traits<char>;
-    if (t::compare(s, "num-threads", n) == 0) {
-        return resources::num_threads;
-    }
+    if (t::compare(s, "total-threads", n) == 0) { return resources::total_threads; }
+    if (t::compare(s, "total-memory", n) == 0) { return resources::total_memory; }
     return bad_resource;
 }
 

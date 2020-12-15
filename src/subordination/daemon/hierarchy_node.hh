@@ -49,9 +49,9 @@ namespace sbnd {
         inline const resource_array& resources() const noexcept { return this->_resources; }
         inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
 
-        inline uint64_t num_threads() const noexcept {
+        inline uint64_t total_threads() const noexcept {
             using r = sbn::resources::resources;
-            return this->_resources[r::num_threads];
+            return this->_resources[r::total_threads];
         }
 
         friend std::ostream&

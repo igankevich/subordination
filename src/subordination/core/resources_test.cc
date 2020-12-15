@@ -5,7 +5,7 @@
 TEST(resources, io) {
     using namespace sbn::resources;
     using r = resources;
-    auto expected = r::num_threads != 2u;
+    auto expected = r::total_threads != 2u;
     std::clog << *expected << std::endl;
     std::stringstream tmp;
     tmp << *expected;

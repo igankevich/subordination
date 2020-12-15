@@ -218,7 +218,7 @@ namespace sbnd {
         /// The number of threads "behind" this node in the hierarchy.
         inline counter_type thread_concurrency_behind() const noexcept {
             using r = sbn::resources::resources;
-            return this->_resources[r::num_threads];
+            return this->_resources[r::total_threads];
         }
 
         /// The number of kernels that were sent to the client, but have not returned yet.

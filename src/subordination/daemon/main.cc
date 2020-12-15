@@ -88,7 +88,9 @@ sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
 void sbnd::Main::update_resources() {
     using r = sbn::resources::resources;
     this->_resources.clear();
-    this->_resources.set(r::num_threads, sys::thread_concurrency());
+    this->_resources.set(r::total_threads, sys::thread_concurrency());
+    sys::information info;
+    this->_resources.set(r::total_memory, info.total_memory());
 }
 
 void sbnd::Main::update_discoverers() {

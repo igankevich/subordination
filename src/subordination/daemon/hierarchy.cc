@@ -22,7 +22,7 @@ sbnd::operator<<(std::ostream& out, const Hierarchy<T>& rhs) {
     out << "subordinates=";
     bool first = true;
     for (const auto& pair : rhs._subordinates) {
-        out << pair.first << '*' << pair.second.num_threads();
+        out << pair.first << '*' << pair.second.total_threads();
         if (!first) { out << ','; }
         first = false;
     }
