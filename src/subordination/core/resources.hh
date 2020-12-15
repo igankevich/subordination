@@ -16,7 +16,7 @@ namespace sbn {
 
         class Any {
         public:
-            enum class Type: uint8_t {Boolean=0, U8=1, U16=2, U32=3, U64=4};
+            enum class Type: uint8_t {Boolean=0, U8=1, U16=2, U32=3, U64=4, String=5};
         private:
             union {
                 bool _b;
@@ -24,6 +24,7 @@ namespace sbn {
                 uint16_t _u16;
                 uint32_t _u32;
                 uint64_t _u64;
+                char* _string;
             };
             Type _type{};
         public:
@@ -32,55 +33,42 @@ namespace sbn {
             inline Any(uint16_t value) noexcept: _u16{value}, _type{Type::U16} {}
             inline Any(uint32_t value) noexcept: _u32{value}, _type{Type::U32} {}
             inline Any(uint64_t value) noexcept: _u64{value}, _type{Type::U64} {}
+            Any(const char* s, size_t n);
+            inline Any(const char* s): Any{s, std::char_traits<char>::length(s)} {}
             inline Type type() const noexcept { return this->_type; }
 
-            template <class T>
-            inline T cast() const noexcept {
-                switch (type()) {
-                    case Any::Type::Boolean: return static_cast<T>(this->_b);
-                    case Any::Type::U8: return static_cast<T>(this->_u8);
-                    case Any::Type::U16: return static_cast<T>(this->_u16);
-                    case Any::Type::U32: return static_cast<T>(this->_u32);
-                    case Any::Type::U64: return static_cast<T>(this->_u64);
-                    default: return T{};
-                }
+            inline bool boolean() const noexcept {
+                if (this->_type != Type::Boolean) { return false; }
+                return this->_b;
+            }
+
+            inline uint64_t unsigned_integer() const noexcept {
+                if (this->_type != Type::U64) { return 0; }
+                return this->_u64;
             }
 
             void write(sys::byte_buffer& out) const;
+            void write(std::ostream& out) const;
             void read(sys::byte_buffer& in);
 
+            void swap(Any& rhs) noexcept;
             Any() = default;
-            ~Any() = default;
-            Any(const Any&) = default;
-            Any& operator=(const Any&) = default;
-            Any(Any&&) = default;
-            Any& operator=(Any&&) = default;
+            ~Any() noexcept;
+            Any(const Any&);
+            Any& operator=(const Any&);
+            inline Any(Any&& rhs) noexcept { swap(rhs); }
+            inline Any& operator=(Any&& rhs) noexcept { swap(rhs); return *this; }
         };
 
+        inline void swap(Any& a, Any& b) noexcept { a.swap(b); }
+
         std::ostream& operator<<(std::ostream& out, const Any& rhs);
-
-        template <class T>
-        inline T cast(const Any& a) noexcept { return a.cast<T>(); }
-
-        /*
-        template <Any::Type t> struct any_to_cpp_type {};
-        template <> struct any_to_cpp_type<Any::Type::Boolean> { using type = bool; };
-        template <> struct any_to_cpp_type<Any::Type::U8> { using type = uint8_t; };
-        template <> struct any_to_cpp_type<Any::Type::U16> { using type = uint16_t; };
-        template <> struct any_to_cpp_type<Any::Type::U32> { using type = uint32_t; };
-        template <> struct any_to_cpp_type<Any::Type::U64> { using type = uint64_t; };
-        template <class T> struct cpp_to_any_type {};
-        template <> struct cpp_to_any_type<bool> { static constexpr const auto value = Any::Type::Boolean; };
-        template <> struct cpp_to_any_type<uint8_t> { static constexpr const auto value = Any::Type::U8; };
-        template <> struct cpp_to_any_type<uint16_t> { static constexpr const auto value = Any::Type::U16; };
-        template <> struct cpp_to_any_type<uint32_t> { static constexpr const auto value = Any::Type::U32; };
-        template <> struct cpp_to_any_type<uint64_t> { static constexpr const auto value = Any::Type::U64; };
-        */
 
         enum class resources: uint32_t {
             total_threads=0,
             total_memory=1,
-            size=2,
+            hostname=2,
+            size=3,
         };
 
         const char* resource_to_string(resources r) noexcept;
@@ -91,7 +79,7 @@ namespace sbn {
             using value_type = uint64_t;
         private:
             // total-threads should be at least 1
-            std::array<value_type,size_t(resources::size)> _data{1};
+            std::array<value_type,size_t(resources::size)> _data{uint64_t{1}};
         public:
             inline value_type get(resources r) const noexcept {
                 return this->_data[static_cast<size_t>(r)];

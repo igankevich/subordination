@@ -2,6 +2,7 @@
 #include <iterator>
 
 #include <unistdx/base/log_message>
+#include <unistdx/ipc/process>
 #include <unistdx/it/field_iterator>
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/interface_addresses>
@@ -91,6 +92,7 @@ void sbnd::Main::update_resources() {
     this->_resources.set(r::total_threads, sys::thread_concurrency());
     sys::information info;
     this->_resources.set(r::total_memory, info.total_memory());
+    //this->_resources.set(r::hostname, sys::this_process::hostname());
 }
 
 void sbnd::Main::update_discoverers() {

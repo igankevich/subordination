@@ -353,7 +353,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
             continue;
         }
         // skip nodes that do not match resource specification
-        if (node_filter && !node_filter->evaluate(client.resources()).cast<bool>()) {
+        if (node_filter && !node_filter->evaluate(client.resources()).boolean()) {
             log("neighbour skip (node filter) _ filter _", client.socket_address(), *node_filter);
             continue;
         }
@@ -415,7 +415,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
     } else {
         // If the local node does not have the required resources,
         // return the kernel to its parent.
-        if (node_filter && !node_filter->evaluate(this->_local_resources).cast<bool>()) {
+        if (node_filter && !node_filter->evaluate(this->_local_resources).boolean()) {
             if (k->source()) {
                 for (auto first=clients.begin(); first != last; ++first) {
                     const auto& address = first->first;

@@ -15,3 +15,31 @@ TEST(resources, io) {
     tmp2 << *actual;
     EXPECT_EQ(tmp.str(), tmp2.str());
 }
+
+TEST(resources, string) {
+    using namespace sbn::resources;
+    using r = resources;
+    auto expected = r::hostname != "x";
+    std::clog << *expected << std::endl;
+    std::stringstream tmp;
+    tmp << *expected;
+    auto actual = sbn::resources::read(tmp, 10);
+    std::clog << *actual << std::endl;
+    std::stringstream tmp2;
+    tmp2 << *actual;
+    EXPECT_EQ(tmp.str(), tmp2.str());
+}
+
+TEST(resources, string_escape) {
+    using namespace sbn::resources;
+    using r = resources;
+    auto expected = r::hostname != "\"x\"";
+    std::clog << *expected << std::endl;
+    std::stringstream tmp;
+    tmp << *expected;
+    auto actual = sbn::resources::read(tmp, 10);
+    std::clog << *actual << std::endl;
+    std::stringstream tmp2;
+    tmp2 << *actual;
+    EXPECT_EQ(tmp.str(), tmp2.str());
+}
