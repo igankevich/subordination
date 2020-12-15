@@ -77,13 +77,13 @@ namespace sbn {
         template <> struct cpp_to_any_type<uint64_t> { static constexpr const auto value = Any::Type::U64; };
         */
 
-        enum class resources {
+        enum class resources: uint32_t {
             num_threads=0,
             size=1,
         };
 
-        const char* resources_to_string(resources r) noexcept;
-        resources string_to_resources(const char* s, size_t n) noexcept;
+        const char* resource_to_string(resources r) noexcept;
+        resources string_to_resource(const char* s, size_t n) noexcept;
 
         class Bindings {
         public:
@@ -103,11 +103,11 @@ namespace sbn {
             }
             inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
             inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
-            inline void set(resources r, value_type value) {
+            inline void set(resources r, value_type value) noexcept {
                 this->_data[static_cast<size_t>(r)] = value;
             }
-            inline void clear() { this->_data.fill(value_type{}); }
-            static inline size_t size() noexcept { return size_t(resources::size); }
+            inline void clear() noexcept { this->_data.fill(value_type{}); }
+            static constexpr inline size_t size() noexcept { return size_t(resources::size); }
             inline Bindings& operator+=(const Bindings& y) noexcept {
                 const auto n = size();
                 for (size_t i=0; i<n; ++i) { this->_data[i] += y._data[i]; }

@@ -1,5 +1,4 @@
 #include <cstdlib>
-#include <iostream>
 #include <sstream>
 
 #include <subordination/core/resources.hh>
@@ -76,6 +75,10 @@ namespace {
         }
         return result;
     }
+
+    constexpr const auto bad_resource =
+        sbn::resources::resources(
+            std::numeric_limits<std::underlying_type<sbn::resources::resources>::type>::max());
 
 }
 
@@ -241,7 +244,7 @@ std::ostream& sbn::resources::operator<<(std::ostream& out, const Any& rhs) {
 }
 
 void sbn::resources::Symbol::write(std::ostream& out) const {
-    auto s = resources_to_string(this->_name);
+    auto s = resource_to_string(this->_name);
     out << (s ? s : "unknown");
 }
 
@@ -249,19 +252,19 @@ void sbn::resources::Constant::write(std::ostream& out) const {
     out << this->_value;
 }
 
-const char* sbn::resources::resources_to_string(resources r) noexcept {
+const char* sbn::resources::resource_to_string(resources r) noexcept {
     switch (r) {
         case resources::num_threads: return "num-threads";
         default: return nullptr;
     }
 }
 
-auto sbn::resources::string_to_resources(const char* s, size_t n) noexcept -> resources {
+auto sbn::resources::string_to_resource(const char* s, size_t n) noexcept -> resources {
     using t = std::char_traits<char>;
     if (t::compare(s, "num-threads", n) == 0) {
         return resources::num_threads;
     }
-    return resources{};
+    return bad_resource;
 }
 
 auto sbn::resources::read(const char* first, const char* last, int depth) -> expression_ptr {
@@ -272,8 +275,8 @@ auto sbn::resources::read(const char* first, const char* last, int depth) -> exp
     if (*first == '(' && last[-1] == ')') {
         result = read_expression(first+1, last-1, depth);
     } else {
-        auto r = string_to_resources(first, last-first);
-        if (r != resources{}) {
+        auto r = string_to_resource(first, last-first);
+        if (r != bad_resource) {
             result = expression_ptr(new Symbol(r));
         } else {
             uint64_t v = std::stol(std::string(first, last));
