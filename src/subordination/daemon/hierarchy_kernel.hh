@@ -5,7 +5,7 @@
 #include <unistdx/net/ipv4_address>
 
 #include <subordination/core/kernel.hh>
-#include <subordination/core/resources.hh>
+#include <subordination/daemon/hierarchy_node.hh>
 
 namespace sbnd {
 
@@ -14,11 +14,11 @@ namespace sbnd {
     public:
         using addr_type = sys::ipv4_address;
         using ifaddr_type = sys::interface_address<addr_type>;
-        using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
 
     private:
         ifaddr_type _interface_address;
-        resource_array _resources;
+        hierarchy_node_array _nodes;
 
     public:
 
@@ -26,14 +26,14 @@ namespace sbnd {
 
         inline
         Hierarchy_kernel(const ifaddr_type& interface_address,
-                         const resource_array& resources):
+                         const hierarchy_node_array& nodes):
         _interface_address(interface_address),
-        _resources(resources)
+        _nodes(nodes)
         {}
 
         inline const ifaddr_type& interface_address() const noexcept { return this->_interface_address; }
-        inline const resource_array& resources() const noexcept { return this->_resources; }
-        inline void resources(const resource_array& rhs) { this->_resources = rhs; }
+        inline const hierarchy_node_array& nodes() const noexcept { return this->_nodes; }
+        inline void nodes(const hierarchy_node_array& rhs) { this->_nodes = rhs; }
 
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;

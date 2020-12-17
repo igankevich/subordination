@@ -15,6 +15,7 @@
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/file_system.hh>
+#include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/local_server.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
@@ -150,6 +151,8 @@ namespace sbnd {
         using client_iterator = typename client_table::iterator;
         using id_type = sbn::kernel::id_type;
         using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
+        using hierarchy_type = Hierarchy<ip_address>;
 
     private:
         server_array _servers;
@@ -168,11 +171,9 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr,
-                        const resource_array& resources_behind);
+        void add_client(const sys::socket_address& addr, const hierarchy_type& hierarchy);
         void stop_client(const sys::socket_address& addr);
-        void update_client(const sys::socket_address& addr,
-                           const resource_array& resources_behind);
+        void update_clients(const hierarchy_type& hierarchy);
         void add_server(const interface_address& rhs) {
             this->add_server(sys::ipv4_socket_address(rhs.address(), this->_port), rhs.netmask());
         }

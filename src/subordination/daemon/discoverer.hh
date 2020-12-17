@@ -42,6 +42,7 @@ namespace sbnd {
         using clock_type = std::chrono::system_clock;
         using duration = clock_type::duration;
         using resource_array = sbn::resource_array;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
 
         enum class states {
             initial,
@@ -59,13 +60,14 @@ namespace sbnd {
         states _state = states::initial;
         int _attempts = 0;
         int _max_attempts = 3;
+        int _max_radius = 100;
         bool _profile = false;
 
     public:
 
         discoverer(const ifaddr_type& interface_address,
-                          const sys::port_type port,
-                          const Properties::Discoverer& props);
+                   const sys::port_type port,
+                   const Properties::Discoverer& props);
 
         void on_start() override;
         void on_kernel(sbn::kernel_ptr&& k) override;
@@ -74,7 +76,7 @@ namespace sbnd {
 
         void read_cache();
 
-        void resources(const sbn::resource_array& rhs);
+        void resources(const sbn::resource_array& rhs, hierarchy_node::time_point now);
 
     private:
 
@@ -83,8 +85,7 @@ namespace sbnd {
         inline int max_attempts() const noexcept { return this->_max_attempts; }
         inline const sys::path& cache_directory() const noexcept { return this->_cache_directory; }
 
-        const ifaddr_type&
-        interface_address() const noexcept {
+        inline ifaddr_type interface_address() const noexcept {
             return this->_hierarchy.interface_address();
         }
 
@@ -97,13 +98,9 @@ namespace sbnd {
         void discover();
         void discover_later();
         void reset_iterator();
-        void update_subordinates(pointer<probe> p);
-        void add_subordinate(const sys::socket_address& address);
-        void add_superior(const sys::socket_address& address, const resource_array& weight);
-        void remove_subordinate(const sys::socket_address& address);
-        void remove_superior();
+        void probe_received(pointer<probe> p);
         probe_result process_probe(pointer<probe>& p);
-        void update_superior(pointer<probe> p);
+        void probe_returned(pointer<probe> p);
         //void send_probe(const sys::socket_address& dest);
 
         inline states state() const noexcept { return this->_state; }
@@ -112,11 +109,13 @@ namespace sbnd {
         void on_event(pointer<socket_pipeline_kernel> k);
         void on_client_add(const sys::socket_address& endp);
         void on_client_remove(const sys::socket_address& endp);
-        void broadcast_hierarchy(sys::socket_address ignored_endpoint = sys::socket_address());
+        void broadcast_hierarchy(const sys::socket_address& ignored_endpoint);
         std::string cache_filename() const;
         void write_cache() const;
-        void send_weight(const sys::socket_address& dest, const resource_array& w);
+        void send_weight(const sys::socket_address& dest,
+                         const hierarchy_node_array& nodes);
         void update_weights(pointer<Hierarchy_kernel> k);
+        void update_socket_pipeline_clients(const hierarchy_node_array& nodes);
 
         template <class ... Args> inline void
         log(const char* fmt, const Args& ... args) const {

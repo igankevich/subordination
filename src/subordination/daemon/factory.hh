@@ -75,6 +75,7 @@ namespace sbnd {
             sys::path cache_directory{SBND_SHARED_STATE_DIR};
             sys::ipv4_address::rep_type fanout = 64;
             int max_attempts = 1;
+            int max_radius = 100;
             bool profile = false;
         } discoverer;
         #if defined(SBND_WITH_GLUSTERFS)

@@ -10,6 +10,5 @@ TEST(hierarchy, read_write) {
     sbnd::Hierarchy<sys::ipv4_address> hier2;
     buf.flip();
     buf >> hier2;
-    EXPECT_EQ(hier.interface_address(), hier2.interface_address());
     EXPECT_EQ(hier.socket_address(), hier2.socket_address());
 }

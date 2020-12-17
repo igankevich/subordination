@@ -151,7 +151,7 @@ namespace sbn {
             Expression& operator=(const Expression&) = delete;
             Expression(Expression&&) = delete;
             Expression& operator=(Expression&&) = delete;
-            virtual Any evaluate(Bindings& context) const noexcept = 0;
+            virtual Any evaluate(const Bindings& context) const noexcept = 0;
             virtual void write(sys::byte_buffer& out) const = 0;
             virtual void read(sys::byte_buffer& in) = 0;
             virtual void write(std::ostream& out) const = 0;
@@ -168,7 +168,7 @@ namespace sbn {
             resources _name{};
         public:
             inline explicit Symbol(resources name) noexcept: _name(name) {}
-            Any evaluate(Bindings& context) const noexcept override;
+            Any evaluate(const Bindings& context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
             void write(std::ostream& out) const override;
@@ -185,7 +185,7 @@ namespace sbn {
             Any _value{};
         public:
             inline explicit Constant(Any value) noexcept: _value(value) {}
-            Any evaluate(Bindings& context) const noexcept override;
+            Any evaluate(const Bindings& context) const noexcept override;
             void write(sys::byte_buffer& out) const override;
             void read(sys::byte_buffer& in) override;
             void write(std::ostream& out) const override;
@@ -203,7 +203,7 @@ namespace sbn {
                 expression_ptr _arg; \
             public: \
                 inline explicit NAME(expression_ptr&& arg) noexcept: _arg(std::move(arg)) {} \
-                Any evaluate(Bindings& context) const noexcept override; \
+                Any evaluate(const Bindings& context) const noexcept override; \
                 void write(sys::byte_buffer& out) const override; \
                 void read(sys::byte_buffer& in) override; \
                 void write(std::ostream& out) const override; \
@@ -227,7 +227,7 @@ namespace sbn {
             public: \
                 inline explicit NAME(expression_ptr&& a, expression_ptr&& b) noexcept: \
                 _a(std::move(a)), _b(std::move(b)) {} \
-                Any evaluate(Bindings& context) const noexcept override; \
+                Any evaluate(const Bindings& context) const noexcept override; \
                 void write(sys::byte_buffer& out) const override; \
                 void read(sys::byte_buffer& in) override; \
                 void write(std::ostream& out) const override; \

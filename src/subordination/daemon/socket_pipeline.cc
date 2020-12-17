@@ -86,13 +86,15 @@ namespace sbnd {
         using counter_type = socket_pipeline::counter_type;
         using kernel_queue = std::deque<sbn::kernel_ptr>;
         using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
 
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
         counter_type _num_kernels = 0;
+        hierarchy_node_array _nodes_behind;
+        counter_type _sum_thread_concurrency;
         bool _route = false;
-        resource_array _resources;
 
     public:
 
@@ -183,9 +185,38 @@ namespace sbnd {
         inline bool route() const noexcept { return this->_route; }
         inline void route(bool rhs) noexcept { this->_route = rhs; }
 
+        inline const hierarchy_node_array& nodes_behind() const noexcept {
+            return this->_nodes_behind;
+        }
+
+        inline void nodes_behind(const hierarchy_node_array& rhs) noexcept {
+            this->_nodes_behind = rhs;
+            update_counters();
+        }
+
+        inline void update_counters() {
+            using r = sbn::resources::resources;
+            counter_type sum = 0;
+            for (const auto& n : this->_nodes_behind) {
+                sum += n.resources()[r::total_threads];
+            }
+            this->_sum_thread_concurrency = sum;
+        }
+
+        inline bool match(sbn::kernel::resource_expression& node_filter) {
+            for (const auto& n : this->_nodes_behind) {
+                if (node_filter.evaluate(n.resources()).boolean()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /*
         inline const resource_array& resources() const noexcept { return this->_resources; }
         inline resource_array& resources() noexcept { return this->_resources; }
         inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
+        */
 
         void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
             if (!route()) {
@@ -217,8 +248,7 @@ namespace sbnd {
 
         /// The number of threads "behind" this node in the hierarchy.
         inline counter_type thread_concurrency_behind() const noexcept {
-            using r = sbn::resources::resources;
-            return this->_resources[r::total_threads];
+            return this->_sum_thread_concurrency;
         }
 
         /// The number of kernels that were sent to the client, but have not returned yet.
@@ -353,7 +383,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
             continue;
         }
         // skip nodes that do not match resource specification
-        if (node_filter && !node_filter->evaluate(client.resources()).boolean()) {
+        if (node_filter && !client.match(*node_filter)) {
             log("neighbour skip (node filter) _ filter _", client.socket_address(), *node_filter);
             continue;
         }
@@ -759,19 +789,15 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
 }
 
 void sbnd::socket_pipeline::add_client(const sys::socket_address& addr,
-                                       const resource_array& resources_behind) {
+                                       const hierarchy_type& hierarchy) {
     auto ptr = this->do_add_client(addr);
-    ptr->resources(resources_behind);
+    ptr->nodes_behind(hierarchy.nodes_behind(addr));
 }
 
 void
-sbnd::socket_pipeline::update_client(const sys::socket_address& addr,
-                                     const resource_array& resources_behind) {
-    lock_type lock(this->_mutex);
-    //auto ptr = find_or_create_client(addr);
-    //ptr->thread_concurrency_behind(new_num_nodes_behind);
-    auto result = this->_clients.find(addr);
-    if (result != this->_clients.end()) {
-        result->second->resources(resources_behind);
+sbnd::socket_pipeline::update_clients(const hierarchy_type& hierarchy) {
+    for (auto& pair : this->_clients) {
+        auto& client = pair.second;
+        client->nodes_behind(hierarchy.nodes_behind(client->socket_address()));
     }
 }

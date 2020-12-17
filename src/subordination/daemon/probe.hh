@@ -15,12 +15,13 @@ namespace sbnd {
     public:
         using addr_type = sys::ipv4_address;
         using ifaddr_type = sys::interface_address<addr_type>;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
 
     private:
         ifaddr_type _ifaddr;
         sys::socket_address _old_superior;
         sys::socket_address _new_superior;
-        hierarchy_node _superior;
+        hierarchy_node_array _nodes;
 
     public:
 
@@ -43,8 +44,9 @@ namespace sbnd {
         inline const sys::socket_address& new_superior() const noexcept { return this->_new_superior; }
         inline const sys::socket_address& old_superior() const noexcept { return this->_old_superior; }
         inline const ifaddr_type& interface_address() const noexcept { return this->_ifaddr; }
-        inline const hierarchy_node& superior() const noexcept { return this->_superior; }
-        inline void superior(const hierarchy_node& rhs) noexcept { this->_superior = rhs; }
+        inline const hierarchy_node_array& nodes() const noexcept { return this->_nodes; }
+        inline void nodes(const hierarchy_node_array& rhs) { this->_nodes = rhs; }
+        inline void nodes(hierarchy_node_array&& rhs) { this->_nodes = std::move(rhs); }
 
     };
 

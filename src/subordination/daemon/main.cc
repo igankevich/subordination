@@ -120,8 +120,9 @@ void sbnd::Main::update_discoverers() {
         this->add_discoverer(interface_address);
     }
     // update resources
+    const auto now = hierarchy_node::clock::now();
     for (auto& pair : this->_discoverers) {
-        pair.second->resources(this->_resources);
+        pair.second->resources(this->_resources, now);
     }
     this->send_timer();
 }

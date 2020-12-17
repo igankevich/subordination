@@ -161,55 +161,55 @@ auto sbn::resources::Any::operator=(const Any& rhs) -> Any& {
     return *this;
 }
 
-auto sbn::resources::Symbol::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Symbol::evaluate(const Bindings& b) const noexcept -> Any {
     return b.get(this->_name);
 }
-auto sbn::resources::Constant::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Constant::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_value;
 }
-auto sbn::resources::Not::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Not::evaluate(const Bindings& b) const noexcept -> Any {
     return !this->_arg->evaluate(b).boolean();
 }
-auto sbn::resources::Negate::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Negate::evaluate(const Bindings& b) const noexcept -> Any {
     return -this->_arg->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::And::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::And::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).boolean() && this->_b->evaluate(b).boolean();
 }
-auto sbn::resources::Or::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Or::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).boolean() || this->_b->evaluate(b).boolean();
 }
-auto sbn::resources::Xor::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Xor::evaluate(const Bindings& b) const noexcept -> Any {
     return bool(this->_a->evaluate(b).boolean() ^ this->_b->evaluate(b).boolean());
 }
-auto sbn::resources::Less_than::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Less_than::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() < this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Less_or_equal::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Less_or_equal::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() <= this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Equal::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Equal::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() == this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Greater_than::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Greater_than::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() > this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Greater_or_equal::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Greater_or_equal::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() >= this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Add::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Add::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() + this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Subtract::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Subtract::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() - this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Multiply::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Multiply::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() * this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Quotient::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Quotient::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() / this->_b->evaluate(b).unsigned_integer();
 }
-auto sbn::resources::Remainder::evaluate(Bindings& b) const noexcept -> Any {
+auto sbn::resources::Remainder::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() % this->_b->evaluate(b).unsigned_integer();
 }
 

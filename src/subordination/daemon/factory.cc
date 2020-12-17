@@ -76,6 +76,12 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
             throw std::out_of_range("out of range");
         }
         discoverer.max_attempts = static_cast<int>(v);
+    } else if (key == "discoverer.max-radius") {
+        auto v = std::stoul(value);
+        if (v > std::numeric_limits<int>::max() || v == 0) {
+            throw std::out_of_range("out of range");
+        }
+        discoverer.max_radius = static_cast<int>(v);
     } else if (key == "discoverer.cache-directory") {
         discoverer.cache_directory = value;
     } else if (key == "discoverer.profile") {
