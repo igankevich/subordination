@@ -9,7 +9,7 @@
   (source "@source_root@")
   (build-system meson-build-system)
   (arguments `(#:build-type "release"
-               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-march=native"
+               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-O0"
                                        "-Dwith_glusterfs=true" "-Dwith_debug=true")
                #:tests? #f))
   (inputs

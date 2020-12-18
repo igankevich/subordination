@@ -131,7 +131,7 @@ int sbn::python::Py_kernel_init(Py_kernel* self, PyObject* args, PyObject* kwds)
     else
     {
         auto cpp_kernel = new Cpp_kernel((PyObject*)self);
-        self->_cpp_kernel_capsule = PyCapsule_New((void *)cpp_kernel, "ptr", nullptr);
+        self->_cpp_kernel_capsule = PyCapsule_New(cpp_kernel, "ptr", nullptr);
     }
 
     return 0;
@@ -162,11 +162,7 @@ void sbn::python::Cpp_kernel::act() {
     sys::log_message(">>>> Sbn", "Cpp_kernel.act");
     sys::log_message("test", "Sbn: Cpp_kernel.act");
     Python_lock lock;
-    object pValue = PyObject_CallMethod(this->py_kernel_obj(), "act", nullptr);
-    if (!pValue) {
-        PyErr_Print();
-        sbn::exit(1);
-    }
+    this->_py_kernel_obj.call("act", nullptr);
 }
 
 void sbn::python::Cpp_kernel::react(sbn::kernel_ptr&& cpp_child_ptr){
@@ -174,75 +170,53 @@ void sbn::python::Cpp_kernel::react(sbn::kernel_ptr&& cpp_child_ptr){
     sys::log_message("test", "Sbn: Cpp_kernel.react");
     Python_lock lock;
     auto cpp_child = sbn::pointer_dynamic_cast<Cpp_kernel>(std::move(cpp_child_ptr));
-    object pValue = PyObject_CallMethod(this->py_kernel_obj(), "react", "O", cpp_child->py_kernel_obj());
-    if (!pValue) {
-        PyErr_Print();
-        sbn::exit(1);
-    }
+    this->_py_kernel_obj.call("react", "O", cpp_child->py_kernel_obj());
 }
 
 void sbn::python::Cpp_kernel::write(sbn::kernel_buffer& out) const {
     sys::log_message(">>>> Sbn", "Cpp_kernel.write");
     sys::log_message("test", "Sbn: Cpp_kernel.write");
-    kernel::write(out);
     Python_lock lock;
-
+    kernel::write(out);
     object pickle_module = PyImport_ImportModule("pickle"); // import module
-
-    object pkl_py_kernel_obj = PyObject_CallMethod(pickle_module.get(), "dumps", "O", this->_py_kernel_obj);
-    object py_bytearr_py_kernel_obj = PyByteArray_FromObject(pkl_py_kernel_obj.get());
-    const char* bytearr_py_kernel_obj = PyByteArray_AsString(py_bytearr_py_kernel_obj.get());
-
-    Py_ssize_t size_py_kernel_obj = PyByteArray_Size(py_bytearr_py_kernel_obj.get());
-    std::string str_py_kernel_obj(bytearr_py_kernel_obj, size_py_kernel_obj);
-
-    out << str_py_kernel_obj;
-    out << size_py_kernel_obj;
+    object pkl_py_kernel_obj = pickle_module.call("dumps", "O", this->_py_kernel_obj.get());
+    byte_array bytes{pkl_py_kernel_obj.get()};
+    const int64_t n = bytes.size();
+    out.write(n);
+    out.write(bytes.data(), n);
 }
 
 void sbn::python::Cpp_kernel::read(sbn::kernel_buffer& in) {
     sys::log_message(">>>> Sbn", "Cpp_kernel.read");
     sys::log_message("test", "Sbn: Cpp_kernel.read");
-    kernel::read(in);
     Python_lock lock;
-
+    kernel::read(in);
     object pickle_module = PyImport_ImportModule("pickle"); // import module
-
-    std::string str_py_kernel_obj;
-    Py_ssize_t size_py_kernel_obj;
-    in >> str_py_kernel_obj;
-    in >> size_py_kernel_obj;
-
-    const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
-    object py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
-    object py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj.get());
-
-    this->py_kernel_obj(py_kernel_obj.get());
-    PyObject_CallMethod(py_kernel_obj.get(), "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
+    byte_array bytes;
+    int64_t n = 0;
+    in.read(n);
+    bytes.resize(n);
+    in.read(bytes.data(), n);
+    sys::log_message("python", "size _ kernel _", n, *this);
+    py_kernel_obj(pickle_module.call("loads", "O", bytes.get()));
+    this->_py_kernel_obj.call("_set_Cpp_kernel", "O", PyCapsule_New(this, "ptr", nullptr));
 }
 
 
 void sbn::python::Main::read(sbn::kernel_buffer& in) {
     sys::log_message(">>>> Sbn", "Main.read");
     sys::log_message("test", "Sbn: Main.read");
-    sbn::kernel::read(in);
     Python_lock lock;
-
-    if (in.remaining() != 0)
-    {
+    sbn::kernel::read(in);
+    if (in.remaining() != 0) {
         object pickle_module = PyImport_ImportModule("pickle"); // import module
-
-        std::string str_py_kernel_obj;
-        Py_ssize_t size_py_kernel_obj;
-        in >> str_py_kernel_obj;
-        in >> size_py_kernel_obj;
-
-        const char* bytearr_py_kernel_obj = str_py_kernel_obj.data();
-        object py_bytearr_py_kernel_obj = PyByteArray_FromStringAndSize(bytearr_py_kernel_obj, size_py_kernel_obj);
-        object py_kernel_obj = PyObject_CallMethod(pickle_module, "loads", "O", py_bytearr_py_kernel_obj.get());
-
-        this->py_kernel_obj(py_kernel_obj.get());
-        PyObject_CallMethod(py_kernel_obj.get(), "_set_Cpp_kernel", "O", PyCapsule_New((void *)this, "ptr", nullptr));
+        byte_array bytes;
+        int64_t n = 0;
+        in.read(n);
+        bytes.resize(n);
+        in.read(bytes.data(), n);
+        py_kernel_obj(pickle_module.call("loads", "O", bytes.get()));
+        this->_py_kernel_obj.call("_set_Cpp_kernel", "O", PyCapsule_New(this, "ptr", nullptr));
     }
 }
 
@@ -252,18 +226,11 @@ void sbn::python::Main::act() {
     Python_lock lock;
     if (target_application()) {
         object main_module = PyImport_Import(object(PyUnicode_DecodeFSDefault("__main__")).get());
-        if (main_module) {
-            object py_main_obj = PyObject_CallMethod(
-                main_module, "Main", "O", PyCapsule_New((void *)this, "ptr", nullptr));
-            this->py_kernel_obj(py_main_obj);
-            object pValue = PyObject_CallMethod(py_main_obj, "act", nullptr);
-            if (!pValue) {
-                PyErr_Print();
-                sbn::exit(1);
-            }
-        } else {
+        if (!main_module) {
             PyErr_Print();
-            sbn::exit(1);
+            throw std::runtime_error("failed to find __main__ module");
         }
+        py_kernel_obj(main_module.call("Main", "O", PyCapsule_New(this, "ptr", nullptr)));
+        this->_py_kernel_obj.call("act", nullptr);
     }
 }
