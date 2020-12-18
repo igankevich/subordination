@@ -119,7 +119,7 @@ sbn::resources::Any::Any(const char* s, size_t n): _type{Type::String} {
 }
 
 sbn::resources::Any::~Any() noexcept {
-    if (type() == Type::String) { delete this->_string; }
+    if (type() == Type::String) { delete[] this->_string; }
 }
 
 void sbn::resources::Any::swap(Any& rhs) noexcept {
