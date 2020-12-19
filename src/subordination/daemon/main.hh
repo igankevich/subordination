@@ -21,7 +21,6 @@ namespace sbnd {
         using addr_type = sys::ipv4_address;
         using uint_type = addr_type::rep_type;
         using ifaddr_type = sys::interface_address<addr_type>;
-        using traits_type = typename sys::ipaddr_traits<addr_type>;
         using interface_address_set = std::unordered_set<ifaddr_type>;
         using discoverer_table = std::unordered_map<ifaddr_type,discoverer*>;
         using map_iterator = typename discoverer_table::iterator;

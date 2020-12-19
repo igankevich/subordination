@@ -235,6 +235,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
         k->principal(k->parent());
         k->id(orig->id());
         this->_upstream.erase(result);
+        /*
         #if defined(SBN_DEBUG)
         {
             auto parent = k->parent();
@@ -246,6 +247,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
             log("all kernels:\n_", tmp.str());
         }
         #endif
+        */
     }
 }
 

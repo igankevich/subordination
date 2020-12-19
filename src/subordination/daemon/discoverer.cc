@@ -57,6 +57,7 @@ void sbnd::discoverer::on_kernel(sbn::kernel_ptr&& k) {
 }
 
 void sbnd::discoverer::discover() {
+    log("hierarchy _", this->_hierarchy);
     if (this->_iterator == this->_end) {
         reset_iterator();
         log("_: all addresses have been probed", interface_address());

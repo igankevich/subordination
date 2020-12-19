@@ -93,7 +93,7 @@ namespace sbnd {
         sys::socket_address _old_bind_address;
         counter_type _num_kernels = 0;
         hierarchy_node_array _nodes_behind;
-        counter_type _sum_thread_concurrency;
+        counter_type _sum_thread_concurrency{1};
         bool _route = false;
 
     public:
@@ -379,18 +379,21 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         // skip stopped clients
         if (client.state() != sbn::connection_state::started) {
             log("neighbour skip (inactive) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(), client.thread_concurrency_behind());
+                client.socket_address(), client.num_kernels(),
+                client.thread_concurrency_behind());
             continue;
         }
         // skip nodes that do not match resource specification
         if (node_filter && !client.match(*node_filter)) {
-            log("neighbour skip (node filter) _ filter _", client.socket_address(), *node_filter);
+            log("neighbour skip (node filter) _ filter _", client.socket_address(),
+                *node_filter);
             continue;
         }
         // do not send the kernel back
         if (address == k->source()) {
             log("neighbour skip (source) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(), client.thread_concurrency_behind());
+                client.socket_address(), client.num_kernels(),
+                client.thread_concurrency_behind());
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
@@ -523,10 +526,10 @@ void sbnd::socket_pipeline::remove_client(client_iterator result) {
 }
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
-    using traits_type = sys::ipaddr_traits<ip_address>;
-    interface_address interface_address(traits_type::address(rhs), netmask);
+    auto sa = sys::socket_address_cast<sys::ipv4_socket_address>(rhs);
+    interface_address interface_address(sa.address(), netmask);
     if (this->find_server(interface_address) == this->_servers.end()) {
-        auto ptr = std::make_shared<socket_pipeline_server>(interface_address, traits_type::port(rhs));
+        auto ptr = std::make_shared<socket_pipeline_server>(interface_address, sa.port());
         ptr->parent(this);
         this->_servers.emplace_back(ptr);
         #if defined(SBN_DEBUG)

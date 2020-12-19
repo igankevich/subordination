@@ -81,7 +81,6 @@ struct Test_socket: public sbn::kernel {
 
     void act() override {
         message("act _", sys::this_process::hostname());
-        //std::clog << "Test_socket::act()" << std::endl;
         if (failure == Failure::Slave) {
             if (role == Role::Slave) {
                 // Delete kernel for Valgrind memory checker.

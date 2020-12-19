@@ -94,7 +94,7 @@ sbnd::Hierarchy<T>::resources(const resource_array& rhs, time_point now) {
 template <class T> std::ostream&
 sbnd::operator<<(std::ostream& out, const Hierarchy<T>& rhs) {
     auto result = rhs._nodes.find(rhs._this_node.superior_socket_address());
-    out << "interface-address=" << rhs.interface_address() << ',';
+    out << "interface-socket-address=" << rhs.interface_socket_address() << ',';
     out << "superior=";
     if (result != rhs._nodes.end()) { out << result->second; }
     out << ',';

@@ -73,10 +73,11 @@ void sbnd::Main::act() {
 
 auto
 sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
+    using families = sys::socket_address_family;
     interface_address_set new_ifaddrs;
     sys::interface_addresses addrs;
     for (const sys::interface_addresses::value_type& ifa : addrs) {
-        if (ifa.ifa_addr && ifa.ifa_addr->sa_family == traits_type::family) {
+        if (ifa.ifa_addr && families(ifa.ifa_addr->sa_family) == families::ipv4) {
             ifaddr_type a(*ifa.ifa_addr, *ifa.ifa_netmask);
             if (!a.is_loopback() && !a.is_widearea()) {
                 new_ifaddrs.emplace(a);
@@ -288,7 +289,8 @@ sbnd::Main::find_discoverer(const addr_type& a) -> map_iterator {
 void sbnd::Main::on_event(pointer<socket_pipeline_kernel> ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
-        const addr_type& a = traits_type::address(ev->socket_address());
+        auto sa = sys::socket_address_cast<sys::ipv4_socket_address>(ev->socket_address());
+        const auto& a = sa.address();
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {
             log("bad event socket address _", a);
