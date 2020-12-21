@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 
 #include <subordination/core/resources.hh>
@@ -109,6 +110,22 @@ namespace {
     constexpr const auto bad_resource =
         sbn::resources::resources(
             std::numeric_limits<std::underlying_type<sbn::resources::resources>::type>::max());
+
+    constexpr char valid_chars[] = {
+        '-', '%', '.'
+    };
+
+    std::pair<uint64_t,bool>
+    string_to_unsigned_integer(const std::string& value) {
+        try {
+            size_t pos = 0;
+            auto v = std::stol(value, &pos);
+            if (v < 0 || pos != value.size()) { return std::make_pair(0,false); }
+            return std::make_pair(v,true);
+        } catch (const std::invalid_argument& err) {
+            return std::make_pair(0,false);
+        }
+    }
 
 }
 
@@ -232,9 +249,13 @@ void sbn::resources::Any::write(sys::byte_buffer& out) const {
         case Any::Type::Boolean: out.write(this->_b); break;
         case Any::Type::U64: out.write(this->_u64); break;
         case Any::Type::String: {
-            const uint32_t n = t::length(this->_string);
-            out.write(n);
-            out.write(this->_string, n);
+            if (this->_string) {
+                const uint32_t n = t::length(this->_string);
+                out.write(n);
+                out.write(this->_string, n);
+            } else {
+                out.write(uint32_t{});
+            }
             break;
         }
         default: break;
@@ -249,7 +270,14 @@ void sbn::resources::Any::read(sys::byte_buffer& in) {
         case Any::Type::String: {
             uint32_t n = 0;
             in.read(n);
-            in.read(this->_string, n);
+            if (n != 0) {
+                if (this->_string) { delete[] this->_string; this->_string = nullptr; }
+                this->_string = new char[n+1];
+                in.read(this->_string, n);
+                this->_string[n] = 0;
+            } else {
+                this->_string = nullptr;
+            }
             break;
         }
         default: break;
@@ -273,7 +301,10 @@ void sbn::resources::Name::read(sys::byte_buffer& in) { in.read(this->_name); }
 void sbn::resources::Constant::read(sys::byte_buffer& in) { this->_value.read(in); }
 
 #define SBN_RESOURCES_UNARY_OPERATION_IO(NAME, HUMAN_NAME) \
-    void sbn::resources::NAME::write(sys::byte_buffer& out) const { this->_arg->write(out); } \
+    void sbn::resources::NAME::write(sys::byte_buffer& out) const { \
+        out.write(Expressions::NAME); \
+        this->_arg->write(out); \
+    } \
     void sbn::resources::NAME::read(sys::byte_buffer& in) { \
         this->_arg = ::sbn::resources::read(in); \
     } \
@@ -403,10 +434,14 @@ auto sbn::resources::read(const char* first, const char* last, int depth) -> exp
             result = expression_ptr(new Symbol(r));
         } else {
             std::string value(first, last);
-            try {
-                uint64_t v = std::stol(value);
+            uint64_t v; bool success;
+            std::tie(v,success) = string_to_unsigned_integer(value);
+            if (success) {
                 result = expression_ptr(new Constant(v));
-            } catch (const std::invalid_argument& err) {
+            } else {
+                if (!is_valid_name(first, last)) {
+                    throw std::invalid_argument("bad symbol name");
+                }
                 result = expression_ptr(new Name(std::move(value)));
             }
         }
@@ -423,10 +458,22 @@ auto sbn::resources::read(std::istream& in, int max_depth) -> expression_ptr {
 
 void sbn::resources::Bindings::write(sys::byte_buffer& out) const {
     for (const auto& x : this->_data) { x.write(out); }
+    out.write(uint32_t(this->_symbols.size()));
+    for (const auto& x : this->_symbols) { out.write(x.first); x.second.write(out); }
 }
 
 void sbn::resources::Bindings::read(sys::byte_buffer& in) {
+    clear();
     for (auto& x : this->_data) { x.read(in); }
+    uint32_t nsymbols = 0;
+    in.read(nsymbols);
+    for (uint32_t i=0; i<nsymbols; ++i) {
+        std::string key;
+        Any value;
+        in.read(key);
+        value.read(in);
+        this->_symbols.emplace(std::move(key), std::move(value));
+    }
 }
 
 void sbn::resources::Bindings::write(std::ostream& out) const {
@@ -440,4 +487,18 @@ void sbn::resources::Bindings::write(std::ostream& out) const {
         out << "(define " << resource_to_string(resources(i)) << ' '
             << this->_data[i] << ")\n";
     }
+}
+
+bool sbn::resources::is_valid_name(const char* first, const char* last) noexcept {
+    using t = std::char_traits<char>;
+    // may not start with a digit
+    if (first != last && std::isdigit(*first)) { return false; }
+    while (first != last) {
+        const auto ch = *first;
+        if (!(std::isalnum(ch) || t::find(valid_chars, sizeof(valid_chars), ch))) {
+            return false;
+        }
+        ++first;
+    }
+    return true;
 }

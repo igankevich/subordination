@@ -4,5 +4,6 @@
 #define SBND_PATH "@sbnd_exe_path@"
 #define SBNC_PATH "@sbnc_exe_path@"
 #define APP_PATH "@app_exe_path@"
+#define RESOURCES_APP_PATH "@resources_test_application@"
 
 #endif // vim:filetype=cpp

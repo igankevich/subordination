@@ -86,6 +86,12 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         discoverer.cache_directory = value;
     } else if (key == "discoverer.profile") {
         discoverer.profile = sbn::string_to_bool(value);
+    } else if (key.compare(0, 10, "resources.") == 0) {
+        std::string name = key.substr(10);
+        if (!sbn::resources::is_valid_name(name.data(), name.data()+name.size())) {
+            throw std::invalid_argument("bad symbol name");
+        }
+        resources.expressions[name] = sbn::resources::read(value, 10);
     #if defined(SBND_WITH_GLUSTERFS)
     } else if (key == "glusterfs.working-directory") {
         glusterfs.working_directory = value;
@@ -220,10 +226,11 @@ auto sbnd::string_to_factory_flags(const std::string& s) -> factory_flags {
 }
 
 std::istream& sbnd::operator>>(std::istream& in, sbnd::factory_flags& rhs) {
-    enum { initial, negative, positive } state = initial;
+    enum { initial, negative, positive, finished } state = initial;
     char ch;
     std::string name;
-    while (!in.get(ch).eof()) {
+    while (state != finished) {
+        ch = in.get();
         switch (state) {
             case initial:
                 if (ch == '-') { state = negative; }
@@ -233,7 +240,7 @@ std::istream& sbnd::operator>>(std::istream& in, sbnd::factory_flags& rhs) {
                 break;
             case negative:
             case positive:
-                if (ch == '+' || ch == '-' || ch == ' ') {
+                if (ch == '+' || ch == '-' || ch == ' ' || in.eof()) {
                     using f = sbnd::factory_flags;
                     f new_flag{};
                     if (name == "local") { new_flag = f::local; }
@@ -251,7 +258,10 @@ std::istream& sbnd::operator>>(std::istream& in, sbnd::factory_flags& rhs) {
                     name += ch;
                 }
                 break;
+            default:
+                break;
         }
+        if (in.eof()) { state = finished; }
     }
     return in;
 }

@@ -373,6 +373,10 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         return false;
     }();
     auto node_filter = k->node_filter();
+    bool node_filter_local_matches = true;
+    if (node_filter && !node_filter->evaluate(this->_local_resources).boolean()) {
+        node_filter_local_matches = false;
+    }
     for (auto first=clients.begin(); first != last; ++first) {
         const auto& address = first->first;
         auto& client = *first->second;
@@ -397,7 +401,8 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
-                    client.weight() < this->_local_num_kernels) {
+                    client.weight() < this->_local_num_kernels ||
+                    !node_filter_local_matches) {
                     result = first;
                 }
             } else {
@@ -442,13 +447,13 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         // increase the number of kernels
         auto& client = result->second;
         client->num_kernels_increment(k->weight());
-        log("neighbour _ num-kernels _ num-nodes-behind _ local-num-kernels _ path _ nodes_",
+        log("neighbour _ num-kernels _ num-threads-behind _ local-num-kernels _ path _ nodes_",
             client->socket_address(), client->num_kernels(), client->thread_concurrency_behind(),
             this->_local_num_kernels, path, tmp.str());
     } else {
         // If the local node does not have the required resources,
         // return the kernel to its parent.
-        if (node_filter && !node_filter->evaluate(this->_local_resources).boolean()) {
+        if (!node_filter_local_matches) {
             if (k->source()) {
                 for (auto first=clients.begin(); first != last; ++first) {
                     const auto& address = first->first;
@@ -459,7 +464,8 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                 }
             }
             k->return_to_parent(sbn::exit_code::no_resources);
-            log("neighbour return-to-parent: parent _ filter _ ", k->source(), *node_filter);
+            log("neighbour return-to-parent: parent _ filter _ nclients _ carry _",
+                k->source(), *node_filter, clients.size(), k->carries_parent());
         }
         if (result == last) {
             increment(this->_local_num_kernels, kernel_weight);

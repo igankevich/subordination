@@ -89,7 +89,7 @@ sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
 
 void sbnd::Main::update_resources() {
     using r = sbn::resources::resources;
-    this->_resources.clear();
+    //this->_resources.clear();
     this->_resources[r::total_threads] = sys::thread_concurrency();
     sys::information info;
     this->_resources[r::total_memory] = info.total_memory();
@@ -323,4 +323,8 @@ _discoverer_properties(props.discoverer) {
         if (x) { this->_allowedifaddrs.insert(x); }
     }
     this->_interval = props.network.interface_update_interval;
+    update_resources();
+    for (auto& pair : props.resources.expressions) {
+        this->_resources[pair.first] = pair.second->evaluate(this->_resources);
+    }
 }

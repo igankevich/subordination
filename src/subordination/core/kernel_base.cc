@@ -5,13 +5,14 @@
 #include <subordination/core/kernel_base.hh>
 
 namespace {
-    std::array<const char*,6> all_exit_codes{
+    std::array<const char*,7> all_exit_codes{
         "success",
         "undefined",
         "error",
         "endpoint_not_connected",
         "no_principal_found",
         "no_upstream_servers_available",
+        "no_resources",
     };
 }
 

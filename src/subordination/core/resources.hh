@@ -113,7 +113,10 @@ namespace sbn {
             inline void unset(const std::string& s) { this->_symbols.erase(s); }
             inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
             inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
-            inline void clear() noexcept { this->_data.fill(value_type{}); }
+            inline void clear() noexcept {
+                this->_data.fill(value_type{});
+                this->_symbols.clear();
+            }
             static constexpr inline size_t size() noexcept { return size_t(resources::size); }
             void write(sys::byte_buffer& out) const;
             void read(sys::byte_buffer& in);
@@ -124,6 +127,8 @@ namespace sbn {
             Bindings& operator=(const Bindings&) = default;
             Bindings(Bindings&&) = default;
             Bindings& operator=(Bindings&&) = default;
+            friend bool operator==(const Bindings& a, const Bindings& b);
+            friend bool operator!=(const Bindings& a, const Bindings& b);
         };
 
         inline std::ostream& operator<<(std::ostream& out, const Bindings& rhs) {
@@ -135,15 +140,11 @@ namespace sbn {
             for (size_t i=0; i<n; ++i) {
                 if (a[i] != b[i]) { return false; }
             }
-            return true;
+            return a._symbols == b._symbols;
         }
 
         inline bool operator!=(const Bindings& a, const Bindings& b) {
-            constexpr const auto n = Bindings::size();
-            for (size_t i=0; i<n; ++i) {
-                if (a[i] == b[i]) { return false; }
-            }
-            return true;
+            return !operator==(a, b);
         }
 
         inline sys::byte_buffer&
@@ -229,6 +230,8 @@ namespace sbn {
             Name& operator=(Name&&) = delete;
         };
 
+        bool is_valid_name(const char* first, const char* last) noexcept;
+
         #define SBN_RESOURCES_UNARY_OPERATION(NAME) \
             class NAME: public Expression { \
             private: \
@@ -296,6 +299,10 @@ namespace sbn {
             return read(s, s+t::length(s), max_depth);
         }
 
+        inline expression_ptr read(const std::string& s, int max_depth) {
+            return read(s.data(), s.data()+s.size(), max_depth);
+        }
+
         enum class Expressions: uint8_t {
             Symbol=1,
             Constant=2,
@@ -353,6 +360,15 @@ namespace sbn {
             operator OP(const Any& a, resources b) { \
                 return expression_ptr(new NAME(expression_ptr(new Constant(a)), \
                                                expression_ptr(new Symbol(b)))); \
+            } \
+            inline expression_ptr \
+            operator OP(expression_ptr&& a, expression_ptr&& b) { \
+                return expression_ptr(new NAME(std::move(a), std::move(b))); \
+            } \
+            inline expression_ptr \
+            operator OP(expression_ptr&& a, const Any& b) { \
+                return expression_ptr(new NAME(std::move(a), \
+                                               expression_ptr(new Constant(b)))); \
             }
 
         SBN_RESOURCES_BINARY_OPERATOR(==, Equal);
@@ -382,6 +398,16 @@ namespace sbn {
         inline expression_ptr
         operator!=(expression_ptr&& a, resources b) {
             return !operator==(std::move(a), b);
+        }
+
+        inline expression_ptr
+        operator!=(expression_ptr&& a, const Any& b) {
+            return !operator==(std::move(a), b);
+        }
+
+        inline expression_ptr
+        operator!=(expression_ptr&& a, expression_ptr&& b) {
+            return !operator==(std::move(a), std::move(b));
         }
 
         inline expression_ptr

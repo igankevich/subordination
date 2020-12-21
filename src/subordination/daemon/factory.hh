@@ -5,6 +5,7 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/properties.hh>
+#include <subordination/core/resources.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/process_pipeline.hh>
@@ -78,6 +79,9 @@ namespace sbnd {
             int max_radius = 100;
             bool profile = false;
         } discoverer;
+        struct Resources {
+            std::unordered_map<std::string,sbn::resources::expression_ptr> expressions;
+        } resources;
         #if defined(SBND_WITH_GLUSTERFS)
         struct GlusterFS {
             sys::path working_directory{"/var/lib/glusterd"};

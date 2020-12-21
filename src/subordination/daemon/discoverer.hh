@@ -115,7 +115,7 @@ namespace sbnd {
         void send_weight(const sys::socket_address& dest,
                          const hierarchy_node_array& nodes);
         void update_weights(pointer<Hierarchy_kernel> k);
-        void update_socket_pipeline_clients(const hierarchy_node_array& nodes);
+        void update_socket_pipeline_clients();
 
         template <class ... Args> inline void
         log(const char* fmt, const Args& ... args) const {
