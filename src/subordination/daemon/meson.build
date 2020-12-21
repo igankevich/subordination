@@ -1,6 +1,7 @@
 config = configuration_data()
 config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
 config.set('SBND_WITH_GLUSTERFS', with_glusterfs)
+config.set('SBND_VERSION', meson.project_version())
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([

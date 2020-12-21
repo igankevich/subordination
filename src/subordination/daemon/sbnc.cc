@@ -8,6 +8,7 @@
 
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
+#include <subordination/core/resources.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/job_status_kernel.hh>
 #include <subordination/daemon/main_kernel.hh>
@@ -218,20 +219,35 @@ class Submit: public sbn::kernel {
 
 public:
     using string_array = sbn::application::string_array;
+    using resource_expression = sbn::resources::Expression;
+    using resource_expression_ptr = sbn::resources::expression_ptr;
 
 private:
     string_array _arguments;
+    resource_expression_ptr _node_filter;
     bool _test_recovery = false;
 
 public:
     Submit(int argc, char** argv) {
-        int i0 = 1;
-        if (argc >= 2 && std::string(argv[1]) == "-T") {
-            this->_test_recovery = true;
-            i0 = 2;
-        }
-        for (int i=i0; i<argc; ++i) {
-            this->_arguments.emplace_back(argv[i]);
+        enum { Options, Args } state = Options;
+        for (int i=0; i<argc; ++i) {
+            std::string arg(argv[i]);
+            if (state == Options) {
+                if (arg == "-T") {
+                    this->_test_recovery = true;
+                } else if (arg == "-r") {
+                    using t = std::char_traits<char>;
+                    ++i;
+                    if (i == argc) { throw std::invalid_argument("expected resource expression"); }
+                    auto n = t::length(argv[i]);
+                    this->_node_filter = sbn::resources::read(argv[i], argv[i]+n, 10);
+                } else {
+                    state = Args;
+                }
+            }
+            if (state == Args) {
+                this->_arguments.emplace_back(argv[i]);
+            }
         }
     }
 
@@ -243,6 +259,7 @@ public:
             k = make_application_kernel();
         }
         k->parent(this);
+        k->node_filter(std::move(this->_node_filter));
         sbnc::factory.remote().send(std::move(k));
     }
 
@@ -365,9 +382,9 @@ private:
     sbnd::Job_status_kernel::application_id_array _job_ids;
 
 public:
-    Status(int argc, char** argv) {
+    Status(int argc, char** argv, Command command) {
         bool inside_d = false;
-        for (int i=1; i<argc; ++i) {
+        for (int i=0; i<argc; ++i) {
             std::string argument(argv[i]);
             if (inside_d) {
                 if (!argument.empty() && argument.front() == '-') {
@@ -385,15 +402,15 @@ public:
                     if (i+1 == argc) { throw std::invalid_argument("bad argument \"-o\""); }
                     this->_output_format = string_to_format(argv[i+1]);
                     ++i;
-                } else if (argument == "-d") {
-                    if (i+1 == argc) { throw std::invalid_argument("bad argument \"-d\""); }
-                    this->_job_ids.emplace_back(std::stoul(argv[i+1]));
-                    ++i;
-                    inside_d = true;
                 } else {
-                    std::stringstream tmp;
-                    tmp << "unknown argument \"" << argument << "\"";
-                    throw std::invalid_argument(tmp.str());
+                    if (command == Command::Delete) {
+                        this->_job_ids.emplace_back(std::stoul(argv[i]));
+                        inside_d = true;
+                    } else {
+                        std::stringstream tmp;
+                        tmp << "unknown argument \"" << argument << "\"";
+                        throw std::invalid_argument(tmp.str());
+                    }
                 }
             }
         }
@@ -464,22 +481,39 @@ public:
 
 void usage(std::ostream& out, char**) {
     out << "usage: "
-        "sbnc [-h] [-t entity-type] [-o output-format] [-d ids...]\n"
-        "sbnc [-T] [command] [arguments...]\n"
+        "sbnc [-h] [--help] [--version]\n"
+        "sbnc submit [-T] [-r node-filter] [arguments...]\n"
+        "sbnc status [-t entity-type] [-o output-format]\n"
+        "sbnc cancel [-t entity-type] [-o output-format] application ids...\n"
         "-t type            entity type (node, job, kernel)\n"
         "-o format          output format (human, rec)\n"
         "-d ids...          delete entity (job)\n"
         "-h                 usage\n"
         "-T                 test an ability to recover from power failure\n"
-        "command arguments  a command with arguments to run\n";
+        "-r expression      node selector expression\n"
+        "arguments...       a command with arguments to run\n";
 }
 
 int main(int argc, char* argv[]) {
+    bool old_submit = true;
     auto command = Command::Submit;
     if (argc <= 1) { usage(std::clog, argv); return 1; }
-    if (argc == 2 && std::string(argv[1]) ==  "-h") { usage(std::cout, argv); return 0; }
-    if (argc >= 2 && argv[1][0] == '-' && std::string(argv[1]) != "-T") {
+    std::string arg1(argv[1]);
+    if (arg1 == "-h" || arg1 == "--help") {
+        usage(std::cout, argv);
+        return 0;
+    }
+    if (arg1 == "--version") {
+        std::cout << SBND_VERSION "\n";
+        return 0;
+    }
+    if (arg1 == "submit") {
+        command = Command::Submit;
+        old_submit = false;
+    } else if (arg1 == "select") {
         command = Command::Status;
+    } else if (arg1 == "cancel") {
+        command = Command::Delete;
     }
     if (command == Command::Submit) {
         if (sbn::this_application::id() == 0) { sbn::this_application::id(1); }
@@ -494,9 +528,11 @@ int main(int argc, char* argv[]) {
         sbnc::factory.start();
         sbnc::factory.remote().scheduler().local(false);
         sbn::kernel_ptr k;
+        const int d = old_submit ? 1 : 2;
         switch (command) {
-            case Command::Submit: k = sbn::make_pointer<Submit>(argc, argv); break;
-            case Command::Status: k = sbn::make_pointer<Status>(argc, argv); break;
+            case Command::Submit: k = sbn::make_pointer<Submit>(argc-d, argv+d); break;
+            case Command::Status: k = sbn::make_pointer<Status>(argc-2, argv+2, command); break;
+            case Command::Delete: k = sbn::make_pointer<Status>(argc-2, argv+2, command); break;
             default: break;
         }
         sbnc::factory.local().send(std::move(k));

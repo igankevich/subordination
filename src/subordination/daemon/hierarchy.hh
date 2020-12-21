@@ -40,10 +40,7 @@ namespace sbnd {
         inline explicit
         Hierarchy(const interface_address_type& ia, sys::port_type port) noexcept:
         _netmask(ia.netmask()) {
-            std::clog << "port=" << port << std::endl;
             this->_this_node.socket_address(sys::ipv4_socket_address{ia.address(), port});
-            std::clog << "this->_this_node.socket_address()=" << this->_this_node.socket_address() << std::endl;
-            std::clog << "port()=" << this->port() << std::endl;
         }
 
         inline const container_type& nodes() const noexcept { return this->_nodes; }
