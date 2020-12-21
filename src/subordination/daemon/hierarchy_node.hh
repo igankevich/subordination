@@ -103,7 +103,7 @@ namespace sbnd {
 
         inline uint64_t total_threads() const noexcept {
             using r = sbn::resources::resources;
-            return this->_resources[r::total_threads];
+            return this->_resources[r::total_threads].unsigned_integer();
         }
 
         friend std::ostream&

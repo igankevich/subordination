@@ -90,10 +90,10 @@ sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
 void sbnd::Main::update_resources() {
     using r = sbn::resources::resources;
     this->_resources.clear();
-    this->_resources.set(r::total_threads, sys::thread_concurrency());
+    this->_resources[r::total_threads] = sys::thread_concurrency();
     sys::information info;
-    this->_resources.set(r::total_memory, info.total_memory());
-    //this->_resources.set(r::hostname, sys::this_process::hostname());
+    this->_resources[r::total_memory] = info.total_memory();
+    this->_resources[r::hostname] = sys::this_process::hostname();
 }
 
 void sbnd::Main::update_discoverers() {

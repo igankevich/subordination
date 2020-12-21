@@ -127,9 +127,6 @@ void sbn::resources::Any::swap(Any& rhs) noexcept {
     swap(this->_type, rhs._type);
     switch (this->_type) {
         case Any::Type::Boolean: swap(this->_b, rhs._b); break;
-        case Any::Type::U8: swap(this->_u8, rhs._u8); break;
-        case Any::Type::U16: swap(this->_u16, rhs._u16); break;
-        case Any::Type::U32: swap(this->_u32, rhs._u32); break;
         case Any::Type::U64: swap(this->_u64, rhs._u64); break;
         case Any::Type::String: swap(this->_string, rhs._string); break;
         default: break;
@@ -139,9 +136,6 @@ void sbn::resources::Any::swap(Any& rhs) noexcept {
 sbn::resources::Any::Any(const Any& rhs): _type{rhs._type} {
     switch (this->_type) {
         case Any::Type::Boolean: this->_b = rhs._b; break;
-        case Any::Type::U8: this->_u8 = rhs._u8; break;
-        case Any::Type::U16: this->_u16 = rhs._u16; break;
-        case Any::Type::U32: this->_u32 = rhs._u32; break;
         case Any::Type::U64: this->_u64 = rhs._u64; break;
         case Any::Type::String: {
             using t = std::char_traits<char>;
@@ -161,8 +155,23 @@ auto sbn::resources::Any::operator=(const Any& rhs) -> Any& {
     return *this;
 }
 
+bool sbn::resources::Any::operator==(const Any& rhs) const noexcept {
+    switch (this->_type) {
+        case Any::Type::Boolean: return this->_b == rhs._b;
+        case Any::Type::U64: return this->_u64 == rhs._u64;
+        case Any::Type::String: {
+            using t = std::char_traits<char>;
+            if (!this->_string && !rhs._string) { return true; }
+            if (!this->_string || !rhs._string) { return false; }
+            auto n = t::length(rhs._string);
+            return t::compare(this->_string, rhs._string, n) == 0;
+        }
+        default: return false;
+    }
+}
+
 auto sbn::resources::Symbol::evaluate(const Bindings& b) const noexcept -> Any {
-    return b.get(this->_name);
+    return b[this->_name];
 }
 auto sbn::resources::Constant::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_value;
@@ -218,9 +227,6 @@ void sbn::resources::Any::write(sys::byte_buffer& out) const {
     out.write(this->_type);
     switch (this->_type) {
         case Any::Type::Boolean: out.write(this->_b); break;
-        case Any::Type::U8: out.write(this->_u8); break;
-        case Any::Type::U16: out.write(this->_u16); break;
-        case Any::Type::U32: out.write(this->_u32); break;
         case Any::Type::U64: out.write(this->_u64); break;
         case Any::Type::String: {
             const uint32_t n = t::length(this->_string);
@@ -236,9 +242,6 @@ void sbn::resources::Any::read(sys::byte_buffer& in) {
     in.read(this->_type);
     switch (this->_type) {
         case Any::Type::Boolean: in.read(this->_b); break;
-        case Any::Type::U8: in.read(this->_u8); break;
-        case Any::Type::U16: in.read(this->_u16); break;
-        case Any::Type::U32: in.read(this->_u32); break;
         case Any::Type::U64: in.read(this->_u64); break;
         case Any::Type::String: {
             uint32_t n = 0;
@@ -334,9 +337,6 @@ auto sbn::resources::read(sys::byte_buffer& in) -> expression_ptr {
 void sbn::resources::Any::write(std::ostream& out) const {
     switch (this->_type) {
         case Any::Type::Boolean: out << this->_b; break;
-        case Any::Type::U8: out << this->_u8; break;
-        case Any::Type::U16: out << this->_u16; break;
-        case Any::Type::U32: out << this->_u32; break;
         case Any::Type::U64: out << this->_u64; break;
         case Any::Type::String: write_string(out, this->_string); break;
         default: break;
@@ -404,9 +404,9 @@ auto sbn::resources::read(std::istream& in, int max_depth) -> expression_ptr {
 }
 
 void sbn::resources::Bindings::write(sys::byte_buffer& out) const {
-    for (const auto& x : this->_data) { out.write(x); }
+    for (const auto& x : this->_data) { x.write(out); }
 }
 
 void sbn::resources::Bindings::read(sys::byte_buffer& in) {
-    for (auto& x : this->_data) { in.read(x); }
+    for (auto& x : this->_data) { x.read(in); }
 }

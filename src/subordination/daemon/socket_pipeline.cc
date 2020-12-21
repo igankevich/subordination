@@ -198,7 +198,7 @@ namespace sbnd {
             using r = sbn::resources::resources;
             counter_type sum = 0;
             for (const auto& n : this->_nodes_behind) {
-                sum += n.resources()[r::total_threads];
+                sum += n.resources()[r::total_threads].unsigned_integer();
             }
             this->_sum_thread_concurrency = sum;
         }

@@ -16,25 +16,32 @@ namespace sbn {
 
         class Any {
         public:
-            enum class Type: uint8_t {Boolean=0, U8=1, U16=2, U32=3, U64=4, String=5};
+            enum class Type: uint8_t {Boolean=0, U64=4, String=5};
         private:
             union {
                 bool _b;
-                uint8_t _u8;
-                uint16_t _u16;
-                uint32_t _u32;
                 uint64_t _u64;
                 char* _string;
             };
             Type _type{};
         public:
             inline Any(bool value) noexcept: _b{value}, _type{Type::Boolean} {}
-            inline Any(uint8_t value) noexcept: _u8{value}, _type{Type::U8} {}
-            inline Any(uint16_t value) noexcept: _u16{value}, _type{Type::U16} {}
-            inline Any(uint32_t value) noexcept: _u32{value}, _type{Type::U32} {}
+            inline Any(uint8_t value) noexcept: _u64{value}, _type{Type::U64} {}
+            inline Any(uint16_t value) noexcept: _u64{value}, _type{Type::U64} {}
+            inline Any(uint32_t value) noexcept: _u64{value}, _type{Type::U64} {}
             inline Any(uint64_t value) noexcept: _u64{value}, _type{Type::U64} {}
             Any(const char* s, size_t n);
             inline Any(const char* s): Any{s, std::char_traits<char>::length(s)} {}
+            inline Any(const std::string& s): Any{s.data(), s.size()} {}
+
+            inline Any& operator=(const std::string& s) { *this = Any(s); return *this; }
+            inline Any& operator=(const char* s) { *this = Any(s); return *this; }
+            inline Any& operator=(uint8_t n) noexcept { *this = Any(n); return *this; }
+            inline Any& operator=(uint16_t n) noexcept { *this = Any(n); return *this; }
+            inline Any& operator=(uint32_t n) noexcept { *this = Any(n); return *this; }
+            inline Any& operator=(uint64_t n) noexcept { *this = Any(n); return *this; }
+            inline Any& operator=(bool b) noexcept { *this = Any(b); return *this; }
+
             inline Type type() const noexcept { return this->_type; }
 
             inline bool boolean() const noexcept {
@@ -45,6 +52,12 @@ namespace sbn {
             inline uint64_t unsigned_integer() const noexcept {
                 if (this->_type != Type::U64) { return 0; }
                 return this->_u64;
+            }
+
+            bool operator==(const Any& rhs) const noexcept;
+
+            inline bool operator!=(const Any& rhs) const noexcept {
+                return !this->operator==(rhs);
             }
 
             void write(sys::byte_buffer& out) const;
@@ -76,14 +89,11 @@ namespace sbn {
 
         class Bindings {
         public:
-            using value_type = uint64_t;
+            using value_type = Any;
         private:
             // total-threads should be at least 1
             std::array<value_type,size_t(resources::size)> _data{uint64_t{1}};
         public:
-            inline value_type get(resources r) const noexcept {
-                return this->_data[static_cast<size_t>(r)];
-            }
             inline value_type operator[](resources r) const noexcept {
                 return this->_data[static_cast<size_t>(r)];
             }
@@ -92,21 +102,8 @@ namespace sbn {
             }
             inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
             inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
-            inline void set(resources r, value_type value) noexcept {
-                this->_data[static_cast<size_t>(r)] = value;
-            }
             inline void clear() noexcept { this->_data.fill(value_type{}); }
             static constexpr inline size_t size() noexcept { return size_t(resources::size); }
-            inline Bindings& operator+=(const Bindings& y) noexcept {
-                const auto n = size();
-                for (size_t i=0; i<n; ++i) { this->_data[i] += y._data[i]; }
-                return *this;
-            }
-            inline Bindings& operator-=(const Bindings& y) noexcept {
-                const auto n = size();
-                for (size_t i=0; i<n; ++i) { this->_data[i] -= y._data[i]; }
-                return *this;
-            }
             void write(sys::byte_buffer& out) const;
             void read(sys::byte_buffer& in);
             Bindings() = default;
