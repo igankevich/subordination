@@ -5,6 +5,7 @@
 #include <memory>
 #include <ostream>
 #include <type_traits>
+#include <unordered_map>
 
 #include <unistdx/base/byte_buffer>
 
@@ -93,19 +94,30 @@ namespace sbn {
         private:
             // total-threads should be at least 1
             std::array<value_type,size_t(resources::size)> _data{uint64_t{1}};
+            std::unordered_map<std::string,value_type> _symbols;
         public:
-            inline value_type operator[](resources r) const noexcept {
+            inline const value_type& operator[](resources r) const noexcept {
                 return this->_data[static_cast<size_t>(r)];
             }
             inline value_type& operator[](resources r) noexcept {
                 return this->_data[static_cast<size_t>(r)];
             }
+            inline value_type operator[](const std::string& s) const noexcept {
+                auto result = this->_symbols.find(s);
+                if (result == this->_symbols.end()) { return {}; }
+                return result->second;
+            }
+            inline value_type& operator[](const std::string& s) noexcept {
+                return this->_symbols[s];
+            }
+            inline void unset(const std::string& s) { this->_symbols.erase(s); }
             inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
             inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
             inline void clear() noexcept { this->_data.fill(value_type{}); }
             static constexpr inline size_t size() noexcept { return size_t(resources::size); }
             void write(sys::byte_buffer& out) const;
             void read(sys::byte_buffer& in);
+            void write(std::ostream& out) const;
             Bindings() = default;
             virtual ~Bindings() = default;
             Bindings(const Bindings&) = default;
@@ -114,8 +126,12 @@ namespace sbn {
             Bindings& operator=(Bindings&&) = default;
         };
 
+        inline std::ostream& operator<<(std::ostream& out, const Bindings& rhs) {
+            rhs.write(out); return out;
+        }
+
         inline bool operator==(const Bindings& a, const Bindings& b) {
-            const auto n = Bindings::size();
+            constexpr const auto n = Bindings::size();
             for (size_t i=0; i<n; ++i) {
                 if (a[i] != b[i]) { return false; }
             }
@@ -123,7 +139,7 @@ namespace sbn {
         }
 
         inline bool operator!=(const Bindings& a, const Bindings& b) {
-            const auto n = Bindings::size();
+            constexpr const auto n = Bindings::size();
             for (size_t i=0; i<n; ++i) {
                 if (a[i] == b[i]) { return false; }
             }
@@ -194,6 +210,25 @@ namespace sbn {
             Constant& operator=(Constant&&) = delete;
         };
 
+        class Name: public Expression {
+        private:
+            std::string _name{};
+        public:
+            inline explicit Name(std::string&& name) noexcept: _name(std::move(name)) {}
+            inline explicit Name(const std::string& name): _name(name) {}
+            inline explicit Name(const char* name): _name(name) {}
+            Any evaluate(const Bindings& context) const noexcept override;
+            void write(sys::byte_buffer& out) const override;
+            void read(sys::byte_buffer& in) override;
+            void write(std::ostream& out) const override;
+            Name() = default;
+            ~Name() = default;
+            Name(const Name&) = delete;
+            Name& operator=(const Name&) = delete;
+            Name(Name&&) = delete;
+            Name& operator=(Name&&) = delete;
+        };
+
         #define SBN_RESOURCES_UNARY_OPERATION(NAME) \
             class NAME: public Expression { \
             private: \
@@ -256,24 +291,30 @@ namespace sbn {
         expression_ptr read(const char* begin, const char* end, int max_depth);
         expression_ptr read(std::istream& in, int max_depth);
 
+        inline expression_ptr read(const char* s, int max_depth) {
+            using t = std::char_traits<char>;
+            return read(s, s+t::length(s), max_depth);
+        }
+
         enum class Expressions: uint8_t {
             Symbol=1,
             Constant=2,
-            Not=3,
-            And=4,
-            Or=5,
-            Xor=6,
-            Less_than=7,
-            Less_or_equal=8,
-            Equal=9,
-            Greater_than=10,
-            Greater_or_equal=11,
-            Add=12,
-            Subtract=13,
-            Multiply=14,
-            Quotient=15,
-            Remainder=16,
-            Negate=17,
+            Name=3,
+            Not=4,
+            And=5,
+            Or=6,
+            Xor=7,
+            Less_than=8,
+            Less_or_equal=9,
+            Equal=10,
+            Greater_than=11,
+            Greater_or_equal=12,
+            Add=13,
+            Subtract=14,
+            Multiply=15,
+            Quotient=16,
+            Remainder=17,
+            Negate=18,
         };
 
         expression_ptr make_expression(Expressions type);

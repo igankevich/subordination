@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cstring>
 #include <sstream>
 
 #include <subordination/core/resources.hh>
@@ -156,15 +157,14 @@ auto sbn::resources::Any::operator=(const Any& rhs) -> Any& {
 }
 
 bool sbn::resources::Any::operator==(const Any& rhs) const noexcept {
+    if (this->_type != rhs._type) { return false; }
     switch (this->_type) {
         case Any::Type::Boolean: return this->_b == rhs._b;
         case Any::Type::U64: return this->_u64 == rhs._u64;
         case Any::Type::String: {
-            using t = std::char_traits<char>;
             if (!this->_string && !rhs._string) { return true; }
             if (!this->_string || !rhs._string) { return false; }
-            auto n = t::length(rhs._string);
-            return t::compare(this->_string, rhs._string, n) == 0;
+            return std::strcmp(this->_string, rhs._string) == 0;
         }
         default: return false;
     }
@@ -175,6 +175,9 @@ auto sbn::resources::Symbol::evaluate(const Bindings& b) const noexcept -> Any {
 }
 auto sbn::resources::Constant::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_value;
+}
+auto sbn::resources::Name::evaluate(const Bindings& b) const noexcept -> Any {
+    return b[this->_name];
 }
 auto sbn::resources::Not::evaluate(const Bindings& b) const noexcept -> Any {
     return !this->_arg->evaluate(b).boolean();
@@ -198,7 +201,7 @@ auto sbn::resources::Less_or_equal::evaluate(const Bindings& b) const noexcept -
     return this->_a->evaluate(b).unsigned_integer() <= this->_b->evaluate(b).unsigned_integer();
 }
 auto sbn::resources::Equal::evaluate(const Bindings& b) const noexcept -> Any {
-    return this->_a->evaluate(b).unsigned_integer() == this->_b->evaluate(b).unsigned_integer();
+    return this->_a->evaluate(b) == this->_b->evaluate(b);
 }
 auto sbn::resources::Greater_than::evaluate(const Bindings& b) const noexcept -> Any {
     return this->_a->evaluate(b).unsigned_integer() > this->_b->evaluate(b).unsigned_integer();
@@ -262,6 +265,11 @@ void sbn::resources::Constant::write(sys::byte_buffer& out) const {
     out.write(Expressions::Constant);
     this->_value.write(out);
 }
+void sbn::resources::Name::write(sys::byte_buffer& out) const {
+    out.write(Expressions::Name);
+    out.write(this->_name);
+}
+void sbn::resources::Name::read(sys::byte_buffer& in) { in.read(this->_name); }
 void sbn::resources::Constant::read(sys::byte_buffer& in) { this->_value.read(in); }
 
 #define SBN_RESOURCES_UNARY_OPERATION_IO(NAME, HUMAN_NAME) \
@@ -308,6 +316,7 @@ auto sbn::resources::make_expression(Expressions type) -> expression_ptr {
     switch (type) {
         case Expressions::Symbol: return expression_ptr(new Symbol);
         case Expressions::Constant: return expression_ptr(new Constant);
+        case Expressions::Name: return expression_ptr(new Name);
         case Expressions::Not: return expression_ptr(new Not);
         case Expressions::And: return expression_ptr(new And);
         case Expressions::Or: return expression_ptr(new Or);
@@ -357,6 +366,10 @@ void sbn::resources::Constant::write(std::ostream& out) const {
     out << this->_value;
 }
 
+void sbn::resources::Name::write(std::ostream& out) const {
+    out << this->_name;
+}
+
 const char* sbn::resources::resource_to_string(resources r) noexcept {
     switch (r) {
         case resources::total_threads: return "total-threads";
@@ -367,10 +380,10 @@ const char* sbn::resources::resource_to_string(resources r) noexcept {
 }
 
 auto sbn::resources::string_to_resource(const char* s, size_t n) noexcept -> resources {
-    using t = std::char_traits<char>;
-    if (t::compare(s, "total-threads", n) == 0) { return resources::total_threads; }
-    if (t::compare(s, "total-memory", n) == 0) { return resources::total_memory; }
-    if (t::compare(s, "hostname", n) == 0) { return resources::hostname; }
+    std::string str(s, n);
+    if (str == "total-threads") { return resources::total_threads; }
+    if (str == "total-memory") { return resources::total_memory; }
+    if (str == "hostname") { return resources::hostname; }
     return bad_resource;
 }
 
@@ -389,8 +402,13 @@ auto sbn::resources::read(const char* first, const char* last, int depth) -> exp
         if (r != bad_resource) {
             result = expression_ptr(new Symbol(r));
         } else {
-            uint64_t v = std::stol(std::string(first, last));
-            result = expression_ptr(new Constant(v));
+            std::string value(first, last);
+            try {
+                uint64_t v = std::stol(value);
+                result = expression_ptr(new Constant(v));
+            } catch (const std::invalid_argument& err) {
+                result = expression_ptr(new Name(std::move(value)));
+            }
         }
     }
     return result;
@@ -409,4 +427,17 @@ void sbn::resources::Bindings::write(sys::byte_buffer& out) const {
 
 void sbn::resources::Bindings::read(sys::byte_buffer& in) {
     for (auto& x : this->_data) { x.read(in); }
+}
+
+void sbn::resources::Bindings::write(std::ostream& out) const {
+    out << ";; symbols\n";
+    for (const auto& pair : this->_symbols) {
+        out << "(define " << pair.first << ' ' << pair.second << ")\n";
+    }
+    constexpr const auto n = Bindings::size();
+    out << ";; resources\n";
+    for (size_t i=0; i<n; ++i) {
+        out << "(define " << resource_to_string(resources(i)) << ' '
+            << this->_data[i] << ")\n";
+    }
 }
