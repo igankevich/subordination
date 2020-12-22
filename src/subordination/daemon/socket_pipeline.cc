@@ -85,12 +85,15 @@ namespace sbnd {
     public:
         using counter_type = socket_pipeline::counter_type;
         using kernel_queue = std::deque<sbn::kernel_ptr>;
+        using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
 
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
-        counter_type _thread_concurrency_behind = 1;
         counter_type _num_kernels = 0;
+        hierarchy_node_array _nodes_behind;
+        counter_type _sum_thread_concurrency{1};
         bool _route = false;
 
     public:
@@ -182,6 +185,39 @@ namespace sbnd {
         inline bool route() const noexcept { return this->_route; }
         inline void route(bool rhs) noexcept { this->_route = rhs; }
 
+        inline const hierarchy_node_array& nodes_behind() const noexcept {
+            return this->_nodes_behind;
+        }
+
+        inline void nodes_behind(const hierarchy_node_array& rhs) noexcept {
+            this->_nodes_behind = rhs;
+            update_counters();
+        }
+
+        inline void update_counters() {
+            using r = sbn::resources::resources;
+            counter_type sum = 0;
+            for (const auto& n : this->_nodes_behind) {
+                sum += n.resources()[r::total_threads].unsigned_integer();
+            }
+            this->_sum_thread_concurrency = sum;
+        }
+
+        inline bool match(sbn::kernel::resource_expression& node_filter) {
+            for (const auto& n : this->_nodes_behind) {
+                if (node_filter.evaluate(n.resources()).boolean()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /*
+        inline const resource_array& resources() const noexcept { return this->_resources; }
+        inline resource_array& resources() noexcept { return this->_resources; }
+        inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
+        */
+
         void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
             if (!route()) {
                 connection::receive_foreign_kernel(std::move(k));
@@ -212,11 +248,7 @@ namespace sbnd {
 
         /// The number of threads "behind" this node in the hierarchy.
         inline counter_type thread_concurrency_behind() const noexcept {
-            return this->_thread_concurrency_behind;
-        }
-
-        inline void thread_concurrency_behind(counter_type rhs) noexcept {
-            this->_thread_concurrency_behind = rhs;
+            return this->_sum_thread_concurrency;
         }
 
         /// The number of kernels that were sent to the client, but have not returned yet.
@@ -227,13 +259,15 @@ namespace sbnd {
         the number of threads "behind" the client.
         */
         inline counter_type weight() const noexcept {
-            return this->_num_kernels / this->_thread_concurrency_behind;
+            auto nthreads = thread_concurrency_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            return this->_num_kernels / nthreads;
         }
 
         inline void num_kernels(const counter_type& rhs) noexcept { this->_num_kernels = rhs; }
 
         inline bool full() const noexcept {
-            return this->_num_kernels >= this->_thread_concurrency_behind;
+            return this->_num_kernels >= thread_concurrency_behind();
         }
 
         inline void num_kernels_increment(sbn::kernel::weight_type w) {
@@ -264,7 +298,7 @@ namespace sbnd {
 
 }
 
-auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
+auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                                                const client_table& clients,
                                                const server_array& servers)
 -> client_iterator {
@@ -338,23 +372,37 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         }
         return false;
     }();
+    auto node_filter = k->node_filter();
+    bool node_filter_local_matches = true;
+    if (node_filter && !node_filter->evaluate(this->_local_resources).boolean()) {
+        node_filter_local_matches = false;
+    }
     for (auto first=clients.begin(); first != last; ++first) {
         const auto& address = first->first;
         auto& client = *first->second;
         // skip stopped clients
         if (client.state() != sbn::connection_state::started) {
             log("neighbour skip (inactive) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(), client.thread_concurrency_behind());
+                client.socket_address(), client.num_kernels(),
+                client.thread_concurrency_behind());
+            continue;
+        }
+        // skip nodes that do not match resource specification
+        if (node_filter && !client.match(*node_filter)) {
+            log("neighbour skip (node filter) _ filter _", client.socket_address(),
+                *node_filter);
             continue;
         }
         // do not send the kernel back
         if (address == k->source()) {
             log("neighbour skip (source) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(), client.thread_concurrency_behind());
+                client.socket_address(), client.num_kernels(),
+                client.thread_concurrency_behind());
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
-                    client.weight() < this->_local_num_kernels) {
+                    client.weight() < this->_local_num_kernels ||
+                    !node_filter_local_matches) {
                     result = first;
                 }
             } else {
@@ -399,12 +447,30 @@ auto sbnd::socket_pipeline_scheduler::schedule(const sbn::kernel* k,
         // increase the number of kernels
         auto& client = result->second;
         client->num_kernels_increment(k->weight());
-        log("neighbour _ num-kernels _ num-nodes-behind _ local-num-kernels _ path _ nodes_",
+        log("neighbour _ num-kernels _ num-threads-behind _ local-num-kernels _ path _ nodes_",
             client->socket_address(), client->num_kernels(), client->thread_concurrency_behind(),
             this->_local_num_kernels, path, tmp.str());
     } else {
-        increment(this->_local_num_kernels, kernel_weight);
-        log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
+        // If the local node does not have the required resources,
+        // return the kernel to its parent.
+        if (!node_filter_local_matches) {
+            if (k->source()) {
+                for (auto first=clients.begin(); first != last; ++first) {
+                    const auto& address = first->first;
+                    if (address == k->source()) {
+                        result = first;
+                        break;
+                    }
+                }
+            }
+            k->return_to_parent(sbn::exit_code::no_resources);
+            log("neighbour return-to-parent: parent _ filter _ nclients _ carry _",
+                k->source(), *node_filter, clients.size(), k->carries_parent());
+        }
+        if (result == last) {
+            increment(this->_local_num_kernels, kernel_weight);
+            log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
+        }
     }
     return result;
 }
@@ -466,10 +532,10 @@ void sbnd::socket_pipeline::remove_client(client_iterator result) {
 }
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
-    using traits_type = sys::ipaddr_traits<ip_address>;
-    interface_address interface_address(traits_type::address(rhs), netmask);
+    auto sa = sys::socket_address_cast<sys::ipv4_socket_address>(rhs);
+    interface_address interface_address(sa.address(), netmask);
     if (this->find_server(interface_address) == this->_servers.end()) {
-        auto ptr = std::make_shared<socket_pipeline_server>(interface_address, traits_type::port(rhs));
+        auto ptr = std::make_shared<socket_pipeline_server>(interface_address, sa.port());
         ptr->parent(this);
         this->_servers.emplace_back(ptr);
         #if defined(SBN_DEBUG)
@@ -487,8 +553,7 @@ void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
     switch (k->phase()) {
         case sbn::kernel::phases::upstream:
             {
-                auto client = this->_scheduler.schedule(k.get(), this->_clients,
-                                                        this->_servers);
+                auto client = this->_scheduler.schedule(k.get(), this->_clients, this->_servers);
                 if (client == this->_clients.end()) {
                     if (k->carries_parent()) {
                         log("warning, sending a kernel carrying parent to local pipeline _", *k);
@@ -732,19 +797,16 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     }
 }
 
-void sbnd::socket_pipeline::add_client(const sys::socket_address& addr, counter_type n) {
+void sbnd::socket_pipeline::add_client(const sys::socket_address& addr,
+                                       const hierarchy_type& hierarchy) {
     auto ptr = this->do_add_client(addr);
-    ptr->thread_concurrency_behind(n);
+    ptr->nodes_behind(hierarchy.nodes_behind(addr));
 }
 
 void
-sbnd::socket_pipeline::update_client(const sys::socket_address& addr,
-                                     counter_type thread_concurrency_behind) {
-    lock_type lock(this->_mutex);
-    //auto ptr = find_or_create_client(addr);
-    //ptr->thread_concurrency_behind(new_num_nodes_behind);
-    auto result = this->_clients.find(addr);
-    if (result != this->_clients.end()) {
-        result->second->thread_concurrency_behind(thread_concurrency_behind);
+sbnd::socket_pipeline::update_clients(const hierarchy_type& hierarchy) {
+    for (auto& pair : this->_clients) {
+        auto& client = pair.second;
+        client->nodes_behind(hierarchy.nodes_behind(client->socket_address()));
     }
 }

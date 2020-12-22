@@ -42,10 +42,10 @@ void sbnd::discoverer::on_kernel(sbn::kernel_ptr&& k) {
     } else if (typeid(*k) == typeid(probe)) {
         switch (k->phase()) {
             case sbn::kernel::phases::downstream:
-                update_superior(sbn::pointer_dynamic_cast<probe>(std::move(k)));
+                probe_returned(sbn::pointer_dynamic_cast<probe>(std::move(k)));
                 break;
             case sbn::kernel::phases::point_to_point:
-                update_subordinates(sbn::pointer_dynamic_cast<probe>(std::move(k)));
+                probe_received(sbn::pointer_dynamic_cast<probe>(std::move(k)));
                 break;
             default: break;
         }
@@ -73,6 +73,7 @@ void sbnd::discoverer::discover() {
             log("_: probe _ attempts _", interface_address(), addr, this->_attempts);
         }
         auto p = sbn::make_pointer<probe>(interface_address(), old_superior, new_superior);
+        p->nodes({this->_hierarchy.this_node()});
         p->parent(this);
         p->destination(new_superior);
         p->principal_id(1); // TODO
@@ -108,9 +109,23 @@ void sbnd::discoverer::discover_later() {
     factory.local().send(std::move(k));
 }
 
-void sbnd::discoverer::update_subordinates(pointer<probe> p) {
+void sbnd::discoverer::probe_received(pointer<probe> p) {
     const sys::socket_address src = p->source();
     probe_result result = this->process_probe(p);
+    const auto& nodes = p->nodes();
+    if (!nodes.empty()) {
+        const auto now = hierarchy_node::clock::now();
+        bool changed = this->_hierarchy.add_nodes(nodes, now);
+        if (result == probe_result::add_subordinate) {
+            changed |= this->_hierarchy.add_subordinate(nodes.front(), now);
+        } else if (result == probe_result::remove_subordinate) {
+            changed |= this->_hierarchy.remove_node(nodes.front().socket_address(), now);
+        }
+        if (changed) {
+            update_socket_pipeline_clients();
+            broadcast_hierarchy(src);
+        }
+    }
     if (profile()) {
         profile("`((time . _) (node . \"_\") (operation . _) (subordinate . \"_\"))",
                 current_time_in_microseconds(), interface_address(), result, src);
@@ -119,44 +134,9 @@ void sbnd::discoverer::update_subordinates(pointer<probe> p) {
         sys::log_message("test", "_: _ subordinate _", this->interface_address(), result, src);
         #endif
     }
-    weight_type total_weight = 0;
-    if (result == probe_result::add_subordinate) {
-        total_weight = this->_hierarchy.total_weight();
-        add_subordinate(src);
-    } else if (result == probe_result::remove_subordinate) {
-        remove_subordinate(src);
-        total_weight = this->_hierarchy.total_weight();
-    }
     p->return_to_parent(sbn::exit_code::success);
-    hierarchy_node sup;
-    sup.weight(total_weight);
-    p->superior(sup);
+    p->nodes(this->_hierarchy.nodes(this->_max_radius));
     factory.remote().send(std::move(p));
-}
-
-void sbnd::discoverer::add_subordinate(const sys::socket_address& address) {
-    if (this->_hierarchy.add_subordinate(address)) {
-        broadcast_hierarchy(address);
-    }
-}
-
-void sbnd::discoverer::add_superior(const sys::socket_address& address, weight_type weight) {
-    if (this->_hierarchy.add_superior(address, hierarchy_node(weight))) {
-        factory.remote().update_client(address, weight);
-        broadcast_hierarchy(address);
-    }
-}
-
-void sbnd::discoverer::remove_subordinate(const sys::socket_address& address) {
-    if (this->_hierarchy.remove_subordinate(address)) {
-        broadcast_hierarchy();
-    }
-}
-
-void sbnd::discoverer::remove_superior() {
-    if (this->_hierarchy.remove_superior()) {
-        broadcast_hierarchy();
-    }
 }
 
 sbnd::probe_result sbnd::discoverer::process_probe(pointer<probe>& p) {
@@ -179,7 +159,7 @@ sbnd::probe_result sbnd::discoverer::process_probe(pointer<probe>& p) {
     return result;
 }
 
-void sbnd::discoverer::update_superior(pointer<probe> p) {
+void sbnd::discoverer::probe_returned(pointer<probe> p) {
     if (p->return_code() != sbn::exit_code::success) {
         this->log("_: probe returned from _: _", this->interface_address(),
                   p->new_superior(), p->return_code());
@@ -188,6 +168,17 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
         const auto& old_superior = p->old_superior(), new_superior = p->new_superior();
         if (old_superior != new_superior) {
             if (old_superior) { factory.remote().stop_client(old_superior); }
+            bool changed = false;
+            const auto& nodes = p->nodes();
+            if (!nodes.empty()) {
+                const auto now = hierarchy_node::clock::now();
+                changed |= this->_hierarchy.add_nodes(nodes, now);
+                changed |= this->_hierarchy.add_superior(nodes.front(), now);
+                if (changed) {
+                    update_socket_pipeline_clients();
+                    broadcast_hierarchy(p->nodes().front().socket_address());
+                }
+            }
             if (profile()) {
                 profile("`((time . _) (node . \"_\") (superior . \"_\") (attempts . _))",
                         current_time_in_microseconds(), interface_address(),
@@ -196,10 +187,9 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
                 #if defined(SBN_TEST)
                 sys::log_message("test", "_: set principal to _ attempts _ weight _",
                                  interface_address(), new_superior, this->_attempts,
-                                 p->superior().weight());
+                                 p->nodes().front().total_threads());
                 #endif
             }
-            add_superior(new_superior, p->superior().weight());
         }
         if (p->old_superior() && p->old_superior() != p->new_superior()) {
             auto new_p = sbn::make_pointer<probe>(p->interface_address(), p->old_superior(),
@@ -213,6 +203,11 @@ void sbnd::discoverer::update_superior(pointer<probe> p) {
         // try to find better superior after a period of time
         discover_later();
     }
+}
+
+void sbnd::discoverer::update_socket_pipeline_clients() {
+    auto g = factory.remote().guard();
+    factory.remote().update_clients(this->_hierarchy);
 }
 
 void
@@ -232,36 +227,28 @@ sbnd::discoverer::on_client_add(const sys::socket_address& address) {}
 
 void
 sbnd::discoverer::on_client_remove(const sys::socket_address& address) {
+    const auto now = hierarchy_node::clock::now();
+    if (this->_hierarchy.remove_node(address, now)) {
+        broadcast_hierarchy(address);
+    }
     if (address == this->_hierarchy.superior_socket_address()) {
         #if defined(SBN_TEST)
         sys::log_message("test", "_: unset principal _", interface_address(), address);
         #endif
-        remove_superior();
         discover();
     } else {
         #if defined(SBN_TEST)
         sys::log_message("test", "_: remove subordinate _", interface_address(), address);
         #endif
-        remove_subordinate(address);
     }
 }
 
-void sbnd::discoverer::broadcast_hierarchy(sys::socket_address ignored_endpoint) {
-    const weight_type total = this->_hierarchy.total_weight();
-    for (const auto& pair : this->_hierarchy.subordinates()) {
+void sbnd::discoverer::broadcast_hierarchy(const sys::socket_address& ignored_endpoint) {
+    auto nodes = this->_hierarchy.nodes(this->_max_radius);
+    for (const auto& pair : this->_hierarchy.nodes()) {
         const auto& sub_socket_address = pair.first;
-        const auto& sub = pair.second;
         if (sub_socket_address != ignored_endpoint) {
-            assert(total >= sub.weight());
-            this->send_weight(sub_socket_address, total - sub.weight());
-        }
-    }
-    if (this->_hierarchy.has_superior()) {
-        const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
-        const hierarchy_node& sup = this->_hierarchy.superior();
-        if (sup_socket_address != ignored_endpoint) {
-            assert(total >= sup.weight());
-            this->send_weight(sup_socket_address, total - sup.weight());
+            send_weight(sub_socket_address, nodes);
         }
     }
     write_cache();
@@ -290,7 +277,7 @@ void sbnd::discoverer::write_cache() const {
         out.close();
         log("write hierarchy to _: _", path, this->_hierarchy);
     } catch (const sys::bad_call& err) {
-        log("failed to write cache: _", err.what());
+        log("failed to write cache");
     }
 }
 
@@ -306,25 +293,24 @@ void sbnd::discoverer::read_cache() {
         buf >> this->_hierarchy;
         in.close();
         log("read hierarchy from _: _", path, this->_hierarchy);
-        if (this->_hierarchy.has_superior()) {
-            const auto& sup = this->_hierarchy.superior();
-            const auto& sup_socket_address = this->_hierarchy.superior_socket_address();
+        if (auto* sup = this->_hierarchy.superior()) {
             auto g = factory.remote().guard();
-            factory.remote().add_client(sup_socket_address, sup.weight());
+            factory.remote().add_client(sup->socket_address(), this->_hierarchy);
         }
         //for (const auto& s : this->_hierarchy.subordinates()) {
         //    auto g = factory.remote().guard();
         //    factory.remote().add_client(s.socket_address(), s.weight());
         //}
     } catch (const sys::bad_call& err) {
-        if (err.errc() != std::errc:: no_such_file_or_directory) {
+        if (err.errc() != std::errc::no_such_file_or_directory) {
             log("failed to read cache: _", err.what());
         }
     }
 }
 
-void sbnd::discoverer::send_weight(const sys::socket_address& dest, weight_type w) {
-    auto h = sbn::make_pointer<Hierarchy_kernel>(this->interface_address(), w);
+void sbnd::discoverer::send_weight(const sys::socket_address& dest,
+                                   const hierarchy_node_array& nodes) {
+    auto h = sbn::make_pointer<Hierarchy_kernel>(interface_address(), nodes);
     h->point_to_point(1);
     h->parent(this);
     h->destination(dest);
@@ -337,19 +323,15 @@ void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
         log("_: failed to send hierarchy to _: _", interface_address(), k->source(),
             k->return_code());
     } else {
-        const sys::socket_address& src = k->source();
-        bool changed = false;
-        if (this->_hierarchy.has_superior(src)) {
-            changed = this->_hierarchy.set_superior(hierarchy_node(k->weight()));
-        } else if (this->_hierarchy.has_subordinate(src)) {
-            changed = this->_hierarchy.set_subordinate(src, hierarchy_node(k->weight()));
-        }
-        if (changed) {
+        const auto now = hierarchy_node::clock::now();
+        if (this->_hierarchy.add_nodes(k->nodes(), now)) {
+            const auto& src = k->source();
             #if defined(SBN_TEST)
             sys::log_message("test", "_: set _ weight to _",
-                             interface_address(), k->source(), k->weight());
+                             interface_address(), k->source(),
+                             k->nodes().front().resources()[1]);
             #endif
-            factory.remote().update_client(src, k->weight());
+            update_socket_pipeline_clients();
             broadcast_hierarchy(src);
         }
     }
@@ -363,5 +345,17 @@ _fanout(props.fanout), _hierarchy(interface_address, port) {
     this->_profile = props.profile;
     this->_max_attempts = props.max_attempts;
     this->_cache_directory = props.cache_directory;
+    this->_max_radius = props.max_radius;
     reset_iterator();
+}
+
+void sbnd::discoverer::resources(const sbn::resource_array& rhs,
+                                 hierarchy_node::time_point now) {
+    if (this->_hierarchy.resources(rhs, now)) {
+        {
+            auto g = factory.remote().guard();
+            factory.remote().scheduler().local_resources(rhs);
+        }
+        broadcast_hierarchy({});
+    }
 }

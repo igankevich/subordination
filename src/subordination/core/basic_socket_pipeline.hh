@@ -158,7 +158,7 @@ namespace sbn {
         emplace_handler(const sys::epoll_event& ev, const connection_ptr& ptr) {
             // N.B. we have two file descriptors (for the pipe)
             // in the process connection, so do not use emplace here
-            this->log("add _", ptr->socket_address());
+            //this->log("add _", ptr->socket_address());
             this->_connections.emplace(ev.fd(), ptr);
             ptr->min_input_buffer_size(this->_min_input_buffer_size);
             ptr->min_output_buffer_size(this->_min_output_buffer_size);

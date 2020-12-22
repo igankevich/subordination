@@ -58,7 +58,7 @@ namespace sbn {
         inline id_type id() const noexcept { return this->_id; }
         inline sys::uid_type user() const noexcept { return this->_uid; }
         inline sys::gid_type group() const noexcept { return this->_gid; }
-        const std::string& filename() const noexcept { return this->_args.front(); }
+        inline const std::string& filename() const noexcept { return this->_args.front(); }
 
         inline const string_array& arguments() const noexcept {
             return this->_args;

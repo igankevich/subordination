@@ -1,6 +1,7 @@
 config = configuration_data()
 config.set('sharedstatedir', join_paths(get_option('sharedstatedir'), 'sbnd'))
 config.set('SBND_WITH_GLUSTERFS', with_glusterfs)
+config.set('SBND_VERSION', meson.project_version())
 configure_file(input: 'config.hh.in', output: 'config.hh', configuration: config)
 
 sbnd_src = files([
@@ -201,10 +202,19 @@ test_app_exe = executable(
     implicit_include_directories: false,
 )
 
+resources_test_application_exe = executable(
+    'resources-test-application',
+    sources: 'resources_test_application.cc',
+    include_directories: [src],
+    dependencies: [test_sbn],
+    implicit_include_directories: false,
+)
+
 test_config = configuration_data()
 test_config.set('sbnd_exe_path', test_sbnd_exe.full_path())
 test_config.set('sbnc_exe_path', test_sbnc_exe.full_path())
 test_config.set('app_exe_path', test_app_exe.full_path())
+test_config.set('resources_test_application', resources_test_application_exe.full_path())
 configure_file(
     input: 'discovery_test.hh.in',
     output: 'discovery_test.hh',
@@ -235,6 +245,20 @@ test(
     executable(
         'transaction-test',
         sources: 'transaction_test.cc',
+        cpp_args: test_cpp_args,
+        include_directories: [src],
+        dependencies: [test_sbn,dtest] + valgrind_dep,
+        implicit_include_directories: false,
+    ),
+    workdir: meson.build_root(),
+    is_parallel: false
+)
+
+test(
+    'daemon/resources',
+    executable(
+        'resources-test',
+        sources: 'resources_test.cc',
         cpp_args: test_cpp_args,
         include_directories: [src],
         dependencies: [test_sbn,dtest] + valgrind_dep,
