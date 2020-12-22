@@ -270,7 +270,9 @@ class Spectrum_directory_kernel(sbn.Kernel):
 
         if self._count == self._num_kernels:
             print('>>>> Python (spec): total number of processed spectra %i' % self._count_spectra, file=open('pyspec.log', 'a'))
+            with open('nspectra.log', 'a') as log: log.write('%i\n' % self._count_spectra)
             print('>>>> Python (spec): total sum of processed spectra %i' % self._sum_spectra, file=open('pyspec.log', 'a'))
+            with open('sumspectra.log', 'a') as log: log.write('%i\n' % self._sum_spectra)
             sbn.commit(self, target=sbn.Target.Remote)
 
 
@@ -291,7 +293,8 @@ class Main(sbn.Kernel):
 
     def react(self, child: sbn.Kernel):
         self._time_end = time.time()
-        total_time = self._time_end - self._time_start
+        total_time = int((self._time_end - self._time_start) * 1e+6)
         print('>>>> Python (spec): finished all!', file=open('pyspec.log', 'a'))
-        print('>>>> Python (spec): total time execution: %f s' % total_time, file=open('pyspec.log', 'a'))
+        print('>>>> Python (spec): total time execution: %i us' % total_time, file=open('pyspec.log', 'a'))
+        with open('time.log', 'a') as log: log.write('%i\n' % total_time)
         sbn.commit(self, target=sbn.Target.Remote)
