@@ -9,6 +9,7 @@
 #include <subordination/core/kernel_type.hh>
 #include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
+#include <subordination/core/weights.hh>
 
 namespace sbn {
 
@@ -51,6 +52,9 @@ namespace sbn {
             broadcast = 4,
         };
         using fields = kernel_field;
+
+    public:
+        static constexpr const auto max_weight = std::numeric_limits<weight_type>::max();
 
     private:
         id_type _id = 0;
@@ -126,6 +130,9 @@ namespace sbn {
         */
         inline weight_type weight() const noexcept { return this->_weight; }
         inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+        inline ::sbn::weight_array weights() const noexcept {
+            return weight() == max_weight ? weight_array{1u,0u} : weight_array{0u,weight()};
+        }
 
         inline resource_expression* node_filter() noexcept { return this->_node_filter.get(); }
         inline const resource_expression* node_filter() const noexcept { return this->_node_filter.get(); }

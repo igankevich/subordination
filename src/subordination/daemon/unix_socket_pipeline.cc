@@ -85,7 +85,7 @@ void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
 void sbnd::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto kernel = std::move(this->_kernels.front());
-        this->_kernels.pop();
+        this->_kernels.pop_front();
         this->process_kernel(std::move(kernel));
     }
 }

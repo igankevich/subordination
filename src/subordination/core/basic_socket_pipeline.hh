@@ -36,7 +36,7 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
 
     private:
-        using kernel_queue = std::queue<kernel_ptr>;
+        using kernel_queue = std::deque<kernel_ptr>;
         using size_type = connection_table::size_type;
         //using connection_table = std::unordered_map<sys::fd_type,connection_ptr>;
         using thread_type = std::thread;
@@ -103,13 +103,13 @@ namespace sbn {
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_kernels.emplace(std::move(k));
+            this->_kernels.emplace_back(std::move(k));
             this->_semaphore.notify_one();
         }
 
         inline void send(kernel_ptr_array&& kernels, size_t n) {
             lock_type lock(this->_mutex);
-            for (size_t i=0; i<n; ++i) { this->_kernels.emplace(std::move(kernels[i])); }
+            for (size_t i=0; i<n; ++i) { this->_kernels.emplace_back(std::move(kernels[i])); }
             this->_semaphore.notify_all();
         }
 

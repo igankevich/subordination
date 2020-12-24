@@ -150,7 +150,7 @@ void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     while (!this->_kernels.empty()) {
         auto* k = this->_kernels.front().release();
         k->mark_as_deleted(sack);
-        this->_kernels.pop();
+        this->_kernels.pop_front();
     }
     for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }

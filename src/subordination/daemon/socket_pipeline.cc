@@ -84,6 +84,7 @@ namespace sbnd {
 
     public:
         using counter_type = socket_pipeline::counter_type;
+        using counter_array = std::array<counter_type,2>;
         using kernel_queue = std::deque<sbn::kernel_ptr>;
         using resource_array = sbn::resources::Bindings;
         using hierarchy_node_array = std::vector<hierarchy_node>;
@@ -91,7 +92,7 @@ namespace sbnd {
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
-        counter_type _num_kernels = 0;
+        sbn::weight_array _load{};
         hierarchy_node_array _nodes_behind;
         counter_type _sum_thread_concurrency{1};
         bool _route = false;
@@ -112,7 +113,7 @@ namespace sbnd {
         inline sbn::foreign_kernel_ptr forward(sbn::foreign_kernel_ptr k) {
             using p = sbn::kernel::phases;
             if (k->phase() == p::downstream) {
-                decrement(this->_num_kernels, k->weight());
+                num_kernels_decrement(k->weight());
             }
             if (k->routed()){
                 k->old_id(k->id());
@@ -247,37 +248,60 @@ namespace sbnd {
         }
 
         /// The number of threads "behind" this node in the hierarchy.
-        inline counter_type thread_concurrency_behind() const noexcept {
+        inline counter_type num_threads_behind() const noexcept {
             return this->_sum_thread_concurrency;
         }
 
-        /// The number of kernels that were sent to the client, but have not returned yet.
-        inline counter_type num_kernels() const noexcept { return this->_num_kernels; }
-
-        /**
-        \brief The number of kernels sent to the client divided by
-        the number of threads "behind" the client.
-        */
-        inline counter_type weight() const noexcept {
-            auto nthreads = thread_concurrency_behind();
-            if (nthreads == 0) { nthreads = 1; }
-            return this->_num_kernels / nthreads;
+        inline counter_type num_nodes_behind() const noexcept {
+            return this->_sum_thread_concurrency;
         }
 
-        inline void num_kernels(const counter_type& rhs) noexcept { this->_num_kernels = rhs; }
+        /**
+          The first element is the number of kernels with maximum weight. These kernels
+          use all threads of the cluster node.
+          The second element is the number of kernels that were sent to the client,
+          but have not returned yet.
+        */
+        inline const sbn::weight_array& load() const noexcept { return this->_load; }
+        inline sbn::weight_array& load() noexcept { return this->_load; }
 
-        inline bool full() const noexcept {
-            return this->_num_kernels >= thread_concurrency_behind();
+        /**
+          The first element is the number of kernels with the maximum weight sent to the client
+          divided by the number of cluster nodes. Each kernel uses all threads of the client.
+          The second element is the number of kernels sent to the client divided by
+          the number of threads "behind" the client.
+        */
+        inline sbn::weight_array relative_load() const noexcept {
+            sbn::weight_array tmp{load()};
+            auto num_nodes = num_nodes_behind();
+            if (num_nodes == 0) { num_nodes = 1; }
+            tmp[0] /= num_nodes;
+            auto nthreads = num_threads_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            tmp[1] /= nthreads;
+            return tmp;
         }
 
         inline void num_kernels_increment(sbn::kernel::weight_type w) {
-            increment(this->_num_kernels, w);
+            if (w == sbn::kernel::max_weight) {
+                increment(this->_load[0], sbn::kernel::weight_type{1});
+            } else {
+                increment(this->_load[1], w);
+            }
+        }
+
+        inline void num_kernels_decrement(sbn::kernel::weight_type w) {
+            if (w == sbn::kernel::max_weight) {
+                decrement(this->_load[0], sbn::kernel::weight_type{1});
+            } else {
+                decrement(this->_load[1], w);
+            }
         }
 
     private:
 
         void receive_downstream_foreign_kernel(sbn::foreign_kernel_ptr&& a) {
-            decrement(this->_num_kernels, a->weight());
+            num_kernels_decrement(a->weight());
             auto result = find_kernel(a.get(), this->_upstream);
             if (result == this->_upstream.end() || !(*result)->source()) {
                 connection::receive_foreign_kernel(std::move(a));
@@ -298,6 +322,23 @@ namespace sbnd {
 
 }
 
+void sbnd::socket_pipeline_scheduler::rebase_counters(const client_table& clients) {
+    // find minimum counter value
+    auto min_load = local_load();
+    for (const auto& pair : clients) {
+        const auto& client = *pair.second;
+        if (client.state() != sbn::connection_state::started) { continue; }
+        const auto& load = client.load();
+        const auto n = load.size();
+        for (size_t i=0; i<n; ++i) {
+            if (load[i] < min_load[i]) { min_load[i] = load[i]; }
+        }
+    }
+    // subtract minimum value from all counters
+    for (auto& pair : clients) { pair.second->load() -= min_load; }
+    this->_local_load -= min_load;
+}
+
 auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                                                const client_table& clients,
                                                const server_array& servers)
@@ -307,36 +348,18 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         log("neighbour local");
         return clients.end();
     }
-    bool any_started = false, overflow = false;
-    auto num_kernels_min = this->_local_num_kernels;
-    auto num_kernels_max = this->_local_num_kernels;
-    auto kernel_weight = k->weight();
+    bool any_started = false;
     for (const auto& pair : clients) {
         const auto& client = *pair.second;
-        if (client.state() != sbn::connection_state::started) { continue; }
-        any_started = true;
-        if (client.num_kernels() < num_kernels_min) { num_kernels_min = client.num_kernels(); }
-        if (num_kernels_max < client.num_kernels()) { num_kernels_max = client.num_kernels(); }
-        if (client.num_kernels() == std::numeric_limits<counter_type>::max()-kernel_weight) {
-            overflow = true;
+        if (client.state() == sbn::connection_state::started) {
+            any_started = true;
+            break;
         }
-    }
-    if (this->_local_num_kernels == std::numeric_limits<counter_type>::max()-kernel_weight) {
-        overflow = true;
     }
     // if there are no started clients
     if (!any_started) {
         log("neighbour local");
         return clients.end();
-    }
-    // reset the number of kernels on overflow
-    if (overflow) {
-        log("neighbour reset");
-        for (auto& pair : clients) {
-            auto old = pair.second->num_kernels();
-            pair.second->num_kernels(old - num_kernels_min);
-        }
-        this->_local_num_kernels -= num_kernels_min;
     }
     auto last = clients.end();
     auto result = last, result_with_nodes = last;
@@ -382,9 +405,8 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         auto& client = *first->second;
         // skip stopped clients
         if (client.state() != sbn::connection_state::started) {
-            log("neighbour skip (inactive) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(),
-                client.thread_concurrency_behind());
+            log("neighbour skip (inactive) _ load _ num-nodes-behind _",
+                client.socket_address(), client.load(), client.num_threads_behind());
             continue;
         }
         // skip nodes that do not match resource specification
@@ -395,18 +417,17 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         }
         // do not send the kernel back
         if (address == k->source()) {
-            log("neighbour skip (source) _ num-kernels _ num-nodes-behind _",
-                client.socket_address(), client.num_kernels(),
-                client.thread_concurrency_behind());
+            log("neighbour skip (source) _ load _ num-nodes-behind _",
+                client.socket_address(), client.load(), client.num_threads_behind());
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
-                    client.weight() < this->_local_num_kernels ||
+                    client.relative_load() < local_relative_load() ||
                     !node_filter_local_matches) {
                     result = first;
                 }
             } else {
-                if (client.weight() < result->second->weight()) {
+                if (client.relative_load() < result->second->relative_load()) {
                     result = first;
                 }
             }
@@ -422,7 +443,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
             if (result_with_nodes == last) {
                 result_with_nodes = first;
             } else {
-                if (client.weight() < result_with_nodes->second->weight()) {
+                if (client.relative_load() < result_with_nodes->second->relative_load()) {
                     result_with_nodes = first;
                 }
             }
@@ -431,7 +452,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
     // prefer nodes where associated file is located
     if (result_with_nodes != last) {
         auto& client = *result_with_nodes->second;
-        if (file_is_local && this->_local_num_kernels < client.weight()) {
+        if (file_is_local && local_relative_load() < client.relative_load()) {
             result = last;
         } else {
             result = result_with_nodes;
@@ -447,9 +468,9 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         // increase the number of kernels
         auto& client = result->second;
         client->num_kernels_increment(k->weight());
-        log("neighbour _ num-kernels _ num-threads-behind _ local-num-kernels _ path _ nodes_",
-            client->socket_address(), client->num_kernels(), client->thread_concurrency_behind(),
-            this->_local_num_kernels, path, tmp.str());
+        log("neighbour _ load _ local-load _ relative-load _ local-relative-load _ path _ nodes_",
+            client->socket_address(), client->load(), local_load(),
+            client->relative_load(), local_relative_load(), path, tmp.str());
     } else {
         // If the local node does not have the required resources,
         // return the kernel to its parent.
@@ -468,8 +489,8 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                 k->source(), *node_filter, clients.size(), k->carries_parent());
         }
         if (result == last) {
-            increment(this->_local_num_kernels, kernel_weight);
-            log("neighbour local num-kernels _ path _ nodes_", this->_local_num_kernels, path, tmp.str());
+            this->_local_load += k->weights();
+            log("neighbour local load _ path _ nodes_", local_load(), path, tmp.str());
         }
     }
     return result;
@@ -660,7 +681,7 @@ sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const cl
 void sbnd::socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto k = std::move(this->_kernels.front());
-        this->_kernels.pop();
+        this->_kernels.pop_front();
         try {
             this->process_kernel(k);
         } catch (const std::exception& err) {

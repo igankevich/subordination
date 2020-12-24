@@ -14,6 +14,7 @@
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/types.hh>
+#include <subordination/core/weights.hh>
 #include <subordination/daemon/file_system.hh>
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/local_server.hh>
@@ -95,13 +96,14 @@ namespace sbnd {
         using server_ptr = std::shared_ptr<socket_pipeline_server>;
         using server_array = std::vector<server_ptr>;
         using counter_type = uint32_t;
+        using counter_array = std::array<counter_type,2>;
         using file_system_ptr = std::shared_ptr<file_system>;
         using resource_array = sbn::resources::Bindings;
 
     private:
         std::vector<file_system_ptr> _file_systems;
         std::vector<sys::socket_address> _nodes;
-        counter_type _local_num_kernels = 0;
+        sbn::weight_array _local_load{};
         resource_array _local_resources;
         bool _local = true;
 
@@ -126,10 +128,31 @@ namespace sbnd {
             this->_file_systems.emplace_back(std::move(ptr));
         }
 
+        void rebase_counters(const client_table& clients);
+
         template <class ... Args>
         inline void
         log(const Args& ... args) const {
             sys::log_message("scheduler", args ...);
+        }
+
+    private:
+
+        inline const sbn::weight_array& local_load() const noexcept {
+            return this->_local_load;
+        }
+
+        inline counter_type local_num_threads_behind() const noexcept {
+            using r = sbn::resources::resources;
+            return this->_local_resources[r::total_threads].unsigned_integer();
+        }
+
+        inline sbn::weight_array local_relative_load() const noexcept {
+            sbn::weight_array tmp{local_load()};
+            auto nthreads = local_num_threads_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            tmp[1] /= nthreads;
+            return tmp;
         }
 
     };

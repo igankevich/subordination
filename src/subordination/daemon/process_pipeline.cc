@@ -140,7 +140,7 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
 void sbnd::process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         process_kernel(std::move(this->_kernels.front()));
-        this->_kernels.pop();
+        this->_kernels.pop_front();
     }
 }
 

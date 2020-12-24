@@ -18,7 +18,7 @@ void sbn::child_process_pipeline::send(kernel_ptr&& k) {
     if (!this->_parent) {
         send_native(std::move(k));
     } else {
-        this->_kernels.emplace(std::move(k));
+        this->_kernels.emplace_back(std::move(k));
         this->poller().notify_one();
     }
 }
@@ -44,7 +44,7 @@ void sbn::child_process_pipeline::add_connection() {
 void sbn::child_process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto k = std::move(this->_kernels.front());
-        this->_kernels.pop();
+        this->_kernels.pop_front();
         if (this->_parent && (this->_parent->state() == connection_state::started ||
                               this->_parent->state() == connection_state::starting)) {
             this->_parent->send(k);

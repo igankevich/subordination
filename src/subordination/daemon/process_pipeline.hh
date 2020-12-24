@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
@@ -54,9 +55,13 @@ namespace sbnd {
         application_table _jobs;
         sys::process_group _child_processes;
         pipeline* _unix{};
-        size_t _pipe_buffer_size = 4096*16;
+        size_t _pipe_buffer_size = 4096UL*16UL;
         /// How long a child process lives without receiving/sending kernels.
         duration _timeout;
+        /** How long outstanding kernels can wait for the resources. When
+        the time runs out, the kernel is sent back to the source cluster
+        node. */
+        duration _kernel_timeout;
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = true;
 
@@ -83,6 +88,7 @@ namespace sbnd {
         inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
         inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
         inline void timeout(duration rhs) noexcept { this->_timeout = rhs; }
+        inline void kernel_timeout(duration rhs) noexcept { this->_kernel_timeout = rhs; }
 
         inline const application_table& jobs() const noexcept {
             return this->_jobs;

@@ -20,6 +20,7 @@ sbn_src = files([
     'properties.cc',
     'resources.cc',
     'transaction_log.cc',
+    'weights.cc',
 ])
 
 install_headers(
@@ -47,6 +48,7 @@ install_headers(
     'resources.hh',
     'transaction_log.hh',
     'types.hh',
+    'weights.hh',
     subdir: join_paths(meson.project_name(), 'core')
 )
 
