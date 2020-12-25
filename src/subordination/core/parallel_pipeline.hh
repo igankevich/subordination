@@ -7,6 +7,7 @@
 #include <thread>
 #include <vector>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/pipeline_base.hh>
 
 namespace sbn {
@@ -68,6 +69,7 @@ namespace sbn {
         parallel_pipeline& operator=(const parallel_pipeline&) = delete;
 
         inline void send(kernel_ptr&& k) override {
+            Expects(k.get());
             if (k->phase() == kernel::phases::downstream) {
                 this->send_downstream(std::move(k));
             } else if (k->scheduled()) { this->send_timer(std::move(k)); }
@@ -80,6 +82,7 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto& k = kernels[i];
+                Assert(k.get());
                 if (k->phase() == kernel::phases::downstream) {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
@@ -114,6 +117,7 @@ namespace sbn {
         }
 
         inline void send_upstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("upstream _", *k);
             #endif
@@ -123,6 +127,7 @@ namespace sbn {
         }
 
         inline void send_downstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("downstream _", *k);
             #endif
@@ -140,6 +145,7 @@ namespace sbn {
         }
 
         inline void send_timer(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("schedule _", *k);
             #endif

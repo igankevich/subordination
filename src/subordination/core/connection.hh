@@ -14,6 +14,7 @@
 #include <unistdx/system/error>
 #include <unistdx/system/resource>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/pipeline_base.hh>
@@ -194,10 +195,12 @@ namespace sbn {
     protected:
 
         inline void generate_new_id(kernel* k) {
+            Expects(k);
             k->id(++this->_counter);
         }
 
         inline void ensure_has_id(kernel* k) {
+            Expects(k);
             if (!k->has_id()) { k->id(++this->_counter); }
         }
 
@@ -206,6 +209,7 @@ namespace sbn {
     template <class Queue>
     inline typename Queue::const_iterator
     find_kernel(const sbn::kernel* a, const Queue& queue) {
+        Expects(a);
         return std::find_if(queue.begin(), queue.end(),
                             [a] (const sbn::kernel_ptr& b) {
                                 return a->id() == b->id() &&

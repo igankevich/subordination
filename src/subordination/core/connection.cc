@@ -41,6 +41,7 @@ void sbn::connection::flush() {}
 void sbn::connection::stop() { state(connection_state::stopped); }
 
 void sbn::connection::send(kernel_ptr& k) {
+    Expects(k);
     // return local downstream kernels immediately
     // TODO we need to move some kernel flags to
     // kernel header in order to use them in routing
@@ -82,6 +83,7 @@ void sbn::connection::send(kernel_ptr& k) {
 }
 
 sbn::foreign_kernel_ptr sbn::connection::do_forward(foreign_kernel_ptr k) {
+    Expects(k);
     write_kernel(k.get());
     return pointer_dynamic_cast<foreign_kernel>(save_kernel(std::move(k)));
 }
@@ -105,6 +107,7 @@ void sbn::connection::receive_kernels() {
             kernel_read_guard g(frame, this->_input_buffer);
             if (!g) { break; }
             auto k = read_kernel();
+            Assert(k);
             if (k->is_foreign()) {
                 #if defined(SBN_DEBUG)
                 log("read foreign src _ dst _ app _ id _", k->source(),
@@ -128,6 +131,7 @@ void sbn::connection::receive_kernels() {
 }
 
 void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
+    Expects(k);
     // TODO The following two lines destroy daemon/transactions test.
     if (k->phase() == kernel::phases::downstream) {
         auto result = find_kernel(k.get(), this->_upstream);
@@ -152,12 +156,14 @@ void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
 sbn::kernel_ptr sbn::connection::read_kernel() {
     kernel_ptr k;
     this->_input_buffer.read(k);
+    Assert(k);
     if (this->_socket_address) { k->source(this->_socket_address); }
     k->source_pipeline(this->_parent);
     return k;
 }
 
 void sbn::connection::receive_kernel(kernel_ptr&& k) {
+    Expects(k);
     bool ok = true;
     if (k->phase() == kernel::phases::downstream) {
         this->plug_parent(k);
@@ -189,6 +195,7 @@ void sbn::connection::receive_kernel(kernel_ptr&& k) {
 }
 
 void sbn::connection::plug_parent(kernel_ptr& k) {
+    Expects(k);
     if (k->type_id() == 1) {
         #if defined(SBN_DEBUG)
         log("RECV main kernel _", *k);
@@ -243,6 +250,7 @@ void sbn::connection::plug_parent(kernel_ptr& k) {
 }
 
 sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
+    Expects(k);
     //if (k->type_id() == 1) {
     //    log("delete main kernel _", *k);
     //    return true;
@@ -308,6 +316,7 @@ void sbn::connection::recover_kernels(bool down) {
 }
 
 void sbn::connection::recover_kernel(kernel_ptr& k) {
+    Expects(k);
     if (parent() && (parent()->stopping() || parent()->stopped())) {
         #if defined(SBN_DEBUG)
         log("trash _", *k);

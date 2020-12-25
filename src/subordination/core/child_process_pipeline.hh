@@ -22,7 +22,10 @@ namespace sbn {
 
         child_process_pipeline() = default;
         virtual ~child_process_pipeline() = default;
-        child_process_pipeline(child_process_pipeline&& rhs) = default;
+        child_process_pipeline(const child_process_pipeline&) = delete;
+        child_process_pipeline& operator=(const child_process_pipeline&) = delete;
+        child_process_pipeline(child_process_pipeline&&) = delete;
+        child_process_pipeline& operator=(child_process_pipeline&&) = delete;
 
         void send(kernel_ptr&& k) override;
         void add_connection();

@@ -3,7 +3,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <unistdx/base/make_object>
 #include <unistdx/net/socket>
 
 #include <subordination/core/basic_factory.hh>
@@ -69,6 +68,7 @@ _socket(sys::family_type::inet) {
 
 
 void sbnd::socket_pipeline_server::add(const connection_ptr& self) {
+    Expects(self);
     connection::parent()->emplace_handler(
         sys::epoll_event{socket().fd(), sys::event::in}, self);
 }
@@ -111,6 +111,7 @@ namespace sbnd {
         socket_pipeline_client(socket_pipeline_client&& rhs) = delete;
 
         inline sbn::foreign_kernel_ptr forward(sbn::foreign_kernel_ptr k) {
+            Expects(k);
             using p = sbn::kernel::phases;
             if (k->phase() == p::downstream) {
                 num_kernels_decrement(k->weight());
@@ -152,6 +153,7 @@ namespace sbnd {
         inline sys::socket& socket() noexcept { return this->_socket; }
 
         void add(const connection_ptr& self) override {
+            Expects(self);
             connection::parent()->emplace_handler(
                 sys::epoll_event{socket().fd(), sys::event::inout}, self);
         }
@@ -162,6 +164,7 @@ namespace sbnd {
         }
 
         inline void deactivate(const connection_ptr& self) override {
+            Expects(self);
             connection::deactivate(self);
             connection::parent()->erase(socket().fd());
             this->_old_bind_address = this->_socket.name();
@@ -170,6 +173,7 @@ namespace sbnd {
         }
 
         inline void activate(const connection_ptr& self) override {
+            Expects(self);
             this->_socket = sys::socket(this->_old_bind_address.family());
             this->_socket.set(sys::socket::options::reuse_address);
             this->_socket.bind(this->_old_bind_address);
@@ -220,6 +224,7 @@ namespace sbnd {
         */
 
         void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
+            Expects(k);
             if (!route()) {
                 connection::receive_foreign_kernel(std::move(k));
                 return;
@@ -301,6 +306,7 @@ namespace sbnd {
     private:
 
         void receive_downstream_foreign_kernel(sbn::foreign_kernel_ptr&& a) {
+            Expects(a);
             num_kernels_decrement(a->weight());
             auto result = find_kernel(a.get(), this->_upstream);
             if (result == this->_upstream.end() || !(*result)->source()) {
@@ -343,6 +349,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                                                const client_table& clients,
                                                const server_array& servers)
 -> client_iterator {
+    Expects(k);
     //using value_type = client_table::value_type;
     if (clients.empty()) {
         log("neighbour local");
@@ -531,6 +538,7 @@ void sbnd::socket_pipeline::remove_server(server_iterator result) {
 }
 
 void sbnd::socket_pipeline::remove_client(const sys::socket_address& vaddr) {
+    Expects(vaddr);
     this->log("remove client _", vaddr);
     client_iterator result = this->_clients.find(vaddr);
     if (result != this->_clients.end()) {
@@ -553,6 +561,7 @@ void sbnd::socket_pipeline::remove_client(client_iterator result) {
 }
 
 void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_address netmask) {
+    Expects(rhs);
     auto sa = sys::socket_address_cast<sys::ipv4_socket_address>(rhs);
     interface_address interface_address(sa.address(), netmask);
     if (this->find_server(interface_address) == this->_servers.end()) {
@@ -569,6 +578,7 @@ void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_addres
 }
 
 void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
+    Expects(k);
     lock_type lock(this->_mutex);
     log("forward _", *k);
     switch (k->phase()) {
@@ -630,6 +640,7 @@ auto sbnd::socket_pipeline::find_server(const interface_address& interface_addre
 }
 
 auto sbnd::socket_pipeline::find_server(sys::fd_type fd) -> server_iterator {
+    Expects(fd);
     typedef typename server_array::value_type value_type;
     return std::find_if(
         this->_servers.begin(),
@@ -641,6 +652,7 @@ auto sbnd::socket_pipeline::find_server(sys::fd_type fd) -> server_iterator {
 }
 
 auto sbnd::socket_pipeline::find_server(const sys::socket_address& dest) -> server_iterator {
+    Expects(dest);
     typedef typename server_array::value_type value_type;
     return std::find_if(
         this->_servers.begin(),
@@ -675,6 +687,8 @@ void sbnd::socket_pipeline::ensure_identity(sbn::kernel* k, const sys::socket_ad
 
 void
 sbnd::socket_pipeline::emplace_client(const sys::socket_address& vaddr, const client_ptr& s) {
+    Expects(vaddr);
+    Expects(s);
     this->_clients.emplace(vaddr, s);
 }
 
@@ -696,6 +710,7 @@ void sbnd::socket_pipeline::process_kernels() {
 }
 
 void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
+    Expects(k);
     // short circuit local server
     /*
        if (k->destination()) {
@@ -745,6 +760,7 @@ void sbnd::socket_pipeline::process_kernel(sbn::kernel_ptr& k) {
 
 auto
 sbnd::socket_pipeline::find_or_create_client(const sys::socket_address& addr) -> client_ptr {
+    Expects(addr);
     client_ptr ret;
     auto result = this->_clients.find(addr);
     if (result == this->_clients.end()) {
@@ -757,6 +773,7 @@ sbnd::socket_pipeline::find_or_create_client(const sys::socket_address& addr) ->
 
 auto
 sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_ptr {
+    Expects(addr);
     if (addr.family() == sys::family_type::unix) {
         sys::socket s(sys::family_type::unix);
         s.set(sys::socket::options::pass_credentials);
@@ -792,6 +809,7 @@ sbnd::socket_pipeline::do_add_client(const sys::socket_address& addr) -> client_
 
 auto
 sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vaddr) -> client_ptr {
+    Expects(vaddr);
     if (vaddr.family() != sys::family_type::unix) {
         sock.set_user_timeout(this->_socket_timeout);
     }
@@ -811,6 +829,7 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
 
 void
 sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
+    Expects(addr);
     lock_type lock(this->_mutex);
     auto result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
@@ -820,6 +839,7 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
 
 void sbnd::socket_pipeline::add_client(const sys::socket_address& addr,
                                        const hierarchy_type& hierarchy) {
+    Expects(addr);
     auto ptr = this->do_add_client(addr);
     ptr->nodes_behind(hierarchy.nodes_behind(addr));
 }

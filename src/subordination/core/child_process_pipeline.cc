@@ -1,16 +1,19 @@
 #include <unistdx/io/pipe>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/child_process_pipeline.hh>
 
 namespace {
     inline void update_buffer_size(sys::fildes& fd, size_t new_size) {
+        Expects(bool(fd));
         if (new_size == std::numeric_limits<size_t>::max()) { return; }
         fd.pipe_buffer_size(new_size);
     }
 }
 
 void sbn::child_process_pipeline::send(kernel_ptr&& k) {
+    Expects(k.get());
     #if defined(SBN_DEBUG)
     log("send _", *k);
     #endif

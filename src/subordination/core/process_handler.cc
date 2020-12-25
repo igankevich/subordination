@@ -1,18 +1,20 @@
 #include <ostream>
 
-#include <unistdx/base/make_object>
-
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/basic_factory.hh>
 #include <subordination/core/process_handler.hh>
 
 /// Called from parent process.
-sbn::process_handler::process_handler(sys::pid_type&& child,
+sbn::process_handler::process_handler(sys::pid_type child,
                                       sys::two_way_pipe&& pipe,
                                       const ::sbn::application& app):
 _child_process_id(child),
 _file_descriptors(std::move(pipe)),
 _application(app),
 _role(roles::parent) {
+    Expects(child);
+    Expects(this->_file_descriptors.in());
+    Expects(this->_file_descriptors.out());
     this->_file_descriptors.in().validate();
     this->_file_descriptors.out().validate();
 }
@@ -21,10 +23,14 @@ _role(roles::parent) {
 sbn::process_handler::process_handler(sys::pipe&& pipe):
 _child_process_id(sys::this_process::id()),
 _file_descriptors(std::move(pipe)),
-_role(roles::child) {}
+_role(roles::child) {
+    Expects(this->_file_descriptors.in());
+    Expects(this->_file_descriptors.out());
+}
 
 sbn::kernel_ptr sbn::process_handler::read_kernel() {
     auto k = connection::read_kernel();
+    Assert(k);
     if (this->_role == roles::parent) {
         k->source_application(new sbn::application(this->_application));
         if (k->is_foreign() && !k->target_application()) {
@@ -54,6 +60,7 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
 }
 
 void sbn::process_handler::receive_kernel(kernel_ptr&& k) {
+    Expects(k);
     // TODO move this code to sbn::connection
     if (k->phase() == sbn::kernel::phases::downstream) {
         --this->_num_active_kernels;
@@ -63,6 +70,7 @@ void sbn::process_handler::receive_kernel(kernel_ptr&& k) {
 }
 
 void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
+    Expects(fk);
     if (fk->phase() == sbn::kernel::phases::downstream) {
         this->_load -= fk->weights();
     }
@@ -82,6 +90,7 @@ void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
 }
 
 void sbn::process_handler::add(const connection_ptr& self) {
+    Expects(self);
     connection::parent()->emplace_handler(sys::epoll_event(in(), sys::event::in), self);
     connection::parent()->emplace_handler(sys::epoll_event(out(), sys::event::out), self);
 }
@@ -108,6 +117,7 @@ void sbn::process_handler::stop() {
 }
 
 void sbn::process_handler::forward(foreign_kernel_ptr&& k) {
+    Expects(k);
     // remove target application before forwarding
     // to child process to reduce the amount of data
     // transferred to child process

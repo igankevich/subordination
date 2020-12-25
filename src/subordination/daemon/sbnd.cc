@@ -73,7 +73,7 @@ int real_main(int argc, char* argv[]) {
     factory.configure(props);
     try {
         if (factory.isset(factory_flags::unix)) {
-            factory.unix().add_server(sys::socket_address(SBND_SOCKET));
+            factory.unix().add_server(sys::unix_socket_address(SBND_SOCKET));
         }
         {
             auto k = sbn::make_pointer<Main>(props);

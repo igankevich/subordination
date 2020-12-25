@@ -11,6 +11,7 @@
 
 namespace {
     inline void update_buffer_size(sys::fildes& fd, size_t new_size) {
+        Expects(bool(fd));
         if (new_size == std::numeric_limits<size_t>::max()) { return; }
         fd.pipe_buffer_size(new_size);
     }
@@ -100,6 +101,7 @@ void sbnd::process_pipeline::remove(application_id_type id) {
 }
 
 void sbnd::process_pipeline::terminate(sys::pid_type id) {
+    Expects(id > 0);
     auto first = this->_child_processes.begin(), last = this->_child_processes.end();
     while (first != last) {
         if (first->id() == id) {
@@ -111,7 +113,7 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
 }
 
 void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
-    Expects(fk.get() != nullptr);
+    Expects(fk);
     #if defined(SBN_DEBUG)
     log("forward _", *fk);
     log("forward src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
@@ -230,6 +232,7 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
 
 typename sbnd::process_pipeline::app_iterator
 sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
+    Expects(pid > 0);
     using value_type = typename application_table::value_type;
     return std::find_if(
         this->_jobs.begin(),

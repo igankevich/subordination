@@ -58,6 +58,9 @@ void sbn::basic_socket_pipeline::handle_events() {
 void sbn::basic_socket_pipeline::deactivate(sys::fd_type fd,
                                             connection_ptr conn,
                                             const char* reason) {
+    Expects(fd);
+    Expects(conn);
+    Expects(reason);
     if (conn->attempts() >= max_connection_attempts()) {
         remove(fd, conn, "max. attempts reached");
     } else {
@@ -69,6 +72,9 @@ void sbn::basic_socket_pipeline::deactivate(sys::fd_type fd,
 void sbn::basic_socket_pipeline::remove(sys::fd_type fd,
                                         connection_ptr& conn,
                                         const char* reason) {
+    Expects(fd);
+    Expects(conn);
+    Expects(reason);
     log("remove _ (_)", conn->socket_address(), reason);
     conn->remove(conn);
     this->_connections.erase(fd);
@@ -160,6 +166,7 @@ void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
 }
 
 void sbn::basic_socket_pipeline::remove_listener(kernel* b) {
+    Expects(b);
     this->_listeners.erase(
         std::remove_if(this->_listeners.begin(), this->_listeners.end(),
                        [b] (kernel* a) { return a == b; }),

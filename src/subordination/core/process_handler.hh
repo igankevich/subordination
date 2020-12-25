@@ -35,7 +35,7 @@ namespace sbn {
     public:
 
         /// Called from parent process.
-        process_handler(sys::pid_type&& child,
+        process_handler(sys::pid_type child,
                         sys::two_way_pipe&& pipe,
                         const ::sbn::application& app);
 
