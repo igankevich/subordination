@@ -118,21 +118,22 @@ _socket(std::move(socket)) {
     this->state(sbn::connection_state::starting);
 }
 
+void sbnd::unix_socket_client::receive_kernel(sbn::kernel_ptr&& k) {
+    if (auto* a = k->source_application()) {
+        a->credentials(socket().credentials());
+    }
+    if (auto* a = k->target_application()) {
+        a->credentials(socket().credentials());
+    }
+    connection::receive_kernel(std::move(k));
+}
+
 void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
     this->log("_ _", __func__, event);
     if (state() == sbn::connection_state::starting) { state(sbn::connection_state::started); }
     if (event.in()) {
         fill(this->_socket);
-        receive_kernels(
-            nullptr,
-            [this] (sbn::kernel_ptr& k) {
-                if (auto* a = k->source_application()) {
-                    a->credentials(socket().credentials());
-                }
-                if (auto* a = k->target_application()) {
-                    a->credentials(socket().credentials());
-                }
-            });
+        receive_kernels();
     }
 };
 

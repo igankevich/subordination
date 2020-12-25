@@ -11,19 +11,21 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/connection.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/weights.hh>
 
 namespace sbn {
 
     class process_handler: public connection {
 
     private:
-        enum class role_type {child, parent};
+        enum class roles {child, parent};
 
     private:
         sys::pid_type _child_process_id;
         sys::fildes_pair _file_descriptors;
         ::sbn::application _application;
-        role_type _role;
+        roles _role;
+        sbn::weight_array _load{};
         int _num_active_kernels = 0;
         int _kernel_count_last = 0;
         time_point _last{};
@@ -52,36 +54,7 @@ namespace sbn {
         void flush() override;
         void stop() override;
 
-        inline void forward(foreign_kernel_ptr&& k) {
-            // remove target application before forwarding
-            // to child process to reduce the amount of data
-            // transferred to child process
-            bool wait_for_completion = false;
-            if (auto* a = k->target_application()) {
-                wait_for_completion = a->wait_for_completion();
-                if (k->source_application_id() == a->id()) {
-                    k->target_application_id(a->id());
-                }
-            }
-            // save the main kernel
-            k = connection::do_forward(std::move(k));
-            if (k) {
-                if (k->type_id() == 1) {
-                    if (wait_for_completion) {
-                        log("save main kernel _", *k);
-                        this->_main_kernel = std::move(k);
-                    } else {
-                        log("return main kernel _", *k);
-                        k->return_to_parent();
-                        k->target_application_id(0);
-                        k->source_application_id(application().id());
-                        parent()->forward_to(this->_unix, std::move(k));
-                    }
-                }
-            }
-            log("send DEBUG upstream _ downstream _", upstream().size(), downstream().size());
-            ++this->_num_active_kernels;
-        }
+        void forward(foreign_kernel_ptr&& k);
 
         inline const ::sbn::application& application() const noexcept {
             return this->_application;
@@ -108,7 +81,10 @@ namespace sbn {
         inline int num_active_kernels() const noexcept { return this->_num_active_kernels; }
 
     protected:
+        void receive_kernel(kernel_ptr&& k) override;
         void receive_foreign_kernel(foreign_kernel_ptr&& fk) override;
+        kernel_ptr read_kernel() override;
+        void write_kernel(const kernel* k) noexcept override;
 
     };
 

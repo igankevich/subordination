@@ -98,14 +98,13 @@ void sbn::connection::write_kernel(const kernel* k) noexcept {
     }
 }
 
-void sbn::connection::receive_kernels(const application* from_application,
-                                      std::function<void(kernel_ptr&)> func) {
+void sbn::connection::receive_kernels() {
     kernel_frame frame;
     while (this->_input_buffer.remaining() >= sizeof(kernel_frame)) {
         try {
             kernel_read_guard g(frame, this->_input_buffer);
             if (!g) { break; }
-            auto k = read_kernel(from_application);
+            auto k = read_kernel();
             if (k->is_foreign()) {
                 #if defined(SBN_DEBUG)
                 log("read foreign src _ dst _ app _ id _", k->source(),
@@ -117,7 +116,7 @@ void sbn::connection::receive_kernels(const application* from_application,
                 log("read native src _ dst _ app _ id _", k->source(),
                     k->destination(), k->source_application_id(), k->id());
                 #endif
-                receive_kernel(std::move(k), func);
+                receive_kernel(std::move(k));
             }
         } catch (const std::exception& err) {
             log_read_error(err.what());
@@ -150,22 +149,15 @@ void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
     }
 }
 
-sbn::kernel_ptr
-sbn::connection::read_kernel(const application* from_application) {
+sbn::kernel_ptr sbn::connection::read_kernel() {
     kernel_ptr k;
     this->_input_buffer.read(k);
-    if (from_application) {
-        k->source_application(new application(*from_application));
-        if (k->is_foreign() && !k->target_application()) {
-            k->target_application_id(from_application->id());
-        }
-    }
     if (this->_socket_address) { k->source(this->_socket_address); }
     k->source_pipeline(this->_parent);
     return k;
 }
 
-void sbn::connection::receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func) {
+void sbn::connection::receive_kernel(kernel_ptr&& k) {
     bool ok = true;
     if (k->phase() == kernel::phases::downstream) {
         this->plug_parent(k);
@@ -184,7 +176,6 @@ void sbn::connection::receive_kernel(kernel_ptr&& k, std::function<void(kernel_p
     #if defined(SBN_DEBUG)
     this->log("recv _", *k);
     #endif
-    func(k);
     if (!ok) {
         #if defined(SBN_DEBUG)
         this->log("no principal found for _", *k);

@@ -9,8 +9,6 @@
 
 namespace sbn {
 
-    using weight_type = std::uint32_t;
-
     class weight_array: public std::array<weight_type,2> {
 
     private:

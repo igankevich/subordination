@@ -9,6 +9,8 @@
 
 #include <unistdx/base/byte_buffer>
 
+#include <subordination/core/types.hh>
+
 namespace sbn {
 
     /// \brief Mini-language for selecting nodes with appropriate resources
@@ -174,8 +176,6 @@ namespace sbn {
         inline std::ostream& operator<<(std::ostream& out, const Expression& rhs) {
             rhs.write(out); return out;
         }
-
-        using expression_ptr = std::unique_ptr<Expression>;
 
         class Symbol: public Expression {
         private:
@@ -418,8 +418,6 @@ namespace sbn {
         #undef SBN_RESOURCES_BINARY_OPERATOR
 
     }
-
-    using resource_array = resources::Bindings;
 
 }
 

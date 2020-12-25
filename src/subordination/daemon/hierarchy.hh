@@ -9,7 +9,6 @@
 #include <unistdx/net/interface_socket_address>
 #include <unistdx/net/socket_address>
 
-#include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
 #include <subordination/daemon/hierarchy_node.hh>
 

@@ -84,17 +84,9 @@ namespace sbn {
 
         void clear(kernel_sack& sack);
 
-        /// \param[in] from socket address from which kernels are received
-        void receive_kernels(const application* from_application=nullptr) {
-            this->receive_kernels(from_application, [] (kernel_ptr&) {});
-        }
-
-        // TODO std::function is slow
-        void receive_kernels(const application* from_application,
-                             std::function<void(kernel_ptr&)> func);
+        void receive_kernels();
 
         virtual void handle(const sys::epoll_event& event);
-
         virtual void add(const connection_ptr& self);
         virtual void remove(const connection_ptr& self);
         virtual void retry(const connection_ptr& self);
@@ -156,7 +148,10 @@ namespace sbn {
 
         foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
         void recover_kernels(bool downstream);
+        virtual void receive_kernel(kernel_ptr&& k);
         virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
+        virtual void write_kernel(const kernel* k) noexcept;
+        virtual kernel_ptr read_kernel();
 
         struct flush_guard {
             kernel_buffer& _buffer;
@@ -186,9 +181,6 @@ namespace sbn {
 
     private:
 
-        void write_kernel(const kernel* k) noexcept;
-        kernel_ptr read_kernel(const application* from_application);
-        void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
         void plug_parent(kernel_ptr& k);
         kernel_ptr save_kernel(kernel_ptr k);
         void recover_kernel(kernel_ptr& k);

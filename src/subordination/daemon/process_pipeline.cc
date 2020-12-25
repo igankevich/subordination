@@ -3,6 +3,7 @@
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
 #include <subordination/daemon/process_pipeline.hh>
@@ -110,6 +111,7 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
 }
 
 void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+    Expects(fk.get() != nullptr);
     #if defined(SBN_DEBUG)
     log("forward _", *fk);
     log("forward src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
@@ -138,6 +140,10 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
 }
 
 void sbnd::process_pipeline::process_kernels() {
+    //auto first = this->_kernels.begin(), last = this->_kernels.end();
+    //while (first != last) {
+    //    ++first;
+    //}
     while (!this->_kernels.empty()) {
         process_kernel(std::move(this->_kernels.front()));
         this->_kernels.pop_front();

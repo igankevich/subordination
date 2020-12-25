@@ -29,6 +29,9 @@ namespace sbnd {
         inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
         inline const sys::socket& socket() const noexcept { return this->_socket; }
 
+    protected:
+        void receive_kernel(sbn::kernel_ptr&& k) override;
+
     };
 
     class unix_socket_pipeline: public sbn::basic_socket_pipeline {
