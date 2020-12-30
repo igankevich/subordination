@@ -147,12 +147,11 @@ namespace sbnd {
             return this->_local_resources[r::total_threads].unsigned_integer();
         }
 
-        inline sbn::weight_array local_relative_load() const noexcept {
+        inline sbn::modular_weight_array local_relative_load() const noexcept {
             sbn::weight_array tmp{local_load()};
             auto nthreads = local_num_threads_behind();
             if (nthreads == 0) { nthreads = 1; }
-            tmp[1] /= nthreads;
-            return tmp;
+            return sbn::modular_weight_array{{tmp[0],0},{tmp[1]/nthreads,tmp[1]%nthreads}};
         }
 
     };

@@ -3,35 +3,36 @@
 
 #include <array>
 #include <cstdint>
-#include <iosfwd>
+#include <ostream>
 
 #include <subordination/core/types.hh>
 
 namespace sbn {
 
-    class weight_array: public std::array<weight_type,2> {
+    template <class T>
+    class basic_weight_array: public std::array<T,2> {
 
     private:
-        using base_type = std::array<weight_type,2>;
+        using base_type = std::array<T,2>;
 
     public:
-        inline explicit weight_array(weight_type a, weight_type b): base_type{a,b} {}
+        inline explicit basic_weight_array(T a, T b): base_type{a,b} {}
         using base_type::size;
 
-        weight_array() = default;
-        ~weight_array() = default;
-        weight_array(const weight_array&) = default;
-        weight_array& operator=(const weight_array&) = default;
-        weight_array(weight_array&&) = default;
-        weight_array& operator=(weight_array&&) = default;
+        basic_weight_array() = default;
+        ~basic_weight_array() = default;
+        basic_weight_array(const basic_weight_array&) = default;
+        basic_weight_array& operator=(const basic_weight_array&) = default;
+        basic_weight_array(basic_weight_array&&) = default;
+        basic_weight_array& operator=(basic_weight_array&&) = default;
 
         #define SBN_INTERNAL_OPERATOR(OP) \
-            inline weight_array& operator OP(const weight_array& rhs) noexcept { \
+            inline basic_weight_array& operator OP(const basic_weight_array& rhs) noexcept { \
                 const auto n = size(); \
                 for (size_t i=0; i<n; ++i) { (*this)[i] OP rhs[i]; } \
                 return *this; \
             } \
-            inline weight_array& operator OP(weight_type rhs) noexcept { \
+            inline basic_weight_array& operator OP(T rhs) noexcept { \
                 const auto n = size(); \
                 for (size_t i=0; i<n; ++i) { (*this)[i] OP rhs; } \
                 return *this; \
@@ -47,7 +48,11 @@ namespace sbn {
 
     };
 
+    using weight_array = basic_weight_array<weight_type>;
+    using modular_weight_array = basic_weight_array<std::array<weight_type,2>>;
+
     std::ostream& operator<<(std::ostream& out, const weight_array& rhs);
+    std::ostream& operator<<(std::ostream& out, const modular_weight_array& rhs);
 
     kernel_buffer& operator<<(kernel_buffer& out, const weight_array& rhs);
     kernel_buffer& operator>>(kernel_buffer& in, weight_array& rhs);

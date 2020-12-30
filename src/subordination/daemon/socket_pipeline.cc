@@ -276,15 +276,17 @@ namespace sbnd {
           The second element is the number of kernels sent to the client divided by
           the number of threads "behind" the client.
         */
-        inline sbn::weight_array relative_load() const noexcept {
+        inline sbn::modular_weight_array relative_load() const noexcept {
             sbn::weight_array tmp{load()};
             auto num_nodes = num_nodes_behind();
             if (num_nodes == 0) { num_nodes = 1; }
-            tmp[0] /= num_nodes;
+            //tmp[0] /= num_nodes;
             auto nthreads = num_threads_behind();
             if (nthreads == 0) { nthreads = 1; }
-            tmp[1] /= nthreads;
-            return tmp;
+            //tmp[1] /= nthreads;
+            return sbn::modular_weight_array{
+                {tmp[0]/num_nodes,tmp[0]%num_nodes},
+                {tmp[1]/nthreads,tmp[1]%nthreads}};
         }
 
         inline void num_kernels_increment(sbn::kernel::weight_type w) {
@@ -429,13 +431,19 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         } else {
             if (result == last) {
                 if (!local() || k->carries_parent() ||
-                    client.relative_load() < local_relative_load() ||
+                    client.relative_load() <= local_relative_load() ||
                     !node_filter_local_matches) {
                     result = first;
+                } else {
+                    log("neighbour skip (local is better) _ relative-load _ local-relative-load _",
+                        client.socket_address(), client.relative_load(), local_relative_load());
                 }
             } else {
                 if (client.relative_load() < result->second->relative_load()) {
                     result = first;
+                } else {
+                    log("neighbour skip (previous is better) _ relative-load _ local-load _",
+                        client.socket_address(), client.relative_load(), result->second->relative_load());
                 }
             }
         }

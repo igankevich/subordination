@@ -20,7 +20,7 @@ namespace sbn {
     class kernel_type_registry;
     class kernel_write_guard;
     class type_error;
-    class weight_array;
+    template <class T> class basic_weight_array;
     enum class exit_code: sys::u16;
     enum class kernel_flag: sys::u32;
 
