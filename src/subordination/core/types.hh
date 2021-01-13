@@ -34,7 +34,7 @@ namespace sbn {
     class pipeline_base;
     class process_handler;
     class transaction_log;
-    enum class connection_flags: int;
+    enum class connection_flags: sys::u32;
     enum class kernel_header_flag: sys::u8;
     enum class process_role_type;
     enum class role_type;

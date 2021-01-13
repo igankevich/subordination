@@ -38,7 +38,7 @@ void sbn::child_process_pipeline::add_connection() {
         this->_parent->parent(this);
         this->_parent->types(types());
         this->_parent->setf(f::save_upstream_kernels);
-        this->_parent->state(connection_state::starting);
+        this->_parent->state(connection::states::starting);
         this->_parent->name(name());
         this->_parent->add(this->_parent);
     }
@@ -48,8 +48,8 @@ void sbn::child_process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto k = std::move(this->_kernels.front());
         this->_kernels.pop_front();
-        if (this->_parent && (this->_parent->state() == connection_state::started ||
-                              this->_parent->state() == connection_state::starting)) {
+        if (this->_parent && (this->_parent->state() == connection::states::started ||
+                              this->_parent->state() == connection::states::starting)) {
             this->_parent->send(k);
         } else {
             send_native(std::move(k));

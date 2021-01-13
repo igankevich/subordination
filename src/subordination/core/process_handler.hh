@@ -25,7 +25,6 @@ namespace sbn {
         sys::fildes_pair _file_descriptors;
         ::sbn::application _application;
         roles _role;
-        sbn::weight_array _load{};
         int _num_active_kernels = 0;
         int _kernel_count_last = 0;
         time_point _last{};

@@ -8,8 +8,8 @@
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 
-const char* sbn::to_string(connection_state rhs) {
-    using s = connection_state;
+const char* sbn::to_string(connection::states rhs) {
+    using s = connection::states;
     switch (rhs) {
         case s::initial: return "initial";
         case s::starting: return "starting";
@@ -21,7 +21,7 @@ const char* sbn::to_string(connection_state rhs) {
     }
 }
 
-std::ostream& sbn::operator<<(std::ostream& out, connection_state rhs) {
+std::ostream& sbn::operator<<(std::ostream& out, connection::states rhs) {
     return out << to_string(rhs);
 }
 
@@ -38,7 +38,7 @@ void sbn::connection::retry(const connection_ptr&) { ++this->_attempts; }
 void sbn::connection::deactivate(const connection_ptr&) { ++this->_attempts; }
 void sbn::connection::activate(const connection_ptr& self) {}
 void sbn::connection::flush() {}
-void sbn::connection::stop() { state(connection_state::stopped); }
+void sbn::connection::stop() { state(states::stopped); }
 
 void sbn::connection::send(kernel_ptr& k) {
     Expects(k);
@@ -93,6 +93,9 @@ void sbn::connection::write_kernel(const kernel* k) noexcept {
         kernel_frame frame;
         kernel_write_guard g(frame, this->_output_buffer);
         this->_output_buffer.write(k);
+        if (k->phase() == sbn::kernel::phases::upstream) {
+            this->_load += k->weights();
+        }
     } catch (const std::exception& err) {
         log_write_error(err.what());
     } catch (...) {
@@ -108,6 +111,9 @@ void sbn::connection::receive_kernels() {
             if (!g) { break; }
             auto k = read_kernel();
             Assert(k);
+            if (k->phase() == sbn::kernel::phases::downstream) {
+                this->_load -= k->weights();
+            }
             if (k->is_foreign()) {
                 #if defined(SBN_DEBUG)
                 log("read foreign src _ dst _ app _ id _", k->source(),
@@ -260,7 +266,7 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
     switch (k->phase()) {
         case kernel::phases::upstream:
         case kernel::phases::point_to_point:
-            if (isset(connection_flags::save_upstream_kernels)) {
+            if (isset(flag::save_upstream_kernels)) {
                 queue = &this->_upstream;
                 if (k->carries_parent() || k->isset(kernel_flag::transactional)) {
                     status = transaction_status::start;
@@ -268,7 +274,7 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
             }
             break;
         case kernel::phases::downstream:
-            if (isset(connection_flags::save_downstream_kernels) && k->carries_parent()) {
+            if (isset(flag::save_downstream_kernels) && k->carries_parent()) {
                 queue = &this->_downstream;
                 status = transaction_status::end;
             }
@@ -279,7 +285,7 @@ sbn::kernel_ptr sbn::connection::save_kernel(kernel_ptr k) {
             }
             break;
     }
-    if (isset(connection_flags::write_transaction_log) &&
+    if (isset(flag::write_transaction_log) &&
         status != transaction_status{} && parent()->transactions()) {
         try {
             parent()->write_transaction(status, k);

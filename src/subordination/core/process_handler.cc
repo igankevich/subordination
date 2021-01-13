@@ -44,36 +44,31 @@ void sbn::process_handler::write_kernel(const kernel* k) noexcept {
     connection::write_kernel(k);
     if (k->phase() == sbn::kernel::phases::upstream) {
         ++this->_num_active_kernels;
-        this->_load += k->weights();
     }
 }
 
 void sbn::process_handler::handle(const sys::epoll_event& event) {
-    if (state() == connection_state::starting) {
-        state(connection_state::started);
+    if (state() == connection::states::starting) {
+        state(connection::states::started);
     }
     if (event.in()) {
         fill(this->_file_descriptors.in());
         receive_kernels();
-        log("recv DEBUG upstream _ downstream _", upstream().size(), downstream().size());
+        log("recv DEBUG upstream _ downstream _ load _",
+            upstream().size(), downstream().size(), load());
     }
 }
 
 void sbn::process_handler::receive_kernel(kernel_ptr&& k) {
     Expects(k);
-    // TODO move this code to sbn::connection
     if (k->phase() == sbn::kernel::phases::downstream) {
         --this->_num_active_kernels;
-        this->_load -= k->weights();
     }
     connection::receive_kernel(std::move(k));
 }
 
 void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
     Expects(fk);
-    if (fk->phase() == sbn::kernel::phases::downstream) {
-        this->_load -= fk->weights();
-    }
     if (fk->type_id() == 1) {
         log("RECV _", *fk);
         //fk->return_to_parent();
@@ -106,7 +101,7 @@ void sbn::process_handler::remove(const connection_ptr&) {
     } catch (const sys::bad_call& err) {
         if (err.errc() != std::errc::no_such_file_or_directory) { throw; }
     }
-    state(connection_state::stopped);
+    state(connection::states::stopped);
 }
 
 void sbn::process_handler::flush() {
@@ -144,5 +139,6 @@ void sbn::process_handler::forward(foreign_kernel_ptr&& k) {
             }
         }
     }
-    log("send DEBUG upstream _ downstream _", upstream().size(), downstream().size());
+    log("send DEBUG upstream _ downstream _ load _",
+        upstream().size(), downstream().size(), load());
 }

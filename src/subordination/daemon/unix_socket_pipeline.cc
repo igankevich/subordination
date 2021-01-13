@@ -121,7 +121,7 @@ void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
 _socket(std::move(socket)) {
-    this->state(sbn::connection_state::starting);
+    this->state(sbn::connection::states::starting);
 }
 
 void sbnd::unix_socket_client::receive_kernel(sbn::kernel_ptr&& k) {
@@ -136,7 +136,7 @@ void sbnd::unix_socket_client::receive_kernel(sbn::kernel_ptr&& k) {
 }
 
 void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
-    if (state() == sbn::connection_state::starting) { state(sbn::connection_state::started); }
+    if (state() == sbn::connection::states::starting) { state(sbn::connection::states::started); }
     if (event.in()) {
         fill(this->_socket);
         receive_kernels();

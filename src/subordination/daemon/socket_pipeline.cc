@@ -32,27 +32,6 @@ namespace {
 */
 
 
-namespace {
-
-    template <class T>
-    inline void decrement(T& value, T delta) {
-        if (value >= std::numeric_limits<T>::lowest() + delta) {
-            value -= delta;
-        } else {
-            value = std::numeric_limits<T>::lowest();
-        }
-    }
-
-    template <class T>
-    inline void increment(T& value, T delta) {
-        if (value <= std::numeric_limits<T>::max()-delta) {
-            value += delta;
-        } else {
-            value = std::numeric_limits<T>::max();
-        }
-    }
-
-}
 
 sbnd::socket_pipeline_server::socket_pipeline_server(const interface_address_type& ifaddr, sys::port_type port):
 _ifaddr(ifaddr),
@@ -92,7 +71,6 @@ namespace sbnd {
     private:
         sys::socket _socket;
         sys::socket_address _old_bind_address;
-        sbn::weight_array _load{};
         hierarchy_node_array _nodes_behind;
         counter_type _sum_thread_concurrency{1};
         bool _route = false;
@@ -112,10 +90,6 @@ namespace sbnd {
 
         inline sbn::foreign_kernel_ptr forward(sbn::foreign_kernel_ptr k) {
             Expects(k);
-            using p = sbn::kernel::phases;
-            if (k->phase() == p::downstream) {
-                num_kernels_decrement(k->weight());
-            }
             if (k->routed()){
                 k->old_id(k->id());
                 generate_new_id(k.get());
@@ -138,8 +112,8 @@ namespace sbnd {
         }
 
         void handle(const sys::epoll_event& event) override {
-            if (state() == sbn::connection_state::starting && !event.err()) {
-                state(sbn::connection_state::started);
+            if (state() == sbn::connection::states::starting && !event.err()) {
+                state(sbn::connection::states::started);
             }
             if (event.in()) {
                 fill(socket());
@@ -169,7 +143,7 @@ namespace sbnd {
             connection::parent()->erase(socket().fd());
             this->_old_bind_address = this->_socket.name();
             this->_socket = sys::socket();
-            state(sbn::connection_state::inactive);
+            state(sbn::connection::states::inactive);
         }
 
         inline void activate(const connection_ptr& self) override {
@@ -179,7 +153,7 @@ namespace sbnd {
             this->_socket.bind(this->_old_bind_address);
             this->_socket.connect(socket_address());
             add(self);
-            state(sbn::connection_state::starting);
+            state(sbn::connection::states::starting);
         }
 
         using connection::parent;
@@ -262,15 +236,6 @@ namespace sbnd {
         }
 
         /**
-          The first element is the number of kernels with maximum weight. These kernels
-          use all threads of the cluster node.
-          The second element is the number of kernels that were sent to the client,
-          but have not returned yet.
-        */
-        inline const sbn::weight_array& load() const noexcept { return this->_load; }
-        inline sbn::weight_array& load() noexcept { return this->_load; }
-
-        /**
           The first element is the number of kernels with the maximum weight sent to the client
           divided by the number of cluster nodes. Each kernel uses all threads of the client.
           The second element is the number of kernels sent to the client divided by
@@ -289,27 +254,10 @@ namespace sbnd {
                 {tmp[1]/nthreads,tmp[1]%nthreads}};
         }
 
-        inline void num_kernels_increment(sbn::kernel::weight_type w) {
-            if (w == sbn::kernel::max_weight) {
-                increment(this->_load[0], sbn::kernel::weight_type{1});
-            } else {
-                increment(this->_load[1], w);
-            }
-        }
-
-        inline void num_kernels_decrement(sbn::kernel::weight_type w) {
-            if (w == sbn::kernel::max_weight) {
-                decrement(this->_load[0], sbn::kernel::weight_type{1});
-            } else {
-                decrement(this->_load[1], w);
-            }
-        }
-
     private:
 
         void receive_downstream_foreign_kernel(sbn::foreign_kernel_ptr&& a) {
             Expects(a);
-            num_kernels_decrement(a->weight());
             auto result = find_kernel(a.get(), this->_upstream);
             if (result == this->_upstream.end() || !(*result)->source()) {
                 connection::receive_foreign_kernel(std::move(a));
@@ -335,7 +283,7 @@ void sbnd::socket_pipeline_scheduler::rebase_counters(const client_table& client
     auto min_load = local_load();
     for (const auto& pair : clients) {
         const auto& client = *pair.second;
-        if (client.state() != sbn::connection_state::started) { continue; }
+        if (client.state() != sbn::connection::states::started) { continue; }
         const auto& load = client.load();
         const auto n = load.size();
         for (size_t i=0; i<n; ++i) {
@@ -360,7 +308,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
     bool any_started = false;
     for (const auto& pair : clients) {
         const auto& client = *pair.second;
-        if (client.state() == sbn::connection_state::started) {
+        if (client.state() == sbn::connection::states::started) {
             any_started = true;
             break;
         }
@@ -413,7 +361,7 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         const auto& address = first->first;
         auto& client = *first->second;
         // skip stopped clients
-        if (client.state() != sbn::connection_state::started) {
+        if (client.state() != sbn::connection::states::started) {
             log("neighbour skip (inactive) _ load _ num-nodes-behind _",
                 client.socket_address(), client.load(), client.num_threads_behind());
             continue;
@@ -480,9 +428,8 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
         tmp << ' ' << address;
     }
     if (result != last) {
-        // increase the number of kernels
         auto& client = result->second;
-        client->num_kernels_increment(k->weight());
+        //client->num_kernels_increment(k->weight());
         log("neighbour _ load _ local-load _ relative-load _ local-relative-load _ path _ nodes_",
             client->socket_address(), client->load(), local_load(),
             client->relative_load(), local_relative_load(), path, tmp.str());
@@ -559,11 +506,11 @@ void sbnd::socket_pipeline::remove_client(client_iterator result) {
     sys::socket_address socket_address = result->first;
     #if defined(SBN_DEBUG)
     const char* reason =
-        result->second->state() == sbn::connection_state::starting
+        result->second->state() == sbn::connection::states::starting
         ? "timed out" : "connection closed";
     this->log("remove client _ (_)", socket_address, reason);
     #endif
-    result->second->state(sbn::connection_state::stopped);
+    result->second->state(sbn::connection::states::stopped);
     this->_clients.erase(result);
     fire_event_kernels(socket_pipeline_event::remove_client, socket_address);
 }
@@ -825,7 +772,7 @@ sbnd::socket_pipeline::do_add_client(sys::socket&& sock, sys::socket_address vad
     s->socket_address(vaddr);
     s->parent(this);
     s->types(types());
-    s->state(sbn::connection_state::starting);
+    s->state(sbn::connection::states::starting);
     s->name(this->_name);
     using f = sbn::connection_flags;
     s->setf(f::save_upstream_kernels | f::save_downstream_kernels | f::write_transaction_log);
@@ -841,7 +788,7 @@ sbnd::socket_pipeline::stop_client(const sys::socket_address& addr) {
     lock_type lock(this->_mutex);
     auto result = this->_clients.find(addr);
     if (result != this->_clients.end()) {
-        result->second->state(sbn::connection_state::stopped);
+        result->second->state(sbn::connection::states::stopped);
     }
 }
 

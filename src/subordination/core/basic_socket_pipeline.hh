@@ -286,8 +286,8 @@ namespace sbn {
                 //    log("oldest _ _", conn->socket_address(), conn->state());
                 //}
                 if (conn &&
-                    (conn->state() == connection_state::starting ||
-                     conn->state() == connection_state::inactive) &&
+                    (conn->state() == connection::states::starting ||
+                     conn->state() == connection::states::inactive) &&
                     conn->has_start_time_point()) {
                     if (result == last) {
                         result = first;

@@ -22,7 +22,7 @@
 
 namespace sbn {
 
-    enum class connection_flags: int {
+    enum class connection_flags: sys::u32 {
         save_upstream_kernels = 1<<0,
         save_downstream_kernels = 1<<1,
         write_transaction_log = 1<<2
@@ -30,19 +30,11 @@ namespace sbn {
 
     UNISTDX_FLAGS(connection_flags)
 
-    enum class connection_state {
-        initial,
-        starting,
-        started,
-        stopping,
-        stopped,
-        inactive,
-    };
-
-    const char* to_string(connection_state rhs);
-    std::ostream& operator<<(std::ostream& out, connection_state rhs);
-
     class connection {
+
+    public:
+        enum class states {initial, starting, started, stopping, stopped, inactive};
+        using flag = connection_flags;
 
     private:
         using kernel_queue = std::deque<kernel_ptr>;
@@ -57,17 +49,18 @@ namespace sbn {
     private:
         time_point _start{duration::zero()};
         basic_socket_pipeline* _parent = nullptr;
-        connection_flags _flags{};
+        flag _flags{};
         id_type _counter = 1;
         sys::u32 _attempts = 1;
         const char* _name = "ppl";
-        connection_state _state = connection_state::initial;
+        states _state = states::initial;
 
     protected:
         kernel_queue _upstream, _downstream;
         kernel_buffer _output_buffer;
         kernel_buffer _input_buffer;
         sys::socket_address _socket_address;
+        weight_array _load{};
 
     public:
         connection() = default;
@@ -115,11 +108,11 @@ namespace sbn {
             this->_socket_address = rhs;
         }
 
-        inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
-        inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
-        inline bool isset(connection_flags rhs) noexcept { return bool(this->_flags & rhs); }
-        inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
-        inline connection_flags flags() const noexcept { return this->_flags; }
+        inline void setf(flag rhs) noexcept { this->_flags |= rhs; }
+        inline void unsetf(flag rhs) noexcept { this->_flags &= ~rhs; }
+        inline bool isset(flag rhs) noexcept { return bool(this->_flags & rhs); }
+        inline void flags(flag rhs) noexcept { this->_flags = rhs; }
+        inline flag flags() const noexcept { return this->_flags; }
 
         inline void types(kernel_type_registry* rhs) noexcept {
             this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);
@@ -128,10 +121,10 @@ namespace sbn {
         inline sys::u32 attempts() const noexcept { return this->_attempts; }
         inline const char* name() const noexcept { return this->_name; }
         inline void name(const char* rhs) noexcept { this->_name = rhs; }
-        inline connection_state state() const noexcept { return this->_state; }
-        inline void state(connection_state rhs) noexcept {
+        inline states state() const noexcept { return this->_state; }
+        inline void state(states rhs) noexcept {
             this->_state = rhs;
-            if (rhs == connection_state::starting) { this->_start = clock_type::now(); }
+            if (rhs == states::starting) { this->_start = clock_type::now(); }
         }
 
         inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
@@ -144,6 +137,15 @@ namespace sbn {
         inline void min_output_buffer_size(size_t rhs) {
             if (this->_output_buffer.size() < rhs) { this->_output_buffer.resize(rhs); }
         }
+
+        /**
+          The first element is the number of kernels with maximum weight. These kernels
+          use all threads of the cluster node.
+          The second element is the number of kernels that were sent to the client,
+          but have not returned yet.
+        */
+        inline const weight_array& load() const noexcept { return this->_load; }
+        inline weight_array& load() noexcept { return this->_load; }
 
     protected:
 
@@ -205,6 +207,9 @@ namespace sbn {
         }
 
     };
+
+    const char* to_string(connection::states rhs);
+    std::ostream& operator<<(std::ostream& out, connection::states rhs);
 
     template <class Queue>
     inline typename Queue::const_iterator

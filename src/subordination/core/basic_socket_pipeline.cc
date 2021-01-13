@@ -38,7 +38,7 @@ void sbn::basic_socket_pipeline::handle_events() {
         }
         auto& conn = this->_connections[ev.fd()];
         if (!conn) { continue; }
-        if (conn->state() == connection_state::inactive) { continue; }
+        if (conn->state() == connection::states::inactive) { continue; }
         // process event by calling event connection function
         try {
             conn->handle(ev);
@@ -92,18 +92,18 @@ void sbn::basic_socket_pipeline::flush_buffers() {
             conn->flush();
         } catch (const std::exception& err) {
             log("flush _", err.what());
-            if (conn->state() == connection_state::started) {
+            if (conn->state() == connection::states::started) {
                 deactivate(i, conn, err.what());
                 continue;
             }
         }
-        if (conn->state() == connection_state::stopped) {
+        if (conn->state() == connection::states::stopped) {
             remove(i, conn, "stopped");
-        } else if (conn->state() == connection_state::starting) {
+        } else if (conn->state() == connection::states::starting) {
             if (conn->start_time_point() + connection_timeout() <= now) {
                 deactivate(i, conn, "timed out");
             }
-        } else if (conn->state() == connection_state::inactive) {
+        } else if (conn->state() == connection::states::inactive) {
             if (conn->start_time_point() + connection_timeout() <= now) {
                 using namespace std::chrono;
                 log("activate _ _", conn->socket_address(),
