@@ -22,11 +22,11 @@ std::ostream& sbn::operator<<(std::ostream& out, const modular_weight_array& rhs
 }
 
 sbn::kernel_buffer& sbn::operator<<(kernel_buffer& out, const weight_array& rhs) {
-    for (auto w : rhs) { out.write(w); }
+    for (auto w : rhs) { out.write(w.get()); }
     return out;
 }
 
 sbn::kernel_buffer& sbn::operator>>(kernel_buffer& in, weight_array& rhs) {
-    for (auto& w : rhs) { in.read(w); }
+    for (auto& w : rhs) { in.read(w.get()); }
     return in;
 }

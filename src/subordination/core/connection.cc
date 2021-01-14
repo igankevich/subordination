@@ -112,7 +112,9 @@ void sbn::connection::receive_kernels() {
             auto k = read_kernel();
             Assert(k);
             if (k->phase() == sbn::kernel::phases::downstream) {
+                log("LOAD before _ k _", this->_load, k->weights());
                 this->_load -= k->weights();
+                log("LOAD after _ k _", this->_load, k->weights());
             }
             if (k->is_foreign()) {
                 #if defined(SBN_DEBUG)

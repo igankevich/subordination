@@ -25,7 +25,7 @@ namespace sbnd {
 
     public:
 
-        probe() = default;
+        inline probe() { weight(0); }
 
         inline
         probe(
@@ -36,7 +36,7 @@ namespace sbnd {
         _ifaddr(interface_address),
         _old_superior(oldprinc),
         _new_superior(newprinc)
-        {}
+        { weight(0); }
 
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;

@@ -383,8 +383,9 @@ auto sbnd::socket_pipeline_scheduler::schedule(sbn::kernel* k,
                     !node_filter_local_matches) {
                     result = first;
                 } else {
-                    log("neighbour skip (local is better) _ relative-load _ local-relative-load _",
-                        client.socket_address(), client.relative_load(), local_relative_load());
+                    log("neighbour skip (local is better) _ relative-load _ local-relative-load _ load _",
+                        client.socket_address(), client.relative_load(), local_relative_load(),
+                        client.load());
                 }
             } else {
                 if (client.relative_load() < result->second->relative_load()) {

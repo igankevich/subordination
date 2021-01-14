@@ -43,7 +43,7 @@ namespace sbn {
     using kernel_ptr_array = std::vector<kernel_ptr>;
     using foreign_kernel_ptr = std::unique_ptr<foreign_kernel>;
     using kernel_sack = std::vector<kernel_ptr>;
-    using weight_type = sys::u32;
+    //using weight_type = sys::u32;
 
     namespace resources {
         class Any;
