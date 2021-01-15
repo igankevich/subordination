@@ -12,7 +12,9 @@ namespace sbn {
     template <class T>
     class basic_weight {
 
+    public:
         static_assert(std::is_unsigned<T>::value, "expect unsigned integral type");
+        using value_type = T;
 
     private:
         T _value{};
@@ -27,8 +29,6 @@ namespace sbn {
         basic_weight& operator=(const basic_weight&) = default;
         basic_weight(basic_weight&&) = default;
         basic_weight& operator=(basic_weight&&) = default;
-
-        //inline basic_weight& operator=(T value) noexcept { this->_value = value; return *this; }
 
         inline basic_weight& operator+=(T b) noexcept {
             if (get() < std::numeric_limits<T>::max()-b) {
@@ -227,6 +227,19 @@ namespace sbn {
 
     kernel_buffer& operator<<(kernel_buffer& out, const weight_array& rhs);
     kernel_buffer& operator>>(kernel_buffer& in, weight_array& rhs);
+
+}
+
+namespace std {
+
+    template <class T>
+    struct hash<sbn::basic_weight<T>>: public std::hash<T> {
+
+        inline size_t operator()(sbn::basic_weight<T> rhs) const noexcept {
+            return std::hash<T>::operator()(rhs.get());
+        }
+
+    };
 
 }
 
