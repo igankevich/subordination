@@ -159,7 +159,11 @@ void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
         kernels.pop_front();
         auto new_load = current_load + k->weights();
         if (num_threads_used(new_load) < this->_max_threads) {
-            process_kernel(std::move(k));
+            if (k->is_native()) {
+                process_kernel(std::move(k));
+            } else {
+                do_forward(sbn::pointer_dynamic_cast<sbn::foreign_kernel>(std::move(k)));
+            }
             current_load = new_load;
         } else {
             kernels.emplace_back(std::move(k));
