@@ -188,6 +188,7 @@ namespace sbn {
     public:
         inline explicit basic_weight_array(T a, T b): base_type{a,b} {}
         using base_type::size;
+        using base_type::value_type;
 
         basic_weight_array() = default;
         ~basic_weight_array() = default;
@@ -217,6 +218,37 @@ namespace sbn {
         #undef SBN_INTERNAL_OPERATOR
 
     };
+
+    #define SBN_INTERNAL_OPERATOR(OP) \
+        template <class T> inline basic_weight_array<T> \
+        operator OP(const basic_weight_array<T>& a, const basic_weight_array<T>& b) noexcept { \
+            basic_weight_array<T> result; \
+            const auto n = a.size(); \
+            for (size_t i=0; i<n; ++i) { result[i] = a[i] OP b[i]; } \
+            return result; \
+        } \
+        template <class T> inline basic_weight_array<T> \
+        operator OP(const basic_weight_array<T>& a, T b) noexcept { \
+            basic_weight_array<T> result; \
+            const auto n = a.size(); \
+            for (size_t i=0; i<n; ++i) { result[i] = a[i] OP b; } \
+            return result; \
+        } \
+        template <class T> inline basic_weight_array<T> \
+        operator OP(T a, const basic_weight_array<T>& b) noexcept { \
+            basic_weight_array<T> result; \
+            const auto n = b.size(); \
+            for (size_t i=0; i<n; ++i) { result[i] = a OP b[i]; } \
+            return result; \
+        }
+
+    SBN_INTERNAL_OPERATOR(+);
+    SBN_INTERNAL_OPERATOR(-);
+    SBN_INTERNAL_OPERATOR(*);
+    SBN_INTERNAL_OPERATOR(/);
+    SBN_INTERNAL_OPERATOR(%);
+
+    #undef SBN_INTERNAL_OPERATOR
 
     using weight_type = basic_weight<sys::u32>;
     using weight_array = basic_weight_array<weight_type>;

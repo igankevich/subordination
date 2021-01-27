@@ -8,7 +8,7 @@
 
 namespace sbnd {
 
-    class Status_kernel: public sbn::kernel {
+    class Status_kernel: public sbn::service_kernel {
 
     public:
         using address_type = sys::ipv4_address;

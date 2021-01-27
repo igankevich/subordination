@@ -56,6 +56,7 @@ void sbn::process_handler::handle(const sys::epoll_event& event) {
         receive_kernels();
         log("recv DEBUG upstream _ downstream _ load _",
             upstream().size(), downstream().size(), load());
+        parent()->poller().notify_one();
     }
 }
 

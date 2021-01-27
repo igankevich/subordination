@@ -15,7 +15,7 @@
 
 namespace sbnd {
 
-    class Main: public sbn::kernel {
+    class Main: public sbn::service_kernel {
 
     private:
         using addr_type = sys::ipv4_address;

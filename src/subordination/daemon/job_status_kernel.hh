@@ -6,7 +6,7 @@
 
 namespace sbnd {
 
-    class Job_status_kernel: public sbn::kernel {
+    class Job_status_kernel: public sbn::service_kernel {
 
     public:
         using application_array = std::vector<sbn::application>;

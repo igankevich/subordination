@@ -121,6 +121,17 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     #endif
     lock_type lock(this->_mutex);
     if (stopping() || stopped()) { return; }
+    auto current_load = total_load();
+    current_load += fk->weights();
+    if (num_threads_used(current_load) < this->_max_threads) {
+        do_forward(std::move(fk));
+        poller().notify_one();
+    } else {
+        this->_outstanding_kernels.emplace_back(std::move(fk));
+    }
+}
+
+void sbnd::process_pipeline::do_forward(sbn::foreign_kernel_ptr&& fk) {
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
@@ -138,18 +149,28 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     }
     auto& conn = result->second;
     conn->forward(std::move(fk));
-    poller().notify_one();
+}
+
+void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
+                                                sbn::weight_array& current_load) {
+    auto first = kernels.begin(), last = kernels.end();
+    while (first != last) {
+        auto new_load = current_load + (*first)->weights();
+        if (num_threads_used(new_load) < this->_max_threads) {
+            process_kernel(std::move(*first));
+            first = kernels.erase(first);
+            last = kernels.end();
+            current_load = new_load;
+        } else {
+            ++first;
+        }
+    }
 }
 
 void sbnd::process_pipeline::process_kernels() {
-    //auto first = this->_kernels.begin(), last = this->_kernels.end();
-    //while (first != last) {
-    //    ++first;
-    //}
-    while (!this->_kernels.empty()) {
-        process_kernel(std::move(this->_kernels.front()));
-        this->_kernels.pop_front();
-    }
+    auto current_load = total_load();
+    do_process_kernels(this->_kernels, current_load);
+    do_process_kernels(this->_outstanding_kernels, current_load);
 }
 
 void sbnd::process_pipeline::process_kernel(sbn::kernel_ptr&& k) {

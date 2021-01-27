@@ -445,6 +445,11 @@ namespace sbn {
         return in;
     }
 
+    class service_kernel: public kernel {
+    public:
+        inline service_kernel() { weight(0); }
+    };
+
 }
 
 #endif // vim:filetype=cpp

@@ -1,9 +1,9 @@
 #ifndef SUBORDINATION_DAEMON_PROCESS_PIPELINE_HH
 #define SUBORDINATION_DAEMON_PROCESS_PIPELINE_HH
 
+#include <deque>
 #include <memory>
 #include <unordered_map>
-#include <vector>
 
 #include <unistdx/ipc/process>
 #include <unistdx/ipc/process_group>
@@ -50,6 +50,7 @@ namespace sbnd {
         using application_id_type = sbn::application::id_type;
         using application_table = std::unordered_map<application_id_type,connection_ptr>;
         using app_iterator = typename application_table::iterator;
+        using kernel_queue = std::deque<sbn::kernel_ptr>;
 
     private:
         application_table _jobs;
@@ -58,10 +59,12 @@ namespace sbnd {
         size_t _pipe_buffer_size = 4096UL*16UL;
         /// How long a child process lives without receiving/sending kernels.
         duration _timeout;
+        kernel_queue _outstanding_kernels;
         /** How long outstanding kernels can wait for the resources. When
         the time runs out, the kernel is sent back to the source cluster
         node. */
         duration _kernel_timeout;
+        unsigned _max_threads = sys::thread_concurrency();
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = true;
 
@@ -97,6 +100,7 @@ namespace sbnd {
         inline sentry guard() noexcept { return sentry(*this); }
         inline pipeline* unix() const noexcept { return this->_unix; }
         inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
+        inline void max_threads(unsigned rhs) noexcept { this->_max_threads = rhs; }
 
     protected:
 
@@ -106,6 +110,7 @@ namespace sbnd {
     private:
 
         app_iterator do_add(const sbn::application& app);
+        void do_forward(sbn::foreign_kernel_ptr&& k);
         void process_kernel(sbn::kernel_ptr&& k);
         void wait_loop();
         void wait_for_processes(lock_type& lock);
@@ -114,6 +119,26 @@ namespace sbnd {
         app_iterator find_by_process_id(sys::pid_type pid);
 
         friend class process_handler;
+
+        inline sbn::weight_array total_load() const noexcept {
+            sbn::weight_array sum;
+            for (auto& pair : this->_jobs) {
+                sum += pair.second->load();
+            }
+            return sum;
+        }
+
+        inline sbn::weight_type total_threads_used() const noexcept {
+            const auto& load = total_load();
+            return load[0]*this->_max_threads + load[1];
+        }
+
+        inline sbn::weight_array::value_type
+        num_threads_used(const sbn::weight_array& w) const noexcept {
+            return w[0]*this->_max_threads + w[1];
+        }
+
+        void do_process_kernels(kernel_queue& kernels, sbn::weight_array& current_load);
 
     };
 
