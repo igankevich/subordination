@@ -53,6 +53,7 @@ namespace sbnd {
         using kernel_queue = std::deque<sbn::kernel_ptr>;
 
     private:
+        std::thread _waiting_thread;
         application_table _jobs;
         sys::process_group _child_processes;
         pipeline* _unix{};

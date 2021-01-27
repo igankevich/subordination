@@ -18,19 +18,17 @@ namespace {
 }
 
 void sbnd::process_pipeline::loop() {
-    std::thread waiting_thread([this] () { wait_loop(); });
+    this->_waiting_thread = std::thread([this] () noexcept { wait_loop(); });
     basic_socket_pipeline::loop();
     #if defined(SBN_DEBUG)
     log("waiting for all processes to finish: pid=_", sys::this_process::id());
     #endif
     try {
         this->_child_processes.terminate();
-    } catch (const std::system_error& err) {
-        if (std::errc(err.code().value()) != std::errc::no_such_process) {
-            log_error(err);
-        }
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::no_such_process) { log_error(err); }
     }
-    if (waiting_thread.joinable()) { waiting_thread.join(); }
+    if (this->_waiting_thread.joinable()) { this->_waiting_thread.join(); }
     lock_type lock(this->_mutex);
     wait_for_processes(lock);
 }
@@ -248,10 +246,8 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                 }
             }
         );
-    } catch (const std::system_error& err) {
-        if (std::errc(err.code().value()) != std::errc::no_child_process) {
-            log_error(err);
-        }
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::no_child_process) { log_error(err); }
     }
 }
 

@@ -1,7 +1,7 @@
 project(
     'subordination',
     'cpp',
-    version: '0.3.1',
+    version: '0.4.0',
     meson_version: '>=0.50.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'
@@ -58,7 +58,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx_version = '>=0.49.1'
+unistdx_version = '>=0.64.1'
 unistdx = with_debug ? dependency('unistdx-debug', version: unistdx_version) : dependency('unistdx', version: unistdx_version)
 gtest = dependency('gtest', main: true)
 guile = dependency('guile-3.0')

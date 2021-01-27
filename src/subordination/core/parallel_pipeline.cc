@@ -153,7 +153,7 @@ void sbn::parallel_pipeline::start() {
         this->_downstream_kernels = kernel_queue_array(num_upstream_threads);
     }
     for (size_t i=0; i<num_upstream_threads; ++i) {
-        this->_upstream_threads[i] = std::thread([this,i] () {
+        this->_upstream_threads[i] = std::thread([this,i] () noexcept {
             #if defined(UNISTDX_HAVE_PRCTL)
             ::prctl(PR_SET_NAME, this->_name);
             #endif
@@ -161,7 +161,7 @@ void sbn::parallel_pipeline::start() {
             this->upstream_loop(this->_downstream_kernels[i]);
         });
     }
-    this->_timer_thread = std::thread([this] () {
+    this->_timer_thread = std::thread([this] () noexcept {
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
@@ -169,7 +169,7 @@ void sbn::parallel_pipeline::start() {
         this->timer_loop();
     });
     for (size_t i=0; i<num_downstream_threads; ++i) {
-        this->_downstream_threads[i] = std::thread([this,i] () {
+        this->_downstream_threads[i] = std::thread([this,i] () noexcept {
             #if defined(UNISTDX_HAVE_PRCTL)
             ::prctl(PR_SET_NAME, this->_name);
             #endif

@@ -129,7 +129,7 @@ void sbn::basic_socket_pipeline::flush_buffers() {
 void sbn::basic_socket_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(states::starting);
-    this->_thread = std::thread([this] () {
+    this->_thread = std::thread([this] () noexcept {
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif

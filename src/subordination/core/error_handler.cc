@@ -45,8 +45,8 @@ void
 sbn::install_error_handler() {
     using namespace sys::this_process;
     using s = sys::signal;
-    std::set_terminate(print_error);
-    std::set_unexpected(print_error);
+    std::set_terminate(sys::dump_core);
+    std::set_unexpected(sys::dump_core);
     ignore_signal(s::broken_pipe);
     bind_signal(s::segmentation_fault, print_backtrace);
     bind_signal(s::abort, print_backtrace);
