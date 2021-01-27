@@ -144,6 +144,22 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
     });
 }
 
+void sbn::parallel_pipeline::kernel_loop(kernel_ptr k) {
+    try {
+        k->this_ptr(&k);
+        k->act();
+    } catch (const std::exception& err) {
+        log("error _", err.what());
+        if (k) {
+            k->rollback();
+            if (this->_error_pipeline) {
+                k->return_to_parent(sbn::exit_code::error);
+                this->_error_pipeline->send(std::move(k));
+            }
+        }
+    }
+}
+
 void sbn::parallel_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(states::starting);
@@ -193,6 +209,7 @@ void sbn::parallel_pipeline::wait() {
     for (auto& t : this->_upstream_threads) { if (t.joinable()) { t.join(); } }
     if (this->_timer_thread.joinable()) { this->_timer_thread.join(); }
     for (auto& t : this->_downstream_threads) { if (t.joinable()) { t.join(); } }
+    for (auto& t : this->_kernel_threads) { if (t.joinable()) { t.join(); } }
     lock_type lock(this->_mutex);
     this->setstate(states::stopped);
 }

@@ -81,14 +81,15 @@ pkgconfig.generate(
 
 clang_tidy_files += sbn_src
 
-foreach name : ['kernel_buffer', 'timer_pipeline', 'properties', 'resources']
+foreach name : ['kernel_buffer', 'timer_pipeline', 'properties', 'resources',
+                'parallel_pipeline']
     test_name = '-'.join(name.split('_'))
     exe_name = test_name + '-test'
     exe = executable(
         exe_name,
         sources: name + '_test.cc',
         include_directories: src,
-        dependencies: [sbn, gtest],
+        dependencies: [sbn, gtest] + valgrind_dep,
         implicit_include_directories: false,
     )
     test('core/' + test_name, exe)
