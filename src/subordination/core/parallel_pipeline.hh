@@ -49,6 +49,8 @@ namespace sbn {
         kernel_queue_array _downstream_kernels;
         thread_array _downstream_threads;
         semaphore_array _downstream_semaphores;
+        /// Per-kernel threads for 'new-thread' kernels.
+        thread_array _kernel_threads;
         /// Kernels that threw an exception are sent to this pipeline.
         pipeline* _error_pipeline = nullptr;
         /// Function that is called in each new thread.
@@ -70,8 +72,13 @@ namespace sbn {
         inline void send(kernel_ptr&& k) override {
             if (k->phase() == kernel::phases::downstream) {
                 this->send_downstream(std::move(k));
-            } else if (k->scheduled()) { this->send_timer(std::move(k)); }
-            else { this->send_upstream(std::move(k)); }
+            } else if (k->scheduled()) {
+                this->send_timer(std::move(k));
+            } else if (k->new_thread()) {
+                this->send_thread(std::move(k));
+            } else {
+                this->send_upstream(std::move(k));
+            }
         }
 
         inline void send(kernel_ptr_array&& kernels) {
@@ -102,6 +109,8 @@ namespace sbn {
                     this->log("schedule _", *k);
                     #endif
                     this->_timer_kernels.emplace(std::move(k)), notify_timer = true;
+                } else if (k->new_thread()) {
+                    make_thread(std::move(k));
                 } else {
                     #if defined(SBN_DEBUG)
                     this->log("upstream _", *k);
@@ -148,6 +157,14 @@ namespace sbn {
             this->_timer_semaphore.notify_one();
         }
 
+        inline void send_thread(kernel_ptr&& k) {
+            #if defined(SBN_DEBUG)
+            this->log("thread _", *k);
+            #endif
+            lock_type lock(this->_mutex);
+            make_thread(std::move(k));
+        }
+
         void start();
         void stop();
         void wait();
@@ -179,6 +196,13 @@ namespace sbn {
         void upstream_loop(kernel_queue& downstream_queue);
         void timer_loop();
         void downstream_loop(kernel_queue& queue, semaphore_type& semaphore);
+        void kernel_loop(kernel_ptr kernel);
+
+        inline void make_thread(kernel_ptr&& k) {
+            this->_kernel_threads.emplace_back(
+                [this] (kernel_ptr&& k) { kernel_loop(std::move(k)); },
+                std::move(k));
+        }
 
     };
 

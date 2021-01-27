@@ -44,6 +44,8 @@ namespace sbn {
         send_to_superior_node = 1<<5,
         /** Send the kernel to all of the subordinates of cluster node hierarchy. */
         send_to_subordinate_node = 1<<6,
+        /** Allocate a separate thread to execute the kernel in parallel pipeline. */
+        new_thread = 1<<7,
     };
 
     UNISTDX_FLAGS(kernel_flag)
@@ -54,7 +56,7 @@ namespace sbn {
         using clock_type = std::chrono::system_clock;
         using time_point = clock_type::time_point;
         using duration = clock_type::duration;
-        using flags_type = kernel_flag;
+        using flag = kernel_flag;
 
     protected:
         exit_code _result = exit_code::undefined;
@@ -80,6 +82,10 @@ namespace sbn {
         inline bool
         scheduled() const noexcept {
             return this->_at != time_point(duration::zero());
+        }
+
+        inline bool new_thread() const noexcept {
+            return isset(kernel_flag::new_thread);
         }
 
         // flags
