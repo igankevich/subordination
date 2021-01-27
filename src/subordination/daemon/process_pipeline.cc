@@ -153,16 +153,16 @@ void sbnd::process_pipeline::do_forward(sbn::foreign_kernel_ptr&& fk) {
 
 void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
                                                 sbn::weight_array& current_load) {
-    auto first = kernels.begin(), last = kernels.end();
-    while (first != last) {
-        auto new_load = current_load + (*first)->weights();
+    const auto nkernels = kernels.size();
+    for (size_t i=0; i<nkernels; ++i) {
+        auto k = std::move(kernels.front());
+        kernels.pop_front();
+        auto new_load = current_load + k->weights();
         if (num_threads_used(new_load) < this->_max_threads) {
-            process_kernel(std::move(*first));
-            first = kernels.erase(first);
-            last = kernels.end();
+            process_kernel(std::move(k));
             current_load = new_load;
         } else {
-            ++first;
+            kernels.emplace_back(std::move(k));
         }
     }
 }
@@ -262,4 +262,13 @@ sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
             return rhs.second->child_process_id() == pid;
         }
     );
+}
+
+void sbnd::process_pipeline::clear(sbn::kernel_sack& sack) {
+    sbn::basic_socket_pipeline::clear(sack);
+    while (!this->_outstanding_kernels.empty()) {
+        auto* k = this->_outstanding_kernels.front().release();
+        k->mark_as_deleted(sack);
+        this->_outstanding_kernels.pop_front();
+    }
 }

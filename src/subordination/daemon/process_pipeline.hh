@@ -102,6 +102,8 @@ namespace sbnd {
         inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
         inline void max_threads(unsigned rhs) noexcept { this->_max_threads = rhs; }
 
+        void clear(sbn::kernel_sack& sack);
+
     protected:
 
         void process_kernels() override;
