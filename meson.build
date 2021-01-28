@@ -58,7 +58,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx_version = '>=0.64.2'
+unistdx_version = '>=0.66.0'
 unistdx = with_debug ? dependency('unistdx-debug', version: unistdx_version) : dependency('unistdx', version: unistdx_version)
 gtest = dependency('gtest', main: true)
 guile = dependency('guile-3.0')

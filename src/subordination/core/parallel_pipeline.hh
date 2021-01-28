@@ -12,6 +12,25 @@
 
 namespace sbn {
 
+    // TODO replace with sys::process
+    class thread_pool: public std::vector<std::thread> {
+
+    private:
+        using base_type = std::vector<std::thread>;
+
+    private:
+        sys::cpu_set _cpus;
+
+    public:
+        using base_type::base_type;
+
+        inline void join() { for (auto& t : *this) { if (t.joinable()) { t.join(); } } }
+        inline void cpus(const sys::cpu_set& rhs) noexcept { this->_cpus = rhs; }
+        inline const sys::cpu_set& cpus() const noexcept { return this->_cpus; }
+        std::vector<int> cpu_array() const;
+
+    };
+
     class parallel_pipeline: public pipeline {
 
     private:
@@ -30,25 +49,23 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = std::condition_variable;
         using semaphore_array = std::vector<semaphore_type>;
-        // TODO replace with sys::process
-        using thread_type = std::thread;
-        using thread_array = std::vector<thread_type>;
         using thread_init_type = std::function<void(size_t)>;
+        using thread_array = std::vector<std::thread>;
 
     private:
         /// Same mutex for all kernel queues.
         mutex_type _mutex;
         /// Upstream kernels.
         kernel_queue _upstream_kernels;
-        thread_array _upstream_threads;
+        thread_pool _upstream_threads;
         semaphore_type _upstream_semaphore;
         /// Kernels that are scheduled to be executed at specific point of time.
         kernel_priority_queue _timer_kernels;
-        thread_type _timer_thread;
+        thread_pool _timer_threads;
         semaphore_type _timer_semaphore;
         /// Per-thread queue for downstream kernels.
         kernel_queue_array _downstream_kernels;
-        thread_array _downstream_threads;
+        thread_pool _downstream_threads;
         semaphore_array _downstream_semaphores;
         /// Kernels that threw an exception are sent to this pipeline.
         pipeline* _error_pipeline = nullptr;
@@ -181,10 +198,25 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
+        inline void upstream_threads_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_upstream_threads.cpus(cpus);
+        }
+
+        inline void downstream_threads_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_downstream_threads.cpus(cpus);
+        }
+
+        inline void timer_threads_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_timer_threads.cpus(cpus);
+        }
+
     private:
         void upstream_loop(kernel_queue& downstream_queue);
+        void upstream_start(size_t num_threads);
         void timer_loop();
+        void timer_start();
         void downstream_loop(kernel_queue& queue, semaphore_type& semaphore);
+        void downstream_start(size_t num_threads);
 
     };
 
