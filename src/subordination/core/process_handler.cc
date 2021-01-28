@@ -68,7 +68,7 @@ void sbn::process_handler::receive_kernel(kernel_ptr&& k) {
     connection::receive_kernel(std::move(k));
 }
 
-void sbn::process_handler::receive_foreign_kernel(foreign_kernel_ptr&& fk) {
+void sbn::process_handler::receive_foreign_kernel(kernel_ptr&& fk) {
     Expects(fk);
     if (fk->type_id() == 1) {
         log("RECV _", *fk);
@@ -112,7 +112,7 @@ void sbn::process_handler::flush() {
 void sbn::process_handler::stop() {
 }
 
-void sbn::process_handler::forward(foreign_kernel_ptr&& k) {
+void sbn::process_handler::forward(kernel_ptr&& k) {
     Expects(k);
     // remove target application before forwarding
     // to child process to reduce the amount of data

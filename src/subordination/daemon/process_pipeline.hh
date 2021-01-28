@@ -87,7 +87,7 @@ namespace sbnd {
         void remove(application_id_type id);
 
         void loop() override;
-        void forward(sbn::foreign_kernel_ptr&& hdr) override;
+        void forward(sbn::kernel_ptr&& hdr) override;
 
         inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
         inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
@@ -113,7 +113,7 @@ namespace sbnd {
     private:
 
         app_iterator do_add(const sbn::application& app);
-        void do_forward(sbn::foreign_kernel_ptr&& k);
+        void do_forward(sbn::kernel_ptr&& k);
         void process_kernel(sbn::kernel_ptr&& k);
         void wait_loop();
         void wait_for_processes(lock_type& lock);

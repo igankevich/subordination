@@ -77,7 +77,7 @@ namespace sbn {
         pipeline& operator=(pipeline&&) = delete;
 
         virtual void send(kernel_ptr&& k) = 0;
-        virtual void forward(foreign_kernel_ptr&& k);
+        virtual void forward(kernel_ptr&& k);
         virtual void recover(kernel_ptr&& k);
 
         inline index_type index() const noexcept { return this->_index; }

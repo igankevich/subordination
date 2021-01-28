@@ -108,7 +108,7 @@ void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel_ptr&& k) {
 }
 
 
-void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+void sbnd::unix_socket_pipeline::forward(sbn::kernel_ptr&& fk) {
     Expects(fk.get());
     auto result = this->_clients.find(fk->destination());
     if (result == this->_clients.end()) {

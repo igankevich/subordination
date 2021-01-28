@@ -201,7 +201,7 @@ namespace sbnd {
         }
         void add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void forward(sbn::foreign_kernel_ptr&& hdr) override;
+        void forward(sbn::kernel_ptr&& hdr) override;
 
         inline void port(sys::port_type rhs) noexcept { this->_port = rhs; }
         inline sys::port_type port() const noexcept { return this->_port; }

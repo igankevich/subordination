@@ -82,10 +82,10 @@ void sbn::connection::send(kernel_ptr& k) {
     }
 }
 
-sbn::foreign_kernel_ptr sbn::connection::do_forward(foreign_kernel_ptr k) {
+sbn::kernel_ptr sbn::connection::do_forward(kernel_ptr k) {
     Expects(k);
     write_kernel(k.get());
-    return pointer_dynamic_cast<foreign_kernel>(save_kernel(std::move(k)));
+    return save_kernel(std::move(k));
 }
 
 void sbn::connection::write_kernel(const kernel* k) noexcept {
@@ -121,7 +121,7 @@ void sbn::connection::receive_kernels() {
                 log("read foreign src _ dst _ app _ id _", k->source(),
                     k->destination(), k->source_application_id(), k->id());
                 #endif
-                receive_foreign_kernel(pointer_dynamic_cast<foreign_kernel>(std::move(k)));
+                receive_foreign_kernel(std::move(k));
             } else {
                 #if defined(SBN_DEBUG)
                 log("read native src _ dst _ app _ id _", k->source(),
@@ -138,7 +138,7 @@ void sbn::connection::receive_kernels() {
     this->_input_buffer.compact();
 }
 
-void sbn::connection::receive_foreign_kernel(foreign_kernel_ptr&& k) {
+void sbn::connection::receive_foreign_kernel(kernel_ptr&& k) {
     Expects(k);
     // TODO The following two lines destroy daemon/transactions test.
     if (k->phase() == kernel::phases::downstream) {
@@ -343,7 +343,7 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
         if (native) {
             parent()->send_remote(std::move(k));
         } else {
-            parent()->forward_remote(pointer_dynamic_cast<foreign_kernel>(std::move(k)));
+            parent()->forward_remote(std::move(k));
         }
     } else if (k->phase() == kernel::phases::point_to_point ||
                (k->phase() == kernel::phases::upstream && k->destination())) {
@@ -361,7 +361,7 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
         if (native) {
             parent()->send_native(std::move(k));
         } else {
-            parent()->forward_foreign(pointer_dynamic_cast<foreign_kernel>(std::move(k)));
+            parent()->forward_foreign(std::move(k));
         }
     } else if (k->phase() == kernel::phases::downstream && k->carries_parent()) {
         #if defined(SBN_DEBUG)
@@ -370,7 +370,7 @@ void sbn::connection::recover_kernel(kernel_ptr& k) {
         if (native) {
             parent()->send_native(std::move(k));
         } else {
-            parent()->forward_foreign(pointer_dynamic_cast<foreign_kernel>(std::move(k)));
+            parent()->forward_foreign(std::move(k));
         }
     }
 }

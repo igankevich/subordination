@@ -28,7 +28,7 @@ namespace sbn {
         int _num_active_kernels = 0;
         int _kernel_count_last = 0;
         time_point _last{};
-        foreign_kernel_ptr _main_kernel{};
+        kernel_ptr _main_kernel{};
         pipeline* _unix{};
 
     public:
@@ -53,7 +53,7 @@ namespace sbn {
         void flush() override;
         void stop() override;
 
-        void forward(foreign_kernel_ptr&& k);
+        void forward(kernel_ptr&& k);
 
         inline const ::sbn::application& application() const noexcept {
             return this->_application;
@@ -81,7 +81,7 @@ namespace sbn {
 
     protected:
         void receive_kernel(kernel_ptr&& k) override;
-        void receive_foreign_kernel(foreign_kernel_ptr&& fk) override;
+        void receive_foreign_kernel(kernel_ptr&& fk) override;
         kernel_ptr read_kernel() override;
         void write_kernel(const kernel* k) noexcept override;
 

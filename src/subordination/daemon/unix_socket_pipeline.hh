@@ -52,7 +52,7 @@ namespace sbnd {
 
         void add_server(const sys::unix_socket_address& rhs);
         void add_client(const sys::unix_socket_address& addr);
-        void forward(sbn::foreign_kernel_ptr&& hdr) override;
+        void forward(sbn::kernel_ptr&& hdr) override;
 
     private:
 

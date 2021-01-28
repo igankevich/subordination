@@ -88,7 +88,7 @@ namespace sbnd {
         socket_pipeline_client(const socket_pipeline_client&) = delete;
         socket_pipeline_client(socket_pipeline_client&& rhs) = delete;
 
-        inline sbn::foreign_kernel_ptr forward(sbn::foreign_kernel_ptr k) {
+        inline sbn::kernel_ptr forward(sbn::kernel_ptr k) {
             Expects(k);
             if (k->routed()){
                 k->old_id(k->id());
@@ -197,7 +197,7 @@ namespace sbnd {
         inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
         */
 
-        void receive_foreign_kernel(sbn::foreign_kernel_ptr&& k) override {
+        void receive_foreign_kernel(sbn::kernel_ptr&& k) override {
             Expects(k);
             if (!route()) {
                 connection::receive_foreign_kernel(std::move(k));
@@ -256,7 +256,7 @@ namespace sbnd {
 
     private:
 
-        void receive_downstream_foreign_kernel(sbn::foreign_kernel_ptr&& a) {
+        void receive_downstream_foreign_kernel(sbn::kernel_ptr&& a) {
             Expects(a);
             auto result = find_kernel(a.get(), this->_upstream);
             if (result == this->_upstream.end() || !(*result)->source()) {
@@ -533,7 +533,7 @@ void sbnd::socket_pipeline::add_server(const sys::socket_address& rhs, ip_addres
     }
 }
 
-void sbnd::socket_pipeline::forward(sbn::foreign_kernel_ptr&& k) {
+void sbnd::socket_pipeline::forward(sbn::kernel_ptr&& k) {
     Expects(k);
     lock_type lock(this->_mutex);
     log("forward _", *k);

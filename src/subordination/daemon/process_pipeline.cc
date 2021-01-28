@@ -110,7 +110,7 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
     }
 }
 
-void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+void sbnd::process_pipeline::forward(sbn::kernel_ptr&& fk) {
     Expects(fk);
     #if defined(SBN_DEBUG)
     log("forward _", *fk);
@@ -129,7 +129,7 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     }
 }
 
-void sbnd::process_pipeline::do_forward(sbn::foreign_kernel_ptr&& fk) {
+void sbnd::process_pipeline::do_forward(sbn::kernel_ptr&& fk) {
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
@@ -160,7 +160,7 @@ void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
             if (k->is_native()) {
                 process_kernel(std::move(k));
             } else {
-                do_forward(sbn::pointer_dynamic_cast<sbn::foreign_kernel>(std::move(k)));
+                do_forward(std::move(k));
             }
             current_load = new_load;
         } else {

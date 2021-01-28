@@ -238,22 +238,22 @@ namespace sbn {
         }
 
         /// \brief This wrapper method prevents deadlock between socket and process pipelines.
-        inline void forward_to(pipeline* ppl, foreign_kernel_ptr&& k) {
+        inline void forward_to(pipeline* ppl, kernel_ptr&& k) {
             Expects(k);
             if (ppl) { auto g = unguard(); ppl->forward(std::move(k)); }
         }
 
-        inline void forward_remote(foreign_kernel_ptr&& k) {
+        inline void forward_remote(kernel_ptr&& k) {
             Expects(k);
             forward_to(remote_pipeline(), std::move(k));
         }
 
-        inline void forward_native(foreign_kernel_ptr&& k) {
+        inline void forward_native(kernel_ptr&& k) {
             Expects(k);
             forward_to(native_pipeline(), std::move(k));
         }
 
-        inline void forward_foreign(foreign_kernel_ptr&& k) {
+        inline void forward_foreign(kernel_ptr&& k) {
             Expects(k);
             forward_to(foreign_pipeline(), std::move(k));
         }
