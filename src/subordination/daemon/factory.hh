@@ -39,10 +39,14 @@ namespace sbnd {
 
     public:
         struct {
+            sys::cpu_set upstream_cpus;
+            sys::cpu_set downstream_cpus;
+            sys::cpu_set timer_cpus;
             unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
             unsigned num_downstream_threads = 0;
         } local;
         struct {
+            sys::cpu_set cpus;
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
             sys::u32 max_connection_attempts = 1;

@@ -4,39 +4,19 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
-#include <vector>
 
 #include <subordination/bits/contracts.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/thread_pool.hh>
 
 namespace sbn {
-
-    // TODO replace with sys::process
-    class thread_pool: public std::vector<std::thread> {
-
-    private:
-        using base_type = std::vector<std::thread>;
-
-    private:
-        sys::cpu_set _cpus;
-
-    public:
-        using base_type::base_type;
-
-        inline void join() { for (auto& t : *this) { if (t.joinable()) { t.join(); } } }
-        inline void cpus(const sys::cpu_set& rhs) noexcept { this->_cpus = rhs; }
-        inline const sys::cpu_set& cpus() const noexcept { return this->_cpus; }
-        std::vector<int> cpu_array() const;
-
-    };
 
     class parallel_pipeline: public pipeline {
 
     private:
         struct compare_time {
-            inline bool operator()(const kernel_ptr& lhs, const kernel_ptr& rhs) const noexcept {
-                return lhs->at() > rhs->at();
+            inline bool operator()(const kernel_ptr& a, const kernel_ptr& b) const noexcept {
+                return a->at() > b->at();
             }
         };
 
@@ -198,15 +178,15 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
-        inline void upstream_threads_cpus(const sys::cpu_set& cpus) noexcept {
+        inline void upstream_cpus(const sys::cpu_set& cpus) noexcept {
             this->_upstream_threads.cpus(cpus);
         }
 
-        inline void downstream_threads_cpus(const sys::cpu_set& cpus) noexcept {
+        inline void downstream_cpus(const sys::cpu_set& cpus) noexcept {
             this->_downstream_threads.cpus(cpus);
         }
 
-        inline void timer_threads_cpus(const sys::cpu_set& cpus) noexcept {
+        inline void timer_cpus(const sys::cpu_set& cpus) noexcept {
             this->_timer_threads.cpus(cpus);
         }
 

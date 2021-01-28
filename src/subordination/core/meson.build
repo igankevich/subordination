@@ -19,6 +19,7 @@ sbn_src = files([
     'process_handler.cc',
     'properties.cc',
     'resources.cc',
+    'thread_pool.cc',
     'transaction_log.cc',
     'weights.cc',
 ])

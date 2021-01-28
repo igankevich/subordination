@@ -129,7 +129,9 @@ void sbn::basic_socket_pipeline::flush_buffers() {
 void sbn::basic_socket_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(states::starting);
-    this->_thread = std::thread([this] () noexcept {
+    this->_threads.emplace_back([this] () noexcept {
+        const auto& cpus = this->_threads.cpus();
+        if (cpus.count() != 0) { sys::this_process::cpu_affinity(cpus); }
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
@@ -146,8 +148,7 @@ void sbn::basic_socket_pipeline::stop() {
 }
 
 void sbn::basic_socket_pipeline::wait() {
-    auto& t = this->_thread;
-    if (t.joinable()) { t.join(); }
+    this->_threads.join();
     lock_type lock(this->_mutex);
     this->setstate(states::stopped);
 }

@@ -182,8 +182,8 @@ void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
 }
 
 void sbn::parallel_pipeline::timer_start() {
-    const auto& cpus = this->_timer_threads.cpus();
-    this->_timer_threads.emplace_back([this,cpus] () noexcept {
+    this->_timer_threads.emplace_back([this] () noexcept {
+        const auto& cpus = this->_timer_threads.cpus();
         if (cpus.count() != 0) { sys::this_process::cpu_affinity(cpus); }
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
@@ -250,17 +250,4 @@ void sbn::parallel_pipeline::num_upstream_threads(size_t n) {
                  }
     }
     this->_upstream_threads.resize(n);
-}
-
-std::vector<int> sbn::thread_pool::cpu_array() const {
-    std::vector<int> cpus;
-    cpus.reserve(size());
-    auto count = this->_cpus.count();
-    for (int i=0, j=0; j<count; ++i) {
-        if (this->_cpus[i]) {
-            cpus.emplace_back(i);
-            ++j;
-        }
-    }
-    return cpus;
 }

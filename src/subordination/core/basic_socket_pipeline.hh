@@ -19,6 +19,7 @@
 #include <subordination/core/connection_table.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
+#include <subordination/core/thread_pool.hh>
 #include <subordination/core/transaction_log.hh>
 
 namespace sbn {
@@ -40,13 +41,12 @@ namespace sbn {
         using kernel_queue = std::deque<kernel_ptr>;
         using size_type = connection_table::size_type;
         //using connection_table = std::unordered_map<sys::fd_type,connection_ptr>;
-        using thread_type = std::thread;
         using connection_const_iterator = typename connection_table::const_iterator;
         using kernel_array = std::vector<kernel*>;
 
     protected:
         kernel_queue _kernels;
-        thread_type _thread;
+        thread_pool _threads;
         mutable mutex_type _mutex;
         semaphore_type _semaphore;
         connection_table _connections;
@@ -213,6 +213,10 @@ namespace sbn {
         }
 
         void remove_listener(kernel* k);
+
+        inline void cpus(const sys::cpu_set& cpus) noexcept {
+            this->_threads.cpus(cpus);
+        }
 
     protected:
 
