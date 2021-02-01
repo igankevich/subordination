@@ -37,6 +37,7 @@ namespace  {
             sys::cpu_set upstream_cpus;
             sys::cpu_set downstream_cpus;
             sys::cpu_set timer_cpus;
+            sys::cpu_set kernel_cpus;
             unsigned num_downstream_threads = 0;
             unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
         } local;
@@ -74,6 +75,10 @@ namespace  {
                 std::stringstream tmp(value);
                 tmp >> local.timer_cpus;
                 if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+            } else if (key == "local.kernel-cpus") {
+                std::stringstream tmp(value);
+                tmp >> local.kernel_cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
             } else if (key == "remote.min-input-buffer-size") {
                 auto n = std::stoul(value);
                 remote.min_input_buffer_size = n;
@@ -100,6 +105,7 @@ namespace  {
             }
             local.downstream_cpus &= available_cpus;
             local.timer_cpus &= available_cpus;
+            local.kernel_cpus &= available_cpus;
             if (!is_set(this->local.num_upstream_threads)) {
                 this->local.num_upstream_threads = num_threads(local.upstream_cpus);
             }
@@ -126,6 +132,7 @@ sbn::Factory::Factory() {
     this->_local.upstream_cpus(config.local.upstream_cpus);
     this->_local.downstream_cpus(config.local.downstream_cpus);
     this->_local.timer_cpus(config.local.timer_cpus);
+    this->_local.kernel_cpus(config.local.kernel_cpus);
     this->_local.name("app local");
     this->_local.error_pipeline(&this->_remote);
     this->_remote.cpus(config.remote.cpus);

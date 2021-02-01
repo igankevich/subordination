@@ -162,6 +162,22 @@ void sbn::parallel_pipeline::upstream_start(size_t num_threads) {
     }
 }
 
+void sbn::parallel_pipeline::kernel_loop(kernel_ptr k) {
+    try {
+        k->this_ptr(&k);
+        k->act();
+    } catch (const std::exception& err) {
+        log("error _", err.what());
+        if (k) {
+            k->rollback();
+            if (this->_error_pipeline) {
+                k->return_to_parent(sbn::exit_code::error);
+                this->_error_pipeline->send(std::move(k));
+            }
+        }
+    }
+}
+
 void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
     const auto& all_cpus = this->_downstream_threads.cpu_array();
     for (size_t i=0; i<num_threads; ++i) {
@@ -219,6 +235,7 @@ void sbn::parallel_pipeline::wait() {
     this->_upstream_threads.join();
     this->_timer_threads.join();
     this->_downstream_threads.join();
+    this->_kernel_threads.join();
     lock_type lock(this->_mutex);
     this->setstate(states::stopped);
 }
