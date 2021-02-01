@@ -68,6 +68,8 @@ namespace sbnd {
         unsigned _max_threads = sys::thread_concurrency();
         /// Allow process execution as superuser/supergroup.
         bool _allowroot = true;
+        /// Interleave kernels from different applications.
+        bool _interleave = false;
 
     public:
 
@@ -91,6 +93,7 @@ namespace sbnd {
 
         inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
         inline void allow_root(bool rhs) noexcept { this->_allowroot = rhs; }
+        inline void interleave(bool rhs) noexcept { this->_interleave = rhs; }
         inline void timeout(duration rhs) noexcept { this->_timeout = rhs; }
         inline void kernel_timeout(duration rhs) noexcept { this->_kernel_timeout = rhs; }
 

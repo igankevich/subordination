@@ -45,6 +45,8 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         process.pipe_buffer_size = std::stoul(value);
     } else if (key == "process.allow-root") {
         process.allow_root = sbn::string_to_bool(value);
+    } else if (key == "process.interleave") {
+        process.interleave = sbn::string_to_bool(value);
     } else if (key == "unix.min-input-buffer-size") {
         unix.min_input_buffer_size = std::stoul(value);
     } else if (key == "unix.min-output-buffer-size") {

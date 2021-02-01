@@ -121,7 +121,8 @@ void sbnd::process_pipeline::forward(sbn::kernel_ptr&& fk) {
     if (stopping() || stopped()) { return; }
     auto current_load = total_load();
     current_load += fk->weights();
-    if (num_threads_used(current_load) < this->_max_threads) {
+    if ((!this->_interleave && this->_jobs.size() == 1) ||
+        num_threads_used(current_load) < this->_max_threads) {
         do_forward(std::move(fk));
         poller().notify_one();
     } else {
@@ -156,7 +157,8 @@ void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
         auto k = std::move(kernels.front());
         kernels.pop_front();
         auto new_load = current_load + k->weights();
-        if (num_threads_used(new_load) < this->_max_threads) {
+        if ((!this->_interleave && this->_jobs.size() == 1) ||
+            num_threads_used(new_load) < this->_max_threads) {
             if (k->is_native()) {
                 process_kernel(std::move(k));
             } else {
