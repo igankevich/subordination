@@ -6,7 +6,7 @@
 
 namespace sbnd {
 
-    class Pipeline_status_kernel: public sbn::kernel {
+    class Pipeline_status_kernel: public sbn::service_kernel {
 
     public:
         struct Kernel {

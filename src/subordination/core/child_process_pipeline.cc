@@ -1,16 +1,19 @@
 #include <unistdx/io/pipe>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/child_process_pipeline.hh>
 
 namespace {
     inline void update_buffer_size(sys::fildes& fd, size_t new_size) {
+        Expects(bool(fd));
         if (new_size == std::numeric_limits<size_t>::max()) { return; }
         fd.pipe_buffer_size(new_size);
     }
 }
 
 void sbn::child_process_pipeline::send(kernel_ptr&& k) {
+    Expects(k.get());
     #if defined(SBN_DEBUG)
     log("send _", *k);
     #endif
@@ -18,7 +21,7 @@ void sbn::child_process_pipeline::send(kernel_ptr&& k) {
     if (!this->_parent) {
         send_native(std::move(k));
     } else {
-        this->_kernels.emplace(std::move(k));
+        this->_kernels.emplace_back(std::move(k));
         this->poller().notify_one();
     }
 }
@@ -35,7 +38,7 @@ void sbn::child_process_pipeline::add_connection() {
         this->_parent->parent(this);
         this->_parent->types(types());
         this->_parent->setf(f::save_upstream_kernels);
-        this->_parent->state(connection_state::starting);
+        this->_parent->state(connection::states::starting);
         this->_parent->name(name());
         this->_parent->add(this->_parent);
     }
@@ -44,9 +47,9 @@ void sbn::child_process_pipeline::add_connection() {
 void sbn::child_process_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto k = std::move(this->_kernels.front());
-        this->_kernels.pop();
-        if (this->_parent && (this->_parent->state() == connection_state::started ||
-                              this->_parent->state() == connection_state::starting)) {
+        this->_kernels.pop_front();
+        if (this->_parent && (this->_parent->state() == connection::states::started ||
+                              this->_parent->state() == connection::states::starting)) {
             this->_parent->send(k);
         } else {
             send_native(std::move(k));

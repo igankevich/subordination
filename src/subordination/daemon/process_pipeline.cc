@@ -3,6 +3,7 @@
 #include <unistdx/base/unlock_guard>
 #include <unistdx/io/two_way_pipe>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
 #include <subordination/daemon/process_pipeline.hh>
@@ -10,25 +11,24 @@
 
 namespace {
     inline void update_buffer_size(sys::fildes& fd, size_t new_size) {
+        Expects(bool(fd));
         if (new_size == std::numeric_limits<size_t>::max()) { return; }
         fd.pipe_buffer_size(new_size);
     }
 }
 
 void sbnd::process_pipeline::loop() {
-    std::thread waiting_thread([this] () { wait_loop(); });
+    this->_waiting_thread = std::thread([this] () noexcept { wait_loop(); });
     basic_socket_pipeline::loop();
     #if defined(SBN_DEBUG)
     log("waiting for all processes to finish: pid=_", sys::this_process::id());
     #endif
     try {
         this->_child_processes.terminate();
-    } catch (const std::system_error& err) {
-        if (std::errc(err.code().value()) != std::errc::no_such_process) {
-            log_error(err);
-        }
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::no_such_process) { log_error(err); }
     }
-    if (waiting_thread.joinable()) { waiting_thread.join(); }
+    if (this->_waiting_thread.joinable()) { this->_waiting_thread.join(); }
     lock_type lock(this->_mutex);
     wait_for_processes(lock);
 }
@@ -99,6 +99,7 @@ void sbnd::process_pipeline::remove(application_id_type id) {
 }
 
 void sbnd::process_pipeline::terminate(sys::pid_type id) {
+    Expects(id > 0);
     auto first = this->_child_processes.begin(), last = this->_child_processes.end();
     while (first != last) {
         if (first->id() == id) {
@@ -109,7 +110,8 @@ void sbnd::process_pipeline::terminate(sys::pid_type id) {
     }
 }
 
-void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+void sbnd::process_pipeline::forward(sbn::kernel_ptr&& fk) {
+    Expects(fk);
     #if defined(SBN_DEBUG)
     log("forward _", *fk);
     log("forward src _ dst _ src-app _ dst-app _ id _", fk->source(), fk->destination(),
@@ -117,6 +119,18 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     #endif
     lock_type lock(this->_mutex);
     if (stopping() || stopped()) { return; }
+    auto current_load = total_load();
+    current_load += fk->weights();
+    if ((!this->_interleave && this->_jobs.size() == 1) ||
+        num_threads_used(current_load) < this->_max_threads) {
+        do_forward(std::move(fk));
+        poller().notify_one();
+    } else {
+        this->_outstanding_kernels.emplace_back(std::move(fk));
+    }
+}
+
+void sbnd::process_pipeline::do_forward(sbn::kernel_ptr&& fk) {
     auto result = this->_jobs.find(fk->target_application_id());
     if (result == this->_jobs.end()) {
         const auto* a = fk->target_application();
@@ -134,14 +148,33 @@ void sbnd::process_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
     }
     auto& conn = result->second;
     conn->forward(std::move(fk));
-    poller().notify_one();
+}
+
+void sbnd::process_pipeline::do_process_kernels(kernel_queue& kernels,
+                                                sbn::weight_array& current_load) {
+    const auto nkernels = kernels.size();
+    for (size_t i=0; i<nkernels; ++i) {
+        auto k = std::move(kernels.front());
+        kernels.pop_front();
+        auto new_load = current_load + k->weights();
+        if ((!this->_interleave && this->_jobs.size() == 1) ||
+            num_threads_used(new_load) < this->_max_threads) {
+            if (k->is_native()) {
+                process_kernel(std::move(k));
+            } else {
+                do_forward(std::move(k));
+            }
+            current_load = new_load;
+        } else {
+            kernels.emplace_back(std::move(k));
+        }
+    }
 }
 
 void sbnd::process_pipeline::process_kernels() {
-    while (!this->_kernels.empty()) {
-        process_kernel(std::move(this->_kernels.front()));
-        this->_kernels.pop();
-    }
+    auto current_load = total_load();
+    do_process_kernels(this->_kernels, current_load);
+    do_process_kernels(this->_outstanding_kernels, current_load);
 }
 
 void sbnd::process_pipeline::process_kernel(sbn::kernel_ptr&& k) {
@@ -215,15 +248,14 @@ void sbnd::process_pipeline::wait_for_processes(lock_type& lock) {
                 }
             }
         );
-    } catch (const std::system_error& err) {
-        if (std::errc(err.code().value()) != std::errc::no_child_process) {
-            log_error(err);
-        }
+    } catch (const sys::bad_call& err) {
+        if (err.errc() != std::errc::no_child_process) { log_error(err); }
     }
 }
 
 typename sbnd::process_pipeline::app_iterator
 sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
+    Expects(pid > 0);
     using value_type = typename application_table::value_type;
     return std::find_if(
         this->_jobs.begin(),
@@ -232,4 +264,13 @@ sbnd::process_pipeline::find_by_process_id(sys::pid_type pid) {
             return rhs.second->child_process_id() == pid;
         }
     );
+}
+
+void sbnd::process_pipeline::clear(sbn::kernel_sack& sack) {
+    sbn::basic_socket_pipeline::clear(sack);
+    while (!this->_outstanding_kernels.empty()) {
+        auto* k = this->_outstanding_kernels.front().release();
+        k->mark_as_deleted(sack);
+        this->_outstanding_kernels.pop_front();
+    }
 }

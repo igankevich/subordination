@@ -5,7 +5,7 @@
 
 namespace sbnd {
 
-    class Terminate_kernel: public sbn::kernel {
+    class Terminate_kernel: public sbn::service_kernel {
 
     public:
         using application_id_array = std::vector<sbn::application::id_type>;

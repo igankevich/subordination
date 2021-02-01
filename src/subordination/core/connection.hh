@@ -14,6 +14,7 @@
 #include <unistdx/system/error>
 #include <unistdx/system/resource>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/pipeline_base.hh>
@@ -21,7 +22,7 @@
 
 namespace sbn {
 
-    enum class connection_flags: int {
+    enum class connection_flags: sys::u32 {
         save_upstream_kernels = 1<<0,
         save_downstream_kernels = 1<<1,
         write_transaction_log = 1<<2
@@ -29,19 +30,11 @@ namespace sbn {
 
     UNISTDX_FLAGS(connection_flags)
 
-    enum class connection_state {
-        initial,
-        starting,
-        started,
-        stopping,
-        stopped,
-        inactive,
-    };
-
-    const char* to_string(connection_state rhs);
-    std::ostream& operator<<(std::ostream& out, connection_state rhs);
-
     class connection {
+
+    public:
+        enum class states {initial, starting, started, stopping, stopped, inactive};
+        using flag = connection_flags;
 
     private:
         using kernel_queue = std::deque<kernel_ptr>;
@@ -56,17 +49,18 @@ namespace sbn {
     private:
         time_point _start{duration::zero()};
         basic_socket_pipeline* _parent = nullptr;
-        connection_flags _flags{};
+        flag _flags{};
         id_type _counter = 1;
         sys::u32 _attempts = 1;
         const char* _name = "ppl";
-        connection_state _state = connection_state::initial;
+        states _state = states::initial;
 
     protected:
         kernel_queue _upstream, _downstream;
         kernel_buffer _output_buffer;
         kernel_buffer _input_buffer;
         sys::socket_address _socket_address;
+        weight_array _load{};
 
     public:
         connection() = default;
@@ -78,23 +72,15 @@ namespace sbn {
 
         void send(kernel_ptr& k);
 
-        inline void forward(foreign_kernel_ptr k) {
+        inline void forward(kernel_ptr k) {
             do_forward(std::move(k));
         }
 
         void clear(kernel_sack& sack);
 
-        /// \param[in] from socket address from which kernels are received
-        void receive_kernels(const application* from_application=nullptr) {
-            this->receive_kernels(from_application, [] (kernel_ptr&) {});
-        }
-
-        // TODO std::function is slow
-        void receive_kernels(const application* from_application,
-                             std::function<void(kernel_ptr&)> func);
+        void receive_kernels();
 
         virtual void handle(const sys::epoll_event& event);
-
         virtual void add(const connection_ptr& self);
         virtual void remove(const connection_ptr& self);
         virtual void retry(const connection_ptr& self);
@@ -122,11 +108,11 @@ namespace sbn {
             this->_socket_address = rhs;
         }
 
-        inline void setf(connection_flags rhs) noexcept { this->_flags |= rhs; }
-        inline void unsetf(connection_flags rhs) noexcept { this->_flags &= ~rhs; }
-        inline bool isset(connection_flags rhs) noexcept { return bool(this->_flags & rhs); }
-        inline void flags(connection_flags rhs) noexcept { this->_flags = rhs; }
-        inline connection_flags flags() const noexcept { return this->_flags; }
+        inline void setf(flag rhs) noexcept { this->_flags |= rhs; }
+        inline void unsetf(flag rhs) noexcept { this->_flags &= ~rhs; }
+        inline bool isset(flag rhs) noexcept { return bool(this->_flags & rhs); }
+        inline void flags(flag rhs) noexcept { this->_flags = rhs; }
+        inline flag flags() const noexcept { return this->_flags; }
 
         inline void types(kernel_type_registry* rhs) noexcept {
             this->_output_buffer.types(rhs), this->_input_buffer.types(rhs);
@@ -135,10 +121,10 @@ namespace sbn {
         inline sys::u32 attempts() const noexcept { return this->_attempts; }
         inline const char* name() const noexcept { return this->_name; }
         inline void name(const char* rhs) noexcept { this->_name = rhs; }
-        inline connection_state state() const noexcept { return this->_state; }
-        inline void state(connection_state rhs) noexcept {
+        inline states state() const noexcept { return this->_state; }
+        inline void state(states rhs) noexcept {
             this->_state = rhs;
-            if (rhs == connection_state::starting) { this->_start = clock_type::now(); }
+            if (rhs == states::starting) { this->_start = clock_type::now(); }
         }
 
         inline const kernel_queue& upstream() const noexcept { return this->_upstream; }
@@ -152,11 +138,23 @@ namespace sbn {
             if (this->_output_buffer.size() < rhs) { this->_output_buffer.resize(rhs); }
         }
 
+        /**
+          The first element is the number of kernels with maximum weight. These kernels
+          use all threads of the cluster node.
+          The second element is the number of kernels that were sent to the client,
+          but have not returned yet.
+        */
+        inline const weight_array& load() const noexcept { return this->_load; }
+        inline weight_array& load() noexcept { return this->_load; }
+
     protected:
 
-        foreign_kernel_ptr do_forward(foreign_kernel_ptr k);
+        kernel_ptr do_forward(kernel_ptr k);
         void recover_kernels(bool downstream);
-        virtual void receive_foreign_kernel(foreign_kernel_ptr&& fk);
+        virtual void receive_kernel(kernel_ptr&& k);
+        virtual void receive_foreign_kernel(kernel_ptr&& fk);
+        virtual void write_kernel(const kernel* k) noexcept;
+        virtual kernel_ptr read_kernel();
 
         struct flush_guard {
             kernel_buffer& _buffer;
@@ -186,9 +184,6 @@ namespace sbn {
 
     private:
 
-        void write_kernel(const kernel* k) noexcept;
-        kernel_ptr read_kernel(const application* from_application);
-        void receive_kernel(kernel_ptr&& k, std::function<void(kernel_ptr&)> func);
         void plug_parent(kernel_ptr& k);
         kernel_ptr save_kernel(kernel_ptr k);
         void recover_kernel(kernel_ptr& k);
@@ -202,18 +197,24 @@ namespace sbn {
     protected:
 
         inline void generate_new_id(kernel* k) {
+            Expects(k);
             k->id(++this->_counter);
         }
 
         inline void ensure_has_id(kernel* k) {
+            Expects(k);
             if (!k->has_id()) { k->id(++this->_counter); }
         }
 
     };
 
+    const char* to_string(connection::states rhs);
+    std::ostream& operator<<(std::ostream& out, connection::states rhs);
+
     template <class Queue>
     inline typename Queue::const_iterator
     find_kernel(const sbn::kernel* a, const Queue& queue) {
+        Expects(a);
         return std::find_if(queue.begin(), queue.end(),
                             [a] (const sbn::kernel_ptr& b) {
                                 return a->id() == b->id() &&

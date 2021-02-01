@@ -9,7 +9,7 @@
 
 namespace sbnd {
 
-    class Hierarchy_kernel: public sbn::kernel {
+    class Hierarchy_kernel: public sbn::service_kernel {
 
     public:
         using addr_type = sys::ipv4_address;

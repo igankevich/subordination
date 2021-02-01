@@ -202,7 +202,7 @@ void sbn::transaction_log::recover(record_array& records) {
                 // act() or react().
                 ppl->send(std::move(r.k));
             } else {
-                ppl->forward(pointer_dynamic_cast<foreign_kernel>(std::move(r.k)));
+                ppl->forward(std::move(r.k));
             }
         }
     }

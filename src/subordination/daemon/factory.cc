@@ -45,6 +45,8 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
         process.pipe_buffer_size = std::stoul(value);
     } else if (key == "process.allow-root") {
         process.allow_root = sbn::string_to_bool(value);
+    } else if (key == "process.interleave") {
+        process.interleave = sbn::string_to_bool(value);
     } else if (key == "unix.min-input-buffer-size") {
         unix.min_input_buffer_size = std::stoul(value);
     } else if (key == "unix.min-output-buffer-size") {
@@ -102,8 +104,16 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
 }
 
 sbnd::Properties::Properties() {
-    local.num_upstream_threads = sys::thread_concurrency();
+    const auto& available_cpus = sys::this_process::cpu_affinity();
+    local.upstream_cpus &= available_cpus;
+    if (local.upstream_cpus.count() == 0) {
+        local.upstream_cpus = available_cpus;
+    }
+    local.downstream_cpus &= available_cpus;
+    local.timer_cpus &= available_cpus;
+    local.num_upstream_threads = available_cpus.count();
     auto page_size = sys::page_size();
+    remote.cpus &= available_cpus;
     remote.min_input_buffer_size = page_size*52;
     remote.min_output_buffer_size = page_size*52;
     process.min_input_buffer_size = page_size*16;
@@ -190,8 +200,12 @@ void sbnd::Factory::configure(const Properties& props) {
     if (isset(f::local)) {
         this->_local.num_upstream_threads(props.local.num_upstream_threads);
         this->_local.num_downstream_threads(props.local.num_downstream_threads);
+        this->_local.upstream_cpus(props.local.upstream_cpus);
+        this->_local.downstream_cpus(props.local.downstream_cpus);
+        this->_local.timer_cpus(props.local.timer_cpus);
     }
     if (isset(f::remote)) {
+        this->_remote.cpus(props.remote.cpus);
         this->_remote.min_output_buffer_size(props.remote.min_output_buffer_size);
         this->_remote.min_input_buffer_size(props.remote.min_input_buffer_size);
         this->_remote.max_connection_attempts(props.remote.max_connection_attempts);

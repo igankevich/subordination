@@ -10,7 +10,7 @@
 
 namespace sbnd {
 
-    class probe: public sbn::kernel {
+    class probe: public sbn::service_kernel {
 
     public:
         using addr_type = sys::ipv4_address;

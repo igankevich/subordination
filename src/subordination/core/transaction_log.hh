@@ -133,7 +133,7 @@ namespace sbn {
 
     };
 
-    class transaction_kernel: public kernel {
+    class transaction_kernel: public service_kernel {
 
     public:
         using record_array = std::vector<transaction_record>;

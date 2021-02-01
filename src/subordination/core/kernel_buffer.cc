@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
@@ -54,6 +55,7 @@ namespace  {
 }
 
 void sbn::kernel_buffer::write(const kernel* k) {
+    Expects(k);
     k->write_header(*this);
     if (k->is_foreign()) {
         k->write(*this);
@@ -95,6 +97,7 @@ void sbn::kernel_buffer::read(kernel_ptr& k) {
             }
         }
     }
+    Assert(k.get());
 }
 
 void sbn::kernel_buffer::write(const sys::socket_address& rhs) {

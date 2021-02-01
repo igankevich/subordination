@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 
 #include <unistdx/system/resource>
 
@@ -7,14 +8,14 @@
 #include <subordination/core/properties.hh>
 
 namespace  {
-    inline unsigned num_threads() {
+    inline unsigned num_threads(const sys::cpu_set& available_cpus) {
         unsigned n = 1;
         const char* sbn_num_threads = std::getenv("SBN_NUM_THREADS");
         if (sbn_num_threads) {
             n = std::atoi(sbn_num_threads);
             if (n < 1) { n = 1; }
         } else {
-            n = sys::thread_concurrency();
+            n = available_cpus.count();
         }
         return n;
     }
@@ -32,11 +33,20 @@ namespace  {
     class Properties: public sbn::properties {
 
     public:
-        unsigned _num_upstream_threads = std::numeric_limits<unsigned>::max();
-        unsigned _num_downstream_threads = 0;
-        size_t _min_output_buffer_size = std::numeric_limits<size_t>::max();
-        size_t _min_input_buffer_size = std::numeric_limits<size_t>::max();
-        size_t _pipe_buffer_size = std::numeric_limits<size_t>::max();
+        struct Local {
+            sys::cpu_set upstream_cpus;
+            sys::cpu_set downstream_cpus;
+            sys::cpu_set timer_cpus;
+            sys::cpu_set kernel_cpus;
+            unsigned num_downstream_threads = 0;
+            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
+        } local;
+        struct Remote {
+            sys::cpu_set cpus;
+            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
+            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
+            size_t pipe_buffer_size = std::numeric_limits<size_t>::max();
+        } remote;
 
     public:
         inline Properties() {
@@ -48,38 +58,67 @@ namespace  {
             if (key == "local.num-upstream-threads") {
                 auto n = std::stoi(value);
                 if (n < 1) { throw std::out_of_range("out of range"); }
-                this->_num_upstream_threads = n;
+                local.num_upstream_threads = n;
             } else if (key == "local.num-downstream-threads") {
                 auto n = std::stoi(value);
                 if (n < 0) { throw std::out_of_range("out of range"); }
-                this->_num_downstream_threads = n;
+                local.num_downstream_threads = n;
+            } else if (key == "local.upstream-cpus") {
+                std::stringstream tmp(value);
+                tmp >> local.upstream_cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+            } else if (key == "local.downstream-cpus") {
+                std::stringstream tmp(value);
+                tmp >> local.downstream_cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+            } else if (key == "local.timer-cpus") {
+                std::stringstream tmp(value);
+                tmp >> local.timer_cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+            } else if (key == "local.kernel-cpus") {
+                std::stringstream tmp(value);
+                tmp >> local.kernel_cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
             } else if (key == "remote.min-input-buffer-size") {
                 auto n = std::stoul(value);
-                this->_min_input_buffer_size = n;
+                remote.min_input_buffer_size = n;
             } else if (key == "remote.min-output-buffer-size") {
                 auto n = std::stoul(value);
-                this->_min_output_buffer_size = n;
+                remote.min_output_buffer_size = n;
             } else if (key == "remote.pipe-buffer-size") {
                 auto n = std::stoul(value);
-                this->_pipe_buffer_size = n;
+                remote.pipe_buffer_size = n;
+            } else if (key == "remote.cpus") {
+                std::stringstream tmp(value);
+                tmp >> remote.cpus;
+                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
             } else {
                 throw std::invalid_argument("unknown property");
             }
         }
 
         inline void init_default_values() {
-            if (!is_set(this->_num_upstream_threads)) {
-                this->_num_upstream_threads = num_threads();
+            const auto& available_cpus = sys::this_process::cpu_affinity();
+            local.upstream_cpus &= available_cpus;
+            if (local.upstream_cpus.count() == 0) {
+                local.upstream_cpus = available_cpus;
             }
-            if (this->_num_downstream_threads == 0) {
-                this->_num_downstream_threads = num_downstream_threads();
+            local.downstream_cpus &= available_cpus;
+            local.timer_cpus &= available_cpus;
+            local.kernel_cpus &= available_cpus;
+            if (!is_set(this->local.num_upstream_threads)) {
+                this->local.num_upstream_threads = num_threads(local.upstream_cpus);
             }
-            if (!is_set(this->_min_input_buffer_size)) {
-                this->_min_input_buffer_size = sys::page_size()*16;
+            if (this->local.num_downstream_threads == 0) {
+                this->local.num_downstream_threads = num_downstream_threads();
             }
-            if (!is_set(this->_min_output_buffer_size)) {
-                this->_min_output_buffer_size = sys::page_size()*16;
+            if (!is_set(remote.min_input_buffer_size)) {
+                remote.min_input_buffer_size = sys::page_size()*16;
             }
+            if (!is_set(remote.min_output_buffer_size)) {
+                remote.min_output_buffer_size = sys::page_size()*16;
+            }
+            remote.cpus &= available_cpus;
         }
 
     };
@@ -88,13 +127,18 @@ namespace  {
 
 sbn::Factory::Factory() {
     Properties config;
-    this->_local.num_upstream_threads(config._num_upstream_threads);
-    this->_local.num_downstream_threads(config._num_downstream_threads);
+    this->_local.num_upstream_threads(config.local.num_upstream_threads);
+    this->_local.num_downstream_threads(config.local.num_downstream_threads);
+    this->_local.upstream_cpus(config.local.upstream_cpus);
+    this->_local.downstream_cpus(config.local.downstream_cpus);
+    this->_local.timer_cpus(config.local.timer_cpus);
+    this->_local.kernel_cpus(config.local.kernel_cpus);
     this->_local.name("app local");
     this->_local.error_pipeline(&this->_remote);
-    this->_remote.min_input_buffer_size(config._min_input_buffer_size);
-    this->_remote.min_output_buffer_size(config._min_output_buffer_size);
-    this->_remote.pipe_buffer_size(config._pipe_buffer_size);
+    this->_remote.cpus(config.remote.cpus);
+    this->_remote.min_input_buffer_size(config.remote.min_input_buffer_size);
+    this->_remote.min_output_buffer_size(config.remote.min_output_buffer_size);
+    this->_remote.pipe_buffer_size(config.remote.pipe_buffer_size);
     this->_remote.name("app remote");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);

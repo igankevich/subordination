@@ -13,11 +13,13 @@
 #include <unistdx/base/log_message>
 #include <unistdx/io/poller>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/connection.hh>
 #include <subordination/core/connection_table.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
+#include <subordination/core/thread_pool.hh>
 #include <subordination/core/transaction_log.hh>
 
 namespace sbn {
@@ -36,16 +38,15 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
 
     private:
-        using kernel_queue = std::queue<kernel_ptr>;
+        using kernel_queue = std::deque<kernel_ptr>;
         using size_type = connection_table::size_type;
         //using connection_table = std::unordered_map<sys::fd_type,connection_ptr>;
-        using thread_type = std::thread;
         using connection_const_iterator = typename connection_table::const_iterator;
         using kernel_array = std::vector<kernel*>;
 
     protected:
         kernel_queue _kernels;
-        thread_type _thread;
+        thread_pool _threads;
         mutable mutex_type _mutex;
         semaphore_type _semaphore;
         connection_table _connections;
@@ -99,17 +100,21 @@ namespace sbn {
         basic_socket_pipeline& operator=(const basic_socket_pipeline&) = delete;
 
         inline void send(kernel_ptr&& k) override {
+            Expects(k);
             #if defined(SBN_DEBUG)
             this->log("send _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_kernels.emplace(std::move(k));
+            this->_kernels.emplace_back(std::move(k));
             this->_semaphore.notify_one();
         }
 
         inline void send(kernel_ptr_array&& kernels, size_t n) {
             lock_type lock(this->_mutex);
-            for (size_t i=0; i<n; ++i) { this->_kernels.emplace(std::move(kernels[i])); }
+            for (size_t i=0; i<n; ++i) {
+                Assert(kernels[i]);
+                this->_kernels.emplace_back(std::move(kernels[i]));
+            }
             this->_semaphore.notify_all();
         }
 
@@ -119,6 +124,7 @@ namespace sbn {
         void clear(kernel_sack& sack);
 
         inline void write_transaction(transaction_status status, kernel_ptr& k) {
+            Expects(k);
             if (auto* tr = transactions()) {
                 k = tr->write({status, index(), std::move(k)});
             }
@@ -152,10 +158,15 @@ namespace sbn {
         }
 
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
-        inline void trash(kernel_ptr&& k) { this->_trash.emplace_back(std::move(k)); }
+
+        inline void trash(kernel_ptr&& k) {
+            Expects(k);
+            this->_trash.emplace_back(std::move(k));
+        }
 
         void
         emplace_handler(const sys::epoll_event& ev, const connection_ptr& ptr) {
+            Expects(ptr);
             // N.B. we have two file descriptors (for the pipe)
             // in the process connection, so do not use emplace here
             //this->log("add _", ptr->socket_address());
@@ -165,9 +176,13 @@ namespace sbn {
             this->poller().insert(ev);
         }
 
-        inline void erase(sys::fd_type fd) { poller().erase(fd); }
+        inline void erase(sys::fd_type fd) {
+            Expects(fd);
+            poller().erase(fd);
+        }
 
         inline void erase_connection(sys::fd_type fd) {
+            Expects(fd);
             poller().erase(fd);
             this->_connections.erase(fd);
         }
@@ -192,34 +207,58 @@ namespace sbn {
             return this->_connections;
         }
 
-        inline void add_listener(kernel* k) { this->_listeners.emplace_back(k); }
+        inline void add_listener(kernel* k) {
+            Expects(k);
+            this->_listeners.emplace_back(k);
+        }
+
         void remove_listener(kernel* k);
+
+        inline void cpus(const sys::cpu_set& cpus) noexcept {
+            this->_threads.cpus(cpus);
+        }
 
     protected:
 
         /// \brief This wrapper method prevents deadlock between socket and process pipelines.
         inline void send_to(pipeline* ppl, kernel_ptr&& k) {
+            Expects(k);
             if (ppl) { auto g = unguard(); ppl->send(std::move(k)); }
         }
 
-        inline void send_remote(kernel_ptr&& k) { send_to(remote_pipeline(), std::move(k)); }
-        inline void send_native(kernel_ptr&& k) { send_to(native_pipeline(), std::move(k)); }
-        inline void send_foreign(kernel_ptr&& k) { send_to(foreign_pipeline(), std::move(k)); }
+        inline void send_remote(kernel_ptr&& k) {
+            Expects(k);
+            send_to(remote_pipeline(), std::move(k));
+        }
+
+        inline void send_native(kernel_ptr&& k) {
+            Expects(k);
+            send_to(native_pipeline(), std::move(k));
+        }
+
+        inline void send_foreign(kernel_ptr&& k) {
+            Expects(k);
+            send_to(foreign_pipeline(), std::move(k));
+        }
 
         /// \brief This wrapper method prevents deadlock between socket and process pipelines.
-        inline void forward_to(pipeline* ppl, foreign_kernel_ptr&& k) {
+        inline void forward_to(pipeline* ppl, kernel_ptr&& k) {
+            Expects(k);
             if (ppl) { auto g = unguard(); ppl->forward(std::move(k)); }
         }
 
-        inline void forward_remote(foreign_kernel_ptr&& k) {
+        inline void forward_remote(kernel_ptr&& k) {
+            Expects(k);
             forward_to(remote_pipeline(), std::move(k));
         }
 
-        inline void forward_native(foreign_kernel_ptr&& k) {
+        inline void forward_native(kernel_ptr&& k) {
+            Expects(k);
             forward_to(native_pipeline(), std::move(k));
         }
 
-        inline void forward_foreign(foreign_kernel_ptr&& k) {
+        inline void forward_foreign(kernel_ptr&& k) {
+            Expects(k);
             forward_to(foreign_pipeline(), std::move(k));
         }
 
@@ -229,6 +268,7 @@ namespace sbn {
         template <class X>
         void
         emplace_handler(const sys::epoll_event& ev, const std::shared_ptr<X>& ptr) {
+            Expects(ptr);
             this->emplace_handler(ev, std::static_pointer_cast<connection>(ptr));
         }
 
@@ -250,8 +290,8 @@ namespace sbn {
                 //    log("oldest _ _", conn->socket_address(), conn->state());
                 //}
                 if (conn &&
-                    (conn->state() == connection_state::starting ||
-                     conn->state() == connection_state::inactive) &&
+                    (conn->state() == connection::states::starting ||
+                     conn->state() == connection::states::inactive) &&
                     conn->has_start_time_point()) {
                     if (result == last) {
                         result = first;

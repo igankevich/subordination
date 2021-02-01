@@ -1,3 +1,4 @@
+#include <subordination/bits/contracts.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
 
 namespace sbnd {
@@ -13,11 +14,11 @@ namespace sbnd {
 
         void
         handle(const sys::epoll_event& ev) override {
-            this->log("_ _", __func__, ev);
             sys::socket_address addr;
             sys::socket sock;
             while (this->_socket.accept(sock, addr)) {
-                parent()->add_client(addr, std::move(sock));
+                parent()->add_client(
+                    sys::socket_address_cast<sys::unix_socket_address>(addr), std::move(sock));
             }
         };
 
@@ -35,8 +36,9 @@ namespace sbnd {
 
 }
 
-void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
-                                           sys::socket&& sock) {
+void sbnd::unix_socket_pipeline::add_client(const sys::unix_socket_address& addr,
+                                            sys::socket&& sock) {
+    Expects(bool(addr));
     using f = sbn::connection_flags;
     auto ptr = std::make_shared<unix_socket_client>(std::move(sock));
     ptr->name(name());
@@ -48,7 +50,8 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr,
     this->_clients.emplace(addr, ptr);
 }
 
-void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
+void sbnd::unix_socket_pipeline::add_client(const sys::unix_socket_address& addr) {
+    Expects(bool(addr));
     using f = sbn::connection_flags;
     sys::socket s(sys::family_type::unix);
     s.set(sys::socket::options::pass_credentials);
@@ -69,7 +72,8 @@ void sbnd::unix_socket_pipeline::add_client(const sys::socket_address& addr) {
     this->_clients.emplace(addr, ptr);
 }
 
-void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
+void sbnd::unix_socket_pipeline::add_server(const sys::unix_socket_address& rhs) {
+    Expects(bool(rhs));
     sys::socket s(sys::family_type::unix);
     s.set(sys::socket::options::reuse_address);
     s.set(sys::socket::options::pass_credentials);
@@ -85,12 +89,13 @@ void sbnd::unix_socket_pipeline::add_server(const sys::socket_address& rhs) {
 void sbnd::unix_socket_pipeline::process_kernels() {
     while (!this->_kernels.empty()) {
         auto kernel = std::move(this->_kernels.front());
-        this->_kernels.pop();
+        this->_kernels.pop_front();
         this->process_kernel(std::move(kernel));
     }
 }
 
 void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel_ptr&& k) {
+    Expects(k.get());
     if (k->phase() == sbn::kernel::phases::downstream) {
         if (!k->destination()) {
             k->destination(k->source());
@@ -103,7 +108,8 @@ void sbnd::unix_socket_pipeline::process_kernel(sbn::kernel_ptr&& k) {
 }
 
 
-void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
+void sbnd::unix_socket_pipeline::forward(sbn::kernel_ptr&& fk) {
+    Expects(fk.get());
     auto result = this->_clients.find(fk->destination());
     if (result == this->_clients.end()) {
         log("client _ not found, deleting _", fk->destination(), *fk);
@@ -115,24 +121,25 @@ void sbnd::unix_socket_pipeline::forward(sbn::foreign_kernel_ptr&& fk) {
 
 sbnd::unix_socket_client::unix_socket_client(sys::socket&& socket):
 _socket(std::move(socket)) {
-    this->state(sbn::connection_state::starting);
+    this->state(sbn::connection::states::starting);
+}
+
+void sbnd::unix_socket_client::receive_kernel(sbn::kernel_ptr&& k) {
+    Expects(k.get());
+    if (auto* a = k->source_application()) {
+        a->credentials(socket().credentials());
+    }
+    if (auto* a = k->target_application()) {
+        a->credentials(socket().credentials());
+    }
+    connection::receive_kernel(std::move(k));
 }
 
 void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
-    this->log("_ _", __func__, event);
-    if (state() == sbn::connection_state::starting) { state(sbn::connection_state::started); }
+    if (state() == sbn::connection::states::starting) { state(sbn::connection::states::started); }
     if (event.in()) {
         fill(this->_socket);
-        receive_kernels(
-            nullptr,
-            [this] (sbn::kernel_ptr& k) {
-                if (auto* a = k->source_application()) {
-                    a->credentials(socket().credentials());
-                }
-                if (auto* a = k->target_application()) {
-                    a->credentials(socket().credentials());
-                }
-            });
+        receive_kernels();
     }
 };
 

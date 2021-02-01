@@ -9,7 +9,6 @@
 #include <sstream>
 #include <valarray>
 
-#include <unistdx/base/make_object>
 #include <unistdx/ipc/process>
 
 #include <autoreg/domain.hh>

@@ -4,10 +4,10 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
-#include <vector>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/thread_pool.hh>
 
 namespace sbn {
 
@@ -15,8 +15,8 @@ namespace sbn {
 
     private:
         struct compare_time {
-            inline bool operator()(const kernel_ptr& lhs, const kernel_ptr& rhs) const noexcept {
-                return lhs->at() > rhs->at();
+            inline bool operator()(const kernel_ptr& a, const kernel_ptr& b) const noexcept {
+                return a->at() > b->at();
             }
         };
 
@@ -29,28 +29,26 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = std::condition_variable;
         using semaphore_array = std::vector<semaphore_type>;
-        // TODO replace with sys::process
-        using thread_type = std::thread;
-        using thread_array = std::vector<thread_type>;
         using thread_init_type = std::function<void(size_t)>;
+        using thread_array = std::vector<std::thread>;
 
     private:
         /// Same mutex for all kernel queues.
         mutex_type _mutex;
         /// Upstream kernels.
         kernel_queue _upstream_kernels;
-        thread_array _upstream_threads;
+        thread_pool _upstream_threads;
         semaphore_type _upstream_semaphore;
         /// Kernels that are scheduled to be executed at specific point of time.
         kernel_priority_queue _timer_kernels;
-        thread_type _timer_thread;
+        thread_pool _timer_threads;
         semaphore_type _timer_semaphore;
         /// Per-thread queue for downstream kernels.
         kernel_queue_array _downstream_kernels;
-        thread_array _downstream_threads;
+        thread_pool _downstream_threads;
         semaphore_array _downstream_semaphores;
         /// Per-kernel threads for 'new-thread' kernels.
-        thread_array _kernel_threads;
+        thread_pool _kernel_threads;
         /// Kernels that threw an exception are sent to this pipeline.
         pipeline* _error_pipeline = nullptr;
         /// Function that is called in each new thread.
@@ -70,6 +68,7 @@ namespace sbn {
         parallel_pipeline& operator=(const parallel_pipeline&) = delete;
 
         inline void send(kernel_ptr&& k) override {
+            Expects(k.get());
             if (k->phase() == kernel::phases::downstream) {
                 this->send_downstream(std::move(k));
             } else if (k->scheduled()) {
@@ -87,6 +86,7 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto& k = kernels[i];
+                Assert(k.get());
                 if (k->phase() == kernel::phases::downstream) {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
@@ -123,6 +123,7 @@ namespace sbn {
         }
 
         inline void send_upstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("upstream _", *k);
             #endif
@@ -132,6 +133,7 @@ namespace sbn {
         }
 
         inline void send_downstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("downstream _", *k);
             #endif
@@ -149,6 +151,7 @@ namespace sbn {
         }
 
         inline void send_timer(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("schedule _", *k);
             #endif
@@ -192,10 +195,29 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
+        inline void upstream_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_upstream_threads.cpus(cpus);
+        }
+
+        inline void downstream_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_downstream_threads.cpus(cpus);
+        }
+
+        inline void timer_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_timer_threads.cpus(cpus);
+        }
+
+        inline void kernel_cpus(const sys::cpu_set& cpus) noexcept {
+            this->_kernel_threads.cpus(cpus);
+        }
+
     private:
         void upstream_loop(kernel_queue& downstream_queue);
+        void upstream_start(size_t num_threads);
         void timer_loop();
+        void timer_start();
         void downstream_loop(kernel_queue& queue, semaphore_type& semaphore);
+        void downstream_start(size_t num_threads);
         void kernel_loop(kernel_ptr kernel);
 
         inline void make_thread(kernel_ptr&& k) {

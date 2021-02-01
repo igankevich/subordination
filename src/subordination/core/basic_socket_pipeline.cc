@@ -38,7 +38,7 @@ void sbn::basic_socket_pipeline::handle_events() {
         }
         auto& conn = this->_connections[ev.fd()];
         if (!conn) { continue; }
-        if (conn->state() == connection_state::inactive) { continue; }
+        if (conn->state() == connection::states::inactive) { continue; }
         // process event by calling event connection function
         try {
             conn->handle(ev);
@@ -58,6 +58,9 @@ void sbn::basic_socket_pipeline::handle_events() {
 void sbn::basic_socket_pipeline::deactivate(sys::fd_type fd,
                                             connection_ptr conn,
                                             const char* reason) {
+    Expects(fd);
+    Expects(conn);
+    Expects(reason);
     if (conn->attempts() >= max_connection_attempts()) {
         remove(fd, conn, "max. attempts reached");
     } else {
@@ -69,6 +72,9 @@ void sbn::basic_socket_pipeline::deactivate(sys::fd_type fd,
 void sbn::basic_socket_pipeline::remove(sys::fd_type fd,
                                         connection_ptr& conn,
                                         const char* reason) {
+    Expects(fd);
+    Expects(conn);
+    Expects(reason);
     log("remove _ (_)", conn->socket_address(), reason);
     conn->remove(conn);
     this->_connections.erase(fd);
@@ -86,18 +92,18 @@ void sbn::basic_socket_pipeline::flush_buffers() {
             conn->flush();
         } catch (const std::exception& err) {
             log("flush _", err.what());
-            if (conn->state() == connection_state::started) {
+            if (conn->state() == connection::states::started) {
                 deactivate(i, conn, err.what());
                 continue;
             }
         }
-        if (conn->state() == connection_state::stopped) {
+        if (conn->state() == connection::states::stopped) {
             remove(i, conn, "stopped");
-        } else if (conn->state() == connection_state::starting) {
+        } else if (conn->state() == connection::states::starting) {
             if (conn->start_time_point() + connection_timeout() <= now) {
                 deactivate(i, conn, "timed out");
             }
-        } else if (conn->state() == connection_state::inactive) {
+        } else if (conn->state() == connection::states::inactive) {
             if (conn->start_time_point() + connection_timeout() <= now) {
                 using namespace std::chrono;
                 log("activate _ _", conn->socket_address(),
@@ -123,7 +129,9 @@ void sbn::basic_socket_pipeline::flush_buffers() {
 void sbn::basic_socket_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(states::starting);
-    this->_thread = std::thread([this] () {
+    this->_threads.emplace_back([this] () noexcept {
+        const auto& cpus = this->_threads.cpus();
+        if (cpus.count() != 0) { sys::this_process::cpu_affinity(cpus); }
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
@@ -140,8 +148,7 @@ void sbn::basic_socket_pipeline::stop() {
 }
 
 void sbn::basic_socket_pipeline::wait() {
-    auto& t = this->_thread;
-    if (t.joinable()) { t.join(); }
+    this->_threads.join();
     lock_type lock(this->_mutex);
     this->setstate(states::stopped);
 }
@@ -150,7 +157,7 @@ void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
     while (!this->_kernels.empty()) {
         auto* k = this->_kernels.front().release();
         k->mark_as_deleted(sack);
-        this->_kernels.pop();
+        this->_kernels.pop_front();
     }
     for (auto& conn : this->_connections) { if (conn) { conn->clear(sack); } }
     for (auto* k : this->_listeners) { k->mark_as_deleted(sack); }
@@ -160,6 +167,7 @@ void sbn::basic_socket_pipeline::clear(kernel_sack& sack) {
 }
 
 void sbn::basic_socket_pipeline::remove_listener(kernel* b) {
+    Expects(b);
     this->_listeners.erase(
         std::remove_if(this->_listeners.begin(), this->_listeners.end(),
                        [b] (kernel* a) { return a == b; }),

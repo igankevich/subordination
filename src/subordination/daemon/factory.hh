@@ -5,7 +5,6 @@
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
 #include <subordination/core/properties.hh>
-#include <subordination/core/resources.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/config.hh>
 #include <subordination/daemon/process_pipeline.hh>
@@ -40,10 +39,14 @@ namespace sbnd {
 
     public:
         struct {
+            sys::cpu_set upstream_cpus;
+            sys::cpu_set downstream_cpus;
+            sys::cpu_set timer_cpus;
             unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
             unsigned num_downstream_threads = 0;
         } local;
         struct {
+            sys::cpu_set cpus;
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
             sys::u32 max_connection_attempts = 1;
@@ -55,6 +58,7 @@ namespace sbnd {
             size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
             size_t pipe_buffer_size = std::numeric_limits<size_t>::max();
             bool allow_root = false;
+            bool interleave = false;
         } process;
         struct {
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
