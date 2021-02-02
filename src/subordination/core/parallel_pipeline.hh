@@ -13,6 +13,16 @@ namespace sbn {
 
     class parallel_pipeline: public pipeline {
 
+    public:
+        struct properties {
+            sys::cpu_set upstream_cpus;
+            sys::cpu_set downstream_cpus;
+            sys::cpu_set timer_cpus;
+            sys::cpu_set kernel_cpus;
+            unsigned num_downstream_threads = 0;
+            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
+        };
+
     private:
         struct compare_time {
             inline bool operator()(const kernel_ptr& a, const kernel_ptr& b) const noexcept {
@@ -30,7 +40,6 @@ namespace sbn {
         using semaphore_type = std::condition_variable;
         using semaphore_array = std::vector<semaphore_type>;
         using thread_init_type = std::function<void(size_t)>;
-        using thread_array = std::vector<std::thread>;
 
     private:
         /// Same mutex for all kernel queues.
@@ -60,6 +69,17 @@ namespace sbn {
 
         inline explicit parallel_pipeline(unsigned num_upstream_threads):
         _upstream_threads(num_upstream_threads) {}
+
+        explicit parallel_pipeline(const properties& p):
+        _upstream_threads(p.num_upstream_threads),
+        _downstream_kernels(p.num_downstream_threads),
+        _downstream_threads(p.num_downstream_threads),
+        _downstream_semaphores(p.num_downstream_threads) {
+            this->_upstream_threads.cpus(p.upstream_cpus);
+            this->_downstream_threads.cpus(p.downstream_cpus);
+            this->_timer_threads.cpus(p.timer_cpus);
+            this->_kernel_threads.cpus(p.kernel_cpus);
+        }
 
         ~parallel_pipeline() = default;
         parallel_pipeline(parallel_pipeline&&) = delete;
@@ -173,18 +193,6 @@ namespace sbn {
         void wait();
         void clear(kernel_sack& sack);
 
-        void num_downstream_threads(size_t n);
-
-        inline size_t num_downstream_threads() const noexcept {
-            return this->_downstream_threads.size();
-        }
-
-        void num_upstream_threads(size_t n);
-
-        inline size_t num_upstream_threads() const noexcept {
-            return this->_upstream_threads.size();
-        }
-
         inline void error_pipeline(pipeline* rhs) noexcept {
             this->_error_pipeline = rhs;
         }
@@ -195,20 +203,16 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
-        inline void upstream_cpus(const sys::cpu_set& cpus) noexcept {
-            this->_upstream_threads.cpus(cpus);
+        void num_downstream_threads(size_t n);
+
+        inline size_t num_downstream_threads() const noexcept {
+            return this->_downstream_threads.size();
         }
 
-        inline void downstream_cpus(const sys::cpu_set& cpus) noexcept {
-            this->_downstream_threads.cpus(cpus);
-        }
+        void num_upstream_threads(size_t n);
 
-        inline void timer_cpus(const sys::cpu_set& cpus) noexcept {
-            this->_timer_threads.cpus(cpus);
-        }
-
-        inline void kernel_cpus(const sys::cpu_set& cpus) noexcept {
-            this->_kernel_threads.cpus(cpus);
+        inline size_t num_upstream_threads() const noexcept {
+            return this->_upstream_threads.size();
         }
 
     private:

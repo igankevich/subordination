@@ -1,6 +1,7 @@
 #ifndef SUBORDINATION_DAEMON_FACTORY_HH
 #define SUBORDINATION_DAEMON_FACTORY_HH
 
+#include <subordination/core/factory_properties.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
@@ -38,13 +39,7 @@ namespace sbnd {
     class Properties: public sbn::properties {
 
     public:
-        struct {
-            sys::cpu_set upstream_cpus;
-            sys::cpu_set downstream_cpus;
-            sys::cpu_set timer_cpus;
-            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
-            unsigned num_downstream_threads = 0;
-        } local;
+        sbn::parallel_pipeline::properties local;
         struct {
             sys::cpu_set cpus;
             size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
@@ -101,7 +96,21 @@ namespace sbnd {
     class Factory {
 
     private:
-        sbn::parallel_pipeline _local;
+        template <class T>
+        struct storage {
+            typename std::aligned_storage<sizeof(T),alignof(T)>::type data;
+            inline T* get() noexcept { return reinterpret_cast<T*>(&data); }
+            inline const T* get() const noexcept { return reinterpret_cast<const T*>(&data); }
+            inline T* operator&() noexcept { return get(); }
+            inline const T* operator&() const noexcept { return get(); }
+            inline T& operator*() noexcept { return *get(); }
+            inline const T& operator*() const noexcept { return *get(); }
+            inline T* operator->() noexcept { return get(); }
+            inline const T* operator->() const noexcept { return get(); }
+        };
+
+    private:
+        storage<sbn::parallel_pipeline> _local;
         socket_pipeline _remote;
         process_pipeline _process;
         unix_socket_pipeline _unix;
@@ -118,16 +127,16 @@ namespace sbnd {
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;
 
-        inline void send(sbn::kernel_ptr&& k) { this->_local.send(std::move(k)); }
+        inline void send(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
         inline void send_remote(sbn::kernel_ptr&& k) { this->_remote.send(std::move(k)); }
         inline void send_unix(sbn::kernel_ptr&& k) { this->_unix.send(std::move(k)); }
         inline void send_child(sbn::kernel_ptr&& k) { this->_process.send(std::move(k)); }
-        inline void schedule(sbn::kernel_ptr&& k) { this->_local.send(std::move(k)); }
-        inline void schedule(sbn::kernel_ptr_array&& k) { this->_local.send(std::move(k)); }
+        inline void schedule(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
+        inline void schedule(sbn::kernel_ptr_array&& k) { this->_local->send(std::move(k)); }
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
         inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 
-        inline sbn::parallel_pipeline& local() noexcept { return this->_local; }
+        inline sbn::parallel_pipeline& local() noexcept { return *this->_local; }
         inline socket_pipeline& remote() noexcept { return this->_remote; }
         inline unix_socket_pipeline& unix() noexcept { return this->_unix; }
         inline process_pipeline& process() noexcept { return this->_process; }

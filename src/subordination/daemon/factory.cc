@@ -124,8 +124,9 @@ sbnd::Properties::Properties() {
 
 sbnd::Factory::Factory(): Factory(sys::thread_concurrency()) {}
 
-sbnd::Factory::Factory(unsigned concurrency): _local(concurrency) {
-    this->_local.name("sbnd local");
+sbnd::Factory::Factory(unsigned concurrency) {
+    new (std::addressof(this->_local)) sbn::parallel_pipeline{concurrency};
+    this->_local->name("sbnd local");
     this->_remote.name("sbnd remote");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_process);
@@ -162,7 +163,7 @@ void sbnd::Factory::transactions(const char* filename) {
 
 void sbnd::Factory::start() {
     using f = factory_flags;
-    if (isset(f::local)) { this->_local.start(); }
+    if (isset(f::local)) { this->_local->start(); }
     if (isset(f::remote)) { this->_remote.start(); }
     if (isset(f::process)) { this->_process.start(); }
     if (isset(f::unix)) { this->_unix.start(); }
@@ -170,7 +171,7 @@ void sbnd::Factory::start() {
 
 void sbnd::Factory::stop() {
     using f = factory_flags;
-    if (isset(f::local)) { this->_local.stop(); }
+    if (isset(f::local)) { this->_local->stop(); }
     if (isset(f::remote)) { this->_remote.stop(); }
     if (isset(f::process)) { this->_process.stop(); }
     if (isset(f::unix)) { this->_unix.stop(); }
@@ -178,7 +179,7 @@ void sbnd::Factory::stop() {
 
 void sbnd::Factory::wait() {
     using f = factory_flags;
-    if (isset(f::local)) { this->_local.wait(); }
+    if (isset(f::local)) { this->_local->wait(); }
     if (isset(f::remote)) { this->_remote.wait(); }
     if (isset(f::process)) { this->_process.wait(); }
     if (isset(f::unix)) { this->_unix.wait(); }
@@ -187,7 +188,7 @@ void sbnd::Factory::wait() {
 void sbnd::Factory::clear() {
     using f = factory_flags;
     sbn::kernel_sack sack;
-    if (isset(f::local)) { this->_local.clear(sack); }
+    if (isset(f::local)) { this->_local->clear(sack); }
     if (isset(f::remote)) { this->_remote.clear(sack); }
     if (isset(f::process)) { this->_process.clear(sack); }
     if (isset(f::unix)) { this->_unix.clear(sack); }
@@ -198,11 +199,8 @@ void sbnd::Factory::configure(const Properties& props) {
     using f = factory_flags;
     this->_flags = props.factory.flags;
     if (isset(f::local)) {
-        this->_local.num_upstream_threads(props.local.num_upstream_threads);
-        this->_local.num_downstream_threads(props.local.num_downstream_threads);
-        this->_local.upstream_cpus(props.local.upstream_cpus);
-        this->_local.downstream_cpus(props.local.downstream_cpus);
-        this->_local.timer_cpus(props.local.timer_cpus);
+        this->_local->~parallel_pipeline();
+        new (std::addressof(this->_local)) sbn::parallel_pipeline{props.local};
     }
     if (isset(f::remote)) {
         this->_remote.cpus(props.remote.cpus);

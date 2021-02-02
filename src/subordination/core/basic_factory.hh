@@ -6,11 +6,14 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/basic_pipeline.hh>
 #include <subordination/core/child_process_pipeline.hh>
+#include <subordination/core/factory_properties.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
 #include <subordination/core/parallel_pipeline.hh>
+#include <subordination/core/properties.hh>
 
 namespace sbn {
+
 
     class Factory {
 
@@ -22,7 +25,8 @@ namespace sbn {
 
     public:
 
-        Factory();
+        inline Factory(): Factory(Properties()) {}
+        Factory(const Properties& properties);
         virtual ~Factory() = default;
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;

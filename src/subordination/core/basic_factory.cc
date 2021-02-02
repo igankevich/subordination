@@ -5,7 +5,6 @@
 #include <unistdx/system/resource>
 
 #include <subordination/core/basic_factory.hh>
-#include <subordination/core/properties.hh>
 
 namespace  {
     inline unsigned num_threads(const sys::cpu_set& available_cpus) {
@@ -30,109 +29,84 @@ namespace  {
         return value != std::numeric_limits<T>::max();
     }
 
-    class Properties: public sbn::properties {
-
-    public:
-        struct Local {
-            sys::cpu_set upstream_cpus;
-            sys::cpu_set downstream_cpus;
-            sys::cpu_set timer_cpus;
-            sys::cpu_set kernel_cpus;
-            unsigned num_downstream_threads = 0;
-            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
-        } local;
-        struct Remote {
-            sys::cpu_set cpus;
-            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
-            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
-            size_t pipe_buffer_size = std::numeric_limits<size_t>::max();
-        } remote;
-
-    public:
-        inline Properties() {
-            if (const char* filename = std::getenv("SBN_CONFIG")) { open(filename); }
-            init_default_values();
-        }
-
-        void property(const std::string& key, const std::string& value) override {
-            if (key == "local.num-upstream-threads") {
-                auto n = std::stoi(value);
-                if (n < 1) { throw std::out_of_range("out of range"); }
-                local.num_upstream_threads = n;
-            } else if (key == "local.num-downstream-threads") {
-                auto n = std::stoi(value);
-                if (n < 0) { throw std::out_of_range("out of range"); }
-                local.num_downstream_threads = n;
-            } else if (key == "local.upstream-cpus") {
-                std::stringstream tmp(value);
-                tmp >> local.upstream_cpus;
-                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
-            } else if (key == "local.downstream-cpus") {
-                std::stringstream tmp(value);
-                tmp >> local.downstream_cpus;
-                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
-            } else if (key == "local.timer-cpus") {
-                std::stringstream tmp(value);
-                tmp >> local.timer_cpus;
-                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
-            } else if (key == "local.kernel-cpus") {
-                std::stringstream tmp(value);
-                tmp >> local.kernel_cpus;
-                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
-            } else if (key == "remote.min-input-buffer-size") {
-                auto n = std::stoul(value);
-                remote.min_input_buffer_size = n;
-            } else if (key == "remote.min-output-buffer-size") {
-                auto n = std::stoul(value);
-                remote.min_output_buffer_size = n;
-            } else if (key == "remote.pipe-buffer-size") {
-                auto n = std::stoul(value);
-                remote.pipe_buffer_size = n;
-            } else if (key == "remote.cpus") {
-                std::stringstream tmp(value);
-                tmp >> remote.cpus;
-                if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
-            } else {
-                throw std::invalid_argument("unknown property");
-            }
-        }
-
-        inline void init_default_values() {
-            const auto& available_cpus = sys::this_process::cpu_affinity();
-            local.upstream_cpus &= available_cpus;
-            if (local.upstream_cpus.count() == 0) {
-                local.upstream_cpus = available_cpus;
-            }
-            local.downstream_cpus &= available_cpus;
-            local.timer_cpus &= available_cpus;
-            local.kernel_cpus &= available_cpus;
-            if (!is_set(this->local.num_upstream_threads)) {
-                this->local.num_upstream_threads = num_threads(local.upstream_cpus);
-            }
-            if (this->local.num_downstream_threads == 0) {
-                this->local.num_downstream_threads = num_downstream_threads();
-            }
-            if (!is_set(remote.min_input_buffer_size)) {
-                remote.min_input_buffer_size = sys::page_size()*16;
-            }
-            if (!is_set(remote.min_output_buffer_size)) {
-                remote.min_output_buffer_size = sys::page_size()*16;
-            }
-            remote.cpus &= available_cpus;
-        }
-
-    };
-
 }
 
-sbn::Factory::Factory() {
-    Properties config;
+void sbn::Properties::property(const std::string& key, const std::string& value) {
+    if (key == "local.num-upstream-threads") {
+        auto n = std::stoi(value);
+        if (n < 1) { throw std::out_of_range("out of range"); }
+        local.num_upstream_threads = n;
+    } else if (key == "local.num-downstream-threads") {
+        auto n = std::stoi(value);
+        if (n < 0) { throw std::out_of_range("out of range"); }
+        local.num_downstream_threads = n;
+    } else if (key == "local.upstream-cpus") {
+        std::stringstream tmp(value);
+        tmp >> local.upstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (key == "local.downstream-cpus") {
+        std::stringstream tmp(value);
+        tmp >> local.downstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (key == "local.timer-cpus") {
+        std::stringstream tmp(value);
+        tmp >> local.timer_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (key == "local.kernel-cpus") {
+        std::stringstream tmp(value);
+        tmp >> local.kernel_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (key == "remote.min-input-buffer-size") {
+        auto n = std::stoul(value);
+        remote.min_input_buffer_size = n;
+    } else if (key == "remote.min-output-buffer-size") {
+        auto n = std::stoul(value);
+        remote.min_output_buffer_size = n;
+    } else if (key == "remote.pipe-buffer-size") {
+        auto n = std::stoul(value);
+        remote.pipe_buffer_size = n;
+    } else if (key == "remote.cpus") {
+        std::stringstream tmp(value);
+        tmp >> remote.cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else {
+        throw std::invalid_argument("unknown property");
+    }
+}
+
+void sbn::Properties::init_default_values() {
+    const auto& available_cpus = sys::this_process::cpu_affinity();
+    local.upstream_cpus &= available_cpus;
+    if (local.upstream_cpus.count() == 0) {
+        local.upstream_cpus = available_cpus;
+    }
+    local.downstream_cpus &= available_cpus;
+    local.timer_cpus &= available_cpus;
+    local.kernel_cpus &= available_cpus;
+    if (!is_set(this->local.num_upstream_threads)) {
+        this->local.num_upstream_threads = num_threads(local.upstream_cpus);
+    }
+    if (this->local.num_downstream_threads == 0) {
+        this->local.num_downstream_threads = num_downstream_threads();
+    }
+    if (!is_set(remote.min_input_buffer_size)) {
+        remote.min_input_buffer_size = sys::page_size()*16;
+    }
+    if (!is_set(remote.min_output_buffer_size)) {
+        remote.min_output_buffer_size = sys::page_size()*16;
+    }
+    remote.cpus &= available_cpus;
+}
+
+sbn::Factory::Factory(const Properties& config): _local(config.local) {
+    /*
     this->_local.num_upstream_threads(config.local.num_upstream_threads);
     this->_local.num_downstream_threads(config.local.num_downstream_threads);
     this->_local.upstream_cpus(config.local.upstream_cpus);
     this->_local.downstream_cpus(config.local.downstream_cpus);
     this->_local.timer_cpus(config.local.timer_cpus);
     this->_local.kernel_cpus(config.local.kernel_cpus);
+    */
     this->_local.name("app local");
     this->_local.error_pipeline(&this->_remote);
     this->_remote.cpus(config.remote.cpus);
