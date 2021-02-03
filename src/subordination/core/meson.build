@@ -7,6 +7,7 @@ sbn_src = files([
     'connection.cc',
     'error.cc',
     'error_handler.cc',
+    'factory_properties.cc',
     'foreign_kernel.cc',
     'kernel_base.cc',
     'kernel_buffer.cc',

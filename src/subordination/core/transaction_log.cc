@@ -261,3 +261,15 @@ void sbn::transaction_kernel::act() {
     this->_transactions->recover(this->_records);
     this_ptr().reset();
 }
+
+bool sbn::transaction_log::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "directory") == 0) {
+        directory = value;
+    } else if (std::strcmp(key, "recover-after") == 0) {
+        recover_after = sbn::string_to_duration(value);
+    } else {
+        found = false;
+    }
+    return found;
+}

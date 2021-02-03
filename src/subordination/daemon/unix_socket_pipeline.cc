@@ -144,3 +144,7 @@ void sbnd::unix_socket_client::handle(const sys::epoll_event& event) {
 };
 
 void sbnd::unix_socket_client::flush() { connection::flush(this->_socket); }
+
+sbnd::unix_socket_pipeline::unix_socket_pipeline(const properties& p):
+sbn::basic_socket_pipeline{p}
+{}

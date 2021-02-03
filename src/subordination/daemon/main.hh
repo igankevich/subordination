@@ -27,7 +27,7 @@ namespace sbnd {
         using resource_array = sbn::resources::Bindings;
 
     private:
-        Properties::Discoverer _discoverer_properties;
+        discoverer::properties _discoverer_properties;
         discoverer_table _discoverers;
         interface_address_set _allowedifaddrs;
         /// Interface address list update interval.

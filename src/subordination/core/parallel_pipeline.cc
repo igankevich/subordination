@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <unistdx/ipc/process>
 #include <unistdx/system/error>
 
@@ -267,4 +269,36 @@ void sbn::parallel_pipeline::num_upstream_threads(size_t n) {
                  }
     }
     this->_upstream_threads.resize(n);
+}
+
+bool sbn::parallel_pipeline::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "num-upstream-threads") == 0) {
+        auto n = std::stoi(value);
+        if (n < 1) { throw std::out_of_range("out of range"); }
+        num_upstream_threads = n;
+    } else if (std::strcmp(key, "num-downstream-threads") == 0) {
+        auto n = std::stoi(value);
+        if (n < 0) { throw std::out_of_range("out of range"); }
+        num_downstream_threads = n;
+    } else if (std::strcmp(key, "upstream-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> upstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "downstream-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> downstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "timer-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> timer_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "kernel-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> kernel_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else {
+        found = false;
+    }
+    return found;
 }

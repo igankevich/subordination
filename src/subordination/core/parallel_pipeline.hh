@@ -21,6 +21,7 @@ namespace sbn {
             sys::cpu_set kernel_cpus;
             unsigned num_downstream_threads = 0;
             unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
+            bool set(const char* key, const std::string& value);
         };
 
     private:

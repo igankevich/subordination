@@ -807,3 +807,29 @@ sbnd::socket_pipeline::update_clients(const hierarchy_type& hierarchy) {
         client->nodes_behind(hierarchy.nodes_behind(client->socket_address()));
     }
 }
+
+sbnd::socket_pipeline::socket_pipeline(const properties& p):
+sbn::basic_socket_pipeline{p} {
+    this->_max_connection_attempts = p.max_connection_attempts;
+    this->_connection_timeout = p.connection_timeout;
+    this->_route = p.route;
+}
+
+bool sbnd::socket_pipeline::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (basic_socket_pipeline::properties::set(key, value)) {
+    } else if (std::strcmp(key, "max-connection-attempts") == 0) {
+        auto v = std::stoul(value);
+        if (v > std::numeric_limits<sys::u32>::max()) {
+            throw std::out_of_range("out of range");
+        }
+        max_connection_attempts = static_cast<sys::u32>(v);
+    } else if (std::strcmp(key, "connection-timeout") == 0) {
+        connection_timeout = sbn::string_to_duration(value);
+    } else if (std::strcmp(key, "route") == 0) {
+        route = sbn::string_to_bool(value);
+    } else {
+        found = false;
+    }
+    return found;
+}

@@ -37,6 +37,9 @@ namespace sbnd {
     class unix_socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:
+        struct properties: public sbn::basic_socket_pipeline::properties {};
+
+    public:
         using client_type = unix_socket_client;
         using client_ptr = std::shared_ptr<client_type>;
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
@@ -45,6 +48,7 @@ namespace sbnd {
         client_table _clients;
 
     public:
+        explicit unix_socket_pipeline(const properties& p);
         unix_socket_pipeline() = default;
         ~unix_socket_pipeline() = default;
         unix_socket_pipeline(const unix_socket_pipeline& rhs) = delete;

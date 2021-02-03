@@ -6,6 +6,7 @@
 #include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
+#include <subordination/core/properties.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/terminate_kernel.hh>
 
@@ -273,4 +274,30 @@ void sbnd::process_pipeline::clear(sbn::kernel_sack& sack) {
         k->mark_as_deleted(sack);
         this->_outstanding_kernels.pop_front();
     }
+}
+
+sbnd::process_pipeline::process_pipeline(const properties& p):
+sbn::basic_socket_pipeline{p} {
+    this->_pipe_buffer_size = p.pipe_buffer_size;
+    this->_allowroot = p.allow_root;
+    this->_interleave = p.interleave;
+}
+
+bool sbnd::process_pipeline::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (basic_socket_pipeline::properties::set(key, value)) {
+    } else if (std::strcmp(key, "min-input-buffer-size") == 0) {
+        min_input_buffer_size = std::stoul(value);
+    } else if (std::strcmp(key, "min-output-buffer-size") == 0) {
+        min_output_buffer_size = std::stoul(value);
+    } else if (std::strcmp(key, "pipe-buffer-size") == 0) {
+        pipe_buffer_size = std::stoul(value);
+    } else if (std::strcmp(key, "allow-root") == 0) {
+        allow_root = sbn::string_to_bool(value);
+    } else if (std::strcmp(key, "interleave") == 0) {
+        interleave = sbn::string_to_bool(value);
+    } else {
+        found = false;
+    }
+    return found;
 }

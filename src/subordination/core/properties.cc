@@ -165,3 +165,9 @@ auto sbn::string_to_duration(std::string s) -> Duration {
 std::istream& sbn::operator>>(std::istream& in, Duration& rhs) {
     std::string s; in >> s; rhs = string_to_duration(s); return in;
 }
+
+bool sbn::starts_with(const std::string& s, const char* prefix) noexcept {
+    using t = std::string::traits_type;
+    auto n = t::length(prefix);
+    return n <= s.size() && t::compare(s.data(), prefix, n) == 0;
+}

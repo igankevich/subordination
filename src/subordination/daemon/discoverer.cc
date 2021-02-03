@@ -339,7 +339,7 @@ void sbnd::discoverer::update_weights(pointer<Hierarchy_kernel> k) {
 
 sbnd::discoverer::discoverer(const ifaddr_type& interface_address,
                              const sys::port_type port,
-                             const Properties::Discoverer& props):
+                             const properties& props):
 _fanout(props.fanout), _hierarchy(interface_address, port) {
     this->_interval = props.scan_interval;
     this->_profile = props.profile;
@@ -358,4 +358,37 @@ void sbnd::discoverer::resources(const sbn::resource_array& rhs,
         }
         broadcast_hierarchy({});
     }
+}
+
+bool sbnd::discoverer::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "scan-interval") == 0) {
+        scan_interval = sbn::string_to_duration(value);
+    } else if (std::strcmp(key, "fanout") == 0) {
+        auto v = std::stoul(value);
+        if (v > std::numeric_limits<sys::ipv4_address::rep_type>::max() ||
+            v == 0) {
+            throw std::out_of_range("out of range");
+        }
+        fanout = static_cast<sys::ipv4_address::rep_type>(v);
+    } else if (std::strcmp(key, "max-attempts") == 0) {
+        auto v = std::stoul(value);
+        if (v > std::numeric_limits<int>::max() || v == 0) {
+            throw std::out_of_range("out of range");
+        }
+        max_attempts = static_cast<int>(v);
+    } else if (std::strcmp(key, "max-radius") == 0) {
+        auto v = std::stoul(value);
+        if (v > std::numeric_limits<int>::max() || v == 0) {
+            throw std::out_of_range("out of range");
+        }
+        max_radius = static_cast<int>(v);
+    } else if (std::strcmp(key, "cache-directory") == 0) {
+        cache_directory = value;
+    } else if (std::strcmp(key, "profile") == 0) {
+        profile = sbn::string_to_bool(value);
+    } else {
+        found = false;
+    }
+    return found;
 }

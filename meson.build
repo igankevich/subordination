@@ -23,7 +23,8 @@ cpp_args = [
     '-Werror=return-type',
     '-Werror=return-local-addr',
     '-Werror=cast-align',
-    '-Wcast-align=strict'
+    '-Wcast-align=strict',
+    '-Wno-terminate',
 ]
 cpp_link_args = ['-rdynamic']
 test_cpp_args = ['-DSBN_TEST']

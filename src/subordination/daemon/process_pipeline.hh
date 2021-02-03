@@ -44,6 +44,14 @@ namespace sbnd {
 
     class process_pipeline: public sbn::basic_socket_pipeline {
 
+    public:
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            size_t pipe_buffer_size = 4096UL*16UL;
+            bool allow_root = false;
+            bool interleave = false;
+            bool set(const char* key, const std::string& value);
+        };
+
     private:
         using connection_type = sbn::process_handler;
         using connection_ptr = std::shared_ptr<connection_type>;
@@ -73,6 +81,7 @@ namespace sbnd {
 
     public:
 
+        explicit process_pipeline(const properties& p);
         process_pipeline() = default;
         ~process_pipeline() = default;
         process_pipeline(const process_pipeline&) = delete;

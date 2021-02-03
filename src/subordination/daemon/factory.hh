@@ -1,6 +1,7 @@
 #ifndef SUBORDINATION_DAEMON_FACTORY_HH
 #define SUBORDINATION_DAEMON_FACTORY_HH
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/factory_properties.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/core/kernel_type_registry.hh>
@@ -8,6 +9,7 @@
 #include <subordination/core/properties.hh>
 #include <subordination/core/transaction_log.hh>
 #include <subordination/daemon/config.hh>
+#include <subordination/daemon/discoverer.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 #include <subordination/daemon/unix_socket_pipeline.hh>
@@ -40,44 +42,16 @@ namespace sbnd {
 
     public:
         sbn::parallel_pipeline::properties local;
-        struct {
-            sys::cpu_set cpus;
-            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
-            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
-            sys::u32 max_connection_attempts = 1;
-            sbn::Duration connection_timeout{std::chrono::seconds(7)};
-            bool route = false;
-        } remote;
-        struct {
-            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
-            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
-            size_t pipe_buffer_size = std::numeric_limits<size_t>::max();
-            bool allow_root = false;
-            bool interleave = false;
-        } process;
-        struct {
-            size_t min_output_buffer_size = std::numeric_limits<size_t>::max();
-            size_t min_input_buffer_size = std::numeric_limits<size_t>::max();
-        } unix;
-        struct {
-            factory_flags flags = factory_flags::all;
-        } factory;
-        struct {
-            sys::path directory{SBND_SHARED_STATE_DIR};
-            sbn::Duration recover_after = sbn::Duration::zero();
-        } transactions;
+        socket_pipeline::properties remote;
+        process_pipeline::properties process;
+        unix_socket_pipeline::properties unix;
+        struct { factory_flags flags = factory_flags::all; } factory;
+        sbn::transaction_log::properties transactions;
         struct {
             interface_address_list allowed_interface_addresses;
             sbn::Duration interface_update_interval = std::chrono::minutes(1);
         } network;
-        struct Discoverer {
-            sbn::Duration scan_interval = std::chrono::minutes(1);
-            sys::path cache_directory{SBND_SHARED_STATE_DIR};
-            sys::ipv4_address::rep_type fanout = 64;
-            int max_attempts = 1;
-            int max_radius = 100;
-            bool profile = false;
-        } discoverer;
+        discoverer::properties discover;
         struct Resources {
             std::unordered_map<std::string,sbn::resources::expression_ptr> expressions;
         } resources;
@@ -93,57 +67,94 @@ namespace sbnd {
 
     };
 
+    /// A container with one or nought elements.
+    template <class T>
+    class storage {
+    private:
+        typename std::aligned_storage<sizeof(T),alignof(T)>::type _data;
+        bool _set = false;
+    public:
+        template <class ... Args>
+        inline storage(Args&& ... args) {
+            new (&this->_data) T{std::forward<Args>(args)...};
+            this->_set = true;
+        }
+        inline ~storage() noexcept { destroy(); }
+        template <class ... Args>
+        inline void make(Args&& ... args) {
+            destroy();
+            this->_set = false;
+            new (&this->_data) T{std::forward<Args>(args)...};
+            this->_set = true;
+        }
+        inline void destroy() noexcept { if (*this) { get()->~T(); } }
+        inline T* get() noexcept {
+            return reinterpret_cast<T*>(&this->_data);
+        }
+        inline const T* get() const noexcept {
+            return reinterpret_cast<const T*>(&this->_data);
+        }
+        // smart pointer interface
+        inline T* operator&() noexcept { return get(); }
+        inline const T* operator&() const noexcept { return get(); }
+        inline T& operator*() noexcept {
+            Expects(this->_set);
+            return *get();
+        }
+        inline const T& operator*() const noexcept {
+            Expects(this->_set);
+            return *get();
+        }
+        inline T* operator->() noexcept { return get(); }
+        inline const T* operator->() const noexcept { return get(); }
+        inline explicit operator bool() const noexcept { return this->_set; }
+        inline bool operator!() const noexcept { return !this->_set; }
+        // container interface
+        inline T* data() noexcept { return get(); }
+        inline const T* data() const noexcept { return get(); }
+        inline size_t size() const noexcept { return static_cast<size_t>(this->_set); }
+        inline T* begin() noexcept { return get(); }
+        inline const T* begin() const noexcept { return get(); }
+        inline T* end() noexcept { return get() + size(); }
+        inline const T* end() const noexcept { return get() + size(); }
+        storage() = default;
+        storage(const storage&) = delete;
+        storage& operator=(const storage&) = delete;
+        storage(storage&&) = delete;
+        storage& operator=(storage&&) = delete;
+    };
+
     class Factory {
 
     private:
-        template <class T>
-        struct storage {
-            typename std::aligned_storage<sizeof(T),alignof(T)>::type data;
-            inline T* get() noexcept { return reinterpret_cast<T*>(&data); }
-            inline const T* get() const noexcept { return reinterpret_cast<const T*>(&data); }
-            inline T* operator&() noexcept { return get(); }
-            inline const T* operator&() const noexcept { return get(); }
-            inline T& operator*() noexcept { return *get(); }
-            inline const T& operator*() const noexcept { return *get(); }
-            inline T* operator->() noexcept { return get(); }
-            inline const T* operator->() const noexcept { return get(); }
-        };
-
-    private:
         storage<sbn::parallel_pipeline> _local;
-        socket_pipeline _remote;
-        process_pipeline _process;
-        unix_socket_pipeline _unix;
+        storage<socket_pipeline> _remote;
+        storage<process_pipeline> _process;
+        storage<unix_socket_pipeline> _unix;
         sbn::kernel_type_registry _types;
         sbn::kernel_instance_registry _instances;
-        sbn::transaction_log _transactions;
+        storage<sbn::transaction_log> _transactions;
         factory_flags _flags = factory_flags::all;
 
     public:
 
-        explicit Factory(unsigned concurrency);
-        explicit Factory();
-        ~Factory() = default;
-        Factory(const Factory&) = delete;
-        Factory(Factory&&) = delete;
-
         inline void send(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
-        inline void send_remote(sbn::kernel_ptr&& k) { this->_remote.send(std::move(k)); }
-        inline void send_unix(sbn::kernel_ptr&& k) { this->_unix.send(std::move(k)); }
-        inline void send_child(sbn::kernel_ptr&& k) { this->_process.send(std::move(k)); }
+        inline void send_remote(sbn::kernel_ptr&& k) { this->_remote->send(std::move(k)); }
+        inline void send_unix(sbn::kernel_ptr&& k) { this->_unix->send(std::move(k)); }
+        inline void send_child(sbn::kernel_ptr&& k) { this->_process->send(std::move(k)); }
         inline void schedule(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
         inline void schedule(sbn::kernel_ptr_array&& k) { this->_local->send(std::move(k)); }
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
         inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 
         inline sbn::parallel_pipeline& local() noexcept { return *this->_local; }
-        inline socket_pipeline& remote() noexcept { return this->_remote; }
-        inline unix_socket_pipeline& unix() noexcept { return this->_unix; }
-        inline process_pipeline& process() noexcept { return this->_process; }
-        inline const process_pipeline& process() const noexcept { return this->_process; }
+        inline socket_pipeline& remote() noexcept { return *this->_remote; }
+        inline unix_socket_pipeline& unix() noexcept { return *this->_unix; }
+        inline process_pipeline& process() noexcept { return *this->_process; }
+        inline const process_pipeline& process() const noexcept { return *this->_process; }
 
         void transactions(const char* filename);
-        inline sbn::transaction_log& transactions() noexcept { return this->_transactions; }
+        inline sbn::transaction_log& transactions() noexcept { return *this->_transactions; }
 
         inline factory_flags flags() const noexcept { return this->_flags; }
         inline void flags(factory_flags rhs) noexcept { this->_flags = rhs; }
@@ -156,6 +167,13 @@ namespace sbnd {
         void wait();
         void clear();
         void configure(const Properties& props);
+
+        Factory() = default;
+        ~Factory() = default;
+        Factory(const Factory&) = delete;
+        Factory& operator=(const Factory&) = delete;
+        Factory(Factory&&) = delete;
+        Factory& operator=(Factory&&) = delete;
 
     };
 

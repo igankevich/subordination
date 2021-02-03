@@ -8,8 +8,8 @@
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
 
+#include <subordination/core/properties.hh>
 #include <subordination/daemon/config.hh>
-#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/hierarchy_kernel.hh>
 #include <subordination/daemon/probe.hh>
@@ -32,6 +32,17 @@ namespace sbnd {
     operator<<(std::ostream& out, probe_result rhs);
 
     class discoverer: public resident_kernel {
+
+    public:
+        struct properties {
+            sbn::Duration scan_interval = std::chrono::minutes(1);
+            sys::path cache_directory;
+            sys::ipv4_address::rep_type fanout = 64;
+            int max_attempts = 1;
+            int max_radius = 100;
+            bool profile = false;
+            bool set(const char* key, const std::string& value);
+        };
 
     public:
         using addr_type = sys::ipv4_address;
@@ -67,7 +78,7 @@ namespace sbnd {
 
         discoverer(const ifaddr_type& interface_address,
                    const sys::port_type port,
-                   const Properties::Discoverer& props);
+                   const properties& p);
 
         void on_start() override;
         void on_kernel(sbn::kernel_ptr&& k) override;

@@ -13,6 +13,7 @@
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/properties.hh>
 #include <subordination/core/types.hh>
 #include <subordination/core/weights.hh>
 #include <subordination/daemon/file_system.hh>
@@ -159,6 +160,15 @@ namespace sbnd {
     class socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            sys::cpu_set cpus;
+            sys::u32 max_connection_attempts = 1;
+            sbn::Duration connection_timeout{std::chrono::seconds(7)};
+            bool route = false;
+            bool set(const char* key, const std::string& value);
+        };
+
+    public:
         using ip_address = sys::ipv4_address;
         using interface_address = sys::interface_address<ip_address>;
         using counter_type = uint32_t;
@@ -186,6 +196,7 @@ namespace sbnd {
 
     public:
 
+        explicit socket_pipeline(const properties& p);
         socket_pipeline() = default;
         ~socket_pipeline() = default;
         socket_pipeline(const socket_pipeline&) = delete;

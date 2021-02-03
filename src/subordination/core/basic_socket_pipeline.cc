@@ -4,9 +4,17 @@
 #include <unistdx/ipc/process>
 
 #include <subordination/core/basic_socket_pipeline.hh>
+#include <subordination/core/properties.hh>
 
 sbn::basic_socket_pipeline::basic_socket_pipeline() {
     this->_connections.emplace(poller().pipe_in(), std::make_shared<connection>());
+}
+
+sbn::basic_socket_pipeline::basic_socket_pipeline(const properties& p):
+basic_socket_pipeline{} {
+    this->_min_input_buffer_size = p.min_input_buffer_size;
+    this->_min_output_buffer_size = p.min_output_buffer_size;
+    this->_threads.cpus(p.cpus);
 }
 
 void sbn::basic_socket_pipeline::loop() {
@@ -172,4 +180,16 @@ void sbn::basic_socket_pipeline::remove_listener(kernel* b) {
         std::remove_if(this->_listeners.begin(), this->_listeners.end(),
                        [b] (kernel* a) { return a == b; }),
         this->_listeners.end());
+}
+
+bool sbn::basic_socket_pipeline::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "min-input-buffer-size") == 0) {
+        min_input_buffer_size = std::stoul(value);
+    } else if (std::strcmp(key, "min-output-buffer-size") == 0) {
+        min_output_buffer_size = std::stoul(value);
+    } else {
+        found = false;
+    }
+    return found;
 }

@@ -27,6 +27,14 @@ namespace sbn {
     class basic_socket_pipeline: public pipeline {
 
     public:
+        struct properties {
+            sys::cpu_set cpus;
+            size_t min_output_buffer_size;
+            size_t min_input_buffer_size;
+            bool set(const char* key, const std::string& value);
+        };
+
+    public:
         using connection_ptr = std::shared_ptr<connection>;
         using clock_type = typename connection::clock_type;
         using time_point = typename connection::time_point;
@@ -92,6 +100,7 @@ namespace sbn {
         inline unsentry unguard() noexcept { return unsentry(*this); }
         inline unsentry unguard() const noexcept { return unsentry(*this); }
 
+        explicit basic_socket_pipeline(const properties& p);
         basic_socket_pipeline();
         ~basic_socket_pipeline() = default;
         basic_socket_pipeline(basic_socket_pipeline&&) = delete;

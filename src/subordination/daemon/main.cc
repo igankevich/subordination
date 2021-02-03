@@ -318,7 +318,7 @@ void sbnd::Main::on_event(pointer<process_pipeline_kernel> k) {
 }
 
 sbnd::Main::Main(const Properties& props):
-_discoverer_properties(props.discoverer) {
+_discoverer_properties(props.discover) {
     for (const auto& x : props.network.allowed_interface_addresses) {
         if (x) { this->_allowedifaddrs.insert(x); }
     }

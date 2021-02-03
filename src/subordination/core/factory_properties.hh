@@ -20,13 +20,8 @@ namespace sbn {
         } remote;
 
     public:
-        inline Properties() {
-            if (const char* filename = std::getenv("SBN_CONFIG")) { open(filename); }
-            init_default_values();
-        }
-
+        Properties();
         void property(const std::string& key, const std::string& value) override;
-        void init_default_values();
 
     };
 
