@@ -3,13 +3,9 @@
 
 #include <subordination/core/factory.hh>
 
-sbn::Factory::Factory(const Properties& config): _local(config.local) {
+sbn::Factory::Factory(const Properties& config): _local(config.local), _remote(config.remote) {
     this->_local.name("app local");
     this->_local.error_pipeline(&this->_remote);
-    this->_remote.cpus(config.remote.cpus);
-    this->_remote.min_input_buffer_size(config.remote.min_input_buffer_size);
-    this->_remote.min_output_buffer_size(config.remote.min_output_buffer_size);
-    this->_remote.pipe_buffer_size(config.remote.pipe_buffer_size);
     this->_remote.name("app remote");
     this->_remote.native_pipeline(&this->_local);
     this->_remote.foreign_pipeline(&this->_remote);

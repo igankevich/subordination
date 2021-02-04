@@ -10,16 +10,32 @@ namespace sbn {
 
     class child_process_pipeline: public basic_socket_pipeline {
 
+    public:
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            size_t pipe_buffer_size;
+
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=16):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple},
+            pipe_buffer_size{page_size*multiple} {}
+
+            bool set(const char* key, const std::string& value);
+        };
+
     private:
         using base_pipeline = basic_socket_pipeline;
         using connection_ptr = std::shared_ptr<process_handler>;
 
     private:
         connection_ptr _parent;
-        size_t _pipe_buffer_size = std::numeric_limits<size_t>::max();
+        size_t _pipe_buffer_size = 4096UL*16UL;
 
     public:
 
+        explicit child_process_pipeline(const properties& p);
         child_process_pipeline() = default;
         virtual ~child_process_pipeline() = default;
         child_process_pipeline(const child_process_pipeline&) = delete;

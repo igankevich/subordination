@@ -7,7 +7,7 @@ namespace {
 
     void usage(std::ostream& out, char** argv) {
         out << "usage: " << argv[0] << " args...\n"
-            "args    Python 3 interpreter arguemnts\n";
+            "args    Python 3 interpreter arguments\n";
     }
 
     int nested_main(int argc, char* argv[]) {

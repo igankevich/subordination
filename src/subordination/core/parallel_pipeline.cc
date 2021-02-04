@@ -200,9 +200,9 @@ void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
 }
 
 void sbn::parallel_pipeline::timer_start() {
+    if (this->_timer_threads.cpus().count() == 0) { return; }
     this->_timer_threads.emplace_back([this] () noexcept {
-        const auto& cpus = this->_timer_threads.cpus();
-        if (cpus.count() != 0) { sys::this_process::cpu_affinity(cpus); }
+        sys::this_process::cpu_affinity(this->_timer_threads.cpus());
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif

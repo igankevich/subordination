@@ -27,14 +27,6 @@ namespace sbn {
 
         inline Factory(): Factory(Properties()) {}
         explicit Factory(const Properties& properties);
-        virtual ~Factory() = default;
-        Factory(const Factory&) = delete;
-        Factory(Factory&&) = delete;
-
-        inline void send(kernel_ptr&& k) { this->_local.send(std::move(k)); }
-        inline void send_remote(kernel_ptr&& k) { this->_remote.send(std::move(k)); }
-        inline void schedule(kernel_ptr&& k) { this->_local.send_timer(std::move(k)); }
-        inline void schedule(kernel_ptr_array&& k) { this->_local.send(std::move(k)); }
 
         inline parallel_pipeline& local() noexcept { return this->_local; }
         inline const parallel_pipeline& local() const noexcept { return this->_local; }
@@ -48,6 +40,11 @@ namespace sbn {
         void wait();
         void clear();
 
+        ~Factory() = default;
+        Factory(const Factory&) = delete;
+        Factory& operator=(const Factory&) = delete;
+        Factory(Factory&&) = delete;
+        Factory& operator=(Factory&&) = delete;
     };
 
     extern Factory factory;

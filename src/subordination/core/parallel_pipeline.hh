@@ -20,7 +20,20 @@ namespace sbn {
             sys::cpu_set timer_cpus;
             sys::cpu_set kernel_cpus;
             unsigned num_downstream_threads = 0;
-            unsigned num_upstream_threads = std::numeric_limits<unsigned>::max();
+            unsigned num_upstream_threads;
+
+            inline properties(): properties{sys::this_process::cpu_affinity()} {}
+
+            inline explicit properties(unsigned nthreads):
+            properties{sys::this_process::cpu_affinity(), nthreads} {}
+
+            inline explicit properties(const sys::cpu_set& cpus):
+            properties{cpus,static_cast<unsigned int>(cpus.count())} {}
+
+            inline explicit properties(const sys::cpu_set& cpus, unsigned nthreads):
+            upstream_cpus{cpus}, downstream_cpus{cpus}, timer_cpus{cpus}, kernel_cpus{cpus},
+            num_upstream_threads{nthreads} {}
+
             bool set(const char* key, const std::string& value);
         };
 
@@ -66,10 +79,10 @@ namespace sbn {
 
     public:
 
-        inline parallel_pipeline(): parallel_pipeline(1u) {}
+        inline parallel_pipeline(): parallel_pipeline{1u} {}
 
         inline explicit parallel_pipeline(unsigned num_upstream_threads):
-        _upstream_threads(num_upstream_threads) {}
+        parallel_pipeline{properties{num_upstream_threads}} {}
 
         explicit parallel_pipeline(const properties& p):
         _upstream_threads(p.num_upstream_threads),
@@ -205,16 +218,7 @@ namespace sbn {
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
         void num_downstream_threads(size_t n);
-
-        inline size_t num_downstream_threads() const noexcept {
-            return this->_downstream_threads.size();
-        }
-
         void num_upstream_threads(size_t n);
-
-        inline size_t num_upstream_threads() const noexcept {
-            return this->_upstream_threads.size();
-        }
 
     private:
         void upstream_loop(kernel_queue& downstream_queue);
@@ -227,7 +231,10 @@ namespace sbn {
 
         inline void make_thread(kernel_ptr&& k) {
             this->_kernel_threads.emplace_back(
-                [this] (kernel_ptr&& k) { kernel_loop(std::move(k)); },
+                [this] (kernel_ptr&& k) {
+                    sys::this_process::cpu_affinity(this->_kernel_threads.cpus());
+                    kernel_loop(std::move(k));
+                },
                 std::move(k));
         }
 

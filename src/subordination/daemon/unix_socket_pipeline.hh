@@ -37,7 +37,14 @@ namespace sbnd {
     class unix_socket_pipeline: public sbn::basic_socket_pipeline {
 
     public:
-        struct properties: public sbn::basic_socket_pipeline::properties {};
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=16):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple} {}
+        };
 
     public:
         using client_type = unix_socket_client;

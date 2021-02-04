@@ -6,29 +6,29 @@
 
 #include <subordination/daemon/factory.hh>
 
-namespace  {
-
-    template <class T> inline bool is_set(T value) {
-        return value != std::numeric_limits<T>::max();
+namespace {
+    template <class Properties>
+    inline bool set_if_prefix(const std::string& prefix,
+                              Properties& properties,
+                              const std::string& key,
+                              const std::string& value) {
+        if (key.compare(0, prefix.size(), prefix) == 0) {
+            return properties.set(key.data() + prefix.size(), value);
+        }
+        return false;
     }
-
 }
 
 void sbnd::Properties::property(const std::string& key, const std::string& value) {
+    std::string local_prefix{"local."};
     if (key == "config") {
         open(value.data());
-    } else if (sbn::starts_with(key, "local.")) {
-        local.set(key.data() + 6, value);
-    } else if (sbn::starts_with(key, "remote.")) {
-        remote.set(key.data() + 7, value);
-    } else if (sbn::starts_with(key, "process.")) {
-        process.set(key.data() + 8, value);
-    } else if (sbn::starts_with(key, "unix.")) {
-        unix.set(key.data() + 5, value);
-    } else if (sbn::starts_with(key, "discoverer.")) {
-        discover.set(key.data() + 11, value);
-    } else if (sbn::starts_with(key, "transactions.")) {
-        transactions.set(key.data() + 13, value);
+    } else if (set_if_prefix("local.", local, key, value)) {
+    } else if (set_if_prefix("remote.", remote, key, value)) {
+    } else if (set_if_prefix("process.", process, key, value)) {
+    } else if (set_if_prefix("unix.", unix, key, value)) {
+    } else if (set_if_prefix("discoverer.", discover, key, value)) {
+    } else if (set_if_prefix("transactions.", transactions, key, value)) {
     } else if (key == "factory.flags") {
         factory.flags = string_to_factory_flags(value);
     } else if (key == "network.allowed-interface-addresses") {
@@ -50,25 +50,10 @@ void sbnd::Properties::property(const std::string& key, const std::string& value
     }
 }
 
-sbnd::Properties::Properties() {
+sbnd::Properties::Properties(const sys::cpu_set& cpus, size_t page_size):
+local{cpus}, remote{cpus,page_size}, process{cpus,page_size}, unix{cpus,page_size} {
     transactions.directory = sys::path{SBND_SHARED_STATE_DIR};
     discover.cache_directory = sys::path{SBND_SHARED_STATE_DIR};
-    const auto& available_cpus = sys::this_process::cpu_affinity();
-    local.upstream_cpus &= available_cpus;
-    if (local.upstream_cpus.count() == 0) {
-        local.upstream_cpus = available_cpus;
-    }
-    local.downstream_cpus &= available_cpus;
-    local.timer_cpus &= available_cpus;
-    local.num_upstream_threads = available_cpus.count();
-    auto page_size = sys::page_size();
-    remote.cpus &= available_cpus;
-    remote.min_input_buffer_size = page_size*52;
-    remote.min_output_buffer_size = page_size*52;
-    process.min_input_buffer_size = page_size*16;
-    process.min_output_buffer_size = page_size*16;
-    unix.min_input_buffer_size = page_size*16;
-    unix.min_output_buffer_size = page_size*16;
 }
 
 void sbnd::Factory::transactions(const char* filename) {

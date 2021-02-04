@@ -46,9 +46,18 @@ namespace sbnd {
 
     public:
         struct properties: public sbn::basic_socket_pipeline::properties {
-            size_t pipe_buffer_size = 4096UL*16UL;
+            size_t pipe_buffer_size;
             bool allow_root = false;
             bool interleave = false;
+
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=16):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple},
+            pipe_buffer_size{page_size*multiple} {}
+
             bool set(const char* key, const std::string& value);
         };
 

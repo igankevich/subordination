@@ -161,10 +161,17 @@ namespace sbnd {
 
     public:
         struct properties: public sbn::basic_socket_pipeline::properties {
-            sys::cpu_set cpus;
             sys::u32 max_connection_attempts = 1;
             sbn::Duration connection_timeout{std::chrono::seconds(7)};
             bool route = false;
+
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=52):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple} {}
+
             bool set(const char* key, const std::string& value);
         };
 

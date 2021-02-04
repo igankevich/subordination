@@ -15,19 +15,19 @@ namespace sbn {
     template <Target t=Target::Local>
     inline void
     send(kernel_ptr&& k) {
-        factory.send(std::move(k));
+        factory.local().send(std::move(k));
     }
 
     template <>
     inline void
     send<Local>(kernel_ptr&& k) {
-        factory.send(std::move(k));
+        factory.local().send(std::move(k));
     }
 
     template <>
     inline void
     send<Remote>(kernel_ptr&& k) {
-        factory.send_remote(std::move(k));
+        factory.remote().send(std::move(k));
     }
 
     template<Target target=Target::Local>

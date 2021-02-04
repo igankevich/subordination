@@ -31,6 +31,15 @@ namespace sbn {
             sys::cpu_set cpus;
             size_t min_output_buffer_size;
             size_t min_input_buffer_size;
+
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=52):
+            cpus{cpus}, min_output_buffer_size{page_size*multiple},
+            min_input_buffer_size{page_size*multiple} {}
+
             bool set(const char* key, const std::string& value);
         };
 
