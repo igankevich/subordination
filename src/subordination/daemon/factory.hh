@@ -138,12 +138,14 @@ namespace sbnd {
 
     public:
 
+        /*
         inline void send(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
         inline void send_remote(sbn::kernel_ptr&& k) { this->_remote->send(std::move(k)); }
         inline void send_unix(sbn::kernel_ptr&& k) { this->_unix->send(std::move(k)); }
         inline void send_child(sbn::kernel_ptr&& k) { this->_process->send(std::move(k)); }
         inline void schedule(sbn::kernel_ptr&& k) { this->_local->send(std::move(k)); }
         inline void schedule(sbn::kernel_ptr_array&& k) { this->_local->send(std::move(k)); }
+        */
         inline sbn::kernel_type_registry& types() noexcept { return this->_types; }
         inline sbn::kernel_instance_registry& instances() noexcept { return this->_instances; }
 

@@ -1,5 +1,5 @@
-#ifndef SUBORDINATION_CORE_BASIC_FACTORY_HH
-#define SUBORDINATION_CORE_BASIC_FACTORY_HH
+#ifndef SUBORDINATION_CORE_FACTORY_HH
+#define SUBORDINATION_CORE_FACTORY_HH
 
 #include <iosfwd>
 
@@ -26,7 +26,7 @@ namespace sbn {
     public:
 
         inline Factory(): Factory(Properties()) {}
-        Factory(const Properties& properties);
+        explicit Factory(const Properties& properties);
         virtual ~Factory() = default;
         Factory(const Factory&) = delete;
         Factory(Factory&&) = delete;

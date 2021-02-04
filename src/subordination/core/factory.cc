@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iomanip>
 
-#include <subordination/core/basic_factory.hh>
+#include <subordination/core/factory.hh>
 
 sbn::Factory::Factory(const Properties& config): _local(config.local) {
     this->_local.name("app local");

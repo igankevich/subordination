@@ -5,7 +5,7 @@
 
 #include <unistdx/net/socket>
 
-#include <subordination/core/basic_factory.hh>
+#include <subordination/core/factory.hh>
 #include <subordination/core/kernel_instance_registry.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 

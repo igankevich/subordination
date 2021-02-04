@@ -1,7 +1,7 @@
 #include <ostream>
 
 #include <subordination/bits/contracts.hh>
-#include <subordination/core/basic_factory.hh>
+#include <subordination/core/factory.hh>
 #include <subordination/core/process_handler.hh>
 
 /// Called from parent process.
