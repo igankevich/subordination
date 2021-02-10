@@ -1,4 +1,5 @@
 subdir('test')
+subdir('bits')
 subdir('core')
 subdir('daemon')
 if with_guile
