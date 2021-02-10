@@ -78,7 +78,8 @@ sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
     sys::interface_addresses addrs;
     for (const sys::interface_addresses::value_type& ifa : addrs) {
         if (ifa.ifa_addr && families(ifa.ifa_addr->sa_family) == families::ipv4) {
-            ifaddr_type a(*ifa.ifa_addr, *ifa.ifa_netmask);
+            ifaddr_type a(*reinterpret_cast<::sockaddr_in*>(ifa.ifa_addr),
+                          *reinterpret_cast<::sockaddr_in*>(ifa.ifa_netmask));
             if (!a.is_loopback() && !a.is_widearea()) {
                 new_ifaddrs.emplace(a);
             }
