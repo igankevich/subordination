@@ -17,3 +17,16 @@ sbn_guile_exe = executable(
     install: true,
     implicit_include_directories: false,
 )
+
+test(
+    'guile/local',
+    executable(
+        'guile-local-test',
+        sources: ['guile_local_test.cc'],
+        dependencies: [unistdx] + valgrind_dep,
+        include_directories: src,
+        implicit_include_directories: false,
+    ),
+    args: [sbn_guile_exe, join_paths(meson.current_source_dir(), 'test.scm')],
+    env: test_env,
+)

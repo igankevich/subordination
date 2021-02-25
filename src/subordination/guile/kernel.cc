@@ -446,7 +446,7 @@ void sbn::guile::Map_kernel::act() {
 }
 
 void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
-    sys::log_message("scm", "map-kerrnel-react _", this->_num_kernels);
+    sys::log_message("scm", "map-kernel-react _", this->_num_kernels);
     auto k = sbn::pointer_dynamic_cast<Kernel_base>(std::move(child));
     result(scm_cons(k->result(), result()));
     --this->_num_kernels;
