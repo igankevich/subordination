@@ -11,6 +11,7 @@
 namespace {
 
     SCM type = SCM_UNDEFINED;
+    SCM kernel_buffer_type = SCM_UNDEFINED;
     SCM weak_ptr_type = SCM_UNDEFINED;
     SCM sym_self = SCM_UNDEFINED;
     SCM sym_parent = SCM_UNDEFINED;
@@ -212,6 +213,138 @@ namespace {
         return SCM_UNSPECIFIED;
     }
 
+    sbn::kernel_buffer* to_kernel_buffer_ptr(SCM scm) {
+        return reinterpret_cast<sbn::kernel_buffer*>(scm_foreign_object_ref(scm, 0));
+    }
+
+    void finalize_kernel_buffer_ptr(SCM scm) {
+        to_kernel_buffer_ptr(scm);
+    }
+
+    enum class Types: sys::u16 {
+        Unknown=0,
+        Integer=1,
+        Real=2,
+        Complex=3,
+        String=4,
+        Symbol=5,
+        Pair=6,
+        List=7,
+    };
+
+    void object_write(sbn::kernel_buffer& buffer, SCM object) {
+        using namespace sbn::guile;
+        auto name = scm_class_name(scm_class_of(object));
+        if (symbol_equal(name,scm_from_utf8_symbol("<integer>"))) {
+            buffer.write(Types::Integer);
+            buffer.write(scm_to_uint64(object));
+        } else if (symbol_equal(name,scm_from_utf8_symbol("<real>"))) {
+            buffer.write(Types::Real);
+            buffer.write(scm_to_double(object));
+        } else if (symbol_equal(name,scm_from_utf8_symbol("<complex>"))) {
+            buffer.write(Types::Complex);
+            buffer.write(scm_c_real_part(object));
+            buffer.write(scm_c_imag_part(object));
+        } else if (symbol_equal(name,scm_from_utf8_symbol("<unknown>"))) {
+            buffer.write(Types::Unknown);
+        } else if (scm_is_true(scm_string_p(object))) {
+            buffer.write(Types::String);
+            c_string ptr(scm_to_utf8_string(object));
+            sys::u64 n = std::strlen(ptr.get());
+            buffer.write(n);
+            buffer.write(ptr.get(), n);
+        } else if (scm_is_true(scm_symbol_p(object))) {
+            buffer.write(Types::Symbol);
+            c_string ptr(scm_to_utf8_string(scm_symbol_to_string(object)));
+            sys::u64 n = std::strlen(ptr.get());
+            buffer.write(n);
+            buffer.write(ptr.get(), n);
+        } else if (scm_is_true(scm_list_p(object))) {
+            buffer.write(Types::List);
+            buffer.write(scm_to_uint64(scm_length(object)));
+            for (; object != SCM_EOL; object = scm_cdr(object)) {
+                object_write(buffer, scm_car(object));
+            }
+        } else if (scm_is_true(scm_pair_p(object))) {
+            buffer.write(Types::Pair);
+            object_write(buffer, scm_car(object));
+            object_write(buffer, scm_cdr(object));
+        } else {
+            c_string ptr(scm_to_utf8_string(scm_symbol_to_string(name)));
+            std::stringstream tmp;
+            tmp << "Unsupported type: " << ptr.get();
+            throw std::invalid_argument(tmp.str());
+        }
+    }
+
+    SCM s_object_write(SCM s_buffer, SCM object) {
+        using namespace sbn::guile;
+        auto buffer = to_kernel_buffer_ptr(s_buffer);
+        object_write(*buffer, object);
+        return SCM_UNSPECIFIED;
+    }
+
+    void object_read(sbn::kernel_buffer& buffer, SCM& result) {
+        using namespace sbn::guile;
+        Types type{};
+        buffer.read(type);
+        if (type == Types::Unknown) {
+            result = SCM_UNSPECIFIED;
+        } else if (type == Types::Integer) {
+            sys::u64 tmp{};
+            buffer.read(tmp);
+            result = scm_from_uint64(tmp);
+        } else if (type == Types::Real) {
+            double tmp{};
+            buffer.read(tmp);
+            result = scm_from_double(tmp);
+        } else if (type == Types::Complex) {
+            double a{}, b{};
+            buffer.read(a);
+            buffer.read(b);
+            result = scm_c_make_rectangular(a,b);
+        } else if (type == Types::String) {
+            std::string s;
+            buffer.read(s);
+            result = scm_from_utf8_string(s.data());
+        } else if (type == Types::Symbol) {
+            std::string s;
+            buffer.read(s);
+            result = scm_from_utf8_symbol(s.data());
+        } else if (type == Types::Pair) {
+            SCM a = SCM_UNSPECIFIED, b = SCM_UNSPECIFIED;
+            object_read(buffer, a);
+            object_read(buffer, b);
+            result = scm_cons(a,b);
+        } else if (type == Types::List) {
+            sys::u64 n{};
+            buffer.read(n);
+            result = SCM_EOL;
+            for (sys::u64 i=0; i<n; ++i) {
+                SCM x = SCM_UNSPECIFIED;
+                object_read(buffer, x);
+                result = scm_cons(x, result);
+            }
+            result = scm_reverse(result);
+        } else {
+            std::stringstream tmp;
+            tmp << "Unsupported type: " << sys::u64(type);
+            throw std::invalid_argument(tmp.str());
+        }
+    }
+
+    SCM s_object_read(SCM s_buffer) {
+        using namespace sbn::guile;
+        auto buffer = to_kernel_buffer_ptr(s_buffer);
+        SCM result = SCM_UNSPECIFIED;
+        object_read(*buffer, result);
+        return result;
+    }
+
+    inline void object_read(sbn::kernel_buffer& buffer, sbn::guile::protected_scm& result) {
+        object_read(buffer, result.get());
+    }
+
 }
 
 void sbn::guile::Kernel_base::upstream(sbn::kernel_ptr&& child, pipeline* ppl) {
@@ -321,68 +454,84 @@ void sbn::guile::kernel_define() {
         nullptr);
     scm_c_define("<kernel-weak-ptr>", ::weak_ptr_type);
     scm_c_export("<kernel-weak-ptr>", nullptr);
+    ::kernel_buffer_type = scm_make_foreign_object_type(
+        scm_from_utf8_symbol("<kernel-buffer>"),
+        scm_list_1(scm_from_utf8_symbol("kernel-buffer")),
+        ::finalize_kernel_buffer_ptr);
+    scm_c_define("<kernel-buffer>", ::kernel_buffer_type);
+    scm_c_export("<kernel-buffer>", nullptr);
     define_procedure<0,0,3>(
         "make-kernel",
         {}, {}, {"act","react","data"},
-R"("Make kernel with the specified @var{act} and @var{react} procedures.
+R"(Make kernel with the specified @var{act} and @var{react} procedures.
 The procedures are supplied in unevaluated form.)",
-        VTB_GUILE_1(kernel_make));
+        SBN_GUILE_1(kernel_make));
     define_procedure<1,1,0>(
         "send",
         {"kernel"}, {"pipeline"}, {},
-R"("Send @var{kernel} to the @var{pipeline}.
+R"(Send @var{kernel} to the @var{pipeline}.
 Pipeline can be either @code{local} or @code{remote}.
 The default is pipeline is @code{local}.)",
-        VTB_GUILE_2(kernel_send));
+        SBN_GUILE_2(kernel_send));
     define_procedure<2,1,0>(
         "upstream",
         {"parent","child"}, {"pipeline"}, {},
-R"("Make @var{child} a child of @var{parent} and send it to the @var{pipeline}.
+R"(Make @var{child} a child of @var{parent} and send it to the @var{pipeline}.
 Pipeline can be either @code{local} or @code{remote}.
 The default is pipeline is @code{local}.)",
-        VTB_GUILE_3(kernel_upstream));
+        SBN_GUILE_3(kernel_upstream));
     define_procedure<1,2,0>(
         "commit",
         {"kernel"}, {"exit-code","pipeline"}, {},
-R"("Send @var{kernel} to its parent with @var{exit-code} via the @var{pipeline}.
+R"(Send @var{kernel} to its parent with @var{exit-code} via the @var{pipeline}.
 Pipeline can be either @code{local} or @code{remote}.
 The default is pipeline is @code{local}.)",
-        VTB_GUILE_3(kernel_commit));
+        SBN_GUILE_3(kernel_commit));
     define_procedure<1,0,0>(
         "kernel-data",
         {"kernel"}, {}, {},
-        R"("Get @var{kernel} state.)",
-        VTB_GUILE_1(kernel_data));
+        R"(Get @var{kernel} state.)",
+        SBN_GUILE_1(kernel_data));
     define_procedure<1,0,0>(
         "kernel-application-arguments",
         {"kernel"}, {}, {},
-        R"("Get @var{kernel} command line arguments.)",
-        VTB_GUILE_1(kernel_application_arguments));
+        R"(Get @var{kernel} command line arguments.)",
+        SBN_GUILE_1(kernel_application_arguments));
     define_procedure<1,0,0>(
         "gzip-file->string",
         {"path"}, {}, {},
-        R"("Read GZ file as string.)",
-        VTB_GUILE_1(gzip_file_to_string));
+        R"(Read GZ file as string.)",
+        SBN_GUILE_1(gzip_file_to_string));
     define_procedure<6,0,0>(
         "compute-variance",
         {"length","alpha1","alpha2","r1","r2","density"}, {}, {},
-        R"("Compute spectrum variance.)",
-        VTB_GUILE_6(compute_variance<double>));
+        R"(Compute spectrum variance.)",
+        SBN_GUILE_6(compute_variance<double>));
     define_procedure<2,3,0>(
         "kernel-map",
         {"proc","lists"}, {"pipeline","child-pipeline","block-size"}, {},
-        R"("Parallel map.)",
-        VTB_GUILE_3(kernel_map));
+        R"(Parallel map.)",
+        SBN_GUILE_3(kernel_map));
     define_procedure<3,0,0>(
         "kernel-react",
         {"cons","postamble","initial"}, {}, {},
-        R"("Fold child kernels.)",
-        VTB_GUILE_3(kernel_react));
+        R"(Fold child kernels.)",
+        SBN_GUILE_3(kernel_react));
     define_procedure<1,0,0>(
         "kernel-exit",
         {"exit-code"}, {}, {},
-        R"("Exit the script.)",
-        VTB_GUILE_1(kernel_exit));
+        R"(Exit the script.)",
+        SBN_GUILE_1(kernel_exit));
+    define_procedure<2,0,0>(
+        "write-object",
+        {"buffer","object"}, {}, {},
+        R"(Write object to kernel byte buffer.)",
+        SBN_GUILE_2(s_object_write));
+    define_procedure<1,0,0>(
+        "read-object",
+        {"buffer"}, {}, {},
+        R"(Read object from kernel byte buffer.)",
+        SBN_GUILE_1(s_object_read));
 }
 
 void sbn::guile::Main::act() {
@@ -460,8 +609,20 @@ void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
 }
 
 void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
+    Kernel_base::read(in);
+    object_read(in, this->_proc);
+    object_read(in, this->_lists);
+    object_read(in, this->_pipeline);
+    object_read(in, this->_block_size);
+    in.read(this->_num_kernels);
 }
 void sbn::guile::Map_kernel::write(sbn::kernel_buffer& out) const {
+    Kernel_base::write(out);
+    object_write(out, this->_proc);
+    object_write(out, this->_lists);
+    object_write(out, this->_pipeline);
+    object_write(out, this->_block_size);
+    out.write(this->_num_kernels);
 }
 
 void sbn::guile::Map_child_kernel::act() {
@@ -476,4 +637,21 @@ void sbn::guile::Map_child_kernel::act() {
 void sbn::guile::Map_child_kernel::read(sbn::kernel_buffer& in) {
 }
 void sbn::guile::Map_child_kernel::write(sbn::kernel_buffer& out) const {
+}
+
+void sbn::guile::Kernel_base::read(sbn::kernel_buffer& in) {
+    sbn::kernel::read(in);
+    in.read(this->_num_children);
+    in.read(this->_no_children);
+    object_read(in, this->_result);
+    object_read(in, this->_react);
+    object_read(in, this->_postamble);
+}
+void sbn::guile::Kernel_base::write(sbn::kernel_buffer& out) const {
+    sbn::kernel::write(out);
+    out.write(this->_num_children);
+    out.write(this->_no_children);
+    object_write(out, this->_result);
+    object_write(out, this->_react);
+    object_write(out, this->_postamble);
 }

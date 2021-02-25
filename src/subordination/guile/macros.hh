@@ -13,20 +13,6 @@ namespace {
                   scm_list_1(scm_from_utf8_string(message)));
     }
 
-    template <class Function, class ... Args> inline SCM
-    scheme_call(Function func, Args ... args) {
-        try {
-            return func(args...);
-        } catch (const std::ios::failure&) {
-            throw_error("i/o error");
-        } catch (const std::exception& err) {
-            throw_error(err.what());
-        } catch (...) {
-            throw_error("unknown error");
-        }
-        return SCM_UNSPECIFIED;
-    }
-
     template <int Req, int Opt, int Rest, class Pointer> inline void
     define_procedure(const char *name,
                      std::array<const char*,Req> req,
@@ -79,39 +65,51 @@ namespace {
 
 }
 
-#define VTB_GUILE_0(func) \
+#define SBN_GUILE_CALL(func, ...) \
+    try { \
+        return func(__VA_ARGS__); \
+    } catch (const ::std::ios::failure&) { \
+        ::throw_error("i/o error"); \
+    } catch (const ::std::exception& err) { \
+        ::throw_error(err.what()); \
+    } catch (...) { \
+        ::throw_error("unknown error"); \
+    } \
+    return SCM_UNSPECIFIED
+
+#define SBN_GUILE_0(func) \
     static_cast<SCM(*)()>([] () -> SCM { \
-        return ::scheme_call(func); \
+        SBN_GUILE_CALL(func); \
     })
 
-#define VTB_GUILE_1(func) \
+#define SBN_GUILE_1(func) \
     static_cast<SCM(*)(SCM)>([] (SCM a) -> SCM { \
-        return ::scheme_call(func,a); \
+        SBN_GUILE_CALL(func,a); \
     })
 
-#define VTB_GUILE_2(func) \
+#define SBN_GUILE_2(func) \
     static_cast<SCM(*)(SCM,SCM)>([] (SCM a, SCM b) -> SCM { \
-        return ::scheme_call(func,a,b); \
+        SBN_GUILE_CALL(func,a,b); \
     })
 
-#define VTB_GUILE_3(func) \
+#define SBN_GUILE_3(func) \
     static_cast<SCM(*)(SCM,SCM,SCM)>([] (SCM a, SCM b, SCM c) -> SCM { \
-        return ::scheme_call(func,a,b,c); \
+        SBN_GUILE_CALL(func,a,b,c); \
     })
 
-#define VTB_GUILE_4(func) \
+#define SBN_GUILE_4(func) \
     static_cast<SCM(*)(SCM,SCM,SCM,SCM)>([] (SCM a, SCM b, SCM c, SCM d) -> SCM { \
-        return ::scheme_call(func,a,b,c,d); \
+        SBN_GUILE_CALL(func,a,b,c,d); \
     })
 
-#define VTB_GUILE_5(func) \
+#define SBN_GUILE_5(func) \
     static_cast<SCM(*)(SCM,SCM,SCM,SCM,SCM)>([] (SCM a, SCM b, SCM c, SCM d, SCM e) -> SCM { \
-        return ::scheme_call(func,a,b,c,d,e); \
+        SBN_GUILE_CALL(func,a,b,c,d,e); \
     })
 
-#define VTB_GUILE_6(func) \
+#define SBN_GUILE_6(func) \
     static_cast<SCM(*)(SCM,SCM,SCM,SCM,SCM,SCM)>([] (SCM a, SCM b, SCM c, SCM d, SCM e, SCM f) -> SCM { \
-        return ::scheme_call(func,a,b,c,d,e,f); \
+        SBN_GUILE_CALL(func,a,b,c,d,e,f); \
     })
 
 #endif // vim:filetype=cpp

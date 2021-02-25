@@ -54,7 +54,7 @@ namespace sbn {
 
         private:
             std::vector<std::pair<sbn::kernel_ptr,pipeline*>> _children;
-            int _num_children{0};
+            sys::u32 _num_children{0};
             protected_scm _result = SCM_UNSPECIFIED;
             protected_scm _react = SCM_UNSPECIFIED;
             protected_scm _postamble = SCM_UNSPECIFIED;
@@ -70,6 +70,8 @@ namespace sbn {
             inline void postamble(SCM rhs) noexcept { this->_postamble = rhs; }
             inline bool no_children() const noexcept { return this->_no_children; }
             void upstream_children();
+            void read(sbn::kernel_buffer& in) override;
+            void write(sbn::kernel_buffer& out) const override;
         };
 
         class Main: public Kernel_base {

@@ -3,9 +3,7 @@
 #include <unistdx/ipc/execute>
 
 int main(int argc, char* argv[]) {
-    #if defined(SBN_TEST_HAVE_VALGRIND_H)
-    if (RUNNING_ON_VALGRIND) { std::exit(77); }
-    #endif
+    SBN_SKIP_IF_RUNNING_ON_VALGRIND();
     if (argc != 3) { std::exit(1); }
     const char* sbn_python = argv[1];
     const char* test_py = argv[2];

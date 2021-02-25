@@ -30,3 +30,29 @@ test(
     args: [sbn_guile_exe, join_paths(meson.current_source_dir(), 'test.scm')],
     env: test_env,
 )
+
+if with_dtests
+    test_config = configuration_data()
+    test_config.set('sbnd_exe_path', test_sbnd_exe.full_path())
+    test_config.set('sbnc_exe_path', test_sbnc_exe.full_path())
+    test_config.set('sbn_guile_exe_path', sbn_guile_exe.full_path())
+    test_config.set('test_scm_path', join_paths(meson.current_source_dir(), 'test.scm'))
+    configure_file(
+        input: 'guile_remote_test.hh.in',
+        output: 'guile_remote_test.hh',
+        configuration: test_config
+    )
+    test(
+        'guile/remote',
+        executable(
+            'guile-remote-test',
+            sources: 'guile_remote_test.cc',
+            cpp_args: test_cpp_args,
+            include_directories: [src],
+            dependencies: [test_sbn,dtest] + valgrind_dep,
+            implicit_include_directories: false,
+        ),
+        workdir: meson.build_root(),
+        is_parallel: false
+    )
+endif
