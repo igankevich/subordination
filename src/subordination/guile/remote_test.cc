@@ -20,7 +20,7 @@
 
 #include <dtest/application.hh>
 
-#include <subordination/guile/guile_remote_test.hh>
+#include <subordination/guile/remote_test.hh>
 #include <subordination/test/config.hh>
 #include <valgrind/config.hh>
 
@@ -94,54 +94,27 @@ int main(int argc, char* argv[]) {
                             std::move(args));
         });
     app.emplace_test(
-        "Wait for Main kernel to do base steps.",
-        [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x1.*Sbn: Main.read.*$)");
-            dts::expect_event_sequence(lines, {
-                R"(^x1.*Sbn: Main.act.*$)",
-                R"(^x1.*Sbn: Py_kernel_main.__init__.*$)",
-                R"(^x1.*Python: Main.act.*$)",
-                R"(^x1.*Sbn: upstream.*$)",
-            });
+        "Application started.",
+        [&] (dts::application& app, const dts::string_array& lines) {
+            dts::expect_event(lines, R"(^x1.*application started$)");
         });
     app.emplace_test(
         "Wait for events from x1 node.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x1.*Sbn: Cpp_kernel.read.*$)");
-            dts::expect_event_sequence(lines, {
-                R"(^x1.*Sbn: Cpp_kernel.act.*$)",
-                R"(^x1.*Python: Py_kernel.act.*$)",
-            });
-            dts::expect_event(lines, R"(^x1.*Sbn: Cpp_kernel.write.*$)");
+            dts::expect_event(lines, R"(^x1.*number.*$)");
         });
     app.emplace_test(
         "Wait for events from x2 node.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x2.*Sbn: Cpp_kernel.read.*$)");
-            dts::expect_event_sequence(lines, {
-                R"(^x2.*Sbn: Cpp_kernel.act.*$)",
-                R"(^x2.*Python: Py_kernel.act.*$)",
-            });
-            dts::expect_event(lines, R"(^x2.*Sbn: Cpp_kernel.write.*$)");
+            dts::expect_event(lines, R"(^x2.*number.*$)");
         });
     app.emplace_test(
-        "Wait for results from nodes.",
+        "Wait for postamble.",
         [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event_sequence(lines, {
-                R"(^.*Sbn: Cpp_kernel.react.*$)",
-                R"(^.*Python: Child.react.*$)",
-                R"(^.*Python: Child2.data => Child2Data.*$)",
-                R"(^.*Sbn: commit.*$)"
-            });
-            dts::expect_event_sequence(lines, {
-                R"(^.*Sbn: Cpp_kernel.react.*$)",
-                R"(^.*Python: Main.react.*$)",
-                R"(^.*Python: Child.data => ChildData_Child2Data.*$)",
-                R"(^.*Sbn: commit.*$)"
-            });
+            dts::expect_event(lines, R"(^x1.*postamble.*$)");
         });
     app.emplace_test(
-        "Wait for transaction test to exit.",
+        "Wait for the application to exit.",
         [] (dts::application& app, const dts::string_array& lines) {
             dts::expect_event(lines, R"(^.*sbnc.*exit code.*$)");
         });

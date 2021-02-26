@@ -52,7 +52,7 @@ namespace sbn {
 
         class Kernel_base: public sbn::kernel {
 
-        private:
+        protected:
             std::vector<std::pair<sbn::kernel_ptr,pipeline*>> _children;
             sys::u32 _num_children{0};
             protected_scm _result = SCM_UNSPECIFIED;
@@ -83,7 +83,7 @@ namespace sbn {
             inline Main(int argc, char** argv) {
                 application::string_array args;
                 args.reserve(argc);
-                for (int i=1; i<argc; ++i) { args.emplace_back(argv[i]); }
+                for (int i=0; i<argc; ++i) { args.emplace_back(argv[i]); }
                 if (!target_application()) {
                     std::unique_ptr<sbn::application> app{new sbn::application(args, {})};
                     target_application(app.release());
@@ -91,6 +91,8 @@ namespace sbn {
             }
 
             void act() override;
+            void read(sbn::kernel_buffer& in) override;
+            void write(sbn::kernel_buffer& out) const override;
 
         };
 
@@ -134,9 +136,6 @@ namespace sbn {
             void write(sbn::kernel_buffer& out) const override;
 
         };
-
-        void object_write(kernel_buffer& buffer, SCM object);
-        void object_read(kernel_buffer& buffer, SCM& result);
 
     }
 }

@@ -13,10 +13,14 @@ void nested_main(int argc, char* argv[]) {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
         factory.types().add<Kernel>(2);
+        factory.types().add<Map_kernel>(3);
+        factory.types().add<Map_child_kernel>(4);
         factory.local().thread_init([] (size_t) { scm_init_guile(); });
+        factory.remote().thread_init([] () { scm_init_guile(); });
     }
     factory_guard g;
     if (this_application::standalone()) {
+    sys::log_message("guile", "main");
         send(sbn::make_pointer<Main>(argc, argv));
         //scm_c_primitive_load(argv[1]);
         //sbn::exit(0);

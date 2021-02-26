@@ -5,9 +5,14 @@
 
 #include <string>
 
+#include <subordination/core/kernel_buffer.hh>
+
 namespace sbn {
 
     namespace guile {
+
+        void object_write(kernel_buffer& buffer, SCM object);
+        void object_read(kernel_buffer& buffer, SCM& result);
 
         auto object_to_string(SCM scm) -> std::string;
         auto string_to_object(const std::string& s) -> SCM;
@@ -82,6 +87,18 @@ namespace sbn {
                 if (this->_value != SCM_UNSPECIFIED && this->_value != SCM_UNDEFINED) {
                     scm_gc_unprotect_object(this->_value);
                 }
+            }
+
+            friend inline void
+            object_write(kernel_buffer& buffer, const protected_scm& object) {
+                object_write(buffer, object.get());
+            }
+
+            friend inline void
+            object_read(kernel_buffer& buffer, protected_scm& result) {
+                SCM tmp = SCM_UNDEFINED;
+                object_read(buffer, tmp);
+                result = tmp;
             }
 
         };

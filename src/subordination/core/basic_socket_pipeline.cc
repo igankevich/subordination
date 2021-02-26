@@ -27,7 +27,12 @@ void sbn::basic_socket_pipeline::loop() {
                           connection_timeout() - clock_type::now(),
                           duration::zero());
         }
-        poller().wait_for(lock, dt);
+        try {
+            poller().wait_for(lock, dt);
+        } catch (const sys::bad_call& err) {
+            if (err.errc() != std::errc::interrupted) { throw; }
+            log("error _", err.what());
+        }
         process_kernels();
         process_connections();
     }
@@ -143,6 +148,7 @@ void sbn::basic_socket_pipeline::start() {
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif
+        if (this->_thread_init) { this->_thread_init(); }
         loop();
     });
     this->setstate(states::started);

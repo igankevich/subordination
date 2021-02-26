@@ -181,7 +181,6 @@ int sbn::application::execute(const sys::two_way_pipe& pipe) const {
     } else {
         UNISTDX_CHECK(::putenv(const_cast<char*>(result->data())));
     }
-    sys::log_message("app", "execute");
     /*
     // redirect stdout/stderr
     sys::fildes outfd(STDOUT_FILENO), errfd(STDERR_FILENO);

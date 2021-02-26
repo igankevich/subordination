@@ -7,9 +7,16 @@
   (ice-9 pretty-print)
   (oop goops))
 
+(display "application started\n" (current-error-port))
+(force-output (current-error-port))
+
 (kernel-map
-  '(lambda (number) (* number 2))
-  (iota 10))
+  '(lambda (number)
+     (display (format #f "number ~a\n" number) (current-error-port))
+     (force-output (current-error-port))
+     (* number 2))
+  (iota 10)
+  #:child-pipeline 'remote)
 
 (kernel-react
   '(lambda (new-rows rows)
@@ -17,6 +24,7 @@
   '(lambda (rows)
      (define actual (sort (map car rows) (lambda (a b) (< a b))))
      (define expected (map (lambda (x) (* x 2)) (iota 10)))
+     (format (current-error-port) "postamble\n")
      (format (current-error-port) "Actual:   ~a\n" actual)
      (format (current-error-port) "Expected: ~a\n" expected)
      (force-output (current-error-port))

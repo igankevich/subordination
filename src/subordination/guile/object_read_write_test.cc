@@ -33,6 +33,9 @@ TEST(object_read_write, _) {
     write_read(eval("(list 1 2 3 4)"));
     write_read(eval("'((1 2) 3 (4 5 (6)))"));
     write_read(eval("'my-symbol"));
+    write_read(eval("#:my-keyword"));
+    write_read(SCM_UNSPECIFIED);
+    write_read(SCM_UNDEFINED);
 }
 
 void nested_main(int argc, char* argv[]) {

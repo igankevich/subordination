@@ -4,7 +4,6 @@
 #include <sstream>
 
 #include <subordination/api.hh>
-#include <subordination/core/kernel_buffer.hh>
 #include <subordination/guile/kernel.hh>
 #include <subordination/guile/macros.hh>
 
@@ -184,8 +183,7 @@ namespace {
 
     SCM kernel_map(SCM proc, SCM lists, SCM rest) {
         using namespace sbn::guile;
-        SCM pipeline = sym_local, child_pipeline = sym_local,
-           block_size = SCM_UNDEFINED;
+        SCM pipeline = sym_local, child_pipeline = sym_local, block_size = SCM_UNDEFINED;
         scm_c_bind_keyword_arguments("kernel-map", rest,
                                      scm_t_keyword_arguments_flags{},
                                      kw_pipeline, &pipeline,
@@ -231,6 +229,8 @@ namespace {
         Pair=6,
         List=7,
         Boolean=8,
+        Keyword=9,
+        Undefined=10,
     };
 
     SCM s_object_write(SCM s_buffer, SCM object) {
@@ -266,6 +266,7 @@ void sbn::guile::Kernel_base::upstream_children() {
 }
 
 void sbn::guile::Kernel_base::react(sbn::kernel_ptr&& child) {
+    sys::log_message("scm", "kernel-base::react _", this->_num_children);
     --this->_num_children;
     auto k = sbn::pointer_dynamic_cast<Kernel_base>(std::move(child));
     result(scm_call(scm_eval(this->_react, scm_current_module()),
@@ -410,9 +411,9 @@ The default is pipeline is @code{local}.)",
         {"length","alpha1","alpha2","r1","r2","density"}, {}, {},
         R"(Compute spectrum variance.)",
         SBN_GUILE_6(compute_variance<double>));
-    define_procedure<2,3,0>(
+    define_procedure<2,0,3>(
         "kernel-map",
-        {"proc","lists"}, {"pipeline","child-pipeline","block-size"}, {},
+        {"proc","lists"}, {}, {"pipeline","child-pipeline","block-size"},
         R"(Parallel map.)",
         SBN_GUILE_3(kernel_map));
     define_procedure<3,0,0>(
@@ -447,7 +448,10 @@ void sbn::guile::Main::act() {
         }
         scm_c_define("*application-arguments*", ret);
         set_current_kernel(this);
-        scm_c_primitive_load(a->arguments().front().data());
+        if (nargs != 2) {
+            throw std::invalid_argument("usage: sbn-guile script-name");
+        }
+        scm_c_primitive_load(a->arguments()[1].data());
     }
     if (no_children()) {
         auto* ppl = source_pipeline() ? source_pipeline() : &sbn::factory.local();
@@ -538,18 +542,30 @@ void sbn::guile::Map_child_kernel::act() {
 }
 
 void sbn::guile::Map_child_kernel::read(sbn::kernel_buffer& in) {
+    sys::log_message("scm", "Map-child-kernel::read");
+    Kernel_base::read(in);
+    object_read(in, this->_proc);
+    object_read(in, this->_lists);
+    object_read(in, this->_pipeline);
 }
+
 void sbn::guile::Map_child_kernel::write(sbn::kernel_buffer& out) const {
+    sys::log_message("scm", "Map-child-kernel::write");
+    Kernel_base::write(out);
+    object_write(out, this->_proc);
+    object_write(out, this->_lists);
+    object_write(out, this->_pipeline);
 }
 
 void sbn::guile::Kernel_base::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
     in.read(this->_num_children);
     in.read(this->_no_children);
-    object_read(in, this->_result.get());
-    object_read(in, this->_react.get());
-    object_read(in, this->_postamble.get());
+    object_read(in, this->_result);
+    object_read(in, this->_react);
+    object_read(in, this->_postamble);
 }
+
 void sbn::guile::Kernel_base::write(sbn::kernel_buffer& out) const {
     sbn::kernel::write(out);
     out.write(this->_num_children);
@@ -559,10 +575,25 @@ void sbn::guile::Kernel_base::write(sbn::kernel_buffer& out) const {
     object_write(out, this->_postamble);
 }
 
+void sbn::guile::Main::read(sbn::kernel_buffer& in) {
+    sbn::kernel::read(in);
+    if (in.remaining() == 0) { return; }
+    in.read(this->_num_children);
+    in.read(this->_no_children);
+}
+
+void sbn::guile::Main::write(sbn::kernel_buffer& out) const {
+    sbn::kernel::write(out);
+    out.write(this->_num_children);
+    out.write(this->_no_children);
+}
+
 void sbn::guile::object_write(sbn::kernel_buffer& buffer, SCM object) {
     using namespace sbn::guile;
     auto name = scm_class_name(scm_class_of(object));
-    if (symbol_equal(name,scm_from_utf8_symbol("<integer>"))) {
+    if (!is_bound(object)) {
+        buffer.write(Types::Undefined);
+    } else if (symbol_equal(name,scm_from_utf8_symbol("<integer>"))) {
         buffer.write(Types::Integer);
         buffer.write(scm_to_uint64(object));
     } else if (symbol_equal(name,scm_from_utf8_symbol("<real>"))) {
@@ -586,6 +617,12 @@ void sbn::guile::object_write(sbn::kernel_buffer& buffer, SCM object) {
     } else if (scm_is_true(scm_symbol_p(object))) {
         buffer.write(Types::Symbol);
         c_string ptr(scm_to_utf8_string(scm_symbol_to_string(object)));
+        sys::u64 n = std::strlen(ptr.get());
+        buffer.write(n);
+        buffer.write(ptr.get(), n);
+    } else if (scm_is_true(scm_keyword_p(object))) {
+        buffer.write(Types::Keyword);
+        c_string ptr(scm_to_utf8_string(scm_symbol_to_string(scm_keyword_to_symbol(object))));
         sys::u64 n = std::strlen(ptr.get());
         buffer.write(n);
         buffer.write(ptr.get(), n);
@@ -613,6 +650,8 @@ void sbn::guile::object_read(sbn::kernel_buffer& buffer, SCM& result) {
     buffer.read(type);
     if (type == Types::Unknown) {
         result = SCM_UNSPECIFIED;
+    } else if (type == Types::Undefined) {
+        result = SCM_UNDEFINED;
     } else if (type == Types::Integer) {
         sys::u64 tmp{};
         buffer.read(tmp);
@@ -638,6 +677,10 @@ void sbn::guile::object_read(sbn::kernel_buffer& buffer, SCM& result) {
         std::string s;
         buffer.read(s);
         result = scm_from_utf8_symbol(s.data());
+    } else if (type == Types::Keyword) {
+        std::string s;
+        buffer.read(s);
+        result = scm_from_utf8_keyword(s.data());
     } else if (type == Types::Pair) {
         SCM a = SCM_UNSPECIFIED, b = SCM_UNSPECIFIED;
         object_read(buffer, a);

@@ -49,6 +49,7 @@ namespace sbn {
         using time_point = typename connection::time_point;
         using duration = typename connection::duration;
         using semaphore_type = sys::event_poller;
+        using thread_init_type = std::function<void()>;
 
     protected:
         using mutex_type = std::recursive_mutex;
@@ -79,6 +80,8 @@ namespace sbn {
         kernel_ptr_array _trash;
         size_t _min_input_buffer_size = 4096*16;
         size_t _min_output_buffer_size = 4096*16;
+        /// Function that is called in each new thread.
+        thread_init_type _thread_init;
 
     public:
         class sentry {
@@ -175,6 +178,7 @@ namespace sbn {
             this->_min_output_buffer_size = rhs;
         }
 
+        inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
         inline void transactions(transaction_log* rhs) noexcept { this->_transactions = rhs; }
 
         inline void trash(kernel_ptr&& k) {
