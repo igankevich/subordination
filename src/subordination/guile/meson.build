@@ -21,13 +21,25 @@ sbn_guile_exe = executable(
 test(
     'guile/local',
     executable(
-        'guile-local-test',
-        sources: ['guile_local_test.cc'],
+        'local-test',
+        sources: ['local_test.cc'],
         dependencies: [unistdx] + valgrind_dep,
         include_directories: src,
         implicit_include_directories: false,
     ),
     args: [sbn_guile_exe, join_paths(meson.current_source_dir(), 'test.scm')],
+    env: test_env,
+)
+
+test(
+    'guile/object-read-write',
+    executable(
+        'object-read-write-test',
+        sources: ['object_read_write_test.cc','kernel.cc','base.cc','init.cc'],
+        dependencies: [unistdx,gtest] + sbn_guile_deps + valgrind_dep,
+        include_directories: src,
+        implicit_include_directories: false,
+    ),
     env: test_env,
 )
 

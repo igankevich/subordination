@@ -230,52 +230,8 @@ namespace {
         Symbol=5,
         Pair=6,
         List=7,
+        Boolean=8,
     };
-
-    void object_write(sbn::kernel_buffer& buffer, SCM object) {
-        using namespace sbn::guile;
-        auto name = scm_class_name(scm_class_of(object));
-        if (symbol_equal(name,scm_from_utf8_symbol("<integer>"))) {
-            buffer.write(Types::Integer);
-            buffer.write(scm_to_uint64(object));
-        } else if (symbol_equal(name,scm_from_utf8_symbol("<real>"))) {
-            buffer.write(Types::Real);
-            buffer.write(scm_to_double(object));
-        } else if (symbol_equal(name,scm_from_utf8_symbol("<complex>"))) {
-            buffer.write(Types::Complex);
-            buffer.write(scm_c_real_part(object));
-            buffer.write(scm_c_imag_part(object));
-        } else if (symbol_equal(name,scm_from_utf8_symbol("<unknown>"))) {
-            buffer.write(Types::Unknown);
-        } else if (scm_is_true(scm_string_p(object))) {
-            buffer.write(Types::String);
-            c_string ptr(scm_to_utf8_string(object));
-            sys::u64 n = std::strlen(ptr.get());
-            buffer.write(n);
-            buffer.write(ptr.get(), n);
-        } else if (scm_is_true(scm_symbol_p(object))) {
-            buffer.write(Types::Symbol);
-            c_string ptr(scm_to_utf8_string(scm_symbol_to_string(object)));
-            sys::u64 n = std::strlen(ptr.get());
-            buffer.write(n);
-            buffer.write(ptr.get(), n);
-        } else if (scm_is_true(scm_list_p(object))) {
-            buffer.write(Types::List);
-            buffer.write(scm_to_uint64(scm_length(object)));
-            for (; object != SCM_EOL; object = scm_cdr(object)) {
-                object_write(buffer, scm_car(object));
-            }
-        } else if (scm_is_true(scm_pair_p(object))) {
-            buffer.write(Types::Pair);
-            object_write(buffer, scm_car(object));
-            object_write(buffer, scm_cdr(object));
-        } else {
-            c_string ptr(scm_to_utf8_string(scm_symbol_to_string(name)));
-            std::stringstream tmp;
-            tmp << "Unsupported type: " << ptr.get();
-            throw std::invalid_argument(tmp.str());
-        }
-    }
 
     SCM s_object_write(SCM s_buffer, SCM object) {
         using namespace sbn::guile;
@@ -284,65 +240,12 @@ namespace {
         return SCM_UNSPECIFIED;
     }
 
-    void object_read(sbn::kernel_buffer& buffer, SCM& result) {
-        using namespace sbn::guile;
-        Types type{};
-        buffer.read(type);
-        if (type == Types::Unknown) {
-            result = SCM_UNSPECIFIED;
-        } else if (type == Types::Integer) {
-            sys::u64 tmp{};
-            buffer.read(tmp);
-            result = scm_from_uint64(tmp);
-        } else if (type == Types::Real) {
-            double tmp{};
-            buffer.read(tmp);
-            result = scm_from_double(tmp);
-        } else if (type == Types::Complex) {
-            double a{}, b{};
-            buffer.read(a);
-            buffer.read(b);
-            result = scm_c_make_rectangular(a,b);
-        } else if (type == Types::String) {
-            std::string s;
-            buffer.read(s);
-            result = scm_from_utf8_string(s.data());
-        } else if (type == Types::Symbol) {
-            std::string s;
-            buffer.read(s);
-            result = scm_from_utf8_symbol(s.data());
-        } else if (type == Types::Pair) {
-            SCM a = SCM_UNSPECIFIED, b = SCM_UNSPECIFIED;
-            object_read(buffer, a);
-            object_read(buffer, b);
-            result = scm_cons(a,b);
-        } else if (type == Types::List) {
-            sys::u64 n{};
-            buffer.read(n);
-            result = SCM_EOL;
-            for (sys::u64 i=0; i<n; ++i) {
-                SCM x = SCM_UNSPECIFIED;
-                object_read(buffer, x);
-                result = scm_cons(x, result);
-            }
-            result = scm_reverse(result);
-        } else {
-            std::stringstream tmp;
-            tmp << "Unsupported type: " << sys::u64(type);
-            throw std::invalid_argument(tmp.str());
-        }
-    }
-
     SCM s_object_read(SCM s_buffer) {
         using namespace sbn::guile;
         auto buffer = to_kernel_buffer_ptr(s_buffer);
         SCM result = SCM_UNSPECIFIED;
         object_read(*buffer, result);
         return result;
-    }
-
-    inline void object_read(sbn::kernel_buffer& buffer, sbn::guile::protected_scm& result) {
-        object_read(buffer, result.get());
     }
 
 }
@@ -610,10 +513,10 @@ void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
 
 void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
     Kernel_base::read(in);
-    object_read(in, this->_proc);
-    object_read(in, this->_lists);
-    object_read(in, this->_pipeline);
-    object_read(in, this->_block_size);
+    object_read(in, this->_proc.get());
+    object_read(in, this->_lists.get());
+    object_read(in, this->_pipeline.get());
+    object_read(in, this->_block_size.get());
     in.read(this->_num_kernels);
 }
 void sbn::guile::Map_kernel::write(sbn::kernel_buffer& out) const {
@@ -643,9 +546,9 @@ void sbn::guile::Kernel_base::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
     in.read(this->_num_children);
     in.read(this->_no_children);
-    object_read(in, this->_result);
-    object_read(in, this->_react);
-    object_read(in, this->_postamble);
+    object_read(in, this->_result.get());
+    object_read(in, this->_react.get());
+    object_read(in, this->_postamble.get());
 }
 void sbn::guile::Kernel_base::write(sbn::kernel_buffer& out) const {
     sbn::kernel::write(out);
@@ -654,4 +557,105 @@ void sbn::guile::Kernel_base::write(sbn::kernel_buffer& out) const {
     object_write(out, this->_result);
     object_write(out, this->_react);
     object_write(out, this->_postamble);
+}
+
+void sbn::guile::object_write(sbn::kernel_buffer& buffer, SCM object) {
+    using namespace sbn::guile;
+    auto name = scm_class_name(scm_class_of(object));
+    if (symbol_equal(name,scm_from_utf8_symbol("<integer>"))) {
+        buffer.write(Types::Integer);
+        buffer.write(scm_to_uint64(object));
+    } else if (symbol_equal(name,scm_from_utf8_symbol("<real>"))) {
+        buffer.write(Types::Real);
+        buffer.write(scm_to_double(object));
+    } else if (symbol_equal(name,scm_from_utf8_symbol("<complex>"))) {
+        buffer.write(Types::Complex);
+        buffer.write(scm_c_real_part(object));
+        buffer.write(scm_c_imag_part(object));
+    } else if (symbol_equal(name,scm_from_utf8_symbol("<boolean>"))) {
+        buffer.write(Types::Boolean);
+        buffer.write(scm_is_true(object));
+    } else if (symbol_equal(name,scm_from_utf8_symbol("<unknown>"))) {
+        buffer.write(Types::Unknown);
+    } else if (scm_is_true(scm_string_p(object))) {
+        buffer.write(Types::String);
+        c_string ptr(scm_to_utf8_string(object));
+        sys::u64 n = std::strlen(ptr.get());
+        buffer.write(n);
+        buffer.write(ptr.get(), n);
+    } else if (scm_is_true(scm_symbol_p(object))) {
+        buffer.write(Types::Symbol);
+        c_string ptr(scm_to_utf8_string(scm_symbol_to_string(object)));
+        sys::u64 n = std::strlen(ptr.get());
+        buffer.write(n);
+        buffer.write(ptr.get(), n);
+    } else if (scm_is_true(scm_list_p(object))) {
+        buffer.write(Types::List);
+        buffer.write(scm_to_uint64(scm_length(object)));
+        for (; object != SCM_EOL; object = scm_cdr(object)) {
+            object_write(buffer, scm_car(object));
+        }
+    } else if (scm_is_true(scm_pair_p(object))) {
+        buffer.write(Types::Pair);
+        object_write(buffer, scm_car(object));
+        object_write(buffer, scm_cdr(object));
+    } else {
+        c_string ptr(scm_to_utf8_string(scm_symbol_to_string(name)));
+        std::stringstream tmp;
+        tmp << "Unsupported type: " << ptr.get();
+        throw std::invalid_argument(tmp.str());
+    }
+}
+
+void sbn::guile::object_read(sbn::kernel_buffer& buffer, SCM& result) {
+    using namespace sbn::guile;
+    Types type{};
+    buffer.read(type);
+    if (type == Types::Unknown) {
+        result = SCM_UNSPECIFIED;
+    } else if (type == Types::Integer) {
+        sys::u64 tmp{};
+        buffer.read(tmp);
+        result = scm_from_uint64(tmp);
+    } else if (type == Types::Real) {
+        double tmp{};
+        buffer.read(tmp);
+        result = scm_from_double(tmp);
+    } else if (type == Types::Complex) {
+        double a{}, b{};
+        buffer.read(a);
+        buffer.read(b);
+        result = scm_c_make_rectangular(a,b);
+    } else if (type == Types::Boolean) {
+        bool a{};
+        buffer.read(a);
+        result = scm_from_bool(a);
+    } else if (type == Types::String) {
+        std::string s;
+        buffer.read(s);
+        result = scm_from_utf8_string(s.data());
+    } else if (type == Types::Symbol) {
+        std::string s;
+        buffer.read(s);
+        result = scm_from_utf8_symbol(s.data());
+    } else if (type == Types::Pair) {
+        SCM a = SCM_UNSPECIFIED, b = SCM_UNSPECIFIED;
+        object_read(buffer, a);
+        object_read(buffer, b);
+        result = scm_cons(a,b);
+    } else if (type == Types::List) {
+        sys::u64 n{};
+        buffer.read(n);
+        result = SCM_EOL;
+        for (sys::u64 i=0; i<n; ++i) {
+            SCM x = SCM_UNSPECIFIED;
+            object_read(buffer, x);
+            result = scm_cons(x, result);
+        }
+        result = scm_reverse(result);
+    } else {
+        std::stringstream tmp;
+        tmp << "Unsupported type: " << sys::u64(type);
+        throw std::invalid_argument(tmp.str());
+    }
 }

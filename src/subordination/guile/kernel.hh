@@ -135,6 +135,9 @@ namespace sbn {
 
         };
 
+        void object_write(kernel_buffer& buffer, SCM object);
+        void object_read(kernel_buffer& buffer, SCM& result);
+
     }
 }
 
