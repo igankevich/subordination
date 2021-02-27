@@ -2,6 +2,7 @@
 #include <iomanip>
 
 #include <subordination/core/factory.hh>
+#include <subordination/core/list.hh>
 
 sbn::Factory::Factory(const Properties& config): _local(config.local), _remote(config.remote) {
     this->_local.name("app local");
@@ -37,3 +38,16 @@ void sbn::Factory::clear() {
 }
 
 sbn::Factory sbn::factory;
+
+void sbn::Factory::write(std::ostream& out) const {
+    using sbn::list;
+    out << '(';
+    out << list("local", this->_local);
+    out << ' ';
+    out << list("remote", this->_remote);
+    out << ' ';
+    out << list("types", this->_types);
+    out << ' ';
+    out << list("instances", this->_instances);
+    out << ')';
+}

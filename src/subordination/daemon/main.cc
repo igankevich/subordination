@@ -180,40 +180,7 @@ void sbnd::Main::report_job_status(pointer<Job_status_kernel> k) {
 }
 
 void sbnd::Main::report_pipeline_status(pointer<Pipeline_status_kernel> k) {
-    Pipeline_status_kernel::pipeline_array pipelines;
-    const sbn::basic_socket_pipeline* pipelines_b[] =
-        { &factory.remote(), &factory.process(), &factory.unix() };
-    for (const auto* ppl_b : pipelines_b) {
-        pipelines.emplace_back();
-        auto& ppl = pipelines.back();
-        auto g = ppl_b->guard();
-        ppl.name = ppl_b->name();
-        for (const auto& conn : ppl_b->connections()) {
-            if (!conn) { continue; }
-            ppl.connections.emplace_back();
-            auto& c = ppl.connections.back();
-            c.address = conn->socket_address();
-            for (const auto& b : conn->upstream()) {
-                c.kernels.emplace_back();
-                auto& a = c.kernels.back();
-                a.id = b->id();
-                if (b->is_foreign()) {
-                    a.type_id = b->type_id();
-                } else {
-                    auto g = factory.types().guard();
-                    auto result = factory.types().find(typeid(*b));
-                    if (result != factory.types().end()) {
-                        a.type_id = result->id();
-                    }
-                }
-                a.source_application_id = b->source_application_id();
-                a.target_application_id = b->target_application_id();
-                a.source = b->source();
-                a.destination = b->destination();
-            }
-        }
-    }
-    k->pipelines(std::move(pipelines));
+    k->collect();
     k->return_to_parent(sbn::exit_code::success);
     factory.unix().send(std::move(k));
 }
@@ -328,4 +295,49 @@ _discoverer_properties(props.discover) {
     for (auto& pair : props.resources.expressions) {
         this->_resources[pair.first] = pair.second->evaluate(this->_resources);
     }
+}
+
+void sbnd::Pipeline_status_kernel::collect() {
+    Pipeline_status_kernel::pipeline_array pipelines;
+    const sbn::basic_socket_pipeline* pipelines_b[] =
+    { &factory.remote(), &factory.process(), &factory.unix() };
+    auto assign_kernel = [] (Kernel& a, const sbn::kernel* b) {
+        a.id = b->id();
+        if (b->is_foreign()) {
+            a.type_id = b->type_id();
+        } else {
+            auto g = factory.types().guard();
+            auto result = factory.types().find(typeid(*b));
+            if (result != factory.types().end()) {
+                a.type_id = result->id();
+            }
+        }
+        a.source_application_id = b->source_application_id();
+        a.target_application_id = b->target_application_id();
+        a.source = b->source();
+        a.destination = b->destination();
+    };
+    for (const auto* ppl_b : pipelines_b) {
+        pipelines.emplace_back();
+        auto& ppl = pipelines.back();
+        auto g = ppl_b->guard();
+        ppl.name = ppl_b->name();
+        for (const auto& conn : ppl_b->connections()) {
+            if (!conn) { continue; }
+            ppl.connections.emplace_back();
+            auto& c = ppl.connections.back();
+            c.address = conn->socket_address();
+            for (const auto& b : conn->upstream()) {
+                c.kernels.emplace_back();
+                auto& a = c.kernels.back();
+                assign_kernel(a, b.get());
+            }
+        }
+        for (const auto& b : ppl_b->kernels()) {
+            ppl.kernels.emplace_back();
+            auto& a = ppl.kernels.back();
+            assign_kernel(a, b.get());
+        }
+    }
+    this->_pipelines = std::move(pipelines);
 }

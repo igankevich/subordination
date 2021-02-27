@@ -10,7 +10,6 @@
 
 #include <unistdx/base/check>
 #include <unistdx/base/log_message>
-#include <unistdx/base/make_object>
 #include <unistdx/base/simple_lock>
 #include <unistdx/base/spin_mutex>
 #include <unistdx/fs/path>
@@ -19,6 +18,7 @@
 
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_buffer.hh>
+#include <subordination/core/list.hh>
 
 #define SUBORDINATION_ENV_APPLICATION_ID "SUBORDINATION_APPLICATION_ID"
 #define SUBORDINATION_ENV_PIPE_IN "SUBORDINATION_PIPE_IN"
@@ -121,13 +121,13 @@ namespace std {
 
 std::ostream&
 sbn::operator<<(std::ostream& out, const application& rhs) {
-    return out << sys::make_object(
-        "id", rhs._id,
-        "uid", rhs._uid,
-        "gid", rhs._gid,
-        "args", rhs._args,
-        //"env", rhs._env,
-        "wd", rhs._working_directory);
+    return out << list(
+        list("id", rhs._id),
+        list("user-id", rhs._uid),
+        list("group-id", rhs._gid),
+        list("arguments", make_list_view(rhs._args)),
+        //list("env", rhs._env),
+        list("working-directory", make_string(rhs._working_directory)));
 }
 
 sbn::application::id_type sbn::this_application::id() noexcept { return this_app; }

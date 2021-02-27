@@ -229,6 +229,8 @@ namespace sbn {
             return this->_connections;
         }
 
+        inline const kernel_queue& kernels() const noexcept { return this->_kernels; }
+
         inline void add_listener(kernel* k) {
             Expects(k);
             this->_listeners.emplace_back(k);
@@ -239,6 +241,8 @@ namespace sbn {
         inline void cpus(const sys::cpu_set& cpus) noexcept {
             this->_threads.cpus(cpus);
         }
+
+        virtual void write(std::ostream& out) const;
 
     protected:
 
@@ -336,6 +340,13 @@ namespace sbn {
         friend class process_handler;
 
     };
+
+    inline std::ostream& operator<<(std::ostream& out, const basic_socket_pipeline& rhs) {
+        out << '(';
+        rhs.write(out);
+        out << ')';
+        return out;
+    }
 
 }
 

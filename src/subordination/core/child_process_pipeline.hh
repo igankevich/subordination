@@ -47,6 +47,7 @@ namespace sbn {
         void add_connection();
 
         inline void pipe_buffer_size(size_t rhs) noexcept { this->_pipe_buffer_size = rhs; }
+        void write(std::ostream& out) const override;
 
     protected:
 

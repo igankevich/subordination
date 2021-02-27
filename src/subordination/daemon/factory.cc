@@ -4,6 +4,7 @@
 #include <unistdx/fs/canonical_path>
 #include <unistdx/fs/mkdirs>
 
+#include <subordination/core/list.hh>
 #include <subordination/daemon/factory.hh>
 
 namespace {
@@ -210,4 +211,33 @@ auto sbnd::string_to_interface_address_list(const std::string& s) -> interface_a
         }
     }
     return lst;
+}
+
+namespace {
+    template <class Object>
+    inline void do_print(std::ostream& out, const char* name, const Object& obj) {
+        if (obj) {
+            auto g = obj->guard();
+            out << sbn::list(name, *obj);
+        }
+    }
+}
+
+void sbnd::Factory::write(std::ostream& out) const {
+    using sbn::list;
+    out << '(';
+    do_print(out, "local", this->_local);
+    out << ' ';
+    do_print(out, "remote", this->_remote);
+    out << ' ';
+    do_print(out, "process", this->_process);
+    out << ' ';
+    do_print(out, "unix", this->_unix);
+    out << ' ';
+    out << list("types", this->_types);
+    out << ' ';
+    out << list("instances", this->_instances);
+    out << ' ';
+    do_print(out, "transactions", this->_transactions);
+    out << ')';
 }

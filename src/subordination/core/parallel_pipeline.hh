@@ -37,6 +37,17 @@ namespace sbn {
             bool set(const char* key, const std::string& value);
         };
 
+    public:
+        class sentry {
+        private:
+            const parallel_pipeline& _pipeline;
+        public:
+            inline explicit sentry(const parallel_pipeline& rhs): _pipeline(rhs) { lock(); }
+            inline ~sentry() { unlock(); }
+            inline void lock() { this->_pipeline._mutex.lock(); }
+            inline void unlock() { this->_pipeline._mutex.unlock(); }
+        };
+
     private:
         struct compare_time {
             inline bool operator()(const kernel_ptr& a, const kernel_ptr& b) const noexcept {
@@ -45,7 +56,7 @@ namespace sbn {
         };
 
     private:
-        using kernel_queue = std::queue<kernel_ptr>;
+        using kernel_queue = std::deque<kernel_ptr>;
         using kernel_queue_array = std::vector<kernel_queue>;
         using kernel_priority_queue =
             std::priority_queue<kernel_ptr,std::vector<kernel_ptr>,compare_time>;
@@ -57,7 +68,7 @@ namespace sbn {
 
     private:
         /// Same mutex for all kernel queues.
-        mutex_type _mutex;
+        mutable mutex_type _mutex;
         /// Upstream kernels.
         kernel_queue _upstream_kernels;
         thread_pool _upstream_threads;
@@ -132,7 +143,7 @@ namespace sbn {
                     const auto num_downstream_threads = this->_downstream_threads.size();
                     const auto size = std::max(num_upstream_threads,num_downstream_threads);
                     const auto n = k->hash() % size;
-                    this->_downstream_kernels[n].emplace(std::move(k));
+                    this->_downstream_kernels[n].emplace_back(std::move(k));
                     if (this->_downstream_threads.empty()) {
                         notify_upstream = true;
                     } else {
@@ -149,7 +160,7 @@ namespace sbn {
                     #if defined(SBN_DEBUG)
                     this->log("upstream _", *k);
                     #endif
-                    this->_upstream_kernels.emplace(std::move(k)), notify_upstream = true;
+                    this->_upstream_kernels.emplace_back(std::move(k)), notify_upstream = true;
                 }
             }
             if (notify_upstream) { this->_upstream_semaphore.notify_all(); }
@@ -162,7 +173,7 @@ namespace sbn {
             this->log("upstream _", *k);
             #endif
             lock_type lock(this->_mutex);
-            this->_upstream_kernels.emplace(std::move(k));
+            this->_upstream_kernels.emplace_back(std::move(k));
             this->_upstream_semaphore.notify_one();
         }
 
@@ -176,7 +187,7 @@ namespace sbn {
             const auto num_downstream_threads = this->_downstream_threads.size();
             const auto size = std::max(num_upstream_threads,num_downstream_threads);
             const auto i = k->hash() % size;
-            this->_downstream_kernels[i].emplace(std::move(k));
+            this->_downstream_kernels[i].emplace_back(std::move(k));
             if (this->_downstream_threads.empty()) {
                 this->_upstream_semaphore.notify_all();
             } else {
@@ -217,8 +228,12 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
+        inline sentry guard() noexcept { return sentry(*this); }
+        inline sentry guard() const noexcept { return sentry(*this); }
+
         void num_downstream_threads(size_t n);
         void num_upstream_threads(size_t n);
+        void write(std::ostream& out) const;
 
     private:
         void upstream_loop(kernel_queue& downstream_queue);
@@ -239,6 +254,11 @@ namespace sbn {
         }
 
     };
+
+    inline std::ostream& operator<<(std::ostream& out, const parallel_pipeline& rhs) {
+        rhs.write(out);
+        return out;
+    }
 
 }
 

@@ -471,19 +471,20 @@ void sbn::guile::Map_kernel::act() {
     for (SCM s=this->_lists; s!=SCM_EOL; s=scm_cdr(s)) {
         lists.emplace_back(scm_car(s));
     }
-    this->_num_kernels = std::numeric_limits<int>::max();
+    int num_kernels = std::numeric_limits<int>::max();
     for (auto lst : lists) {
         auto len = scm_to_int(scm_length(lst));
-        if (len < this->_num_kernels) {
-            this->_num_kernels = len;
+        if (len < num_kernels) {
+            num_kernels = len;
         }
     }
     int block_size = 1;
     if (is_bound(this->_block_size)) { block_size = scm_to_int(this->_block_size); }
-    const auto last_block_size = block_size + this->_num_kernels%block_size;
-    this->_num_kernels /= block_size;
-    for (int i=0; i<this->_num_kernels; ++i) {
-        const auto n = i==this->_num_kernels-1 ? last_block_size : block_size;
+    const auto last_block_size = block_size + num_kernels%block_size;
+    num_kernels /= block_size;
+    this->_num_kernels= num_kernels;
+    for (int i=0; i<num_kernels; ++i) {
+        const auto n = i==num_kernels-1 ? last_block_size : block_size;
         SCM child_lists = SCM_EOL;
         for (auto& parent_list : lists) {
             SCM lst = SCM_EOL;
@@ -495,6 +496,7 @@ void sbn::guile::Map_kernel::act() {
             child_lists = scm_cons(lst, child_lists);
         }
         child_lists = scm_reverse(child_lists);
+        sys::log_message("scm", "make-map-child-kernel _", object_to_string(child_lists));
         auto child = make_pointer<Map_child_kernel>(this->_proc, child_lists, this->_pipeline);
         child->parent(this);
         ppl->send(std::move(child));
@@ -542,15 +544,15 @@ void sbn::guile::Map_child_kernel::act() {
 }
 
 void sbn::guile::Map_child_kernel::read(sbn::kernel_buffer& in) {
-    sys::log_message("scm", "Map-child-kernel::read");
     Kernel_base::read(in);
     object_read(in, this->_proc);
     object_read(in, this->_lists);
     object_read(in, this->_pipeline);
+    sys::log_message("scm", "Map-child-kernel::read _", object_to_string(this->_lists));
 }
 
 void sbn::guile::Map_child_kernel::write(sbn::kernel_buffer& out) const {
-    sys::log_message("scm", "Map-child-kernel::write");
+    sys::log_message("scm", "Map-child-kernel::write _", object_to_string(this->_lists));
     Kernel_base::write(out);
     object_write(out, this->_proc);
     object_write(out, this->_lists);

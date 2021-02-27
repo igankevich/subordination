@@ -7,6 +7,7 @@
 
 #include <subordination/core/factory.hh>
 #include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/list.hh>
 #include <subordination/daemon/socket_pipeline.hh>
 
 /*
@@ -252,6 +253,15 @@ namespace sbnd {
             return sbn::modular_weight_array{
                 {tmp[0]/num_nodes,tmp[0]%num_nodes},
                 {tmp[1]/nthreads,tmp[1]%nthreads}};
+        }
+
+        void write(std::ostream& out) const override {
+            sbn::connection::write(out);
+            using sbn::list;
+            using sbn::make_list_view;
+            out << ' ' << list("sum-thread-concurrency", this->_sum_thread_concurrency);
+            out << ' ' << list("route", this->_route);
+            out << ' ' << list("nodes-behind", make_list_view(this->_nodes_behind));
         }
 
     private:

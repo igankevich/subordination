@@ -1,4 +1,5 @@
 #include <subordination/core/kernel_buffer.hh>
+#include <subordination/daemon/factory.hh>
 #include <subordination/daemon/pipeline_status_kernel.hh>
 
 sbn::kernel_buffer& sbnd::operator<<(sbn::kernel_buffer& out, const sbnd::Pipeline_status_kernel::Kernel& rhs) {

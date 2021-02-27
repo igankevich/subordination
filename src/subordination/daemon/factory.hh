@@ -170,6 +170,7 @@ namespace sbnd {
         void wait();
         void clear();
         void configure(const Properties& props);
+        void write(std::ostream& out) const;
 
         Factory() = default;
         ~Factory() = default;

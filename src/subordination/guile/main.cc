@@ -1,14 +1,33 @@
 #include <libguile.h>
 
+#include <sstream>
+
 #include <subordination/api.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/guile/init.hh>
 #include <subordination/guile/kernel.hh>
 
+template <class ... Args>
+inline void
+log(const Args& ... args) {
+    sys::log_message("guile", args...);
+}
+
+void print_pipeline_state(int sig) {
+    using namespace sbn;
+    {
+        std::stringstream tmp;
+        factory.write(tmp);
+        log("pipeline state _", tmp.str());
+    }
+    std::_Exit(sig);
+}
+
 void nested_main(int argc, char* argv[]) {
     using namespace sbn;
     using namespace sbn::guile;
     install_error_handler();
+    sys::this_process::bind_signal(sys::signal::quit, print_pipeline_state);
     {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
@@ -20,7 +39,6 @@ void nested_main(int argc, char* argv[]) {
     }
     factory_guard g;
     if (this_application::standalone()) {
-    sys::log_message("guile", "main");
         send(sbn::make_pointer<Main>(argc, argv));
         //scm_c_primitive_load(argv[1]);
         //sbn::exit(0);

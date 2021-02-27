@@ -4,6 +4,7 @@
 #include <unistdx/system/error>
 
 #include <subordination/core/basic_pipeline.hh>
+#include <subordination/core/list.hh>
 #include <subordination/core/parallel_pipeline.hh>
 
 namespace {
@@ -30,6 +31,15 @@ namespace {
             auto& k = Front<T>::front(queue);
             k.release()->mark_as_deleted(sack);
             queue.pop();
+        }
+    }
+
+    template <class T, class Sack> inline void
+    clear_deque(T& queue, Sack& sack) {
+        while (!queue.empty()) {
+            auto& k = Front<T>::front(queue);
+            k.release()->mark_as_deleted(sack);
+            queue.pop_front();
         }
     }
 
@@ -104,7 +114,7 @@ void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream) {
                (upstream_not_empty = !upstream.empty())) {
             auto& queue = (downstream_not_empty ? downstream : upstream);
             auto k = std::move(queue.front());
-            queue.pop();
+            queue.pop_front();
             sys::unlock_guard<lock_type> g(lock);
             process_kernel(std::move(k), this);
         }
@@ -138,7 +148,7 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
     semaphore.wait(lock, [this,&lock,&queue] () {
         while (!queue.empty()) {
             auto k = std::move(queue.front());
-            queue.pop();
+            queue.pop_front();
             sys::unlock_guard<lock_type> g(lock);
             process_kernel(std::move(k), this);
         }
@@ -239,9 +249,9 @@ void sbn::parallel_pipeline::wait() {
 }
 
 void sbn::parallel_pipeline::clear(kernel_sack& sack) {
-    clear_queue(this->_upstream_kernels, sack);
+    clear_deque(this->_upstream_kernels, sack);
     clear_queue(this->_timer_kernels, sack);
-    for (auto& queue : this->_downstream_kernels) { clear_queue(queue, sack); }
+    for (auto& queue : this->_downstream_kernels) { clear_deque(queue, sack); }
 }
 
 void sbn::parallel_pipeline::num_downstream_threads(size_t n) {
@@ -297,4 +307,15 @@ bool sbn::parallel_pipeline::properties::set(const char* key, const std::string&
         found = false;
     }
     return found;
+}
+
+void sbn::parallel_pipeline::write(std::ostream& out) const {
+    using sbn::list;
+    std::vector<sbn::list_view<kernel_queue>> tmp;
+    for (const auto& x : this->_downstream_kernels) { tmp.emplace_back(x); }
+    out << list(
+        list("upstream-kernels", make_list_view(this->_upstream_kernels)),
+        list("downstream-kernels", make_list_view(tmp)),
+        list("timer-kernels-count", this->_timer_kernels.size())
+    );
 }
