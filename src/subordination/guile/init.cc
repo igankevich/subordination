@@ -17,10 +17,6 @@ namespace {
 
     void inner_main(void*, int argc, char** argv) {
         scm_c_define_module("sbn", sbn_init, nullptr);
-        // these two modules provide help command
-        scm_c_use_module("ice-9 session");
-        scm_c_use_module("texinfo reflection");
-        // load the main module
         scm_c_use_module("sbn");
         nested_main(argc, argv);
     }
