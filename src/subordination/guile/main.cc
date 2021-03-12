@@ -37,6 +37,17 @@ void nested_main(int argc, char* argv[]) {
         factory.local().thread_init([] (size_t) { scm_init_guile(); });
         factory.remote().thread_init([] () { scm_init_guile(); });
     }
+    {
+        SCM ret = SCM_EOL;
+        for (int i=argc-1; i>=0; --i) {
+            ret = scm_cons(scm_from_utf8_string(argv[i]), ret);
+        }
+        scm_c_define("*global-arguments*", ret);
+    }
+    if (std::getenv("SBN_TEST_REFERENCE")) {
+        scm_c_primitive_load(argv[1]);
+        std::exit(0);
+    }
     factory_guard g;
     if (this_application::standalone()) {
         send(sbn::make_pointer<Main>(argc, argv));

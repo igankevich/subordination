@@ -6,16 +6,57 @@
   (ice-9 textual-ports)
   (ice-9 pretty-print)
   (ice-9 threads)
+  (ice-9 futures)
+  (ice-9 match)
   (oop goops))
 
 (define %start-time (tms:clock (times)))
+(define %iso-date "%Y-%m-%dT%H:%M:%S%z")
+
+(define (log-message format-string . rest)
+  (apply format
+         `(,(current-error-port)
+            ,(string-append "~a ~a " format-string)
+            ,(strftime %iso-date (localtime (current-time)))
+            ,(current-thread)
+            ,@rest))
+  (force-output (current-error-port)))
+
+;;(define (do-par-map proc lst)
+;;  (cond
+;;    ((null? lst) '())
+;;    (else (cons
+;;            (let ((result #f))
+;;              (cons (make-thread (lambda (x) (set! result (proc x))) (car lst)) result))
+;;            (do-par-map proc (cdr lst))))))
+;;
+;;(define (do-partition lst num-threads)
+;;  (define partition-size (+ 1 (inexact->exact (/ (length lst) num-threads))))
+;;  (fold
+;;    (lambda (x prev)
+;;      (define current-partition (car prev))
+;;      (if (< (length current-partition) partition-size)
+;;        (cons (cons x current-partition) (cdr prev))
+;;        (cons (cons x current-partition) prev)))
+;;    '(())
+;;    lst))
+;;
+;;(define (my-par-map proc lst)
+;;  (cond
+;;    ((null? lst) '())
+;;    (else
+;;      (let* ((num-threads (current-processor-count))
+;;             (threads (do-par-map proc (do-partition lst num-threads))))
+;;        (log-message "num-threads ~a threads ~a\n" num-threads threads)
+;;        (apply append (map (lambda (pair) (join-thread (car pair)) (cdr pair)) threads))
+;;        ))))
 
 (define (profile name proc)
   (define t0 (tms:clock (times)))
   (define ret (proc))
   (define t1 (tms:clock (times)))
-  (format (current-error-port) "~a: ~as\n" name
-          (exact->inexact (/ (- t1 t0) internal-time-units-per-second)))
+  (log-message "~a: ~as\n" name
+               (exact->inexact (/ (- t1 t0) internal-time-units-per-second)))
   ret)
 
 ;; https://rosettacode.org/wiki/Flatten_a_list#Scheme
@@ -65,10 +106,10 @@
 ;;         (angles (map (lambda (j) (+ theta-0 (* (- theta-1 theta-0) (/ j n) ))) (iota n))))
 ;;    (fold spectrum 0 alpha-1 alpha-2 r-1 r-2 density angles)))
 
-(define input-directories (cdr *application-arguments*))
+(define input-directories (cdr *global-arguments*))
 (define files (make-hash-table))
-(format (current-error-port) "input-directories ~a\n" input-directories)
-(force-output (current-error-port))
+(log-message "input-directories ~a\n" input-directories)
+(log-message "spec-num-threads ~a\n" (string->number (getenv "SPEC_NUM_THREADS")))
 (profile
   "scan-dirs"
   (lambda ()
@@ -101,6 +142,8 @@
         (if (not (= (length value) 5))
           (hash-remove! files key)))
       files)))
+(log-message "num-input-directories ~a\n"
+             (length (hash-map->list (lambda (key value) value) files)))
 (define variances
   (n-par-map
     (string->number (getenv "SPEC_NUM_THREADS"))
@@ -130,9 +173,8 @@
                     (list-set! arrays (variable->index variable) new-array)
                     (hash-set! records timestamp arrays)))
                 (cdr lines))
-              (format (current-error-port) "~a: ~a records\n"
-                      (spectrum-file-path file)
-                      (hash-count (const #t) records)))))
+              (log-message "~a: ~a records\n"
+                           (spectrum-file-path file) (hash-count (const #t) records)))))
         five-files)
       ;; remove incomplete records
       (hash-for-each
@@ -174,6 +216,5 @@
 (call-with-output-file "nspectra.log"
   (lambda (port) (format port "~a\n" (length (flatten variances 999)))))
 
-(format (current-error-port) "exit\n")
-(force-output (current-error-port))
+(log-message "exit\n")
 (kernel-exit 0)

@@ -25,6 +25,7 @@ namespace {
     SCM kw_child_pipeline = SCM_UNDEFINED;
     SCM kw_block_size = SCM_UNDEFINED;
     SCM fluid_current_kernel = SCM_UNDEFINED;
+    std::mutex first_node_mutex;
 
     sbn::kernel_ptr& to_kernel_ptr(SCM scm) {
         return *reinterpret_cast<sbn::kernel_ptr*>(scm_foreign_object_ref(scm, 0));
@@ -216,7 +217,11 @@ namespace {
     }
 
     void finalize_kernel_buffer_ptr(SCM scm) {
-        to_kernel_buffer_ptr(scm);
+        //to_kernel_buffer_ptr(scm);
+    }
+
+    SCM make_kernel_buffer_ptr(sbn::kernel_buffer& buffer) {
+        return scm_make_foreign_object_1(::kernel_buffer_type, &buffer);
     }
 
     enum class Types: sys::u16 {
@@ -231,6 +236,8 @@ namespace {
         Boolean=8,
         Keyword=9,
         Undefined=10,
+        Character=11,
+        User_defined=12,
     };
 
     SCM s_object_write(SCM s_buffer, SCM object) {
@@ -436,6 +443,8 @@ The default is pipeline is @code{local}.)",
         {"buffer"}, {}, {},
         R"(Read object from kernel byte buffer.)",
         SBN_GUILE_1(s_object_read));
+    scm_c_define("*first-node*", scm_from_bool(false));
+    scm_c_export("*first-node*", nullptr);
 }
 
 void sbn::guile::Main::act() {
@@ -443,13 +452,18 @@ void sbn::guile::Main::act() {
     if (auto* a = target_application()) {
         const auto& args = a->arguments();
         const int nargs = args.size();
-        for (int i=nargs-1; i>=0; --i) {
+        for (int i=nargs-1; i>=1; --i) {
             ret = scm_cons(scm_from_utf8_string(args[i].data()), ret);
         }
         scm_c_define("*application-arguments*", ret);
+        {
+            std::lock_guard<std::mutex> lock(first_node_mutex);
+            SCM first_node_var = scm_c_lookup("*first-node*");
+            scm_variable_set_x(first_node_var, scm_from_bool(true));
+        }
         set_current_kernel(this);
-        if (nargs != 2) {
-            throw std::invalid_argument("usage: sbn-guile script-name");
+        if (nargs < 2) {
+            throw std::invalid_argument("usage: sbn-guile script-name [script-args...]");
         }
         scm_c_primitive_load(a->arguments()[1].data());
     }
@@ -466,7 +480,7 @@ void sbn::guile::Main::act() {
 
 void sbn::guile::Map_kernel::act() {
     result(SCM_EOL);
-    auto* ppl = symbol_to_pipeline(this->_pipeline);
+    //auto* ppl = symbol_to_pipeline(this->_pipeline);
     std::vector<SCM> lists;
     for (SCM s=this->_lists; s!=SCM_EOL; s=scm_cdr(s)) {
         lists.emplace_back(scm_car(s));
@@ -499,7 +513,7 @@ void sbn::guile::Map_kernel::act() {
         sys::log_message("scm", "make-map-child-kernel _", object_to_string(child_lists));
         auto child = make_pointer<Map_child_kernel>(this->_proc, child_lists, this->_pipeline);
         child->parent(this);
-        ppl->send(std::move(child));
+        sbn::factory.remote().send(std::move(child));
     }
 }
 
@@ -518,6 +532,7 @@ void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
 }
 
 void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
+    sys::log_message("scm", "kernel-base::read");
     Kernel_base::read(in);
     object_read(in, this->_proc.get());
     object_read(in, this->_lists.get());
@@ -526,6 +541,7 @@ void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
     in.read(this->_num_kernels);
 }
 void sbn::guile::Map_kernel::write(sbn::kernel_buffer& out) const {
+    sys::log_message("scm", "kernel-base::write");
     Kernel_base::write(out);
     object_write(out, this->_proc);
     object_write(out, this->_lists);
@@ -538,9 +554,9 @@ void sbn::guile::Map_child_kernel::act() {
     SCM code = scm_eval(this->_proc, scm_current_module());
     SCM map = scm_variable_ref(scm_c_lookup("map"));
     result(scm_apply_0(map, scm_cons(code, this->_lists)));
-    auto* ppl = symbol_to_pipeline(this->_pipeline);
+    //auto* ppl = symbol_to_pipeline(this->_pipeline);
     return_to_parent();
-    ppl->send(std::move(this_ptr()));
+    sbn::factory.remote().send(std::move(this_ptr()));
 }
 
 void sbn::guile::Map_child_kernel::read(sbn::kernel_buffer& in) {
@@ -548,11 +564,9 @@ void sbn::guile::Map_child_kernel::read(sbn::kernel_buffer& in) {
     object_read(in, this->_proc);
     object_read(in, this->_lists);
     object_read(in, this->_pipeline);
-    sys::log_message("scm", "Map-child-kernel::read _", object_to_string(this->_lists));
 }
 
 void sbn::guile::Map_child_kernel::write(sbn::kernel_buffer& out) const {
-    sys::log_message("scm", "Map-child-kernel::write _", object_to_string(this->_lists));
     Kernel_base::write(out);
     object_write(out, this->_proc);
     object_write(out, this->_lists);
@@ -561,6 +575,15 @@ void sbn::guile::Map_child_kernel::write(sbn::kernel_buffer& out) const {
 
 void sbn::guile::Kernel_base::read(sbn::kernel_buffer& in) {
     sbn::kernel::read(in);
+    {
+        std::lock_guard<std::mutex> lock(first_node_mutex);
+        SCM first_node_var = scm_c_lookup("*first-node*");
+        if (!scm_is_true(scm_variable_ref(first_node_var))) {
+            //scm_c_eval_string("(use-modules (ice-9 format)) (format (current-error-port) \"ARGUMENTS: ~a\n\" *global-arguments*)\n(force-output (current-error-port))");
+            scm_c_eval_string("(load (car (cdr *global-arguments*)))");
+            scm_variable_set_x(first_node_var, scm_from_bool(true));
+        }
+    }
     in.read(this->_num_children);
     in.read(this->_no_children);
     object_read(in, this->_result);
@@ -610,6 +633,9 @@ void sbn::guile::object_write(sbn::kernel_buffer& buffer, SCM object) {
         buffer.write(scm_is_true(object));
     } else if (symbol_equal(name,scm_from_utf8_symbol("<unknown>"))) {
         buffer.write(Types::Unknown);
+    } else if (scm_is_true(scm_char_p(object))) {
+        buffer.write(Types::Character);
+        buffer.write(scm_to_char(scm_char_to_integer(object)));
     } else if (scm_is_true(scm_string_p(object))) {
         buffer.write(Types::String);
         c_string ptr(scm_to_utf8_string(object));
@@ -639,10 +665,20 @@ void sbn::guile::object_write(sbn::kernel_buffer& buffer, SCM object) {
         object_write(buffer, scm_car(object));
         object_write(buffer, scm_cdr(object));
     } else {
-        c_string ptr(scm_to_utf8_string(scm_symbol_to_string(name)));
-        std::stringstream tmp;
-        tmp << "Unsupported type: " << ptr.get();
-        throw std::invalid_argument(tmp.str());
+        SCM write_name = scm_string_append(
+            scm_list_2(scm_symbol_to_string(name), scm_from_utf8_string("-write")));
+        SCM write = scm_variable_ref(scm_lookup(scm_string_to_symbol(write_name)));
+        c_string name_str(scm_to_utf8_string(scm_symbol_to_string(name)));
+        if (!is_bound(write)) {
+            std::stringstream tmp;
+            tmp << "Unsupported type: " << name_str.get();
+            throw std::invalid_argument(tmp.str());
+        }
+        buffer.write(Types::User_defined);
+        sys::u64 n = std::strlen(name_str.get());
+        buffer.write(n);
+        buffer.write(name_str.get(), n);
+        scm_apply_0(write, scm_list_2(make_kernel_buffer_ptr(buffer), object));
     }
 }
 
@@ -683,6 +719,10 @@ void sbn::guile::object_read(sbn::kernel_buffer& buffer, SCM& result) {
         std::string s;
         buffer.read(s);
         result = scm_from_utf8_keyword(s.data());
+    } else if (type == Types::Character) {
+        char ch{};
+        buffer.read(ch);
+        result = scm_integer_to_char(scm_from_char(ch));
     } else if (type == Types::Pair) {
         SCM a = SCM_UNSPECIFIED, b = SCM_UNSPECIFIED;
         object_read(buffer, a);
@@ -698,6 +738,23 @@ void sbn::guile::object_read(sbn::kernel_buffer& buffer, SCM& result) {
             result = scm_cons(x, result);
         }
         result = scm_reverse(result);
+    } else if (type == Types::User_defined) {
+        std::string s;
+        buffer.read(s);
+        SCM type_name = scm_from_utf8_symbol(s.data());
+        SCM type = scm_variable_ref(scm_lookup(type_name));
+        SCM object = scm_make(scm_list_1(type));
+        SCM read_name = scm_string_append(
+            scm_list_2(scm_symbol_to_string(type_name), scm_from_utf8_string("-read")));
+        SCM read = scm_variable_ref(scm_lookup(scm_string_to_symbol(read_name)));
+        c_string name_str(scm_to_utf8_string(scm_symbol_to_string(type_name)));
+        if (!is_bound(read)) {
+            std::stringstream tmp;
+            tmp << "Unsupported type: " << name_str.get();
+            throw std::invalid_argument(tmp.str());
+        }
+        scm_apply_0(read, scm_list_2(make_kernel_buffer_ptr(buffer), object));
+        result = object;
     } else {
         std::stringstream tmp;
         tmp << "Unsupported type: " << sys::u64(type);

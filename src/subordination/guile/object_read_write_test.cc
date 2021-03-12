@@ -34,8 +34,28 @@ TEST(object_read_write, _) {
     write_read(eval("'((1 2) 3 (4 5 (6)))"));
     write_read(eval("'my-symbol"));
     write_read(eval("#:my-keyword"));
+    write_read(eval("\"abc\""));
+    write_read(eval("#\\newline"));
     write_read(SCM_UNSPECIFIED);
     write_read(SCM_UNDEFINED);
+    write_read(eval(R"(
+(use-modules (oop goops))
+(define-class <my-class> ()
+  (field-1 #:init-keyword #:field-1 #:accessor my-class-field-1)
+  (field-2 #:init-keyword #:field-2 #:accessor my-class-field-2))
+(define (<my-class>-write buffer object)
+  (write-object buffer (my-class-field-1 object))
+  (write-object buffer (my-class-field-2 object)))
+(define (<my-class>-read buffer object)
+  (set! (my-class-field-1 object) (read-object buffer))
+  (set! (my-class-field-2 object) (read-object buffer)))
+(define-method (equal? (a <my-class>) (b <my-class>))
+  (and (equal? (my-class-field-1 a) (my-class-field-1 b))
+       (equal? (my-class-field-2 a) (my-class-field-2 b))))
+(define-method (write (o <my-class>) port)
+  (format port "[~a ~a]" (my-class-field-1 o) (my-class-field-2 o)))
+(make <my-class> #:field-1 "abc" #:field-2 123)
+)"));
 }
 
 void nested_main(int argc, char* argv[]) {
