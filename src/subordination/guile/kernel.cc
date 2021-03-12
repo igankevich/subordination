@@ -273,7 +273,9 @@ void sbn::guile::Kernel_base::upstream_children() {
 }
 
 void sbn::guile::Kernel_base::react(sbn::kernel_ptr&& child) {
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "kernel-base::react _", this->_num_children);
+    #endif
     --this->_num_children;
     auto k = sbn::pointer_dynamic_cast<Kernel_base>(std::move(child));
     result(scm_call(scm_eval(this->_react, scm_current_module()),
@@ -300,7 +302,9 @@ void sbn::guile::Kernel::act() {
     SCM code = scm_list_3(scm_sym_lambda,
                           scm_list_n(sym_self, sym_data, SCM_UNDEFINED),
                           this->_act);
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "act _", object_to_string(code));
+    #endif
     scm_call(scm_eval(code, scm_current_module()),
              kernel_weak_ptr_make(this_ptr()),
              this->_data,
@@ -311,7 +315,9 @@ void sbn::guile::Kernel::react(sbn::kernel_ptr&& child) {
     SCM code = scm_list_3(scm_sym_lambda,
                           scm_list_n(sym_self, sym_child, sym_data, SCM_UNDEFINED),
                           this->_react);
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "react _", object_to_string(code));
+    #endif
     scm_call(scm_eval(code, scm_current_module()),
              kernel_weak_ptr_make(this_ptr()),
              kernel_make_impl(std::move(child)),
@@ -510,7 +516,9 @@ void sbn::guile::Map_kernel::act() {
             child_lists = scm_cons(lst, child_lists);
         }
         child_lists = scm_reverse(child_lists);
+        #if defined(SBN_DEBUG)
         sys::log_message("scm", "make-map-child-kernel _", object_to_string(child_lists));
+        #endif
         auto child = make_pointer<Map_child_kernel>(this->_proc, child_lists, this->_pipeline);
         child->parent(this);
         sbn::factory.remote().send(std::move(child));
@@ -518,7 +526,9 @@ void sbn::guile::Map_kernel::act() {
 }
 
 void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "map-kernel-react _", this->_num_kernels);
+    #endif
     auto k = sbn::pointer_dynamic_cast<Kernel_base>(std::move(child));
     result(scm_cons(k->result(), result()));
     --this->_num_kernels;
@@ -532,7 +542,9 @@ void sbn::guile::Map_kernel::react(sbn::kernel_ptr&& child) {
 }
 
 void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "kernel-base::read");
+    #endif
     Kernel_base::read(in);
     object_read(in, this->_proc.get());
     object_read(in, this->_lists.get());
@@ -541,7 +553,9 @@ void sbn::guile::Map_kernel::read(sbn::kernel_buffer& in) {
     in.read(this->_num_kernels);
 }
 void sbn::guile::Map_kernel::write(sbn::kernel_buffer& out) const {
+    #if defined(SBN_DEBUG)
     sys::log_message("scm", "kernel-base::write");
+    #endif
     Kernel_base::write(out);
     object_write(out, this->_proc);
     object_write(out, this->_lists);
@@ -579,8 +593,9 @@ void sbn::guile::Kernel_base::read(sbn::kernel_buffer& in) {
         std::lock_guard<std::mutex> lock(first_node_mutex);
         SCM first_node_var = scm_c_lookup("*first-node*");
         if (!scm_is_true(scm_variable_ref(first_node_var))) {
-            //scm_c_eval_string("(use-modules (ice-9 format)) (format (current-error-port) \"ARGUMENTS: ~a\n\" *global-arguments*)\n(force-output (current-error-port))");
-            scm_c_eval_string("(load (car (cdr *global-arguments*)))");
+            //scm_c_eval_string("(use-modules (ice-9 format)) (format (current-error-port) \"ARGUMENTS: ~a\n\" (car (cdr *global-arguments*)))\n(force-output (current-error-port))");
+            SCM global_arguments = scm_variable_ref(scm_c_lookup("*global-arguments*"));
+            scm_primitive_load(scm_cadr(global_arguments));
             scm_variable_set_x(first_node_var, scm_from_bool(true));
         }
     }
