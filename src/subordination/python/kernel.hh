@@ -24,6 +24,8 @@ namespace sbn {
         PyObject* Py_kernel_reduce(Py_kernel *self, PyObject *Py_UNUSED(ignored));
         PyObject* Py_kernel_set_Cpp_kernel(Py_kernel* self, PyObject * args);
 
+        PyObject* Py_kernel_enable_carries_parent(Py_kernel *self, PyObject *Py_UNUSED(ignored));
+
         // ============================================
 
         class Cpp_kernel: public sbn::kernel {

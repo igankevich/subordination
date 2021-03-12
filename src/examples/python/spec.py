@@ -287,9 +287,9 @@ class Main(sbn.Kernel):
     def act(self):
         self._time_start = time.time()
         print('>>>> Python (spec): ============= program start! =============', file=open('pyspec.log', 'a'))
-        # TODO carries_parent
-        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()),
-            target=sbn.Target.Remote)
+        k = Spectrum_directory_kernel(self._input_directories.copy())
+        k.enable_carries_parent()  # carries_parent
+        sbn.upstream(self, k, target=sbn.Target.Remote)
 
     def react(self, child: sbn.Kernel):
         self._time_end = time.time()

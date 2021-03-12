@@ -157,6 +157,13 @@ PyObject* sbn::python::Py_kernel_reduce(Py_kernel* self, PyObject* Py_UNUSED(ign
     return Py_BuildValue("N()N", Py_TYPE(self), dict.get());
 }
 
+PyObject* sbn::python::Py_kernel_enable_carries_parent(Py_kernel* self, PyObject* Py_UNUSED(ignored))
+{
+    auto cpp_kernel = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(self->_cpp_kernel_capsule, "ptr");
+    cpp_kernel->setf(sbn::kernel_flag::carries_parent);
+    Py_RETURN_NONE;
+}
+
 
 void sbn::python::Cpp_kernel::act() {
     sys::log_message(">>>> Sbn", "Cpp_kernel.act");

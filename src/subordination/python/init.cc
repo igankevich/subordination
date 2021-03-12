@@ -32,6 +32,12 @@ namespace {
 
 PyMethodDef sbn::python::Py_kernel_methods[] = {
     {
+        .ml_name = "enable_carries_parent",
+        .ml_meth = (PyCFunction) sbn::python::Py_kernel_enable_carries_parent,
+        .ml_flags = METH_NOARGS,
+        .ml_doc = "Set flag 'carries_parent'."
+    },
+    {
         .ml_name = "__reduce__",
         .ml_meth = (PyCFunction) sbn::python::Py_kernel_reduce,
         .ml_flags = METH_NOARGS,
