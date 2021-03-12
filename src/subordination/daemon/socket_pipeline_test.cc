@@ -259,15 +259,42 @@ TEST(socket_pipeline, _) {
         //g.lock();
         remote.add_server(principal_endpoint, network.netmask());
     }
+    remote.start();
     if (role == Role::Master) {
-        auto g = remote.guard();
-        remote.port(port);
-        remote.add_server(subordinate_endpoint, network.netmask());
-        // wait for the child to start
         using namespace std::this_thread;
         using namespace std::chrono;
-        sleep_for(milliseconds(1000));
-        remote.add_client(principal_endpoint, {});
+        {
+            auto g = remote.guard();
+            remote.port(port);
+            remote.add_server(subordinate_endpoint, network.netmask());
+            remote.add_client(principal_endpoint, {});
+        }
+        bool started = false;
+        while (!started) {
+            sleep_for(milliseconds(1000));
+            sys::errors error{};
+            {
+                auto g = remote.guard();
+                const auto& clients = remote.clients();
+                if (clients.empty()) {
+                    remote.add_client(principal_endpoint, {});
+                    continue;
+                }
+                for (const auto& pair : clients) {
+                    const auto& client = *pair.second;
+                    try {
+                        error = client.socket().get<sys::errors>(sys::socket::options::error);
+                    } catch (...) {
+                    }
+                    if (error != sys::errors::connection_refused) {
+                        started = true;
+                    }
+                }
+            }
+            if (!started) {
+                std::clog << "waiting for the client: " << to_string(error) << std::endl;
+            }
+        }
     }
 
     const auto* filename = role == Role::Slave
@@ -278,7 +305,6 @@ TEST(socket_pipeline, _) {
     transactions.pipelines({&remote});
     transactions.open(filename);
     local.start();
-    remote.start();
 
     if (role == Role::Master && !restore) {
         local.send(sbn::make_pointer<Main>());

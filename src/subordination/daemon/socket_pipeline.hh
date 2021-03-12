@@ -287,6 +287,153 @@ namespace sbnd {
 
     };
 
+    class socket_pipeline_client: public sbn::connection {
+
+    public:
+        using counter_type = socket_pipeline::counter_type;
+        using counter_array = std::array<counter_type,2>;
+        using kernel_queue = std::deque<sbn::kernel_ptr>;
+        using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
+
+    private:
+        sys::socket _socket;
+        sys::socket_address _old_bind_address;
+        hierarchy_node_array _nodes_behind;
+        counter_type _sum_thread_concurrency{1};
+        bool _route = false;
+
+    public:
+
+        inline explicit socket_pipeline_client(sys::socket&& socket):
+        _socket(std::move(socket)) {}
+
+        virtual ~socket_pipeline_client() { recover(); }
+
+        socket_pipeline_client() = default;
+        socket_pipeline_client& operator=(const socket_pipeline_client&) = delete;
+        socket_pipeline_client& operator=(socket_pipeline_client&&) = delete;
+        socket_pipeline_client(const socket_pipeline_client&) = delete;
+        socket_pipeline_client(socket_pipeline_client&& rhs) = delete;
+
+        inline sbn::kernel_ptr forward(sbn::kernel_ptr k) {
+            Expects(k);
+            if (k->routed()){
+                k->old_id(k->id());
+                generate_new_id(k.get());
+                k->routed(false);
+            }
+            return do_forward(std::move(k));
+        }
+
+        void recover();
+        void handle(const sys::epoll_event& event) override;
+
+        inline void flush() override { connection::flush(this->_socket); }
+
+        inline const sys::socket& socket() const noexcept { return this->_socket; }
+        inline sys::socket& socket() noexcept { return this->_socket; }
+
+        void add(const connection_ptr& self) override;
+        void remove(const connection_ptr&) override;
+        void deactivate(const connection_ptr& self) override;
+        void activate(const connection_ptr& self) override;
+
+        using connection::parent;
+        inline socket_pipeline* parent() const noexcept {
+            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
+        }
+
+        inline bool route() const noexcept { return this->_route; }
+        inline void route(bool rhs) noexcept { this->_route = rhs; }
+
+        inline const hierarchy_node_array& nodes_behind() const noexcept {
+            return this->_nodes_behind;
+        }
+
+        inline void nodes_behind(const hierarchy_node_array& rhs) noexcept {
+            this->_nodes_behind = rhs;
+            update_counters();
+        }
+
+        inline void update_counters() {
+            using r = sbn::resources::resources;
+            counter_type sum = 0;
+            for (const auto& n : this->_nodes_behind) {
+                sum += n.resources()[r::total_threads].unsigned_integer();
+            }
+            this->_sum_thread_concurrency = sum;
+        }
+
+        inline bool match(sbn::kernel::resource_expression& node_filter) {
+            for (const auto& n : this->_nodes_behind) {
+                if (node_filter.evaluate(n.resources()).boolean()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /*
+        inline const resource_array& resources() const noexcept { return this->_resources; }
+        inline resource_array& resources() noexcept { return this->_resources; }
+        inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
+        */
+
+        void receive_foreign_kernel(sbn::kernel_ptr&& k) override;
+
+        /// The number of threads "behind" this node in the hierarchy.
+        inline counter_type num_threads_behind() const noexcept {
+            return this->_sum_thread_concurrency;
+        }
+
+        inline counter_type num_nodes_behind() const noexcept {
+            return this->_sum_thread_concurrency;
+        }
+
+        /**
+          The first element is the number of kernels with the maximum weight sent to the client
+          divided by the number of cluster nodes. Each kernel uses all threads of the client.
+          The second element is the number of kernels sent to the client divided by
+          the number of threads "behind" the client.
+        */
+        inline sbn::modular_weight_array relative_load() const noexcept {
+            sbn::weight_array tmp{load()};
+            auto num_nodes = num_nodes_behind();
+            if (num_nodes == 0) { num_nodes = 1; }
+            //tmp[0] /= num_nodes;
+            auto nthreads = num_threads_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            //tmp[1] /= nthreads;
+            return sbn::modular_weight_array{
+                {tmp[0]/num_nodes,tmp[0]%num_nodes},
+                {tmp[1]/nthreads,tmp[1]%nthreads}};
+        }
+
+        void write(std::ostream& out) const override;
+
+    private:
+
+        void receive_downstream_foreign_kernel(sbn::kernel_ptr&& a) {
+            Expects(a);
+            auto result = find_kernel(a.get(), this->_upstream);
+            if (result == this->_upstream.end() || !(*result)->source()) {
+                connection::receive_foreign_kernel(std::move(a));
+            } else {
+                // Route downstream kernel to the node that sent it
+                // in upstream phase.
+                a->destination((*result)->source());
+                auto old = a->id();
+                a->id(a->old_id());
+                log("change id back _ -> _ kernel _", old, a->id(), *a);
+                log("route downstream kernel to _ kernel _", a->destination(), *a);
+                this->_upstream.erase(result);
+                parent()->forward(std::move(a));
+            }
+        }
+
+    };
+
 }
 
 #endif // vim:filetype=cpp

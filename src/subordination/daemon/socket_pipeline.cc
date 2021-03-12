@@ -58,236 +58,6 @@ void sbnd::socket_pipeline_server::remove(const connection_ptr&) {
     parent()->remove_server(this->_ifaddr);
 }
 
-namespace sbnd {
-
-    class socket_pipeline_client: public sbn::connection {
-
-    public:
-        using counter_type = socket_pipeline::counter_type;
-        using counter_array = std::array<counter_type,2>;
-        using kernel_queue = std::deque<sbn::kernel_ptr>;
-        using resource_array = sbn::resources::Bindings;
-        using hierarchy_node_array = std::vector<hierarchy_node>;
-
-    private:
-        sys::socket _socket;
-        sys::socket_address _old_bind_address;
-        hierarchy_node_array _nodes_behind;
-        counter_type _sum_thread_concurrency{1};
-        bool _route = false;
-
-    public:
-
-        inline explicit socket_pipeline_client(sys::socket&& socket):
-        _socket(std::move(socket)) {}
-
-        virtual ~socket_pipeline_client() { recover(); }
-
-        socket_pipeline_client() = default;
-        socket_pipeline_client& operator=(const socket_pipeline_client&) = delete;
-        socket_pipeline_client& operator=(socket_pipeline_client&&) = delete;
-        socket_pipeline_client(const socket_pipeline_client&) = delete;
-        socket_pipeline_client(socket_pipeline_client&& rhs) = delete;
-
-        inline sbn::kernel_ptr forward(sbn::kernel_ptr k) {
-            Expects(k);
-            if (k->routed()){
-                k->old_id(k->id());
-                generate_new_id(k.get());
-                k->routed(false);
-            }
-            return do_forward(std::move(k));
-        }
-
-        void recover() {
-            // Here failed kernels are written to buffer,
-            // from which they must be recovered with recover_kernels().
-            try {
-                sys::epoll_event ev {socket().fd(), sys::event::in};
-                this->handle(ev);
-            } catch (const std::exception& err) {
-                log("error during recovery: _", err.what());
-            }
-            // recover kernels from upstream and downstream buffer
-            recover_kernels(true);
-        }
-
-        void handle(const sys::epoll_event& event) override {
-            if (state() == sbn::connection::states::starting && !event.err()) {
-                state(sbn::connection::states::started);
-            }
-            if (event.in()) {
-                fill(socket());
-                receive_kernels();
-            }
-        }
-
-        inline void flush() override { connection::flush(this->_socket); }
-
-        inline const sys::socket& socket() const noexcept { return this->_socket; }
-        inline sys::socket& socket() noexcept { return this->_socket; }
-
-        void add(const connection_ptr& self) override {
-            Expects(self);
-            connection::parent()->emplace_handler(
-                sys::epoll_event{socket().fd(), sys::event::inout}, self);
-        }
-
-        void remove(const connection_ptr&) override {
-            connection::parent()->erase(socket().fd());
-            parent()->remove_client(socket_address());
-        }
-
-        inline void deactivate(const connection_ptr& self) override {
-            Expects(self);
-            connection::deactivate(self);
-            connection::parent()->erase(socket().fd());
-            this->_old_bind_address = this->_socket.name();
-            this->_socket = sys::socket();
-            state(sbn::connection::states::inactive);
-        }
-
-        inline void activate(const connection_ptr& self) override {
-            Expects(self);
-            this->_socket = sys::socket(this->_old_bind_address.family());
-            this->_socket.set(sys::socket::options::reuse_address);
-            this->_socket.bind(this->_old_bind_address);
-            this->_socket.connect(socket_address());
-            add(self);
-            state(sbn::connection::states::starting);
-        }
-
-        using connection::parent;
-        inline socket_pipeline* parent() const noexcept {
-            return reinterpret_cast<socket_pipeline*>(this->connection::parent());
-        }
-
-        inline bool route() const noexcept { return this->_route; }
-        inline void route(bool rhs) noexcept { this->_route = rhs; }
-
-        inline const hierarchy_node_array& nodes_behind() const noexcept {
-            return this->_nodes_behind;
-        }
-
-        inline void nodes_behind(const hierarchy_node_array& rhs) noexcept {
-            this->_nodes_behind = rhs;
-            update_counters();
-        }
-
-        inline void update_counters() {
-            using r = sbn::resources::resources;
-            counter_type sum = 0;
-            for (const auto& n : this->_nodes_behind) {
-                sum += n.resources()[r::total_threads].unsigned_integer();
-            }
-            this->_sum_thread_concurrency = sum;
-        }
-
-        inline bool match(sbn::kernel::resource_expression& node_filter) {
-            for (const auto& n : this->_nodes_behind) {
-                if (node_filter.evaluate(n.resources()).boolean()) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /*
-        inline const resource_array& resources() const noexcept { return this->_resources; }
-        inline resource_array& resources() noexcept { return this->_resources; }
-        inline void resources(const resource_array& rhs) noexcept { this->_resources = rhs; }
-        */
-
-        void receive_foreign_kernel(sbn::kernel_ptr&& k) override {
-            Expects(k);
-            if (!route()) {
-                connection::receive_foreign_kernel(std::move(k));
-                return;
-            }
-            using p = sbn::kernel::phases;
-            switch (k->phase()) {
-                case p::upstream:
-                    // Route upstream kernels using routing algorithm, i.e.
-                    // redistribute them across all neighbours except
-                    // the one from which the kernel was received.
-                    if (!k->carries_parent() && k->path().empty()) {
-                        k->routed(true);
-                        log("change id _ -> _ kernel _", k->old_id(), k->id(), *k);
-                        parent()->forward(std::move(k));
-                    } else {
-                        connection::receive_foreign_kernel(std::move(k));
-                    }
-                    break;
-                case p::downstream:
-                    receive_downstream_foreign_kernel(std::move(k));
-                    break;
-                default:
-                    connection::receive_foreign_kernel(std::move(k));
-                    break;
-            }
-        }
-
-        /// The number of threads "behind" this node in the hierarchy.
-        inline counter_type num_threads_behind() const noexcept {
-            return this->_sum_thread_concurrency;
-        }
-
-        inline counter_type num_nodes_behind() const noexcept {
-            return this->_sum_thread_concurrency;
-        }
-
-        /**
-          The first element is the number of kernels with the maximum weight sent to the client
-          divided by the number of cluster nodes. Each kernel uses all threads of the client.
-          The second element is the number of kernels sent to the client divided by
-          the number of threads "behind" the client.
-        */
-        inline sbn::modular_weight_array relative_load() const noexcept {
-            sbn::weight_array tmp{load()};
-            auto num_nodes = num_nodes_behind();
-            if (num_nodes == 0) { num_nodes = 1; }
-            //tmp[0] /= num_nodes;
-            auto nthreads = num_threads_behind();
-            if (nthreads == 0) { nthreads = 1; }
-            //tmp[1] /= nthreads;
-            return sbn::modular_weight_array{
-                {tmp[0]/num_nodes,tmp[0]%num_nodes},
-                {tmp[1]/nthreads,tmp[1]%nthreads}};
-        }
-
-        void write(std::ostream& out) const override {
-            sbn::connection::write(out);
-            using sbn::list;
-            using sbn::make_list_view;
-            out << ' ' << list("sum-thread-concurrency", this->_sum_thread_concurrency);
-            out << ' ' << list("route", this->_route);
-            out << ' ' << list("nodes-behind", make_list_view(this->_nodes_behind));
-        }
-
-    private:
-
-        void receive_downstream_foreign_kernel(sbn::kernel_ptr&& a) {
-            Expects(a);
-            auto result = find_kernel(a.get(), this->_upstream);
-            if (result == this->_upstream.end() || !(*result)->source()) {
-                connection::receive_foreign_kernel(std::move(a));
-            } else {
-                // Route downstream kernel to the node that sent it
-                // in upstream phase.
-                a->destination((*result)->source());
-                auto old = a->id();
-                a->id(a->old_id());
-                log("change id back _ -> _ kernel _", old, a->id(), *a);
-                log("route downstream kernel to _ kernel _", a->destination(), *a);
-                this->_upstream.erase(result);
-                parent()->forward(std::move(a));
-            }
-        }
-
-    };
-
-}
-
 void sbnd::socket_pipeline_scheduler::rebase_counters(const client_table& clients) {
     // find minimum counter value
     auto min_load = local_load();
@@ -842,4 +612,95 @@ bool sbnd::socket_pipeline::properties::set(const char* key, const std::string& 
         found = false;
     }
     return found;
+}
+
+void sbnd::socket_pipeline_client::recover() {
+    // Here failed kernels are written to buffer,
+    // from which they must be recovered with recover_kernels().
+    try {
+        sys::epoll_event ev {socket().fd(), sys::event::in};
+        this->handle(ev);
+    } catch (const std::exception& err) {
+        log("error during recovery: _", err.what());
+    }
+    // recover kernels from upstream and downstream buffer
+    recover_kernels(true);
+}
+
+void sbnd::socket_pipeline_client::handle(const sys::epoll_event& event) {
+    if (state() == sbn::connection::states::starting && !event.err()) {
+        state(sbn::connection::states::started);
+    }
+    if (event.in()) {
+        fill(socket());
+        receive_kernels();
+    }
+}
+
+void sbnd::socket_pipeline_client::add(const connection_ptr& self) {
+    Expects(self);
+    connection::parent()->emplace_handler(
+        sys::epoll_event{socket().fd(), sys::event::inout}, self);
+}
+
+void sbnd::socket_pipeline_client::remove(const connection_ptr&) {
+    connection::parent()->erase(socket().fd());
+    parent()->remove_client(socket_address());
+}
+
+void sbnd::socket_pipeline_client::deactivate(const connection_ptr& self) {
+    Expects(self);
+    connection::deactivate(self);
+    connection::parent()->erase(socket().fd());
+    this->_old_bind_address = this->_socket.name();
+    this->_socket = sys::socket();
+    state(sbn::connection::states::inactive);
+}
+
+void sbnd::socket_pipeline_client::activate(const connection_ptr& self) {
+    Expects(self);
+    this->_socket = sys::socket(this->_old_bind_address.family());
+    this->_socket.set(sys::socket::options::reuse_address);
+    this->_socket.bind(this->_old_bind_address);
+    this->_socket.connect(socket_address());
+    add(self);
+    state(sbn::connection::states::starting);
+}
+
+void sbnd::socket_pipeline_client::receive_foreign_kernel(sbn::kernel_ptr&& k) {
+    Expects(k);
+    if (!route()) {
+        connection::receive_foreign_kernel(std::move(k));
+        return;
+    }
+    using p = sbn::kernel::phases;
+    switch (k->phase()) {
+        case p::upstream:
+            // Route upstream kernels using routing algorithm, i.e.
+            // redistribute them across all neighbours except
+            // the one from which the kernel was received.
+            if (!k->carries_parent() && k->path().empty()) {
+                k->routed(true);
+                log("change id _ -> _ kernel _", k->old_id(), k->id(), *k);
+                parent()->forward(std::move(k));
+            } else {
+                connection::receive_foreign_kernel(std::move(k));
+            }
+            break;
+        case p::downstream:
+            receive_downstream_foreign_kernel(std::move(k));
+            break;
+        default:
+            connection::receive_foreign_kernel(std::move(k));
+            break;
+    }
+}
+
+void sbnd::socket_pipeline_client::write(std::ostream& out) const {
+    sbn::connection::write(out);
+    using sbn::list;
+    using sbn::make_list_view;
+    out << ' ' << list("sum-thread-concurrency", this->_sum_thread_concurrency);
+    out << ' ' << list("route", this->_route);
+    out << ' ' << list("nodes-behind", make_list_view(this->_nodes_behind));
 }
