@@ -10,7 +10,7 @@ namespace sbn {
 
         class interpreter_guard {
         public:
-            inline interpreter_guard() noexcept { ::Py_Initialize(); }
+            inline interpreter_guard() noexcept { ::Py_InitializeEx(0); }
             inline ~interpreter_guard() noexcept { ::Py_FinalizeEx(); }
             interpreter_guard(const interpreter_guard&) = delete;
             interpreter_guard& operator=(const interpreter_guard&) = delete;
@@ -58,7 +58,7 @@ namespace sbn {
         class object {
 
         private:
-            PyObject* _ptr{};
+            mutable PyObject* _ptr{};
 
         public:
             object() noexcept = default;
@@ -72,7 +72,7 @@ namespace sbn {
             inline explicit operator bool() const noexcept { return this->_ptr != nullptr; }
             inline bool operator !() const noexcept { return !this->operator bool(); }
             inline PyObject* get() noexcept { return this->_ptr; }
-            inline const PyObject* get() const noexcept { return this->_ptr; }
+            inline PyObject* get() const noexcept { return this->_ptr; }
             inline operator PyObject*() noexcept { return get(); }
             inline operator const PyObject*() const noexcept { return get(); }
             inline Py_ssize_t size() const noexcept { return Py_SIZE(this->_ptr); }
@@ -82,10 +82,40 @@ namespace sbn {
             inline void clear() noexcept { Py_CLEAR(this->_ptr); }
             inline void retain() noexcept { Py_XINCREF(this->_ptr); }
             inline void release() noexcept { Py_XDECREF(this->_ptr); }
+            inline PyObject* disown() noexcept {
+                auto tmp = this->_ptr;
+                this->_ptr = nullptr;
+                return tmp;
+            }
             //inline void reference_count(Py_ssize_t n) noexcept { Py_SET_REFCNT(this->_ptr, n); }
+
+            template <class ... Args>
+            inline object call(const char* name, const char* format, Args ... args) {
+                return ::PyObject_CallMethod(this->_ptr, name, format, args...);
+            }
+
         };
 
         inline void swap(object& a, object& b) { a.swap(b); }
+
+        class byte_array: public object {
+
+        public:
+            inline byte_array() noexcept:
+            byte_array(nullptr, 0) {}
+
+            inline explicit byte_array(const char* data, Py_ssize_t size) noexcept:
+            object(::PyByteArray_FromStringAndSize(data, size)) {}
+
+            inline explicit byte_array(PyObject* obj) noexcept:
+            object(::PyByteArray_FromObject(obj)) {}
+
+            inline const char* data() const noexcept { return ::PyByteArray_AsString(get()); }
+            inline char* data() noexcept { return ::PyByteArray_AsString(get()); }
+            inline Py_ssize_t size() const noexcept {return ::PyByteArray_Size(get());}
+            inline void resize(Py_ssize_t n) noexcept { ::PyByteArray_Resize(get(), n); }
+
+        };
 
     }
 }
