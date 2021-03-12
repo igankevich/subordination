@@ -35,7 +35,6 @@ if with_dtests
         output: 'python_remote_test.hh',
         configuration: test_config
     )
-
     test(
         'python/remote',
         executable(

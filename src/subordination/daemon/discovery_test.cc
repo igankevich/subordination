@@ -25,10 +25,6 @@
 
 #include <dtest/application.hh>
 
-#if defined(SBN_TEST_HAVE_VALGRIND_H)
-#include <valgrind.h>
-#endif
-
 template <class ... Args>
 inline void
 log(const Args& ... args) {
@@ -179,9 +175,7 @@ sys::argstream sbnd_args() {
 }
 
 int main(int argc, char* argv[]) {
-    #if defined(SBN_TEST_HAVE_VALGRIND_H)
-    if (RUNNING_ON_VALGRIND) { std::exit(77); }
-    #endif
+    SBN_SKIP_IF_RUNNING_ON_VALGRIND();
     if (argc < 2) {
         throw std::invalid_argument("usage: discovery-test <failure>");
     }

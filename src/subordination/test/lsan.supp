@@ -1,3 +1,4 @@
 # Python
 # https://www.python.org/dev/peps/pep-3121/
 leak:libpython3
+leak:libguile

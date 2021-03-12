@@ -3,6 +3,7 @@
 #include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/child_process_pipeline.hh>
+#include <subordination/core/list.hh>
 
 void sbn::child_process_pipeline::send(kernel_ptr&& k) {
     Expects(k.get());
@@ -61,4 +62,9 @@ bool sbn::child_process_pipeline::properties::set(const char* key, const std::st
         found = false;
     }
     return found;
+}
+
+void sbn::child_process_pipeline::write(std::ostream& out) const {
+    sbn::basic_socket_pipeline::write(out);
+    out << ' ' << list("parent", this->_parent.get());
 }

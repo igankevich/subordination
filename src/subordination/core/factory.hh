@@ -39,6 +39,7 @@ namespace sbn {
         void stop();
         void wait();
         void clear();
+        void write(std::ostream& out) const;
 
         ~Factory() = default;
         Factory(const Factory&) = delete;

@@ -4,6 +4,7 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
+#include <subordination/core/list.hh>
 #include <subordination/core/transaction_log.hh>
 
 namespace  {
@@ -272,4 +273,13 @@ bool sbn::transaction_log::properties::set(const char* key, const std::string& v
         found = false;
     }
     return found;
+}
+
+void sbn::transaction_log::write(std::ostream& out) const {
+    using sbn::list;
+    out << list(
+        list("buffer-position", this->_buffer.position()),
+        list("buffer-remaining", this->_buffer.remaining()),
+        list("actual-records", this->_actual_records),
+        list("max-records", this->_max_records));
 }
