@@ -1,7 +1,7 @@
 project(
     'subordination',
     'cpp',
-    version: '0.3.1',
+    version: '0.4.1',
     meson_version: '>=0.50.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'
@@ -23,7 +23,8 @@ cpp_args = [
     '-Werror=return-type',
     '-Werror=return-local-addr',
     '-Werror=cast-align',
-    '-Wcast-align=strict'
+    '-Wcast-align=strict',
+    '-Wno-terminate',
 ]
 cpp_link_args = ['-rdynamic']
 test_cpp_args = ['-DSBN_TEST']
@@ -58,7 +59,7 @@ foreach arg : cpp_link_args
 endforeach
 
 threads = dependency('threads')
-unistdx_version = '>=0.41.0'
+unistdx_version = '>=0.66.0'
 unistdx = with_debug ? dependency('unistdx-debug', version: unistdx_version) : dependency('unistdx', version: unistdx_version)
 gtest = dependency('gtest', main: true)
 guile = dependency('guile-3.0')

@@ -1,7 +1,7 @@
 #ifndef SUBORDINATION_API_HH
 #define SUBORDINATION_API_HH
 
-#include <subordination/core/basic_factory.hh>
+#include <subordination/core/factory.hh>
 #include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/kernel_type_registry.hh>
 
@@ -15,19 +15,19 @@ namespace sbn {
     template <Target t=Target::Local>
     inline void
     send(kernel_ptr&& k) {
-        factory.send(std::move(k));
+        factory.local().send(std::move(k));
     }
 
     template <>
     inline void
     send<Local>(kernel_ptr&& k) {
-        factory.send(std::move(k));
+        factory.local().send(std::move(k));
     }
 
     template <>
     inline void
     send<Remote>(kernel_ptr&& k) {
-        factory.send_remote(std::move(k));
+        factory.remote().send(std::move(k));
     }
 
     template<Target target=Target::Local>

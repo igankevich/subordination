@@ -202,7 +202,7 @@ void sbn::transaction_log::recover(record_array& records) {
                 // act() or react().
                 ppl->send(std::move(r.k));
             } else {
-                ppl->forward(pointer_dynamic_cast<foreign_kernel>(std::move(r.k)));
+                ppl->forward(std::move(r.k));
             }
         }
     }
@@ -260,4 +260,16 @@ void sbn::transaction_log::update_pipeline_indices() {
 void sbn::transaction_kernel::act() {
     this->_transactions->recover(this->_records);
     this_ptr().reset();
+}
+
+bool sbn::transaction_log::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "directory") == 0) {
+        directory = value;
+    } else if (std::strcmp(key, "recover-after") == 0) {
+        recover_after = sbn::string_to_duration(value);
+    } else {
+        found = false;
+    }
+    return found;
 }

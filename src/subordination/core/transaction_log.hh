@@ -10,6 +10,7 @@
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/properties.hh>
 #include <subordination/core/types.hh>
 
 namespace sbn {
@@ -31,6 +32,13 @@ namespace sbn {
     kernel_buffer& operator>>(kernel_buffer& in, transaction_record& rhs);
 
     class transaction_log {
+
+    public:
+        struct properties {
+            sys::path directory;
+            sbn::Duration recover_after = sbn::Duration::zero();
+            bool set(const char* key, const std::string& value);
+        };
 
     public:
         using pipeline_array = std::vector<pipeline*>;
@@ -133,7 +141,7 @@ namespace sbn {
 
     };
 
-    class transaction_kernel: public kernel {
+    class transaction_kernel: public service_kernel {
 
     public:
         using record_array = std::vector<transaction_record>;

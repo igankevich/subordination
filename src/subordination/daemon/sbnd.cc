@@ -64,7 +64,7 @@ int real_main(int argc, char* argv[]) {
     factory.types().add<Pipeline_status_kernel>(9);
     Properties props;
     props.read(argc, argv);
-    if (props.discoverer.profile) {
+    if (props.discover.profile) {
         using namespace std::chrono;
         const auto now = system_clock::now().time_since_epoch();
         const auto t = duration_cast<microseconds>(now);
@@ -73,7 +73,7 @@ int real_main(int argc, char* argv[]) {
     factory.configure(props);
     try {
         if (factory.isset(factory_flags::unix)) {
-            factory.unix().add_server(sys::socket_address(SBND_SOCKET));
+            factory.unix().add_server(sys::unix_socket_address(SBND_SOCKET));
         }
         {
             auto k = sbn::make_pointer<Main>(props);

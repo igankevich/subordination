@@ -29,9 +29,22 @@ namespace sbnd {
         inline sys::fd_type fd() const noexcept { return this->_socket.fd(); }
         inline const sys::socket& socket() const noexcept { return this->_socket; }
 
+    protected:
+        void receive_kernel(sbn::kernel_ptr&& k) override;
+
     };
 
     class unix_socket_pipeline: public sbn::basic_socket_pipeline {
+
+    public:
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=16):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple} {}
+        };
 
     public:
         using client_type = unix_socket_client;
@@ -42,18 +55,19 @@ namespace sbnd {
         client_table _clients;
 
     public:
+        explicit unix_socket_pipeline(const properties& p);
         unix_socket_pipeline() = default;
         ~unix_socket_pipeline() = default;
         unix_socket_pipeline(const unix_socket_pipeline& rhs) = delete;
         unix_socket_pipeline(unix_socket_pipeline&& rhs) = delete;
 
-        void add_server(const sys::socket_address& rhs);
-        void add_client(const sys::socket_address& addr);
-        void forward(sbn::foreign_kernel_ptr&& hdr) override;
+        void add_server(const sys::unix_socket_address& rhs);
+        void add_client(const sys::unix_socket_address& addr);
+        void forward(sbn::kernel_ptr&& hdr) override;
 
     private:
 
-        void add_client(const sys::socket_address& addr, sys::socket&& sock);
+        void add_client(const sys::unix_socket_address& addr, sys::socket&& sock);
 
         void process_kernels() override;
         void process_kernel(sbn::kernel_ptr&& k);

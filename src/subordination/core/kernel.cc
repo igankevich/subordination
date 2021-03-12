@@ -14,10 +14,10 @@ namespace {
 }
 
 sbn::kernel::~kernel() {
-    if (bool(fields() & kernel_field::source_application)) {
+    if (bool(this->_fields & fields::source_application)) {
         delete this->_source_application;
     }
-    if (bool(fields() & kernel_field::target_application)) {
+    if (bool(this->_fields & fields::target_application)) {
         delete this->_target_application;
     }
 }
@@ -31,6 +31,9 @@ void sbn::kernel::read(kernel_buffer& in) {
     in >> this->_phase;
     in >> this->_path;
     in >> this->_weight;
+    if (bool(this->_fields & fields::node_filter)) {
+        this->_node_filter = sbn::resources::read(in);
+    }
     this->_flags |= kernel_flag::parent_is_id;
     this->_flags |= kernel_flag::principal_is_id;
 }
@@ -44,37 +47,40 @@ void sbn::kernel::write(kernel_buffer& out) const {
     out << this->_phase;
     out << this->_path;
     out << this->_weight;
+    if (bool(this->_fields & fields::node_filter)) {
+        this->_node_filter->write(out);
+    }
 }
 
 void sbn::kernel::write_header(kernel_buffer& out) const {
-    auto f = fields();
-    if (source()) { f |= kernel_field::source; }
-    if (destination()) { f |= kernel_field::destination; }
+    auto f = this->_fields;
+    if (source()) { f |= fields::source; }
+    if (destination()) { f |= fields::destination; }
     out << f;
-    if (bool(f & kernel_field::source_application)) { out << *source_application(); }
+    if (bool(f & fields::source_application)) { out << *source_application(); }
     else { out << source_application_id(); }
-    if (bool(f & kernel_field::target_application)) { out << *target_application(); }
+    if (bool(f & fields::target_application)) { out << *target_application(); }
     else { out << target_application_id(); }
-    if (bool(f & kernel_field::source)) { out << source(); }
-    if (bool(f & kernel_field::destination)) { out << destination(); }
+    if (bool(f & fields::source)) { out << source(); }
+    if (bool(f & fields::destination)) { out << destination(); }
 }
 
 void sbn::kernel::read_header(kernel_buffer& in) {
     in >> this->_fields;
-    if (bool(fields() & kernel_field::source_application)) {
+    if (bool(this->_fields & fields::source_application)) {
         this->_source_application = new application;
         in >> *this->_source_application;
     } else {
         in >> this->_source_application_id;
     }
-    if (bool(fields() & kernel_field::target_application)) {
+    if (bool(this->_fields & fields::target_application)) {
         this->_target_application = new application;
         in >> *this->_target_application;
     } else {
         in >> this->_target_application_id;
     }
-    if (bool(fields() & kernel_field::source)) { in >> this->_source; }
-    if (bool(fields() & kernel_field::destination)) { in >> this->_destination; }
+    if (bool(this->_fields & fields::source)) { in >> this->_source; }
+    if (bool(this->_fields & fields::destination)) { in >> this->_destination; }
 }
 
 void sbn::kernel::swap_header(kernel* k) {

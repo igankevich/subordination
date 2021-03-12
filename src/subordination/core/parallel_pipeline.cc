@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include <unistdx/ipc/process>
 #include <unistdx/system/error>
 
@@ -144,6 +146,67 @@ void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type
     });
 }
 
+void sbn::parallel_pipeline::upstream_start(size_t num_threads) {
+    const auto& all_cpus = this->_upstream_threads.cpu_array();
+    for (size_t i=0; i<num_threads; ++i) {
+        this->_upstream_threads[i] =
+            std::thread([this,i,all_cpus,num_threads] () noexcept {
+                sys::cpu_set thread_cpus{all_cpus[i%num_threads]};
+                sys::this_process::cpu_affinity(thread_cpus);
+                #if defined(UNISTDX_HAVE_PRCTL)
+                ::prctl(PR_SET_NAME, this->_name);
+                #endif
+                if (this->_thread_init) { this->_thread_init(i); }
+                this->upstream_loop(this->_downstream_kernels[i]);
+            });
+    }
+}
+
+void sbn::parallel_pipeline::kernel_loop(kernel_ptr k) {
+    try {
+        k->this_ptr(&k);
+        k->act();
+    } catch (const std::exception& err) {
+        log("error _", err.what());
+        if (k) {
+            k->rollback();
+            if (this->_error_pipeline) {
+                k->return_to_parent(sbn::exit_code::error);
+                this->_error_pipeline->send(std::move(k));
+            }
+        }
+    }
+}
+
+void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
+    const auto& all_cpus = this->_downstream_threads.cpu_array();
+    for (size_t i=0; i<num_threads; ++i) {
+        this->_downstream_threads[i] =
+            std::thread([this,i,all_cpus,num_threads] () noexcept {
+                sys::cpu_set thread_cpus{all_cpus[i%num_threads]};
+                sys::this_process::cpu_affinity(thread_cpus);
+                #if defined(UNISTDX_HAVE_PRCTL)
+                ::prctl(PR_SET_NAME, this->_name);
+                #endif
+                if (this->_thread_init) { this->_thread_init(i); }
+                this->downstream_loop(this->_downstream_kernels[i],
+                                      this->_downstream_semaphores[i]);
+            });
+    }
+}
+
+void sbn::parallel_pipeline::timer_start() {
+    if (this->_timer_threads.cpus().count() == 0) { return; }
+    this->_timer_threads.emplace_back([this] () noexcept {
+        sys::this_process::cpu_affinity(this->_timer_threads.cpus());
+        #if defined(UNISTDX_HAVE_PRCTL)
+        ::prctl(PR_SET_NAME, this->_name);
+        #endif
+        if (this->_thread_init) { this->_thread_init(0); }
+        this->timer_loop();
+    });
+}
+
 void sbn::parallel_pipeline::start() {
     lock_type lock(this->_mutex);
     this->setstate(states::starting);
@@ -152,32 +215,9 @@ void sbn::parallel_pipeline::start() {
     if (num_downstream_threads == 0) {
         this->_downstream_kernels = kernel_queue_array(num_upstream_threads);
     }
-    for (size_t i=0; i<num_upstream_threads; ++i) {
-        this->_upstream_threads[i] = std::thread([this,i] () {
-            #if defined(UNISTDX_HAVE_PRCTL)
-            ::prctl(PR_SET_NAME, this->_name);
-            #endif
-            if (this->_thread_init) { this->_thread_init(i); }
-            this->upstream_loop(this->_downstream_kernels[i]);
-        });
-    }
-    this->_timer_thread = std::thread([this] () {
-        #if defined(UNISTDX_HAVE_PRCTL)
-        ::prctl(PR_SET_NAME, this->_name);
-        #endif
-        if (this->_thread_init) { this->_thread_init(0); }
-        this->timer_loop();
-    });
-    for (size_t i=0; i<num_downstream_threads; ++i) {
-        this->_downstream_threads[i] = std::thread([this,i] () {
-            #if defined(UNISTDX_HAVE_PRCTL)
-            ::prctl(PR_SET_NAME, this->_name);
-            #endif
-            if (this->_thread_init) { this->_thread_init(i); }
-            this->downstream_loop(this->_downstream_kernels[i],
-                                  this->_downstream_semaphores[i]);
-        });
-    }
+    upstream_start(num_upstream_threads);
+    timer_start();
+    downstream_start(num_downstream_threads);
     this->setstate(states::started);
 }
 
@@ -190,9 +230,10 @@ void sbn::parallel_pipeline::stop() {
 }
 
 void sbn::parallel_pipeline::wait() {
-    for (auto& t : this->_upstream_threads) { if (t.joinable()) { t.join(); } }
-    if (this->_timer_thread.joinable()) { this->_timer_thread.join(); }
-    for (auto& t : this->_downstream_threads) { if (t.joinable()) { t.join(); } }
+    this->_upstream_threads.join();
+    this->_timer_threads.join();
+    this->_downstream_threads.join();
+    this->_kernel_threads.join();
     lock_type lock(this->_mutex);
     this->setstate(states::stopped);
 }
@@ -224,4 +265,36 @@ void sbn::parallel_pipeline::num_upstream_threads(size_t n) {
                  }
     }
     this->_upstream_threads.resize(n);
+}
+
+bool sbn::parallel_pipeline::properties::set(const char* key, const std::string& value) {
+    bool found = true;
+    if (std::strcmp(key, "num-upstream-threads") == 0) {
+        auto n = std::stoi(value);
+        if (n < 1) { throw std::out_of_range("out of range"); }
+        num_upstream_threads = n;
+    } else if (std::strcmp(key, "num-downstream-threads") == 0) {
+        auto n = std::stoi(value);
+        if (n < 0) { throw std::out_of_range("out of range"); }
+        num_downstream_threads = n;
+    } else if (std::strcmp(key, "upstream-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> upstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "downstream-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> downstream_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "timer-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> timer_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else if (std::strcmp(key, "kernel-cpus") == 0) {
+        std::stringstream tmp(value);
+        tmp >> kernel_cpus;
+        if (!tmp) { throw std::invalid_argument("bad cpu mask"); }
+    } else {
+        found = false;
+    }
+    return found;
 }

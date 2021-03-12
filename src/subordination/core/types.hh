@@ -20,6 +20,7 @@ namespace sbn {
     class kernel_type_registry;
     class kernel_write_guard;
     class type_error;
+    template <class T> class basic_weight_array;
     enum class exit_code: sys::u16;
     enum class kernel_flag: sys::u32;
 
@@ -33,7 +34,7 @@ namespace sbn {
     class pipeline_base;
     class process_handler;
     class transaction_log;
-    enum class connection_flags: int;
+    enum class connection_flags: sys::u32;
     enum class kernel_header_flag: sys::u8;
     enum class process_role_type;
     enum class role_type;
@@ -42,6 +43,37 @@ namespace sbn {
     using kernel_ptr_array = std::vector<kernel_ptr>;
     using foreign_kernel_ptr = std::unique_ptr<foreign_kernel>;
     using kernel_sack = std::vector<kernel_ptr>;
+    //using weight_type = sys::u32;
+
+    namespace resources {
+        class Any;
+        enum class Type: uint8_t;
+        enum class resources: uint32_t;
+        class Bindings;
+        class Expression;
+        class Symbol;
+        class Constant;
+        class Name;
+        class Not;
+        class Negate;
+        class And;
+        class Or;
+        class Xor;
+        class Less_than;
+        class Less_or_equal;
+        class Equal;
+        class Greater_than;
+        class Greater_or_equal;
+        class Add;
+        class Subtract;
+        class Multiply;
+        class Quotient;
+        class Remainder;
+        enum class Expressions: uint8_t;
+        using expression_ptr = std::unique_ptr<Expression>;
+    }
+
+    using resource_array = resources::Bindings;
 
 }
 

@@ -7,7 +7,9 @@
 #include <subordination/core/application.hh>
 #include <subordination/core/kernel_base.hh>
 #include <subordination/core/kernel_type.hh>
+#include <subordination/core/resources.hh>
 #include <subordination/core/types.hh>
+#include <subordination/core/weights.hh>
 
 namespace sbn {
 
@@ -28,6 +30,7 @@ namespace sbn {
         destination = 1<<1,
         source_application = 1<<2,
         target_application = 1<<3,
+        node_filter = 1<<4,
     };
 
     UNISTDX_FLAGS(kernel_field);
@@ -38,6 +41,8 @@ namespace sbn {
         using id_type = uint64_t;
         template <class T> using pointer = ::sbn::pointer<T>;
         using weight_type = uint32_t;
+        using resource_expression = resources::Expression;
+        using resource_expression_ptr = resources::expression_ptr;
 
     public:
         enum class phases: sys::u8 {
@@ -46,11 +51,15 @@ namespace sbn {
             point_to_point = 3,
             broadcast = 4,
         };
+        using fields = kernel_field;
+
+    public:
+        static constexpr const auto max_weight = std::numeric_limits<weight_type>::max();
 
     private:
         id_type _id = 0;
         id_type _old_id = 0;
-        kernel_field _fields{};
+        fields _fields{};
         phases _phase = phases::upstream;
         sys::socket_address _source{};
         sys::socket_address _destination{};
@@ -73,6 +82,7 @@ namespace sbn {
         };
         std::string _path;
         weight_type _weight = 1;
+        resource_expression_ptr _node_filter;
 
     protected:
         // node-local type id
@@ -120,6 +130,20 @@ namespace sbn {
         */
         inline weight_type weight() const noexcept { return this->_weight; }
         inline void weight(weight_type rhs) noexcept { this->_weight = rhs; }
+        inline ::sbn::weight_array weights() const noexcept {
+            return weight() == max_weight ? weight_array{1u,0u} : weight_array{0u,weight()};
+        }
+
+        inline resource_expression* node_filter() noexcept { return this->_node_filter.get(); }
+        inline const resource_expression* node_filter() const noexcept { return this->_node_filter.get(); }
+        inline void node_filter(resource_expression_ptr&& rhs) {
+            this->_node_filter = std::move(rhs);
+            if (this->_node_filter) {
+                this->_fields |= fields::node_filter;
+            } else {
+                this->_fields &= ~fields::node_filter;
+            }
+        }
 
         inline bool
         operator==(const kernel& rhs) const noexcept {
@@ -135,8 +159,6 @@ namespace sbn {
         unique_id() const noexcept {
             return this->has_id() ? this->id() : uint64_t(this);
         }
-
-        inline kernel_field fields() const noexcept { return this->_fields; }
 
         inline const sys::socket_address& source() const noexcept {
             return this->_source;
@@ -156,30 +178,30 @@ namespace sbn {
 
         inline application::id_type
         source_application_id() const noexcept {
-            return bool(fields() & kernel_field::source_application)
+            return bool(this->_fields & fields::source_application)
                 ? this->_source_application->id() : this->_source_application_id;
         }
 
         inline void
         source_application_id(application::id_type rhs) noexcept {
-            if (bool(fields() & kernel_field::source_application)) {
+            if (bool(this->_fields & fields::source_application)) {
                 delete this->_source_application;
-                this->_fields &= ~kernel_field::source_application;
+                this->_fields &= ~fields::source_application;
             }
             this->_source_application_id = rhs;
         }
 
         inline application::id_type
         target_application_id() const noexcept {
-            return bool(fields() & kernel_field::target_application)
+            return bool(this->_fields & fields::target_application)
                 ? this->_target_application->id() : this->_target_application_id;
         }
 
         inline void
         target_application_id(application::id_type rhs) noexcept {
-            if (bool(fields() & kernel_field::target_application)) {
+            if (bool(this->_fields & fields::target_application)) {
                 delete this->_target_application;
-                this->_fields &= ~kernel_field::target_application;
+                this->_fields &= ~fields::target_application;
             }
             this->_target_application_id = rhs;
         }
@@ -195,7 +217,7 @@ namespace sbn {
 
         inline const application*
         source_application() const {
-            if (!bool(fields() & kernel_field::source_application)) {
+            if (!bool(this->_fields & fields::source_application)) {
                 return nullptr;
             }
             return this->_source_application;
@@ -203,7 +225,7 @@ namespace sbn {
 
         inline application*
         source_application() {
-            if (!bool(fields() & kernel_field::source_application)) {
+            if (!bool(this->_fields & fields::source_application)) {
                 return nullptr;
             }
             return this->_source_application;
@@ -211,20 +233,20 @@ namespace sbn {
 
         inline void
         source_application(application* rhs) noexcept {
-            if (bool(fields() & kernel_field::source_application)) {
+            if (bool(this->_fields & fields::source_application)) {
                 delete this->_source_application;
             }
             this->_source_application = rhs;
             if (this->_source_application) {
-                this->_fields |= kernel_field::source_application;
+                this->_fields |= fields::source_application;
             } else {
-                this->_fields &= ~kernel_field::source_application;
+                this->_fields &= ~fields::source_application;
             }
         }
 
         inline const application*
         target_application() const {
-            if (!bool(fields() & kernel_field::target_application)) {
+            if (!bool(this->_fields & fields::target_application)) {
                 return nullptr;
             }
             return this->_target_application;
@@ -232,7 +254,7 @@ namespace sbn {
 
         inline application*
         target_application() {
-            if (!bool(fields() & kernel_field::target_application)) {
+            if (!bool(this->_fields & fields::target_application)) {
                 return nullptr;
             }
             return this->_target_application;
@@ -240,14 +262,14 @@ namespace sbn {
 
         inline void
         target_application(application* rhs) noexcept {
-            if (bool(fields() & kernel_field::target_application)) {
+            if (bool(this->_fields & fields::target_application)) {
                 delete this->_target_application;
             }
             this->_target_application = rhs;
             if (this->_target_application) {
-                this->_fields |= kernel_field::target_application;
+                this->_fields |= fields::target_application;
             } else {
-                this->_fields &= ~kernel_field::target_application;
+                this->_fields &= ~fields::target_application;
             }
         }
 
@@ -375,9 +397,9 @@ namespace sbn {
             destination(source());
             phase(phases::downstream);
             // swap fields
-            using f = kernel_field;
-            auto source_bit = fields() & f::source_application;
-            auto target_bit = fields() & f::target_application;
+            using f = fields;
+            auto source_bit = this->_fields & f::source_application;
+            auto target_bit = this->_fields & f::target_application;
             this->_fields &= ~(f::source_application | f::target_application);
             if (bool(source_bit)) { this->_fields |= f::target_application; }
             if (bool(target_bit)) { this->_fields |= f::source_application; }
@@ -422,6 +444,11 @@ namespace sbn {
         rhs.read(in);
         return in;
     }
+
+    class service_kernel: public kernel {
+    public:
+        inline service_kernel() { weight(0); }
+    };
 
 }
 

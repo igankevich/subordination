@@ -3,6 +3,7 @@
 
 #define SBND_SHARED_STATE_DIR "@sharedstatedir@"
 #define SBND_SOCKET "\0/tmp/.sbnd"
+#define SBND_VERSION "@SBND_VERSION@"
 
 #mesondefine SBND_WITH_GLUSTERFS
 

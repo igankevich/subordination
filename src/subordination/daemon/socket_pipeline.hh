@@ -13,8 +13,11 @@
 
 #include <subordination/core/basic_socket_pipeline.hh>
 #include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/properties.hh>
 #include <subordination/core/types.hh>
+#include <subordination/core/weights.hh>
 #include <subordination/daemon/file_system.hh>
+#include <subordination/daemon/hierarchy.hh>
 #include <subordination/daemon/local_server.hh>
 #include <subordination/daemon/socket_pipeline_event.hh>
 #include <subordination/daemon/types.hh>
@@ -94,26 +97,39 @@ namespace sbnd {
         using server_ptr = std::shared_ptr<socket_pipeline_server>;
         using server_array = std::vector<server_ptr>;
         using counter_type = uint32_t;
+        using counter_array = std::array<counter_type,2>;
         using file_system_ptr = std::shared_ptr<file_system>;
+        using resource_array = sbn::resources::Bindings;
 
     private:
         std::vector<file_system_ptr> _file_systems;
         std::vector<sys::socket_address> _nodes;
-        counter_type _local_num_kernels = 0;
+        sbn::weight_array _local_load{};
+        resource_array _local_resources;
         bool _local = true;
 
     public:
 
-        client_iterator schedule(const sbn::kernel* k,
+        client_iterator schedule(sbn::kernel* k,
                                  const client_table& clients,
                                  const server_array& servers);
 
         inline void local(bool rhs) noexcept { this->_local = rhs; }
         inline bool local() const noexcept { return this->_local; }
 
+        inline const resource_array& local_resources() const noexcept {
+            return this->_local_resources;
+        }
+
+        inline void local_resources(const resource_array& rhs) noexcept {
+            this->_local_resources = rhs;
+        }
+
         inline void add_file_system(file_system_ptr ptr) {
             this->_file_systems.emplace_back(std::move(ptr));
         }
+
+        void rebase_counters(const client_table& clients);
 
         template <class ... Args>
         inline void
@@ -121,9 +137,43 @@ namespace sbnd {
             sys::log_message("scheduler", args ...);
         }
 
+    private:
+
+        inline const sbn::weight_array& local_load() const noexcept {
+            return this->_local_load;
+        }
+
+        inline counter_type local_num_threads_behind() const noexcept {
+            using r = sbn::resources::resources;
+            return this->_local_resources[r::total_threads].unsigned_integer();
+        }
+
+        inline sbn::modular_weight_array local_relative_load() const noexcept {
+            sbn::weight_array tmp{local_load()};
+            auto nthreads = local_num_threads_behind();
+            if (nthreads == 0) { nthreads = 1; }
+            return sbn::modular_weight_array{{tmp[0],0},{tmp[1]/nthreads,tmp[1]%nthreads}};
+        }
+
     };
 
     class socket_pipeline: public sbn::basic_socket_pipeline {
+
+    public:
+        struct properties: public sbn::basic_socket_pipeline::properties {
+            sys::u32 max_connection_attempts = 1;
+            sbn::Duration connection_timeout{std::chrono::seconds(7)};
+            bool route = false;
+
+            inline properties():
+            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+
+            inline explicit
+            properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=52):
+            sbn::basic_socket_pipeline::properties{cpus, page_size, multiple} {}
+
+            bool set(const char* key, const std::string& value);
+        };
 
     public:
         using ip_address = sys::ipv4_address;
@@ -139,6 +189,9 @@ namespace sbnd {
         using client_table = std::unordered_map<sys::socket_address,client_ptr>;
         using client_iterator = typename client_table::iterator;
         using id_type = sbn::kernel::id_type;
+        using resource_array = sbn::resources::Bindings;
+        using hierarchy_node_array = std::vector<hierarchy_node>;
+        using hierarchy_type = Hierarchy<ip_address>;
 
     private:
         server_array _servers;
@@ -150,6 +203,7 @@ namespace sbnd {
 
     public:
 
+        explicit socket_pipeline(const properties& p);
         socket_pipeline() = default;
         ~socket_pipeline() = default;
         socket_pipeline(const socket_pipeline&) = delete;
@@ -157,16 +211,15 @@ namespace sbnd {
         socket_pipeline& operator=(const socket_pipeline&) = delete;
         socket_pipeline& operator=(socket_pipeline&&) = delete;
 
-        void add_client(const sys::socket_address& addr, counter_type thread_concurrency_behind=1);
+        void add_client(const sys::socket_address& addr, const hierarchy_type& hierarchy);
         void stop_client(const sys::socket_address& addr);
-        void update_client(const sys::socket_address& addr, counter_type new_weight);
-
+        void update_clients(const hierarchy_type& hierarchy);
         void add_server(const interface_address& rhs) {
             this->add_server(sys::ipv4_socket_address(rhs.address(), this->_port), rhs.netmask());
         }
         void add_server(const sys::socket_address& rhs, ip_address netmask);
 
-        void forward(sbn::foreign_kernel_ptr&& hdr) override;
+        void forward(sbn::kernel_ptr&& hdr) override;
 
         inline void port(sys::port_type rhs) noexcept { this->_port = rhs; }
         inline sys::port_type port() const noexcept { return this->_port; }

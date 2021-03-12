@@ -3,4 +3,12 @@
 
 #mesondefine SBN_TEST_HAVE_VALGRIND_H
 
+#if defined(SBN_TEST_HAVE_VALGRIND_H)
+#include <valgrind.h>
+#define SBN_SKIP_IF_RUNNING_ON_VALGRIND() \
+    if (RUNNING_ON_VALGRIND) { std::exit(77); }
+#else
+#define SBN_SKIP_IF_RUNNING_ON_VALGRIND()
+#endif
+
 #endif // vim:filetype=cpp

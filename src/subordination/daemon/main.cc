@@ -2,9 +2,11 @@
 #include <iterator>
 
 #include <unistdx/base/log_message>
+#include <unistdx/ipc/process>
 #include <unistdx/it/field_iterator>
 #include <unistdx/it/intersperse_iterator>
 #include <unistdx/net/interface_addresses>
+#include <unistdx/system/resource>
 
 #include <subordination/daemon/factory.hh>
 #include <subordination/daemon/job_status_kernel.hh>
@@ -71,11 +73,13 @@ void sbnd::Main::act() {
 
 auto
 sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
+    using families = sys::socket_address_family;
     interface_address_set new_ifaddrs;
     sys::interface_addresses addrs;
     for (const sys::interface_addresses::value_type& ifa : addrs) {
-        if (ifa.ifa_addr && ifa.ifa_addr->sa_family == traits_type::family) {
-            ifaddr_type a(*ifa.ifa_addr, *ifa.ifa_netmask);
+        if (ifa.ifa_addr && families(ifa.ifa_addr->sa_family) == families::ipv4) {
+            ifaddr_type a(*reinterpret_cast<::sockaddr_in*>(ifa.ifa_addr),
+                          *reinterpret_cast<::sockaddr_in*>(ifa.ifa_netmask));
             if (!a.is_loopback() && !a.is_widearea()) {
                 new_ifaddrs.emplace(a);
             }
@@ -84,8 +88,16 @@ sbnd::Main::enumerate_ifaddrs() -> interface_address_set {
     return new_ifaddrs;
 }
 
-void
-sbnd::Main::update_discoverers() {
+void sbnd::Main::update_resources() {
+    using r = sbn::resources::resources;
+    //this->_resources.clear();
+    this->_resources[r::total_threads] = sys::thread_concurrency();
+    sys::information info;
+    this->_resources[r::total_memory] = info.total_memory();
+    this->_resources[r::hostname] = sys::this_process::hostname();
+}
+
+void sbnd::Main::update_discoverers() {
     interface_address_set new_ifaddrs = this->enumerate_ifaddrs();
     interface_address_set ifaddrs_to_add =
         set_difference_copy(new_ifaddrs, this->_discoverers);
@@ -109,11 +121,17 @@ sbnd::Main::update_discoverers() {
     for (const ifaddr_type& interface_address : ifaddrs_to_add) {
         this->add_discoverer(interface_address);
     }
+    // update resources
+    const auto now = hierarchy_node::clock::now();
+    for (auto& pair : this->_discoverers) {
+        pair.second->resources(this->_resources, now);
+    }
     this->send_timer();
 }
 
 void sbnd::Main::react(sbn::kernel_ptr&& child) {
     if (typeid(*child) == typeid(network_timer)) {
+        update_resources();
         update_discoverers();
     } else if (typeid(*child) == typeid(probe)) {
         forward_probe(sbn::pointer_dynamic_cast<probe>(std::move(child)));
@@ -272,7 +290,8 @@ sbnd::Main::find_discoverer(const addr_type& a) -> map_iterator {
 void sbnd::Main::on_event(pointer<socket_pipeline_kernel> ev) {
     if (ev->event() == socket_pipeline_event::remove_client ||
         ev->event() == socket_pipeline_event::add_client) {
-        const addr_type& a = traits_type::address(ev->socket_address());
+        auto sa = sys::socket_address_cast<sys::ipv4_socket_address>(ev->socket_address());
+        const auto& a = sa.address();
         map_iterator result = this->find_discoverer(a);
         if (result == this->_discoverers.end()) {
             log("bad event socket address _", a);
@@ -300,9 +319,13 @@ void sbnd::Main::on_event(pointer<process_pipeline_kernel> k) {
 }
 
 sbnd::Main::Main(const Properties& props):
-_discoverer_properties(props.discoverer) {
+_discoverer_properties(props.discover) {
     for (const auto& x : props.network.allowed_interface_addresses) {
         if (x) { this->_allowedifaddrs.insert(x); }
     }
     this->_interval = props.network.interface_update_interval;
+    update_resources();
+    for (auto& pair : props.resources.expressions) {
+        this->_resources[pair.first] = pair.second->evaluate(this->_resources);
+    }
 }

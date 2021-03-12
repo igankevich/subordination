@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/error.hh>
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
@@ -8,10 +9,12 @@
 
 namespace  {
 
+    /*
     template <class ... Args> inline void
     log(const Args& ... args) {
         sys::log_message("buffer", args...);
     }
+    */
 
     inline void write_native(sbn::kernel_buffer* out, const sbn::kernel* k) {
         if (!out->types()) { sbn::throw_error("no kernel types"); }
@@ -21,12 +24,12 @@ namespace  {
         if (type == types.end()) {
             sbn::throw_error("no kernel type for ", typeid(*k).name());
         }
-        auto old_position = out->position();
+        //auto old_position = out->position();
         out->write(type->id());
         k->write(*out);
-        auto new_position = out->position();
-        log("write-kernel size _ type-id _ type _",
-            new_position-old_position, type->id(), typeid(*k).name());
+        //auto new_position = out->position();
+        //log("write-kernel size _ type-id _ type _",
+        //    new_position-old_position, type->id(), typeid(*k).name());
     }
 
     inline sbn::kernel_ptr make_native(sbn::kernel_buffer* in) {
@@ -52,6 +55,7 @@ namespace  {
 }
 
 void sbn::kernel_buffer::write(const kernel* k) {
+    Expects(k);
     k->write_header(*this);
     if (k->is_foreign()) {
         k->write(*this);
@@ -93,6 +97,7 @@ void sbn::kernel_buffer::read(kernel_ptr& k) {
             }
         }
     }
+    Assert(k.get());
 }
 
 void sbn::kernel_buffer::write(const sys::socket_address& rhs) {

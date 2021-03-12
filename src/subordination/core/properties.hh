@@ -30,12 +30,13 @@ namespace sbn {
     };
 
     bool string_to_bool(std::string s);
+    bool starts_with(const std::string& s, const char* prefix) noexcept;
 
     class Duration: public std::chrono::system_clock::duration {
     public:
         using base_duration = std::chrono::system_clock::duration;
         using base_duration::duration;
-        inline Duration(base_duration rhs): base_duration(rhs) {}
+        inline Duration(base_duration rhs) noexcept: base_duration(rhs) {}
     };
 
     auto string_to_duration(std::string s) -> Duration;

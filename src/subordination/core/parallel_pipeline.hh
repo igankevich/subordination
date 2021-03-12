@@ -4,19 +4,43 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
-#include <vector>
 
+#include <subordination/bits/contracts.hh>
 #include <subordination/core/pipeline_base.hh>
+#include <subordination/core/thread_pool.hh>
 
 namespace sbn {
 
     class parallel_pipeline: public pipeline {
 
+    public:
+        struct properties {
+            sys::cpu_set upstream_cpus;
+            sys::cpu_set downstream_cpus;
+            sys::cpu_set timer_cpus;
+            sys::cpu_set kernel_cpus;
+            unsigned num_downstream_threads = 0;
+            unsigned num_upstream_threads;
+
+            inline properties(): properties{sys::this_process::cpu_affinity()} {}
+
+            inline explicit properties(unsigned nthreads):
+            properties{sys::this_process::cpu_affinity(), nthreads} {}
+
+            inline explicit properties(const sys::cpu_set& cpus):
+            properties{cpus,static_cast<unsigned int>(cpus.count())} {}
+
+            inline explicit properties(const sys::cpu_set& cpus, unsigned nthreads):
+            upstream_cpus{cpus}, downstream_cpus{cpus}, timer_cpus{cpus}, kernel_cpus{cpus},
+            num_upstream_threads{nthreads} {}
+
+            bool set(const char* key, const std::string& value);
+        };
+
     private:
         struct compare_time {
-            inline bool operator()(const kernel_ptr& lhs, const kernel_ptr& rhs) const noexcept {
-                return lhs->at() > rhs->at();
+            inline bool operator()(const kernel_ptr& a, const kernel_ptr& b) const noexcept {
+                return a->at() > b->at();
             }
         };
 
@@ -29,9 +53,6 @@ namespace sbn {
         using lock_type = std::unique_lock<mutex_type>;
         using semaphore_type = std::condition_variable;
         using semaphore_array = std::vector<semaphore_type>;
-        // TODO replace with sys::process
-        using thread_type = std::thread;
-        using thread_array = std::vector<thread_type>;
         using thread_init_type = std::function<void(size_t)>;
 
     private:
@@ -39,16 +60,18 @@ namespace sbn {
         mutex_type _mutex;
         /// Upstream kernels.
         kernel_queue _upstream_kernels;
-        thread_array _upstream_threads;
+        thread_pool _upstream_threads;
         semaphore_type _upstream_semaphore;
         /// Kernels that are scheduled to be executed at specific point of time.
         kernel_priority_queue _timer_kernels;
-        thread_type _timer_thread;
+        thread_pool _timer_threads;
         semaphore_type _timer_semaphore;
         /// Per-thread queue for downstream kernels.
         kernel_queue_array _downstream_kernels;
-        thread_array _downstream_threads;
+        thread_pool _downstream_threads;
         semaphore_array _downstream_semaphores;
+        /// Per-kernel threads for 'new-thread' kernels.
+        thread_pool _kernel_threads;
         /// Kernels that threw an exception are sent to this pipeline.
         pipeline* _error_pipeline = nullptr;
         /// Function that is called in each new thread.
@@ -56,10 +79,21 @@ namespace sbn {
 
     public:
 
-        inline parallel_pipeline(): parallel_pipeline(1u) {}
+        inline parallel_pipeline(): parallel_pipeline{1u} {}
 
         inline explicit parallel_pipeline(unsigned num_upstream_threads):
-        _upstream_threads(num_upstream_threads) {}
+        parallel_pipeline{properties{num_upstream_threads}} {}
+
+        explicit parallel_pipeline(const properties& p):
+        _upstream_threads(p.num_upstream_threads),
+        _downstream_kernels(p.num_downstream_threads),
+        _downstream_threads(p.num_downstream_threads),
+        _downstream_semaphores(p.num_downstream_threads) {
+            this->_upstream_threads.cpus(p.upstream_cpus);
+            this->_downstream_threads.cpus(p.downstream_cpus);
+            this->_timer_threads.cpus(p.timer_cpus);
+            this->_kernel_threads.cpus(p.kernel_cpus);
+        }
 
         ~parallel_pipeline() = default;
         parallel_pipeline(parallel_pipeline&&) = delete;
@@ -68,10 +102,16 @@ namespace sbn {
         parallel_pipeline& operator=(const parallel_pipeline&) = delete;
 
         inline void send(kernel_ptr&& k) override {
+            Expects(k.get());
             if (k->phase() == kernel::phases::downstream) {
                 this->send_downstream(std::move(k));
-            } else if (k->scheduled()) { this->send_timer(std::move(k)); }
-            else { this->send_upstream(std::move(k)); }
+            } else if (k->scheduled()) {
+                this->send_timer(std::move(k));
+            } else if (k->new_thread()) {
+                this->send_thread(std::move(k));
+            } else {
+                this->send_upstream(std::move(k));
+            }
         }
 
         inline void send(kernel_ptr_array&& kernels) {
@@ -80,6 +120,7 @@ namespace sbn {
             lock_type lock(this->_mutex);
             for (size_t i=0; i<n; ++i) {
                 auto& k = kernels[i];
+                Assert(k.get());
                 if (k->phase() == kernel::phases::downstream) {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
@@ -102,6 +143,8 @@ namespace sbn {
                     this->log("schedule _", *k);
                     #endif
                     this->_timer_kernels.emplace(std::move(k)), notify_timer = true;
+                } else if (k->new_thread()) {
+                    make_thread(std::move(k));
                 } else {
                     #if defined(SBN_DEBUG)
                     this->log("upstream _", *k);
@@ -114,6 +157,7 @@ namespace sbn {
         }
 
         inline void send_upstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("upstream _", *k);
             #endif
@@ -123,6 +167,7 @@ namespace sbn {
         }
 
         inline void send_downstream(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("downstream _", *k);
             #endif
@@ -140,6 +185,7 @@ namespace sbn {
         }
 
         inline void send_timer(kernel_ptr&& k) {
+            Expects(k.get());
             #if defined(SBN_DEBUG)
             this->log("schedule _", *k);
             #endif
@@ -148,22 +194,18 @@ namespace sbn {
             this->_timer_semaphore.notify_one();
         }
 
+        inline void send_thread(kernel_ptr&& k) {
+            #if defined(SBN_DEBUG)
+            this->log("thread _", *k);
+            #endif
+            lock_type lock(this->_mutex);
+            make_thread(std::move(k));
+        }
+
         void start();
         void stop();
         void wait();
         void clear(kernel_sack& sack);
-
-        void num_downstream_threads(size_t n);
-
-        inline size_t num_downstream_threads() const noexcept {
-            return this->_downstream_threads.size();
-        }
-
-        void num_upstream_threads(size_t n);
-
-        inline size_t num_upstream_threads() const noexcept {
-            return this->_upstream_threads.size();
-        }
 
         inline void error_pipeline(pipeline* rhs) noexcept {
             this->_error_pipeline = rhs;
@@ -175,10 +217,26 @@ namespace sbn {
 
         inline void thread_init(thread_init_type rhs) { this->_thread_init = rhs; }
 
+        void num_downstream_threads(size_t n);
+        void num_upstream_threads(size_t n);
+
     private:
         void upstream_loop(kernel_queue& downstream_queue);
+        void upstream_start(size_t num_threads);
         void timer_loop();
+        void timer_start();
         void downstream_loop(kernel_queue& queue, semaphore_type& semaphore);
+        void downstream_start(size_t num_threads);
+        void kernel_loop(kernel_ptr kernel);
+
+        inline void make_thread(kernel_ptr&& k) {
+            this->_kernel_threads.emplace_back(
+                [this] (kernel_ptr&& k) {
+                    sys::this_process::cpu_affinity(this->_kernel_threads.cpus());
+                    kernel_loop(std::move(k));
+                },
+                std::move(k));
+        }
 
     };
 

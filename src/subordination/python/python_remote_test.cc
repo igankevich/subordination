@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
         [&] (dts::application& app, const dts::string_array& lines) {
             sys::argstream args;
             args.append(SBNC_PATH);
+            args.append("submit");
             args.append(SBN_PYTHON_PATH);
             args.append(PYFILE_PATH);
             // submit test application from the first node

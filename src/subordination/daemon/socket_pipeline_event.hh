@@ -15,7 +15,7 @@ namespace sbnd {
         remove_server,
     };
 
-    class socket_pipeline_kernel: public sbn::kernel {
+    class socket_pipeline_kernel: public sbn::service_kernel {
 
     public:
         typedef sys::ipv4_address addr_type;

@@ -36,7 +36,7 @@ namespace sbnd {
 
     };
 
-    class glusterfs_kernel: public sbn::kernel {
+    class glusterfs_kernel: public sbn::service_kernel {
 
     public:
         using gluster_file_system_ptr = std::shared_ptr<gluster_file_system>;
