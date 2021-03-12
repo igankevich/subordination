@@ -41,7 +41,6 @@ operator>>(std::istream& in, Failure& rhs) {
 const uint32_t NUM_KERNELS = 9;
 
 std::atomic<int> kernel_count(0);
-std::atomic<uint32_t> shutdown_counter(0);
 
 Role role = Role::Master;
 Failure failure = Failure::None;
@@ -79,13 +78,10 @@ struct Test_socket: public sbn::kernel {
         message("act _", sys::this_process::hostname());
         if (failure == Failure::Slave) {
             if (role == Role::Slave) {
-                // Delete kernel for Valgrind memory checker.
+                // Delete the kernel for Valgrind memory checker.
                 delete this;
-                if (++shutdown_counter == NUM_KERNELS/3) {
-                    message("slave failure!");
-                    //sbn::exit(0);
-                    sys::this_process::send(sys::signal::kill);
-                }
+                message("slave failure!");
+                sys::this_process::send(sys::signal::kill);
             } else {
                 return_to_parent(sbn::exit_code::success);
                 remote.send(std::move(this_ptr()));
@@ -93,34 +89,29 @@ struct Test_socket: public sbn::kernel {
         } else if (failure == Failure::Master) {
             if (role == Role::Master) {
                 delete this;
-                if (++shutdown_counter == NUM_KERNELS/3) {
-                    message("master failure!");
-                    sys::this_process::send(sys::signal::kill);
-                    //sbn::exit(0);
-                }
+                message("master failure!");
+                sys::this_process::send(sys::signal::kill);
             } else {
                 return_to_parent(sbn::exit_code::success);
                 remote.send(std::move(this_ptr()));
             }
         } else if (failure == Failure::Power) {
             delete this;
-            if (++shutdown_counter == NUM_KERNELS/3) {
-                message("power failure!");
-                //transactions.close();
-                try {
-                    sys::file_status st("socket-pipeline-test-transactions-master");
-                    message("master size _", st.size());
-                } catch (const std::exception& err) {
-                    message("master size -1");
-                }
-                try {
-                    sys::file_status st("socket-pipeline-test-transactions-slave");
-                    message("slave size _", st.size());
-                } catch (const std::exception& err) {
-                    message("slave size -1");
-                }
-                sys::this_process::send(sys::signal::kill);
+            message("power failure!");
+            //transactions.close();
+            try {
+                sys::file_status st("socket-pipeline-test-transactions-master");
+                message("master size _", st.size());
+            } catch (const std::exception& err) {
+                message("master size -1");
             }
+            try {
+                sys::file_status st("socket-pipeline-test-transactions-slave");
+                message("slave size _", st.size());
+            } catch (const std::exception& err) {
+                message("slave size -1");
+            }
+            sys::this_process::send(sys::signal::kill);
         } else {
             return_to_parent(sbn::exit_code::success);
             remote.send(std::move(this_ptr()));
