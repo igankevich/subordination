@@ -81,7 +81,9 @@ namespace sbn {
             inline Py_ssize_t reference_count() const noexcept { return Py_REFCNT(this->_ptr); }
             inline void clear() noexcept { Py_CLEAR(this->_ptr); }
             inline void retain() noexcept { Py_XINCREF(this->_ptr); }
-            inline void release() noexcept { Py_XDECREF(this->_ptr); }
+            inline void release() noexcept {
+                // Py_XDECREF(this->_ptr); // TODO Temporary solution. Require bugfix.
+            }
             inline PyObject* disown() noexcept {
                 auto tmp = this->_ptr;
                 this->_ptr = nullptr;
