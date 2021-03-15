@@ -97,6 +97,24 @@ namespace {
 
     PyMethodDef sbn_methods[] = {
         {
+            .ml_name = "mutex_lock",
+            .ml_meth = (PyCFunction) sbn::python::mutex_lock,
+            .ml_flags = METH_NOARGS,
+            .ml_doc = "Lock global python mutex. Be careful!"
+        },
+        {
+            .ml_name = "mutex_unlock",
+            .ml_meth = (PyCFunction) sbn::python::mutex_unlock,
+            .ml_flags = METH_NOARGS,
+            .ml_doc = "Unlock global python mutex. Be careful!"
+        },
+        {
+            .ml_name = "sleep",
+            .ml_meth = (PyCFunction) sbn::python::sleep,
+            .ml_flags = METH_VARARGS,
+            .ml_doc = "Non-blocking sleep of current process."
+        },
+        {
             .ml_name = "upstream",
             .ml_meth = (PyCFunction) sbn::python::upstream,
             .ml_flags = METH_VARARGS | METH_KEYWORDS,

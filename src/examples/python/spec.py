@@ -238,7 +238,7 @@ class Spectrum_directory_kernel(sbn.Kernel):
                 if str_seconds := os.getenv("SBN_TEST_SLEEP_FOR"):
                     seconds = int(str_seconds)
                     print('>>>> Python (spec): sleeping for %i seconds' % seconds, file=open('pyspec.log', 'a'))
-                    time.sleep(seconds)
+                    sbn.sleep(seconds * 1e+3)
                 print('>>>> Python (spec): simulate superior copy failure %s' % hostname, file=open('pyspec.log', 'a'))
                 os.kill(os.getppid(), signal.SIGKILL)
                 os.kill(os.getpid(), signal.SIGKILL)
@@ -310,7 +310,7 @@ class Main(sbn.Kernel):
 
         if hostname := os.getenv("SBN_TEST_SUPERIOR_FAILURE"):
             if os.uname()[1] == hostname:
-                time.sleep(0.1)  # 100 milliseconds
+                sbn.sleep(100)  # 100 milliseconds
                 print('>>>> Python (spec): simulate superior failure %s' % hostname, file=open('pyspec.log', 'a'))
                 os.kill(os.getppid(), signal.SIGKILL)
                 os.kill(os.getpid(), signal.SIGKILL)

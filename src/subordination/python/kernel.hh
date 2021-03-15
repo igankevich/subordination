@@ -79,6 +79,9 @@ namespace sbn {
         PyObject* upstream(PyObject *self, PyObject *args, PyObject *kwds);
         PyObject* commit(PyObject *self, PyObject *args, PyObject *kwds);
 
+        PyObject* mutex_lock(Py_kernel* self, PyObject* Py_UNUSED(ignored));
+        PyObject* mutex_unlock(Py_kernel* self, PyObject* Py_UNUSED(ignored));
+        PyObject* sleep(Py_kernel* self, PyObject *args);
     }
 }
 
