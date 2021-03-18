@@ -141,14 +141,10 @@ sbn::resources::Any::~Any() noexcept {
 }
 
 void sbn::resources::Any::swap(Any& rhs) noexcept {
-    using std::swap;
-    swap(this->_type, rhs._type);
-    switch (this->_type) {
-        case Any::Type::Boolean: swap(this->_b, rhs._b); break;
-        case Any::Type::U64: swap(this->_u64, rhs._u64); break;
-        case Any::Type::String: swap(this->_string, rhs._string); break;
-        default: break;
-    }
+    char tmp[sizeof(Any)];
+    std::memcpy(tmp, this, sizeof(Any));
+    std::memcpy(this, &rhs, sizeof(Any));
+    std::memcpy(&rhs, tmp, sizeof(Any));
 }
 
 sbn::resources::Any::Any(const Any& rhs): _type{rhs._type} {
@@ -165,12 +161,6 @@ sbn::resources::Any::Any(const Any& rhs): _type{rhs._type} {
         }
         default: break;
     }
-}
-
-auto sbn::resources::Any::operator=(const Any& rhs) -> Any& {
-    Any tmp(rhs);
-    swap(tmp);
-    return *this;
 }
 
 bool sbn::resources::Any::operator==(const Any& rhs) const noexcept {
@@ -254,7 +244,7 @@ void sbn::resources::Any::write(sys::byte_buffer& out) const {
                 out.write(n);
                 out.write(this->_string, n);
             } else {
-                out.write(uint32_t{});
+                out.write(std::numeric_limits<uint32_t>::max());
             }
             break;
         }
@@ -270,7 +260,7 @@ void sbn::resources::Any::read(sys::byte_buffer& in) {
         case Any::Type::String: {
             uint32_t n = 0;
             in.read(n);
-            if (n != 0) {
+            if (n != std::numeric_limits<uint32_t>::max()) {
                 if (this->_string) { delete[] this->_string; this->_string = nullptr; }
                 this->_string = new char[n+1];
                 in.read(this->_string, n);

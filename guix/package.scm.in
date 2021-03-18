@@ -9,8 +9,8 @@
   (source "@source_root@")
   (build-system meson-build-system)
   (arguments `(#:build-type "release"
-               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-O0"
-                                       "-Dwith_glusterfs=true" "-Dwith_debug=true")
+               #:configure-flags (list "-Dwith_examples=true" "-Dcpp_args=-march=native"
+                                       "-Dwith_glusterfs=true" "-Dwith_debug=false")
                #:tests? #f))
   (inputs
    `(("unistdx-debug" ,(@ (gnu packages unistdx) unistdx-debug))
@@ -31,4 +31,3 @@
   (description "Subordination is a fault-tolerant kernel scheduler.")
   (home-page "https://subordination.cmmshq.ru/")
   (license license:gpl3+))
-

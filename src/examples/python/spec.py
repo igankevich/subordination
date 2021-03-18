@@ -238,7 +238,7 @@ class Spectrum_directory_kernel(sbn.Kernel):
                 if str_seconds := os.getenv("SBN_TEST_SLEEP_FOR"):
                     seconds = int(str_seconds)
                     print('>>>> Python (spec): sleeping for %i seconds' % seconds, file=open('pyspec.log', 'a'))
-                    sbn.sleep(seconds * 1e+3)
+                    sbn.sleep(int(seconds * 1e+3))
                 print('>>>> Python (spec): simulate superior copy failure %s' % hostname, file=open('pyspec.log', 'a'))
                 os.kill(os.getppid(), signal.SIGKILL)
                 os.kill(os.getpid(), signal.SIGKILL)
