@@ -219,7 +219,9 @@ public:
     {}
 
     void act() override {
-        _variance = compute_variance();
+        if (!std::getenv("SBN_TEST_NO_VARIANCE")) {
+            _variance = compute_variance();
+        }
         sbn::commit(std::move(this_ptr()));
     }
 

@@ -6,6 +6,7 @@
 #include <subordination/bits/contracts.hh>
 #include <subordination/core/application.hh>
 #include <subordination/core/error.hh>
+#include <subordination/core/list.hh>
 #include <subordination/core/properties.hh>
 #include <subordination/daemon/process_pipeline.hh>
 #include <subordination/daemon/terminate_kernel.hh>
@@ -293,4 +294,19 @@ bool sbnd::process_pipeline::properties::set(const char* key, const std::string&
         found = false;
     }
     return found;
+}
+
+void sbnd::process_pipeline::write(std::ostream& out) const {
+    sbn::basic_socket_pipeline::write(out);
+    using sbn::list;
+    using sbn::make_list_view;
+    std::vector<sys::pid_type> pids;
+    {
+        size_t n = this->_child_processes.size();
+        for (size_t i=0; i<n; ++i) {
+            pids.emplace_back(this->_child_processes[i].id());
+        }
+    }
+    out << ' ' << list("outstanding-kernels", make_list_view(this->_outstanding_kernels));
+    out << ' ' << list("child-processes", make_list_view(pids));
 }

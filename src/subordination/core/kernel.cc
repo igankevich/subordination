@@ -1,8 +1,7 @@
-#include <unistdx/base/make_object>
-
 #include <subordination/core/error.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_buffer.hh>
+#include <subordination/core/list.hh>
 
 namespace {
 
@@ -113,20 +112,26 @@ std::ostream& sbn::operator<<(std::ostream& out, const kernel& rhs) {
         (rhs.carries_parent() ? 'c' : '-'),
         0
     };
-    return out << sys::make_object(
-        "state", state,
-        "type", typeid(rhs).name(),
-        "type-id", rhs.type_id(),
-        "id", rhs.id(),
-        "old-id", rhs.old_id(),
-        "src", rhs.source(),
-        "dst", rhs.destination(),
-        "ret", rhs.return_code(),
-        "src-app-id", rhs.source_application_id(),
-        "dst-app-id", rhs.target_application_id(),
-        "src-app", rhs.source_application(),
-        "dst-app", rhs.target_application(),
-        "parent", rhs._parent,
-        "principal", rhs._principal
+    return out << list(
+        list("state", state),
+        list("type", typeid(rhs).name()),
+        list("type-id", rhs.type_id()),
+        list("id", rhs.id()),
+        list("old-id", rhs.old_id()),
+        list("src", make_string(rhs.source())),
+        list("dst", make_string(rhs.destination())),
+        list("ret", rhs.return_code()),
+        list("src-app-id", rhs.source_application_id()),
+        list("dst-app-id", rhs.target_application_id()),
+        list("src-app", rhs.source_application()),
+        list("dst-app", rhs.target_application()),
+        list("parent", rhs._parent),
+        list("principal", rhs._principal)
     );
+}
+
+std::ostream& sbn::operator<<(std::ostream& out, const kernel_ptr& rhs) {
+    if (rhs) { out << *rhs.get(); }
+    else { out << "<null-kernel>"; }
+    return out;
 }

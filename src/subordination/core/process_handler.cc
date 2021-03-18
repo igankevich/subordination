@@ -2,6 +2,7 @@
 
 #include <subordination/bits/contracts.hh>
 #include <subordination/core/factory.hh>
+#include <subordination/core/list.hh>
 #include <subordination/core/process_handler.hh>
 
 /// Called from parent process.
@@ -142,4 +143,11 @@ void sbn::process_handler::forward(kernel_ptr&& k) {
     }
     log("send DEBUG upstream _ downstream _ load _",
         upstream().size(), downstream().size(), load());
+}
+
+void sbn::process_handler::write(std::ostream& out) const {
+    sbn::connection::write(out);
+    using sbn::list;
+    out << ' ' << list("child-process-id", this->_child_process_id);
+    out << ' ' << list("application", this->_application);
 }

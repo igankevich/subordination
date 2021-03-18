@@ -44,24 +44,22 @@ tell(std::ostream& out, const char* text, const Head& head, const Tail& ... tail
     }
 }
 
+template <class T>
+class Rec {
+public:
+    const T& object;
+    inline Rec(const T& obj) noexcept: object(obj) {}
+};
+
+template <class T> inline Rec<T> make_rec(const T& rhs) { return Rec<T>(rhs); }
+
 template <class T> void
 rec(std::ostream& out, const char* key, const T& value) {
     out << key << ": " << value << '\n';
 }
 
-template <class T>
-class Rec {
-private:
-    const T& _object;
-public:
-    inline Rec(const T& object): _object(object) {}
-    inline const T& object() const noexcept { return this->_object; }
-};
-
-template <class T> inline Rec<T> make_rec(const T& rhs) { return Rec<T>(rhs); }
-
 std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hierarchy_type>& rhs) {
-    const auto& h = rhs.object();
+    const auto& h = rhs.object;
     rec(out, "interface-address", h.interface_address());
     rec(out, "superior", h.superior());
     out << "subordinates: ";
@@ -79,7 +77,7 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Status_kernel::hiera
 }
 
 std::ostream& operator<<(std::ostream& out, const Rec<sbn::application>& rhs) {
-    const auto& a = rhs.object();
+    const auto& a = rhs.object;
     rec(out, "id", a.id());
     rec(out, "user", a.user());
     rec(out, "group", a.group());
@@ -97,7 +95,7 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbn::application>& rhs) {
 }
 
 std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Pipeline_status_kernel::Pipeline>& rhs) {
-    const auto& ppl = rhs.object();
+    const auto& ppl = rhs.object;
     bool empty = true;
     for (const auto& conn : ppl.connections) {
         for (const auto& k : conn.kernels) {
@@ -111,6 +109,16 @@ std::ostream& operator<<(std::ostream& out, const Rec<sbnd::Pipeline_status_kern
             rec(out, "destination-socket-address", k.destination);
             empty = false;
         }
+    }
+    for (const auto& k : ppl.kernels) {
+        rec(out, "pipeline-name", ppl.name);
+        rec(out, "id", k.id);
+        rec(out, "type-id", k.type_id);
+        rec(out, "source-application-id", k.source_application_id);
+        rec(out, "target-application-id", k.target_application_id);
+        rec(out, "source-socket-address", k.source);
+        rec(out, "destination-socket-address", k.destination);
+        empty = false;
     }
     if (!empty) { out << '\n'; }
     return out;

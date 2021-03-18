@@ -24,6 +24,7 @@ namespace sbnd {
         struct Pipeline {
             std::string name;
             std::vector<Connection> connections;
+            std::vector<Kernel> kernels;
         };
         using pipeline_array = std::vector<Pipeline>;
 
@@ -43,6 +44,8 @@ namespace sbnd {
         inline void pipelines(pipeline_array&& rhs) {
             this->_pipelines = std::move(rhs);
         }
+
+        void collect();
 
         void read(sbn::kernel_buffer& in) override;
         void write(sbn::kernel_buffer& out) const override;

@@ -1,5 +1,6 @@
 #include <subordination/core/error.hh>
 #include <subordination/core/kernel_type_registry.hh>
+#include <subordination/core/list.hh>
 
 #include <algorithm>
 #include <ostream>
@@ -34,8 +35,5 @@ sbn::kernel_type_registry::add(kernel_type type) {
 std::ostream&
 sbn::operator<<(std::ostream& out, const kernel_type_registry& rhs) {
     auto g = rhs.guard();
-    for (const auto& type : rhs) {
-        out << "/type/" << type.id() << '/' << type;
-    }
-    return out;
+    return out << sbn::make_list_view(rhs);
 }

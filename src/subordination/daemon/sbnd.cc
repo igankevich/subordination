@@ -5,6 +5,7 @@
 #include <unistdx/fs/mkdirs>
 #include <unistdx/net/interface_address>
 #include <unistdx/net/ipv4_address>
+#include <unistdx/system/error>
 
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel_type_registry.hh>
@@ -34,6 +35,24 @@ void on_terminate(int) {
     sbn::exit(0);
 }
 
+void print_pipeline_state(int sig) {
+    using namespace sbnd;
+    {
+        std::stringstream tmp;
+        factory.write(tmp);
+        log("pipeline state _", tmp.str());
+        {
+            auto g = factory.process().guard();
+            for (const auto& pair : factory.process().jobs()) {
+                const auto& connection = pair.second;
+                log("kill _", connection->child_process_id());
+                sys::process_view(connection->child_process_id()).send(sys::signal(sig));
+            }
+        }
+    }
+    std::_Exit(sig);
+}
+
 void parse_standard_arguments(int argc, char** argv) {
     if (argc != 2) { return; }
     std::string h("-h"), help("--help"), version("--version");
@@ -53,6 +72,7 @@ int real_main(int argc, char* argv[]) {
     sbn::install_error_handler();
     sys::this_process::bind_signal(sys::signal::terminate, on_terminate);
     sys::this_process::bind_signal(sys::signal::keyboard_interrupt, on_terminate);
+    sys::this_process::bind_signal(sys::signal::quit, print_pipeline_state);
     factory.types().add<Foreign_main_kernel>(1);
     factory.types().add<probe>(2);
     factory.types().add<Hierarchy_kernel>(3);

@@ -78,6 +78,7 @@ namespace sbn {
 
         /// The number of kernels that were sent to the process, but have not returned yet.
         inline int num_active_kernels() const noexcept { return this->_num_active_kernels; }
+        void write(std::ostream& out) const override;
 
     protected:
         void receive_kernel(kernel_ptr&& k) override;

@@ -37,7 +37,8 @@ namespace sbn {
         mutable std::mutex _mutex;
 
     public:
-        inline sentry guard() const { return sentry(*this); }
+        inline sentry guard() const noexcept { return sentry(*this); }
+        inline sentry guard() noexcept { return sentry(*this); }
         inline const_iterator begin() const noexcept { return this->_instances.begin(); }
         inline const_iterator end() const noexcept { return this->_instances.end(); }
         inline size_type size() const noexcept { return this->_instances.size(); }

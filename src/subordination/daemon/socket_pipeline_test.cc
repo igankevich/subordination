@@ -16,10 +16,6 @@
 #include <subordination/test/role.hh>
 #include <valgrind/config.hh>
 
-#if defined(SBN_TEST_HAVE_VALGRIND_H)
-#include <valgrind.h>
-#endif
-
 using test::Role;
 using sys::this_process::hostname;
 
@@ -45,7 +41,6 @@ operator>>(std::istream& in, Failure& rhs) {
 const uint32_t NUM_KERNELS = 9;
 
 std::atomic<int> kernel_count(0);
-std::atomic<uint32_t> shutdown_counter(0);
 
 Role role = Role::Master;
 Failure failure = Failure::None;
@@ -83,13 +78,10 @@ struct Test_socket: public sbn::kernel {
         message("act _", sys::this_process::hostname());
         if (failure == Failure::Slave) {
             if (role == Role::Slave) {
-                // Delete kernel for Valgrind memory checker.
+                // Delete the kernel for Valgrind memory checker.
                 delete this;
-                if (++shutdown_counter == NUM_KERNELS/3) {
-                    message("slave failure!");
-                    //sbn::exit(0);
-                    sys::this_process::send(sys::signal::kill);
-                }
+                message("slave failure!");
+                sys::this_process::send(sys::signal::kill);
             } else {
                 return_to_parent(sbn::exit_code::success);
                 remote.send(std::move(this_ptr()));
@@ -97,34 +89,29 @@ struct Test_socket: public sbn::kernel {
         } else if (failure == Failure::Master) {
             if (role == Role::Master) {
                 delete this;
-                if (++shutdown_counter == NUM_KERNELS/3) {
-                    message("master failure!");
-                    sys::this_process::send(sys::signal::kill);
-                    //sbn::exit(0);
-                }
+                message("master failure!");
+                sys::this_process::send(sys::signal::kill);
             } else {
                 return_to_parent(sbn::exit_code::success);
                 remote.send(std::move(this_ptr()));
             }
         } else if (failure == Failure::Power) {
             delete this;
-            if (++shutdown_counter == NUM_KERNELS/3) {
-                message("power failure!");
-                //transactions.close();
-                try {
-                    sys::file_status st("socket-pipeline-test-transactions-master");
-                    message("master size _", st.size());
-                } catch (const std::exception& err) {
-                    message("master size -1");
-                }
-                try {
-                    sys::file_status st("socket-pipeline-test-transactions-slave");
-                    message("slave size _", st.size());
-                } catch (const std::exception& err) {
-                    message("slave size -1");
-                }
-                sys::this_process::send(sys::signal::kill);
+            message("power failure!");
+            //transactions.close();
+            try {
+                sys::file_status st("socket-pipeline-test-transactions-master");
+                message("master size _", st.size());
+            } catch (const std::exception& err) {
+                message("master size -1");
             }
+            try {
+                sys::file_status st("socket-pipeline-test-transactions-slave");
+                message("slave size _", st.size());
+            } catch (const std::exception& err) {
+                message("slave size -1");
+            }
+            sys::this_process::send(sys::signal::kill);
         } else {
             return_to_parent(sbn::exit_code::success);
             remote.send(std::move(this_ptr()));
@@ -263,15 +250,42 @@ TEST(socket_pipeline, _) {
         //g.lock();
         remote.add_server(principal_endpoint, network.netmask());
     }
+    remote.start();
     if (role == Role::Master) {
-        auto g = remote.guard();
-        remote.port(port);
-        remote.add_server(subordinate_endpoint, network.netmask());
-        // wait for the child to start
         using namespace std::this_thread;
         using namespace std::chrono;
-        sleep_for(milliseconds(1000));
-        remote.add_client(principal_endpoint, {});
+        {
+            auto g = remote.guard();
+            remote.port(port);
+            remote.add_server(subordinate_endpoint, network.netmask());
+            remote.add_client(principal_endpoint, {});
+        }
+        bool started = false;
+        while (!started) {
+            sleep_for(milliseconds(1000));
+            sys::errors error{};
+            {
+                auto g = remote.guard();
+                const auto& clients = remote.clients();
+                if (clients.empty()) {
+                    remote.add_client(principal_endpoint, {});
+                    continue;
+                }
+                for (const auto& pair : clients) {
+                    const auto& client = *pair.second;
+                    try {
+                        error = client.socket().get<sys::errors>(sys::socket::options::error);
+                    } catch (...) {
+                    }
+                    if (error != sys::errors::connection_refused) {
+                        started = true;
+                    }
+                }
+            }
+            if (!started) {
+                std::clog << "waiting for the client: " << to_string(error) << std::endl;
+            }
+        }
     }
 
     const auto* filename = role == Role::Slave
@@ -282,7 +296,6 @@ TEST(socket_pipeline, _) {
     transactions.pipelines({&remote});
     transactions.open(filename);
     local.start();
-    remote.start();
 
     if (role == Role::Master && !restore) {
         local.send(sbn::make_pointer<Main>());
@@ -308,9 +321,7 @@ TEST(socket_pipeline, _) {
 }
 
 int main(int argc, char* argv[]) {
-    #if defined(SBN_TEST_HAVE_VALGRIND_H)
-    if (RUNNING_ON_VALGRIND) { std::exit(77); }
-    #endif
+    SBN_SKIP_IF_RUNNING_ON_VALGRIND();
     sbn::install_error_handler();
     ::testing::InitGoogleTest(&argc, argv);
     sys::this_process::ignore_signal(sys::signal::broken_pipe);
