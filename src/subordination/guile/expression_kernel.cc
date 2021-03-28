@@ -16,10 +16,7 @@ expression_kernel_main(int argc, char* argv[]) {
 
 void 
 sbn::guile::expression_kernel_main::act() {
-    if (_scheme) {
         sbn::upstream<sbn::Remote>(this, sbn::make_pointer<sbn::guile::expression_kernel>(_scheme));
-    }
-    sbn::commit<sbn::Remote>(std::move(this_ptr()));
 }
 
 void 
@@ -69,12 +66,11 @@ sbn::guile::expression_kernel::react(sbn::kernel_ptr&& child) {
     _args[arg] = result;
     _finished_child++;
     if (_finished_child == _args.size()) {
-       // _result = scm_list_2(_args.front(), scm_list_1(_args.back()));
         _result = scm_list_1(_args.front());
         for (size_t i = 1; i < _args.size(); i++) {
             _result = scm_append(scm_list_2(_result, scm_list_1(_args[i])));
         }
-        scm_display(_result, scm_current_output_port());
+        //scm_display(_result, scm_current_output_port());
         this->_result = scm_eval(this->_result, scm_interaction_environment());
         sbn::commit<sbn::Local>(std::move(this_ptr()));
     }

@@ -15,7 +15,7 @@ namespace sbn {
     namespace guile {
 
         class expression_kernel_main : public sbn::kernel {
-            protected_scm _scheme;
+            protected_scm _scheme = SCM_UNSPECIFIED;
         public:
             expression_kernel_main() {}
             expression_kernel_main(int argc, char* argv[]);
@@ -26,8 +26,8 @@ namespace sbn {
         };
 
         class expression_kernel :  public sbn::kernel {
-            protected_scm _scheme;
-            protected_scm _result;
+            SCM _scheme = SCM_UNSPECIFIED;
+            protected_scm _result = SCM_UNSPECIFIED;
             std::vector<protected_scm> _args;
             int _parent_arg;
             size_t _finished_child = 0;
@@ -39,7 +39,7 @@ namespace sbn {
             void react(sbn::kernel_ptr&& child) override;
             void read(sbn::kernel_buffer& in) override;
             void write(sbn::kernel_buffer& out) const override;
-            SCM get_result() const {return (SCM)_result.get();}
+            SCM get_result() const {return _result.get();}
             int get_arg() const {return _parent_arg;}
         };
     }
