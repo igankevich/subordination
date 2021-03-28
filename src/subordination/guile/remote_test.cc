@@ -18,12 +18,9 @@
 #include <unistdx/ipc/process>
 #include <unistdx/net/veth_interface>
 
-#include <gtest/gtest.h>
-
 #include <dtest/application.hh>
 
-#include <subordination/daemon/discovery_test.hh>
-#include <subordination/daemon/test_application.hh>
+#include <subordination/guile/remote_test.hh>
 #include <subordination/test/config.hh>
 #include <valgrind/config.hh>
 
@@ -49,6 +46,7 @@ sys::argstream sbnd_args() {
 
 int main(int argc, char* argv[]) {
     SBN_SKIP_IF_RUNNING_ON_VALGRIND();
+    // Application for SBND
     dts::application app;
     dts::cluster cluster;
     cluster.name("x");
@@ -78,34 +76,45 @@ int main(int argc, char* argv[]) {
                 R"(^x1.*add interface address 10\.0\.0\.1.*$)",
                 R"(^x1.*add subordinate 10\.0\.0\.2.*$)",
             });
-            //dts::expect_event(lines, R"(^x1.*set 10\.0\.0\.2.*weight to 1$)");
             dts::expect_event_sequence(lines, {
                 R"(^x2.*add interface address 10\.0\.0\.2.*$)",
                 R"(^x2.*set principal to 10\.0\.0\.1.*$)"
             });
-            //dts::expect_event(lines, R"(^x2.*set 10\.0\.0\.1.*weight to 1$)");
         });
     app.emplace_test(
-        "Run test application.",
+        "Run test remote sbn-guile.",
         [&] (dts::application& app, const dts::string_array& lines) {
             sys::argstream args;
             args.append(SBNC_PATH);
             args.append("submit");
-            args.append("-T");
-            args.append(APP_PATH);
-            args.append("transactions");
+            args.append(SBN_GUILE_PATH);
+            args.append(TEST_SCM_PATH);
             // submit test application from the first node
             app.run_process(dts::cluster_node_bitmap(app.cluster().size(), {0}),
                             std::move(args));
         });
     app.emplace_test(
-        "Check that at least one subordinate kernel is executed on each node.",
-        [] (dts::application& app, const dts::string_array& lines) {
-            dts::expect_event(lines, R"(^x1.*app.*subordinate act.*$)");
-            dts::expect_event(lines, R"(^x2.*app.*subordinate act.*$)");
+        "Application started.",
+        [&] (dts::application& app, const dts::string_array& lines) {
+            dts::expect_event(lines, R"(^x1.*application started$)");
         });
     app.emplace_test(
-        "Wait for transaction test to exit.",
+        "Wait for events from x1 node.",
+        [] (dts::application& app, const dts::string_array& lines) {
+            dts::expect_event(lines, R"(^x1.*number.*$)");
+        });
+    app.emplace_test(
+        "Wait for events from x2 node.",
+        [] (dts::application& app, const dts::string_array& lines) {
+            dts::expect_event(lines, R"(^x2.*number.*$)");
+        });
+    app.emplace_test(
+        "Wait for postamble.",
+        [] (dts::application& app, const dts::string_array& lines) {
+            dts::expect_event(lines, R"(^x1.*postamble.*$)");
+        });
+    app.emplace_test(
+        "Wait for the application to exit.",
         [] (dts::application& app, const dts::string_array& lines) {
             dts::expect_event(lines, R"(^.*sbnc.*exit code.*$)");
         });

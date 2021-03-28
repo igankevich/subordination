@@ -126,6 +126,8 @@ namespace sbn {
 
         static void plug_parents(record_array& records);
 
+        void write(std::ostream& out) const;
+
     private:
         void recover(const char* filename, sys::offset_type max_offset);
         void update_pipeline_indices();
@@ -140,6 +142,11 @@ namespace sbn {
         }
 
     };
+
+    inline std::ostream& operator<<(std::ostream& out, const transaction_log& rhs) {
+        rhs.write(out);
+        return out;
+    }
 
     class transaction_kernel: public service_kernel {
 

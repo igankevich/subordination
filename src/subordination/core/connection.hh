@@ -147,6 +147,8 @@ namespace sbn {
         inline const weight_array& load() const noexcept { return this->_load; }
         inline weight_array& load() noexcept { return this->_load; }
 
+        virtual void write(std::ostream& out) const;
+
     protected:
 
         kernel_ptr do_forward(kernel_ptr k);
@@ -210,6 +212,11 @@ namespace sbn {
 
     const char* to_string(connection::states rhs);
     std::ostream& operator<<(std::ostream& out, connection::states rhs);
+    std::ostream& operator<<(std::ostream& out, const connection& rhs);
+    std::ostream& operator<<(std::ostream& out, const connection* rhs);
+    inline std::ostream& operator<<(std::ostream& out, const connection::connection_ptr& rhs) {
+        return out << rhs.get();
+    }
 
     template <class Queue>
     inline typename Queue::const_iterator

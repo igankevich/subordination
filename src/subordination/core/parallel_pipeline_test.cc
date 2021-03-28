@@ -2,10 +2,6 @@
 
 #include <valgrind/config.hh>
 
-#if defined(SBN_TEST_HAVE_VALGRIND_H)
-#include <valgrind.h>
-#endif
-
 #include <gtest/gtest.h>
 
 #include <unistdx/base/log_message>

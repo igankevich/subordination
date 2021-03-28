@@ -1,9 +1,8 @@
 #ifndef SUBORDINATION_PYTHON_KERNEL_HH
 #define SUBORDINATION_PYTHON_KERNEL_HH
 
-#include <Python.h>
-
 #include <subordination/core/kernel.hh>
+#include <subordination/python/python.hh>
 
 namespace sbn {
 
@@ -29,22 +28,28 @@ namespace sbn {
 
         class Cpp_kernel: public sbn::kernel {
 
-        private:
-            PyObject* _py_kernel_obj;
+        protected:
+            object _py_kernel_obj;
+
         public:
 
             Cpp_kernel() = default;
-            inline Cpp_kernel(PyObject* py_kernel_obj) noexcept: _py_kernel_obj(py_kernel_obj){Py_INCREF(this->_py_kernel_obj);}
+            inline Cpp_kernel(PyObject* py_kernel_obj) noexcept:
+            _py_kernel_obj(py_kernel_obj) {
+                // TODO Calling retain() is a workaround. We have to replace all bare
+                // pointers with object wrapper.
+                // Incorrect reference counting causes keyboard interrupts in benchmarks.
+                this->_py_kernel_obj.retain();
+            }
 
-            ~Cpp_kernel() noexcept{Py_DECREF(this->_py_kernel_obj);}
-
-            PyObject* py_kernel_obj(){return this->_py_kernel_obj;} // Getter
-            void py_kernel_obj(PyObject* py_kernel_obj){this->_py_kernel_obj = py_kernel_obj;} // Setter
+            inline const PyObject* py_kernel_obj() const noexcept { return this->_py_kernel_obj.get(); }
+            inline PyObject* py_kernel_obj() noexcept { return this->_py_kernel_obj.get(); }
+            inline void py_kernel_obj(object&& rhs) noexcept { this->_py_kernel_obj = std::move(rhs); }
 
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
             void write(sbn::kernel_buffer& out) const override;
-            void read(sbn::kernel_buffer& in) override; 
+            void read(sbn::kernel_buffer& in) override;
 
         };
 

@@ -119,12 +119,12 @@ namespace sbnd {
             return this->_jobs;
         }
 
-        inline sentry guard() noexcept { return sentry(*this); }
         inline pipeline* unix() const noexcept { return this->_unix; }
         inline void unix(pipeline* rhs) noexcept { this->_unix = rhs; }
         inline void max_threads(unsigned rhs) noexcept { this->_max_threads = rhs; }
 
         void clear(sbn::kernel_sack& sack);
+        void write(std::ostream& out) const override;
 
     protected:
 

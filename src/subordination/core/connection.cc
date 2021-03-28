@@ -7,6 +7,7 @@
 #include <subordination/core/foreign_kernel.hh>
 #include <subordination/core/kernel.hh>
 #include <subordination/core/kernel_instance_registry.hh>
+#include <subordination/core/list.hh>
 
 const char* sbn::to_string(connection::states rhs) {
     using s = connection::states;
@@ -380,4 +381,30 @@ void sbn::connection::clear(kernel_sack& sack) {
     this->_upstream.clear();
     for (auto& k : this->_downstream) { k.release()->mark_as_deleted(sack); }
     this->_downstream.clear();
+}
+
+void sbn::connection::write(std::ostream& out) const {
+    using sbn::list;
+    out << list("socket-address", make_string(this->_socket_address)) << ' ';
+    out << list("load", this->_load) << ' ';
+    out << list("state", this->_state) << ' ';
+    out << list("counter", this->_counter) << ' ';
+    out << list("attempts", this->_attempts) << ' ';
+    out << list("upstream-kernels", make_list_view(this->_upstream)) << ' ';
+    out << list("downstream-kernels", make_list_view(this->_upstream)) << ' ';
+    out << list("output-buffer-remaining", this->_output_buffer.remaining()) << ' ';
+    out << list("input-buffer-remaining", this->_input_buffer.remaining());
+}
+
+std::ostream& sbn::operator<<(std::ostream& out, const connection& rhs) {
+    out << '(';
+    rhs.write(out);
+    out << ')';
+    return out;
+}
+
+std::ostream& sbn::operator<<(std::ostream& out, const connection* rhs) {
+    if (rhs) { out << *rhs; }
+    else { out << "<null-connection>"; }
+    return out;
 }
