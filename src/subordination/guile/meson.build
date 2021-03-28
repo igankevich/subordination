@@ -3,6 +3,7 @@ sbn_guile_src = files([
     'init.cc',
     'kernel.cc',
     'main.cc',
+    'expression_kernel.cc',
 ])
 
 clang_tidy_files += sbn_guile_src
