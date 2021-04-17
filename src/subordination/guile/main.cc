@@ -67,7 +67,12 @@ using namespace sbn;
         auto g = factory.types().guard();
         factory.types().add<expression_kernel_main>(1);
         factory.types().add<expression_kernel>(2);
-        factory.local().thread_init([] (size_t) { scm_init_guile(); });
+        factory.types().add<expression_kernel_if>(3);
+        factory.types().add<expression_kernel_define>(4);
+        factory.local().thread_init([] (size_t) { 
+            scm_init_guile();
+
+        });
     }
 
     factory_guard g;
