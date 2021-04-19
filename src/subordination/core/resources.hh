@@ -34,7 +34,7 @@ namespace sbn {
             inline Any(uint32_t value) noexcept: _u64{value}, _type{Type::U64} {}
             inline Any(uint64_t value) noexcept: _u64{value}, _type{Type::U64} {}
             Any(const char* s, size_t n);
-            inline Any(const char* s): Any{s, std::char_traits<char>::length(s)} {}
+            inline Any(const char* s): Any{s, s ? std::char_traits<char>::length(s) : 0} {}
             inline Any(const std::string& s): Any{s.data(), s.size()} {}
 
             inline Any& operator=(const std::string& s) { *this = Any(s); return *this; }
@@ -71,9 +71,10 @@ namespace sbn {
             Any() = default;
             ~Any() noexcept;
             Any(const Any&);
-            Any& operator=(const Any&);
+            inline Any& operator=(const Any& rhs) { Any tmp(rhs); swap(tmp); return *this; }
             inline Any(Any&& rhs) noexcept { swap(rhs); }
-            inline Any& operator=(Any&& rhs) noexcept { swap(rhs); return *this; }
+            inline Any& operator=(Any&& rhs) noexcept { Any tmp(std::move(rhs)); swap(tmp); return *this; }
+
         };
 
         inline void swap(Any& a, Any& b) noexcept { a.swap(b); }
@@ -116,7 +117,8 @@ namespace sbn {
             inline value_type operator[](size_t i) const noexcept { return this->_data[i]; }
             inline value_type& operator[](size_t i) noexcept { return this->_data[i]; }
             inline void clear() noexcept {
-                this->_data.fill(value_type{});
+                // TODO
+                //this->_data.fill(value_type{});
                 this->_symbols.clear();
             }
             static constexpr inline size_t size() noexcept { return size_t(resources::size); }

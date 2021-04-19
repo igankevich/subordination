@@ -141,3 +141,17 @@ TEST(bindings, io_binary) {
     actual.read(buf);
     EXPECT_EQ(expected, actual);
 }
+
+TEST(bindings, io_binary_empty_string) {
+    using namespace sbn::resources;
+    using r = resources;
+    Bindings expected;
+    expected[r::hostname] = "";
+    expected["x"] = 10u;
+    sys::byte_buffer buf;
+    expected.write(buf);
+    buf.flip();
+    Bindings actual;
+    actual.read(buf);
+    EXPECT_EQ(expected, actual);
+}

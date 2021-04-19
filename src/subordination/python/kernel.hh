@@ -24,6 +24,8 @@ namespace sbn {
         PyObject* Py_kernel_reduce(Py_kernel *self, PyObject *Py_UNUSED(ignored));
         PyObject* Py_kernel_set_Cpp_kernel(Py_kernel* self, PyObject * args);
 
+        PyObject* Py_kernel_enable_carries_parent(Py_kernel *self, PyObject *Py_UNUSED(ignored));
+
         // ============================================
 
         class Cpp_kernel: public sbn::kernel {
@@ -77,6 +79,9 @@ namespace sbn {
         PyObject* upstream(PyObject *self, PyObject *args, PyObject *kwds);
         PyObject* commit(PyObject *self, PyObject *args, PyObject *kwds);
 
+        PyObject* mutex_lock(Py_kernel* self, PyObject* Py_UNUSED(ignored));
+        PyObject* mutex_unlock(Py_kernel* self, PyObject* Py_UNUSED(ignored));
+        PyObject* sleep(Py_kernel* self, PyObject *args);
     }
 }
 

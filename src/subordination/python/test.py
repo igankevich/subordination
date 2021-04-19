@@ -28,7 +28,9 @@ class Main(sbn.Kernel):
 
     def act(self):
         print('Python: Main.act', file=sys.stderr, flush=True)
-        sbn.upstream(parent=self, child=Child(), target=sbn.Target.Remote)
+        k = Child()
+        k.enable_carries_parent()
+        sbn.upstream(parent=self, child=k, target=sbn.Target.Remote)
 
     def react(self, child):
         print('Python: Main.react', file=sys.stderr, flush=True)

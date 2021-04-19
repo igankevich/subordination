@@ -34,6 +34,29 @@ namespace {
 
 }
 
+PyObject* sbn::python::mutex_lock(Py_kernel* self, PyObject* Py_UNUSED(ignored)){
+    sys::log_message(">>>> Sbn", "mutex_lock");
+    python_mutex.lock();
+    Py_RETURN_NONE;
+}
+
+PyObject* sbn::python::mutex_unlock(Py_kernel* self, PyObject* Py_UNUSED(ignored)){
+    sys::log_message(">>>> Sbn", "mutex_unlock");
+    python_mutex.unlock();
+    Py_RETURN_NONE;
+}
+
+PyObject* sbn::python::sleep(Py_kernel* self, PyObject *args){
+    int msecs = 0;
+    if (!PyArg_ParseTuple(args, "i", &msecs))
+        return nullptr;
+    sys::log_message(">>>> Sbn", "sleep on _ milliseconds", msecs);
+
+    Python_unlock unlock;
+    std::this_thread::sleep_for(std::chrono::milliseconds(msecs));
+    Py_RETURN_NONE;
+}
+
 PyObject* sbn::python::upstream(PyObject *self, PyObject *args, PyObject *kwds){
     sys::log_message(">>>> Sbn", "upstream");
     sys::log_message("test", "Sbn: upstream");
@@ -157,6 +180,13 @@ PyObject* sbn::python::Py_kernel_reduce(Py_kernel* self, PyObject* Py_UNUSED(ign
     return Py_BuildValue("N()N", Py_TYPE(self), dict.get());
 }
 
+PyObject* sbn::python::Py_kernel_enable_carries_parent(Py_kernel* self, PyObject* Py_UNUSED(ignored))
+{
+    auto cpp_kernel = (sbn::python::Cpp_kernel*)PyCapsule_GetPointer(self->_cpp_kernel_capsule, "ptr");
+    cpp_kernel->setf(sbn::kernel_flag::carries_parent);
+    Py_RETURN_NONE;
+}
+
 
 void sbn::python::Cpp_kernel::act() {
     sys::log_message(">>>> Sbn", "Cpp_kernel.act");
@@ -177,6 +207,7 @@ void sbn::python::Cpp_kernel::write(sbn::kernel_buffer& out) const {
     sys::log_message(">>>> Sbn", "Cpp_kernel.write");
     sys::log_message("test", "Sbn: Cpp_kernel.write");
     Python_lock lock;
+    sys::log_message(">>>> Sbn", "Cpp_kernel.write start");
     kernel::write(out);
     object pickle_module = PyImport_ImportModule("pickle"); // import module
     object pkl_py_kernel_obj = pickle_module.call("dumps", "O", this->_py_kernel_obj.get());

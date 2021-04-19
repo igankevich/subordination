@@ -1,4 +1,5 @@
-import sys
+import os, sys
+import signal
 import re
 import gzip
 import time
@@ -83,6 +84,12 @@ class File_kernel(sbn.Kernel):
         self._data = {}
 
     def act(self):
+        if hostname := os.getenv("SBN_TEST_SUBORDINATE_FAILURE"):
+            if os.uname()[1] == hostname:
+                print('>>>> Python (spec): simulate subordinate failure %s' % hostname, file=open('pyspec.log', 'a'))
+                os.kill(os.getppid(), signal.SIGKILL)
+                os.kill(os.getpid(), signal.SIGKILL)
+
         # filename = Path('/var').joinpath(self._sfile.filename)  # TODO
         with gzip.open(self._sfile.filename, 'rb') as file_obj:
             num_lines = 0
@@ -226,6 +233,16 @@ class Spectrum_directory_kernel(sbn.Kernel):
         return len(files) == 5 and len(set(f.var for f in files)) == 5
 
     def act(self):
+        if hostname := os.getenv("SBN_TEST_SUPERIOR_COPY_FAILURE"):
+            if os.uname()[1] == hostname:
+                if str_seconds := os.getenv("SBN_TEST_SLEEP_FOR"):
+                    seconds = int(str_seconds)
+                    print('>>>> Python (spec): sleeping for %i seconds' % seconds, file=open('pyspec.log', 'a'))
+                    sbn.sleep(int(seconds * 1e+3))
+                print('>>>> Python (spec): simulate superior copy failure %s' % hostname, file=open('pyspec.log', 'a'))
+                os.kill(os.getppid(), signal.SIGKILL)
+                os.kill(os.getpid(), signal.SIGKILL)
+
         print('>>>> Python (spec): spectrum-directory %i' % len(self._input_directories), file=open('pyspec.log', 'a'))
 
         # Grouping files
@@ -287,9 +304,16 @@ class Main(sbn.Kernel):
     def act(self):
         self._time_start = time.time()
         print('>>>> Python (spec): ============= program start! =============', file=open('pyspec.log', 'a'))
-        # TODO carries_parent
-        sbn.upstream(self, Spectrum_directory_kernel(self._input_directories.copy()),
-            target=sbn.Target.Remote)
+        k = Spectrum_directory_kernel(self._input_directories.copy())
+        k.enable_carries_parent()  # carries_parent
+        sbn.upstream(self, k, target=sbn.Target.Remote)
+
+        if hostname := os.getenv("SBN_TEST_SUPERIOR_FAILURE"):
+            if os.uname()[1] == hostname:
+                sbn.sleep(100)  # 100 milliseconds
+                print('>>>> Python (spec): simulate superior failure %s' % hostname, file=open('pyspec.log', 'a'))
+                os.kill(os.getppid(), signal.SIGKILL)
+                os.kill(os.getpid(), signal.SIGKILL)
 
     def react(self, child: sbn.Kernel):
         self._time_end = time.time()
