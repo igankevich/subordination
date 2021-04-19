@@ -1,7 +1,8 @@
 ; (define x 2)
+; ../src/examples/guile/hello-world.scm
 (define (my-map proc lst)
-(if (null? lst) (car lst) 
-    (proc (car (cdr lst)))))
+(if (null? lst) '() 
+    (cons (proc (car lst)) (my-map proc (cdr lst)))))
 ; (proc 1)
 ; (proc 2))))
 (display (my-map (lambda (x) (+ x x)) '(1 2 3)))

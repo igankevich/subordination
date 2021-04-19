@@ -50,10 +50,10 @@ namespace sbn {
                 , _environment(env)
                 , _scheme(scheme)
                 , _definitions(def) {}
-            void act() override;
-            void react(sbn::kernel_ptr&& child) override;
-            void read(sbn::kernel_buffer& in) override;
-            void write(sbn::kernel_buffer& out) const override;
+            virtual void act() override;
+            virtual void react(sbn::kernel_ptr&& child) override;
+            virtual void read(sbn::kernel_buffer& in) override;
+            virtual void write(sbn::kernel_buffer& out) const override;
             SCM get_result() const {return _result.get();}
             int get_arg() const {return _parent_arg;}
             void set_environment(SCM env) {_environment = env; }
