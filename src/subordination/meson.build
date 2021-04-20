@@ -2,6 +2,7 @@ subdir('test')
 subdir('bits')
 subdir('core')
 subdir('daemon')
+subdir('minilisp')
 if with_guile
     subdir('guile')
 endif

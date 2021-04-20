@@ -90,6 +90,8 @@ namespace sbn {
         kernel_ptr* _this_ptr{};
         // A pipeline that received the kernel. Node-local variable.
         pipeline* _source_pipeline{};
+        // Thread that called act().
+        size_t _pipeline_index = 0;
 
     private:
         bool _routed = false;
@@ -381,6 +383,9 @@ namespace sbn {
 
         friend std::ostream&
         operator<<(std::ostream& out, const kernel& rhs);
+
+        inline size_t pipeline_index() const noexcept { return this->_pipeline_index; }
+        inline void pipeline_index(size_t rhs) noexcept { this->_pipeline_index = rhs; }
 
     public:
 

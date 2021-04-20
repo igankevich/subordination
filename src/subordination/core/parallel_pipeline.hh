@@ -136,13 +136,10 @@ namespace sbn {
                     #if defined(SBN_DEBUG)
                     this->log("downstream _", *k);
                     #endif
-                    // TODO Save the index of the pipeline that executed upstream phase
-                    // of this kernel and then execute downstream phase by the same
-                    // pipeline.
                     const auto num_upstream_threads = this->_upstream_threads.size();
                     const auto num_downstream_threads = this->_downstream_threads.size();
                     const auto size = std::max(num_upstream_threads,num_downstream_threads);
-                    const auto n = k->hash() % size;
+                    const auto n = parent_pipeline_index(k.get()) % size;
                     this->_downstream_kernels[n].emplace_back(std::move(k));
                     if (this->_downstream_threads.empty()) {
                         notify_upstream = true;
@@ -186,7 +183,7 @@ namespace sbn {
             const auto num_upstream_threads = this->_upstream_threads.size();
             const auto num_downstream_threads = this->_downstream_threads.size();
             const auto size = std::max(num_upstream_threads,num_downstream_threads);
-            const auto i = k->hash() % size;
+            const auto i = parent_pipeline_index(k.get()) % size;
             this->_downstream_kernels[i].emplace_back(std::move(k));
             if (this->_downstream_threads.empty()) {
                 this->_upstream_semaphore.notify_all();
@@ -236,11 +233,11 @@ namespace sbn {
         void write(std::ostream& out) const;
 
     private:
-        void upstream_loop(kernel_queue& downstream_queue);
+        void upstream_loop(size_t i, kernel_queue& downstream_queue);
         void upstream_start(size_t num_threads);
-        void timer_loop();
+        void timer_loop(size_t i);
         void timer_start();
-        void downstream_loop(kernel_queue& queue, semaphore_type& semaphore);
+        void downstream_loop(size_t i, kernel_queue& queue, semaphore_type& semaphore);
         void downstream_start(size_t num_threads);
         void kernel_loop(kernel_ptr kernel);
 
@@ -253,6 +250,10 @@ namespace sbn {
                 std::move(k));
         }
 
+        static inline size_t parent_pipeline_index(const kernel* k) noexcept {
+            auto p = k->parent();
+            return p ? p->pipeline_index() : 0;
+        }
     };
 
     inline std::ostream& operator<<(std::ostream& out, const parallel_pipeline& rhs) {

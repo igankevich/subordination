@@ -43,12 +43,16 @@ namespace {
         }
     }
 
-    inline void act(sbn::kernel_ptr& k) {
+    inline void act(sbn::kernel_ptr& k, size_t pipeline_index) {
         #if defined(SBN_DEBUG)
         sys::log_message("act", "_", *k);
         #endif
         switch (k->phase()) {
             case sbn::kernel::phases::upstream:
+                // Save the index of the pipeline that executed upstream phase
+                // of this kernel and then execute downstream phase by the same
+                // pipeline.
+                k->pipeline_index(pipeline_index);
                 k->this_ptr(&k);
                 k->act();
                 (void)k.release();
@@ -85,9 +89,10 @@ namespace {
         }
     }
 
-    inline void process_kernel(sbn::kernel_ptr&& k, sbn::parallel_pipeline* this_pipeline) {
+    inline void process_kernel(sbn::kernel_ptr&& k, sbn::parallel_pipeline* this_pipeline,
+                               size_t pipeline_index) {
         try {
-            act(k);
+            act(k, pipeline_index);
         } catch (const std::exception& err) {
             sys::backtrace(2);
             this_pipeline->log("error _", err.what());
@@ -104,9 +109,9 @@ namespace {
 
 }
 
-void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream) {
+void sbn::parallel_pipeline::upstream_loop(size_t pipeline_index, kernel_queue& downstream) {
     lock_type lock(this->_mutex);
-    this->_upstream_semaphore.wait(lock, [this,&lock,&downstream] () {
+    this->_upstream_semaphore.wait(lock, [this,&lock,&downstream,pipeline_index] () {
         auto& upstream = this->_upstream_kernels;
         bool downstream_not_empty, upstream_not_empty;
         while ((downstream_not_empty = this->_downstream_threads.empty() &&
@@ -116,13 +121,13 @@ void sbn::parallel_pipeline::upstream_loop(kernel_queue& downstream) {
             auto k = std::move(queue.front());
             queue.pop_front();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this);
+            process_kernel(std::move(k), this, pipeline_index);
         }
         return this->stopping();
     });
 }
 
-void sbn::parallel_pipeline::timer_loop() {
+void sbn::parallel_pipeline::timer_loop(size_t pipeline_index) {
     using clock_type = kernel::clock_type;
     using duration = kernel::duration;
     using time_point = kernel::time_point;
@@ -138,19 +143,20 @@ void sbn::parallel_pipeline::timer_loop() {
             auto k = std::move(const_cast<kernel_ptr&>(queue.top()));
             queue.pop();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this);
+            process_kernel(std::move(k), this, pipeline_index);
         }
     }
 }
 
-void sbn::parallel_pipeline::downstream_loop(kernel_queue& queue, semaphore_type& semaphore) {
+void sbn::parallel_pipeline::downstream_loop(size_t pipeline_index,
+                                             kernel_queue& queue, semaphore_type& semaphore) {
     lock_type lock(this->_mutex);
-    semaphore.wait(lock, [this,&lock,&queue] () {
+    semaphore.wait(lock, [this,&lock,&queue,pipeline_index] () {
         while (!queue.empty()) {
             auto k = std::move(queue.front());
             queue.pop_front();
             sys::unlock_guard<lock_type> g(lock);
-            process_kernel(std::move(k), this);
+            process_kernel(std::move(k), this, pipeline_index);
         }
         return this->stopping();
     });
@@ -167,7 +173,7 @@ void sbn::parallel_pipeline::upstream_start(size_t num_threads) {
                 ::prctl(PR_SET_NAME, this->_name);
                 #endif
                 if (this->_thread_init) { this->_thread_init(i); }
-                this->upstream_loop(this->_downstream_kernels[i]);
+                this->upstream_loop(i,this->_downstream_kernels[i]);
             });
     }
 }
@@ -199,7 +205,7 @@ void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
                 ::prctl(PR_SET_NAME, this->_name);
                 #endif
                 if (this->_thread_init) { this->_thread_init(i); }
-                this->downstream_loop(this->_downstream_kernels[i],
+                this->downstream_loop(i, this->_downstream_kernels[i],
                                       this->_downstream_semaphores[i]);
             });
     }
@@ -213,7 +219,7 @@ void sbn::parallel_pipeline::timer_start() {
         ::prctl(PR_SET_NAME, this->_name);
         #endif
         if (this->_thread_init) { this->_thread_init(0); }
-        this->timer_loop();
+        this->timer_loop(0);
     });
 }
 
