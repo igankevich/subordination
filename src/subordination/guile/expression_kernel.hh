@@ -16,7 +16,7 @@ namespace sbn {
     namespace guile {
 
         class expression_kernel_main : public sbn::kernel {
-            SCM _port = SCM_UNSPECIFIED;
+            protected_scm _port = SCM_UNSPECIFIED;
             SCM _scheme = SCM_UNSPECIFIED;
             std::map<std::string, SCM> _definitions;
         public:
@@ -32,7 +32,7 @@ namespace sbn {
             int _parent_arg;
         protected:
             protected_scm _environment;
-            std::vector<SCM> _args;
+            std::vector<protected_scm> _args;
             size_t _finished_child = 0;
             SCM _scheme = SCM_UNSPECIFIED;
             protected_scm _result = SCM_UNSPECIFIED;
@@ -75,13 +75,13 @@ namespace sbn {
         };
 
         class expression_kernel_define : public expression_kernel {
-            protected_scm _head = SCM_UNSPECIFIED;
-            protected_scm _body = SCM_UNSPECIFIED;
-            protected_scm _body_args = SCM_UNSPECIFIED;
+            SCM _head = SCM_UNSPECIFIED;
+            SCM _body = SCM_UNSPECIFIED;
+            SCM _body_args = SCM_UNSPECIFIED;
         public:
             expression_kernel_define() {}            
-            expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, SCM args = SCM_UNSPECIFIED, int arg = 0);
-            expression_kernel_define(SCM scm, SCM env,  std::map<std::string, SCM> const & def, SCM args = SCM_UNSPECIFIED, int arg = 0);
+            expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
+            expression_kernel_define(SCM scm, SCM env,  std::map<std::string, SCM> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
             void read(sbn::kernel_buffer& in) override;

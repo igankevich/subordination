@@ -18,7 +18,6 @@ expression_kernel_main(int argc, char* argv[]) {
         );
         
     }
-
 }
 
 void 
@@ -62,10 +61,8 @@ sbn::guile::expression_kernel_main::write(sbn::kernel_buffer& out) const {
 }
 
 
-
 void 
 sbn::guile::expression_kernel::act() {
-    // SCM_DEBUG_VALUE(this->_scheme);
     bool is_list = bool(scm_is_true(scm_list_p(this->_scheme)));
     if (is_list) {
         bool check = bool(scm_is_true(scm_symbol_p(scm_car(this->_scheme))));
@@ -78,12 +75,10 @@ sbn::guile::expression_kernel::act() {
             auto head = scm_car(scm_cdr(this->_scheme));
             if (bool(scm_is_true(scm_list_p(head)))) {
                 std::string key = scm_to_locale_string(scm_symbol_to_string(scm_car(head)));
-                protected_scm value = this->_scheme;//scm_car(scm_cdr(scm_cdr(this->_scheme)));
-                this->_definitions[key] = value;
+                this->_definitions[key] = this->_scheme;
             } else {
                 std::string key = scm_to_locale_string(scm_symbol_to_string(head));
-                protected_scm value = this->_scheme;//scm_car(scm_cdr(scm_cdr(this->_scheme)));
-                this->_definitions[key] = value;
+                this->_definitions[key] = this->_scheme;
             }
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         } else if (check && std::string("if") == scm_to_locale_string(scm_symbol_to_string(fun))) {
@@ -93,13 +88,10 @@ sbn::guile::expression_kernel::act() {
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         } else if (check && std::string("quote") == scm_to_locale_string(scm_symbol_to_string(fun))) {
             this->_result = scm_car(scm_cdr(this->_scheme));
-            //this->_result = this->_scheme;
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         } else {
             if (check && (this->_definitions.find(scm_to_locale_string(scm_symbol_to_string(fun))) != this->_definitions.end())) {
                 std::string key = scm_to_locale_string(scm_symbol_to_string(fun));
-                std::cout << "here <<<<";
-                SCM_DEBUG_VALUE(this->_definitions[key]);
                 sbn::upstream<sbn::Local>(
                     this, 
                     sbn::make_pointer<sbn::guile::expression_kernel_define>(
@@ -111,7 +103,6 @@ sbn::guile::expression_kernel::act() {
                     )
                 );
                 this->_args.resize(1);
-                //this->_args.emplace_back(this->_definitions[key]);
             } else {
                 int args_number = 0;
                 for (SCM s = this->_scheme; s != SCM_EOL; s = scm_cdr(s)) {
@@ -144,9 +135,7 @@ sbn::guile::expression_kernel::act() {
                 )
             );
             this->_args.resize(1);
-            //this->_args.emplace_back(this->_definitions[key]);
         } else {
-            // std::cout << " >>>> "; SCM_DEBUG_VALUE(this->_scheme);
             this->_result = this->_scheme;
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         }
@@ -166,35 +155,19 @@ sbn::guile::expression_kernel::react(sbn::kernel_ptr&& child) {
         sbn::commit<sbn::Local>(std::move(this_ptr()));
         return;
     } 
-    /////Что то тут не так
-    SCM temp = child_kernel->get_result();
-    if (_args.size() == 0) {
-        this->_result = temp    ;
-        sbn::commit<sbn::Local>(std::move(this_ptr()));
-        return;
-    }
-    // std::cout << arg << " / " <<  _args.size() << std::endl;
-    _args[arg] = temp;
+    _args[arg] = child_kernel->get_result();;
     _finished_child++;
     if (_finished_child == _args.size()) {
         _result = scm_list_1(_args.front());
         for (size_t i = 1; i < _args.size(); i++) {
-            /*bool is_list = bool(scm_is_true(scm_list_p(this->_args[i])));
-            if (is_list && scm_is_false(scm_eq_p(scm_sym_quote, scm_car(this->_args[i])))) {
-                this->_args[i] = scm_list_2(scm_sym_quote, this->_args[i]);
-            }*/
+            bool is_list = bool(scm_is_true(scm_list_p(this->_args[i])));
+            //dumb check for lists like (1 2 3)
+            bool check = is_list && bool(scm_is_false(scm_symbol_p(this->_args[i])));
+            if (check) {
+                this->_args[i] = scm_list_2(scm_sym_quote, scm_list_1(this->_args[i]));
+            }
             _result = scm_append(scm_list_2(_result, scm_list_1(_args[i])));
         }
-        /*SCM str3 = scm_open_output_string();
-        scm_display(this->_result, str3);
-        std::string out3 = scm_to_locale_string(scm_get_output_string(str3)); 
-        out3 += "\n";
-        std::cout << out3 << std::endl;
-        std::cout << "here" << std::endl;*/
-
-            SCM_DEBUG_VALUE(this->_scheme);
-            std::cout << " >>>  ";
-            SCM_DEBUG_VALUE(this->_result);
         this->_result = scm_eval(this->_result, this->_environment);
         sbn::commit<sbn::Local>(std::move(this_ptr()));
     }
@@ -237,12 +210,13 @@ sbn::guile::expression_kernel_if::react(sbn::kernel_ptr&& child) {
     int arg = child_kernel->get_arg();
     
     // 0 -- sign of statement
+
     if (arg == 0) {
-        //statement
         SCM statement = child_kernel->get_result();
+
         bool is_true = bool(scm_is_true(statement));
         if (is_true) {
-            SCM result = scm_car(scm_cdr(scm_cdr(this->_scheme)));
+            SCM result = scm_car(scm_cdr(scm_cdr(this->_scheme)));            
             sbn::upstream<sbn::Local>(
                 this, 
                 sbn::make_pointer<sbn::guile::expression_kernel>(
@@ -253,19 +227,17 @@ sbn::guile::expression_kernel_if::react(sbn::kernel_ptr&& child) {
                 )
             );
         } else {
-            SCM result = scm_cdr(scm_cdr(scm_cdr(this->_scheme)));
+            SCM result = scm_car(scm_cdr(scm_cdr(scm_cdr(this->_scheme))));
+
             sbn::upstream<sbn::Local>(
                 this, 
                 sbn::make_pointer<sbn::guile::expression_kernel>(
-                    scm_car(result), 
+                    result, 
                     this->_environment, 
                     this->_definitions, 
                     -1
                 )
             );
-           // } else {
-            //    sbn::commit<sbn::Local>(std::move(this_ptr()));
-           // }
         }
     }
     else if (arg < 0) {
@@ -289,7 +261,7 @@ sbn::guile::expression_kernel_if::write(sbn::kernel_buffer& out) const {
 }
 
 sbn::guile::expression_kernel_define::
-expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, SCM args, int arg)
+expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, protected_scm args, int arg)
 : expression_kernel(scm, def, arg) {
     //(define (head) (body))
     this->_head = scm_car(scm_cdr(scm));
@@ -298,7 +270,7 @@ expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, SCM ar
 }
 
 sbn::guile::expression_kernel_define::
-expression_kernel_define(SCM scm, SCM env, std::map<std::string, SCM> const & def, SCM args, int arg)
+expression_kernel_define(SCM scm, SCM env, std::map<std::string, SCM> const & def, protected_scm args, int arg)
 : expression_kernel(scm, env, def, arg) {
     //(define (head) (body))
     this->_head = scm_car(scm_cdr(scm));
@@ -361,14 +333,17 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
             int i = 0;
             SCM env = this->_environment;
             for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {
-                SCM var = scm_module_variable(env, scm_car(s));
-                if (scm_is_false(var) || !scm_equal_p(scm_car(s), this->_args[i]))
+                SCM defined = scm_module_variable(env, scm_car(s));
+                if (scm_is_false(defined) || scm_is_false(scm_eqv_p(defined, this->_args[i])))
                 {
-                    /*bool is_list = bool(scm_is_true(scm_list_p(this->_args[i])));
-                    if (is_list && scm_is_false(scm_eq_p(scm_sym_quote, scm_car(this->_args[i])))) {
-                        this->_args[i] = scm_list_2(scm_sym_quote, this->_args[i]);
-                    }*/
+                    // bool is_list = bool(scm_is_true(scm_list_p(s)));
+                    // if (is_list && scm_is_false(scm_eq_p(scm_sym_quote, scm_car(this->_args[i])))) {
+                    //     this->_args[i] = scm_list_2(scm_sym_quote, scm_list_1(this->_args[i]));
+                    // } 
+                    
+                    // if (scm_is_false(scm_eqv_p(scm_public_variable(env, scm_symbol_to_string(scm_car(s))), scm_car(s)))) {
                     scm_module_define(env, scm_car(s), this->_args[i++]);
+                    // }
                 }
             }
             
