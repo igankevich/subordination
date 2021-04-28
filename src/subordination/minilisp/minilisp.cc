@@ -12,125 +12,105 @@
 #include <string.h>
 
 #include <sstream>
+#include <unordered_map>
+
+#include <unistdx/system/linker>
 
 #include <subordination/api.hh>
 #include <subordination/core/error_handler.hh>
 #include <subordination/core/kernel.hh>
+#include <subordination/minilisp/minilisp.hh>
 
-template <class ... Args>
-inline void
-log(const Args& ... args) {
-    sys::log_message("lisp", args...);
+namespace {
+
+    template <class ... Args>
+    inline void
+    log(const Args& ... args) {
+        sys::log_message("lisp", args...);
+    }
+
+    lisp::Special* Nil = nullptr;
+    lisp::Special* Dot = nullptr;
+    lisp::Special* Cparen = nullptr;
+    lisp::Special* True = nullptr;
+    lisp::Object* Symbols = nullptr;
+
+    std::mutex global_mutex;
+    std::unordered_map<lisp::Cpp_function_id,lisp::Cpp_function> functions;
 }
 
 //======================================================================
 // Lisp objects
 //======================================================================
 
-// The Lisp object type
-enum Type {
-    // Regular objects visible from the user
-    TINT = 1,
-    TCELL,
-    TSYMBOL,
-    TPRIMITIVE,
-    TFUNCTION,
-    TMACRO,
-    TSPECIAL,
-    TENV,
-};
+using lisp::Environment;
+using lisp::Function;
+using lisp::Integer;
+using lisp::Kernel;
+using lisp::List;
+using lisp::Object;
+using lisp::Primitive;
+using lisp::Special;
+using lisp::Special_type;
+using lisp::Symbol;
+using lisp::Type;
+using lisp::cons;
 
-const char* type_to_string(Type t) noexcept {
+const char* lisp::to_string(Type t) noexcept {
     switch (t) {
-        case TINT: return "integer";
-        case TCELL: return "cell";
-        case TSYMBOL: return "symbol";
-        case TPRIMITIVE: return "primitive";
-        case TFUNCTION: return "function";
-        case TMACRO: return "macro";
-        case TSPECIAL: return "special";
-        case TENV: return "environment";
+        case Type::Integer: return "integer";
+        case Type::Cell: return "cell";
+        case Type::Symbol: return "symbol";
+        case Type::Primitive: return "primitive";
+        case Type::Function: return "function";
+        case Type::Macro: return "macro";
+        case Type::Special: return "special";
+        case Type::Environment: return "environment";
         default: return nullptr;
     }
 }
 
-std::ostream& operator<<(std::ostream& out, Type rhs) {
-    auto s = type_to_string(rhs);
+std::ostream& lisp::operator<<(std::ostream& out, Type rhs) {
+    auto s = to_string(rhs);
     return out << (s ? s : "unknown");
 }
 
-// Subtypes for TSPECIAL
-enum {
-    TNIL = 1,
-    TDOT,
-    TCPAREN,
-    TTRUE,
-};
+const char* lisp::to_string(Special_type t) noexcept {
+    switch (t) {
+        case Special_type::Nil: return "nil";
+        case Special_type::Dot: return "dot";
+        case Special_type::Cparen: return "cparen";
+        case Special_type::True: return "true";
+        default: return nullptr;
+    }
+}
 
-struct Obj;
-class Kernel;
+std::ostream& lisp::operator<<(std::ostream& out, Special_type rhs) {
+    auto s = to_string(rhs);
+    return out << (s ? s : "unknown");
+}
 
-// Typedef for the primitive function.
-typedef struct Obj* Primitive(Kernel* kernel, struct Obj* env, struct Obj* args);
+lisp::Special* lisp::make(Special_type type) noexcept {
+    switch (type) {
+        case Special_type::Nil: return Nil;
+        case Special_type::Dot: return Dot;
+        case Special_type::Cparen: return Cparen;
+        case Special_type::True: return True;
+        default: return nullptr;
+    }
+}
 
-// The object type
-typedef struct Obj {
-    // The first word of the object represents the type of the object. Any code that handles object
-    // needs to check its type first, then access the following union members.
-    Type type;
+static Object* eval_list(Kernel* kernel, Environment* env, Object* list);
+static Object* progn(Kernel* kernel, Environment* env, Object* list);
+static size_t list_length(const Object* list);
 
-    // Object values.
-    union {
-        // Int
-        int value;
-        // Cell
-        struct {
-            struct Obj* car;
-            struct Obj* cdr;
-        };
-        // Symbol
-        char name[1];
-        // Primitive
-        Primitive *fn;
-        // Function or Macro
-        struct {
-            struct Obj* params;
-            struct Obj* body;
-            struct Obj* env;
-        };
-        // Subtype for special type
-        int subtype;
-        // Environment frame. This is a linked list of association lists
-        // containing the mapping from symbols to their value.
-        struct {
-            struct Obj* vars;
-            struct Obj* up;
-        };
-        // Forwarding pointer
-        void *moved;
-    };
-} Obj;
-
-static Obj* eval(Kernel* kernel, Obj* env, Obj* obj);
-static Obj* cons(Obj* car, Obj* cdr);
-static Obj* eval_list(Kernel* kernel, Obj* env, Obj* list);
-static Obj* push_env(Obj* env, Obj* vars, Obj* values);
-static Obj* progn(Kernel* kernel, Obj* env, Obj* list);
-static size_t list_length(Obj* list);
-
-// Constants
-static Obj* Nil;
-static Obj* Dot;
-static Obj* Cparen;
-static Obj* True;
-
-Obj* vector_to_list(const std::vector<Obj*>& vec) {
+Object* vector_to_list(const std::vector<Object*>& vec) {
     const auto n = vec.size();
     if (n == 0) { return Nil; }
-    Obj* list = Nil;
+    Object* list = Nil;
     for (size_t i=0; i<n; ++i) {
         size_t j = n-1-i;
-        list = cons(vec[j], list);
+        list = lisp::cons(vec[j], list);
     }
     return list;
 }
@@ -150,19 +130,19 @@ std::string kernel_stack(sbn::kernel* k) {
 class Kernel: public sbn::kernel {
 
 private:
-    Obj* _environment{};
-    Obj* _expression{};
-    Obj* _result{};
+    Environment* _environment{};
+    Object* _expression{};
+    Object* _result = Nil;
     size_t _index = 0;
 
 public:
     Kernel() = default;
-    inline Kernel(Obj* env, Obj* expr): Kernel(env, expr, 0) {}
-    inline Kernel(Obj* env, Obj* expr, size_t index):
+    inline Kernel(Environment* env, Object* expr): Kernel(env, expr, 0) {}
+    inline Kernel(Environment* env, Object* expr, size_t index):
     _environment(env), _expression(expr), _index(index) {}
 
     void act() override {
-        this->_result = eval(this, this->_environment, this->_expression);
+        this->_result = this->_expression->eval(this, this->_environment);
         if (this->_result) { sbn::commit(std::move(this_ptr())); }
     }
 
@@ -172,14 +152,30 @@ public:
         sbn::commit(std::move(this_ptr()));
     }
 
-    inline Obj* result() noexcept { return this->_result; }
-    inline const Obj* result() const noexcept { return this->_result; }
-    inline void result(Obj* rhs) noexcept { this->_result = rhs; }
-    inline Obj* environment() noexcept { return this->_environment; }
-    inline const Obj* environment() const noexcept { return this->_environment; }
-    inline Obj* expression() noexcept { return this->_expression; }
-    inline const Obj* expression() const noexcept { return this->_expression; }
-    inline void expression(Obj* rhs) noexcept { this->_expression = rhs; }
+    void write(sbn::kernel_buffer& out) const override {
+        sbn::kernel::write(out);
+        this->_environment->write(out);
+        this->_expression->write(out);
+        this->_result->write(out);
+        out.write(this->_index);
+    }
+
+    void read(sbn::kernel_buffer& in) override {
+        sbn::kernel::read(in);
+        this->_environment = cast<Environment>(::lisp::read(in));
+        this->_expression = ::lisp::read(in);
+        this->_result = ::lisp::read(in);
+        in.read(this->_index);
+    }
+
+    inline Object* result() noexcept { return this->_result; }
+    inline const Object* result() const noexcept { return this->_result; }
+    inline void result(Object* rhs) noexcept { this->_result = rhs; }
+    inline Environment* environment() noexcept { return this->_environment; }
+    inline const Environment* environment() const noexcept { return this->_environment; }
+    inline Object* expression() noexcept { return this->_expression; }
+    inline const Object* expression() const noexcept { return this->_expression; }
+    inline void expression(Object* rhs) noexcept { this->_expression = rhs; }
     inline size_t index() const noexcept { return this->_index; }
     inline void index(size_t rhs) noexcept { this->_index = rhs; }
 
@@ -188,20 +184,20 @@ public:
 class Cons: public Kernel {
 
 private:
-    Obj* _a{};
-    Obj* _b{};
-    Obj* _result_a{};
-    Obj* _result_b{};
+    Object* _a{};
+    Object* _b{};
+    Object* _result_a{};
+    Object* _result_b{};
     std::atomic<int> _count{0};
 
 public:
     Cons() = default;
-    inline Cons(Obj* env, Obj* expr): Kernel(env, expr),
+    inline Cons(Environment* env, Object* expr): Kernel(env, expr),
     _a(expr->car), _b(expr->cdr->car) {}
 
     void act() override {
-        this->_result_a = eval(this, environment(), this->_a);
-        this->_result_b = eval(this, environment(), this->_b);
+        this->_result_a = this->_a->eval(this, environment());
+        this->_result_b = this->_b->eval(this, environment());
         if (this->_result_a) { ++this->_count; }
         if (this->_result_b) { ++this->_count; }
         if (this->_count == 2) {
@@ -232,7 +228,7 @@ public:
 class Progn: public Kernel {
 public:
     Progn() = default;
-    inline Progn(Obj* env, Obj* expr): Kernel(env, expr) {}
+    inline Progn(Environment* env, Object* expr): Kernel(env, expr) {}
 
     void act() override {
         auto list = expression();
@@ -240,7 +236,7 @@ public:
             auto element = list->car;
             list = list->cdr;
             expression(list);
-            result(eval(this, environment(), element));
+            result(element->eval(this, environment()));
             if (!result()) {
                 break;
             }
@@ -263,12 +259,14 @@ public:
 
 class Apply: public Kernel {
 private:
-    Obj* _new_expr{};
-    std::vector<Obj*> _args;
+    Object* _new_expr{};
+    std::vector<Object*> _args;
     enum class State {Args,Progn} _state = State::Args;
 public:
     Apply() = default;
-    inline Apply(Obj* env, Obj* expr, Obj* new_expr): Kernel(env, expr), _new_expr(new_expr) {}
+
+    inline Apply(Environment* env, Object* expr, Object* new_expr):
+    Kernel(env, expr), _new_expr(new_expr) {}
 
     void act() override {
         auto args = this->_new_expr->cdr;
@@ -276,8 +274,8 @@ public:
         this->_args.resize(n);
         size_t i = 0;
         bool async = false;
-        for (Obj* lp = args; lp != Nil; lp = lp->cdr, ++i) {
-            auto result = eval(this, environment(), lp->car);
+        for (Object* lp = args; lp != Nil; lp = lp->cdr, ++i) {
+            auto result = lp->car->eval(this, environment());
             if (result) {
                 this->_args[i] = result;
             } else {
@@ -316,10 +314,11 @@ public:
 private:
     void postamble() {
         auto fn = this->_new_expr->car;
-        Obj* body = fn->body;
-        Obj* params = fn->params;
-        Obj* eargs = vector_to_list(this->_args);
-        Obj* newenv = push_env(fn->env, params, eargs);
+        auto tmp = reinterpret_cast<Function*>(fn);
+        Object* body = tmp->body;
+        auto* params = tmp->params;
+        Object* eargs = vector_to_list(this->_args);
+        Environment* newenv = new Environment(params, eargs, tmp->env);
         //log("apply _ to _", fn, eargs);
         result(progn(this, newenv, body));
         if (result()) {
@@ -330,77 +329,55 @@ private:
 
 };
 
-// The list containing all symbols. Such data structure is traditionally called the "obarray", but I
-// avoid using it as a variable name as this is not an array but a list.
-static Obj* Symbols;
-
-static void error(const char* fmt, ...) __attribute((noreturn));
+[[noreturn]] static void error(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    va_end(ap);
+    exit(1);
+}
 
 //======================================================================
 // Constructors
 //======================================================================
 
-static Obj* alloc(Type type, size_t size) {
-    // Add the size of the type tag.
-    size += offsetof(Obj, value);
-
-    // Allocate the object.
-    Obj* obj = reinterpret_cast<Obj*>(malloc(size));
-    obj->type = type;
-    return obj;
-}
-
-static Obj* make_int(int value) {
-    Obj* r = alloc(TINT, sizeof(int));
-    r->value = value;
-    return r;
-}
-
-static Obj* make_symbol(const char* name) {
-    Obj* sym = alloc(TSYMBOL, strlen(name) + 1);
-    strcpy(sym->name, name);
-    return sym;
-}
-
-static Obj* make_primitive(Primitive *fn) {
-    Obj* r = alloc(TPRIMITIVE, sizeof(Primitive *));
-    r->fn = fn;
-    return r;
-}
-
-static Obj* make_function(Type type, Obj* params, Obj* body, Obj* env) {
-    assert(type == TFUNCTION || type == TMACRO);
-    Obj* r = alloc(type, sizeof(Obj* ) * 3);
+static Function* make_function(Type type, Symbol* params, Object* body, Environment* env) {
+    assert(type == Type::Function || type == Type::Macro);
+    auto* r = new Function(type);
     r->params = params;
     r->body = body;
     r->env = env;
     return r;
 }
 
-static Obj* make_special(int subtype) {
-    Obj* r = reinterpret_cast<Obj*>(malloc(sizeof(void *) * 2));
-    r->type = TSPECIAL;
-    r->subtype = subtype;
-    return r;
+// Returns ((x . y) . a)
+static Object* acons(Object* x, Object* y, Object* a) {
+    return cons(cons(x, y), a);
 }
 
-struct Obj* make_env(Obj* vars, Obj* up) {
-    Obj* r = alloc(TENV, sizeof(Obj* ) * 2);
-    r->vars = vars;
-    r->up = up;
-    return r;
+lisp::Environment::Environment(Symbol* symbols, Object* values, Environment* parent) {
+    this->type = Type::Environment;
+    if (list_length(symbols) != list_length(values))
+        error("Cannot apply function: number of argument does not match");
+    Object* map = Nil;
+    Object* p = symbols;
+    Object* q = values;
+    for (; p != Nil; p = reinterpret_cast<Symbol*>(p->cdr), q = q->cdr) {
+        Object* sym = p->car;
+        Object* val = q->car;
+        map = acons(sym, val, map);
+    }
+    this->vars = map;
+    this->parent = parent;
 }
 
-static Obj* cons(Obj* car, Obj* cdr) {
-    Obj* cell = alloc(TCELL, sizeof(Obj* ) * 2);
+lisp::Cell* lisp::cons(Object* car, Object* cdr) {
+    auto* cell = new Cell;
+    cell->type = Type::Cell;
     cell->car = car;
     cell->cdr = cdr;
     return cell;
-}
-
-// Returns ((x . y) . a)
-static Obj* acons(Obj* x, Obj* y, Obj* a) {
-    return cons(cons(x, y), a);
 }
 
 //======================================================================
@@ -409,16 +386,7 @@ static Obj* acons(Obj* x, Obj* y, Obj* a) {
 // This is a hand-written recursive-descendent parser.
 //======================================================================
 
-static Obj* read();
-
-static void error(const char* fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    va_end(ap);
-    exit(1);
-}
+static Object* read();
 
 static int peek() {
     int c = getchar();
@@ -441,19 +409,19 @@ static void skip_line() {
 }
 
 // Reads a list. Note that '(' has already been read.
-static Obj* read_list() {
-    Obj* obj = read();
+static Object* read_list() {
+    Object* obj = read();
     if (!obj)
         error("Unclosed parenthesis");
     if (obj == Dot)
         error("Stray dot");
     if (obj == Cparen)
         return Nil;
-    Obj* head, *tail;
+    Object* head, *tail;
     head = tail = cons(obj, Nil);
 
     for (;;) {
-        Obj* obj = read();
+        Object* obj = read();
         if (!obj)
             error("Unclosed parenthesis");
         if (obj == Cparen)
@@ -471,18 +439,22 @@ static Obj* read_list() {
 
 // May create a new symbol. If there's a symbol with the same name, it will not create a new symbol
 // but return the existing one.
-static Obj* intern(const char* name) {
-    for (Obj* p = Symbols; p != Nil; p = p->cdr)
-        if (strcmp(name, p->car->name) == 0)
-            return p->car;
-    Obj* sym = make_symbol(name);
-    Symbols = cons(sym, Symbols);
+static Symbol* intern(const char* name) {
+    std::lock_guard<std::mutex> lock(::global_mutex);
+    for (Object* p = ::Symbols; p != Nil; p = p->cdr) {
+        auto tmp = reinterpret_cast<Symbol*>(p->car);
+        if (name == tmp->name) {
+            return tmp;
+        }
+    }
+    auto* sym = new Symbol(name);
+    ::Symbols = cons(sym, ::Symbols);
     return sym;
 }
 
 // Reader marcro ' (single quote). It reads an expression and returns (quote <expr>).
-static Obj* read_quote() {
-    Obj* sym = intern("quote");
+static Object* read_quote() {
+    auto* sym = intern("quote");
     return cons(sym, cons(read(), Nil));
 }
 
@@ -494,7 +466,7 @@ static int read_number(int val) {
 
 #define SYMBOL_MAX_LEN 200
 
-static Obj* read_symbol(char c) {
+static Symbol* read_symbol(char c) {
     char buf[SYMBOL_MAX_LEN + 1];
     int len = 1;
     buf[0] = c;
@@ -507,7 +479,7 @@ static Obj* read_symbol(char c) {
     return intern(buf);
 }
 
-static Obj* read() {
+static Object* read() {
     for (;;) {
         int c = getchar();
         if (c == ' ' || c == '\n' || c == '\r' || c == '\t')
@@ -527,82 +499,97 @@ static Obj* read() {
         if (c == '\'')
             return read_quote();
         if (isdigit(c))
-            return make_int(read_number(c - '0'));
+            return new Integer(read_number(c - '0'));
         if (c == '-')
-            return make_int(-read_number(0));
+            return new Integer(-read_number(0));
         if (isalpha(c) || strchr("+=!@#$%^&*", c))
             return read_symbol(c);
         error("Don't know how to handle %c", c);
     }
 }
 
-std::ostream& operator<<(std::ostream& out, const Obj* obj) {
-    if (!obj) {
-        out << "nullptr";
-        return out;
+void lisp::Environment::write(std::ostream& out) const {
+    for (auto p = this; p; p = p->parent) {
+        p->vars->write(out);
     }
-    switch (obj->type) {
-        case TINT:
-            out << obj->value;
+}
+
+void lisp::Special::write(std::ostream& out) const {
+    if (this == Nil) {
+        out << "()";
+    } else if (this == True) {
+        out << "#t";
+    } else {
+        error("Bug: print: Unknown subtype: %d", this->subtype);
+    }
+}
+
+void lisp::Integer::write(std::ostream& out) const {
+    out << value;
+}
+
+void lisp::Cell::write(std::ostream& out) const {
+    out << '(';
+    for (const Object* obj = this;;) {
+        out << obj->car;
+        if (obj->cdr == Nil)
             break;
-        case TCELL:
-            out << '(';
-            for (;;) {
-                out << obj->car;
-                if (obj->cdr == Nil)
-                    break;
-                if (!obj->cdr) {
-                    out << " . nullptr";
-                    break;
-                }
-                if (obj->cdr->type != TCELL) {
-                    out << " . " << obj->cdr;
-                    break;
-                }
-                out << ' ';
-                obj = obj->cdr;
-            }
-            out << ')';
+        if (!obj->cdr) {
+            out << " . nullptr";
             break;
-        case TSYMBOL:
-            out << obj->name;
+        }
+        if (obj->cdr->type != Type::Cell) {
+            out << " . " << obj->cdr;
             break;
-        case TPRIMITIVE:
-            out << "<primitive>";
-            break;
-        case TFUNCTION:
+        }
+        out << ' ';
+        obj = obj->cdr;
+    }
+    out << ')';
+}
+
+void lisp::Symbol::write(std::ostream& out) const {
+    out << name;
+}
+
+void lisp::Primitive::write(std::ostream& out) const {
+    out << "<primitive> " << dl::symbol(reinterpret_cast<void*>(fn)).name();
+}
+
+void lisp::Function::write(std::ostream& out) const {
+    switch (type) {
+        case Type::Function:
             out << "<function>";
             break;
-        case TMACRO:
+        case Type::Macro:
             out << "<macro>";
             break;
-        case TSPECIAL:
-            if (obj == Nil) {
-                out << "()";
-            } else if (obj == True) {
-                out << "#t";
-            } else {
-                error("Bug: print: Unknown subtype: %d", obj->subtype);
-            }
-            break;
         default:
-            error("Bug: print: Unknown tag type: %d", obj->type);
+            error("Bug: print: Unknown tag type: %d", type);
+    }
+}
+
+std::ostream& lisp::operator<<(std::ostream& out, const Object* obj) {
+    if (obj) {
+        obj->write(out);
+    } else {
+        out << "nullptr";
     }
     return out;
 }
 
-std::string object_to_string(const Obj* obj) {
+std::string object_to_string(const Object* obj) {
     std::stringstream tmp;
     tmp << obj;
     return tmp.str();
 }
 
-static size_t list_length(Obj* list) {
+static size_t list_length(const Object* list) {
     size_t len = 0;
     for (;;) {
         if (list == Nil)
             return len;
-        if (list->type != TCELL)
+        if (list->type != Type::Cell)
             error("length: cannot handle dotted list");
         list = list->cdr;
         ++len;
@@ -610,41 +597,32 @@ static size_t list_length(Obj* list) {
     return len;
 }
 
+size_t lisp::List::size() const {
+    return list_length(this);
+}
+
 //======================================================================
 // Evaluator
 //======================================================================
 
-static void add_variable(Obj* env, Obj* sym, Obj* val) {
-    env->vars = acons(sym, val, env->vars);
-}
-
-// Returns a newly created environment frame.
-static Obj* push_env(Obj* env, Obj* vars, Obj* values) {
-    if (list_length(vars) != list_length(values))
-        error("Cannot apply function: number of argument does not match");
-    Obj* map = Nil;
-    for (Obj* p = vars, *q = values; p != Nil; p = p->cdr, q = q->cdr) {
-        Obj* sym = p->car;
-        Obj* val = q->car;
-        map = acons(sym, val, map);
-    }
-    return make_env(map, env);
+void lisp::Environment::add(Symbol* symbol, Object* value) {
+    this->vars = acons(symbol, value, this->vars);
 }
 
 // Evaluates the list elements from head and returns the last return value.
-static Obj* progn(Kernel* kernel, Obj* env, Obj* list) {
+static Object* progn(Kernel* kernel, Environment* env, Object* list) {
     if (list == Nil) { return Nil; }
-    if (list->cdr == Nil) { return eval(kernel, env, list->car); }
+    if (list->cdr == Nil) { return list->car->eval(kernel, env); }
     sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Progn>(env, list));
     return nullptr;
 }
 
 // Evaluates all the list elements and returns their return values as a new list.
-static Obj* eval_list(Kernel* kernel, Obj* env, Obj* list) {
-    Obj* head = nullptr;
-    Obj* tail = nullptr;
-    for (Obj* lp = list; lp != Nil; lp = lp->cdr) {
-        Obj* tmp = eval(kernel, env, lp->car);
+static Object* eval_list(Kernel* kernel, Environment* env, Object* list) {
+    Object* head = nullptr;
+    Object* tail = nullptr;
+    for (Object* lp = list; lp != Nil; lp = lp->cdr) {
+        Object* tmp = lp->car->eval(kernel, env);
         if (!tmp) {
             log("Bug: eval_list element is null");
         }
@@ -660,89 +638,202 @@ static Obj* eval_list(Kernel* kernel, Obj* env, Obj* list) {
     return head;
 }
 
-static bool is_list(Obj* obj) {
-  return obj == Nil || obj->type == TCELL;
+static bool is_list(Object* obj) {
+    return obj == Nil || obj->type == Type::Cell;
 }
 
 // Apply fn with args.
-static Obj* apply(Kernel* kernel, Obj* env, Obj* obj, Obj* fn, Obj* args) {
+static Object* apply(Kernel* kernel, Environment* env, Object* obj, Object* fn, Object* args) {
     if (!is_list(args))
         error("argument must be a list");
-    if (fn->type == TPRIMITIVE) {
-        return fn->fn(kernel, env, args);
+    if (fn->type == Type::Primitive) {
+        auto tmp = reinterpret_cast<Primitive*>(fn);
+        return tmp->fn(kernel, env, args);
     }
-    if (fn->type == TFUNCTION) {
+    if (fn->type == Type::Function) {
         sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Apply>(env, obj, cons(fn,args)));
         return nullptr;
     }
     error("not supported");
 }
 
-// Searches for a variable by symbol. Returns null if not found.
-static Obj* find(Obj* env, Obj* sym) {
-    for (Obj* p = env; p; p = p->up) {
-        for (Obj* cell = p->vars; cell != Nil; cell = cell->cdr) {
-            Obj* bind = cell->car;
-            if (sym == bind->car)
+Object* lisp::Environment::find(Symbol* symbol) {
+    for (Environment* p = this; p; p = p->parent) {
+        for (Object* cell = p->vars; cell != Nil; cell = cell->cdr) {
+            Object* bind = cell->car;
+            if (symbol == bind->car) {
                 return bind;
+            }
         }
     }
     return nullptr;
 }
 
 // Expands the given macro application form.
-static Obj* macroexpand(Kernel* kernel, Obj* env, Obj* obj) {
-    if (obj->type != TCELL || obj->car->type != TSYMBOL)
+static Object* macroexpand(Kernel* kernel, Environment* env, Object* obj) {
+    if (obj->type != Type::Cell || obj->car->type != Type::Symbol)
         return obj;
-    Obj* bind = find(env, obj->car);
-    if (!bind || bind->cdr->type != TMACRO)
+    Object* bind = env->find(reinterpret_cast<Symbol*>(obj->car));
+    if (!bind || bind->cdr->type != Type::Macro)
         return obj;
-    Obj* args = obj->cdr;
-    Obj* body = bind->cdr->body;
-    Obj* params = bind->cdr->params;
-    Obj* newenv = push_env(env, params, args);
+    Object* args = obj->cdr;
+    auto tmp = reinterpret_cast<Function*>(bind->cdr);
+    Object* body = tmp->body;
+    auto* params = tmp->params;
+    auto* newenv = new Environment(params, args, env);
     error("Bug: macroexpand not implemented");
     return progn(kernel, newenv, body);
 }
 
-// Evaluates the S expression.
-static Obj* eval(Kernel* kernel, Obj* env, Obj* obj) {
-    log("eval _< _", kernel_stack(kernel), obj);
-    Obj* result{};
-    switch (obj->type) {
-        case TINT:
-        case TPRIMITIVE:
-        case TFUNCTION:
-        case TSPECIAL:
-            // Self-evaluating objects
-            result = obj;
-            break;
-        case TSYMBOL: {
-                          // Variable
-                          Obj* bind = find(env, obj);
-                          if (!bind)
-                              error("Undefined symbol: %s", obj->name);
-                          result = bind->cdr;
-                          break;
-                      }
-        case TCELL: {
-                        // Function application form
-                        Obj* expanded = macroexpand(kernel, env, obj);
-                        if (expanded != obj) {
-                            result = eval(kernel, env, expanded);
-                            break;
-                        }
-                        Obj* fn = eval(kernel, env, obj->car);
-                        Obj* args = obj->cdr;
-                        log("function _ args _ obj _", fn, args, obj);
-                        log("fn type _", fn->type);
-                        if (fn->type != TPRIMITIVE && fn->type != TFUNCTION)
-                            error("The head of a list must be a function");
-                        result = apply(kernel, env, obj, fn, args);
-                        break;
-                    }
-        default:
-                    error("Bug: eval: Unknown tag type: %d", obj->type);
+Object* lisp::make(Type type) {
+    switch (type) {
+        case Type::Integer: return new Integer;
+        case Type::Cell: return new Cell;
+        case Type::Symbol: return new Symbol;
+        case Type::Primitive: return new Primitive;
+        case Type::Function: return new Function(type);
+        case Type::Macro: return new Function(type);
+        case Type::Special: return nullptr;
+        case Type::Environment: return new Environment(Nil, nullptr);
+        default: return nullptr;
+    }
+}
+
+void lisp::Object::write(sbn::kernel_buffer& out) const {
+    out.write(this->type);
+}
+
+Object* lisp::read(sbn::kernel_buffer& in) {
+    Type type{};
+    in.read(type);
+    Special_type subtype{};
+    if (type == Type::Special) {
+        in.read(subtype);
+        return make(subtype);
+    } else {
+        return make(type);
+    }
+}
+
+void lisp::Object::read(sbn::kernel_buffer& in) {
+}
+
+void lisp::Special::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    out.write(this->subtype);
+}
+
+void lisp::Special::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    in.read(this->subtype);
+}
+
+void lisp::Cell::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    this->car->write(out);
+    this->cdr->write(out);
+}
+
+void lisp::Cell::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    this->car = ::lisp::read(in);
+    this->cdr = ::lisp::read(in);
+}
+
+void lisp::Primitive::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    out.write(this->_id);
+}
+
+void lisp::Primitive::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    in.read(this->_id);
+    auto result = functions.find(this->_id);
+    if (result == functions.end()) {
+        throw std::runtime_error("bad function id");
+    }
+    this->fn = result->second;
+}
+
+void lisp::Function::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    this->params->write(out);
+    this->body->write(out);
+    this->env->write(out);
+}
+
+void lisp::Function::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    this->params = cast<Symbol>(::lisp::read(in));
+    this->body = ::lisp::read(in);
+    this->env = cast<Environment>(::lisp::read(in));
+}
+
+void lisp::Integer::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    out.write(this->value);
+}
+
+void lisp::Integer::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    in.read(this->value);
+}
+
+void lisp::Symbol::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    out.write(this->name);
+}
+
+void lisp::Symbol::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    in.read(this->name);
+}
+
+void lisp::Environment::write(sbn::kernel_buffer& out) const {
+    lisp::Object::write(out);
+    this->vars->write(out);
+    this->parent->write(out);
+}
+
+void lisp::Environment::read(sbn::kernel_buffer& in) {
+    lisp::Object::read(in);
+    this->vars = ::lisp::read(in);
+    this->parent = cast<Environment>(::lisp::read(in));
+}
+
+Object* lisp::Object::eval(Kernel* kernel, Environment* env) {
+    log("eval _< _", kernel_stack(kernel), this);
+    auto result = this;
+    log("eval _> _", kernel_stack(kernel), result);
+    return result;
+}
+
+Object* lisp::Symbol::eval(Kernel* kernel, Environment* env) {
+    log("eval _< _", kernel_stack(kernel), this);
+    Object* bind = env->find(this);
+    if (!bind) {
+        error("Undefined symbol: %s", this->name.data());
+    }
+    auto result = bind->cdr;
+    log("eval _> _", kernel_stack(kernel), result);
+    return result;
+}
+
+Object* lisp::Cell::eval(Kernel* kernel, Environment* env) {
+    log("eval _< _", kernel_stack(kernel), this);
+    // Function application form
+    Object* expanded = macroexpand(kernel, env, this);
+    Object* result{};
+    if (expanded != this) {
+        result = expanded->eval(kernel, env);
+    } else {
+        Object* fn = this->car->eval(kernel, env);
+        Object* args = this->cdr;
+        log("function _ args _ obj _", fn, args, this);
+        log("fn type _", fn->type);
+        if (fn->type != Type::Primitive && fn->type != Type::Function)
+            error("The head of a list must be a function");
+        result = apply(kernel, env, this, fn, args);
     }
     log("eval _> _", kernel_stack(kernel), result);
     return result;
@@ -753,193 +844,208 @@ static Obj* eval(Kernel* kernel, Obj* env, Obj* obj) {
 //======================================================================
 
 // 'expr
-static Obj* prim_quote(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_quote(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) != 1)
         error("Malformed quote");
     return list->car;
 }
 
 // (list expr ...)
-static Obj* prim_list(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_list(Kernel* kernel, Environment* env, Object* list) {
     return eval_list(kernel, env, list);
 }
 
 // (setq <symbol> expr)
-static Obj* prim_setq(Kernel* kernel, Obj* env, Obj* list) {
-    if (list_length(list) != 2 || list->car->type != TSYMBOL)
+static Object* prim_setq(Kernel* kernel, Environment* env, Object* list) {
+    if (list_length(list) != 2 || list->car->type != Type::Symbol) {
         error("Malformed setq");
-    Obj* bind = find(env, list->car);
-    if (!bind)
-        error("Unbound variable %s", list->car->name);
-    Obj* value = eval(kernel, env, list->cdr->car);
+    }
+    auto tmp = reinterpret_cast<Symbol*>(list->car);
+    Object* bind = env->find(tmp);
+    if (!bind) {
+        error("Unbound variable %s", tmp->name.data());
+    }
+    Object* value = list->cdr->car->eval(kernel, env);
     bind->cdr = value;
     return value;
 }
 
 // (+ <integer> ...)
-static Obj* prim_plus(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_plus(Kernel* kernel, Environment* env, Object* list) {
     int sum = 0;
-    for (Obj* args = eval_list(kernel, env, list); args != Nil; args = args->cdr) {
-        if (args->car->type != TINT)
+    for (Object* args = eval_list(kernel, env, list); args != Nil; args = args->cdr) {
+        if (args->car->type != Type::Integer) {
             error("+ takes only numbers");
-        sum += args->car->value;
+        }
+        auto tmp = reinterpret_cast<Integer*>(args->car);
+        sum += tmp->value;
     }
-    return make_int(sum);
+    return new Integer(sum);
 }
 
-static Obj* handle_function(Kernel* kernel, Obj* env, Obj* list, Type type) {
-    if (list->type != TCELL || !is_list(list->car) || list->cdr->type != TCELL)
+static Object* handle_function(Kernel* kernel, Environment* env, Object* list, Type type) {
+    if (list->type != Type::Cell || !is_list(list->car) || list->cdr->type != Type::Cell)
         error("Malformed lambda");
-    for (Obj* p = list->car; p != Nil; p = p->cdr) {
-        if (p->car->type != TSYMBOL)
+    for (Object* p = list->car; p != Nil; p = p->cdr) {
+        if (p->car->type != Type::Symbol) {
             error("Parameter must be a symbol");
-        if (!is_list(p->cdr))
+        }
+        if (!is_list(p->cdr)) {
             error("Parameter list is not a flat list");
+        }
     }
-    Obj* car = list->car;
-    Obj* cdr = list->cdr;
-    return make_function(type, car, cdr, env);
+    auto* symbols = reinterpret_cast<Symbol*>(list->car);
+    Object* cdr = list->cdr;
+    return make_function(type, symbols, cdr, env);
 }
 
 // (lambda (<symbol> ...) expr ...)
-static Obj* prim_lambda(Kernel* kernel, Obj* env, Obj* list) {
-    return handle_function(kernel, env, list, TFUNCTION);
+static Object* prim_lambda(Kernel* kernel, Environment* env, Object* list) {
+    return handle_function(kernel, env, list, Type::Function);
 }
 
-static Obj* handle_defun(Kernel* kernel, Obj* env, Obj* list, Type type) {
-    if (list->car->type != TSYMBOL || list->cdr->type != TCELL)
+static Object* handle_defun(Kernel* kernel, Environment* env, Object* list, Type type) {
+    if (list->car->type != Type::Symbol || list->cdr->type != Type::Cell)
         error("Malformed defun");
-    Obj* sym = list->car;
-    Obj* rest = list->cdr;
-    Obj* fn = handle_function(kernel, env, rest, type);
-    add_variable(env, sym, fn);
+    auto* sym = reinterpret_cast<Symbol*>(list->car);
+    Object* rest = list->cdr;
+    Object* fn = handle_function(kernel, env, rest, type);
+    env->add(sym, fn);
     return fn;
 }
 
 // (defun <symbol> (<symbol> ...) expr ...)
-static Obj* prim_defun(Kernel* kernel, Obj* env, Obj* list) {
-    return handle_defun(kernel, env, list, TFUNCTION);
+static Object* prim_defun(Kernel* kernel, Environment* env, Object* list) {
+    return handle_defun(kernel, env, list, Type::Function);
 }
 
 // (define <symbol> expr)
-static Obj* prim_define(Kernel* kernel, Obj* env, Obj* list) {
-    if (list_length(list) != 2 || list->car->type != TSYMBOL)
+static Object* prim_define(Kernel* kernel, Environment* env, Object* list) {
+    if (list_length(list) != 2 || list->car->type != Type::Symbol)
         error("Malformed define");
-    Obj* sym = list->car;
-    Obj* value = eval(kernel, env, list->cdr->car);
-    add_variable(env, sym, value);
+    auto* sym = reinterpret_cast<Symbol*>(list->car);
+    Object* value = list->cdr->car->eval(kernel, env);
+    env->add(sym, value);
     return value;
 }
 
 // (defmacro <symbol> (<symbol> ...) expr ...)
-static Obj* prim_defmacro(Kernel* kernel, Obj* env, Obj* list) {
-    return handle_defun(kernel, env, list, TMACRO);
+static Object* prim_defmacro(Kernel* kernel, Environment* env, Object* list) {
+    return handle_defun(kernel, env, list, Type::Macro);
 }
 
 // (macroexpand expr)
-static Obj* prim_macroexpand(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_macroexpand(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) != 1)
         error("Malformed macroexpand");
-    Obj* body = list->car;
+    Object* body = list->car;
     return macroexpand(kernel, env, body);
 }
 
 // (println expr)
-static Obj* prim_println(Kernel* kernel, Obj* env, Obj* list) {
-    std::cout << eval(kernel, env, list->car) << '\n';
+static Object* prim_println(Kernel* kernel, Environment* env, Object* list) {
+    std::cout << list->car->eval(kernel, env) << '\n';
     return Nil;
 }
 
 // (if expr expr expr ...)
-static Obj* prim_if(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_if(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) < 2)
         error("Malformed if");
-    Obj* cond = eval(kernel, env, list->car);
+    Object* cond = list->car->eval(kernel, env);
     if (cond != Nil) {
-        Obj* then = list->cdr->car;
-        return eval(kernel, env, then);
+        Object* then = list->cdr->car;
+        return then->eval(kernel, env);
     }
-    Obj* els = list->cdr->cdr;
+    Object* els = list->cdr->cdr;
     return els == Nil ? Nil : progn(kernel, env, els);
 }
 
 // (= <integer> <integer>)
-static Obj* prim_num_eq(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_num_eq(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) != 2)
         error("Malformed =");
-    Obj* values = eval_list(kernel, env, list);
-    Obj* x = values->car;
-    Obj* y = values->cdr->car;
-    if (x->type != TINT || y->type != TINT)
+    Object* values = eval_list(kernel, env, list);
+    Object* x = values->car;
+    Object* y = values->cdr->car;
+    if (x->type != Type::Integer || y->type != Type::Integer)
         error("= only takes numbers");
-    return x->value == y->value ? True : Nil;
+    auto a = reinterpret_cast<Integer*>(x);
+    auto b = reinterpret_cast<Integer*>(y);
+    return a->value == b->value ? True : Nil;
 }
 
 // (exit)
-static Obj* prim_exit(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_exit(Kernel* kernel, Environment* env, Object* list) {
     exit(0);
 }
 
-static Obj* prim_cons(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_cons(Kernel* kernel, Environment* env, Object* list) {
     sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Cons>(env, list));
     return nullptr;
 }
 
-static Obj* prim_car(Kernel* kernel, Obj* env, Obj* list) {
-    auto result = eval(kernel, env, list->car);
+static Object* prim_car(Kernel* kernel, Environment* env, Object* list) {
+    auto result = list->car->eval(kernel, env);
     if (!result) {
         error("Bug: car async not implemented");
     }
     return result->car;
 }
 
-static Obj* prim_cdr(Kernel* kernel, Obj* env, Obj* list) {
-    auto result = eval(kernel, env, list->car);
+static Object* prim_cdr(Kernel* kernel, Environment* env, Object* list) {
+    auto result = list->car->eval(kernel, env);
     if (!result) {
         error("Bug: cdr async not implemented");
     }
     return result->cdr;
 }
 
-static Obj* prim_is_null(Kernel* kernel, Obj* env, Obj* list) {
+static Object* prim_is_null(Kernel* kernel, Environment* env, Object* list) {
     return list == Nil ? True : Nil;
 }
 
-static Obj* prim_sleep(Kernel* kernel, Obj* env, Obj* list) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    return Nil;
+void lisp::define(Environment* env, const char* name, Object* value) {
+    env->add(intern(name), value);
 }
 
-static void add_primitive(Obj* env, const char* name, Primitive *fn) {
-    Obj* sym = intern(name);
-    Obj* prim = make_primitive(fn);
-    add_variable(env, sym, prim);
+void lisp::define(Environment* env, const char* name, Cpp_function function, Cpp_function_id id) {
+    {
+        std::lock_guard<std::mutex> lock(global_mutex);
+        auto result = functions.emplace(id, function);
+        if (!result.second) {
+            throw std::invalid_argument("duplicate function id");
+        }
+    }
+    env->add(intern(name), new Primitive(function,id));
 }
 
-static void define_constants(Obj* env) {
-    Obj* sym = intern("#t");
-    add_variable(env, sym, True);
+static void define_constants(Environment* env) {
+    env->add(intern("#t"), True);
 }
 
-static void define_primitives(Obj* env) {
-    add_primitive(env, "quote", prim_quote);
-    add_primitive(env, "list", prim_list);
-    add_primitive(env, "setq", prim_setq);
-    add_primitive(env, "+", prim_plus);
-    add_primitive(env, "define", prim_define);
-    add_primitive(env, "defun", prim_defun);
-    add_primitive(env, "defmacro", prim_defmacro);
-    add_primitive(env, "macroexpand", prim_macroexpand);
-    add_primitive(env, "lambda", prim_lambda);
-    add_primitive(env, "if", prim_if);
-    add_primitive(env, "=", prim_num_eq);
-    add_primitive(env, "println", prim_println);
-    add_primitive(env, "exit", prim_exit);
-    add_primitive(env, "cons", prim_cons);
-    add_primitive(env, "car", prim_car);
-    add_primitive(env, "cdr", prim_cdr);
-    add_primitive(env, "null?", prim_is_null);
-    add_primitive(env, "sleep", prim_sleep);
+static void define_primitives(Environment* env) {
+    define(env, "quote", prim_quote, 0);
+    define(env, "list", prim_list, 1);
+    define(env, "setq", prim_setq, 2);
+    define(env, "+", prim_plus, 3);
+    define(env, "define", prim_define, 4);
+    define(env, "defun", prim_defun, 5);
+    define(env, "defmacro", prim_defmacro, 6);
+    define(env, "macroexpand", prim_macroexpand, 7);
+    define(env, "lambda", prim_lambda, 8);
+    define(env, "if", prim_if, 9);
+    define(env, "=", prim_num_eq, 10);
+    define(env, "println", prim_println, 11);
+    define(env, "exit", prim_exit, 12);
+    define(env, "cons", prim_cons, 13);
+    define(env, "car", prim_car, 14);
+    define(env, "cdr", prim_cdr, 15);
+    define(env, "null?", prim_is_null, 16);
+    define(env, "sleep", [] (Kernel* kernel, Environment* env, List* args) -> Object* {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        return Nil;
+    }, 1000);
 }
 
 class Main: public Kernel {
@@ -948,7 +1054,7 @@ public:
 
     Main() = default;
 
-    inline Main(int argc, char** argv, Obj* env): Kernel(env, nullptr) {
+    inline Main(int argc, char** argv, Environment* env): Kernel(env, nullptr) {
         sbn::application::string_array args;
         args.reserve(argc);
         for (int i=0; i<argc; ++i) { args.emplace_back(argv[i]); }
@@ -979,7 +1085,7 @@ private:
             if (expr == Cparen) { error("Stray close parenthesis"); }
             if (expr == Dot) { error("Stray dot"); }
             expression(expr);
-            result(eval(this, environment(), expr));
+            result(expr->eval(this, environment()));
             if (result()) {
                 print();
                 //sbn::commit(std::move(this_ptr()));
@@ -993,27 +1099,27 @@ private:
 
 };
 
-Obj* make_initial_environment() {
+Environment* make_initial_environment() {
     // Constants and primitives
-    Nil = make_special(TNIL);
-    Dot = make_special(TDOT);
-    Cparen = make_special(TCPAREN);
-    True = make_special(TTRUE);
-    Symbols = Nil;
-    Obj* env = make_env(Nil, nullptr);
+    Nil = new Special(Special_type::Nil);
+    Dot = new Special(Special_type::Dot);
+    Cparen = new Special(Special_type::Cparen);
+    True = new Special(Special_type::True);
+    ::Symbols = Nil;
+    Environment* env = new Environment(Nil, nullptr);
     define_constants(env);
     define_primitives(env);
     return env;
 }
 
 int main(int argc, char** argv) {
-    Obj* env = make_initial_environment();
+    Environment* env = make_initial_environment();
     using namespace sbn;
     install_error_handler();
     {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
-        factory.local().num_upstream_threads(4);
+        factory.local().num_upstream_threads(1);
         factory.local().num_downstream_threads(0);
     }
     factory_guard g;
