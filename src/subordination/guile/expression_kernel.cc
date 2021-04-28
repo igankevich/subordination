@@ -136,7 +136,16 @@ sbn::guile::expression_kernel::act() {
             );
             this->_args.resize(1);
         } else {
-            this->_result = this->_scheme;
+            bool is_symbol = scm_is_true(scm_symbol_p(this->_scheme));
+            if (is_symbol) {
+                SCM defined = scm_module_variable(this->_environment, this->_scheme);
+                if (scm_is_false(defined) || scm_is_true(scm_variable_p(defined))) {
+                    this->_result = scm_variable_ref(defined);
+                } else {
+                    this->_result = this->_scheme;
+                }
+            }
+            // this->_result = this->_scheme;
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         }
     }
@@ -164,7 +173,7 @@ sbn::guile::expression_kernel::react(sbn::kernel_ptr&& child) {
             //dumb check for lists like (1 2 3)
             bool check = is_list && bool(scm_is_false(scm_symbol_p(this->_args[i])));
             if (check) {
-                this->_args[i] = scm_list_2(scm_sym_quote, scm_list_1(this->_args[i]));
+                this->_args[i] = scm_list_2(scm_sym_quote, this->_args[i]);
             }
             _result = scm_append(scm_list_2(_result, scm_list_1(_args[i])));
         }
@@ -332,33 +341,16 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
             SCM args = scm_cdr(this->_head);
             int i = 0;
             SCM env = this->_environment;
-            for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {
-                SCM defined = scm_module_variable(env, scm_car(s));
-                if (scm_is_false(defined) || scm_is_false(scm_eqv_p(defined, this->_args[i])))
-                {
-                    // bool is_list = bool(scm_is_true(scm_list_p(s)));
-                    // if (is_list && scm_is_false(scm_eq_p(scm_sym_quote, scm_car(this->_args[i])))) {
-                    //     this->_args[i] = scm_list_2(scm_sym_quote, scm_list_1(this->_args[i]));
-                    // } 
-                    
-                    // if (scm_is_false(scm_eqv_p(scm_public_variable(env, scm_symbol_to_string(scm_car(s))), scm_car(s)))) {
+            for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {se(scm_eqv_p(scm_public_variable(env, scm_symbol_to_string(scm_car(s))), scm_car(s)))) {
                     scm_module_define(env, scm_car(s), this->_args[i++]);
-                    // }
-                }
             }
             
             auto child = sbn::make_pointer<sbn::guile::expression_kernel>(
                 this->_body, 
                 env,
-                this->_definitions, 
+                this->_definitions,
                 -3
             );
-            child->set_environment(env);
-         /*   
-            this->_result = scm_eval(this->_result, env);
-                    SCM_DEBUG_VALUE(this->_result);
-            sbn::commit<sbn::Local>(std::move(this_ptr()));
-        */
             sbn::upstream<sbn::Local>(
                 this, 
                 std::move(child)
