@@ -90,6 +90,7 @@ sbn::guile::expression_kernel::act() {
             this->_result = scm_car(scm_cdr(this->_scheme));
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         } else {
+
             if (check && (this->_definitions.find(scm_to_locale_string(scm_symbol_to_string(fun))) != this->_definitions.end())) {
                 std::string key = scm_to_locale_string(scm_symbol_to_string(fun));
                 sbn::upstream<sbn::Local>(
@@ -144,8 +145,9 @@ sbn::guile::expression_kernel::act() {
                 } else {
                     this->_result = this->_scheme;
                 }
+            } else {
+                this->_result = this->_scheme;
             }
-            // this->_result = this->_scheme;
             sbn::commit<sbn::Local>(std::move(this_ptr()));
         }
     }
@@ -167,10 +169,10 @@ sbn::guile::expression_kernel::react(sbn::kernel_ptr&& child) {
     _args[arg] = child_kernel->get_result();;
     _finished_child++;
     if (_finished_child == _args.size()) {
-        _result = scm_list_1(_args.front());
-        for (size_t i = 1; i < _args.size(); i++) {
-            bool is_list = bool(scm_is_true(scm_list_p(this->_args[i])));
+        _result = scm_list_n(SCM_UNDEFINED);
+        for (size_t i = 0; i < _args.size(); i++) {
             //dumb check for lists like (1 2 3)
+            bool is_list = bool(scm_is_true(scm_list_p(this->_args[i])));
             bool check = is_list && bool(scm_is_false(scm_symbol_p(this->_args[i])));
             if (check) {
                 this->_args[i] = scm_list_2(scm_sym_quote, this->_args[i]);
@@ -342,7 +344,7 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
             int i = 0;
             SCM env = this->_environment;
             for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {
-                    scm_module_define(env, scm_car(s), this->_args[i++]);
+                scm_module_define(env, scm_car(s), this->_args[i++]);
             }
             auto child = sbn::make_pointer<sbn::guile::expression_kernel>(
                 this->_body, 
