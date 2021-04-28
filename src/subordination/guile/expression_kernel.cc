@@ -341,10 +341,9 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
             SCM args = scm_cdr(this->_head);
             int i = 0;
             SCM env = this->_environment;
-            for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {se(scm_eqv_p(scm_public_variable(env, scm_symbol_to_string(scm_car(s))), scm_car(s)))) {
+            for (SCM s = args; s != SCM_EOL; s = scm_cdr(s)) {
                     scm_module_define(env, scm_car(s), this->_args[i++]);
             }
-            
             auto child = sbn::make_pointer<sbn::guile::expression_kernel>(
                 this->_body, 
                 env,
