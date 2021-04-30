@@ -6,15 +6,19 @@
 using namespace lisp;
 
 void write_read_binary(Object* expected) {
+    EXPECT_TRUE(expected);
     sbn::kernel_buffer buffer;
-    expected->write(buffer);
+    buffer << expected;
     buffer.flip();
     Object* actual = ::lisp::read(buffer);
+    EXPECT_TRUE(actual);
     EXPECT_TRUE(to_boolean(equal(expected, actual)))
         << "expected type: " << expected->type
         << "\nactual type:   " << actual->type
         << "\nexpected:      " << expected
-        << "\nactual:        " << actual;
+        << "\nactual:        " << actual
+        << "\nexpected address: " << std::addressof(expected)
+        << "\nactual address: " << std::addressof(actual);
 }
 
 void read_write_textual(const char* expected) {
@@ -29,10 +33,9 @@ TEST(read_write, binary) {
     write_read_binary(new Boolean(true));
     write_read_binary(new Boolean(false));
     write_read_binary(lisp::eval(nullptr, top_environment(), read("equal?")));
-    write_read_binary(new Special(Special_type::Nil));
-    write_read_binary(new Symbol("hello"));
-    write_read_binary(new Symbol(""));
-    write_read_binary(new Cell(new Symbol("a"), new Symbol("b")));
+    write_read_binary(lisp::intern("hello"));
+    write_read_binary(lisp::intern(""));
+    write_read_binary(new Cell(intern("a"), intern("b")));
     write_read_binary(lisp::eval(nullptr, top_environment(), read("(lambda (x) 0)")));
     write_read_binary(top_environment());
 }

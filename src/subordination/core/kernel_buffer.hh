@@ -61,9 +61,6 @@ namespace sbn {
         void read(kernel_ptr& k);
 
         template <class T> inline kernel_buffer&
-        operator<<(const T& rhs) { this->write(rhs); return *this; }
-
-        template <class T> inline kernel_buffer&
         operator>>(T& rhs) { this->read(rhs); return *this; }
 
         inline void types(kernel_type_registry* rhs) noexcept { this->_types = rhs; }
@@ -73,6 +70,11 @@ namespace sbn {
         inline bool carry_all_parents() const noexcept { return this->_carry_all_parents; }
 
     };
+
+    template <class T> inline auto
+    operator<<(kernel_buffer& out, const T& rhs)
+    -> typename std::enable_if<!std::is_pointer<T>::value,kernel_buffer&>::type
+    { out.write(rhs); return out; }
 
     class kernel_frame {
 

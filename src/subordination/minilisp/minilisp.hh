@@ -13,33 +13,25 @@ namespace lisp {
     class Kernel;
     class List;
     class Object;
-    class Special;
     class Symbol;
     struct string_view;
 
     enum class Type {
+        Void = 0,
         Integer = 1,
         Cell = 2,
         Symbol = 3,
         Primitive = 4,
         Function = 5,
         Macro = 6,
-        Special = 7,
-        Environment = 8,
-        Boolean = 9,
+        Environment = 7,
+        Boolean = 8,
+        Async = 9,
     };
 
     const char* to_string(Type t) noexcept;
     std::ostream& operator<<(std::ostream& out, Type rhs);
     Object* make(Type type);
-
-    enum class Special_type {
-        Nil = 1,
-    };
-
-    const char* to_string(Special_type t) noexcept;
-    std::ostream& operator<<(std::ostream& out, Special_type rhs);
-    Object* make(Special_type type) noexcept;
 
     struct string_view {
         using value_type = char;
@@ -58,6 +50,7 @@ namespace lisp {
         first(a), last(b), orig(orig) {}
         inline iterator data() const noexcept { return this->first; }
         inline size_type size() const noexcept { return this->last-this->first; }
+        inline bool empty() const noexcept { return this->first == this->last; }
         inline char front() const noexcept { return *this->first; }
         void trim();
         void trim_left();
@@ -104,12 +97,12 @@ namespace lisp {
         };
 
         inline explicit Object(Type t) noexcept: type(t) {}
-        virtual void write(std::ostream& out) const = 0;
+        virtual void write(std::ostream& out) const;
         virtual void write(sbn::kernel_buffer& out) const;
         virtual void read(sbn::kernel_buffer& in);
         virtual Object* eval(Kernel* kernel, Environment* env);
         virtual bool equals(Object* rhs) const;
-        inline bool empty() const noexcept { return this->car == nullptr; }
+        inline bool empty() const noexcept { return this->cdr == nullptr; }
 
         Object() = default;
         virtual ~Object() = default;
@@ -124,34 +117,15 @@ namespace lisp {
     std::string to_string(const Object* obj);
     Object* read(sbn::kernel_buffer& in);
 
-    class Special: public Object {
+    inline sbn::kernel_buffer& operator>>(sbn::kernel_buffer& in, Object*& rhs) {
+        rhs = read(in);
+        return in;
+    }
 
-    public:
-        Special_type subtype{};
-
-    public:
-        inline explicit Special(Special_type t): Object(Type::Special), subtype(t) {}
-        inline Special(): Object(Type::Special) {}
-        void write(std::ostream& out) const override;
-        void write(sbn::kernel_buffer& out) const override;
-        void read(sbn::kernel_buffer& in) override;
-        bool equals(Object* rhs) const override;
-
-        inline bool operator==(const Special& rhs) const noexcept {
-            return this->subtype == rhs.subtype;
-        }
-
-        inline bool operator!=(const Special& rhs) const noexcept {
-            return !this->operator==(rhs);
-        }
-
-        ~Special() = default;
-        Special(const Special&) = default;
-        Special& operator=(const Special&) = default;
-        Special(Special&&) = default;
-        Special& operator=(Special&&) = default;
-
-    };
+    inline sbn::kernel_buffer& operator<<(sbn::kernel_buffer& out, const Object* obj) {
+        if (obj) { obj->write(out); } else { out.write(Type::Void); }
+        return out;
+    }
 
     class Cell: public Object {
     public:
@@ -167,7 +141,11 @@ namespace lisp {
         bool equals(Object* rhs) const override;
 
         inline bool operator==(const Cell& rhs) const noexcept {
-            return this->car->equals(rhs.car) && this->cdr->equals(rhs.cdr);
+            return
+                ((this->car && rhs.car && this->car->equals(rhs.car)) ||
+                 (!this->car && !rhs.car)) &&
+                ((this->cdr && rhs.cdr && this->cdr->equals(rhs.cdr)) ||
+                 (!this->cdr && !rhs.cdr));
         }
 
         inline bool operator!=(const Cell& rhs) const noexcept {
@@ -277,7 +255,7 @@ namespace lisp {
         bool equals(Object* rhs) const override;
 
         inline bool operator==(const Symbol& rhs) const noexcept {
-            return this->name == rhs.name;
+            return this == std::addressof(rhs) || this->name == rhs.name;
         }
 
         inline bool operator!=(const Symbol& rhs) const noexcept {
@@ -401,15 +379,14 @@ namespace lisp {
     Object* read(string_view& s);
     Environment* top_environment();
     void init();
-
-    extern Object* Nil;
+    Symbol* intern(lisp::string_view name);
 
     class Kernel: public sbn::kernel {
 
     private:
         Environment* _environment{};
         Object* _expression{};
-        Object* _result = Nil;
+        Object* _result = nullptr;
         size_t _index = 0;
 
     public:

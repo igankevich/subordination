@@ -49,9 +49,11 @@ namespace {
     lisp::Boolean* False = nullptr;
     lisp::Object* Symbols = nullptr;
     lisp::Environment* Top = nullptr;
+    lisp::Object* Async = nullptr;
 
     std::mutex global_mutex;
     std::unordered_map<lisp::Cpp_function_id,lisp::Cpp_function> functions;
+    std::unordered_map<std::string,lisp::Symbol*> symbols;
 
     std::string to_string(std::istream& in) {
         std::stringstream tmp;
@@ -60,9 +62,6 @@ namespace {
     }
 
 }
-
-lisp::Object* lisp::Nil = nullptr;
-
 
 //======================================================================
 // Lisp objects
@@ -74,11 +73,8 @@ using lisp::Function;
 using lisp::Integer;
 using lisp::Kernel;
 using lisp::List;
-using lisp::Nil;
 using lisp::Object;
 using lisp::Primitive;
-using lisp::Special;
-using lisp::Special_type;
 using lisp::Symbol;
 using lisp::Type;
 using lisp::cons;
@@ -86,13 +82,13 @@ using lisp::read;
 
 const char* lisp::to_string(Type t) noexcept {
     switch (t) {
+        case Type::Void: return "void";
         case Type::Integer: return "integer";
         case Type::Cell: return "cell";
         case Type::Symbol: return "symbol";
         case Type::Primitive: return "primitive";
         case Type::Function: return "function";
         case Type::Macro: return "macro";
-        case Type::Special: return "special";
         case Type::Environment: return "environment";
         case Type::Boolean: return "boolean";
         default: return nullptr;
@@ -104,33 +100,14 @@ std::ostream& lisp::operator<<(std::ostream& out, Type rhs) {
     return out << (s ? s : "unknown");
 }
 
-const char* lisp::to_string(Special_type t) noexcept {
-    switch (t) {
-        case Special_type::Nil: return "nil";
-        default: return nullptr;
-    }
-}
-
-std::ostream& lisp::operator<<(std::ostream& out, Special_type rhs) {
-    auto s = to_string(rhs);
-    return out << (s ? s : "unknown");
-}
-
-lisp::Object* lisp::make(Special_type type) noexcept {
-    switch (type) {
-        case Special_type::Nil: return Nil;
-        default: return nullptr;
-    }
-}
-
 static Object* eval_list(Kernel* kernel, Environment* env, Object* list);
 static Object* progn(Kernel* kernel, Environment* env, Object* list);
 static size_t list_length(const Object* list);
 
 Object* vector_to_list(const std::vector<Object*>& vec) {
     const auto n = vec.size();
-    if (n == 0) { return Nil; }
-    Object* list = Nil;
+    if (n == 0) { return nullptr; }
+    Object* list = nullptr;
     for (size_t i=0; i<n; ++i) {
         size_t j = n-1-i;
         list = lisp::cons(vec[j], list);
@@ -197,14 +174,21 @@ void lisp::Main::react(sbn::kernel_ptr&& k) {
 
 void lisp::Main::read_eval() {
     do {
+        this->_view.trim();
+        if (this->_view.empty()) {
+            sbn::commit(std::move(this_ptr()));
+            return;
+        }
         auto expr = ::lisp::read(this->_view);
-        if (!expr) { sbn::commit(std::move(this_ptr())); return; }
         std::cout << "< " << expr << '\n';
         expression(expr);
-        result(expr->eval(this, environment()));
-        if (result()) {
+        if (!expr) {
+            result(expr);
+        } else {
+            result(expr->eval(this, environment()));
+        }
+        if (result() != Async) {
             print();
-            //sbn::commit(std::move(this_ptr()));
         }
     } while (result());
 }
@@ -231,11 +215,10 @@ public:
     void act() override {
         this->_result_a = this->_a->eval(this, environment());
         this->_result_b = this->_b->eval(this, environment());
-        if (this->_result_a) { ++this->_count; }
-        if (this->_result_b) { ++this->_count; }
+        if (this->_result_a != Async) { ++this->_count; }
+        if (this->_result_b != Async) { ++this->_count; }
         if (this->_count == 2) {
             result(cons(this->_result_a, this->_result_b));
-            log("< cons _ _ > _", this->_a, this->_b, result());
             sbn::commit(std::move(this_ptr()));
         }
     }
@@ -251,7 +234,6 @@ public:
         ++this->_count;
         if (this->_count == 2) {
             result(cons(this->_result_a, this->_result_b));
-            log("< cons _ _ > _", this->_a, this->_b, result());
             sbn::commit(std::move(this_ptr()));
         }
     }
@@ -265,12 +247,12 @@ public:
 
     void act() override {
         auto list = expression();
-        while (list != Nil) {
+        while (list != nullptr) {
             auto element = list->car;
             list = list->cdr;
             expression(list);
             result(element->eval(this, environment()));
-            if (!result()) {
+            if (result() == Async) {
                 break;
             }
         }
@@ -282,7 +264,6 @@ public:
     void react(sbn::kernel_ptr&& k) override {
         auto child = sbn::pointer_dynamic_cast<Kernel>(std::move(k));
         result(child->result());
-        log("Xeval _> _", kernel_stack(this), result());
         //auto list = expression();
         //list = list->cdr;
         act();
@@ -304,19 +285,17 @@ public:
     void act() override {
         auto args = this->_new_expr->cdr;
         auto n = list_length(args);
-        this->_args.resize(n);
+        this->_args = std::vector<Object*>(n, Async);
         size_t i = 0;
         bool async = false;
-        for (Object* lp = args; lp != Nil; lp = lp->cdr, ++i) {
+        for (Object* lp = args; lp != nullptr; lp = lp->cdr, ++i) {
             auto result = lp->car->eval(this, environment());
-            if (result) {
-                this->_args[i] = result;
-            } else {
+            this->_args[i] = result;
+            if (result == Async) {
                 async = true;
             }
         }
         if (!async) {
-            this->_state = State::Progn;
             postamble();
         }
     }
@@ -330,7 +309,7 @@ public:
                 if (this->_args[i] == child->expression()) {
                     this->_args[i] = child->result();
                 }
-                if (!this->_args[i]) {
+                if (this->_args[i] == Async) {
                     finished = false;
                 }
             }
@@ -339,23 +318,21 @@ public:
             }
         } else {
             result(child->result());
-            log("< apply _ > _", expression(), result());
             sbn::commit(std::move(this_ptr()));
         }
     }
 
 private:
     void postamble() {
+        this->_state = State::Progn;
         auto fn = this->_new_expr->car;
         auto tmp = reinterpret_cast<Function*>(fn);
         Object* body = tmp->body;
         auto* params = tmp->params;
         Object* eargs = vector_to_list(this->_args);
         Environment* newenv = new Environment(params, eargs, tmp->env);
-        //log("apply _ to _", fn, eargs);
         result(progn(this, newenv, body));
-        if (result()) {
-            log("_ < xapply _ > _", kernel_stack(this), expression(), result());
+        if (result() != Async) {
             sbn::commit(std::move(this_ptr()));
         }
     }
@@ -384,10 +361,10 @@ lisp::Environment::Environment(Cell* symbols, Object* values, Environment* paren
     this->type = Type::Environment;
     if (list_length(symbols) != list_length(values))
         error("Cannot apply function: number of argument does not match");
-    Object* map = Nil;
+    Object* map = nullptr;
     Object* p = symbols;
     Object* q = values;
-    for (; p != Nil; p = p->cdr, q = q->cdr) {
+    for (; p != nullptr; p = p->cdr, q = q->cdr) {
         Object* sym = p->car;
         Object* val = q->car;
         map = acons(sym, val, map);
@@ -411,19 +388,15 @@ lisp::Object* lisp::equal(Object* a, Object* b) {
     return new Boolean(a->equals(b));
 }
 
-// May create a new symbol. If there's a symbol with the same name, it will not create a new symbol
-// but return the existing one.
-static Symbol* intern(lisp::string_view name) {
+lisp::Symbol* lisp::intern(lisp::string_view name) {
+    std::string key(name.first, name.last);
     std::lock_guard<std::mutex> lock(::global_mutex);
-    for (Object* p = ::Symbols; p != Nil; p = p->cdr) {
-        auto tmp = reinterpret_cast<Symbol*>(p->car);
-        if (name == tmp->name) {
-            return tmp;
-        }
+    auto result = symbols.find(key);
+    if (result == symbols.end()) {
+        std::tie(result,std::ignore) = symbols.emplace(
+            key, new Symbol(name));
     }
-    auto* sym = new Symbol(name);
-    ::Symbols = cons(sym, ::Symbols);
-    return sym;
+    return result->second;
 }
 
 Object* lisp::read(const char* string) {
@@ -512,21 +485,21 @@ const char* lisp::string_view::scan_for_matching_bracket() const {
 }
 
 Object* lisp::string_view::read_list() {
-    if (first == last) { return Nil; }
+    if (first == last) { return nullptr; }
     ++first, --last;
     if (!(first < last)) {
         std::stringstream tmp;
         tmp << "Invalid lisp list: " << *this;
         throw std::invalid_argument(tmp.str());
     }
-    auto head = new Cell(read(*this), Nil);
+    auto head = new Cell(read(*this), nullptr);
     Object* tail = head;
     while (first != last) {
         auto obj = read(*this);
         if (obj == Dot) {
             tail->cdr = read(*this);
         } else {
-            tail->cdr = cons(obj, Nil);
+            tail->cdr = cons(obj, nullptr);
             tail = tail->cdr;
         }
     }
@@ -591,7 +564,7 @@ Object* lisp::read(string_view& s) {
         } else if (ch == '\'') {
             ++s.first;
             auto* sym = intern("quote");
-            return cons(sym, cons(read(s), Nil));
+            return cons(sym, cons(read(s), nullptr));
         } else {
             auto old_first = s.first;
             s.skip_until_the_next_white_space();
@@ -607,12 +580,6 @@ void lisp::Environment::write(std::ostream& out) const {
     }
 }
 
-void lisp::Special::write(std::ostream& out) const {
-    switch (subtype) {
-        case Special_type::Nil: out << "()"; break;
-    }
-}
-
 void lisp::Integer::write(std::ostream& out) const {
     out << value;
 }
@@ -623,17 +590,11 @@ void lisp::Boolean::write(std::ostream& out) const {
 
 void lisp::Cell::write(std::ostream& out) const {
     out << '(';
-    const Object* obj = this;
-    if (!obj->empty()) {
+    bool first = true;
+    for (const Object* obj=this; obj; obj = obj->cdr) {
+        if (!first) { out << ' '; } else { first = false; }
         out << obj->car;
-        if (obj->cdr != Nil && obj->cdr->type != Type::Cell) {
-            out << " . " << obj->cdr;
-        }
-        obj = obj->cdr;
-    }
-    for (; !obj->empty(); obj = obj->cdr) {
-        out << ' ' << obj->car;
-        if (obj->cdr != Nil && obj->cdr->type != Type::Cell) {
+        if (obj->cdr && obj->cdr->type != Type::Cell) {
             out << " . " << obj->cdr;
             break;
         }
@@ -641,12 +602,20 @@ void lisp::Cell::write(std::ostream& out) const {
     out << ')';
 }
 
+
+void lisp::Object::write(std::ostream& out) const {}
+
 void lisp::Symbol::write(std::ostream& out) const {
     out << name;
 }
 
 void lisp::Primitive::write(std::ostream& out) const {
-    out << "<primitive> " << dl::symbol(reinterpret_cast<void*>(fn)).name();
+    dl::symbol s(reinterpret_cast<void*>(this->fn));
+    if (s) {
+        out << s.name();
+    } else {
+        out << "<primitive>";
+    }
 }
 
 void lisp::Function::write(std::ostream& out) const {
@@ -675,7 +644,7 @@ std::string lisp::to_string(const Object* obj) {
 static size_t list_length(const Object* list) {
     size_t len = 0;
     for (;;) {
-        if (list == Nil)
+        if (list == nullptr)
             return len;
         if (list->type != Type::Cell)
             error("length: cannot handle dotted list");
@@ -699,35 +668,35 @@ void lisp::Environment::add(Symbol* symbol, Object* value) {
 
 // Evaluates the list elements from head and returns the last return value.
 static Object* progn(Kernel* kernel, Environment* env, Object* list) {
-    if (list == Nil) { return Nil; }
-    if (list->cdr == Nil) { return list->car->eval(kernel, env); }
+    if (list == nullptr) { return nullptr; }
+    if (list->cdr == nullptr) { return list->car->eval(kernel, env); }
     sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Progn>(env, list));
-    return nullptr;
+    return Async;
 }
 
 // Evaluates all the list elements and returns their return values as a new list.
 static Object* eval_list(Kernel* kernel, Environment* env, Object* list) {
     Object* head = nullptr;
     Object* tail = nullptr;
-    for (Object* lp = list; lp != Nil; lp = lp->cdr) {
+    for (Object* lp = list; lp != nullptr; lp = lp->cdr) {
         Object* tmp = lp->car->eval(kernel, env);
         if (!tmp) {
             log("Bug: eval_list element is null");
         }
         if (head == nullptr) {
-            head = tail = cons(tmp, Nil);
+            head = tail = cons(tmp, nullptr);
         } else {
-            tail->cdr = cons(tmp, Nil);
+            tail->cdr = cons(tmp, nullptr);
             tail = tail->cdr;
         }
     }
     if (head == nullptr)
-        return Nil;
+        return nullptr;
     return head;
 }
 
 static bool is_list(Object* obj) {
-    return obj == Nil || obj->type == Type::Cell;
+    return obj == nullptr || obj->type == Type::Cell;
 }
 
 // Apply fn with args.
@@ -740,7 +709,7 @@ static Object* apply(Kernel* kernel, Environment* env, Object* obj, Object* fn, 
     }
     if (fn->type == Type::Function) {
         sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Apply>(env, obj, cons(fn,args)));
-        return nullptr;
+        return Async;
     }
     error("not supported");
     return nullptr;
@@ -748,7 +717,7 @@ static Object* apply(Kernel* kernel, Environment* env, Object* obj, Object* fn, 
 
 Object* lisp::Environment::find(Symbol* symbol) {
     for (Environment* p = this; p; p = p->parent) {
-        for (Object* cell = p->vars; cell != Nil; cell = cell->cdr) {
+        for (Object* cell = p->vars; cell != nullptr; cell = cell->cdr) {
             Object* bind = cell->car;
             if (symbol == bind->car) {
                 return bind;
@@ -782,8 +751,7 @@ Object* lisp::make(Type type) {
         case Type::Primitive: return new Primitive;
         case Type::Function: return new Function(type);
         case Type::Macro: return new Function(type);
-        case Type::Special: return nullptr;
-        case Type::Environment: return new Environment(Nil, nullptr);
+        case Type::Environment: return new Environment(nullptr, nullptr);
         case Type::Boolean: return new Boolean;
         default: return nullptr;
     }
@@ -796,40 +764,29 @@ void lisp::Object::write(sbn::kernel_buffer& out) const {
 Object* lisp::read(sbn::kernel_buffer& in) {
     Type type{};
     in.read(type);
-    Special_type subtype{};
-    Object* result{};
-    if (type == Type::Special) {
-        in.read(subtype);
-        result = make(subtype);
-    } else {
-        result = make(type);
+    if (type == Type::Void) { return nullptr; }
+    if (type == Type::Symbol) {
+        std::string name;
+        in.read(name);
+        return intern(name);
     }
+    auto result = make(type);
     result->read(in);
     return result;
 }
 
 void lisp::Object::read(sbn::kernel_buffer& in) {}
 
-void lisp::Special::write(sbn::kernel_buffer& out) const {
-    lisp::Object::write(out);
-    out.write(this->subtype);
-}
-
-void lisp::Special::read(sbn::kernel_buffer& in) {
-    lisp::Object::read(in);
-    //in.read(this->subtype);
-}
-
 void lisp::Cell::write(sbn::kernel_buffer& out) const {
     lisp::Object::write(out);
-    this->car->write(out);
-    this->cdr->write(out);
+    out << this->car;
+    out << this->cdr;
 }
 
 void lisp::Cell::read(sbn::kernel_buffer& in) {
     lisp::Object::read(in);
-    this->car = ::lisp::read(in);
-    this->cdr = ::lisp::read(in);
+    in >> this->car;
+    in >> this->cdr;
 }
 
 void lisp::Primitive::write(sbn::kernel_buffer& out) const {
@@ -849,16 +806,24 @@ void lisp::Primitive::read(sbn::kernel_buffer& in) {
 
 void lisp::Function::write(sbn::kernel_buffer& out) const {
     lisp::Object::write(out);
-    this->params->write(out);
-    this->body->write(out);
-    this->env->write(out);
+    out << this->params;
+    out << this->body;
+    out << this->env;
 }
 
 void lisp::Function::read(sbn::kernel_buffer& in) {
     lisp::Object::read(in);
-    this->params = cast<Cell>(::lisp::read(in));
-    this->body = ::lisp::read(in);
-    this->env = cast<Environment>(::lisp::read(in));
+    {
+        Object* tmp{};
+        in >> tmp;
+        this->params = cast<Cell>(tmp);
+    }
+    in >> this->body;
+    {
+        Object* tmp{};
+        in >> tmp;
+        this->env = cast<Environment>(tmp);
+    }
 }
 
 void lisp::Integer::write(sbn::kernel_buffer& out) const {
@@ -915,25 +880,21 @@ void lisp::Environment::read(sbn::kernel_buffer& in) {
 }
 
 Object* lisp::Object::eval(Kernel* kernel, Environment* env) {
-    log("eval _< _", kernel_stack(kernel), this);
-    auto result = this;
-    log("eval _> _", kernel_stack(kernel), result);
-    return result;
+    log("eval _ => _", this, this);
+    return this;
 }
 
 Object* lisp::Symbol::eval(Kernel* kernel, Environment* env) {
-    log("eval _< _", kernel_stack(kernel), this);
     Object* bind = env->find(this);
     if (!bind) {
         error("Undefined symbol: ", this->name.data());
     }
     auto result = bind->cdr;
-    log("eval _> _", kernel_stack(kernel), result);
+    log("eval _ => _", this, result);
     return result;
 }
 
 Object* lisp::Cell::eval(Kernel* kernel, Environment* env) {
-    log("eval _< _", kernel_stack(kernel), this);
     // Function application form
     Object* expanded = macroexpand(kernel, env, this);
     Object* result{};
@@ -942,13 +903,11 @@ Object* lisp::Cell::eval(Kernel* kernel, Environment* env) {
     } else {
         Object* fn = this->car->eval(kernel, env);
         Object* args = this->cdr;
-        log("function _ args _ obj _", fn, args, this);
-        log("fn type _", fn->type);
         if (fn->type != Type::Primitive && fn->type != Type::Function)
             error("The head of a list must be a function");
         result = apply(kernel, env, this, fn, args);
     }
-    log("eval _> _", kernel_stack(kernel), result);
+    log("eval _ => _", this, result);
     return result;
 }
 
@@ -972,11 +931,6 @@ bool lisp::Primitive::equals(Object* rhs) const {
     return Object::equals(rhs) && operator==(*reinterpret_cast<Primitive*>(rhs));
 }
 
-bool lisp::Special::equals(Object* rhs) const {
-    Expects(rhs);
-    return Object::equals(rhs) && operator==(*reinterpret_cast<Special*>(rhs));
-}
-
 bool lisp::Symbol::equals(Object* rhs) const {
     Expects(rhs);
     return Object::equals(rhs) && operator==(*reinterpret_cast<Symbol*>(rhs));
@@ -984,8 +938,6 @@ bool lisp::Symbol::equals(Object* rhs) const {
 
 bool lisp::Cell::equals(Object* rhs) const {
     Expects(rhs);
-    Expects(car);
-    Expects(cdr);
     return Object::equals(rhs) && operator==(*reinterpret_cast<Cell*>(rhs));
 }
 
@@ -1008,7 +960,7 @@ bool lisp::Environment::equals(Object* rhs) const {
 //======================================================================
 
 // 'expr
-static Object* prim_quote(Kernel* kernel, Environment* env, Object* list) {
+Object* prim_quote(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) != 1)
         error("Malformed quote");
     return list->car;
@@ -1037,7 +989,7 @@ static Object* prim_setq(Kernel* kernel, Environment* env, Object* list) {
 // (+ <integer> ...)
 static Object* prim_plus(Kernel* kernel, Environment* env, Object* list) {
     int sum = 0;
-    for (Object* args = eval_list(kernel, env, list); args != Nil; args = args->cdr) {
+    for (Object* args = eval_list(kernel, env, list); args != nullptr; args = args->cdr) {
         if (args->car->type != Type::Integer) {
             error("+ takes only numbers");
         }
@@ -1050,7 +1002,7 @@ static Object* prim_plus(Kernel* kernel, Environment* env, Object* list) {
 static Object* handle_function(Kernel* kernel, Environment* env, Object* list, Type type) {
     if (list->type != Type::Cell || !is_list(list->car) || list->cdr->type != Type::Cell)
         error("Malformed lambda");
-    for (Object* p = list->car; p != Nil; p = p->cdr) {
+    for (Object* p = list->car; p != nullptr; p = p->cdr) {
         if (p->car->type != Type::Symbol) {
             error("Parameter must be a symbol");
         }
@@ -1109,20 +1061,20 @@ static Object* prim_macroexpand(Kernel* kernel, Environment* env, Object* list) 
 // (println expr)
 static Object* prim_println(Kernel* kernel, Environment* env, Object* list) {
     std::cout << list->car->eval(kernel, env) << '\n';
-    return Nil;
+    return nullptr;
 }
 
 // (if expr expr expr ...)
-static Object* prim_if(Kernel* kernel, Environment* env, Object* list) {
+Object* prim_if(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) < 2)
         error("Malformed if");
     Object* cond = list->car->eval(kernel, env);
-    if (cond != Nil) {
+    if (cond != nullptr) {
         Object* then = list->cdr->car;
         return then->eval(kernel, env);
     }
     Object* els = list->cdr->cdr;
-    return els == Nil ? Nil : progn(kernel, env, els);
+    return els == nullptr ? nullptr : progn(kernel, env, els);
 }
 
 // (= <integer> <integer>)
@@ -1146,7 +1098,7 @@ static Object* prim_exit(Kernel* kernel, Environment* env, Object* list) {
 
 static Object* prim_cons(Kernel* kernel, Environment* env, Object* list) {
     sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Cons>(env, list));
-    return nullptr;
+    return Async;
 }
 
 static Object* prim_car(Kernel* kernel, Environment* env, Object* list) {
@@ -1166,7 +1118,7 @@ static Object* prim_cdr(Kernel* kernel, Environment* env, Object* list) {
 }
 
 static Object* prim_is_null(Kernel* kernel, Environment* env, Object* list) {
-    return list == Nil ? True : False;
+    return list == nullptr ? True : False;
 }
 
 static Object* prim_equal(Kernel* kernel, Environment* env, Object* list) {
@@ -1197,8 +1149,8 @@ void lisp::define(Environment* env, const char* name, Cpp_function function, Cpp
 }
 
 static void define_constants(Environment* env) {
-    env->add(intern("#t"), True);
-    env->add(intern("#f"), False);
+    env->add(lisp::intern("#t"), True);
+    env->add(lisp::intern("#f"), False);
 }
 
 static void define_primitives(Environment* env) {
@@ -1222,23 +1174,22 @@ static void define_primitives(Environment* env) {
     define(env, "equal?", prim_equal, 17);
     define(env, "sleep", [] (Kernel* kernel, Environment* env, List* args) -> Object* {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        return Nil;
+        return nullptr;
     }, 1000);
 }
 
 void lisp::init() {
-    // Constants and primitives
-    Nil = new Special(Special_type::Nil);
     Dot = new Symbol(".");
     True = new Boolean(true);
     False = new Boolean(false);
-    ::Symbols = Nil;
+    Async = new Object(Type::Async);
+    ::Symbols = nullptr;
 }
 
 Environment* lisp::top_environment() {
     std::unique_lock<std::mutex> lock(::global_mutex);
     if (!Top) {
-        Top = new Environment(Nil, nullptr);
+        Top = new Environment();
         lock.unlock();
         define_constants(Top);
         define_primitives(Top);
