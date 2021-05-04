@@ -26,7 +26,8 @@
           (@ (gnu packages subordination) dtest)
           (@ (stables packages mpi) openmpi-4.0.2)
           (list (@ (gnu packages llvm) clang-10) "extra") ;; clang-tidy
-          (@ (gnu packages valgrind) valgrind))
+          (@ (gnu packages valgrind) valgrind)
+          (@ (gnu packages linux) perf))
     (if-enabled "site"
       (list (@ (gnu packages documentation) doxygen)
             (@ (gnu packages tex) texlive-bin)

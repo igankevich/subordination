@@ -11,8 +11,8 @@ int main(int argc, char** argv) {
     {
         auto g = factory.types().guard();
         factory.types().add<Main>(1);
-        factory.local().num_upstream_threads(1);
-        factory.local().num_downstream_threads(0);
+        //factory.local().num_upstream_threads(1);
+        //factory.local().num_downstream_threads(0);
     }
     factory_guard g;
     if (this_application::standalone()) {

@@ -79,9 +79,27 @@ namespace lisp {
 
     std::ostream& operator<<(std::ostream& out, const string_view& rhs);
 
-    using Cpp_function = Object* (*)(Kernel* kernel, Environment* env, Object* args);
+    struct Result {
+        Object* object{};
+        Kernel* kernel{};
+        inline Result(Object* o, Kernel* k) noexcept: object(o), kernel(k) {}
+        inline Result(Object* o) noexcept: object(o) {}
+        inline Result(Kernel* k) noexcept: kernel(k) {}
+        inline bool asynchronous() const noexcept { return kernel != nullptr; }
+
+        Result() = default;
+        ~Result() = default;
+        Result(const Result&) = default;
+        Result& operator=(const Result&) = default;
+        Result(Result&&) = default;
+        Result& operator=(Result&&) = default;
+    };
+
+    std::ostream& operator<<(std::ostream& out, const Result& result);
+
+    using Cpp_function = Result (*)(Kernel* kernel, Environment* env, Object* args);
     using Cpp_function_id = std::uint64_t;
-    using Function2 = Object* (*)(Kernel* kernel, Environment* env, List* args);
+    using Function2 = Result (*)(Kernel* kernel, Environment* env, List* args);
 
     class Object {
     public:
@@ -100,7 +118,7 @@ namespace lisp {
         virtual void write(std::ostream& out) const;
         virtual void write(sbn::kernel_buffer& out) const;
         virtual void read(sbn::kernel_buffer& in);
-        virtual Object* eval(Kernel* kernel, Environment* env);
+        virtual Result eval(Kernel* kernel, Environment* env);
         virtual bool equals(Object* rhs) const;
         inline bool empty() const noexcept { return this->cdr == nullptr; }
 
@@ -137,7 +155,7 @@ namespace lisp {
         void write(std::ostream& out) const override;
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;
-        Object* eval(Kernel* kernel, Environment* env) override;
+        Result eval(Kernel* kernel, Environment* env) override;
         bool equals(Object* rhs) const override;
 
         inline bool operator==(const Cell& rhs) const noexcept {
@@ -162,12 +180,12 @@ namespace lisp {
     class Primitive: public Object {
 
     public:
-        Cpp_function fn{};
+        Cpp_function function{};
         Cpp_function_id _id{};
 
     public:
         inline explicit Primitive(Cpp_function f, Cpp_function_id id):
-        Object(Type::Primitive), fn(f), _id(id) {}
+        Object(Type::Primitive), function(f), _id(id) {}
         inline Primitive(): Object(Type::Primitive) {}
         void write(std::ostream& out) const override;
         void write(sbn::kernel_buffer& out) const override;
@@ -175,7 +193,7 @@ namespace lisp {
         bool equals(Object* rhs) const override;
 
         inline bool operator==(const Primitive& rhs) const noexcept {
-            return this->_id == rhs._id && this->fn == rhs.fn;
+            return this->_id == rhs._id && this->function == rhs.function;
         }
 
         inline bool operator!=(const Primitive& rhs) const noexcept {
@@ -251,7 +269,7 @@ namespace lisp {
         void write(std::ostream& out) const override;
         void write(sbn::kernel_buffer& out) const override;
         void read(sbn::kernel_buffer& in) override;
-        Object* eval(Kernel* kernel, Environment* env) override;
+        Result eval(Kernel* kernel, Environment* env) override;
         bool equals(Object* rhs) const override;
 
         inline bool operator==(const Symbol& rhs) const noexcept {
@@ -355,7 +373,7 @@ namespace lisp {
         define(env, name, reinterpret_cast<Cpp_function>(function), function_id);
     }
 
-    inline Object* eval(Kernel* kernel, Environment* env, Object* obj) {
+    inline Result eval(Kernel* kernel, Environment* env, Object* obj) {
         return obj->eval(kernel,env);
     }
 

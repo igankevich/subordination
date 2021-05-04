@@ -32,11 +32,11 @@ TEST(read_write, binary) {
     write_read_binary(new Integer(123));
     write_read_binary(new Boolean(true));
     write_read_binary(new Boolean(false));
-    write_read_binary(lisp::eval(nullptr, top_environment(), read("equal?")));
+    write_read_binary(lisp::eval(nullptr, top_environment(), read("equal?")).object);
     write_read_binary(lisp::intern("hello"));
     write_read_binary(lisp::intern(""));
     write_read_binary(new Cell(intern("a"), intern("b")));
-    write_read_binary(lisp::eval(nullptr, top_environment(), read("(lambda (x) 0)")));
+    write_read_binary(lisp::eval(nullptr, top_environment(), read("(lambda (x) 0)")).object);
     write_read_binary(top_environment());
 }
 

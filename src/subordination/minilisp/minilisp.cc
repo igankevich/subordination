@@ -41,7 +41,7 @@ namespace {
     error(const Args& ... args) {
         std::stringstream tmp;
         print(tmp, args...);
-        sbn::exit(1);
+        //sbn::exit(1);
         throw std::runtime_error(tmp.str());
     }
 
@@ -80,6 +80,7 @@ using lisp::Symbol;
 using lisp::Type;
 using lisp::cons;
 using lisp::read;
+using lisp::Result;
 
 const char* lisp::to_string(Type t) noexcept {
     switch (t) {
@@ -102,8 +103,17 @@ std::ostream& lisp::operator<<(std::ostream& out, Type rhs) {
     return out << (s ? s : "unknown");
 }
 
+std::ostream& lisp::operator<<(std::ostream& out, const Result& result) {
+    out << '[';
+    out << result.object;
+    out << ',';
+    out << result.kernel;
+    out << ']';
+    return out;
+}
+
 static Object* eval_list(Kernel* kernel, Environment* env, Object* list);
-static Object* progn(Kernel* kernel, Environment* env, Object* list);
+auto progn(Kernel* kernel, Environment* env, Object* list) -> Result;
 static size_t list_length(const Object* list);
 
 Object* vector_to_list(const std::vector<Object*>& vec) {
@@ -124,14 +134,19 @@ const char* kernel_name(sbn::kernel* k) {
 std::string kernel_stack(sbn::kernel* k) {
     std::string s;
     for (; k; k=k->parent()) {
-        s = typeid(*k).name() + std::string(" ") + s;
+        std::string tmp;
+        tmp += typeid(*k).name() + std::string(" ");
+        s = tmp + s;
     }
     return s;
 }
 
 void lisp::Kernel::act() {
-    this->_result = this->_expression->eval(this, this->_environment);
-    if (this->_result) { sbn::commit(std::move(this_ptr())); }
+    auto res = this->_expression->eval(this, this->_environment);
+    if (!res.asynchronous()) {
+        this->_result = res.object;
+        sbn::commit(std::move(this_ptr()));
+    }
 }
 
 void lisp::Kernel::react(sbn::kernel_ptr&& k) {
@@ -177,22 +192,20 @@ void lisp::Main::react(sbn::kernel_ptr&& k) {
 void lisp::Main::read_eval() {
     do {
         this->_view.trim();
-        if (this->_view.empty()) {
-            sbn::commit(std::move(this_ptr()));
-            return;
-        }
+        if (this->_view.empty()) { break; }
         auto expr = ::lisp::read(this->_view);
         std::cout << "< " << expr << '\n';
         expression(expr);
         if (!expr) {
             result(expr);
         } else {
-            result(expr->eval(this, environment()));
+            auto res = expr->eval(this, environment());
+            if (res.asynchronous()) { return; }
+            result(res.object);
         }
-        if (result() != Async) {
-            print();
-        }
+        print();
     } while (result());
+    sbn::commit(std::move(this_ptr()));
 }
 
 void lisp::Main::print() {
@@ -215,10 +228,20 @@ public:
     _a(expr->car), _b(expr->cdr->car) {}
 
     void act() override {
-        this->_result_a = this->_a->eval(this, environment());
-        this->_result_b = this->_b->eval(this, environment());
-        if (this->_result_a != Async) { ++this->_count; }
-        if (this->_result_b != Async) { ++this->_count; }
+        auto res_a = this->_a->eval(this, environment());
+        if (res_a.asynchronous()) {
+            this->_result_a = res_a.kernel->expression();
+        } else {
+            this->_result_a = res_a.object;
+            ++this->_count;
+        }
+        auto res_b = this->_b->eval(this, environment());
+        if (res_b.asynchronous()) {
+            this->_result_b = res_b.kernel->expression();
+        } else {
+            this->_result_b = res_b.object;
+            ++this->_count;
+        }
         if (this->_count == 2) {
             result(cons(this->_result_a, this->_result_b));
             sbn::commit(std::move(this_ptr()));
@@ -227,17 +250,46 @@ public:
 
     void react(sbn::kernel_ptr&& k) override {
         auto child = sbn::pointer_dynamic_cast<Kernel>(std::move(k));
-        if (child->expression() == this->_a) {
+        bool success = false;
+        if (child->expression() == this->_result_a) {
             this->_result_a = child->result();
+            success = true;
         }
-        if (child->expression() == this->_b) {
+        if (child->expression() == this->_result_b) {
             this->_result_b = child->result();
+            success = true;
+        }
+        if (!success) {
+            log("error child _", typeid(*child).name());
+            Assert(success);
         }
         ++this->_count;
         if (this->_count == 2) {
             result(cons(this->_result_a, this->_result_b));
             sbn::commit(std::move(this_ptr()));
         }
+    }
+
+};
+
+class Car: public Kernel {
+
+public:
+    Car() = default;
+    inline Car(Environment* env, Object* expr): Kernel(env, expr) {}
+
+    void act() override {
+        auto result = expression()->car->eval(this, environment());
+        if (!result.asynchronous()) {
+            this->result(result.object->car);
+            sbn::commit(std::move(this_ptr()));
+        }
+    }
+
+    void react(sbn::kernel_ptr&& k) override {
+        auto child = sbn::pointer_dynamic_cast<Kernel>(std::move(k));
+        result(child->result()->car);
+        sbn::commit(std::move(this_ptr()));
     }
 
 };
@@ -253,21 +305,16 @@ public:
             auto element = list->car;
             list = list->cdr;
             expression(list);
-            result(element->eval(this, environment()));
-            if (result() == Async) {
-                break;
-            }
+            auto res = element->eval(this, environment());
+            if (res.asynchronous()) { return; }
+            result(res.object);
         }
-        if (result()) {
-            sbn::commit(std::move(this_ptr()));
-        }
+        sbn::commit(std::move(this_ptr()));
     }
 
     void react(sbn::kernel_ptr&& k) override {
         auto child = sbn::pointer_dynamic_cast<Kernel>(std::move(k));
         result(child->result());
-        //auto list = expression();
-        //list = list->cdr;
         act();
     }
 
@@ -277,6 +324,7 @@ class Apply: public Kernel {
 private:
     Object* _new_expr{};
     std::vector<Object*> _args;
+    sys::u64 _count = 0;
     enum class State {Args,Progn} _state = State::Args;
 public:
     Apply() = default;
@@ -287,17 +335,18 @@ public:
     void act() override {
         auto args = this->_new_expr->cdr;
         auto n = list_length(args);
-        this->_args = std::vector<Object*>(n, Async);
+        this->_args.resize(n);
         size_t i = 0;
-        bool async = false;
         for (Object* lp = args; lp != nullptr; lp = lp->cdr, ++i) {
-            auto result = lp->car->eval(this, environment());
-            this->_args[i] = result;
-            if (result == Async) {
-                async = true;
+            auto res = lp->car->eval(this, environment());
+            if (res.asynchronous()) {
+                this->_args[i] = res.kernel->expression();
+            } else {
+                this->_args[i] = res.object;
+                ++this->_count;
             }
         }
-        if (!async) {
+        if (this->_count == this->_args.size()) {
             postamble();
         }
     }
@@ -306,20 +355,24 @@ public:
         auto child = sbn::pointer_dynamic_cast<Kernel>(std::move(k));
         if (this->_state == State::Args) {
             const auto n = this->_args.size();
-            bool finished = true;
+            bool success = false;
             for (size_t i=0; i<n; ++i) {
                 if (this->_args[i] == child->expression()) {
                     this->_args[i] = child->result();
-                }
-                if (this->_args[i] == Async) {
-                    finished = false;
+                    success = true;
+                    ++this->_count;
                 }
             }
-            if (finished) {
+            if (!success) {
+                log("error child _", typeid(*child).name());
+                Assert(success);
+            }
+            if (this->_count == this->_args.size()) {
                 postamble();
             }
         } else {
             result(child->result());
+            log("result _", result());
             sbn::commit(std::move(this_ptr()));
         }
     }
@@ -333,8 +386,9 @@ private:
         auto* params = tmp->params;
         Object* eargs = vector_to_list(this->_args);
         Environment* newenv = new Environment(params, eargs, tmp->env);
-        result(progn(this, newenv, body));
-        if (result() != Async) {
+        auto res = progn(this, newenv, body);
+        if (!res.asynchronous()) {
+            result(res.object);
             sbn::commit(std::move(this_ptr()));
         }
     }
@@ -618,7 +672,7 @@ void lisp::Symbol::write(std::ostream& out) const {
 }
 
 void lisp::Primitive::write(std::ostream& out) const {
-    dl::symbol s(reinterpret_cast<void*>(this->fn));
+    dl::symbol s(reinterpret_cast<void*>(this->function));
     if (s) {
         out << s.name();
     } else {
@@ -675,11 +729,13 @@ void lisp::Environment::add(Symbol* symbol, Object* value) {
 }
 
 // Evaluates the list elements from head and returns the last return value.
-static Object* progn(Kernel* kernel, Environment* env, Object* list) {
-    if (list == nullptr) { return nullptr; }
+auto progn(Kernel* kernel, Environment* env, Object* list) -> Result {
+    if (list == nullptr) { return {nullptr,nullptr}; }
     if (list->cdr == nullptr) { return list->car->eval(kernel, env); }
-    sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Progn>(env, list));
-    return Async;
+    auto child = sbn::make_pointer<Progn>(env, list);
+    auto ptr = child.get();
+    sbn::upstream<sbn::Local>(kernel, std::move(child));
+    return {list, ptr};
 }
 
 // Evaluates all the list elements and returns their return values as a new list.
@@ -687,7 +743,7 @@ static Object* eval_list(Kernel* kernel, Environment* env, Object* list) {
     Object* head = nullptr;
     Object* tail = nullptr;
     for (Object* lp = list; lp != nullptr; lp = lp->cdr) {
-        Object* tmp = lp->car->eval(kernel, env);
+        Object* tmp = lp->car->eval(kernel, env).object;
         if (!tmp) {
             log("Bug: eval_list element is null");
         }
@@ -708,19 +764,22 @@ static bool is_list(Object* obj) {
 }
 
 // Apply fn with args.
-static Object* apply(Kernel* kernel, Environment* env, Object* obj, Object* fn, Object* args) {
-    if (!is_list(args))
+auto apply(Kernel* kernel, Environment* env, Object* obj, Object* fn, Object* args) -> Result {
+    if (!is_list(args)) {
         error("argument must be a list");
+    }
     if (fn->type == Type::Primitive) {
         auto tmp = reinterpret_cast<Primitive*>(fn);
-        return tmp->fn(kernel, env, args);
+        return tmp->function(kernel, env, args);
     }
     if (fn->type == Type::Function) {
-        sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Apply>(env, obj, cons(fn,args)));
-        return Async;
+        auto child = sbn::make_pointer<Apply>(env, obj, cons(fn,args));
+        auto ptr = child.get();
+        sbn::upstream<sbn::Local>(kernel, std::move(child));
+        return {obj,ptr};
     }
     error("not supported");
-    return nullptr;
+    return {};
 }
 
 Object* lisp::Environment::find(Symbol* symbol) {
@@ -748,7 +807,7 @@ static Object* macroexpand(Kernel* kernel, Environment* env, Object* obj) {
     auto* params = tmp->params;
     auto* newenv = new Environment(params, args, env);
     error("Bug: macroexpand not implemented");
-    return progn(kernel, newenv, body);
+    return progn(kernel, newenv, body).object;
 }
 
 Object* lisp::make(Type type) {
@@ -809,7 +868,7 @@ void lisp::Primitive::read(sbn::kernel_buffer& in) {
     if (result == functions.end()) {
         throw std::runtime_error("bad function id");
     }
-    this->fn = result->second;
+    this->function = result->second;
 }
 
 void lisp::Function::write(sbn::kernel_buffer& out) const {
@@ -887,12 +946,12 @@ void lisp::Environment::read(sbn::kernel_buffer& in) {
     }
 }
 
-Object* lisp::Object::eval(Kernel* kernel, Environment* env) {
+auto lisp::Object::eval(Kernel* kernel, Environment* env) -> Result {
     log("eval _ => _", this, this);
     return this;
 }
 
-Object* lisp::Symbol::eval(Kernel* kernel, Environment* env) {
+auto lisp::Symbol::eval(Kernel* kernel, Environment* env) -> Result {
     Object* bind = env->find(this);
     if (!bind) {
         error("Undefined symbol: ", this->name.data());
@@ -902,14 +961,16 @@ Object* lisp::Symbol::eval(Kernel* kernel, Environment* env) {
     return result;
 }
 
-Object* lisp::Cell::eval(Kernel* kernel, Environment* env) {
+auto lisp::Cell::eval(Kernel* kernel, Environment* env) -> Result {
     // Function application form
     Object* expanded = macroexpand(kernel, env, this);
-    Object* result{};
+    Result result;
     if (expanded != this) {
         result = expanded->eval(kernel, env);
     } else {
-        Object* fn = this->car->eval(kernel, env);
+        auto res = this->car->eval(kernel, env);
+        Assert(!res.asynchronous());
+        auto fn = res.object;
         Object* args = this->cdr;
         if (fn->type != Type::Primitive && fn->type != Type::Function) {
             log("head _", fn);
@@ -970,19 +1031,19 @@ bool lisp::Environment::equals(Object* rhs) const {
 //======================================================================
 
 // 'expr
-Object* prim_quote(Kernel* kernel, Environment* env, Object* list) {
+auto prim_quote(Kernel* kernel, Environment* env, Object* list) -> Result {
     if (list_length(list) != 1)
         error("Malformed quote");
     return list->car;
 }
 
 // (list expr ...)
-static Object* prim_list(Kernel* kernel, Environment* env, Object* list) {
+auto prim_list(Kernel* kernel, Environment* env, Object* list) -> Result {
     return eval_list(kernel, env, list);
 }
 
 // (setq <symbol> expr)
-static Object* prim_setq(Kernel* kernel, Environment* env, Object* list) {
+auto prim_setq(Kernel* kernel, Environment* env, Object* list) -> Result {
     if (list_length(list) != 2 || list->car->type != Type::Symbol) {
         error("Malformed setq");
     }
@@ -991,13 +1052,13 @@ static Object* prim_setq(Kernel* kernel, Environment* env, Object* list) {
     if (!bind) {
         error("Unbound variable ", tmp->name.data());
     }
-    Object* value = list->cdr->car->eval(kernel, env);
+    Object* value = list->cdr->car->eval(kernel, env).object;
     bind->cdr = value;
     return value;
 }
 
 // (+ <integer> ...)
-static Object* prim_plus(Kernel* kernel, Environment* env, Object* list) {
+auto prim_plus(Kernel* kernel, Environment* env, Object* list) -> Result {
     int sum = 0;
     for (Object* args = eval_list(kernel, env, list); args != nullptr; args = args->cdr) {
         if (args->car->type != Type::Integer) {
@@ -1026,11 +1087,11 @@ static Object* handle_function(Kernel* kernel, Environment* env, Object* list, T
 }
 
 // (lambda (<symbol> ...) expr ...)
-static Object* prim_lambda(Kernel* kernel, Environment* env, Object* list) {
+Result prim_lambda(Kernel* kernel, Environment* env, Object* list) {
     return handle_function(kernel, env, list, Type::Function);
 }
 
-static Object* handle_defun(Kernel* kernel, Environment* env, Object* list, Type type) {
+Object* handle_defun(Kernel* kernel, Environment* env, Object* list, Type type) {
     if (list->car->type != Type::Symbol || list->cdr->type != Type::Cell)
         error("Malformed defun");
     auto* sym = reinterpret_cast<Symbol*>(list->car);
@@ -1041,27 +1102,27 @@ static Object* handle_defun(Kernel* kernel, Environment* env, Object* list, Type
 }
 
 // (defun <symbol> (<symbol> ...) expr ...)
-static Object* prim_defun(Kernel* kernel, Environment* env, Object* list) {
+auto prim_defun(Kernel* kernel, Environment* env, Object* list) -> Result {
     return handle_defun(kernel, env, list, Type::Function);
 }
 
 // (define <symbol> expr)
-static Object* prim_define(Kernel* kernel, Environment* env, Object* list) {
+auto prim_define(Kernel* kernel, Environment* env, Object* list) -> Result {
     if (list_length(list) != 2 || list->car->type != Type::Symbol)
         error("Malformed define");
     auto* sym = reinterpret_cast<Symbol*>(list->car);
-    Object* value = list->cdr->car->eval(kernel, env);
+    Object* value = list->cdr->car->eval(kernel, env).object;
     env->add(sym, value);
     return value;
 }
 
 // (defmacro <symbol> (<symbol> ...) expr ...)
-static Object* prim_defmacro(Kernel* kernel, Environment* env, Object* list) {
+auto prim_defmacro(Kernel* kernel, Environment* env, Object* list) -> Result {
     return handle_defun(kernel, env, list, Type::Macro);
 }
 
 // (macroexpand expr)
-static Object* prim_macroexpand(Kernel* kernel, Environment* env, Object* list) {
+auto prim_macroexpand(Kernel* kernel, Environment* env, Object* list) -> Result {
     if (list_length(list) != 1)
         error("Malformed macroexpand");
     Object* body = list->car;
@@ -1069,26 +1130,28 @@ static Object* prim_macroexpand(Kernel* kernel, Environment* env, Object* list) 
 }
 
 // (println expr)
-static Object* prim_println(Kernel* kernel, Environment* env, Object* list) {
+Result prim_println(Kernel* kernel, Environment* env, Object* list) {
     std::cout << list->car->eval(kernel, env) << '\n';
-    return nullptr;
+    return {};
 }
 
 // (if expr expr expr ...)
-Object* prim_if(Kernel* kernel, Environment* env, Object* list) {
+auto prim_if(Kernel* kernel, Environment* env, Object* list) -> Result {
     if (list_length(list) < 2)
         error("Malformed if");
-    Object* cond = list->car->eval(kernel, env);
+    auto res = list->car->eval(kernel, env);
+    Assert(!res.asynchronous());
+    auto cond = res.object;
     if (cond != nullptr) {
         Object* then = list->cdr->car;
         return then->eval(kernel, env);
     }
     Object* els = list->cdr->cdr;
-    return els == nullptr ? nullptr : progn(kernel, env, els);
+    return els == nullptr ? Result{} : progn(kernel, env, els);
 }
 
 // (= <integer> <integer>)
-static Object* prim_num_eq(Kernel* kernel, Environment* env, Object* list) {
+Result prim_num_eq(Kernel* kernel, Environment* env, Object* list) {
     if (list_length(list) != 2)
         error("Malformed =");
     Object* values = eval_list(kernel, env, list);
@@ -1102,41 +1165,46 @@ static Object* prim_num_eq(Kernel* kernel, Environment* env, Object* list) {
 }
 
 // (exit)
-static Object* prim_exit(Kernel* kernel, Environment* env, Object* list) {
+Result prim_exit(Kernel* kernel, Environment* env, Object* list) {
     exit(0);
+    return {};
 }
 
-static Object* prim_cons(Kernel* kernel, Environment* env, Object* list) {
-    sbn::upstream<sbn::Local>(kernel, sbn::make_pointer<Cons>(env, list));
-    return Async;
+auto prim_cons(Kernel* kernel, Environment* env, Object* list) -> Result {
+    auto child = sbn::make_pointer<Cons>(env, list);
+    auto ptr = child.get();
+    sbn::upstream<sbn::Local>(kernel, std::move(child));
+    return {list, ptr};
 }
 
-static Object* prim_car(Kernel* kernel, Environment* env, Object* list) {
+Result prim_car(Kernel* kernel, Environment* env, Object* list) {
+    /*
     auto result = list->car->eval(kernel, env);
-    if (!result) {
-        error("Bug: car async not implemented");
-    }
-    return result->car;
+    Assert(!result.asynchronous());
+    return result.object->car;
+    */
+    auto child = sbn::make_pointer<Car>(env, list);
+    auto ptr = child.get();
+    sbn::upstream<sbn::Local>(kernel, std::move(child));
+    return {ptr->expression(), ptr};
 }
 
-static Object* prim_cdr(Kernel* kernel, Environment* env, Object* list) {
+Result prim_cdr(Kernel* kernel, Environment* env, Object* list) {
     auto result = list->car->eval(kernel, env);
-    if (!result) {
-        error("Bug: cdr async not implemented");
-    }
-    return result->cdr;
+    Assert(!result.asynchronous());
+    return result.object->cdr;
 }
 
-static Object* prim_is_null(Kernel* kernel, Environment* env, Object* list) {
+Result prim_is_null(Kernel* kernel, Environment* env, Object* list) {
     return list == nullptr ? True : False;
 }
 
-static Object* prim_equal(Kernel* kernel, Environment* env, Object* list) {
+Result prim_equal(Kernel* kernel, Environment* env, Object* list) {
     auto a = list->car->eval(kernel, env);
-    if (!a) { error("Bug: equal? async not implemented"); }
+    Assert(!a.asynchronous());
     auto b = list->cdr->car->eval(kernel, env);
-    if (!b) { error("Bug: equal? async not implemented"); }
-    return a->equals(b) ? True : False;
+    Assert(!b.asynchronous());
+    return a.object->equals(b.object) ? True : False;
 }
 
 void lisp::define(Environment* env, const char* name, Object* value) {
@@ -1182,9 +1250,9 @@ static void define_primitives(Environment* env) {
     define(env, "cdr", prim_cdr, 15);
     define(env, "null?", prim_is_null, 16);
     define(env, "equal?", prim_equal, 17);
-    define(env, "sleep", [] (Kernel* kernel, Environment* env, List* args) -> Object* {
+    define(env, "sleep", [] (Kernel* kernel, Environment* env, List* args) -> Result {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        return nullptr;
+        return {};
     }, 1000);
 }
 
