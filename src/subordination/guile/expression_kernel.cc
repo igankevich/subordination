@@ -145,7 +145,7 @@ sbn::guile::expression_kernel::act() {
             bool is_symbol = scm_is_true(scm_symbol_p(this->_scheme));
             if (is_symbol) {
                 SCM defined = scm_module_variable(this->_environment, this->_scheme);
-                if (scm_is_false(defined) || scm_is_true(scm_variable_p(defined))) {
+                if (scm_is_true(defined) || scm_is_true(scm_variable_p(defined))) {
                     this->_result = scm_variable_ref(defined);
                 } else {
                     this->_result = this->_scheme;
