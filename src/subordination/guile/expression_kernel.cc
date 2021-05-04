@@ -81,8 +81,13 @@ sbn::guile::expression_kernel::act() {
                 this->_definitions[key] = this->_scheme;
             }
             sbn::commit<sbn::Local>(std::move(this_ptr()));
+        } else if (check && std::string("use-modules") == scm_to_utf8_string(scm_symbol_to_string(fun))) {
+            this->_result = scm_eval(this->_scheme, this->_environment);
+            sbn::commit<sbn::Local>(std::move(this_ptr()));
         } else if (check && std::string("if") == scm_to_locale_string(scm_symbol_to_string(fun))) {
             sbn::upstream<sbn::Local>(this, sbn::make_pointer<sbn::guile::expression_kernel_if>(this->_scheme,this->_environment, this->_definitions));
+        } else if (check && std::string("let") == scm_to_locale_string(scm_symbol_to_string(fun))) {
+            sbn::upstream<sbn::Local>(this, sbn::make_pointer<sbn::guile::expression_kernel_let>(this->_scheme,this->_environment, this->_definitions));
         } else if (check && std::string("lambda") == scm_to_locale_string(scm_symbol_to_string(fun))) {
             this->_result = scm_eval(this->_scheme, this->_environment);
             sbn::commit<sbn::Local>(std::move(this_ptr()));
@@ -370,6 +375,48 @@ sbn::guile::expression_kernel_define::read(sbn::kernel_buffer& in) {
 
 void
 sbn::guile::expression_kernel_define::write(sbn::kernel_buffer& out) const {
+    sbn::kernel::write(out);
+    //out >> this->_parent_arg;
+    //out >> this->_scheme;
+}
+
+void 
+sbn::guile::expression_kernel_let::act() {
+    SCM env = this->_environment;
+    SCM lets = scm_cadr(this->_scheme);
+    for (SCM s = lets; s != SCM_EOL; s = scm_cdr(s)) {
+        SCM pair = scm_car(s);
+        scm_module_define(env, scm_car(pair), scm_cadr(pair));
+    }
+    SCM expr = scm_caddr(this->_scheme);
+    auto child = sbn::make_pointer<sbn::guile::expression_kernel>(
+        expr, 
+        env,
+        this->_definitions,
+        -3
+    );
+    sbn::upstream<sbn::Local>(
+        this, 
+        std::move(child)
+    );
+}
+
+void 
+sbn::guile::expression_kernel_let::react(sbn::kernel_ptr&& child) {
+    auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
+    this->_result = child_kernel->get_result();
+    sbn::commit<sbn::Local>(std::move(this_ptr()));
+}
+
+void
+sbn::guile::expression_kernel_let::read(sbn::kernel_buffer& in) {
+    sbn::kernel::read(in);
+    //in >> this->_parent_arg;
+    //in >> this->_scheme;
+}
+
+void
+sbn::guile::expression_kernel_let::write(sbn::kernel_buffer& out) const {
     sbn::kernel::write(out);
     //out >> this->_parent_arg;
     //out >> this->_scheme;

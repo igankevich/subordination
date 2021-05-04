@@ -87,6 +87,18 @@ namespace sbn {
             void read(sbn::kernel_buffer& in) override;
             void write(sbn::kernel_buffer& out) const override;
         };
+
+        class expression_kernel_let : public expression_kernel {
+        
+        public:
+            expression_kernel_let() {}
+            expression_kernel_let(SCM scm, std::map<std::string, SCM> const & def): expression_kernel(scm, def, -2) {}
+            expression_kernel_let(SCM scm, SCM env, std::map<std::string, SCM> const & def): expression_kernel(scm, env, def, -2) {}
+            void act() override;
+            void react(sbn::kernel_ptr&& child) override;
+            void read(sbn::kernel_buffer& in) override;
+            void write(sbn::kernel_buffer& out) const override;
+        };
     }
 }
 

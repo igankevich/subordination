@@ -8,3 +8,4 @@
     (if (null? lst) '() 
         (cons (proc (car lst)) (my-new-map proc (cdr lst)))))
 (display (my-new-map (lambda (x) (+ 7 x)) '(7 8 9)))
+(let ((a 5)) (display a))
