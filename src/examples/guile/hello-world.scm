@@ -8,4 +8,7 @@
     (if (null? lst) '() 
         (cons (proc (car lst)) (my-new-map proc (cdr lst)))))
 (display (my-new-map (lambda (x) (+ 7 x)) '(7 8 9)))
-(let ((a 5)) (display a))
+(let ((a 5) (b 88)) (display a) (display b))
+(if #f (display 6))
+(define (func) (display 1) 2)
+(display (func))

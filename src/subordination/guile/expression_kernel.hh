@@ -89,7 +89,7 @@ namespace sbn {
         };
 
         class expression_kernel_let : public expression_kernel {
-        
+            protected_scm _seq = SCM_UNSPECIFIED;
         public:
             expression_kernel_let() {}
             expression_kernel_let(SCM scm, std::map<std::string, SCM> const & def): expression_kernel(scm, def, -2) {}
