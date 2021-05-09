@@ -11,16 +11,6 @@
  (ice-9 hash-table)
  (ice-9 ftw))
 
-(define (process-file path-to-file)
-  (alist->hash-table 
-    (map (lambda (s)
-      (let ((key (substring s 0 16))) 
-      (let ((data-string (string-tokenize  (substring s 16 (string-length s)) (char-set-complement (char-set #\space)))))
-        (cons key (cons (string-ref (string-reverse path-to-file) 8) (map string->number data-string)))
-      )))
-    (filter (lambda (str) (string<> str "")) (cdr (string-split (call-with-input-file path-to-file get-string-all) #\newline )))
-  ))
-)
 
 (define (profile-2 name proc data1 data2)
   (define t0 (tms:clock (times)))
@@ -29,13 +19,6 @@
   (format (current-error-port) "~a: ~as\n" name
           (exact->inexact (/ (- t1 t0) internal-time-units-per-second)))
   ret)
-
-
-(define (process-dir path statinfo flag base level)
- ;;(display flag)
-  (if (eq? (stat:type statinfo) 'regular) (process-file path))
-  #t
-)
 
 (define (merge-table list-of-tables all-hash-table) 
   (map (lambda (hash-table) 

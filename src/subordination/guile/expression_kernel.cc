@@ -36,7 +36,6 @@ sbn::guile::expression_kernel_main::react(sbn::kernel_ptr&& child) {
         this->_definitions[pair.first] = pair.second;
     }
     this->_scheme = scm_read(this->_port);
-    SCM_DEBUG_VALUE(_scheme);
     if (!bool(scm_is_true(scm_eof_object_p(this->_scheme)))) {
         sbn::upstream<sbn::Local>(
             this,
@@ -437,11 +436,6 @@ sbn::guile::expression_kernel_let::act() {
         this->_definitions,
         -3
     );
-    std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        SCM_DEBUG_VALUE(_definitions["my-map"]);
     sbn::upstream<sbn::Local>(
         this,
         std::move(child)
@@ -452,11 +446,6 @@ void
 sbn::guile::expression_kernel_let::react(sbn::kernel_ptr&& child) {
     auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
     for (const auto& pair: child_kernel->get_defs()) {
-        std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        std::cout << "Here" << std::endl;
-        SCM_DEBUG_VALUE(_definitions["my-map"]);
         this->_definitions[pair.first] = pair.second;
     }
     if (scm_is_true(scm_null_p(this->_seq))) {

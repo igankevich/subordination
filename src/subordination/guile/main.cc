@@ -75,6 +75,11 @@ using namespace sbn;
         });
     }
     {
+        auto g = factory.types().guard();
+        factory.local().num_upstream_threads(6);
+        factory.local().num_downstream_threads(0);
+    }
+    {
         SCM ret = SCM_EOL;
         for (int i=argc-1; i>=0; --i) {
             ret = scm_cons(scm_from_utf8_string(argv[i]), ret);
