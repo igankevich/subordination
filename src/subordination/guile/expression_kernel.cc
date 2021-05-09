@@ -13,23 +13,23 @@ sbn::guile::expression_kernel_main::
 expression_kernel_main(int argc, char* argv[]) {
     if (argc > 1) {
         this->_port = scm_open_file(
-            scm_from_locale_string (argv[1]), 
+            scm_from_locale_string (argv[1]),
             scm_from_locale_string ("r")
         );
-        
+
     }
 }
 
-void 
+void
 sbn::guile::expression_kernel_main::act() {
     this->_scheme = scm_read(this->_port);
     sbn::upstream<sbn::Local>(
-        this, 
+        this,
         sbn::make_pointer<sbn::guile::expression_kernel>(this->_scheme, this->_definitions)
     );
 }
 
-void 
+void
 sbn::guile::expression_kernel_main::react(sbn::kernel_ptr&& child) {
     auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
     for (const auto& pair: child_kernel->get_defs()) {
@@ -39,7 +39,7 @@ sbn::guile::expression_kernel_main::react(sbn::kernel_ptr&& child) {
     SCM_DEBUG_VALUE(_scheme);
     if (!bool(scm_is_true(scm_eof_object_p(this->_scheme)))) {
         sbn::upstream<sbn::Local>(
-            this, 
+            this,
             sbn::make_pointer<sbn::guile::expression_kernel>(this->_scheme, this->_definitions)
         );
     } else {
@@ -62,7 +62,7 @@ sbn::guile::expression_kernel_main::write(sbn::kernel_buffer& out) const {
 }
 
 
-void 
+void
 sbn::guile::expression_kernel::act() {
     bool is_list = bool(scm_is_true(scm_list_p(this->_scheme)));
     if (is_list) {
@@ -103,9 +103,9 @@ sbn::guile::expression_kernel::act() {
             // SCM_DEBUG_VALUE(this->_definitions[key]);
             // SCM_DEBUG_VALUE(this->_scheme);
                 sbn::upstream<sbn::Local>(
-                    this, 
+                    this,
                     sbn::make_pointer<sbn::guile::expression_kernel_define>(
-                        this->_definitions[key], 
+                        this->_definitions[key],
                         this->_environment,
                         this->_definitions,
                         scm_cdr(this->_scheme),
@@ -117,11 +117,11 @@ sbn::guile::expression_kernel::act() {
                 int args_number = 0;
                 for (protected_scm s = this->_scheme; s != SCM_EOL; s = scm_cdr(s)) {
                     sbn::upstream<sbn::Local>(
-                        this, 
+                        this,
                         sbn::make_pointer<sbn::guile::expression_kernel>(
-                            scm_car(s), 
+                            scm_car(s),
                             this->_environment,
-                            this->_definitions, 
+                            this->_definitions,
                             args_number
                         )
                     );
@@ -135,9 +135,9 @@ sbn::guile::expression_kernel::act() {
         if (check && this->_definitions.find(scm_to_locale_string(scm_symbol_to_string(this->_scheme))) != this->_definitions.end()) {
             std::string key = scm_to_locale_string(scm_symbol_to_string(this->_scheme));
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 sbn::make_pointer<sbn::guile::expression_kernel_define>(
-                    this->_definitions[key], 
+                    this->_definitions[key],
                     this->_environment,
                     this->_definitions,
                     SCM_UNSPECIFIED,
@@ -174,7 +174,7 @@ sbn::guile::expression_kernel::react(sbn::kernel_ptr&& child) {
         this->_result = child_kernel->get_result();
         sbn::commit<sbn::Local>(std::move(this_ptr()));
         return;
-    } 
+    }
     _args[arg] = child_kernel->get_result();;
     _finished_child++;
     if (_finished_child == _args.size()) {
@@ -207,28 +207,28 @@ sbn::guile::expression_kernel::write(sbn::kernel_buffer& out) const {
     //out >> this->_scheme;
 }
 
-void 
+void
 sbn::guile::expression_kernel_if::act() {
     protected_scm if_statement = scm_car(scm_cdr(this->_scheme));
     sbn::upstream<sbn::Local>(
-        this, 
+        this,
         sbn::make_pointer<sbn::guile::expression_kernel>(
-            if_statement, 
-            this->_environment, 
-            this->_definitions, 
+            if_statement,
+            this->_environment,
+            this->_definitions,
             0
         )
     );
 }
 
-void 
+void
 sbn::guile::expression_kernel_if::react(sbn::kernel_ptr&& child) {
     auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
     for (const auto& pair: child_kernel->get_defs()) {
         this->_definitions[pair.first] = pair.second;
     }
     int arg = child_kernel->get_arg();
-    
+
     // 0 -- sign of statement
 
     if (arg == 0) {
@@ -236,13 +236,13 @@ sbn::guile::expression_kernel_if::react(sbn::kernel_ptr&& child) {
 
         bool is_true = bool(scm_is_true(statement.get()));
         if (is_true) {
-            protected_scm result = scm_car(scm_cdr(scm_cdr(this->_scheme)));            
+            protected_scm result = scm_car(scm_cdr(scm_cdr(this->_scheme)));
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 sbn::make_pointer<sbn::guile::expression_kernel>(
-                    result, 
-                    this->_environment, 
-                    this->_definitions, 
+                    result,
+                    this->_environment,
+                    this->_definitions,
                     -1
                 )
             );
@@ -252,11 +252,11 @@ sbn::guile::expression_kernel_if::react(sbn::kernel_ptr&& child) {
                 sbn::commit<sbn::Local>(std::move(this_ptr()));
             } else {
                 sbn::upstream<sbn::Local>(
-                    this, 
+                    this,
                     sbn::make_pointer<sbn::guile::expression_kernel>(
-                        scm_car(result), 
-                        this->_environment, 
-                        this->_definitions, 
+                        scm_car(result),
+                        this->_environment,
+                        this->_definitions,
                         -1
                     )
                 );
@@ -308,16 +308,16 @@ expression_kernel_define(protected_scm scm, protected_scm env, std::map<std::str
 
 
 
-void 
+void
 sbn::guile::expression_kernel_define::act() {
     int arg_number = 0;
     if (!scm_is_true(scm_list_p(this->_body_args))) {
         sbn::upstream<sbn::Local>(
-            this, 
+            this,
             sbn::make_pointer<sbn::guile::expression_kernel>(
-                scm_car(this->_body), 
+                scm_car(this->_body),
                 this->_environment,
-                this->_definitions, 
+                this->_definitions,
                 -1
             )
         );
@@ -325,11 +325,11 @@ sbn::guile::expression_kernel_define::act() {
     } else {
         for (protected_scm s = _body_args; s != SCM_EOL; s = scm_cdr(s)) {
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 sbn::make_pointer<sbn::guile::expression_kernel>(
-                    scm_car(s), 
+                    scm_car(s),
                     this->_environment,
-                    this->_definitions, 
+                    this->_definitions,
                     arg_number++
                 )
             );
@@ -337,11 +337,11 @@ sbn::guile::expression_kernel_define::act() {
         this->_args.resize(arg_number);
         if (arg_number == 0) {
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 sbn::make_pointer<sbn::guile::expression_kernel>(
-                    scm_car(this->_body), 
-                    this->_environment, 
-                    this->_definitions, 
+                    scm_car(this->_body),
+                    this->_environment,
+                    this->_definitions,
                     -1
                 )
             );
@@ -349,7 +349,7 @@ sbn::guile::expression_kernel_define::act() {
     }
 }
 
-void 
+void
 sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
     auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
     int arg = child_kernel->get_arg();
@@ -360,14 +360,14 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
     if (arg < 0) {
         if (scm_is_false(scm_null_p(this->_body))) {
             auto chi = sbn::make_pointer<sbn::guile::expression_kernel>(
-                scm_car(this->_body), 
+                scm_car(this->_body),
                 this->_environment,
                 this->_definitions,
                 -3
             );
             this->_body = scm_cdr(this->_body);
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 std::move(chi)
             );
         } else {
@@ -388,18 +388,18 @@ sbn::guile::expression_kernel_define::react(sbn::kernel_ptr&& child) {
                 scm_module_define(this->_environment, scm_car(s), this->_args[i++]);
             }
             auto chi = sbn::make_pointer<sbn::guile::expression_kernel>(
-                scm_car(this->_body), 
+                scm_car(this->_body),
                 this->_environment,
                 this->_definitions,
                 -3
             );
             this->_body = scm_cdr(this->_body);
             sbn::upstream<sbn::Local>(
-                this, 
+                this,
                 std::move(chi)
             );
         }
-    } 
+    }
 }
 
 void
@@ -416,7 +416,7 @@ sbn::guile::expression_kernel_define::write(sbn::kernel_buffer& out) const {
     //out >> this->_scheme;
 }
 
-void 
+void
 sbn::guile::expression_kernel_let::act() {
     protected_scm lets = scm_cadr(this->_scheme);
     this->_seq = scm_cddr(this->_scheme);
@@ -432,7 +432,7 @@ sbn::guile::expression_kernel_let::act() {
     protected_scm expr = scm_car(this->_seq);
     this->_seq = scm_cdr(this->_seq);
     auto child = sbn::make_pointer<sbn::guile::expression_kernel>(
-        expr, 
+        expr,
         this->_environment,
         this->_definitions,
         -3
@@ -443,12 +443,12 @@ sbn::guile::expression_kernel_let::act() {
         std::cout << "Here" << std::endl;
         SCM_DEBUG_VALUE(_definitions["my-map"]);
     sbn::upstream<sbn::Local>(
-        this, 
+        this,
         std::move(child)
     );
 }
 
-void 
+void
 sbn::guile::expression_kernel_let::react(sbn::kernel_ptr&& child) {
     auto child_kernel = sbn::pointer_dynamic_cast<sbn::guile::expression_kernel>(std::move(child));
     for (const auto& pair: child_kernel->get_defs()) {
@@ -462,17 +462,17 @@ sbn::guile::expression_kernel_let::react(sbn::kernel_ptr&& child) {
     if (scm_is_true(scm_null_p(this->_seq))) {
         this->_result = child_kernel->get_result();
         sbn::commit<sbn::Local>(std::move(this_ptr()));
-    } else { 
+    } else {
         protected_scm expr = scm_car(this->_seq);
         this->_seq = scm_cdr(this->_seq);
         auto chi = sbn::make_pointer<sbn::guile::expression_kernel>(
-            expr, 
+            expr,
             this->_environment,
             this->_definitions,
             -3
         );
         sbn::upstream<sbn::Local>(
-            this, 
+            this,
             std::move(chi)
         );
     }

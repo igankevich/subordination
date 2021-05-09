@@ -1,10 +1,11 @@
-(use-modules 
+(use-modules
  (oop goops)
  (ice-9 rdelim)
  (ice-9 binary-ports)
  (ice-9 textual-ports)
  (ice-9 iconv)
  (ice-9 i18n)
+ (ice-9 threads)
  (srfi srfi-1)
  (srfi srfi-13)
  (srfi srfi-26)
@@ -12,18 +13,20 @@
  (ice-9 ftw))
 
 
-(define (my-map proc lst) 
-    (if (null? lst) '() 
+(define (my-map proc lst)
+    (if (null? lst) '()
         (cons (proc (car lst)) (my-map proc (cdr lst)))))
 
 
-(let ((all-data-hash (make-hash-table)) (all-data '()))
-;  (nftw (list-ref (program-arguments) 1) 
-  (nftw (list-ref *global-arguments* 2) 
-    (lambda (path statinfo flag base level) 
-      (if (eq? (stat:type statinfo) 'regular) (set! all-data (cons ((lambda (path-to-file) (alist->hash-table 
+(let ((all-data-hash (make-hash-table))
+      (all-data '())
+      (mutex (make-mutex)))
+;  (nftw (list-ref (program-arguments) 1)
+  (nftw (list-ref *global-arguments* 2)
+    (lambda (path statinfo flag base level)
+      (if (eq? (stat:type statinfo) 'regular) (set! all-data (cons ((lambda (path-to-file) (alist->hash-table
     (map (lambda (s)
-      (let ((key (substring s 0 16))) 
+      (let ((key (substring s 0 16)))
       (let ((data-string (string-tokenize  (substring s 16 (string-length s)) (char-set-complement (char-set #\space)))))
         (cons key (cons (string-ref (string-reverse path-to-file) 8) (map string->number data-string)))
       )))
@@ -32,17 +35,19 @@
       #t
     )
   )
-  (my-map (lambda (hash-table) 
-    (hash-for-each (lambda (key value) 
-      (if (hash-ref all-data-hash key) 
+  (my-map (lambda (hash-table)
+    (hash-for-each (lambda (key value)
+      (lock-mutex mutex)
+      (if (hash-ref all-data-hash key)
         (hash-set! all-data-hash key (acons (car value) (cdr value) (hash-ref all-data-hash key)))
         (hash-set! all-data-hash key (acons (car value) (cdr value) '()))
       )
+      (unlock-mutex mutex)
     ) hash-table)
   ) all-data)
 
-;   (hash-for-each (lambda (key value) 
-;     (if (not (zero? (- 5 (length value))) ) 
+;   (hash-for-each (lambda (key value)
+;     (if (not (zero? (- 5 (length value))) )
 ;       (hash-remove! table key)
 ;     )
 ;   ) all-data-hash)

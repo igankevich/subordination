@@ -44,6 +44,18 @@ test(
     env: test_env,
 )
 
+test(
+    'guile/protected-scm',
+    executable(
+        'protected-scm-test',
+        sources: ['protected_scm_test.cc','kernel.cc','base.cc','init.cc'],
+        dependencies: [unistdx,gtest] + sbn_guile_deps + valgrind_dep,
+        include_directories: src,
+        implicit_include_directories: false,
+    ),
+    env: test_env,
+)
+
 if with_dtests
     test_config = configuration_data()
     test_config.set('sbnd_exe_path', test_sbnd_exe.full_path())

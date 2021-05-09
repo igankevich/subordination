@@ -46,13 +46,18 @@ namespace sbn {
             SCM _value = SCM_UNSPECIFIED;
 
         public:
+            inline protected_scm(const protected_scm& rhs) noexcept: _value(rhs._value) {
+                protect();
+            }
             inline protected_scm(SCM value) noexcept: _value(value) { protect(); }
             inline ~protected_scm() noexcept { unprotect(); }
             inline protected_scm(protected_scm&& rhs) noexcept:
             _value(rhs._value) { rhs._value = SCM_UNSPECIFIED; }
             inline protected_scm& operator=(const protected_scm& rhs) noexcept {
+                if (this->_value == rhs._value) { return *this; }
                 unprotect();
                 this->_value = rhs._value;
+                protect();
                 return *this;
             }
             inline protected_scm& operator=(protected_scm&& rhs) noexcept {
@@ -60,13 +65,12 @@ namespace sbn {
                 return *this;
             }
             inline protected_scm& operator=(SCM rhs) noexcept {
+                if (this->_value == rhs) { return *this; }
                 unprotect();
                 this->_value = rhs;
                 protect();
                 return *this;
             }
-            protected_scm() = default;
-            protected_scm(const protected_scm&) = default;
 
             inline void swap(protected_scm& rhs) noexcept {
                 std::swap(this->_value, rhs._value);
@@ -76,6 +80,8 @@ namespace sbn {
             inline operator SCM() const noexcept { return this->_value; }
             inline SCM& get() noexcept { return this->_value; }
             inline const SCM& get() const noexcept { return this->_value; }
+
+            protected_scm() = default;
 
         private:
             inline void protect() noexcept {
