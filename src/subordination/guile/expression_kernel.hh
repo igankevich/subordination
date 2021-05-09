@@ -17,8 +17,8 @@ namespace sbn {
 
         class expression_kernel_main : public sbn::kernel {
             protected_scm _port = SCM_UNSPECIFIED;
-            SCM _scheme = SCM_UNSPECIFIED;
-            std::map<std::string, SCM> _definitions;
+            protected_scm _scheme = SCM_UNSPECIFIED;
+            std::map<std::string, protected_scm> _definitions;
         public:
             expression_kernel_main() {}
             expression_kernel_main(int argc, char* argv[]);
@@ -34,18 +34,18 @@ namespace sbn {
             protected_scm _environment;
             std::vector<protected_scm> _args;
             size_t _finished_child = 0;
-            SCM _scheme = SCM_UNSPECIFIED;
+            const protected_scm _scheme = SCM_UNSPECIFIED;
             protected_scm _result = SCM_UNSPECIFIED;
-            std::map<std::string, SCM> _definitions;
+            std::map<std::string, protected_scm> _definitions;
             
         public:
             expression_kernel() {}
-            expression_kernel(SCM scheme, std::map<std::string, SCM> const & def, int arg = 0)
+            expression_kernel(protected_scm scheme, std::map<std::string, protected_scm> const & def, int arg = 0)
                 : _parent_arg(arg)
                 , _environment(scm_interaction_environment())
                 , _scheme(scheme)
                 , _definitions(def) {}
-            expression_kernel(SCM scheme, SCM env, std::map<std::string, SCM> const & def, int arg = 0)
+            expression_kernel(protected_scm scheme, protected_scm env, std::map<std::string, protected_scm> const & def, int arg = 0)
                 : _parent_arg(arg)
                 , _environment(env)
                 , _scheme(scheme)
@@ -58,16 +58,16 @@ namespace sbn {
             int get_arg() const {return _parent_arg;}
             void set_environment(SCM env) {_environment = env; }
 
-            std::map<std::string, SCM> & get_defs() { return this->_definitions; }
-            std::map<std::string, SCM> const & get_defs() const { return this->_definitions; }
+            std::map<std::string, protected_scm> & get_defs() { return this->_definitions; }
+            std::map<std::string, protected_scm> const & get_defs() const { return this->_definitions; }
         };
 
         class expression_kernel_if : public expression_kernel {
         
         public:
             expression_kernel_if() {}
-            expression_kernel_if(SCM scm, std::map<std::string, SCM> const & def): expression_kernel(scm, def, -2) {}
-            expression_kernel_if(SCM scm, SCM env, std::map<std::string, SCM> const & def): expression_kernel(scm, env, def, -2) {}
+            expression_kernel_if(protected_scm scm, std::map<std::string, protected_scm> const & def): expression_kernel(scm, def, -2) {}
+            expression_kernel_if(protected_scm scm, protected_scm env, std::map<std::string, protected_scm> const & def): expression_kernel(scm, env, def, -2) {}
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
             void read(sbn::kernel_buffer& in) override;
@@ -75,13 +75,13 @@ namespace sbn {
         };
 
         class expression_kernel_define : public expression_kernel {
-            SCM _head = SCM_UNSPECIFIED;
-            SCM _body = SCM_UNSPECIFIED;
-            SCM _body_args = SCM_UNSPECIFIED;
+            protected_scm _head = SCM_UNSPECIFIED;
+            protected_scm _body = SCM_UNSPECIFIED;
+            protected_scm _body_args = SCM_UNSPECIFIED;
         public:
             expression_kernel_define() {}            
-            expression_kernel_define(SCM scm, std::map<std::string, SCM> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
-            expression_kernel_define(SCM scm, SCM env,  std::map<std::string, SCM> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
+            expression_kernel_define(protected_scm scm, std::map<std::string, protected_scm> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
+            expression_kernel_define(protected_scm scm, protected_scm env,  std::map<std::string, protected_scm> const & def, protected_scm args = SCM_UNSPECIFIED, int arg = 0);
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
             void read(sbn::kernel_buffer& in) override;
@@ -92,8 +92,8 @@ namespace sbn {
             protected_scm _seq = SCM_UNSPECIFIED;
         public:
             expression_kernel_let() {}
-            expression_kernel_let(SCM scm, std::map<std::string, SCM> const & def): expression_kernel(scm, def, -2) {}
-            expression_kernel_let(SCM scm, SCM env, std::map<std::string, SCM> const & def): expression_kernel(scm, env, def, -2) {}
+            expression_kernel_let(protected_scm scm, std::map<std::string, protected_scm> const & def): expression_kernel(scm, def, -2) {}
+            expression_kernel_let(protected_scm scm, protected_scm env, std::map<std::string, protected_scm> const & def): expression_kernel(scm, env, def, -2) {}
             void act() override;
             void react(sbn::kernel_ptr&& child) override;
             void read(sbn::kernel_buffer& in) override;
