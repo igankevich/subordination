@@ -442,6 +442,29 @@ namespace lisp {
 
     };
 
+    class Allocator {
+
+    public:
+        using pointer = void*;
+        using size_type = std::size_t;
+
+    public:
+        struct Page {
+            pointer data;
+            size_type size;
+            explicit Page(size_type n);
+            ~Page() noexcept;
+        };
+
+    private:
+        std::vector<Page> _pages;
+        // Current page offset.
+        size_type _offset = 0;
+
+    public:
+        auto allocate(size_type n) -> pointer;
+    };
+
 }
 
 #endif // vim:filetype=cpp

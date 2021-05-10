@@ -14,6 +14,7 @@
 #include <sstream>
 #include <unordered_map>
 
+#include <sys/mman.h>
 #include <unistdx/system/linker>
 
 #include <subordination/api.hh>
@@ -91,6 +92,7 @@ const char* lisp::to_string(Type t) noexcept {
         case Type::Macro: return "macro";
         case Type::Environment: return "environment";
         case Type::Boolean: return "boolean";
+        case Type::Async: return "async";
         default: return nullptr;
     }
 }
@@ -509,10 +511,14 @@ Object* lisp::string_view::read_list() {
 bool lisp::string_view::is_integer() const noexcept {
     if (first == last) { return false; }
     auto a = first, b = last;
+    // check the first character
+    auto first_character_is_digit = std::isdigit(*a);
+    if (a != b && !(first_character_is_digit || *a == '-' || *a == '+')) { return false; }
+    ++a;
+    if (a == b && !first_character_is_digit) { return false; }
+    // check the remaining characters
     while (a != b) {
-        if (!(std::isdigit(*a) || *a == '-' || *a == '+')) {
-            return false;
-        }
+        if (!(std::isdigit(*a))) { return false; }
         ++a;
     }
     return true;
@@ -603,7 +609,9 @@ void lisp::Cell::write(std::ostream& out) const {
 }
 
 
-void lisp::Object::write(std::ostream& out) const {}
+void lisp::Object::write(std::ostream& out) const {
+    out << type;
+}
 
 void lisp::Symbol::write(std::ostream& out) const {
     out << name;
@@ -903,8 +911,10 @@ Object* lisp::Cell::eval(Kernel* kernel, Environment* env) {
     } else {
         Object* fn = this->car->eval(kernel, env);
         Object* args = this->cdr;
-        if (fn->type != Type::Primitive && fn->type != Type::Function)
+        if (fn->type != Type::Primitive && fn->type != Type::Function) {
+            log("head _", fn);
             error("The head of a list must be a function");
+        }
         result = apply(kernel, env, this, fn, args);
     }
     log("eval _ => _", this, result);
@@ -1088,7 +1098,7 @@ static Object* prim_num_eq(Kernel* kernel, Environment* env, Object* list) {
         error("= only takes numbers");
     auto a = reinterpret_cast<Integer*>(x);
     auto b = reinterpret_cast<Integer*>(y);
-    return a->value == b->value ? True : False;
+    return a->value == b->value ? True : nullptr;
 }
 
 // (exit)
@@ -1195,4 +1205,30 @@ Environment* lisp::top_environment() {
         define_primitives(Top);
     }
     return Top;
+}
+
+auto lisp::Allocator::allocate(size_type n) -> pointer {
+    if (this->_pages.empty()) {
+        this->_pages.emplace_back(4096);
+    }
+    if (this->_pages.back().size-this->_offset < n) {
+        this->_pages.emplace_back(std::max(size_type(4096), n));
+        this->_offset = 0;
+        return this->_pages.back().data;
+    }
+    auto ret = reinterpret_cast<pointer>(
+         reinterpret_cast<size_type>(this->_pages.back().data) + this->_offset);
+    this->_offset += n;
+    return ret;
+}
+
+lisp::Allocator::Page::Page(size_type n):
+data(::mmap(nullptr, n, PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0)),
+size(n) {
+    if (!data) { throw std::bad_alloc(); }
+}
+
+lisp::Allocator::Page::~Page() noexcept {
+    int ret = ::munmap(this->data, this->size);
+    if (ret == -1) { std::terminate(); }
 }
