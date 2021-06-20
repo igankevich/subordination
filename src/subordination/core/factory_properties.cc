@@ -39,7 +39,7 @@ namespace  {
 
 sbn::Properties::Properties() {
     if (const char* filename = std::getenv("SBN_CONFIG")) { open(filename); }
-    const auto& available_cpus = sys::this_process::cpu_affinity();
+    const auto& available_cpus = sys::this_process::cpus();
     local.upstream_cpus &= available_cpus;
     if (local.upstream_cpus.count() == 0) {
         local.upstream_cpus = available_cpus;

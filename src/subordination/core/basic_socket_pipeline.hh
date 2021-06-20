@@ -33,7 +33,7 @@ namespace sbn {
             size_t min_input_buffer_size;
 
             inline properties():
-            properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+            properties{sys::this_process::cpus(), sys::page_size()} {}
 
             inline explicit
             properties(const sys::cpu_set& cpus, size_t page_size, size_t multiple=52):

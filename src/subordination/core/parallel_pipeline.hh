@@ -22,10 +22,10 @@ namespace sbn {
             unsigned num_downstream_threads = 0;
             unsigned num_upstream_threads;
 
-            inline properties(): properties{sys::this_process::cpu_affinity()} {}
+            inline properties(): properties{sys::this_process::cpus()} {}
 
             inline explicit properties(unsigned nthreads):
-            properties{sys::this_process::cpu_affinity(), nthreads} {}
+            properties{sys::this_process::cpus(), nthreads} {}
 
             inline explicit properties(const sys::cpu_set& cpus):
             properties{cpus,static_cast<unsigned int>(cpus.count())} {}
@@ -247,7 +247,7 @@ namespace sbn {
         inline void make_thread(kernel_ptr&& k) {
             this->_kernel_threads.emplace_back(
                 [this] (kernel_ptr&& k) {
-                    sys::this_process::cpu_affinity(this->_kernel_threads.cpus());
+                    sys::this_process::cpus(this->_kernel_threads.cpus());
                     kernel_loop(std::move(k));
                 },
                 std::move(k));

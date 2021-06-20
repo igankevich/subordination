@@ -1,7 +1,7 @@
 project(
     'subordination',
     'cpp',
-    version: '0.4.1',
+    version: '0.4.2',
     meson_version: '>=0.50.0',
     default_options: ['cpp_std=c++11'],
     license: 'gpl3+'

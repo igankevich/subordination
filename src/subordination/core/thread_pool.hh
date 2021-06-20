@@ -23,7 +23,7 @@ namespace sbn {
         inline void join() { for (auto& t : *this) { if (t.joinable()) { t.join(); } } }
         inline void cpus(const sys::cpu_set& rhs) noexcept { this->_cpus = rhs; }
         inline const sys::cpu_set& cpus() const noexcept { return this->_cpus; }
-        std::vector<int> cpu_array() const;
+        std::vector<size_t> cpu_array() const;
 
     };
 

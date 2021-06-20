@@ -162,7 +162,7 @@ void sbn::parallel_pipeline::upstream_start(size_t num_threads) {
         this->_upstream_threads[i] =
             std::thread([this,i,all_cpus,num_threads] () noexcept {
                 sys::cpu_set thread_cpus{all_cpus[i%num_threads]};
-                sys::this_process::cpu_affinity(thread_cpus);
+                sys::this_process::cpus(thread_cpus);
                 #if defined(UNISTDX_HAVE_PRCTL)
                 ::prctl(PR_SET_NAME, this->_name);
                 #endif
@@ -194,7 +194,7 @@ void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
         this->_downstream_threads[i] =
             std::thread([this,i,all_cpus,num_threads] () noexcept {
                 sys::cpu_set thread_cpus{all_cpus[i%num_threads]};
-                sys::this_process::cpu_affinity(thread_cpus);
+                sys::this_process::cpus(thread_cpus);
                 #if defined(UNISTDX_HAVE_PRCTL)
                 ::prctl(PR_SET_NAME, this->_name);
                 #endif
@@ -208,7 +208,7 @@ void sbn::parallel_pipeline::downstream_start(size_t num_threads) {
 void sbn::parallel_pipeline::timer_start() {
     if (this->_timer_threads.cpus().count() == 0) { return; }
     this->_timer_threads.emplace_back([this] () noexcept {
-        sys::this_process::cpu_affinity(this->_timer_threads.cpus());
+        sys::this_process::cpus(this->_timer_threads.cpus());
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif

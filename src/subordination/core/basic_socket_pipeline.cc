@@ -145,7 +145,7 @@ void sbn::basic_socket_pipeline::start() {
     this->setstate(states::starting);
     this->_threads.emplace_back([this] () noexcept {
         const auto& cpus = this->_threads.cpus();
-        if (cpus.count() != 0) { sys::this_process::cpu_affinity(cpus); }
+        if (cpus.count() != 0) { sys::this_process::cpus(cpus); }
         #if defined(UNISTDX_HAVE_PRCTL)
         ::prctl(PR_SET_NAME, this->_name);
         #endif

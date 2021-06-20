@@ -62,7 +62,7 @@ namespace sbnd {
         #endif
 
     public:
-        inline Properties(): Properties{sys::this_process::cpu_affinity(), sys::page_size()} {}
+        inline Properties(): Properties{sys::this_process::cpus(), sys::page_size()} {}
         Properties(const sys::cpu_set& cpus, size_t page_size);
         void property(const std::string& key, const std::string& value) override;
 
